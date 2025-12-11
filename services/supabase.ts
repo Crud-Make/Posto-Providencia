@@ -1,10 +1,20 @@
-
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from './database.types';
 
-// ATENÇÃO: Substitua pelos valores do seu projeto Supabase
-// Usamos um placeholder com formato de URL válida para evitar erro de inicialização (TypeError: Invalid URL)
-// O cliente irá falhar nas requisições de rede, mas o app usará os dados de fallback (constants.ts) automaticamente.
-const SUPABASE_URL = 'https://placeholder-project.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+// Configuração do Supabase Client
+// Essas variáveis devem ser definidas no arquivo .env na raiz do projeto
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.warn('⚠️ Supabase credentials not found in environment variables. Please check your .env file.');
+}
+
+// Cliente Supabase com tipagem completa do banco de dados
+export const supabase = createClient<Database>(
+    SUPABASE_URL || 'https://placeholder-project.supabase.co',
+    SUPABASE_ANON_KEY || 'placeholder-key'
+);
+
+// Export do tipo para uso em outros lugares
+export type { Database };

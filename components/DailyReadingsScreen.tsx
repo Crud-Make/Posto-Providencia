@@ -1,39 +1,129 @@
-import React, { useState } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  Droplet, 
-  CheckCircle2, 
-  Check, 
-  AlertCircle 
+import React, { useState, useEffect } from 'react';
+import {
+  Calendar,
+  Clock,
+  Droplet,
+  CheckCircle2,
+  Check,
+  AlertCircle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
-import { READING_PUMPS_DATA } from '../constants';
+import { bicoService, leituraService, turnoService, combustivelService } from '../services/api';
+import type { Bico, Bomba, Combustivel, Turno, Leitura } from '../services/database.types';
+
+// Type for bico with related data
+type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
+
+// Type for grouped pumps
+interface PumpGroup {
+  bomba: Bomba;
+  bicos: BicoWithDetails[];
+}
+
+// Color mapping for fuel types
+const FUEL_COLORS: Record<string, string> = {
+  'GC': 'bg-red-100 text-red-700',
+  'GA': 'bg-blue-100 text-blue-700',
+  'ET': 'bg-green-100 text-green-700',
+  'S10': 'bg-yellow-100 text-yellow-700',
+  'DIESEL': 'bg-amber-100 text-amber-700',
+};
 
 const DailyReadingsScreen: React.FC = () => {
-  const [readings, setReadings] = useState<Record<string, string>>({});
+  // State
+  const [bicos, setBicos] = useState<BicoWithDetails[]>([]);
+  const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [lastReadings, setLastReadings] = useState<Record<number, Leitura | null>>({});
+  const [readings, setReadings] = useState<Record<number, string>>({});
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleReadingChange = (nozzleId: string, value: string) => {
-    // Only allow numbers and one dot/comma
-    if (!/^\d*[.,]?\d*$/.test(value)) return;
-    setReadings(prev => ({ ...prev, [nozzleId]: value }));
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch bicos with details and turnos in parallel
+      const [bicosData, turnosData] = await Promise.all([
+        bicoService.getWithDetails(),
+        turnoService.getAll(),
+      ]);
+
+      setBicos(bicosData);
+      setTurnos(turnosData);
+
+      if (turnosData.length > 0) {
+        setSelectedTurno(turnosData[0].id);
+      }
+
+      // Fetch last reading for each bico
+      const lastReadingsMap: Record<number, Leitura | null> = {};
+      await Promise.all(
+        bicosData.map(async (bico) => {
+          const lastReading = await leituraService.getLastReadingByBico(bico.id);
+          lastReadingsMap[bico.id] = lastReading;
+        })
+      );
+      setLastReadings(lastReadingsMap);
+
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Erro ao carregar dados. Verifique sua conexão.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const calculateVolume = (initial: number, current: string) => {
+  // Group bicos by pump
+  const pumpGroups: PumpGroup[] = bicos.reduce((acc, bico) => {
+    const existingGroup = acc.find(g => g.bomba.id === bico.bomba.id);
+    if (existingGroup) {
+      existingGroup.bicos.push(bico);
+    } else {
+      acc.push({ bomba: bico.bomba, bicos: [bico] });
+    }
+    return acc;
+  }, [] as PumpGroup[]);
+
+  const handleReadingChange = (bicoId: number, value: string) => {
+    // Only allow numbers and one dot/comma
+    if (!/^\d*[.,]?\d*$/.test(value)) return;
+    setReadings(prev => ({ ...prev, [bicoId]: value }));
+  };
+
+  const getInitialReading = (bicoId: number): number => {
+    const lastReading = lastReadings[bicoId];
+    return lastReading?.leitura_final || 0;
+  };
+
+  const calculateVolume = (bicoId: number, current: string): number => {
+    const initial = getInitialReading(bicoId);
     const val = parseFloat(current.replace(',', '.'));
     if (isNaN(val) || val < initial) return 0;
     return val - initial;
   };
 
-  const calculateTotal = (volume: number, price: number) => {
+  const calculateTotal = (volume: number, price: number): number => {
     return volume * price;
   };
 
-  const totals = READING_PUMPS_DATA.flatMap(p => p.nozzles).reduce(
-    (acc, nozzle) => {
-      const currentReading = readings[nozzle.id];
-      const vol = currentReading ? calculateVolume(nozzle.initialReading, currentReading) : 0;
-      const val = calculateTotal(vol, nozzle.price);
-      
+  // Calculate totals
+  const totals = bicos.reduce(
+    (acc, bico) => {
+      const currentReading = readings[bico.id];
+      const vol = currentReading ? calculateVolume(bico.id, currentReading) : 0;
+      const val = calculateTotal(vol, bico.combustivel.preco_venda);
+
       return {
         liters: acc.liters + vol,
         revenue: acc.revenue + val
@@ -42,155 +132,260 @@ const DailyReadingsScreen: React.FC = () => {
     { liters: 0, revenue: 0 }
   );
 
+  // Handle save
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      // Build leituras array
+      const leiturasToCreate = bicos
+        .filter(bico => readings[bico.id] && parseFloat(readings[bico.id].replace(',', '.')) > getInitialReading(bico.id))
+        .map(bico => {
+          const finalReading = parseFloat(readings[bico.id].replace(',', '.'));
+          return {
+            bico_id: bico.id,
+            data: selectedDate,
+            leitura_inicial: getInitialReading(bico.id),
+            leitura_final: finalReading,
+            preco_litro: bico.combustivel.preco_venda,
+            usuario_id: 1, // TODO: Get from auth context
+          };
+        });
+
+      if (leiturasToCreate.length === 0) {
+        setError('Nenhuma leitura válida para salvar.');
+        return;
+      }
+
+      await leituraService.bulkCreate(leiturasToCreate);
+
+      setSuccess(`${leiturasToCreate.length} leituras salvas com sucesso!`);
+      setReadings({});
+
+      // Reload data to get updated last readings
+      await loadData();
+
+    } catch (err) {
+      console.error('Error saving readings:', err);
+      setError('Erro ao salvar leituras. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Format date for display
+  const formatDateDisplay = (dateStr: string): string => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="text-gray-500 font-medium">Carregando dados...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-32">
-      
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-gray-900">Registro de Leituras Diárias</h1>
           <p className="text-gray-500 mt-2">Preencha os dados dos encerrantes de cada bico para fechar o turno.</p>
         </div>
-        
+
         <div className="flex gap-4">
+          {/* Date Picker */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Data</span>
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2.5 shadow-sm">
-              <Calendar size={18} className="text-gray-400" />
-              <span className="text-sm font-semibold text-gray-900">24/10/2023</span>
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+              <Calendar size={18} className="text-gray-400 ml-4" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-2 py-2.5 text-sm font-semibold text-gray-900 outline-none border-none"
+              />
             </div>
           </div>
+
+          {/* Turno Selector */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Turno</span>
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2.5 shadow-sm min-w-[140px] justify-between cursor-pointer">
-              <div className="flex items-center gap-2">
-                <Clock size={18} className="text-gray-400" />
-                <span className="text-sm font-semibold text-gray-900">Manhã</span>
-              </div>
-              <span className="text-gray-400 text-xs">▼</span>
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2.5 shadow-sm">
+              <Clock size={18} className="text-gray-400" />
+              <select
+                value={selectedTurno || ''}
+                onChange={(e) => setSelectedTurno(Number(e.target.value))}
+                className="text-sm font-semibold text-gray-900 outline-none border-none bg-transparent cursor-pointer"
+              >
+                {turnos.map(turno => (
+                  <option key={turno.id} value={turno.id}>
+                    {turno.nome} ({turno.horario_inicio} - {turno.horario_fim})
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          {/* Refresh Button */}
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">&nbsp;</span>
+            <button
+              onClick={loadData}
+              className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <RefreshCw size={18} className="text-gray-500" />
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 font-medium flex items-center gap-2">
+          <AlertCircle size={18} />
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 font-medium flex items-center gap-2">
+          <CheckCircle2 size={18} />
+          {success}
+        </div>
+      )}
+
       {/* Pumps Grid */}
       <div className="space-y-8">
-        {READING_PUMPS_DATA.length === 0 ? (
-             <div className="p-12 text-center text-gray-400 italic bg-gray-50 rounded-xl border border-gray-200">
-                Nenhuma bomba configurada para leitura.
-             </div>
+        {pumpGroups.length === 0 ? (
+          <div className="p-12 text-center text-gray-400 italic bg-gray-50 rounded-xl border border-gray-200">
+            Nenhuma bomba configurada. Configure bombas e bicos nas Configurações.
+          </div>
         ) : (
-            READING_PUMPS_DATA.map((pump) => (
-            <div key={pump.id}>
-                <div className="flex items-center gap-3 mb-4">
+          pumpGroups.map((pumpGroup) => (
+            <div key={pumpGroup.bomba.id}>
+              <div className="flex items-center gap-3 mb-4">
                 <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                <h2 className="text-xl font-bold text-gray-900">{pump.name}</h2>
-                </div>
-                
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {pump.nozzles.map((nozzle) => {
-                    const currentVal = readings[nozzle.id] || '';
-                    const hasValue = currentVal.length > 0;
-                    const volume = hasValue ? calculateVolume(nozzle.initialReading, currentVal) : 0;
-                    const total = calculateTotal(volume, nozzle.price);
-                    const isInvalid = hasValue && parseFloat(currentVal) < nozzle.initialReading;
+                <h2 className="text-xl font-bold text-gray-900">{pumpGroup.bomba.nome}</h2>
+                {pumpGroup.bomba.localizacao && (
+                  <span className="text-sm text-gray-500">({pumpGroup.bomba.localizacao})</span>
+                )}
+              </div>
 
-                    return (
-                    <div key={nozzle.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        {/* Nozzle Header */}
-                        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {pumpGroup.bicos.map((bico) => {
+                  const currentVal = readings[bico.id] || '';
+                  const hasValue = currentVal.length > 0;
+                  const initialReading = getInitialReading(bico.id);
+                  const volume = hasValue ? calculateVolume(bico.id, currentVal) : 0;
+                  const total = calculateTotal(volume, bico.combustivel.preco_venda);
+                  const isInvalid = hasValue && parseFloat(currentVal.replace(',', '.')) < initialReading;
+                  const colorClass = FUEL_COLORS[bico.combustivel.codigo] || 'bg-gray-100 text-gray-700';
+
+                  return (
+                    <div key={bico.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                      {/* Nozzle Header */}
+                      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-gray-200 rounded-full text-gray-500">
+                          <div className="p-2 bg-gray-200 rounded-full text-gray-500">
                             <Droplet size={18} fill="currentColor" />
-                            </div>
-                            <span className="font-bold text-gray-900">Bico {nozzle.number}</span>
-                            <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${nozzle.productColorClass}`}>
-                            {nozzle.product}
-                            </span>
+                          </div>
+                          <span className="font-bold text-gray-900">Bico {bico.numero}</span>
+                          <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${colorClass}`}>
+                            {bico.combustivel.nome}
+                          </span>
                         </div>
-                        <span className="text-xs font-medium text-gray-500">{nozzle.tank}</span>
-                        </div>
+                        <span className="text-xs font-medium text-gray-500">{bico.combustivel.codigo}</span>
+                      </div>
 
-                        {/* Nozzle Body */}
-                        <div className="p-6">
+                      {/* Nozzle Body */}
+                      <div className="p-6">
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-                            {/* Initial Reading */}
-                            <div className="sm:col-span-1">
+                          {/* Initial Reading */}
+                          <div className="sm:col-span-1">
                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Leitura Inicial</label>
                             <div className="h-12 bg-gray-50 rounded-lg flex items-center px-4 font-mono text-blue-600 font-medium">
-                                {nozzle.initialReading.toLocaleString('pt-BR', { minimumFractionDigits: 3 })}
+                              {initialReading.toLocaleString('pt-BR', { minimumFractionDigits: 3 })}
                             </div>
-                            </div>
+                          </div>
 
-                            {/* Final Reading Input */}
-                            <div className="sm:col-span-1">
+                          {/* Final Reading Input */}
+                          <div className="sm:col-span-1">
                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Leitura Final</label>
                             <div className="relative">
-                                <input
+                              <input
                                 type="text"
                                 value={currentVal}
-                                onChange={(e) => handleReadingChange(nozzle.id, e.target.value)}
+                                onChange={(e) => handleReadingChange(bico.id, e.target.value)}
                                 className={`w-full h-12 rounded-lg border px-4 font-mono font-bold text-gray-900 outline-none focus:ring-2 transition-all
-                                    ${isInvalid 
-                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50' 
+                                    ${isInvalid
+                                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50'
                                     : 'border-gray-300 focus:border-blue-500 focus:ring-blue-100'}
                                 `}
                                 placeholder="000.000"
-                                />
-                                {hasValue && !isInvalid && (
+                              />
+                              {hasValue && !isInvalid && (
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
-                                    <CheckCircle2 size={18} />
+                                  <CheckCircle2 size={18} />
                                 </div>
-                                )}
-                                {isInvalid && (
+                              )}
+                              {isInvalid && (
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
-                                    <AlertCircle size={18} />
+                                  <AlertCircle size={18} />
                                 </div>
-                                )}
+                              )}
                             </div>
-                            </div>
+                          </div>
 
-                            {/* Price */}
-                            <div className="sm:col-span-1">
+                          {/* Price */}
+                          <div className="sm:col-span-1">
                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Preço / L</label>
                             <div className="h-12 rounded-lg border border-gray-200 flex items-center px-4">
-                                <span className="text-gray-400 text-xs mr-1">R$</span>
-                                <span className="font-mono text-gray-900 font-medium">{nozzle.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                              <span className="text-gray-400 text-xs mr-1">R$</span>
+                              <span className="font-mono text-gray-900 font-medium">{bico.combustivel.preco_venda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                             </div>
-                            </div>
+                          </div>
 
-                            {/* Totals */}
-                            <div className="sm:col-span-1 flex flex-col justify-center items-end sm:items-start pl-0 sm:pl-4">
+                          {/* Totals */}
+                          <div className="sm:col-span-1 flex flex-col justify-center items-end sm:items-start pl-0 sm:pl-4">
                             <div className="text-right sm:text-left mb-1">
-                                <span className="text-[10px] text-gray-400 uppercase font-bold mr-2">Total Litros:</span>
-                                <span className={`font-mono font-bold ${hasValue ? 'text-green-600' : 'text-gray-300'}`}>
+                              <span className="text-[10px] text-gray-400 uppercase font-bold mr-2">Total Litros:</span>
+                              <span className={`font-mono font-bold ${hasValue ? 'text-green-600' : 'text-gray-300'}`}>
                                 {hasValue ? volume.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '- -'}
                                 {hasValue && <span className="text-xs ml-0.5">L</span>}
-                                </span>
+                              </span>
                             </div>
                             <div className="text-right sm:text-left">
-                                <span className="text-[10px] text-gray-400 uppercase font-bold mr-2">Total R$</span>
-                                <div className={`text-xl font-bold ${hasValue ? 'text-gray-900' : 'text-gray-300'}`}>
+                              <span className="text-[10px] text-gray-400 uppercase font-bold mr-2">Total R$</span>
+                              <div className={`text-xl font-bold ${hasValue ? 'text-gray-900' : 'text-gray-300'}`}>
                                 {hasValue ? `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'R$ 0,00'}
-                                </div>
+                              </div>
                             </div>
-                            </div>
+                          </div>
 
                         </div>
-                        </div>
+                      </div>
                     </div>
-                    );
+                  );
                 })}
-                </div>
+              </div>
             </div>
-            ))
+          ))
         )}
       </div>
 
       {/* Fixed Footer */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          
+
           <div className="flex items-center gap-8 w-full sm:w-auto justify-between sm:justify-start">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Litros</span>
@@ -199,7 +394,7 @@ const DailyReadingsScreen: React.FC = () => {
                 <span className="text-sm font-bold text-gray-400">L</span>
               </div>
             </div>
-            
+
             <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
 
             <div className="flex flex-col">
@@ -210,29 +405,41 @@ const DailyReadingsScreen: React.FC = () => {
             </div>
 
             <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
-            
+
             <div className="hidden sm:flex flex-col">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status</span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Data</span>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
-                <span className="text-sm font-bold text-yellow-600">Em preenchimento</span>
+                <span className="text-sm font-bold text-gray-700">{formatDateDisplay(selectedDate)}</span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none px-4 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors">
-              Cancelar
+            <button
+              onClick={() => setReadings({})}
+              className="flex-1 sm:flex-none px-4 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Limpar
             </button>
-            <button className="flex-1 sm:flex-none px-6 py-2.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors bg-white">
-              Salvar Rascunho
-            </button>
-            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20">
-              <Check size={18} strokeWidth={3} />
-              Confirmar Leitura
+            <button
+              onClick={handleSave}
+              disabled={saving || Object.keys(readings).length === 0}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Check size={18} strokeWidth={3} />
+                  Salvar Leituras
+                </>
+              )}
             </button>
           </div>
-          
+
         </div>
       </div>
     </div>

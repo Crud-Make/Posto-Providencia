@@ -1,14 +1,16 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Users, 
-  Package, 
-  Banknote, 
-  Settings, 
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Users,
+  Package,
+  Banknote,
+  Settings,
   Fuel,
   LogOut,
-  ShoppingBag
+  ShoppingBag,
+  ClipboardList,
+  BarChart2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -48,15 +50,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
             key={item.id}
             onClick={() => onNavigate(item.id)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group
-              ${currentView === item.id 
-                ? 'bg-blue-50 text-blue-700' 
+              ${currentView === item.id
+                ? 'bg-blue-50 text-blue-700'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }
             `}
           >
-            <item.icon 
-              size={20} 
-              className={currentView === item.id ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} 
+            <item.icon
+              size={20}
+              className={currentView === item.id ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}
             />
             {item.label}
           </button>
@@ -67,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group">
           <div className="w-10 h-10 rounded-full bg-[#E0D0B8] flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
-             <img src="https://ui-avatars.com/api/?name=Admin+Gerente&background=E0D0B8&color=fff" alt="Admin" className="w-full h-full object-cover" />
+            <img src="https://ui-avatars.com/api/?name=Admin+Gerente&background=E0D0B8&color=fff" alt="Admin" className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-900 truncate">Admin Gerente</p>
