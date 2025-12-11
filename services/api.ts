@@ -1,22 +1,5 @@
 
-import { 
-  FUEL_DATA, 
-  PAYMENT_DATA, 
-  CLOSINGS_DATA, 
-  PERFORMANCE_DATA, 
-  DAILY_SUMMARY_DATA,
-  NOZZLE_DATA_DETAILED,
-  INITIAL_ATTENDANTS_CLOSING,
-  INVENTORY_ITEMS,
-  INVENTORY_ALERTS,
-  RECENT_TRANSACTIONS,
-  ATTENDANTS_LIST_DATA,
-  ATTENDANT_HISTORY_DATA,
-  PRODUCTS_CONFIG_DATA,
-  NOZZLES_CONFIG_DATA,
-  SHIFTS_CONFIG_DATA,
-  MOBILE_NOTIFICATIONS_DATA
-} from '../constants';
+import { supabase } from './supabase';
 import { 
   FuelData, 
   PaymentMethod, 
@@ -74,64 +57,110 @@ interface SettingsData {
   shifts: ShiftConfig[];
 }
 
-const SIMULATED_DELAY = 800;
+// Helper generic to fetch data or return fallback
+async function fetchTableData<T>(tableName: string, fallback: T): Promise<T> {
+  try {
+    const { data, error } = await supabase.from(tableName).select('*');
+    if (error) {
+        console.warn(`Supabase error fetching ${tableName}:`, error.message);
+        return fallback;
+    }
+    // If table is empty, return fallback (which should now be empty array usually)
+    if (!data || data.length === 0) return fallback;
+    return data as unknown as T;
+  } catch (e) {
+    console.warn(`Connection error fetching ${tableName}:`, e);
+    return fallback;
+  }
+}
 
 // Dashboard
 export const fetchDashboardData = async (): Promise<DashboardData> => {
-  await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
+  const [fuelData, paymentData, closingsData, performanceData, summaryData] = await Promise.all([
+    fetchTableData<FuelData[]>('fuel_levels', []),
+    fetchTableData<PaymentMethod[]>('payment_stats', []),
+    fetchTableData<AttendantClosing[]>('closings', []),
+    fetchTableData<AttendantPerformance[]>('attendant_performance', []),
+    fetchTableData<FuelSummary[]>('daily_summary', [])
+  ]);
+
+  // Calculate KPIs dynamically based on fetched data
+  const totalSales = summaryData.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+  // Simple logic for avgTicket based on transactions count simulation
+  const avgTicket = totalSales > 0 ? totalSales / 150 : 0; 
   
-  const totalSales = DAILY_SUMMARY_DATA.reduce((acc, curr) => acc + curr.totalValue, 0);
-  const avgTicket = totalSales > 0 ? 145.50 : 0; 
-  const totalDivergence = CLOSINGS_DATA
+  const totalDivergence = closingsData
     .filter(c => c.status === 'Divergente')
-    .reduce((acc, curr) => acc + (Math.random() * 50), 0);
+    .reduce((acc, curr) => {
+        // In a real scenario, the difference value would be a property of AttendantClosing
+        return acc + 50; 
+    }, 0);
 
   return {
-    fuelData: FUEL_DATA,
-    paymentData: PAYMENT_DATA,
-    closingsData: CLOSINGS_DATA,
-    performanceData: PERFORMANCE_DATA,
-    summaryData: DAILY_SUMMARY_DATA,
+    fuelData,
+    paymentData,
+    closingsData,
+    performanceData,
+    summaryData,
     kpis: { totalSales, avgTicket, totalDivergence }
   };
 };
 
 // Daily Closing Screen
 export const fetchClosingData = async (): Promise<ClosingData> => {
-  await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
+  const [summaryData, nozzleData, attendantsData] = await Promise.all([
+    fetchTableData<FuelSummary[]>('daily_summary', []),
+    fetchTableData<NozzleData[]>('nozzle_readings', []),
+    fetchTableData<ClosingAttendant[]>('closing_attendants', [])
+  ]);
+
   return {
-    summaryData: DAILY_SUMMARY_DATA,
-    nozzleData: NOZZLE_DATA_DETAILED,
-    attendantsData: INITIAL_ATTENDANTS_CLOSING
+    summaryData,
+    nozzleData,
+    attendantsData
   };
 };
 
 // Inventory Screen
 export const fetchInventoryData = async (): Promise<InventoryData> => {
-  await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
+  const [items, alerts, transactions] = await Promise.all([
+    fetchTableData<InventoryItem[]>('inventory_items', []),
+    fetchTableData<InventoryAlert[]>('inventory_alerts', []),
+    fetchTableData<InventoryTransaction[]>('inventory_transactions', [])
+  ]);
+
   return {
-    items: INVENTORY_ITEMS,
-    alerts: INVENTORY_ALERTS,
-    transactions: RECENT_TRANSACTIONS
+    items,
+    alerts,
+    transactions
   };
 };
 
 // Attendants Management Screen
 export const fetchAttendantsData = async (): Promise<AttendantsManagementData> => {
-  await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
+  const [list, history] = await Promise.all([
+    fetchTableData<AttendantProfile[]>('attendants_list', []),
+    fetchTableData<AttendantHistoryEntry[]>('attendant_history', [])
+  ]);
+
   return {
-    list: ATTENDANTS_LIST_DATA,
-    history: ATTENDANT_HISTORY_DATA
+    list,
+    history
   };
 };
 
 // Settings Screen
 export const fetchSettingsData = async (): Promise<SettingsData> => {
-  await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
+  const [products, nozzles, shifts] = await Promise.all([
+    fetchTableData<ProductConfig[]>('products_config', []),
+    fetchTableData<NozzleConfig[]>('nozzles_config', []),
+    fetchTableData<ShiftConfig[]>('shifts_config', [])
+  ]);
+
   return {
-    products: PRODUCTS_CONFIG_DATA,
-    nozzles: NOZZLES_CONFIG_DATA,
-    shifts: SHIFTS_CONFIG_DATA
+    products,
+    nozzles,
+    shifts
   };
 };
 
@@ -140,54 +169,81 @@ export const fetchSettingsData = async (): Promise<SettingsData> => {
 // ==========================================
 
 export const MobileService = {
-  // 1. Mobile Authentication
+  // 1. Mobile Authentication using Supabase Auth
   login: async (email: string, pass: string): Promise<MobileAuthResponse> => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // Mock validation
-    if (email === 'admin@posto.com' && pass === '123456') {
-      return {
-        token: 'jwt-mock-token-xyz-123',
-        user: {
-          id: 'u1',
-          name: 'Admin Gerente',
-          role: 'manager',
-          avatar: 'https://ui-avatars.com/api/?name=Admin+Gerente&background=E0D0B8&color=fff'
-        }
-      };
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: pass,
+        });
+
+        if (error) throw error;
+        if (!data.session || !data.user) throw new Error("No session created");
+
+        // Fetch custom user profile info if exists in a separate table
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+        return {
+            token: data.session.access_token,
+            user: {
+                id: data.user.id,
+                name: profile?.name || data.user.email?.split('@')[0] || 'Usuário',
+                role: profile?.role || 'attendant',
+                avatar: profile?.avatar || 'https://ui-avatars.com/api/?name=User&background=E0D0B8&color=fff'
+            }
+        };
+
+    } catch (error) {
+        throw new Error('Falha na autenticação ou credenciais inválidas');
     }
-    throw new Error('Credenciais inválidas');
   },
 
-  // 2. Optimized Mobile Home Data (Aggregated for performance)
+  // 2. Mobile Home Data
   fetchMobileHome: async (): Promise<MobileHomeData> => {
-    await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
+    // Reusing fetchDashboard logic roughly
+    const summaryData = await fetchTableData<FuelSummary[]>('daily_summary', []);
+    const closingsData = await fetchTableData<AttendantClosing[]>('closings', []);
+    const alertsData = await fetchTableData<InventoryAlert[]>('inventory_alerts', []);
+    const notifications = await fetchTableData<MobileNotification[]>('mobile_notifications', []);
     
-    const totalSales = DAILY_SUMMARY_DATA.reduce((acc, curr) => acc + curr.totalValue, 0);
-    const pendingClosings = CLOSINGS_DATA.filter(c => c.status === 'Aberto').length;
+    const totalSales = summaryData.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+    const pendingClosings = closingsData.filter(c => c.status === 'Aberto').length;
     
     return {
       totalSalesToday: totalSales,
       pendingClosings,
-      alertsCount: INVENTORY_ALERTS.length + MOBILE_NOTIFICATIONS_DATA.filter(n => !n.read).length,
-      recentNotifications: MOBILE_NOTIFICATIONS_DATA.slice(0, 3), // Only top 3 for home screen
+      alertsCount: alertsData.length + notifications.filter(n => !n.read).length,
+      recentNotifications: notifications.slice(0, 3), 
       quickStats: [
         { label: 'Vendas', value: `R$ ${totalSales.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`, trend: 'up' },
         { label: 'Estoque', value: 'Ok', trend: 'neutral' },
-        { label: 'Divergências', value: '2', trend: 'down' }
+        { label: 'Divergências', value: `${closingsData.filter(c => c.status === 'Divergente').length}`, trend: 'down' }
       ]
     };
   },
 
   // 3. Notifications List
   fetchNotifications: async (): Promise<MobileNotification[]> => {
-    await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
-    return MOBILE_NOTIFICATIONS_DATA;
+    return fetchTableData<MobileNotification[]>('mobile_notifications', []);
   },
 
   // 4. Action: Approve Closing remotely
   approveClosing: async (closingId: string): Promise<{ success: boolean }> => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log(`Closing ${closingId} approved via mobile`);
-    return { success: true };
+    try {
+        const { error } = await supabase
+            .from('closings')
+            .update({ status: 'OK' })
+            .eq('id', closingId);
+        
+        if (error) throw error;
+        return { success: true };
+    } catch (e) {
+        console.warn("Error approving closing", e);
+        return { success: false };
+    }
   }
 };
