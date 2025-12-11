@@ -35,22 +35,25 @@ export interface AttendantPerformance {
 export interface FuelSummary {
   id: string;
   name: string;
+  code: string; // GC, GA, ET, S10
   iconType: 'pump' | 'leaf' | 'truck';
   totalValue: number;
   volume: number;
   avgPrice: number;
   color: string;
+  colorClass: string; // Tailwind class
 }
 
 export interface NozzleData {
   id: string;
-  bico: string;
-  product: string;
-  productColor: string;
-  startReading: number;
-  endReading: number;
-  volume: number;
-  totalValue: number;
+  bico: number;
+  productCode: string; // Links to FuelSummary.code
+  productName: string;
+  initialReading: number;
+  finalReading: number;
+  price: number;
+  volume: number; // Calculated: Final - Initial
+  total: number; // Calculated: Volume * Price
   status: 'OK' | 'Alert' | 'NoSales';
 }
 
@@ -97,21 +100,27 @@ export interface ProfitabilityItem {
   warning?: boolean;
 }
 
-// --- NEW TYPES FOR CLOSING WIZARD ---
+// --- NEW TYPES FOR CLOSING WIZARD (PRD v1.0) ---
 
-export interface ClosingPaymentInput {
-  id: string;
-  method: 'credit' | 'debit' | 'pix' | 'cash';
-  label: string;
-  value: number;
-  machine?: string;
+export interface ClosingReceipts {
+  credit: {
+    sipag: number;
+    azulzinha: number;
+  };
+  debit: {
+    sipag: number;
+    azulzinha: number;
+  };
+  pix: number;
+  cash: number;
 }
 
-export interface ClosingAttendantInput {
+export interface ClosingAttendant {
   id: string;
   name: string;
   avatar: string;
-  expectedValue: number; // What the system thinks they sold
+  shift: string;
+  expectedValue: number; // Valor conferido pelo sistema
   declared: {
     card: number;
     note: number;
@@ -119,6 +128,7 @@ export interface ClosingAttendantInput {
     cash: number;
   };
   observation?: string;
+  hasHistory?: boolean; // Se tem histórico de divergência
 }
 
 // --- NEW TYPES FOR READINGS SCREEN ---

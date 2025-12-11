@@ -5,8 +5,8 @@ import {
   CLOSINGS_DATA, 
   PERFORMANCE_DATA, 
   DAILY_SUMMARY_DATA,
-  NOZZLE_DATA,
-  INITIAL_ATTENDANTS_DATA,
+  NOZZLE_DATA_DETAILED,
+  INITIAL_ATTENDANTS_CLOSING,
   INVENTORY_ITEMS,
   INVENTORY_ALERTS,
   RECENT_TRANSACTIONS,
@@ -24,7 +24,7 @@ import {
   AttendantPerformance, 
   FuelSummary,
   NozzleData,
-  ClosingAttendantInput,
+  ClosingAttendant,
   InventoryItem,
   InventoryAlert,
   InventoryTransaction,
@@ -54,7 +54,7 @@ interface DashboardData {
 interface ClosingData {
   summaryData: FuelSummary[];
   nozzleData: NozzleData[];
-  attendantsData: ClosingAttendantInput[];
+  attendantsData: ClosingAttendant[];
 }
 
 interface InventoryData {
@@ -101,8 +101,8 @@ export const fetchClosingData = async (): Promise<ClosingData> => {
   await new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
   return {
     summaryData: DAILY_SUMMARY_DATA,
-    nozzleData: NOZZLE_DATA,
-    attendantsData: INITIAL_ATTENDANTS_DATA
+    nozzleData: NOZZLE_DATA_DETAILED,
+    attendantsData: INITIAL_ATTENDANTS_CLOSING
   };
 };
 

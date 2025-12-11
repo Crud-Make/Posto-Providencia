@@ -1,5 +1,5 @@
 
-import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryItem, InventoryAlert, InventoryTransaction, ProfitabilityItem, ClosingAttendantInput, ReadingPump, SalesAnalysisProduct, SalesProfitability, SalesEvolutionData, ProductMixData, AttendantProfile, AttendantHistoryEntry, ProductConfig, NozzleConfig, ShiftConfig, MobileNotification } from './types';
+import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryItem, InventoryAlert, InventoryTransaction, ProfitabilityItem, ClosingAttendant, ReadingPump, SalesAnalysisProduct, SalesProfitability, SalesEvolutionData, ProductMixData, AttendantProfile, AttendantHistoryEntry, ProductConfig, NozzleConfig, ShiftConfig, MobileNotification } from './types';
 
 export const FUEL_DATA: FuelData[] = [
   { name: 'Gasolina Comum', volume: 12500, maxCapacity: 20000, color: 'bg-red-500' },
@@ -16,9 +16,9 @@ export const PAYMENT_DATA: PaymentMethod[] = [
 ];
 
 export const CLOSINGS_DATA: AttendantClosing[] = [
-  { id: '1', name: 'João Silva', avatar: 'https://ui-avatars.com/api/?name=Joao+Silva&background=c7d2fe&color=3730a3', shift: 'Manhã', totalSales: 4500.50, status: 'OK' },
-  { id: '2', name: 'Maria Souza', avatar: 'https://ui-avatars.com/api/?name=Maria+Souza&background=fde68a&color=92400e', shift: 'Manhã', totalSales: 3800.00, status: 'Divergente' },
-  { id: '3', name: 'Pedro Santos', avatar: 'https://ui-avatars.com/api/?name=Pedro+Santos&background=bbf7d0&color=166534', shift: 'Tarde', totalSales: 0, status: 'Aberto' },
+  { id: '1', name: 'Leandro', avatar: 'https://ui-avatars.com/api/?name=Leandro&background=c7d2fe&color=3730a3', shift: 'Manhã', totalSales: 2839.08, status: 'OK' },
+  { id: '2', name: 'Gabi', avatar: 'https://ui-avatars.com/api/?name=Gabi&background=fde68a&color=92400e', shift: 'Manhã', totalSales: 2280.00, status: 'Divergente' },
+  { id: '3', name: 'Eliane', avatar: 'https://ui-avatars.com/api/?name=Eliane&background=bbf7d0&color=166534', shift: 'Tarde', totalSales: 1133.70, status: 'OK' },
 ];
 
 export const PERFORMANCE_DATA: AttendantPerformance[] = [
@@ -28,17 +28,21 @@ export const PERFORMANCE_DATA: AttendantPerformance[] = [
 ];
 
 export const DAILY_SUMMARY_DATA: FuelSummary[] = [
-  { id: '1', name: 'Gasolina C.', iconType: 'pump', totalValue: 45200.00, volume: 8500, avgPrice: 5.31, color: 'text-red-500' },
-  { id: '2', name: 'Etanol', iconType: 'leaf', totalValue: 28400.00, volume: 7200, avgPrice: 3.94, color: 'text-green-500' },
-  { id: '3', name: 'Diesel S10', iconType: 'truck', totalValue: 62100.00, volume: 9800, avgPrice: 6.33, color: 'text-gray-600' },
+  { id: '1', name: 'Gasolina Comum', code: 'GC', iconType: 'pump', totalValue: 3788.57, volume: 593.82, avgPrice: 6.38, color: 'text-green-600', colorClass: 'bg-green-100 text-green-700' },
+  { id: '2', name: 'Gasolina Adit.', code: 'GA', iconType: 'pump', totalValue: 1336.61, volume: 209.50, avgPrice: 6.38, color: 'text-blue-600', colorClass: 'bg-blue-100 text-blue-700' },
+  { id: '3', name: 'Etanol', code: 'ET', iconType: 'leaf', totalValue: 2179.12, volume: 475.79, avgPrice: 4.58, color: 'text-yellow-600', colorClass: 'bg-yellow-100 text-yellow-700' },
+  { id: '4', name: 'Diesel S10', code: 'S10', iconType: 'truck', totalValue: 0.00, volume: 0.00, avgPrice: 6.28, color: 'text-red-600', colorClass: 'bg-red-100 text-red-700' },
 ];
 
-export const NOZZLE_DATA: NozzleData[] = [
-  { id: '1', bico: '01', product: 'Gasolina Comum', productColor: 'bg-red-100 text-red-700', startReading: 145000.00, endReading: 145250.00, volume: 250.00, totalValue: 1327.50, status: 'OK' },
-  { id: '2', bico: '02', product: 'Etanol', productColor: 'bg-green-100 text-green-700', startReading: 89000.00, endReading: 89120.00, volume: 120.00, totalValue: 472.80, status: 'OK' },
-  { id: '3', bico: '03', product: 'Diesel S10', productColor: 'bg-gray-100 text-gray-700', startReading: 210000.00, endReading: 210000.00, volume: 0, totalValue: 0, status: 'NoSales' },
-  { id: '4', bico: '04', product: 'Gasolina Comum', productColor: 'bg-red-100 text-red-700', startReading: 320100.00, endReading: 320400.00, volume: 300.00, totalValue: 1593.00, status: 'Alert' },
+export const NOZZLE_DATA_DETAILED: NozzleData[] = [
+  { id: '1', bico: 1, productCode: 'GC', productName: 'Gasolina Comum', initialReading: 1482477.273, finalReading: 1483071.093, volume: 593.82, price: 6.38, total: 3788.57, status: 'OK' },
+  { id: '2', bico: 2, productCode: 'GA', productName: 'Gasolina Adit.', initialReading: 571280.552, finalReading: 571490.052, volume: 209.50, price: 6.38, total: 1336.61, status: 'OK' },
+  { id: '3', bico: 3, productCode: 'ET', productName: 'Etanol', initialReading: 324361.883, finalReading: 324837.673, volume: 475.79, price: 4.58, total: 2179.12, status: 'OK' },
+  { id: '4', bico: 4, productCode: 'S10', productName: 'Diesel S10', initialReading: 373826.093, finalReading: 373826.093, volume: 0.00, price: 6.28, total: 0.00, status: 'NoSales' },
+  { id: '5', bico: 5, productCode: 'GC', productName: 'Gasolina Comum', initialReading: 360942.842, finalReading: 361041.452, volume: 98.61, price: 6.38, total: 629.13, status: 'OK' },
 ];
+
+export const NOZZLE_DATA: NozzleData[] = NOZZLE_DATA_DETAILED; // Backward compatibility alias
 
 export const INVENTORY_ITEMS: InventoryItem[] = [
   { id: '1', code: 'GC', name: 'Gasolina Comum', volume: 12450, capacity: 30000, percentage: 41.5, status: 'OK', daysRemaining: 5, color: 'blue', iconType: 'pump' },
@@ -64,10 +68,14 @@ export const PROFITABILITY_DATA: ProfitabilityItem[] = [
   { id: '3', product: 'Etanol', color: 'bg-green-500', salesVolume: 15400, netMargin: 0.35, totalProfit: 5390, sharePercentage: 15 },
 ];
 
-export const INITIAL_ATTENDANTS_DATA: ClosingAttendantInput[] = [
-  { id: 'a1', name: 'João Silva', avatar: 'https://ui-avatars.com/api/?name=Joao+Silva&background=c7d2fe&color=3730a3', expectedValue: 2450.00, declared: { card: 0, note: 0, pix: 0, cash: 0 } },
-  { id: 'a2', name: 'Maria Souza', avatar: 'https://ui-avatars.com/api/?name=Maria+Souza&background=fde68a&color=92400e', expectedValue: 1890.50, declared: { card: 0, note: 0, pix: 0, cash: 0 } },
+export const INITIAL_ATTENDANTS_CLOSING: ClosingAttendant[] = [
+  { id: 'a1', name: 'Leandro', avatar: 'https://ui-avatars.com/api/?name=Leandro&background=c7d2fe&color=3730a3', shift: 'Manhã', expectedValue: 2839.08, declared: { card: 0, note: 0, pix: 0, cash: 0 } },
+  { id: 'a2', name: 'Gabi', avatar: 'https://ui-avatars.com/api/?name=Gabi&background=fde68a&color=92400e', shift: 'Manhã', expectedValue: 2280.00, declared: { card: 0, note: 0, pix: 0, cash: 0 }, hasHistory: true },
+  { id: 'a3', name: 'Eliane', avatar: 'https://ui-avatars.com/api/?name=Eliane&background=bbf7d0&color=166534', shift: 'Tarde', expectedValue: 1133.70, declared: { card: 0, note: 0, pix: 0, cash: 0 } },
 ];
+
+// Alias for legacy support if needed
+export const INITIAL_ATTENDANTS_DATA = INITIAL_ATTENDANTS_CLOSING;
 
 export const READING_PUMPS_DATA: ReadingPump[] = [
   {
