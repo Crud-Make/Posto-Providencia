@@ -1,0 +1,265 @@
+import React from 'react';
+import { 
+  Calendar, 
+  Download, 
+  Printer, 
+  Droplet, 
+  Banknote, 
+  TrendingUp, 
+  TrendingDown, 
+  Percent, 
+  RefreshCw,
+  PieChart,
+  Lightbulb,
+  CheckCircle2,
+  AlertTriangle
+} from 'lucide-react';
+import { SALES_EVOLUTION_DATA, PRODUCT_MIX_DATA } from '../constants';
+
+const SalesDashboardScreen: React.FC = () => {
+  return (
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-24">
+      
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+         <span className="hover:text-blue-600 cursor-pointer transition-colors">Home</span>
+         <span>/</span>
+         <span className="hover:text-blue-600 cursor-pointer transition-colors">Relatórios</span>
+         <span>/</span>
+         <span className="font-semibold text-gray-900">Dashboard de Vendas</span>
+      </div>
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Dashboard de Vendas</h1>
+           <div className="flex items-center gap-2 mt-3">
+              <span className="text-gray-500 text-sm font-medium">Período de Análise:</span>
+              <div className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm cursor-pointer hover:border-gray-300 transition-colors">
+                 <Calendar size={18} className="text-blue-600" />
+                 <span className="font-bold text-gray-900 text-sm">Maio 2025</span>
+                 <span className="text-gray-400 text-xs">▼</span>
+              </div>
+           </div>
+        </div>
+        <div className="flex gap-3">
+           <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
+              <Printer size={18} />
+              <span>Imprimir</span>
+           </button>
+           <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20">
+              <Download size={18} />
+              <span>Exportar Dados</span>
+           </button>
+        </div>
+      </div>
+
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+         
+         {/* Card 1: Litros Vendidos */}
+         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-40">
+            <div className="flex items-center gap-2 text-gray-500">
+               <Droplet size={18} className="text-blue-500" fill="currentColor" />
+               <span className="text-sm font-bold text-gray-600">Litros Vendidos</span>
+            </div>
+            <div>
+               <h3 className="text-3xl font-black text-gray-900">0 L</h3>
+               <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-600 text-xs font-bold mt-2">
+                  <TrendingUp size={14} />
+                  0% vs mês ant.
+               </div>
+            </div>
+         </div>
+
+         {/* Card 2: Faturamento */}
+         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-40">
+            <div className="flex items-center gap-2 text-gray-500">
+               <Banknote size={18} className="text-green-500" />
+               <span className="text-sm font-bold text-gray-600">Faturamento</span>
+            </div>
+            <div>
+               <h3 className="text-3xl font-black text-gray-900">R$ 0,00</h3>
+               <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-600 text-xs font-bold mt-2">
+                  <TrendingUp size={14} />
+                  0% vs mês ant.
+               </div>
+            </div>
+         </div>
+
+         {/* Card 3: Lucro Total */}
+         <div className="bg-blue-50 rounded-xl p-6 border border-blue-100 shadow-sm flex flex-col justify-between h-40 relative overflow-hidden group">
+            <div className="absolute -right-4 top-1/2 -translate-y-1/2 opacity-5 group-hover:scale-110 transition-transform duration-500">
+               <RefreshCw size={120} className="text-blue-600" />
+            </div>
+            <div className="flex items-center gap-2 text-blue-700 relative z-10">
+               <Banknote size={18} fill="currentColor" />
+               <span className="text-sm font-bold">Lucro Total</span>
+            </div>
+            <div className="relative z-10">
+               <h3 className="text-3xl font-black text-blue-600">R$ 0,00</h3>
+               <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white text-green-600 text-xs font-bold mt-2 shadow-sm border border-blue-100">
+                  <TrendingUp size={14} />
+                  0%
+               </div>
+            </div>
+         </div>
+
+         {/* Card 4: Margem Média */}
+         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-40">
+            <div className="flex items-center gap-2 text-gray-500">
+               <Percent size={18} className="text-orange-500" />
+               <span className="text-sm font-bold text-gray-600">Margem Média</span>
+            </div>
+            <div>
+               <h3 className="text-3xl font-black text-gray-900">0.0%</h3>
+               <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-bold mt-2">
+                  <TrendingUp size={14} />
+                  0%
+               </div>
+            </div>
+         </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         
+         {/* Left Column: Sales Evolution Chart */}
+         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-8">
+               <div className="flex items-center gap-2">
+                  <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
+                  <h3 className="text-lg font-bold text-gray-900">Evolução de Vendas (Últimos 6 Meses)</h3>
+               </div>
+               <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Volume (L)</span>
+            </div>
+
+            {/* Chart Container */}
+            {SALES_EVOLUTION_DATA.length === 0 ? (
+                 <div className="flex-1 min-h-[300px] flex items-center justify-center text-gray-400 italic">
+                    Sem dados históricos.
+                 </div>
+            ) : (
+                <div className="flex-1 relative min-h-[300px] flex items-end justify-between px-4 pb-2 pt-12">
+                {/* Reference Grid Lines */}
+                <div className="absolute inset-x-0 top-0 bottom-8 flex flex-col justify-between pointer-events-none z-0">
+                    <div className="w-full border-b border-dashed border-gray-200 h-0"></div>
+                    <div className="w-full border-b border-dashed border-gray-200 h-0"></div>
+                    <div className="w-full border-b border-dashed border-gray-200 h-0"></div>
+                    <div className="w-full border-b border-gray-200 h-0"></div>
+                </div>
+
+                {/* Bars */}
+                {SALES_EVOLUTION_DATA.map((data, idx) => (
+                    <div key={idx} className="relative z-10 flex flex-col items-center gap-3 w-full group">
+                        <div className="relative w-full flex justify-center items-end h-[280px]">
+                            <div 
+                            className={`w-12 sm:w-16 rounded-t-sm transition-all duration-500 relative group-hover:opacity-90
+                                ${data.isCurrent ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-blue-100'}
+                            `}
+                            style={{ height: `${(data.volume / 300000) * 100}%` }}
+                            >
+                            {/* Reference Line for Current Month */}
+                            {data.isCurrent && (
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2">
+                                    <span className="text-xs font-bold text-blue-600">245k</span>
+                                </div>
+                            )}
+                            
+                            {/* Tooltip */}
+                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                                {data.volume.toLocaleString()} L
+                            </div>
+                            </div>
+                        </div>
+                        <span className={`text-sm font-medium ${data.isCurrent ? 'text-blue-600 font-bold' : 'text-gray-500'}`}>
+                            {data.month}
+                        </span>
+                    </div>
+                ))}
+                </div>
+            )}
+
+            {/* Chart Footer */}
+            <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-4">
+               <div className="flex items-center gap-2">
+                  <div className="size-3 bg-blue-500 rounded-sm"></div>
+                  <span className="text-sm text-gray-600">Vendas 2025</span>
+               </div>
+               <div className="bg-green-50 px-3 py-1 rounded-full flex items-center gap-1.5 text-xs font-bold text-green-700 border border-green-100">
+                  <TrendingUp size={12} />
+                  Crescimento Médio: 0%
+               </div>
+            </div>
+         </div>
+
+         {/* Right Column: Mix & Highlights */}
+         <div className="space-y-6">
+            
+            {/* Product Mix Widget */}
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+               <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 rounded-full bg-blue-50 text-blue-600">
+                     <PieChart size={20} />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Mix de Produtos (Litros)</h3>
+               </div>
+
+               <div className="space-y-6">
+                  {PRODUCT_MIX_DATA.length === 0 ? (
+                       <div className="text-center text-gray-400 text-sm italic py-4">Sem dados de mix.</div>
+                  ) : (
+                      PRODUCT_MIX_DATA.map((item) => (
+                        <div key={item.name} className="space-y-2">
+                            <div className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                                <div className={`size-3 rounded-full ${item.color}`}></div>
+                                <span className="font-bold text-gray-900">{item.name}</span>
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="font-bold text-gray-900">{item.volume.toLocaleString('pt-BR')} L</span>
+                                <span className="text-xs text-gray-400 font-medium">{item.percentage}%</span>
+                            </div>
+                            </div>
+                            <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.percentage}%` }}></div>
+                            </div>
+                        </div>
+                      ))
+                  )}
+               </div>
+            </div>
+
+            {/* Highlights Widget (Dark Theme Card) */}
+            <div className="bg-slate-900 rounded-xl p-6 shadow-lg text-white relative overflow-hidden">
+               <div className="relative z-10">
+                  <h3 className="text-lg font-bold flex items-center gap-2 mb-6 text-white">
+                     <Lightbulb className="text-yellow-400" fill="currentColor" size={20} />
+                     Destaques do Mês
+                  </h3>
+
+                  <div className="space-y-6">
+                     <div className="flex gap-4">
+                        <div className="mt-1">
+                           <CheckCircle2 className="text-green-400" size={20} />
+                        </div>
+                        <div>
+                           <h4 className="font-bold text-sm text-white mb-1">Status</h4>
+                           <p className="text-xs text-slate-300 leading-relaxed">
+                              Nenhum dado suficiente para gerar destaques.
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+         </div>
+
+      </div>
+
+    </div>
+  );
+};
+
+export default SalesDashboardScreen;
