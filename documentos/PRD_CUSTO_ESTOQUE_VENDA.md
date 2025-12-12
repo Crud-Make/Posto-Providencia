@@ -572,30 +572,36 @@ interface AnaliseCusto {
 }
 ```
 
-### Fórmulas de Cálculo Detalhadas
+### Fórmulas de Cálculo Detalhadas (Atualizado conforme Planilha Posto Jorro 2025)
 
 #### 1. Despesas Operacionais por Litro
+A despesa por litro é calculada dividindo o **Valor Total de Despesas do Mês** pelo **Total de Litros Vendidos**.
+
 ```
-despesas_litro = preco_venda × (percentual_despesas / 100)
+despesas_litro = valor_total_despesas_mes / total_litros_vendidos
 ```
 
 **Exemplo:**
 ```
-Preço: R$ 6,48
-Despesas: 8%
-despesas_litro = 6,48 × 0,08 = R$ 0,5184
+Despesas Mês: R$ 21.192,32
+Total Vendido: 46.042 L
+despesas_litro = 21.192,32 ÷ 46.042 = R$ 0,4603
 ```
 
-#### 2. Custo Total por Litro
+> **Nota:** Se não houver vendas registradas (ex: início do mês), o sistema usa o **Total de Litros Comprados** como base para o rateio.
+
+#### 2. Preço de Venda (Cálculo Inverso)
+Na planilha original, o preço de venda é composto pelo Custo Médio somado à Despesa por Litro.
+
 ```
-custo_total = custo_medio + despesas_litro
+preco_venda = custo_medio + despesas_litro
 ```
 
 **Exemplo:**
 ```
-Custo médio: R$ 5,28
-Despesas: R$ 0,51
-custo_total = 5,28 + 0,51 = R$ 5,79
+Custo médio: R$ 5,26
+Despesas/L: R$ 0,46
+preco_venda = 5,26 + 0,46 = R$ 5,72
 ```
 
 #### 3. Margem Bruta por Litro

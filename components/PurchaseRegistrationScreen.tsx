@@ -14,11 +14,9 @@ type CombustivelHibrido = {
    // Campos de VENDA
    inicial: string;            // Leitura inicial
    fechamento: string;         // Leitura final
-   valor_lt_venda: string;     // Preço de venda/litro
    // Campos de COMPRA
    compra_lt: string;          // Litros comprados
    compra_rs: string;          // Valor total da compra
-   despesas_pct: string;       // % despesas do mês
    estoque_anterior: string;   // Estoque ano passado
 };
 
@@ -46,11 +44,14 @@ const costRevenueData = [
 const PurchaseRegistrationScreen: React.FC = () => {
    // State com dados unificados
    const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([
-      { id: 1, nome: 'G. Comum.', codigo: 'GC', inicial: '', fechamento: '', valor_lt_venda: '', compra_lt: '', compra_rs: '', despesas_pct: '', estoque_anterior: '' },
-      { id: 2, nome: 'G. Aditivada.', codigo: 'GA', inicial: '', fechamento: '', valor_lt_venda: '', compra_lt: '', compra_rs: '', despesas_pct: '', estoque_anterior: '' },
-      { id: 3, nome: 'Etanol.', codigo: 'ET', inicial: '', fechamento: '', valor_lt_venda: '', compra_lt: '', compra_rs: '', despesas_pct: '', estoque_anterior: '' },
-      { id: 4, nome: 'Ds. S10.', codigo: 'DS10', inicial: '', fechamento: '', valor_lt_venda: '', compra_lt: '', compra_rs: '', despesas_pct: '', estoque_anterior: '' },
+      { id: 1, nome: 'G. Comum.', codigo: 'GC', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
+      { id: 2, nome: 'G. Aditivada.', codigo: 'GA', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
+      { id: 3, nome: 'Etanol.', codigo: 'ET', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
+      { id: 4, nome: 'Ds. S10.', codigo: 'DS10', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
    ]);
+
+   // Estado para Despesas do Mês (valor total global - planilha H19:=D390)
+   const [despesasMes, setDespesasMes] = useState<string>('');
 
    // Parse value from string (BR format: 1.234,567)
    const parseValue = (value: string): number => {
@@ -104,7 +105,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
    // Handle input changes
    const handleChange = (id: number, field: keyof CombustivelHibrido, value: string) => {
       // Campos que permitem decimais
-      const decimalFields = ['valor_lt_venda', 'compra_rs', 'despesas_pct'];
+      const decimalFields = ['compra_rs'];
       const allowDecimals = decimalFields.includes(field);
 
       const formatted = formatInputValue(value, allowDecimals);
@@ -125,12 +126,34 @@ const PurchaseRegistrationScreen: React.FC = () => {
       return compra_rs / compra_lt;
    };
 
-   const calcDespesasMes = (c: CombustivelHibrido): number => {
-      const compra_rs = parseValue(c.compra_rs);
-      const pct = parseValue(c.despesas_pct) / 100;
-      // Planilha: H19:=D390 (valor fixo de despesa do mês)
-      // Como não temos esse valor, usamos o percentual sobre compra
-      return compra_rs * pct;
+   // Calcula a despesa por litro conforme planilha: H22:=H19/F11
+   // H19 = Despesas do Mês (valor fixo global)
+   // F11 = Total de Litros Vendidos (ou Comprados como fallback)
+   const calcDespesaPorLitro = (): number => {
+      const despesasTotal = parseValue(despesasMes);
+      if (despesasTotal === 0) return 0;
+
+      // Primeiro tenta usar litros vendidos (como na planilha)
+      const totalLitrosVendidos = combustiveis.reduce((acc, c) => acc + calcLitrosVendidos(c), 0);
+
+      // Se não há vendas, usa litros comprados como base para o rateio
+      const totalLitrosComprados = combustiveis.reduce((acc, c) => acc + parseValue(c.compra_lt), 0);
+
+      // Usa vendidos se disponível, senão comprados
+      const litrosBase = totalLitrosVendidos > 0 ? totalLitrosVendidos : totalLitrosComprados;
+
+      if (litrosBase === 0) return 0;
+      return despesasTotal / litrosBase;
+   };
+
+   // Calcula o Valor para Venda conforme planilha: G19:=F19+H22
+   // F19 = Custo Médio (Compra R$ / Compra Lt)
+   // H22 = Despesa por Litro
+   const calcValorParaVenda = (c: CombustivelHibrido): number => {
+      const custoMedio = calcMediaLtRs(c);
+      const despesaLt = calcDespesaPorLitro();
+      if (custoMedio === 0) return 0;
+      return custoMedio + despesaLt;
    };
 
    const calcCompraEEstoque = (c: CombustivelHibrido): number => {
@@ -147,12 +170,12 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
    const calcValorPorBico = (c: CombustivelHibrido): number => {
       const litros = calcLitrosVendidos(c);
-      const valorLt = parseValue(c.valor_lt_venda);
-      return litros * valorLt;
+      const valorVenda = calcValorParaVenda(c);
+      return litros * valorVenda;
    };
 
    const calcLucroLt = (c: CombustivelHibrido): number => {
-      const valorVenda = parseValue(c.valor_lt_venda);
+      const valorVenda = calcValorParaVenda(c);
       const custoMedio = calcMediaLtRs(c);
       if (custoMedio === 0) return 0;
       return valorVenda - custoMedio;
@@ -165,10 +188,11 @@ const PurchaseRegistrationScreen: React.FC = () => {
    };
 
    const calcMargemPct = (c: CombustivelHibrido): number => {
-      const valorVenda = parseValue(c.valor_lt_venda);
+      const valorVenda = calcValorParaVenda(c);
       const lucroLt = calcLucroLt(c);
       if (valorVenda === 0) return 0;
-      // Planilha: K5:=I5/G5 (Lucro LT / Preço Venda)
+      // Planilha: I19:=H22/G19 (Despesa por Litro / Preço Venda)
+      // Ou K5:=I5/G5 (Lucro LT / Preço Venda)
       return (lucroLt / valorVenda) * 100;
    };
 
@@ -192,7 +216,6 @@ const PurchaseRegistrationScreen: React.FC = () => {
       let totalLucroBico = 0;
       let totalCompraLt = 0;
       let totalCompraRs = 0;
-      let totalDespesas = 0;
 
       combustiveis.forEach(c => {
          totalLitros += calcLitrosVendidos(c);
@@ -200,7 +223,6 @@ const PurchaseRegistrationScreen: React.FC = () => {
          totalLucroBico += calcLucroBico(c);
          totalCompraLt += parseValue(c.compra_lt);
          totalCompraRs += parseValue(c.compra_rs);
-         totalDespesas += calcDespesasMes(c);
       });
 
       const mediaTotal = totalCompraLt > 0 ? totalCompraRs / totalCompraLt : 0;
@@ -213,7 +235,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
          totalLucroBico,
          totalCompraLt,
          totalCompraRs,
-         totalDespesas,
+         despesasMesTotal: parseValue(despesasMes),
          mediaTotal,
          margemMedia
       };
@@ -376,13 +398,8 @@ const PurchaseRegistrationScreen: React.FC = () => {
                                  <td className="px-4 py-3 text-right font-bold text-slate-700">
                                     {litres > 0 ? formatToBR(litres, 0) : '-'}
                                  </td>
-                                 <td className="px-2 py-2">
-                                    <input
-                                       className={`${TABLE_INPUT_CLASS} bg-emerald-50/50 border-emerald-100`}
-                                       type="text"
-                                       value={c.valor_lt_venda}
-                                       onChange={(e) => handleChange(c.id, 'valor_lt_venda', e.target.value)}
-                                    />
+                                 <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/30">
+                                    {calcValorParaVenda(c) > 0 ? formatCurrency(calcValorParaVenda(c)) : '-'}
                                  </td>
                                  <td className="px-4 py-3 text-right text-blue-500">
                                     {valorBico > 0 ? formatCurrency(valorBico) : '-'}
@@ -427,9 +444,33 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
             {/* === SEÇÃO COMPRA === */}
             <section className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-               <div className="bg-orange-600 px-6 py-4 flex items-center gap-2">
-                  <Package className="text-white" size={24} />
-                  <h2 className="text-white font-semibold text-lg">Compra e Custo</h2>
+               <div className="bg-orange-600 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                     <Package className="text-white" size={24} />
+                     <h2 className="text-white font-semibold text-lg">Compra e Custo</h2>
+                  </div>
+                  {/* Campo Despesas do Mês - planilha H19:=D390 */}
+                  <div className="flex items-center gap-3 bg-orange-700/50 rounded-lg px-4 py-2">
+                     <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-bold text-orange-200 tracking-wider">Despesas do Mês (R$)</span>
+                        <span className="text-[9px] text-orange-300">Rateado por litro vendido</span>
+                     </div>
+                     <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-orange-300 text-sm font-bold">R$</span>
+                        <input
+                           type="text"
+                           value={despesasMes}
+                           onChange={(e) => setDespesasMes(formatInputValue(e.target.value, true))}
+                           placeholder="0,00"
+                           className="w-32 pl-8 pr-3 py-1.5 bg-white/90 border border-orange-300 rounded text-sm font-mono font-bold text-slate-800 text-right focus:ring-2 focus:ring-orange-400 outline-none"
+                        />
+                     </div>
+                     {totais.totalLitros > 0 && (
+                        <div className="bg-white/20 rounded px-2 py-1 text-white text-xs font-bold">
+                           = {formatCurrency(calcDespesaPorLitro())}/L
+                        </div>
+                     )}
+                  </div>
                </div>
                <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-sm text-left">
@@ -451,7 +492,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
                      <tbody className="divide-y divide-gray-100">
                         {combustiveis.map((c, index) => {
                            const mediaLt = calcMediaLtRs(c);
-                           const despMes = calcDespesasMes(c);
+                           const valorVenda = calcValorParaVenda(c);
                            const compraEstoque = calcCompraEEstoque(c);
                            const estoqueHoje = calcEstoqueHoje(c);
                            const percaSobra = calcPercaSobra(c);
@@ -479,13 +520,8 @@ const PurchaseRegistrationScreen: React.FC = () => {
                                  <td className="px-4 py-3 text-right text-blue-500">
                                     {mediaLt > 0 ? formatCurrency(mediaLt) : '-'}
                                  </td>
-                                 <td className="px-2 py-2 border-l border-dashed border-gray-200">
-                                    <input
-                                       className={`${TABLE_INPUT_ORANGE_CLASS} bg-emerald-50/50 border-emerald-100`}
-                                       type="text"
-                                       value={c.valor_lt_venda}
-                                       onChange={(e) => handleChange(c.id, 'valor_lt_venda', e.target.value)}
-                                    />
+                                 <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/30 border-l border-dashed border-gray-200">
+                                    {valorVenda > 0 ? formatCurrency(valorVenda) : '-'}
                                  </td>
                               </tr>
                            );
