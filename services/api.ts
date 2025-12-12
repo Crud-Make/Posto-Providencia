@@ -1151,6 +1151,14 @@ export async function fetchInventoryData() {
     const status = percentage < 10 ? 'CRÍTICO' : percentage < 20 ? 'BAIXO' : 'OK';
     const code = e.combustivel?.codigo || 'N/A';
 
+    // Busca última compra do combustível para calcular custo médio
+    const comprasCombustivel = compras.filter(c => c.combustivel_id === e.combustivel_id);
+    const ultimaCompra = comprasCombustivel[0]; // Já ordenado por data desc
+    const custoMedio = ultimaCompra?.custo_por_litro || 0;
+
+    // Preço de venda vem do cadastro do combustível
+    const precoVenda = e.combustivel?.preco_venda || 0;
+
     return {
       id: String(e.id),
       code: code,
@@ -1162,6 +1170,9 @@ export async function fetchInventoryData() {
       daysRemaining: Math.floor(e.quantidade_atual / 500), // Assume 500L/dia
       color: colorMap[code] || 'gray',
       iconType: iconMap[code] || 'pump',
+      // Preços reais
+      costPrice: custoMedio,
+      sellPrice: precoVenda,
     };
   });
 

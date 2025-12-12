@@ -68,6 +68,12 @@ export interface InventoryItem {
   daysRemaining: number;
   color: string; // Tailwind class or hex
   iconType: 'pump' | 'leaf' | 'truck';
+  // Propriedades opcionais para dados financeiros
+  costPrice?: number;
+  sellPrice?: number;
+  previousStock?: number;
+  purchases?: number;
+  sales?: number;
 }
 
 export interface InventoryAlert {

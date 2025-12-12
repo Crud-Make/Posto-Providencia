@@ -17,11 +17,11 @@ interface InventoryFinancialChartsProps {
 }
 
 const InventoryFinancialCharts: React.FC<InventoryFinancialChartsProps> = ({ items }) => {
-    // Transform data for charts
-    // Mock prices matching the table logic
+    // Transform data for charts using real data when available
     const data = items.map(item => {
-        const costPrice = 4.85; // Mock
-        const sellPrice = 5.89; // Mock
+        // Usa preços reais se disponíveis, senão zero
+        const costPrice = item.costPrice || 0;
+        const sellPrice = item.sellPrice || 0;
 
         return {
             name: item.code, // GC, GA, etc.
@@ -29,9 +29,9 @@ const InventoryFinancialCharts: React.FC<InventoryFinancialChartsProps> = ({ ite
             volume: item.volume,
             custoUnit: costPrice,
             vendaUnit: sellPrice,
-            valorCusto: item.volume * costPrice,
-            valorVenda: item.volume * sellPrice,
-            lucroProjetado: (item.volume * sellPrice) - (item.volume * costPrice)
+            valorCusto: costPrice > 0 ? item.volume * costPrice : 0,
+            valorVenda: sellPrice > 0 ? item.volume * sellPrice : 0,
+            lucroProjetado: (costPrice > 0 && sellPrice > 0) ? (item.volume * sellPrice) - (item.volume * costPrice) : 0
         };
     });
 
