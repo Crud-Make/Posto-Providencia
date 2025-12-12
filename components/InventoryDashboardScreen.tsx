@@ -170,13 +170,13 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
             {/* Visual Chart Representation using Divs as per HTML design */}
             <div className="flex-1 flex items-end justify-between gap-2 sm:gap-4 h-64 w-full pt-4">
               {[
-                { day: 'Seg', sales: 40, entry: 0, salesVal: '4.200L' },
-                { day: 'Ter', sales: 45, entry: 60, salesVal: '4.800L', entryVal: '10.000L' },
-                { day: 'Qua', sales: 55, entry: 0 },
-                { day: 'Qui', sales: 50, entry: 0 },
-                { day: 'Sex', sales: 75, entry: 90 },
-                { day: 'Sab', sales: 85, entry: 0 },
-                { day: 'Dom', sales: 65, entry: 0 },
+                { day: 'Seg', sales: 0, entry: 0 },
+                { day: 'Ter', sales: 0, entry: 0 },
+                { day: 'Qua', sales: 0, entry: 0 },
+                { day: 'Qui', sales: 0, entry: 0 },
+                { day: 'Sex', sales: 0, entry: 0 },
+                { day: 'Sab', sales: 0, entry: 0 },
+                { day: 'Dom', sales: 0, entry: 0 },
               ].map((data, idx) => (
                 <div key={idx} className="flex flex-col items-center gap-2 flex-1 group cursor-pointer h-full justify-end">
                   <div className="w-full flex gap-1 h-full items-end justify-center relative">
@@ -185,22 +185,12 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                       className="w-3 sm:w-6 bg-[#13ec6d] rounded-t-sm group-hover:bg-[#13ec6d]/90 transition-all relative"
                       style={{ height: `${data.sales}%` }}
                     >
-                      {data.salesVal && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                          Vendas: {data.salesVal}
-                        </div>
-                      )}
                     </div>
                     {/* Entry Bar */}
                     <div
                       className="w-3 sm:w-6 bg-gray-300 rounded-t-sm relative group-hover:bg-gray-400 transition-all"
                       style={{ height: `${data.entry}%` }}
                     >
-                      {data.entryVal && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                          Entrada: {data.entryVal}
-                        </div>
-                      )}
                     </div>
                   </div>
                   <span className="text-xs text-gray-500 font-medium">{data.day}</span>
@@ -224,15 +214,15 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
           <div className="flex gap-2">
             <div className="px-3 py-1 rounded bg-[#e7f3ec] border border-[#13ec6d]/20 text-[#0d1b13] text-xs font-bold flex flex-col items-end">
               <span className="text-[10px] text-[#4c9a6c] uppercase">Estoque (Custo)</span>
-              R$ 138.450,00
+              R$ -
             </div>
             <div className="px-3 py-1 rounded bg-blue-50 border border-blue-100 text-[#0d1b13] text-xs font-bold flex flex-col items-end">
               <span className="text-[10px] text-blue-500 uppercase">Estoque (Venda)</span>
-              R$ 165.890,00
+              R$ -
             </div>
             <div className="px-3 py-1 rounded bg-[#13ec6d] text-[#0d1b13] text-xs font-bold flex flex-col items-end shadow-sm">
               <span className="text-[10px] text-[#0d1b13]/60 uppercase">Lucro Projetado</span>
-              R$ 27.440,00
+              R$ -
             </div>
           </div>
         </div>
@@ -253,15 +243,15 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
             </thead>
             <tbody className="divide-y divide-gray-100">
               {items.map((item) => {
-                // Mock financial data (simulating calculations from Excel)
-                const costPrice = 4.85;
-                const sellPrice = 5.89;
+                // Valores reais - quando integrado com backend
+                const costPrice = item.costPrice || 0;
+                const sellPrice = item.sellPrice || 0;
                 const stockValue = item.volume * costPrice;
-                const previousStock = item.volume + 1200; // Mock
-                const purchases = 5000; // Mock
-                const sales = previousStock + purchases - item.volume; // Derived
+                const previousStock = item.previousStock || 0;
+                const purchases = item.purchases || 0;
+                const sales = item.sales || 0;
 
-                // Define row colors based on product code to match Excel implicitly
+                // Define row colors based on product code
                 let rowClass = "";
                 if (item.code === 'GC') rowClass = "border-l-4 border-l-red-500";
                 if (item.code === 'GA') rowClass = "border-l-4 border-l-blue-400";
@@ -274,14 +264,14 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                       <span className="size-2 rounded-full bg-gray-300"></span>
                       {item.name}
                     </td>
-                    <td className="px-4 py-3 text-center text-gray-500 bg-gray-50/30">{previousStock.toLocaleString('pt-BR')} L</td>
-                    <td className="px-4 py-3 text-center text-green-600 font-medium bg-gray-50/30">+ {purchases.toLocaleString('pt-BR')}</td>
-                    <td className="px-4 py-3 text-center text-red-500 font-medium bg-gray-50/30">- {sales.toLocaleString('pt-BR')}</td>
+                    <td className="px-4 py-3 text-center text-gray-500 bg-gray-50/30">{previousStock > 0 ? `${previousStock.toLocaleString('pt-BR')} L` : '-'}</td>
+                    <td className="px-4 py-3 text-center text-green-600 font-medium bg-gray-50/30">{purchases > 0 ? `+ ${purchases.toLocaleString('pt-BR')}` : '-'}</td>
+                    <td className="px-4 py-3 text-center text-red-500 font-medium bg-gray-50/30">{sales > 0 ? `- ${sales.toLocaleString('pt-BR')}` : '-'}</td>
                     <td className="px-4 py-3 text-center font-bold text-[#0d1b13] bg-blue-50/10">{item.volume.toLocaleString('pt-BR')} L</td>
                     <td className="px-4 py-3 text-center text-gray-400 bg-red-50/10">-</td>
-                    <td className="px-4 py-3 text-right text-gray-600">R$ {costPrice.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">R$ {sellPrice.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-[#0d1b13]">R$ {stockValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-right text-gray-600">{costPrice > 0 ? `R$ ${costPrice.toFixed(2)}` : '-'}</td>
+                    <td className="px-4 py-3 text-right text-gray-600">{sellPrice > 0 ? `R$ ${sellPrice.toFixed(2)}` : '-'}</td>
+                    <td className="px-4 py-3 text-right font-bold text-[#0d1b13]">{stockValue > 0 ? `R$ ${stockValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</td>
                   </tr>
                 );
               })}
