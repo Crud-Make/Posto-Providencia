@@ -18,16 +18,30 @@ import {
    HelpCircle,
    Info
 } from 'lucide-react';
-import { bicoService, leituraService, frentistaService, turnoService, formaPagamentoService } from '../services/api';
+import {
+   bicoService,
+   leituraService,
+   frentistaService,
+   turnoService,
+   formaPagamentoService,
+   fechamentoService,
+   fechamentoFrentistaService,
+   recebimentoService,
+   api
+} from '../services/api';
 import type { Bico, Bomba, Combustivel, Leitura, Frentista, Turno, FormaPagamento } from '../services/database.types';
+import { useAuth } from '../contexts/AuthContext';
 
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
 
-// Payment entry type
+// Payment entry type linked to database configuration
 interface PaymentEntry {
+   id: number; // ID from database
+   nome: string;
    tipo: string;
    valor: string;
+   taxa: number; // Taxa percentual
 }
 
 // Fuel colors (mantendo para visualização)
@@ -46,7 +60,52 @@ const DEFAULT_TURNOS = [
    { id: 3, nome: 'Noite', horario_inicio: '22:00', horario_fim: '06:00' },
 ];
 
+
+// --- Utility Functions (moved outside to avoid hoisting issues and pure logic) ---
+
+// Parse value from string (BR format: 1.234,567)
+const parseValue = (value: string): number => {
+   if (!value) return 0;
+   const cleaned = value.toString().replace(/\./g, '').replace(',', '.');
+   return parseFloat(cleaned) || 0;
+};
+
+// Format value to BR format with 3 decimals
+const formatToBR = (num: number, decimals: number = 3): string => {
+   if (num === 0) return '0,' + '0'.repeat(decimals);
+
+   const parts = num.toFixed(decimals).split('.');
+   const integer = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+   const decimal = parts[1] || '0'.repeat(decimals);
+
+   return `${integer},${decimal}`;
+};
+
+// Get payment icon
+const getPaymentIcon = (tipo: string) => {
+   switch (tipo) {
+      case 'dinheiro': return <Banknote size={18} className="text-green-600" />;
+      case 'cartao_credito': return <CreditCard size={18} className="text-blue-600" />;
+      case 'cartao_debito': return <CreditCard size={18} className="text-purple-600" />;
+      case 'pix': return <Smartphone size={18} className="text-cyan-600" />;
+      default: return <FileText size={18} className="text-gray-600" />;
+   }
+};
+
+// Get payment label
+const getPaymentLabel = (tipo: string) => {
+   switch (tipo) {
+      case 'dinheiro': return 'Dinheiro';
+      case 'cartao_credito': return 'Cartão Crédito';
+      case 'cartao_debito': return 'Cartão Débito';
+      case 'pix': return 'PIX';
+      default: return tipo;
+   }
+};
+
 const DailyClosingScreen: React.FC = () => {
+   const { user } = useAuth();
+
    // State
    const [bicos, setBicos] = useState<BicoWithDetails[]>([]);
    const [leituras, setLeituras] = useState<Record<number, { inicial: string; fechamento: string }>>({});
@@ -64,13 +123,24 @@ const DailyClosingScreen: React.FC = () => {
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
 
-   // Payment entries
-   const [payments, setPayments] = useState<PaymentEntry[]>([
-      { tipo: 'dinheiro', valor: '' },
-      { tipo: 'cartao_credito', valor: '' },
-      { tipo: 'cartao_debito', valor: '' },
-      { tipo: 'pix', valor: '' },
-   ]);
+   // Payment entries (dynamic)
+   const [payments, setPayments] = useState<PaymentEntry[]>([]);
+
+   // Computed Total Liquido
+   const totalLiquido = useMemo(() => {
+      return payments.reduce((acc, p) => {
+         const valor = parseValue(p.valor);
+         const desconto = valor * (p.taxa / 100);
+         return acc + (valor - desconto);
+      }, 0);
+   }, [payments]);
+
+   const totalTaxas = useMemo(() => {
+      return payments.reduce((acc, p) => {
+         const valor = parseValue(p.valor);
+         return acc + (valor * (p.taxa / 100));
+      }, 0);
+   }, [payments]);
 
    // Load data on mount
    useEffect(() => {
@@ -93,6 +163,17 @@ const DailyClosingScreen: React.FC = () => {
          // Fetch turnos
          const turnosData = await turnoService.getAll();
          setTurnos(turnosData.length > 0 ? turnosData : DEFAULT_TURNOS as Turno[]);
+
+         // Fetch Payment Methods
+         const paymentMethodsData = await formaPagamentoService.getAll();
+         const initialPayments: PaymentEntry[] = paymentMethodsData.map(pm => ({
+            id: pm.id,
+            nome: pm.nome,
+            tipo: pm.tipo,
+            valor: '',
+            taxa: pm.taxa || 0
+         }));
+         setPayments(initialPayments);
 
          // Auto-populate inicial with last reading
          const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
@@ -146,23 +227,6 @@ const DailyClosingScreen: React.FC = () => {
       });
    };
 
-   // Parse value from string (BR format: 1.234,567)
-   const parseValue = (value: string): number => {
-      if (!value) return 0;
-      const cleaned = value.replace(/\./g, '').replace(',', '.');
-      return parseFloat(cleaned) || 0;
-   };
-
-   // Format value to BR format with 3 decimals
-   const formatToBR = (num: number, decimals: number = 3): string => {
-      if (num === 0) return '0,' + '0'.repeat(decimals);
-
-      const parts = num.toFixed(decimals).split('.');
-      const integer = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      const decimal = parts[1] || '0'.repeat(decimals);
-
-      return `${integer},${decimal}`;
-   };
 
    // Calculate litros for a bico (EXATO como planilha)
    const calcLitros = (bicoId: number): { value: number; display: string } => {
@@ -282,12 +346,7 @@ const DailyClosingScreen: React.FC = () => {
    // Handle cancel
    const handleCancel = () => {
       setLeituras({});
-      setPayments([
-         { tipo: 'dinheiro', valor: '' },
-         { tipo: 'cartao_credito', valor: '' },
-         { tipo: 'cartao_debito', valor: '' },
-         { tipo: 'pix', valor: '' },
-      ]);
+      setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
       setObservacoes('');
       setSelectedTurno(null);
       setSelectedFrentista(null);
@@ -303,12 +362,29 @@ const DailyClosingScreen: React.FC = () => {
 
    // Handle save
    const handleSave = async () => {
+      if (!user) {
+         setError('Usuário não autenticado. Por favor, faça login novamente.');
+         return;
+      }
+
       try {
          setSaving(true);
          setError(null);
          setSuccess(null);
 
-         // Build leituras array
+         // 1. Get or Create Daily Closing (Fechamento)
+         let fechamento = await fechamentoService.getByDate(selectedDate);
+
+         if (!fechamento) {
+            console.log("Criando novo fechamento para data:", selectedDate);
+            fechamento = await fechamentoService.create({
+               data: selectedDate,
+               usuario_id: user.id,
+               status: 'RASCUNHO'
+            });
+         }
+
+         // 2. Save Readings (Leituras)
          const leiturasToCreate = bicos
             .filter(bico => isReadingValid(bico.id))
             .map(bico => ({
@@ -317,19 +393,58 @@ const DailyClosingScreen: React.FC = () => {
                leitura_inicial: parseValue(leituras[bico.id]?.inicial || ''),
                leitura_final: parseValue(leituras[bico.id]?.fechamento || ''),
                preco_litro: bico.combustivel.preco_venda,
-               usuario_id: 1, // TODO: Get from auth context
+               usuario_id: user.id,
             }));
 
          if (leiturasToCreate.length === 0) {
             setError('Nenhuma leitura válida para salvar. O fechamento deve ser maior que o inicial.');
+            setSaving(false);
             return;
          }
 
          await leituraService.bulkCreate(leiturasToCreate);
 
-         setSuccess(`${leiturasToCreate.length} leituras salvas com sucesso!`);
+         // 3. Save Attendant Closing (FechamentoFrentista)
+         if (selectedFrentista) {
+            const totalCartao = payments.filter(p => p.tipo.includes('cartao')).reduce((acc, p) => acc + parseValue(p.valor), 0);
+            const totalDinheiro = payments.filter(p => p.tipo === 'dinheiro').reduce((acc, p) => acc + parseValue(p.valor), 0);
+            const totalPix = payments.filter(p => p.tipo === 'pix').reduce((acc, p) => acc + parseValue(p.valor), 0);
+            const totalNota = payments.filter(p => !p.tipo.includes('cartao') && p.tipo !== 'dinheiro' && p.tipo !== 'pix').reduce((acc, p) => acc + parseValue(p.valor), 0);
 
-         // Reset only fechamento fields, keep inicial for next turn
+            const valorConferido = totalCartao + totalDinheiro + totalPix + totalNota;
+            const diferencaFrentista = valorConferido - totals.valor;
+
+            // Using the correct service name alias imported below
+            await fechamentoFrentistaService.create({
+               fechamento_id: fechamento.id,
+               frentista_id: selectedFrentista,
+               valor_cartao: totalCartao,
+               valor_dinheiro: totalDinheiro,
+               valor_pix: totalPix,
+               valor_nota: totalNota,
+               valor_conferido: valorConferido,
+               diferenca: diferencaFrentista,
+               observacoes: observacoes
+            });
+         }
+
+         // 4. Save Detailed Receipts (Recebimento)
+         const recebimentosToCreate = payments
+            .filter(p => parseValue(p.valor) > 0)
+            .map(p => ({
+               fechamento_id: fechamento.id,
+               forma_pagamento_id: p.id,
+               valor: parseValue(p.valor),
+               observacoes: selectedFrentista ? `Frentista ID: ${selectedFrentista}` : 'Fechamento Geral'
+            }));
+
+         if (recebimentosToCreate.length > 0) {
+            await recebimentoService.bulkCreate(recebimentosToCreate);
+         }
+
+         setSuccess(`${leiturasToCreate.length} leituras e fechamento financeiro salvos com sucesso!`);
+
+         // Reset fechamento values
          const updatedLeituras = { ...leituras };
          bicos.forEach(bico => {
             if (updatedLeituras[bico.id]) {
@@ -338,38 +453,22 @@ const DailyClosingScreen: React.FC = () => {
          });
          setLeituras(updatedLeituras);
 
+         // Reset payments
+         setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
+         setObservacoes('');
+         setSelectedFrentista(null);
+
          // Reload data
          await loadData();
 
       } catch (err) {
          console.error('Error saving readings:', err);
-         setError('Erro ao salvar leituras. Tente novamente.');
+         setError('Erro ao salvar leituras e fechamento. Tente novamente.');
       } finally {
          setSaving(false);
       }
    };
 
-   // Get payment icon
-   const getPaymentIcon = (tipo: string) => {
-      switch (tipo) {
-         case 'dinheiro': return <Banknote size={18} className="text-green-600" />;
-         case 'cartao_credito': return <CreditCard size={18} className="text-blue-600" />;
-         case 'cartao_debito': return <CreditCard size={18} className="text-purple-600" />;
-         case 'pix': return <Smartphone size={18} className="text-cyan-600" />;
-         default: return <FileText size={18} className="text-gray-600" />;
-      }
-   };
-
-   // Get payment label
-   const getPaymentLabel = (tipo: string) => {
-      switch (tipo) {
-         case 'dinheiro': return 'Dinheiro';
-         case 'cartao_credito': return 'Cartão Crédito';
-         case 'cartao_debito': return 'Cartão Débito';
-         case 'pix': return 'PIX';
-         default: return tipo;
-      }
-   };
 
    if (loading) {
       return (
@@ -717,32 +816,54 @@ const DailyClosingScreen: React.FC = () => {
             </div>
 
             <div className="p-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {payments.map((payment, index) => (
-                     <div key={payment.tipo} className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-bold text-gray-600">
-                           {getPaymentIcon(payment.tipo)}
-                           {getPaymentLabel(payment.tipo)}
-                        </label>
-                        <div className="relative">
-                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">R$</span>
-                           <input
-                              type="text"
-                              value={payment.valor}
-                              onChange={(e) => handlePaymentChange(index, e.target.value)}
-                              className="w-full pl-10 pr-4 py-3 text-right font-mono font-bold rounded-lg border-2 border-gray-200 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                              placeholder="0,00"
-                           />
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {payments.map((payment, index) => {
+                     const val = parseValue(payment.valor);
+                     const taxVal = val * (payment.taxa / 100);
+                     const liqVal = val - taxVal;
+
+                     return (
+                        <div key={payment.id} className="space-y-2 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                           <div className="flex justify-between items-start">
+                              <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                 {getPaymentIcon(payment.tipo)}
+                                 {payment.nome}
+                              </label>
+                              {payment.taxa > 0 && (
+                                 <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">
+                                    -{payment.taxa}%
+                                 </span>
+                              )}
+                           </div>
+
+                           <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">R$</span>
+                              <input
+                                 type="text"
+                                 value={payment.valor}
+                                 onChange={(e) => handlePaymentChange(index, e.target.value)}
+                                 className="w-full pl-10 pr-4 py-2 text-right font-mono font-bold text-lg rounded border border-gray-300 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+                                 placeholder="0,00"
+                              />
+                           </div>
+
+                           {/* Liquid Value Display */}
+                           {val > 0 && payment.taxa > 0 && (
+                              <div className="flex justify-between items-center text-xs pt-2 border-t border-gray-200 mt-2">
+                                 <span className="text-gray-500">Líquido:</span>
+                                 <span className="font-bold text-emerald-600">{liqVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                              </div>
+                           )}
                         </div>
-                     </div>
-                  ))}
+                     )
+                  })}
                </div>
 
                {/* Payment Totals */}
                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                      <div className="bg-blue-50 rounded-lg p-4">
-                        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Total Recebido</span>
+                        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Total Recebido (Bruto)</span>
                         <p className="text-2xl font-black text-blue-700 mt-1">
                            {totalPayments.toLocaleString('pt-BR', {
                               style: 'currency',
@@ -750,9 +871,23 @@ const DailyClosingScreen: React.FC = () => {
                            })}
                         </p>
                      </div>
-                     <div className="bg-green-50 rounded-lg p-4">
-                        <span className="text-xs font-bold text-green-600 uppercase tracking-wider">Total Vendas</span>
-                        <p className="text-2xl font-black text-green-700 mt-1">{totals.valorDisplay}</p>
+                     <div className="bg-emerald-50 rounded-lg p-4">
+                        <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Total Líquido (Caixa)</span>
+                        <p className="text-2xl font-black text-emerald-700 mt-1">
+                           {totalLiquido.toLocaleString('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL'
+                           })}
+                        </p>
+                        {totalTaxas > 0 && (
+                           <p className="text-xs text-red-500 font-semibold mt-1">
+                              Taxas: -{totalTaxas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           </p>
+                        )}
+                     </div>
+                     <div className="bg-gray-50 rounded-lg p-4">
+                        <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Total Vendas</span>
+                        <p className="text-2xl font-black text-gray-700 mt-1">{totals.valorDisplay}</p>
                      </div>
                      <div className={`rounded-lg p-4 ${diferenca >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
                         <span className={`text-xs font-bold uppercase tracking-wider ${diferenca >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>

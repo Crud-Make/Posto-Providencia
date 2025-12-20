@@ -245,6 +245,14 @@ export interface ShiftConfig {
   iconType: 'sun' | 'sunset' | 'moon';
 }
 
+export interface PaymentMethodConfig {
+  id: string;
+  name: string;
+  type: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'outros';
+  tax: number;
+  active: boolean;
+}
+
 // --- NEW TYPES FOR MOBILE APP (REACT NATIVE) ---
 
 export interface MobileAuthResponse {
