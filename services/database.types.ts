@@ -518,6 +518,95 @@ export type Database = {
                 }
                 Relationships: []
             }
+            Emprestimo: {
+                Row: {
+                    ativo: boolean
+                    created_at: string
+                    credor: string
+                    data_emprestimo: string
+                    data_primeiro_vencimento: string
+                    id: number
+                    observacoes: string | null
+                    periodicidade: Database["public"]["Enums"]["periodicity_type"]
+                    quantidade_parcelas: number
+                    taxa_juros: number | null
+                    valor_parcela: number
+                    valor_total: number
+                }
+                Insert: {
+                    ativo?: boolean
+                    created_at?: string
+                    credor: string
+                    data_emprestimo?: string
+                    data_primeiro_vencimento: string
+                    id?: number
+                    observacoes?: string | null
+                    periodicidade?: Database["public"]["Enums"]["periodicity_type"]
+                    quantidade_parcelas: number
+                    taxa_juros?: number | null
+                    valor_parcela: number
+                    valor_total: number
+                }
+                Update: {
+                    ativo?: boolean
+                    created_at?: string
+                    credor?: string
+                    data_emprestimo?: string
+                    data_primeiro_vencimento?: string
+                    id?: number
+                    observacoes?: string | null
+                    periodicidade?: Database["public"]["Enums"]["periodicity_type"]
+                    quantidade_parcelas?: number
+                    taxa_juros?: number | null
+                    valor_parcela?: number
+                    valor_total?: number
+                }
+                Relationships: []
+            }
+            Parcela: {
+                Row: {
+                    created_at: string
+                    data_pagamento: string | null
+                    data_vencimento: string
+                    emprestimo_id: number
+                    id: number
+                    juros_multa: number | null
+                    numero_parcela: number
+                    status: Database["public"]["Enums"]["installment_status"]
+                    valor: number
+                }
+                Insert: {
+                    created_at?: string
+                    data_pagamento?: string | null
+                    data_vencimento: string
+                    emprestimo_id: number
+                    id?: number
+                    juros_multa?: number | null
+                    numero_parcela: number
+                    status?: Database["public"]["Enums"]["installment_status"]
+                    valor: number
+                }
+                Update: {
+                    created_at?: string
+                    data_pagamento?: string | null
+                    data_vencimento?: string
+                    emprestimo_id?: number
+                    id?: number
+                    juros_multa?: number | null
+                    numero_parcela?: number
+                    status?: Database["public"]["Enums"]["installment_status"]
+                    valor?: number
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "Parcela_emprestimo_id_fkey"
+                        columns: ["emprestimo_id"]
+                        isOneToOne: false
+                        referencedRelation: "Emprestimo"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             Usuario: {
                 Row: {
                     ativo: boolean
@@ -561,6 +650,8 @@ export type Database = {
         Enums: {
             Role: "ADMIN" | "GERENTE" | "OPERADOR" | "FRENTISTA"
             StatusFechamento: "RASCUNHO" | "FECHADO"
+            periodicity_type: "mensal" | "quinzenal" | "semanal" | "diario"
+            installment_status: "pendente" | "pago" | "atrasado"
         }
         CompositeTypes: {
             [_ in never]: never
@@ -582,6 +673,8 @@ export type Compra = Tables<'Compra'>
 export type Estoque = Tables<'Estoque'>
 export type Fechamento = Tables<'Fechamento'>
 export type FechamentoFrentista = Tables<'FechamentoFrentista'>
+export type Emprestimo = Tables<'Emprestimo'>
+export type Parcela = Tables<'Parcela'>
 export type FormaPagamento = Tables<'FormaPagamento'>
 export type Fornecedor = Tables<'Fornecedor'>
 export type Frentista = Tables<'Frentista'>

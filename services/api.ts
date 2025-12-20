@@ -15,6 +15,8 @@ import type {
   Recebimento,
   Turno,
   Usuario,
+  Emprestimo,
+  Parcela,
   InsertTables,
   UpdateTables,
 } from './database.types';
@@ -812,6 +814,102 @@ export const turnoService = {
 };
 
 // ============================================
+// EMPRÉSTIMOS E PARCELAS
+// ============================================
+
+export const emprestimoService = {
+  async getAll(): Promise<(Emprestimo & { parcelas: Parcela[] })[]> {
+    const { data, error } = await supabase
+      .from('Emprestimo')
+      .select('*, parcelas:Parcela(*)')
+      .eq('ativo', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async create(emprestimo: InsertTables<'Emprestimo'>): Promise<Emprestimo> {
+    const { data, error } = await supabase
+      .from('Emprestimo')
+      .insert(emprestimo)
+      .select()
+      .single();
+    if (error) throw error;
+
+    // Generate installments
+    const parcelas: InsertTables<'Parcela'>[] = [];
+    const firstDueDate = new Date(emprestimo.data_primeiro_vencimento);
+
+    for (let i = 1; i <= emprestimo.quantidade_parcelas; i++) {
+      const dueDate = new Date(firstDueDate);
+      if (emprestimo.periodicidade === 'mensal') {
+        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+      } else if (emprestimo.periodicidade === 'quinzenal') {
+        dueDate.setDate(dueDate.getDate() + (i - 1) * 15);
+      } else if (emprestimo.periodicidade === 'semanal') {
+        dueDate.setDate(dueDate.getDate() + (i - 1) * 7);
+      } else if (emprestimo.periodicidade === 'diario') {
+        dueDate.setDate(dueDate.getDate() + (i - 1));
+      }
+
+      parcelas.push({
+        emprestimo_id: data.id,
+        numero_parcela: i,
+        data_vencimento: dueDate.toISOString().split('T')[0],
+        valor: emprestimo.valor_parcela,
+        status: 'pendente'
+      });
+    }
+
+    await parcelaService.bulkCreate(parcelas);
+    return data;
+  },
+
+  async update(id: number, emprestimo: UpdateTables<'Emprestimo'>): Promise<Emprestimo> {
+    const { data, error } = await supabase
+      .from('Emprestimo')
+      .update(emprestimo)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+};
+
+export const parcelaService = {
+  async bulkCreate(parcelas: InsertTables<'Parcela'>[]): Promise<Parcela[]> {
+    const { data, error } = await supabase
+      .from('Parcela')
+      .insert(parcelas)
+      .select();
+    if (error) throw error;
+    return data || [];
+  },
+
+  async update(id: number, parcela: UpdateTables<'Parcela'>): Promise<Parcela> {
+    const { data, error } = await supabase
+      .from('Parcela')
+      .update(parcela)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getByEmprestimo(emprestimoId: number): Promise<Parcela[]> {
+    const { data, error } = await supabase
+      .from('Parcela')
+      .select('*')
+      .eq('emprestimo_id', emprestimoId)
+      .order('numero_parcela');
+    if (error) throw error;
+    return data || [];
+  }
+};
+
+// ============================================
 // DASHBOARD / ESTATÍSTICAS
 // ============================================
 
@@ -877,6 +975,8 @@ export const api = {
   compra: compraService,
   fornecedor: fornecedorService,
   turno: turnoService,
+  emprestimo: emprestimoService,
+  parcela: parcelaService,
   dashboard: dashboardService,
 };
 

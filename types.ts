@@ -285,3 +285,31 @@ export interface MobileHomeData {
     trend: 'up' | 'down' | 'neutral';
   }[];
 }
+
+// --- NEW TYPES FOR LOAN MANAGEMENT ---
+
+export interface Loan {
+  id: string;
+  credor: string;
+  valorTotal: number;
+  quantidadeParcelas: number;
+  valorParcela: number;
+  dataEmprestimo: string;
+  dataPrimeiroVencimento: string;
+  periodicidade: 'mensal' | 'quinzenal' | 'semanal' | 'diario';
+  taxaJuros?: number;
+  observacoes?: string;
+  ativo: boolean;
+  parcelas?: LoanInstallment[];
+}
+
+export interface LoanInstallment {
+  id: string;
+  emprestimoId: string;
+  numeroParcela: number;
+  dataVencimento: string;
+  valor: number;
+  dataPagamento?: string | null;
+  status: 'pendente' | 'pago' | 'atrasado';
+  jurosMulta?: number;
+}

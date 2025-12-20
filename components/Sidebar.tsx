@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings') => void;
   className?: string;
 }
 
@@ -27,6 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
     { id: 'attendants', label: 'Frentistas', icon: Users },
     { id: 'inventory', label: 'Estoque', icon: Package },
     { id: 'finance', label: 'Financeiro', icon: Banknote },
+    { id: 'analysis', label: 'Análise de Custos', icon: BarChart2 },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ] as const;
 
