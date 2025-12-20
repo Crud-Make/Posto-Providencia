@@ -16,7 +16,7 @@ export {
     maquininhaService,
     fechamentoService,
     recebimentoService,
-    fechamentoFreentistaService,
+    fechamentoFrentistaService,
     estoqueService,
     compraService,
     fornecedorService,

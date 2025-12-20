@@ -56,7 +56,7 @@ export const combustivelService = {
       .from('Combustivel')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   },
@@ -207,7 +207,7 @@ export const frentistaService = {
       .from('Frentista')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data;
   },
@@ -263,8 +263,8 @@ export const leituraService = {
       .eq('bico_id', bicoId)
       .order('data', { ascending: false })
       .limit(1)
-      .single();
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+      .maybeSingle();
+    if (error) throw error;
     return data;
   },
 
@@ -375,6 +375,25 @@ export const formaPagamentoService = {
     if (error) throw error;
     return data;
   },
+
+  async update(id: number, forma: UpdateTables<'FormaPagamento'>): Promise<FormaPagamento> {
+    const { data, error } = await supabase
+      .from('FormaPagamento')
+      .update(forma)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('FormaPagamento')
+      .update({ ativo: false }) // Soft delete
+      .eq('id', id);
+    if (error) throw error;
+  },
 };
 
 // ============================================
@@ -413,8 +432,8 @@ export const fechamentoService = {
       .from('Fechamento')
       .select('*')
       .eq('data', data)
-      .single();
-    if (error && error.code !== 'PGRST116') throw error;
+      .maybeSingle();
+    if (error) throw error;
     return fechamento;
   },
 
@@ -532,7 +551,7 @@ export const recebimentoService = {
 // FECHAMENTO FRENTISTA
 // ============================================
 
-export const fechamentoFreentistaService = {
+export const fechamentoFrentistaService = {
   async getByFechamento(fechamentoId: number): Promise<(FechamentoFrentista & { frentista: Frentista })[]> {
     const { data, error } = await supabase
       .from('FechamentoFrentista')
@@ -839,7 +858,7 @@ export const api = {
   maquininha: maquininhaService,
   fechamento: fechamentoService,
   recebimento: recebimentoService,
-  fechamentoFrentista: fechamentoFreentistaService,
+  fechamentoFrentista: fechamentoFrentistaService,
   estoque: estoqueService,
   compra: compraService,
   fornecedor: fornecedorService,
@@ -856,10 +875,11 @@ export default api;
 // esperado pelos componentes existentes
 
 export async function fetchSettingsData() {
-  const [combustiveis, bicos, turnos] = await Promise.all([
+  const [combustiveis, bicos, turnos, formasPagamento] = await Promise.all([
     combustivelService.getAll(),
     bicoService.getWithDetails(),
     turnoService.getAll(),
+    formaPagamentoService.getAll(),
   ]);
 
   return {
@@ -882,6 +902,13 @@ export async function fetchSettingsData() {
       end: t.horario_fim || '14:00',
       iconType: (t.nome.toLowerCase().includes('manhã') ? 'sun' :
         t.nome.toLowerCase().includes('tarde') ? 'sunset' : 'moon') as 'sun' | 'sunset' | 'moon',
+    })),
+    paymentMethods: formasPagamento.map(fp => ({
+      id: String(fp.id),
+      name: fp.nome,
+      type: fp.tipo as 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'outros',
+      tax: fp.taxa || 0,
+      active: fp.ativo
     })),
   };
 }
@@ -1067,7 +1094,7 @@ export async function fetchAttendantsData() {
 
   // Buscar histórico de fechamentos por frentista
   const fechamentos = await Promise.all(
-    frentistas.map(f => fechamentoFreentistaService.getHistoricoDiferencas(f.id, 30))
+    frentistas.map(f => fechamentoFrentistaService.getHistoricoDiferencas(f.id, 30))
   );
 
   // Cores para avatares

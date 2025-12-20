@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-   FileText, Calculator, TrendingUp, Package, DollarSign, BarChart2, MoreVertical, Settings, Calendar
+   FileText, Calculator, TrendingUp, Package, DollarSign, BarChart2, MoreVertical, Settings, Calendar, Save, RefreshCw
 } from 'lucide-react';
 import {
    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
    BarChart, Bar
 } from 'recharts';
+import { combustivelService, compraService, estoqueService } from '../services/api';
+import type { Combustivel } from '../services/database.types';
 
 type CombustivelHibrido = {
    id: number;
@@ -42,16 +44,48 @@ const costRevenueData = [
 ];
 
 const PurchaseRegistrationScreen: React.FC = () => {
+   const [loading, setLoading] = useState(true);
+   const [saving, setSaving] = useState(false);
+
    // State com dados unificados
-   const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([
-      { id: 1, nome: 'G. Comum.', codigo: 'GC', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
-      { id: 2, nome: 'G. Aditivada.', codigo: 'GA', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
-      { id: 3, nome: 'Etanol.', codigo: 'ET', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
-      { id: 4, nome: 'Ds. S10.', codigo: 'DS10', inicial: '', fechamento: '', compra_lt: '', compra_rs: '', estoque_anterior: '' },
-   ]);
+   const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([]);
 
    // Estado para Despesas do Mês (valor total global - planilha H19:=D390)
    const [despesasMes, setDespesasMes] = useState<string>('');
+
+   // Carregar dados iniciais
+   useEffect(() => {
+      loadData();
+   }, []);
+
+   const loadData = async () => {
+      try {
+         setLoading(true);
+         const data = await combustivelService.getAll();
+         const estoques = await estoqueService.getAll();
+
+         // Mapear combustíveis do banco para o estado local
+         const mapped: CombustivelHibrido[] = data.map(c => {
+            const est = estoques.find(e => e.combustivel_id === c.id);
+            return {
+               id: c.id,
+               nome: c.nome,
+               codigo: c.codigo,
+               inicial: '', // Idealmente buscaria última leitura
+               fechamento: '',
+               compra_lt: '',
+               compra_rs: '',
+               estoque_anterior: est ? est.quantidade_atual.toString() : '0',
+            };
+         });
+         setCombustiveis(mapped);
+      } catch (error) {
+         console.error('Erro ao carregar dados:', error);
+         alert('Erro ao carregar dados dos combustíveis');
+      } finally {
+         setLoading(false);
+      }
+   };
 
    // Parse value from string (BR format: 1.234,567)
    const parseValue = (value: string): number => {
@@ -239,7 +273,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
          mediaTotal,
          margemMedia
       };
-   }, [combustiveis]);
+   }, [combustiveis, despesasMes]);
 
    // Calculate product percentage
    const calcProdutoPct = (c: CombustivelHibrido): number => {
@@ -247,6 +281,72 @@ const PurchaseRegistrationScreen: React.FC = () => {
       if (totais.totalLitros === 0) return 0;
       return (litros / totais.totalLitros) * 100;
    };
+
+   // === SALVAR E ATUALIZAR SISTEMA ===
+   const handleSave = async () => {
+      const comprasParaSalvar = combustiveis.filter(c => parseValue(c.compra_lt) > 0);
+
+      if (comprasParaSalvar.length === 0) {
+         alert('Nenhuma compra registrada para salvar.');
+         return;
+      }
+
+      if (!confirm(`Deseja salvar ${comprasParaSalvar.length} compras e ATUALIZAR os preços de venda no sistema?`)) {
+         return;
+      }
+
+      try {
+         setSaving(true);
+         const hoje = new Date().toISOString().split('T')[0];
+
+         for (const c of comprasParaSalvar) {
+            const valorTotal = parseValue(c.compra_rs);
+            const litros = parseValue(c.compra_lt);
+            const fornecedorId = 1; // Ajustar conforme fornecedor selecionado. Idealmente deveria haver um select.
+
+            // 1. Criar registro de Compra
+            await compraService.create({
+               combustivel_id: c.id,
+               data: hoje,
+               fornecedor_id: fornecedorId,
+               quantidade_litros: litros,
+               valor_total: valorTotal,
+               custo_por_litro: valorTotal / litros,
+               observacoes: `Atualização de estoque/preço via Painel de Compras`
+            });
+
+            // 2. Atualizar Preço de Venda no Sistema (Tabela Combustivel)
+            const novoPrecoVenda = calcValorParaVenda(c);
+            if (novoPrecoVenda > 0) {
+               await combustivelService.update(c.id, {
+                  preco_venda: novoPrecoVenda
+               });
+            }
+         }
+
+         alert('Compras salvas e preços atualizados com sucesso!');
+
+         // Limpar campos de compra após salvar
+         setCombustiveis(prev => prev.map(c => ({
+            ...c,
+            compra_lt: '',
+            compra_rs: ''
+         })));
+
+         // Recarregar dados para garantir sincronia
+         loadData();
+
+      } catch (error) {
+         console.error('Erro ao salvar:', error);
+         alert('Erro ao salvar as informações. Tente novamente.');
+      } finally {
+         setSaving(false);
+      }
+   };
+
+   if (loading) {
+      return <div className="p-8 text-center text-slate-500">Carregando dados...</div>;
+   }
 
    return (
       <div className="bg-gray-50 font-sans text-slate-800 transition-colors duration-300 pb-12 min-h-screen">
@@ -260,12 +360,21 @@ const PurchaseRegistrationScreen: React.FC = () => {
                      Sistema integrado de gestão baseado na planilha Posto Jorro 2025.
                   </p>
                </div>
-               <div className="flex shadow-md rounded-lg overflow-hidden">
-                  <div className="bg-red-600 text-white px-4 py-2 font-bold text-sm tracking-wide flex items-center">
-                     POSTO
-                  </div>
-                  <div className="bg-amber-400 text-red-900 px-4 py-2 font-bold text-sm tracking-wide flex items-center">
-                     PROVIDÊNCIA
+               <div className="flex gap-4 items-center">
+                  <button
+                     onClick={loadData}
+                     className="p-2 text-slate-500 hover:text-slate-700 transition-colors"
+                     title="Recarregar dados"
+                  >
+                     <RefreshCw size={20} />
+                  </button>
+                  <div className="flex shadow-md rounded-lg overflow-hidden">
+                     <div className="bg-red-600 text-white px-4 py-2 font-bold text-sm tracking-wide flex items-center">
+                        POSTO
+                     </div>
+                     <div className="bg-amber-400 text-red-900 px-4 py-2 font-bold text-sm tracking-wide flex items-center">
+                        PROVIDÊNCIA
+                     </div>
                   </div>
                </div>
             </div>
@@ -287,15 +396,13 @@ const PurchaseRegistrationScreen: React.FC = () => {
                            <option className="text-slate-800">30 Dias</option>
                         </select>
                      </label>
-                     <button className="bg-white/20 hover:bg-white/30 text-white p-1 rounded transition-colors" title="Configurações Avançadas">
-                        <Settings size={18} />
-                     </button>
                   </div>
                </div>
 
                <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* CHART 1: SALES TREND */}
                   <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm relative group">
+                     {/* CHART 1: SALES TREND */}
                      <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center justify-between">
                         <span>Tendência de Vendas (Litros)</span>
                         <span className="text-xs text-emerald-500 font-bold bg-emerald-50 px-2 py-1 rounded">+12% Proj.</span>
@@ -444,32 +551,46 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
             {/* === SEÇÃO COMPRA === */}
             <section className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-               <div className="bg-orange-600 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+               <div className="bg-orange-600 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                      <Package className="text-white" size={24} />
                      <h2 className="text-white font-semibold text-lg">Compra e Custo</h2>
                   </div>
                   {/* Campo Despesas do Mês - planilha H19:=D390 */}
-                  <div className="flex items-center gap-3 bg-orange-700/50 rounded-lg px-4 py-2">
-                     <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-bold text-orange-200 tracking-wider">Despesas do Mês (R$)</span>
-                        <span className="text-[9px] text-orange-300">Rateado por litro vendido</span>
-                     </div>
-                     <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-orange-300 text-sm font-bold">R$</span>
-                        <input
-                           type="text"
-                           value={despesasMes}
-                           onChange={(e) => setDespesasMes(formatInputValue(e.target.value, true))}
-                           placeholder="0,00"
-                           className="w-32 pl-8 pr-3 py-1.5 bg-white/90 border border-orange-300 rounded text-sm font-mono font-bold text-slate-800 text-right focus:ring-2 focus:ring-orange-400 outline-none"
-                        />
-                     </div>
-                     {totais.totalLitros > 0 && (
-                        <div className="bg-white/20 rounded px-2 py-1 text-white text-xs font-bold">
-                           = {formatCurrency(calcDespesaPorLitro())}/L
+                  <div className="flex flex-col sm:flex-row gap-4 items-center">
+                     <div className="flex items-center gap-3 bg-orange-700/50 rounded-lg px-4 py-2">
+                        <div className="flex flex-col">
+                           <span className="text-[10px] uppercase font-bold text-orange-200 tracking-wider">Despesas do Mês (R$)</span>
+                           <span className="text-[9px] text-orange-300">Rateado por litro vendido</span>
                         </div>
-                     )}
+                        <div className="relative">
+                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-orange-300 text-sm font-bold">R$</span>
+                           <input
+                              type="text"
+                              value={despesasMes}
+                              onChange={(e) => setDespesasMes(formatInputValue(e.target.value, true))}
+                              placeholder="0,00"
+                              className="w-32 pl-8 pr-3 py-1.5 bg-white/90 border border-orange-300 rounded text-sm font-mono font-bold text-slate-800 text-right focus:ring-2 focus:ring-orange-400 outline-none"
+                           />
+                        </div>
+                        {totais.totalLitros > 0 && (
+                           <div className="bg-white/20 rounded px-2 py-1 text-white text-xs font-bold">
+                              = {formatCurrency(calcDespesaPorLitro())}/L
+                           </div>
+                        )}
+                     </div>
+
+                     <button
+                        onClick={handleSave}
+                        disabled={saving || totais.totalCompraLt === 0}
+                        className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold shadow-lg transition-all ${saving || totais.totalCompraLt === 0
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                              : 'bg-white text-orange-600 hover:bg-orange-50 active:scale-95'
+                           }`}
+                     >
+                        <Save size={18} />
+                        {saving ? 'Salvando...' : 'FINALIZAR COMPRA'}
+                     </button>
                   </div>
                </div>
                <div className="overflow-x-auto custom-scrollbar">

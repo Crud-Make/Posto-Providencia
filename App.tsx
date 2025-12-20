@@ -11,27 +11,43 @@ import SalesAnalysisScreen from './components/SalesAnalysisScreen';
 import SalesDashboardScreen from './components/SalesDashboardScreen';
 import AttendantManagementScreen from './components/AttendantManagementScreen';
 import SettingsScreen from './components/SettingsScreen';
+import LoginScreen from './components/LoginScreen';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
-const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings'>('settings');
+const AppContent: React.FC = () => {
+  const { user, loading } = useAuth();
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings'>('dashboard');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-blue-600">
+        <Loader2 size={48} className="animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans text-gray-900 transition-colors duration-200">
-      
+
       {/* Sidebar for Desktop */}
-      <Sidebar 
-        currentView={currentView} 
-        onNavigate={setCurrentView} 
-        className="hidden lg:flex" 
+      <Sidebar
+        currentView={currentView}
+        onNavigate={setCurrentView}
+        className="hidden lg:flex"
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Header for Mobile */}
         <div className="lg:hidden">
-           <Header 
-             currentView={currentView} 
-             onNavigate={setCurrentView} 
-           />
+          <Header
+            currentView={currentView}
+            onNavigate={setCurrentView}
+          />
         </div>
 
         {/* Main Content */}
@@ -69,6 +85,14 @@ const App: React.FC = () => {
         </main>
       </div>
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
