@@ -12,6 +12,10 @@
   # Directory for Netlify Functions (if added later)
   functions = "netlify/functions"
 
+# Ensure devDependencies are installed (required for Vite)
+[build.environment]
+  NPM_CONFIG_PRODUCTION = "false"
+
 # ==============================================
 # SPA REDIRECT RULES
 # ==============================================
