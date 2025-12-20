@@ -197,6 +197,7 @@ export type Database = {
                     total_vendas: number | null
                     updated_at: string
                     usuario_id: number
+                    turno_id: number | null
                 }
                 Insert: {
                     created_at?: string
@@ -209,6 +210,7 @@ export type Database = {
                     total_vendas?: number | null
                     updated_at?: string
                     usuario_id: number
+                    turno_id?: number | null
                 }
                 Update: {
                     created_at?: string
@@ -221,6 +223,7 @@ export type Database = {
                     total_vendas?: number | null
                     updated_at?: string
                     usuario_id?: number
+                    turno_id?: number | null
                 }
                 Relationships: [
                     {

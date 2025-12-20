@@ -427,14 +427,28 @@ export const maquininhaService = {
 // ============================================
 
 export const fechamentoService = {
-  async getByDate(data: string): Promise<Fechamento | null> {
+  async getByDateAndTurno(data: string, turnoId: number): Promise<Fechamento | null> {
     const { data: fechamento, error } = await supabase
       .from('Fechamento')
       .select('*')
       .eq('data', data)
+      .eq('turno_id', turnoId)
       .maybeSingle();
     if (error) throw error;
     return fechamento;
+  },
+
+  async getByDate(data: string): Promise<any[]> {
+    const { data: fechamentos, error } = await supabase
+      .from('Fechamento')
+      .select(`
+        *,
+        turno:Turno(*),
+        usuario:Usuario(id, nome)
+      `)
+      .eq('data', data);
+    if (error) throw error;
+    return fechamentos || [];
   },
 
   async getWithDetails(id: number) {
@@ -955,15 +969,30 @@ export async function fetchDashboardData() {
     color: coresFormas[fp.tipo] || ['#3b82f6', '#22c55e', '#eab308', '#f97316'][idx % 4],
   }));
 
-  // ClosingsData - Lista de fechamentos por frentista (simulado)
-  const closingsData = frentistas.map((f, idx) => ({
-    id: String(f.id),
-    name: f.nome,
-    avatar: `/avatars/${f.id}.jpg`,
-    shift: ['Manhã', 'Tarde', 'Noite'][idx % 3],
-    totalSales: (vendas.totalVendas || 0) / frentistas.length,
-    status: (['OK', 'OK', 'Aberto'] as const)[idx % 3],
-  }));
+  // ClosingsData - Lista de fechamentos reais por turno/frentista
+  const fechamentosReais = await fechamentoService.getByDate(hoje);
+
+  let closingsData;
+  if (fechamentosReais && fechamentosReais.length > 0) {
+    closingsData = fechamentosReais.map(fr => ({
+      id: String(fr.id),
+      name: fr.usuario?.nome || 'Operador',
+      avatar: `/avatars/user.jpg`,
+      shift: fr.turno?.nome || 'N/A',
+      totalSales: fr.total_vendas || 0,
+      status: fr.status === 'FECHADO' ? 'OK' : 'Aberto',
+    }));
+  } else {
+    // Fallback para frentistas se não houver fechamentos de caixa ainda hoje
+    closingsData = frentistas.map((f, idx) => ({
+      id: String(f.id),
+      name: f.nome,
+      avatar: `/avatars/${f.id}.jpg`,
+      shift: ['Manhã', 'Tarde', 'Noite'][idx % 3],
+      totalSales: 0,
+      status: 'Aberto',
+    }));
+  }
 
   // PerformanceData
   const performanceData = frentistas.slice(0, 3).map((f, idx) => ({
@@ -1127,7 +1156,7 @@ export async function fetchAttendantsData() {
       name: f.nome,
       initials: initials.toUpperCase(),
       phone: f.telefone || '(00) 00000-0000',
-      shift: (['Manhã', 'Tarde', 'Noite'] as const)[idx % 3],
+      shift: (hist[0]?.fechamento as any)?.turno?.nome || ((['Manhã', 'Tarde', 'Noite'] as const)[idx % 3]), // Tenta pegar turno real
       status: (f.ativo ? 'Ativo' : 'Inativo') as 'Ativo' | 'Inativo',
       admissionDate: f.data_admissao || 'N/A',
       sinceDate: sinceDate,
@@ -1138,12 +1167,12 @@ export async function fetchAttendantsData() {
     };
   });
 
-  // Histórico geral formatado
+  // Histórico geral formatado usando turno real se disponível
   const allHistories = fechamentos.flat();
-  const history = allHistories.slice(0, 10).map((h, idx) => ({
+  const history = allHistories.slice(0, 10).map((h) => ({
     id: String(h.id),
     date: h.fechamento?.data || 'N/A',
-    shift: (['Manhã', 'Tarde', 'Noite'])[idx % 3],
+    shift: (h.fechamento as any)?.turno?.nome || 'N/A',
     value: h.diferenca || 0,
     status: ((h.diferenca || 0) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
   }));
