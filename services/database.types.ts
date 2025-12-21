@@ -1,790 +1,1082 @@
 export type Json =
-    | string
-    | number
-    | boolean
-    | null
-    | { [key: string]: Json | undefined }
-    | Json[]
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
-    public: {
-        Tables: {
-            Bico: {
-                Row: {
-                    ativo: boolean
-                    bomba_id: number
-                    combustivel_id: number
-                    id: number
-                    numero: number
-                }
-                Insert: {
-                    ativo?: boolean
-                    bomba_id: number
-                    combustivel_id: number
-                    id?: number
-                    numero: number
-                }
-                Update: {
-                    ativo?: boolean
-                    bomba_id?: number
-                    combustivel_id?: number
-                    id?: number
-                    numero?: number
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "Bico_bomba_id_fkey"
-                        columns: ["bomba_id"]
-                        isOneToOne: false
-                        referencedRelation: "Bomba"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "Bico_combustivel_id_fkey"
-                        columns: ["combustivel_id"]
-                        isOneToOne: false
-                        referencedRelation: "Combustivel"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            Bomba: {
-                Row: {
-                    ativo: boolean
-                    id: number
-                    localizacao: string | null
-                    nome: string
-                }
-                Insert: {
-                    ativo?: boolean
-                    id?: number
-                    localizacao?: string | null
-                    nome: string
-                }
-                Update: {
-                    ativo?: boolean
-                    id?: number
-                    localizacao?: string | null
-                    nome?: string
-                }
-                Relationships: []
-            }
-            Combustivel: {
-                Row: {
-                    ativo: boolean
-                    codigo: string
-                    cor: string | null
-                    id: number
-                    nome: string
-                    preco_venda: number
-                }
-                Insert: {
-                    ativo?: boolean
-                    codigo: string
-                    cor?: string | null
-                    id?: number
-                    nome: string
-                    preco_venda: number
-                }
-                Update: {
-                    ativo?: boolean
-                    codigo?: string
-                    cor?: string | null
-                    id?: number
-                    nome?: string
-                    preco_venda?: number
-                }
-                Relationships: []
-            }
-            Compra: {
-                Row: {
-                    combustivel_id: number
-                    created_at: string
-                    custo_por_litro: number
-                    data: string
-                    fornecedor_id: number
-                    id: number
-                    numero_nf: string | null
-                    observacoes: string | null
-                    quantidade_litros: number
-                    valor_total: number
-                }
-                Insert: {
-                    combustivel_id: number
-                    created_at?: string
-                    custo_por_litro: number
-                    data: string
-                    fornecedor_id: number
-                    id?: number
-                    numero_nf?: string | null
-                    observacoes?: string | null
-                    quantidade_litros: number
-                    valor_total: number
-                }
-                Update: {
-                    combustivel_id?: number
-                    created_at?: string
-                    custo_por_litro?: number
-                    data?: string
-                    fornecedor_id?: number
-                    id?: number
-                    numero_nf?: string | null
-                    observacoes?: string | null
-                    quantidade_litros?: number
-                    valor_total?: number
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "Compra_combustivel_id_fkey"
-                        columns: ["combustivel_id"]
-                        isOneToOne: false
-                        referencedRelation: "Combustivel"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "Compra_fornecedor_id_fkey"
-                        columns: ["fornecedor_id"]
-                        isOneToOne: false
-                        referencedRelation: "Fornecedor"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            Estoque: {
-                Row: {
-                    capacidade_tanque: number
-                    combustivel_id: number
-                    custo_medio: number
-                    id: number
-                    quantidade_atual: number
-                    ultima_atualizacao: string
-                }
-                Insert: {
-                    capacidade_tanque: number
-                    combustivel_id: number
-                    custo_medio: number
-                    id?: number
-                    quantidade_atual?: number
-                    ultima_atualizacao?: string
-                }
-                Update: {
-                    capacidade_tanque?: number
-                    combustivel_id?: number
-                    custo_medio?: number
-                    id?: number
-                    quantidade_atual?: number
-                    ultima_atualizacao?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "Estoque_combustivel_id_fkey"
-                        columns: ["combustivel_id"]
-                        isOneToOne: true
-                        referencedRelation: "Combustivel"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            Fechamento: {
-                Row: {
-                    created_at: string
-                    data: string
-                    diferenca: number | null
-                    id: number
-                    observacoes: string | null
-                    status: Database["public"]["Enums"]["StatusFechamento"]
-                    total_recebido: number | null
-                    total_vendas: number | null
-                    updated_at: string
-                    usuario_id: number
-                    turno_id: number | null
-                }
-                Insert: {
-                    created_at?: string
-                    data: string
-                    diferenca?: number | null
-                    id?: number
-                    observacoes?: string | null
-                    status?: Database["public"]["Enums"]["StatusFechamento"]
-                    total_recebido?: number | null
-                    total_vendas?: number | null
-                    updated_at?: string
-                    usuario_id: number
-                    turno_id?: number | null
-                }
-                Update: {
-                    created_at?: string
-                    data?: string
-                    diferenca?: number | null
-                    id?: number
-                    observacoes?: string | null
-                    status?: Database["public"]["Enums"]["StatusFechamento"]
-                    total_recebido?: number | null
-                    total_vendas?: number | null
-                    updated_at?: string
-                    usuario_id?: number
-                    turno_id?: number | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "Fechamento_usuario_id_fkey"
-                        columns: ["usuario_id"]
-                        isOneToOne: false
-                        referencedRelation: "Usuario"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            FechamentoFrentista: {
-                Row: {
-                    diferenca: number | null
-                    fechamento_id: number
-                    frentista_id: number
-                    id: number
-                    observacoes: string | null
-                    total: number | null
-                    valor_cartao: number
-                    valor_conferido: number
-                    valor_dinheiro: number
-                    valor_nota: number
-                    valor_pix: number
-                }
-                Insert: {
-                    diferenca?: number | null
-                    fechamento_id: number
-                    frentista_id: number
-                    id?: number
-                    observacoes?: string | null
-                    total?: number | null
-                    valor_cartao?: number
-                    valor_conferido?: number
-                    valor_dinheiro?: number
-                    valor_nota?: number
-                    valor_pix?: number
-                }
-                Update: {
-                    diferenca?: number | null
-                    fechamento_id?: number
-                    frentista_id?: number
-                    id?: number
-                    observacoes?: string | null
-                    total?: number | null
-                    valor_cartao?: number
-                    valor_conferido?: number
-                    valor_dinheiro?: number
-                    valor_nota?: number
-                    valor_pix?: number
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "FechamentoFrentista_fechamento_id_fkey"
-                        columns: ["fechamento_id"]
-                        isOneToOne: false
-                        referencedRelation: "Fechamento"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "FechamentoFrentista_frentista_id_fkey"
-                        columns: ["frentista_id"]
-                        isOneToOne: false
-                        referencedRelation: "Frentista"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            FormaPagamento: {
-                Row: {
-                    ativo: boolean
-                    id: number
-                    nome: string
-                    taxa: number | null
-                    tipo: string
-                }
-                Insert: {
-                    ativo?: boolean
-                    id?: number
-                    nome: string
-                    taxa?: number | null
-                    tipo: string
-                }
-                Update: {
-                    ativo?: boolean
-                    id?: number
-                    nome?: string
-                    taxa?: number | null
-                    tipo?: string
-                }
-                Relationships: []
-            }
-            Fornecedor: {
-                Row: {
-                    ativo: boolean
-                    cnpj: string
-                    contato: string | null
-                    id: number
-                    nome: string
-                }
-                Insert: {
-                    ativo?: boolean
-                    cnpj: string
-                    contato?: string | null
-                    id?: number
-                    nome: string
-                }
-                Update: {
-                    ativo?: boolean
-                    cnpj?: string
-                    contato?: string | null
-                    id?: number
-                    nome?: string
-                }
-                Relationships: []
-            }
-            Frentista: {
-                Row: {
-                    ativo: boolean
-                    cpf: string
-                    data_admissao: string
-                    id: number
-                    nome: string
-                    telefone: string | null
-                }
-                Insert: {
-                    ativo?: boolean
-                    cpf: string
-                    data_admissao: string
-                    id?: number
-                    nome: string
-                    telefone?: string | null
-                }
-                Update: {
-                    ativo?: boolean
-                    cpf?: string
-                    data_admissao?: string
-                    id?: number
-                    nome?: string
-                    telefone?: string | null
-                }
-                Relationships: []
-            }
-            Leitura: {
-                Row: {
-                    bico_id: number
-                    created_at: string
-                    data: string
-                    id: number
-                    leitura_final: number
-                    leitura_inicial: number
-                    litros_vendidos: number | null
-                    preco_litro: number
-                    usuario_id: number
-                    valor_venda: number | null
-                }
-                Insert: {
-                    bico_id: number
-                    created_at?: string
-                    data: string
-                    id?: number
-                    leitura_final: number
-                    leitura_inicial: number
-                    litros_vendidos?: number | null
-                    preco_litro: number
-                    usuario_id: number
-                    valor_venda?: number | null
-                }
-                Update: {
-                    bico_id?: number
-                    created_at?: string
-                    data?: string
-                    id?: number
-                    leitura_final?: number
-                    leitura_inicial?: number
-                    litros_vendidos?: number | null
-                    preco_litro?: number
-                    usuario_id?: number
-                    valor_venda?: number | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "Leitura_bico_id_fkey"
-                        columns: ["bico_id"]
-                        isOneToOne: false
-                        referencedRelation: "Bico"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "Leitura_usuario_id_fkey"
-                        columns: ["usuario_id"]
-                        isOneToOne: false
-                        referencedRelation: "Usuario"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            Maquininha: {
-                Row: {
-                    ativo: boolean
-                    id: number
-                    nome: string
-                    operadora: string | null
-                    taxa: number | null
-                }
-                Insert: {
-                    ativo?: boolean
-                    id?: number
-                    nome: string
-                    operadora?: string | null
-                    taxa?: number | null
-                }
-                Update: {
-                    ativo?: boolean
-                    id?: number
-                    nome?: string
-                    operadora?: string | null
-                    taxa?: number | null
-                }
-                Relationships: []
-            }
-            Recebimento: {
-                Row: {
-                    fechamento_id: number
-                    forma_pagamento_id: number
-                    id: number
-                    maquininha_id: number | null
-                    observacoes: string | null
-                    valor: number
-                }
-                Insert: {
-                    fechamento_id: number
-                    forma_pagamento_id: number
-                    id?: number
-                    maquininha_id?: number | null
-                    observacoes?: string | null
-                    valor: number
-                }
-                Update: {
-                    fechamento_id?: number
-                    forma_pagamento_id?: number
-                    id?: number
-                    maquininha_id?: number | null
-                    observacoes?: string | null
-                    valor?: number
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "Recebimento_fechamento_id_fkey"
-                        columns: ["fechamento_id"]
-                        isOneToOne: false
-                        referencedRelation: "Fechamento"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "Recebimento_forma_pagamento_id_fkey"
-                        columns: ["forma_pagamento_id"]
-                        isOneToOne: false
-                        referencedRelation: "FormaPagamento"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "Recebimento_maquininha_id_fkey"
-                        columns: ["maquininha_id"]
-                        isOneToOne: false
-                        referencedRelation: "Maquininha"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
-            Produto: {
-                Row: {
-                    id: number
-                    nome: string
-                    codigo_barras: string | null
-                    categoria: string
-                    descricao: string | null
-                    preco_custo: number
-                    preco_venda: number
-                    estoque_atual: number
-                    estoque_minimo: number
-                    unidade_medida: string
-                    ativo: boolean
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: number
-                    nome: string
-                    codigo_barras?: string | null
-                    categoria: string
-                    descricao?: string | null
-                    preco_custo?: number
-                    preco_venda?: number
-                    estoque_atual?: number
-                    estoque_minimo?: number
-                    unidade_medida?: string
-                    ativo?: boolean
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: number
-                    nome?: string
-                    codigo_barras?: string | null
-                    categoria?: string
-                    descricao?: string | null
-                    preco_custo?: number
-                    preco_venda?: number
-                    estoque_atual?: number
-                    estoque_minimo?: number
-                    unidade_medida?: string
-                    ativo?: boolean
-                    created_at?: string
-                    updated_at?: string
-                }
-                Relationships: []
-            }
-            MovimentacaoEstoque: {
-                Row: {
-                    id: number
-                    produto_id: number
-                    tipo: 'entrada' | 'saida' | 'ajuste'
-                    quantidade: number
-                    data: string
-                    responsavel: string | null
-                    observacao: string | null
-                    created_at: string
-                }
-                Insert: {
-                    id?: number
-                    produto_id: number
-                    tipo: 'entrada' | 'saida' | 'ajuste'
-                    quantidade: number
-                    data?: string
-                    responsavel?: string | null
-                    observacao?: string | null
-                    created_at?: string
-                }
-                Update: {
-                    id?: number
-                    produto_id?: number
-                    tipo?: 'entrada' | 'saida' | 'ajuste'
-                    quantidade?: number
-                    data?: string
-                    responsavel?: string | null
-                    observacao?: string | null
-                    created_at?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "MovimentacaoEstoque_produto_id_fkey"
-                        columns: ["produto_id"]
-                        isOneToOne: false
-                        referencedRelation: "Produto"
-                        referencedColumns: ["id"]
-                    }
-                ]
-            }
-            Turno: {
-                Row: {
-                    ativo: boolean
-                    horario_fim: string
-                    horario_inicio: string
-                    id: number
-                    nome: string
-                }
-                Insert: {
-                    ativo?: boolean
-                    horario_fim: string
-                    horario_inicio: string
-                    id?: number
-                    nome: string
-                }
-                Update: {
-                    ativo?: boolean
-                    horario_fim?: string
-                    horario_inicio?: string
-                    id?: number
-                    nome?: string
-                }
-                Relationships: []
-            }
-            Emprestimo: {
-                Row: {
-                    ativo: boolean
-                    created_at: string
-                    credor: string
-                    data_emprestimo: string
-                    data_primeiro_vencimento: string
-                    id: number
-                    observacoes: string | null
-                    periodicidade: Database["public"]["Enums"]["periodicity_type"]
-                    quantidade_parcelas: number
-                    taxa_juros: number | null
-                    valor_parcela: number
-                    valor_total: number
-                }
-                Insert: {
-                    ativo?: boolean
-                    created_at?: string
-                    credor: string
-                    data_emprestimo?: string
-                    data_primeiro_vencimento: string
-                    id?: number
-                    observacoes?: string | null
-                    periodicidade?: Database["public"]["Enums"]["periodicity_type"]
-                    quantidade_parcelas: number
-                    taxa_juros?: number | null
-                    valor_parcela: number
-                    valor_total: number
-                }
-                Update: {
-                    ativo?: boolean
-                    created_at?: string
-                    credor?: string
-                    data_emprestimo?: string
-                    data_primeiro_vencimento?: string
-                    id?: number
-                    observacoes?: string | null
-                    periodicidade?: Database["public"]["Enums"]["periodicity_type"]
-                    quantidade_parcelas?: number
-                    taxa_juros?: number | null
-                    valor_parcela?: number
-                    valor_total?: number
-                }
-                Relationships: []
-            }
-            Parcela: {
-                Row: {
-                    created_at: string
-                    data_pagamento: string | null
-                    data_vencimento: string
-                    emprestimo_id: number
-                    id: number
-                    juros_multa: number | null
-                    numero_parcela: number
-                    status: Database["public"]["Enums"]["installment_status"]
-                    valor: number
-                }
-                Insert: {
-                    created_at?: string
-                    data_pagamento?: string | null
-                    data_vencimento: string
-                    emprestimo_id: number
-                    id?: number
-                    juros_multa?: number | null
-                    numero_parcela: number
-                    status?: Database["public"]["Enums"]["installment_status"]
-                    valor: number
-                }
-                Update: {
-                    created_at?: string
-                    data_pagamento?: string | null
-                    data_vencimento?: string
-                    emprestimo_id?: number
-                    id?: number
-                    juros_multa?: number | null
-                    numero_parcela?: number
-                    status?: Database["public"]["Enums"]["installment_status"]
-                    valor?: number
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "Parcela_emprestimo_id_fkey"
-                        columns: ["emprestimo_id"]
-                        isOneToOne: false
-                        referencedRelation: "Emprestimo"
-                        referencedColumns: ["id"]
-                    }
-                ]
-            }
-            Usuario: {
-                Row: {
-                    ativo: boolean
-                    createdAt: string
-                    email: string
-                    id: number
-                    nome: string
-                    role: Database["public"]["Enums"]["Role"]
-                    senha: string
-                    updatedAt: string
-                }
-                Insert: {
-                    ativo?: boolean
-                    createdAt?: string
-                    email: string
-                    id?: number
-                    nome: string
-                    role?: Database["public"]["Enums"]["Role"]
-                    senha: string
-                    updatedAt?: string
-                }
-                Update: {
-                    ativo?: boolean
-                    createdAt?: string
-                    email?: string
-                    id?: number
-                    nome?: string
-                    role?: Database["public"]["Enums"]["Role"]
-                    senha?: string
-                    updatedAt?: string
-                }
-                Relationships: []
-            }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  public: {
+    Tables: {
+      Bico: {
+        Row: {
+          ativo: boolean
+          bomba_id: number
+          combustivel_id: number
+          id: number
+          numero: number
         }
-        Views: {
-            [_ in never]: never
+        Insert: {
+          ativo?: boolean
+          bomba_id: number
+          combustivel_id: number
+          id?: number
+          numero: number
         }
-        Functions: {
-            [_ in never]: never
+        Update: {
+          ativo?: boolean
+          bomba_id?: number
+          combustivel_id?: number
+          id?: number
+          numero?: number
         }
-        Enums: {
-            Role: "ADMIN" | "GERENTE" | "OPERADOR" | "FRENTISTA"
-            StatusFechamento: "RASCUNHO" | "FECHADO"
-            periodicity_type: "mensal" | "quinzenal" | "semanal" | "diario"
-            installment_status: "pendente" | "pago" | "atrasado"
+        Relationships: [
+          {
+            foreignKeyName: "Bico_bomba_id_fkey"
+            columns: ["bomba_id"]
+            isOneToOne: false
+            referencedRelation: "Bomba"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Bico_combustivel_id_fkey"
+            columns: ["combustivel_id"]
+            isOneToOne: false
+            referencedRelation: "Combustivel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Bomba: {
+        Row: {
+          ativo: boolean
+          id: number
+          localizacao: string | null
+          nome: string
         }
-        CompositeTypes: {
-            [_ in never]: never
+        Insert: {
+          ativo?: boolean
+          id?: number
+          localizacao?: string | null
+          nome: string
         }
+        Update: {
+          ativo?: boolean
+          id?: number
+          localizacao?: string | null
+          nome?: string
+        }
+        Relationships: []
+      }
+      Combustivel: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          cor: string | null
+          id: number
+          nome: string
+          preco_venda: number
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          cor?: string | null
+          id?: number
+          nome: string
+          preco_venda?: number
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          cor?: string | null
+          id?: number
+          nome?: string
+          preco_venda?: number
+        }
+        Relationships: []
+      }
+      Compra: {
+        Row: {
+          arquivo_nf: string | null
+          combustivel_id: number
+          createdAt: string
+          custo_por_litro: number
+          data: string
+          fornecedor_id: number
+          id: number
+          numero_nf: string | null
+          observacoes: string | null
+          quantidade_litros: number
+          valor_total: number
+        }
+        Insert: {
+          arquivo_nf?: string | null
+          combustivel_id: number
+          createdAt?: string
+          custo_por_litro: number
+          data: string
+          fornecedor_id: number
+          id?: number
+          numero_nf?: string | null
+          observacoes?: string | null
+          quantidade_litros: number
+          valor_total: number
+        }
+        Update: {
+          arquivo_nf?: string | null
+          combustivel_id?: number
+          createdAt?: string
+          custo_por_litro?: number
+          data?: string
+          fornecedor_id?: number
+          id?: number
+          numero_nf?: string | null
+          observacoes?: string | null
+          quantidade_litros?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Compra_combustivel_id_fkey"
+            columns: ["combustivel_id"]
+            isOneToOne: false
+            referencedRelation: "Combustivel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Compra_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "Fornecedor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Configuracao: {
+        Row: {
+          categoria: string
+          chave: string
+          descricao: string | null
+          id: number
+          tipo: string
+          updated_at: string
+          valor: string
+        }
+        Insert: {
+          categoria?: string
+          chave: string
+          descricao?: string | null
+          id?: number
+          tipo?: string
+          updated_at?: string
+          valor: string
+        }
+        Update: {
+          categoria?: string
+          chave?: string
+          descricao?: string | null
+          id?: number
+          tipo?: string
+          updated_at?: string
+          valor?: string
+        }
+        Relationships: []
+      }
+      Emprestimo: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          credor: string
+          data_emprestimo: string
+          data_primeiro_vencimento: string
+          id: number
+          observacoes: string | null
+          periodicidade: Database["public"]["Enums"]["periodicity_type"]
+          quantidade_parcelas: number
+          taxa_juros: number | null
+          valor_parcela: number
+          valor_total: number
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          credor: string
+          data_emprestimo?: string
+          data_primeiro_vencimento: string
+          id?: number
+          observacoes?: string | null
+          periodicidade?: Database["public"]["Enums"]["periodicity_type"]
+          quantidade_parcelas: number
+          taxa_juros?: number | null
+          valor_parcela: number
+          valor_total: number
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          credor?: string
+          data_emprestimo?: string
+          data_primeiro_vencimento?: string
+          id?: number
+          observacoes?: string | null
+          periodicidade?: Database["public"]["Enums"]["periodicity_type"]
+          quantidade_parcelas?: number
+          taxa_juros?: number | null
+          valor_parcela?: number
+          valor_total?: number
+        }
+        Relationships: []
+      }
+      Estoque: {
+        Row: {
+          capacidade_tanque: number
+          combustivel_id: number
+          custo_medio: number
+          id: number
+          quantidade_atual: number
+          ultima_atualizacao: string
+        }
+        Insert: {
+          capacidade_tanque: number
+          combustivel_id: number
+          custo_medio: number
+          id?: number
+          quantidade_atual: number
+          ultima_atualizacao?: string
+        }
+        Update: {
+          capacidade_tanque?: number
+          combustivel_id?: number
+          custo_medio?: number
+          id?: number
+          quantidade_atual?: number
+          ultima_atualizacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Estoque_combustivel_id_fkey"
+            columns: ["combustivel_id"]
+            isOneToOne: true
+            referencedRelation: "Combustivel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Fechamento: {
+        Row: {
+          createdAt: string
+          data: string
+          diferenca: number
+          id: number
+          observacoes: string | null
+          status: Database["public"]["Enums"]["StatusFechamento"]
+          total_recebido: number
+          total_vendas: number
+          turno_id: number | null
+          updatedAt: string
+          usuario_id: number
+        }
+        Insert: {
+          createdAt?: string
+          data: string
+          diferenca: number
+          id?: number
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["StatusFechamento"]
+          total_recebido: number
+          total_vendas: number
+          turno_id?: number | null
+          updatedAt?: string
+          usuario_id: number
+        }
+        Update: {
+          createdAt?: string
+          data?: string
+          diferenca?: number
+          id?: number
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["StatusFechamento"]
+          total_recebido?: number
+          total_vendas?: number
+          turno_id?: number | null
+          updatedAt?: string
+          usuario_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Fechamento_turno_id_fkey"
+            columns: ["turno_id"]
+            isOneToOne: false
+            referencedRelation: "Turno"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Fechamento_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      FechamentoFrentista: {
+        Row: {
+          fechamento_id: number
+          frentista_id: number
+          id: number
+          observacoes: string | null
+          valor_cartao: number
+          valor_conferido: number
+          valor_dinheiro: number
+          valor_nota: number
+          valor_pix: number
+        }
+        Insert: {
+          fechamento_id: number
+          frentista_id: number
+          id?: number
+          observacoes?: string | null
+          valor_cartao?: number
+          valor_conferido?: number
+          valor_dinheiro?: number
+          valor_nota?: number
+          valor_pix?: number
+        }
+        Update: {
+          fechamento_id?: number
+          frentista_id?: number
+          id?: number
+          observacoes?: string | null
+          valor_cartao?: number
+          valor_conferido?: number
+          valor_dinheiro?: number
+          valor_nota?: number
+          valor_pix?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FechamentoFrentista_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "Fechamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "FechamentoFrentista_frentista_id_fkey"
+            columns: ["frentista_id"]
+            isOneToOne: false
+            referencedRelation: "Frentista"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      FormaPagamento: {
+        Row: {
+          ativo: boolean
+          id: number
+          nome: string
+          taxa: number | null
+          tipo: string
+        }
+        Insert: {
+          ativo?: boolean
+          id?: number
+          nome: string
+          taxa?: number | null
+          tipo: string
+        }
+        Update: {
+          ativo?: boolean
+          id?: number
+          nome?: string
+          taxa?: number | null
+          tipo?: string
+        }
+        Relationships: []
+      }
+      Fornecedor: {
+        Row: {
+          ativo: boolean
+          cnpj: string
+          contato: string | null
+          id: number
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj: string
+          contato?: string | null
+          id?: number
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string
+          contato?: string | null
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
+      Frentista: {
+        Row: {
+          ativo: boolean
+          cpf: string
+          data_admissao: string
+          id: number
+          nome: string
+          telefone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          cpf: string
+          data_admissao: string
+          id?: number
+          nome: string
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          cpf?: string
+          data_admissao?: string
+          id?: number
+          nome?: string
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      Leitura: {
+        Row: {
+          bico_id: number
+          combustivel_id: number
+          createdAt: string
+          data: string
+          id: number
+          leitura_final: number
+          leitura_inicial: number
+          litros_vendidos: number
+          preco_litro: number
+          turno_id: number | null
+          usuario_id: number
+          valor_total: number
+        }
+        Insert: {
+          bico_id: number
+          combustivel_id: number
+          createdAt?: string
+          data: string
+          id?: number
+          leitura_final: number
+          leitura_inicial: number
+          litros_vendidos: number
+          preco_litro: number
+          turno_id?: number | null
+          usuario_id: number
+          valor_total: number
+        }
+        Update: {
+          bico_id?: number
+          combustivel_id?: number
+          createdAt?: string
+          data?: string
+          id?: number
+          leitura_final?: number
+          leitura_inicial?: number
+          litros_vendidos?: number
+          preco_litro?: number
+          turno_id?: number | null
+          usuario_id?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Leitura_bico_id_fkey"
+            columns: ["bico_id"]
+            isOneToOne: false
+            referencedRelation: "Bico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Leitura_combustivel_id_fkey"
+            columns: ["combustivel_id"]
+            isOneToOne: false
+            referencedRelation: "Combustivel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Leitura_turno_id_fkey"
+            columns: ["turno_id"]
+            isOneToOne: false
+            referencedRelation: "Turno"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Leitura_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Maquininha: {
+        Row: {
+          ativo: boolean
+          id: number
+          nome: string
+          operadora: string | null
+          taxa: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          id?: number
+          nome: string
+          operadora?: string | null
+          taxa?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          id?: number
+          nome?: string
+          operadora?: string | null
+          taxa?: number | null
+        }
+        Relationships: []
+      }
+      MovimentacaoEstoque: {
+        Row: {
+          created_at: string | null
+          data: string | null
+          id: number
+          observacao: string | null
+          produto_id: number | null
+          quantidade: number
+          responsavel: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: string | null
+          id?: number
+          observacao?: string | null
+          produto_id?: number | null
+          quantidade: number
+          responsavel?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string | null
+          id?: number
+          observacao?: string | null
+          produto_id?: number | null
+          quantidade?: number
+          responsavel?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MovimentacaoEstoque_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "Produto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Notificacao: {
+        Row: {
+          created_at: string | null
+          data_envio: string | null
+          enviada: boolean | null
+          fechamento_frentista_id: number | null
+          frentista_id: number
+          id: number
+          lida: boolean | null
+          mensagem: string
+          tipo: string | null
+          titulo: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_envio?: string | null
+          enviada?: boolean | null
+          fechamento_frentista_id?: number | null
+          frentista_id: number
+          id?: number
+          lida?: boolean | null
+          mensagem: string
+          tipo?: string | null
+          titulo: string
+        }
+        Update: {
+          created_at?: string | null
+          data_envio?: string | null
+          enviada?: boolean | null
+          fechamento_frentista_id?: number | null
+          frentista_id?: number
+          id?: number
+          lida?: boolean | null
+          mensagem?: string
+          tipo?: string | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Notificacao_fechamento_frentista_id_fkey"
+            columns: ["fechamento_frentista_id"]
+            isOneToOne: false
+            referencedRelation: "FechamentoFrentista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Notificacao_frentista_id_fkey"
+            columns: ["frentista_id"]
+            isOneToOne: false
+            referencedRelation: "Frentista"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Parcela: {
+        Row: {
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string
+          emprestimo_id: number
+          id: number
+          juros_multa: number | null
+          numero_parcela: number
+          status: Database["public"]["Enums"]["installment_status"]
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          emprestimo_id: number
+          id?: number
+          juros_multa?: number | null
+          numero_parcela: number
+          status?: Database["public"]["Enums"]["installment_status"]
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          emprestimo_id?: number
+          id?: number
+          juros_multa?: number | null
+          numero_parcela?: number
+          status?: Database["public"]["Enums"]["installment_status"]
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Parcela_emprestimo_id_fkey"
+            columns: ["emprestimo_id"]
+            isOneToOne: false
+            referencedRelation: "Emprestimo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Produto: {
+        Row: {
+          ativo: boolean | null
+          categoria: string
+          codigo_barras: string | null
+          created_at: string | null
+          descricao: string | null
+          estoque_atual: number
+          estoque_minimo: number
+          id: number
+          nome: string
+          preco_custo: number
+          preco_venda: number
+          unidade_medida: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria: string
+          codigo_barras?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          estoque_atual?: number
+          estoque_minimo?: number
+          id?: number
+          nome: string
+          preco_custo?: number
+          preco_venda?: number
+          unidade_medida?: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria?: string
+          codigo_barras?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          estoque_atual?: number
+          estoque_minimo?: number
+          id?: number
+          nome?: string
+          preco_custo?: number
+          preco_venda?: number
+          unidade_medida?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      PushToken: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          device_info: string | null
+          expo_push_token: string
+          frentista_id: number | null
+          id: number
+          updated_at: string | null
+          usuario_id: number
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          device_info?: string | null
+          expo_push_token: string
+          frentista_id?: number | null
+          id?: number
+          updated_at?: string | null
+          usuario_id: number
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          device_info?: string | null
+          expo_push_token?: string
+          frentista_id?: number | null
+          id?: number
+          updated_at?: string | null
+          usuario_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "PushToken_frentista_id_fkey"
+            columns: ["frentista_id"]
+            isOneToOne: false
+            referencedRelation: "Frentista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "PushToken_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Recebimento: {
+        Row: {
+          fechamento_id: number
+          forma_pagamento_id: number
+          id: number
+          maquininha_id: number | null
+          valor: number
+        }
+        Insert: {
+          fechamento_id: number
+          forma_pagamento_id: number
+          id?: number
+          maquininha_id?: number | null
+          valor: number
+        }
+        Update: {
+          fechamento_id?: number
+          forma_pagamento_id?: number
+          id?: number
+          maquininha_id?: number | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Recebimento_fechamento_id_fkey"
+            columns: ["fechamento_id"]
+            isOneToOne: false
+            referencedRelation: "Fechamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Recebimento_forma_pagamento_id_fkey"
+            columns: ["forma_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "FormaPagamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Recebimento_maquininha_id_fkey"
+            columns: ["maquininha_id"]
+            isOneToOne: false
+            referencedRelation: "Maquininha"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Turno: {
+        Row: {
+          ativo: boolean
+          horario_fim: string
+          horario_inicio: string
+          id: number
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          horario_fim: string
+          horario_inicio: string
+          id?: number
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          horario_fim?: string
+          horario_inicio?: string
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
+      Usuario: {
+        Row: {
+          ativo: boolean
+          createdAt: string
+          email: string
+          id: number
+          nome: string
+          role: Database["public"]["Enums"]["Role"]
+          senha: string
+          updatedAt: string
+        }
+        Insert: {
+          ativo?: boolean
+          createdAt?: string
+          email: string
+          id?: number
+          nome: string
+          role?: Database["public"]["Enums"]["Role"]
+          senha: string
+          updatedAt?: string
+        }
+        Update: {
+          ativo?: boolean
+          createdAt?: string
+          email?: string
+          id?: number
+          nome?: string
+          role?: Database["public"]["Enums"]["Role"]
+          senha?: string
+          updatedAt?: string
+        }
+        Relationships: []
+      }
     }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      calcular_juros_divida: {
+        Args: { p_divida_id: string; p_meses?: number }
+        Returns: number
+      }
+      projetar_quitacao: {
+        Args: { p_divida_id: string; p_pagamento_mensal: number }
+        Returns: {
+          meses_necessarios: number
+          total_a_pagar: number
+          total_juros: number
+        }[]
+      }
+    }
+    Enums: {
+      installment_status: "pendente" | "pago" | "atrasado"
+      periodicity_type: "mensal" | "quinzenal" | "semanal" | "diario"
+      Role: "ADMIN" | "GERENTE" | "OPERADOR" | "FRENTISTA"
+      StatusFechamento: "RASCUNHO" | "FECHADO"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
-// Helper types for easier usage
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
-export type InsertTables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
-export type UpdateTables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
-export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-// Convenient aliases
-export type Bico = Tables<'Bico'>
-export type Bomba = Tables<'Bomba'>
-export type Combustivel = Tables<'Combustivel'>
-export type Compra = Tables<'Compra'>
-export type Estoque = Tables<'Estoque'>
-export type Fechamento = Tables<'Fechamento'>
-export type FechamentoFrentista = Tables<'FechamentoFrentista'>
-export type Emprestimo = Tables<'Emprestimo'>
-export type Parcela = Tables<'Parcela'>
-export type FormaPagamento = Tables<'FormaPagamento'>
-export type Fornecedor = Tables<'Fornecedor'>
-export type Frentista = Tables<'Frentista'>
-export type Leitura = Tables<'Leitura'>
-export type Maquininha = Tables<'Maquininha'>
-export type Recebimento = Tables<'Recebimento'>
-export type Turno = Tables<'Turno'>
-export type Usuario = Tables<'Usuario'>
-export type Produto = Tables<'Produto'>
-export type MovimentacaoEstoque = Tables<'MovimentacaoEstoque'>
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type Role = Enums<'Role'>
-export type StatusFechamento = Enums<'StatusFechamento'>
-
-// Tipo para a tabela de Configuração (não gerado automaticamente)
-export interface Configuracao {
-    id: number;
-    chave: string;
-    valor: string;
-    descricao: string | null;
-    tipo: 'texto' | 'numero' | 'booleano';
-    categoria: string;
-    updated_at: string;
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      installment_status: ["pendente", "pago", "atrasado"],
+      periodicity_type: ["mensal", "quinzenal", "semanal", "diario"],
+      Role: ["ADMIN", "GERENTE", "OPERADOR", "FRENTISTA"],
+      StatusFechamento: ["RASCUNHO", "FECHADO"],
+    },
+  },
+} as const
+
+// === HELPER TYPES ===
+type Tables = Database['public']['Tables'];
+
+export type Bico = Tables['Bico']['Row'];
+export type Bomba = Tables['Bomba']['Row'];
+export type Combustivel = Tables['Combustivel']['Row'];
+export type Compra = Tables['Compra']['Row'];
+export type Configuracao = Tables['Configuracao']['Row'];
+export type Despesa = Tables['Despesa']['Row'];
+export type Emprestimo = Tables['Emprestimo']['Row'];
+export type Estoque = Tables['Estoque']['Row'];
+export type Fechamento = Tables['Fechamento']['Row'];
+export type FechamentoFrentista = Tables['FechamentoFrentista']['Row'];
+export type FormaPagamento = Tables['FormaPagamento']['Row'];
+export type Fornecedor = Tables['Fornecedor']['Row'];
+export type Frentista = Tables['Frentista']['Row'];
+export type Leitura = Tables['Leitura']['Row'];
+export type Maquininha = Tables['Maquininha']['Row'];
+export type Notificacao = Tables['Notificacao']['Row'];
+export type Parcela = Tables['Parcela']['Row'];
+export type PushToken = Tables['PushToken']['Row'];
+export type Recebimento = Tables['Recebimento']['Row'];
+export type Turno = Tables['Turno']['Row'];
+export type Usuario = Tables['Usuario']['Row'];
+
+export type InsertTables<T extends keyof Tables> = Tables[T]['Insert'];
+export type UpdateTables<T extends keyof Tables> = Tables[T]['Update'];
+
+export type Role = Enums<'Role'>;
+export type StatusFechamento = Enums<'StatusFechamento'>;
+export type InstallmentStatus = Enums<'installment_status'>;
+export type PeriodicityType = Enums<'periodicity_type'>;

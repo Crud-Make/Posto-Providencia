@@ -211,6 +211,7 @@ export interface AttendantProfile {
   divergenceRate: number;
   riskLevel: 'Baixo Risco' | 'Médio Risco' | 'Alto Risco';
   avatarColorClass: string;
+  email: string;
 }
 
 export interface AttendantHistoryEntry {
