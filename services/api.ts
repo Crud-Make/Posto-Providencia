@@ -259,6 +259,11 @@ export const bicoService = {
 // ============================================
 
 export const frentistaService = {
+  async getWithEmail(): Promise<(Frentista & { email: string | null })[]> {
+    const { data, error } = await (supabase as any).rpc('get_frentistas_with_email');
+    if (error) throw error;
+    return data || [];
+  },
   async getAll(): Promise<Frentista[]> {
     const { data, error } = await supabase
       .from('Frentista')
@@ -298,6 +303,14 @@ export const frentistaService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  async delete(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('Frentista')
+      .update({ ativo: false })
+      .eq('id', id);
+    if (error) throw error;
   },
 };
 
@@ -1422,6 +1435,188 @@ export const salesAnalysisService = {
   },
 };
 
+// ============================================
+// NOTIFICAÇÕES PUSH
+// ============================================
+
+export const notificationService = {
+  /**
+   * Busca tokens de push ativos para um frentista
+   */
+  async getTokensByFrentistaId(frentistaId: number): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('PushToken')
+      .select('expo_push_token')
+      .eq('frentista_id', frentistaId)
+      .eq('ativo', true);
+
+    if (error) {
+      console.error('Erro ao buscar tokens:', error);
+      return [];
+    }
+
+    return data?.map(t => t.expo_push_token) || [];
+  },
+
+  /**
+   * Cria uma notificação no banco de dados
+   */
+  async createNotification(data: {
+    frentista_id: number;
+    fechamento_frentista_id?: number;
+    titulo: string;
+    mensagem: string;
+    tipo: string;
+    valor_falta?: number;
+  }): Promise<number | null> {
+    const { data: notification, error } = await supabase
+      .from('Notificacao')
+      .insert({
+        frentista_id: data.frentista_id,
+        fechamento_frentista_id: data.fechamento_frentista_id,
+        titulo: data.titulo,
+        mensagem: data.mensagem,
+        tipo: data.tipo,
+        valor_falta: data.valor_falta,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Erro ao criar notificação:', error);
+      return null;
+    }
+
+    return notification?.id || null;
+  },
+
+  /**
+   * Envia push notification via Expo Push API
+   */
+  async sendPushNotification(
+    expoPushTokens: string[],
+    titulo: string,
+    mensagem: string,
+    data?: Record<string, any>
+  ): Promise<boolean> {
+    if (expoPushTokens.length === 0) {
+      console.log('Nenhum token disponível para envio');
+      return false;
+    }
+
+    const messages = expoPushTokens.map(token => ({
+      to: token,
+      sound: 'default' as const,
+      title: titulo,
+      body: mensagem,
+      data: data || {},
+    }));
+
+    try {
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Accept-encoding': 'gzip, deflate',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messages),
+      });
+
+      const result = await response.json();
+      console.log('Push notification enviada:', result);
+      return true;
+    } catch (error) {
+      console.error('Erro ao enviar push notification:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Notifica frentista sobre falta de caixa
+   */
+  async sendFaltaCaixaNotification(
+    frentistaId: number,
+    fechamentoFrentistaId: number,
+    valorFalta: number
+  ): Promise<boolean> {
+    const titulo = '⚠️ Falta de Caixa';
+    const mensagem = `Faltou R$ ${valorFalta.toFixed(2).replace('.', ',')} no seu fechamento de caixa.`;
+
+    // 1. Criar registro no banco
+    const notificationId = await this.createNotification({
+      frentista_id: frentistaId,
+      fechamento_frentista_id: fechamentoFrentistaId,
+      titulo,
+      mensagem,
+      tipo: 'FALTA_CAIXA',
+      valor_falta: valorFalta,
+    });
+
+    if (!notificationId) {
+      console.error('Falha ao criar notificação no banco');
+      return false;
+    }
+
+    // 2. Buscar tokens do frentista
+    const tokens = await this.getTokensByFrentistaId(frentistaId);
+
+    if (tokens.length === 0) {
+      console.log('Frentista não possui dispositivos registrados');
+      // Atualizar notificação como não enviada (já é o padrão)
+      return true; // Notificação criada, mas sem push
+    }
+
+    // 3. Enviar push
+    const sent = await this.sendPushNotification(tokens, titulo, mensagem, {
+      type: 'FALTA_CAIXA',
+      fechamentoFrentistaId,
+      valorFalta,
+    });
+
+    // 4. Atualizar status de envio
+    if (sent) {
+      await supabase
+        .from('Notificacao')
+        .update({
+          enviada: true,
+          data_envio: new Date().toISOString(),
+        })
+        .eq('id', notificationId);
+    }
+
+    return sent;
+  },
+
+  /**
+   * Busca todas as notificações de um frentista
+   */
+  async getByFrentistaId(frentistaId: number): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('Notificacao')
+      .select('*')
+      .eq('frentista_id', frentistaId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao buscar notificações:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  /**
+   * Marca notificação como lida
+   */
+  async markAsRead(notificationId: number): Promise<void> {
+    await supabase
+      .from('Notificacao')
+      .update({ lida: true })
+      .eq('id', notificationId);
+  },
+};
+
 // Export all services
 export const api = {
   combustivel: combustivelService,
@@ -1443,6 +1638,7 @@ export const api = {
   dashboard: dashboardService,
   salesAnalysis: salesAnalysisService,
   despesa: despesaService,
+  notification: notificationService,
 };
 
 export default api;
@@ -1622,6 +1818,23 @@ export async function fetchDashboardData(
     type: (['ticket', 'volume', 'divergence'] as const)[idx % 3],
   }));
 
+  // Calculate estimated profit
+  let totalLucroEstimado = 0;
+  if (vendas.porCombustivel) {
+    totalLucroEstimado = vendas.porCombustivel.reduce((acc, item) => {
+      // Find cost in estoque
+      const est = estoque.find(e => e.combustivel_id === item.combustivel.id);
+      const custoMedio = est?.custo_medio || 0;
+      // Using 0.45 as estimated operational cost per liter (simplified for dashboard)
+      const despesaOp = 0.45;
+
+      const custoTotal = custoMedio + despesaOp;
+      const lucroItem = item.valor - (item.litros * custoTotal);
+
+      return acc + lucroItem;
+    }, 0);
+  }
+
   return {
     fuelData,
     paymentData,
@@ -1631,6 +1844,8 @@ export async function fetchDashboardData(
       totalSales: vendas.totalVendas || 0,
       avgTicket: vendas.totalLitros > 0 ? vendas.totalVendas / vendas.totalLitros * 30 : 0,
       totalDivergence: 0,
+      totalVolume: vendas.totalLitros || 0,
+      totalProfit: totalLucroEstimado,
     },
   };
 }
@@ -1735,7 +1950,7 @@ export async function fetchClosingData() {
 }
 
 export async function fetchAttendantsData() {
-  const frentistas = await frentistaService.getAll();
+  const frentistas = await frentistaService.getWithEmail();
   const turnos = await turnoService.getAll();
 
   // Buscar histórico de fechamentos por frentista
@@ -1755,14 +1970,27 @@ export async function fetchAttendantsData() {
   // Lista de frentistas no formato AttendantProfile
   const list = frentistas.map((f, idx) => {
     const hist = fechamentos[idx] || [];
-    const totalDiff = hist.reduce((acc, h) => acc + (h.diferenca || 0), 0);
-    const divergenceRate = hist.length > 0 ? Math.round((hist.filter(h => (h.diferenca || 0) !== 0).length / hist.length) * 100) : 0;
+    const totalDiff = hist.reduce((acc, h) => {
+      const diff = ((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0);
+      return acc + diff;
+    }, 0);
+    const divergenceRate = hist.length > 0 ? Math.round((hist.filter(h => {
+      const diff = ((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0);
+      return diff !== 0;
+    }).length / hist.length) * 100) : 0;
 
     // Pega iniciais do nome
-    const nameParts = f.nome.split(' ');
-    const initials = nameParts.length >= 2
+    // Identifica o turno
+    const turnoAtualId = (f as any).turno_id;
+    const turnoAtualNome = turnoAtualId ? turnos.find(t => t.id === turnoAtualId)?.nome : null;
+    const turnoHistorico = (hist[0]?.fechamento as any)?.turno?.nome;
+    const displayShift = turnoAtualNome || turnoHistorico || 'Indefinido';
+
+    // Pega iniciais do nome
+    const nameParts = f.nome.trim().split(/\s+/);
+    const initials = nameParts.length >= 2 && nameParts[0] && nameParts[nameParts.length - 1]
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
-      : f.nome.substring(0, 2);
+      : f.nome.trim().substring(0, 2);
 
     // Data de admissão formatada
     const admDate = f.data_admissao ? new Date(f.data_admissao) : new Date();
@@ -1773,7 +2001,7 @@ export async function fetchAttendantsData() {
       name: f.nome,
       initials: initials.toUpperCase(),
       phone: f.telefone || '(00) 00000-0000',
-      shift: (hist[0]?.fechamento as any)?.turno?.nome || ((['Manhã', 'Tarde', 'Noite'] as const)[idx % 3]), // Tenta pegar turno real
+      shift: displayShift,
       status: (f.ativo ? 'Ativo' : 'Inativo') as 'Ativo' | 'Inativo',
       admissionDate: f.data_admissao || 'N/A',
       sinceDate: sinceDate,
@@ -1781,6 +2009,7 @@ export async function fetchAttendantsData() {
       divergenceRate: divergenceRate,
       riskLevel: (divergenceRate <= 10 ? 'Baixo Risco' : divergenceRate <= 30 ? 'Médio Risco' : 'Alto Risco') as 'Baixo Risco' | 'Médio Risco' | 'Alto Risco',
       avatarColorClass: avatarColors[idx % avatarColors.length],
+      email: f.email || 'Não cadastrado',
     };
   });
 
@@ -1790,8 +2019,8 @@ export async function fetchAttendantsData() {
     id: String(h.id),
     date: h.fechamento?.data || 'N/A',
     shift: (h.fechamento as any)?.turno?.nome || 'N/A',
-    value: h.diferenca || 0,
-    status: ((h.diferenca || 0) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
+    value: ((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0),
+    status: ((((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0)) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
   }));
 
   return { list, history };
@@ -1970,7 +2199,7 @@ export async function fetchProfitabilityData(year: number = new Date().getFullYe
   return estoque.map(e => {
     const vendasComb = leituras.filter(l => (l.bico as any)?.combustivel_id === e.combustivel_id);
     const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-    const receitaBruta = vendasComb.reduce((acc, l) => acc + (l.valor_venda || 0), 0);
+    const receitaBruta = vendasComb.reduce((acc, l) => acc + (l.valor_total || 0), 0);
 
     const custoMedio = e.custo_medio || 0;
     const custoTotalL = custoMedio + despOperacional;

@@ -10,11 +10,13 @@ import {
   ChevronDown,
   Loader2,
   User,
-  Clock
+  Clock,
+  Droplet,
+  TrendingUp,
 } from 'lucide-react';
 import KPICard from './KPICard';
 import FuelVolumeChart from './FuelVolumeChart';
-import PaymentMixChart from './PaymentMixChart';
+
 import ClosingsTable from './ClosingsTable';
 import PerformanceSidebar from './PerformanceSidebar';
 import { fetchDashboardData, frentistaService, turnoService } from '../services/api';
@@ -45,6 +47,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
       totalSales: number;
       avgTicket: number;
       totalDivergence: number;
+      totalVolume?: number;
+      totalProfit?: number;
     }
   } | null>(null);
 
@@ -306,23 +310,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
           iconColor="text-red-400"
         />
         <KPICard
-          title="TICKET MÉDIO"
-          value={`R$ ${data.kpis.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          title="LITROS VENDIDOS"
+          value={`${data.kpis.totalVolume?.toLocaleString('pt-BR') || '0'} L`}
           trendValue="+5%"
           trendLabel="vs. ontem"
           isNegativeTrend={false}
-          Icon={Receipt}
-          iconBgColor="bg-gray-100"
-          iconColor="text-gray-400"
+          Icon={Droplet}
+          iconBgColor="bg-blue-100"
+          iconColor="text-blue-500"
         />
         <KPICard
-          title="DIVERGÊNCIA TOTAL"
-          value={`R$ ${data.kpis.totalDivergence.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          title="LUCRO ESTIMADO"
+          value={`R$ ${data.kpis.totalProfit?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}`}
           trendValue="0%"
-          trendLabel="Sem alertas críticos"
+          trendLabel="Baseado na margem média"
           isNegativeTrend={false}
-          alert={data.kpis.totalDivergence > 50}
-          Icon={AlertTriangle}
+          Icon={TrendingUp}
           iconBgColor="bg-green-50"
           iconColor="text-green-500"
         />
@@ -330,9 +333,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
 
       {/* Main Grid: Charts & Performance */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <FuelVolumeChart data={data.fuelData} />
-        <PaymentMixChart data={data.paymentData} />
-        <PerformanceSidebar data={data.performanceData} />
+        <div className="lg:col-span-2 h-full">
+          <FuelVolumeChart data={data.fuelData} />
+        </div>
+        <div className="lg:col-span-1 h-full">
+          <PerformanceSidebar data={data.performanceData} />
+        </div>
       </div>
 
       {/* Closings Table */}
