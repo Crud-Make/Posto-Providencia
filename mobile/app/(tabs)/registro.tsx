@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
@@ -13,7 +13,13 @@ import {
     CircleDollarSign,
     ChevronDown,
     Clock,
-    User
+    User,
+    Users,
+    Calendar,
+    Coffee,
+    Sun,
+    Moon,
+    Sunset
 } from 'lucide-react-native';
 
 // Tipos
@@ -34,6 +40,20 @@ interface RegistroTurno {
     observacoes: string;
 }
 
+interface Turno {
+    id: string;
+    nome: string;
+    horario: string;
+    icon: any;
+}
+
+interface FrentistaEscala {
+    id: number;
+    nome: string;
+    status: 'trabalhando' | 'folga';
+    turno?: string;
+}
+
 const FORMAS_PAGAMENTO: FormaPagamento[] = [
     { id: 'cartao', label: 'Cartão', icon: CreditCard, color: '#7c3aed', bgColor: '#f5f3ff' },
     { id: 'nota', label: 'Nota/Vale', icon: Receipt, color: '#0891b2', bgColor: '#ecfeff' },
@@ -41,11 +61,29 @@ const FORMAS_PAGAMENTO: FormaPagamento[] = [
     { id: 'dinheiro', label: 'Dinheiro', icon: Banknote, color: '#16a34a', bgColor: '#f0fdf4' },
 ];
 
+const TURNOS: Turno[] = [
+    { id: 'manha', nome: 'Manhã', horario: '06:00 - 14:00', icon: Sun },
+    { id: 'tarde', nome: 'Tarde', horario: '14:00 - 22:00', icon: Sunset },
+    { id: 'noite', nome: 'Noite', horario: '22:00 - 06:00', icon: Moon },
+];
+
+// Mock de escala do dia (será substituído por dados reais do Supabase)
+const ESCALA_MOCK: FrentistaEscala[] = [
+    { id: 1, nome: 'João Silva', status: 'trabalhando', turno: 'Manhã' },
+    { id: 2, nome: 'Maria Santos', status: 'trabalhando', turno: 'Manhã' },
+    { id: 3, nome: 'Pedro Oliveira', status: 'folga' },
+    { id: 4, nome: 'Ana Costa', status: 'trabalhando', turno: 'Tarde' },
+    { id: 5, nome: 'Carlos Lima', status: 'folga' },
+];
+
 export default function RegistroScreen() {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [userName, setUserName] = useState('Frentista');
-    const [turnoAtual, setTurnoAtual] = useState('Manhã');
+    const [turnoSelecionado, setTurnoSelecionado] = useState<Turno>(TURNOS[0]);
+    const [showTurnoModal, setShowTurnoModal] = useState(false);
+    const [showEscalaModal, setShowEscalaModal] = useState(false);
+    const [escalaHoje, setEscalaHoje] = useState<FrentistaEscala[]>(ESCALA_MOCK);
 
     const [registro, setRegistro] = useState<RegistroTurno>({
         valorCartao: '',
@@ -56,8 +94,32 @@ export default function RegistroScreen() {
         observacoes: '',
     });
 
+    // Formatar valor para exibição (aceita vírgula e ponto)
+    const formatInputValue = (value: string): string => {
+        // Remove tudo que não for número, vírgula ou ponto
+        let cleanValue = value.replace(/[^0-9.,]/g, '');
+
+        // Substitui ponto por vírgula para padronizar
+        cleanValue = cleanValue.replace('.', ',');
+
+        // Garante apenas uma vírgula
+        const parts = cleanValue.split(',');
+        if (parts.length > 2) {
+            cleanValue = parts[0] + ',' + parts.slice(1).join('');
+        }
+
+        // Limita a 2 casas decimais
+        if (parts.length === 2 && parts[1].length > 2) {
+            cleanValue = parts[0] + ',' + parts[1].substring(0, 2);
+        }
+
+        return cleanValue;
+    };
+
     // Calcular totais
     const parseValue = (value: string): number => {
+        if (!value) return 0;
+        // Substitui vírgula por ponto para calcular
         const parsed = parseFloat(value.replace(',', '.'));
         return isNaN(parsed) ? 0 : parsed;
     };
@@ -79,7 +141,6 @@ export default function RegistroScreen() {
         async function fetchUser() {
             const { data: { user } } = await supabase.auth.getUser();
             if (user?.email) {
-                // Pegar nome do email antes do @
                 const name = user.email.split('@')[0];
                 setUserName(name.charAt(0).toUpperCase() + name.slice(1));
             }
@@ -91,18 +152,31 @@ export default function RegistroScreen() {
     useEffect(() => {
         const hour = new Date().getHours();
         if (hour >= 6 && hour < 14) {
-            setTurnoAtual('Manhã');
+            setTurnoSelecionado(TURNOS[0]); // Manhã
         } else if (hour >= 14 && hour < 22) {
-            setTurnoAtual('Tarde');
+            setTurnoSelecionado(TURNOS[1]); // Tarde
         } else {
-            setTurnoAtual('Noite');
+            setTurnoSelecionado(TURNOS[2]); // Noite
         }
     }, []);
 
+    // Buscar escala do dia (substituir por chamada real ao Supabase)
+    useEffect(() => {
+        async function fetchEscala() {
+            try {
+                // Aqui você buscaria a escala real do Supabase
+                // const { data } = await supabase.from('escalas').select('*').eq('data', hoje);
+                // setEscalaHoje(data);
+            } catch (error) {
+                console.log('Erro ao buscar escala:', error);
+            }
+        }
+        fetchEscala();
+    }, []);
+
     const handleChange = (field: keyof RegistroTurno, value: string) => {
-        // Permite apenas números, vírgula e ponto
-        const cleanValue = value.replace(/[^0-9.,]/g, '');
-        setRegistro(prev => ({ ...prev, [field]: cleanValue }));
+        const formattedValue = formatInputValue(value);
+        setRegistro(prev => ({ ...prev, [field]: formattedValue }));
     };
 
     const formatCurrency = (value: number): string => {
@@ -125,7 +199,7 @@ export default function RegistroScreen() {
 
         Alert.alert(
             'Confirmar Envio',
-            `Deseja enviar o registro do turno?\n\nTotal Informado: ${formatCurrency(totalInformado)}\n${temFalta ? `Falta de Caixa: ${formatCurrency(faltaCaixaValue)}\nTotal Final: ${formatCurrency(totalFinal)}` : ''}`,
+            `Deseja enviar o registro do turno ${turnoSelecionado.nome}?\n\nTotal Informado: ${formatCurrency(totalInformado)}${temFalta ? `\nFalta de Caixa: ${formatCurrency(faltaCaixaValue)}\nTotal Final: ${formatCurrency(totalFinal)}` : ''}`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -136,16 +210,14 @@ export default function RegistroScreen() {
                             const { data: { user } } = await supabase.auth.getUser();
 
                             // Aqui você integraria com o Supabase
-                            // Por enquanto, simula o envio
                             await new Promise(resolve => setTimeout(resolve, 1500));
 
                             Alert.alert(
                                 '✅ Enviado!',
-                                'Seu registro foi enviado com sucesso.',
+                                `Registro do turno ${turnoSelecionado.nome} enviado com sucesso.`,
                                 [{
                                     text: 'OK',
                                     onPress: () => {
-                                        // Limpar formulário
                                         setRegistro({
                                             valorCartao: '',
                                             valorNota: '',
@@ -205,6 +277,10 @@ export default function RegistroScreen() {
         );
     };
 
+    const TurnoIcon = turnoSelecionado.icon;
+    const trabalhando = escalaHoje.filter(f => f.status === 'trabalhando');
+    const folgas = escalaHoje.filter(f => f.status === 'folga');
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -214,8 +290,9 @@ export default function RegistroScreen() {
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
             >
-                {/* Header Card */}
+                {/* Header Card com Seleção de Turno */}
                 <View
                     className="mx-4 mt-4 p-5 bg-white rounded-3xl border border-gray-100"
                     style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
@@ -230,12 +307,53 @@ export default function RegistroScreen() {
                                 <Text className="text-sm text-gray-500">Registre seu turno</Text>
                             </View>
                         </View>
-                        <View className="bg-primary-50 px-4 py-2 rounded-full flex-row items-center gap-2">
-                            <Clock size={16} color="#b91c1c" />
-                            <Text className="text-primary-700 font-bold text-sm">{turnoAtual}</Text>
-                        </View>
+
+                        {/* Botão de Seleção de Turno */}
+                        <TouchableOpacity
+                            className="bg-primary-50 px-4 py-2 rounded-full flex-row items-center gap-2"
+                            onPress={() => setShowTurnoModal(true)}
+                            activeOpacity={0.7}
+                        >
+                            <TurnoIcon size={16} color="#b91c1c" />
+                            <Text className="text-primary-700 font-bold text-sm">{turnoSelecionado.nome}</Text>
+                            <ChevronDown size={14} color="#b91c1c" />
+                        </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* Card de Escala do Dia */}
+                <TouchableOpacity
+                    className="mx-4 mt-4 p-4 bg-white rounded-2xl border border-gray-100 flex-row items-center justify-between"
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
+                    onPress={() => setShowEscalaModal(true)}
+                    activeOpacity={0.7}
+                >
+                    <View className="flex-row items-center gap-3">
+                        <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center">
+                            <Users size={20} color="#3b82f6" />
+                        </View>
+                        <View>
+                            <Text className="text-base font-bold text-gray-800">Escala de Hoje</Text>
+                            <Text className="text-xs text-gray-500">
+                                {trabalhando.length} trabalhando • {folgas.length} de folga
+                            </Text>
+                        </View>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                        <View className="flex-row -space-x-2">
+                            {trabalhando.slice(0, 3).map((f, i) => (
+                                <View
+                                    key={f.id}
+                                    className="w-8 h-8 bg-green-100 rounded-full items-center justify-center border-2 border-white"
+                                    style={{ marginLeft: i > 0 ? -8 : 0 }}
+                                >
+                                    <Text className="text-green-700 text-xs font-bold">{f.nome.charAt(0)}</Text>
+                                </View>
+                            ))}
+                        </View>
+                        <ChevronDown size={18} color="#9ca3af" />
+                    </View>
+                </TouchableOpacity>
 
                 {/* Seção de Valores */}
                 <View className="px-4 mt-6">
@@ -320,9 +438,14 @@ export default function RegistroScreen() {
                         style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
                     >
                         <View className="bg-gray-50 px-5 py-4 border-b border-gray-100">
-                            <View className="flex-row items-center gap-2">
-                                <Calculator size={20} color="#6b7280" />
-                                <Text className="text-base font-bold text-gray-700">Resumo do Turno</Text>
+                            <View className="flex-row items-center justify-between">
+                                <View className="flex-row items-center gap-2">
+                                    <Calculator size={20} color="#6b7280" />
+                                    <Text className="text-base font-bold text-gray-700">Resumo do Turno</Text>
+                                </View>
+                                <View className="bg-primary-100 px-3 py-1 rounded-full">
+                                    <Text className="text-primary-700 text-xs font-bold">{turnoSelecionado.nome}</Text>
+                                </View>
                             </View>
                         </View>
 
@@ -371,6 +494,156 @@ export default function RegistroScreen() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            {/* Modal de Seleção de Turno */}
+            <Modal
+                visible={showTurnoModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowTurnoModal(false)}
+            >
+                <TouchableOpacity
+                    className="flex-1 bg-black/50 justify-end"
+                    activeOpacity={1}
+                    onPress={() => setShowTurnoModal(false)}
+                >
+                    <View className="bg-white rounded-t-3xl">
+                        <View className="p-6 border-b border-gray-100">
+                            <View className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                            <Text className="text-xl font-bold text-gray-800 text-center">Selecionar Turno</Text>
+                        </View>
+
+                        <View className="p-4">
+                            {TURNOS.map((turno) => {
+                                const Icon = turno.icon;
+                                const isSelected = turnoSelecionado.id === turno.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={turno.id}
+                                        className={`flex-row items-center p-4 rounded-2xl mb-3 ${isSelected ? 'bg-primary-50 border-2 border-primary-500' : 'bg-gray-50 border-2 border-transparent'}`}
+                                        onPress={() => {
+                                            setTurnoSelecionado(turno);
+                                            setShowTurnoModal(false);
+                                        }}
+                                    >
+                                        <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${isSelected ? 'bg-primary-100' : 'bg-gray-200'}`}>
+                                            <Icon size={24} color={isSelected ? '#b91c1c' : '#6b7280'} />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className={`text-lg font-bold ${isSelected ? 'text-primary-700' : 'text-gray-800'}`}>
+                                                {turno.nome}
+                                            </Text>
+                                            <Text className="text-sm text-gray-500">{turno.horario}</Text>
+                                        </View>
+                                        {isSelected && (
+                                            <View className="w-8 h-8 bg-primary-500 rounded-full items-center justify-center">
+                                                <Check size={18} color="#fff" strokeWidth={3} />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        <View className="p-4 pb-8">
+                            <TouchableOpacity
+                                className="w-full py-4 bg-gray-100 rounded-2xl items-center"
+                                onPress={() => setShowTurnoModal(false)}
+                            >
+                                <Text className="text-gray-600 font-bold">Cancelar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Modal de Escala do Dia */}
+            <Modal
+                visible={showEscalaModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowEscalaModal(false)}
+            >
+                <TouchableOpacity
+                    className="flex-1 bg-black/50 justify-end"
+                    activeOpacity={1}
+                    onPress={() => setShowEscalaModal(false)}
+                >
+                    <View className="bg-white rounded-t-3xl max-h-[80%]">
+                        <View className="p-6 border-b border-gray-100">
+                            <View className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                            <View className="flex-row items-center justify-center gap-2">
+                                <Calendar size={24} color="#3b82f6" />
+                                <Text className="text-xl font-bold text-gray-800">Escala de Hoje</Text>
+                            </View>
+                            <Text className="text-center text-gray-500 mt-1">
+                                {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            </Text>
+                        </View>
+
+                        <ScrollView className="p-4">
+                            {/* Trabalhando */}
+                            <View className="mb-6">
+                                <View className="flex-row items-center gap-2 mb-3">
+                                    <View className="w-3 h-3 bg-green-500 rounded-full" />
+                                    <Text className="text-base font-bold text-gray-700">Trabalhando ({trabalhando.length})</Text>
+                                </View>
+                                {trabalhando.map((frentista) => (
+                                    <View
+                                        key={frentista.id}
+                                        className="flex-row items-center p-3 bg-green-50 rounded-xl mb-2"
+                                    >
+                                        <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
+                                            <Text className="text-green-700 font-bold">{frentista.nome.charAt(0)}</Text>
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-base font-semibold text-gray-800">{frentista.nome}</Text>
+                                            <Text className="text-xs text-gray-500">Turno: {frentista.turno}</Text>
+                                        </View>
+                                        <View className="bg-green-100 px-3 py-1 rounded-full">
+                                            <Text className="text-green-700 text-xs font-bold">Ativo</Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* De Folga */}
+                            <View className="mb-6">
+                                <View className="flex-row items-center gap-2 mb-3">
+                                    <View className="w-3 h-3 bg-orange-500 rounded-full" />
+                                    <Text className="text-base font-bold text-gray-700">De Folga ({folgas.length})</Text>
+                                </View>
+                                {folgas.map((frentista) => (
+                                    <View
+                                        key={frentista.id}
+                                        className="flex-row items-center p-3 bg-orange-50 rounded-xl mb-2"
+                                    >
+                                        <View className="w-10 h-10 bg-orange-100 rounded-full items-center justify-center mr-3">
+                                            <Coffee size={18} color="#f59e0b" />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-base font-semibold text-gray-800">{frentista.nome}</Text>
+                                            <Text className="text-xs text-gray-500">Dia de descanso</Text>
+                                        </View>
+                                        <View className="bg-orange-100 px-3 py-1 rounded-full">
+                                            <Text className="text-orange-700 text-xs font-bold">Folga</Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        </ScrollView>
+
+                        <View className="p-4 pb-8 border-t border-gray-100">
+                            <TouchableOpacity
+                                className="w-full py-4 bg-gray-100 rounded-2xl items-center"
+                                onPress={() => setShowEscalaModal(false)}
+                            >
+                                <Text className="text-gray-600 font-bold">Fechar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
