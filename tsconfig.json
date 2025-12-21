@@ -31,5 +31,14 @@
     "**/*.ts",
     "**/*.tsx",
     "vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "netlify",
+    "*.cjs",
+    "create_*.ts",
+    "verify_*.ts",
+    "reset_*.ts"
   ]
 }

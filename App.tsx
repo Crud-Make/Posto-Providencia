@@ -18,7 +18,7 @@ import { Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings'>('dashboard');
 
   if (loading) {
     return (
@@ -33,7 +33,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans text-gray-900 transition-colors duration-200">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
 
       {/* Sidebar for Desktop */}
       <Sidebar
@@ -72,7 +72,10 @@ const AppContent: React.FC = () => {
             <DailyReadingsScreen />
           )}
           {currentView === 'inventory' && (
-            <InventoryDashboardScreen onRegisterPurchase={() => setCurrentView('purchase')} />
+            <InventoryDashboardScreen initialTab="fuels" onRegisterPurchase={() => setCurrentView('purchase')} />
+          )}
+          {currentView === 'products' && (
+            <InventoryDashboardScreen initialTab="stock" onRegisterPurchase={() => setCurrentView('purchase')} />
           )}
           {currentView === 'purchase' && (
             <PurchaseRegistrationScreen />
@@ -92,10 +95,14 @@ const AppContent: React.FC = () => {
   );
 };
 
+import { ThemeProvider } from './contexts/ThemeContext';
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </AuthProvider>
   );
 };
