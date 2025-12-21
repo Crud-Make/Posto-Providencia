@@ -1,11 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-   FileText, Calculator, TrendingUp, Package, DollarSign, BarChart2, MoreVertical, Settings, Calendar, Save, RefreshCw
+   FileText, Calculator, TrendingUp, Package, DollarSign, MoreVertical, Settings, Calendar, Save, RefreshCw
 } from 'lucide-react';
-import {
-   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-   BarChart, Bar
-} from 'recharts';
 import { combustivelService, compraService, estoqueService } from '../services/api';
 import type { Combustivel } from '../services/database.types';
 
@@ -16,32 +12,17 @@ type CombustivelHibrido = {
    // Campos de VENDA
    inicial: string;            // Leitura inicial
    fechamento: string;         // Leitura final
+   preco_venda_atual: string;  // Preço de venda PRATICADO (G5 na planilha)
    // Campos de COMPRA
    compra_lt: string;          // Litros comprados
    compra_rs: string;          // Valor total da compra
    estoque_anterior: string;   // Estoque ano passado
 };
 
-const TABLE_INPUT_CLASS = "w-full px-2 py-1 text-right text-sm border border-gray-200 rounded focus:ring-2 focus:border-emerald-500 outline-none transition-all";
-const TABLE_INPUT_ORANGE_CLASS = "w-full px-2 py-1 text-right text-sm border border-gray-200 rounded focus:ring-2 focus:border-orange-500 outline-none transition-all";
+const TABLE_INPUT_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 rounded-lg focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white hover:border-emerald-300";
+const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 rounded-lg focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all shadow-sm bg-white hover:border-orange-300";
 
-// Mock Data for Charts
-const salesTrendData = [
-   { name: 'Seg', vendas: 12000, proj: null },
-   { name: 'Ter', vendas: 13500, proj: null },
-   { name: 'Qua', vendas: 11800, proj: null },
-   { name: 'Qui', vendas: 14200, proj: null },
-   { name: 'Sex', vendas: 15600, proj: null },
-   { name: 'Sab', vendas: 17800, proj: 17800 },
-   { name: 'Dom', vendas: null, proj: 18200 },
-];
 
-const costRevenueData = [
-   { name: 'Sem 1', receita: 45000, custo: 38000 },
-   { name: 'Sem 2', receita: 48000, custo: 40000 },
-   { name: 'Sem 3', receita: 46000, custo: 39000 },
-   { name: 'Proj.', receita: 52000, custo: 43000 },
-];
 
 const PurchaseRegistrationScreen: React.FC = () => {
    const [loading, setLoading] = useState(true);
@@ -73,6 +54,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
                codigo: c.codigo,
                inicial: '', // Idealmente buscaria última leitura
                fechamento: '',
+               preco_venda_atual: c.preco_venda ? c.preco_venda.toString().replace('.', ',') : '0',
                compra_lt: '',
                compra_rs: '',
                estoque_anterior: est ? est.quantidade_atual.toString() : '0',
@@ -202,17 +184,23 @@ const PurchaseRegistrationScreen: React.FC = () => {
       return fechamento - inicial;
    };
 
+   // Valor por Bico conforme planilha: H5 = F5 * G5
+   // F5 = Litros vendidos
+   // G5 = Preço de venda PRATICADO
    const calcValorPorBico = (c: CombustivelHibrido): number => {
       const litros = calcLitrosVendidos(c);
-      const valorVenda = calcValorParaVenda(c);
-      return litros * valorVenda;
+      const precoAtual = parseValue(c.preco_venda_atual); // G5
+      return litros * precoAtual;
    };
 
+   // Lucro por Litro conforme planilha: I5 = G5 - G19
+   // G5 = Preço de venda PRATICADO (atual no sistema)
+   // G19 = Valor SUGERIDO para venda (custo + despesas)
    const calcLucroLt = (c: CombustivelHibrido): number => {
-      const valorVenda = calcValorParaVenda(c);
-      const custoMedio = calcMediaLtRs(c);
-      if (custoMedio === 0) return 0;
-      return valorVenda - custoMedio;
+      const precoAtual = parseValue(c.preco_venda_atual); // G5 - Preço praticado
+      const valorSugerido = calcValorParaVenda(c);        // G19 - Valor sugerido
+      if (precoAtual === 0) return 0;
+      return precoAtual - valorSugerido;
    };
 
    const calcLucroBico = (c: CombustivelHibrido): number => {
@@ -221,13 +209,14 @@ const PurchaseRegistrationScreen: React.FC = () => {
       return litros * lucroLt;
    };
 
+   // Margem % conforme planilha: K5 = I5/G5
+   // I5 = Lucro por Litro
+   // G5 = Preço de venda PRATICADO
    const calcMargemPct = (c: CombustivelHibrido): number => {
-      const valorVenda = calcValorParaVenda(c);
-      const lucroLt = calcLucroLt(c);
-      if (valorVenda === 0) return 0;
-      // Planilha: I19:=H22/G19 (Despesa por Litro / Preço Venda)
-      // Ou K5:=I5/G5 (Lucro LT / Preço Venda)
-      return (lucroLt / valorVenda) * 100;
+      const precoAtual = parseValue(c.preco_venda_atual); // G5
+      const lucroLt = calcLucroLt(c);                      // I5
+      if (precoAtual === 0) return 0;
+      return (lucroLt / precoAtual) * 100;
    };
 
    const calcEstoqueHoje = (c: CombustivelHibrido): number => {
@@ -350,11 +339,11 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
    return (
       <div className="bg-gray-50 font-sans text-slate-800 transition-colors duration-300 pb-12 min-h-screen">
-         <header className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+         <header className="w-[98%] mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                <div>
                   <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                     Compra, Custo, Estoque e Venda
+                     Compra e Venda
                   </h1>
                   <p className="mt-1 text-sm text-slate-500">
                      Sistema integrado de gestão baseado na planilha Posto Jorro 2025.
@@ -380,75 +369,8 @@ const PurchaseRegistrationScreen: React.FC = () => {
             </div>
          </header>
 
-         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            {/* === PROJEÇÕES E ANÁLISE === */}
-            <section className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
-               <div className="bg-indigo-600 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                     <BarChart2 className="text-white" size={24} />
-                     <h2 className="text-white font-semibold text-lg">Projeções e Análise Preditiva</h2>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                     <label className="bg-indigo-700/50 text-indigo-100 px-3 py-1 rounded flex items-center gap-2">
-                        <span className="text-[10px] uppercase font-bold tracking-wider opacity-75">Período</span>
-                        <select className="bg-transparent border-none p-0 pr-6 text-xs focus:ring-0 cursor-pointer font-medium text-white outline-none">
-                           <option className="text-slate-800">7 Dias</option>
-                           <option className="text-slate-800">30 Dias</option>
-                        </select>
-                     </label>
-                  </div>
-               </div>
+         <main className="w-[98%] mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
-               <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* CHART 1: SALES TREND */}
-                  <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm relative group">
-                     {/* CHART 1: SALES TREND */}
-                     <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center justify-between">
-                        <span>Tendência de Vendas (Litros)</span>
-                        <span className="text-xs text-emerald-500 font-bold bg-emerald-50 px-2 py-1 rounded">+12% Proj.</span>
-                     </h3>
-                     <div className="h-48 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                           <AreaChart data={salesTrendData}>
-                              <defs>
-                                 <linearGradient id="colorVendas" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                 </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                              <Tooltip />
-                              <Area type="monotone" dataKey="vendas" stroke="#10b981" fillOpacity={1} fill="url(#colorVendas)" />
-                              <Area type="monotone" dataKey="proj" stroke="#10b981" strokeDasharray="5 5" fill="none" />
-                           </AreaChart>
-                        </ResponsiveContainer>
-                     </div>
-                     <p className="text-xs text-slate-400 mt-3 text-center">Projeção baseada na média móvel dos últimos 30 dias</p>
-                  </div>
-
-                  {/* CHART 2: COST VS REVENUE */}
-                  <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm relative group">
-                     <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center justify-between">
-                        <span>Custo vs Receita Projetada</span>
-                        <span className="text-xs text-blue-500 font-bold bg-blue-50 px-2 py-1 rounded">Margem Estável</span>
-                     </h3>
-                     <div className="h-48 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                           <BarChart data={costRevenueData}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                              <Tooltip cursor={{ fill: 'transparent' }} />
-                              <Bar dataKey="receita" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="custo" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                           </BarChart>
-                        </ResponsiveContainer>
-                     </div>
-                     <p className="text-xs text-slate-400 mt-3 text-center">Estimativa de fluxo de caixa para a próxima semana</p>
-                  </div>
-
-               </div>
-            </section>
 
             {/* === SEÇÃO VENDA === */}
             <section className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
@@ -460,17 +382,17 @@ const PurchaseRegistrationScreen: React.FC = () => {
                   <table className="w-full text-sm text-left">
                      <thead className="bg-slate-100 text-xs uppercase font-semibold text-slate-600 whitespace-nowrap">
                         <tr>
-                           <th className="px-4 py-3 min-w-[120px]">Produtos</th>
-                           <th className="px-4 py-3 text-center">Inicial</th>
-                           <th className="px-4 py-3 text-center">Fechamento</th>
-                           <th className="px-4 py-3 text-right">Litros</th>
-                           <th className="px-4 py-3 text-right">Valor LT R$</th>
-                           <th className="px-4 py-3 text-right text-blue-600">Valor p/ Bico</th>
-                           <th className="px-4 py-3 text-right text-emerald-600">Lucro LT R$</th>
-                           <th className="px-4 py-3 text-right text-emerald-600">Lucro Bico R$</th>
-                           <th className="px-4 py-3 text-right">Margem %</th>
-                           <th className="px-4 py-3 text-right">Prod. Vendido</th>
-                           <th className="px-4 py-3 text-right">Produto %</th>
+                           <th className="px-4 py-4 min-w-[120px]">Produtos</th>
+                           <th className="px-4 py-4 text-center">Inicial</th>
+                           <th className="px-4 py-4 text-center">Fechamento</th>
+                           <th className="px-4 py-4 text-right">Litros</th>
+                           <th className="px-4 py-4 text-right text-emerald-600">Preço Atual R$</th>
+                           <th className="px-4 py-4 text-right text-blue-600">Valor p/ Bico</th>
+                           <th className="px-4 py-4 text-right text-amber-600">Lucro LT R$</th>
+                           <th className="px-4 py-4 text-right text-amber-600">Lucro Bico R$</th>
+                           <th className="px-4 py-4 text-right">Margem %</th>
+                           <th className="px-4 py-4 text-right">Prod. Vendido</th>
+                           <th className="px-4 py-4 text-right">Produto %</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-gray-100">
@@ -485,45 +407,47 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
                            return (
                               <tr key={c.id} className={`${rowClass} transition-colors`}>
-                                 <td className="px-4 py-3 font-medium">{c.nome}</td>
-                                 <td className="px-2 py-2">
+                                 <td className="px-4 py-5 font-medium">{c.nome}</td>
+                                 <td className="px-3 py-5 min-w-[180px]">
                                     <input
                                        className={TABLE_INPUT_CLASS}
                                        type="text"
                                        value={c.inicial}
+                                       placeholder="0,00"
                                        onChange={(e) => handleChange(c.id, 'inicial', e.target.value)}
                                     />
                                  </td>
-                                 <td className="px-2 py-2">
+                                 <td className="px-3 py-5 min-w-[180px]">
                                     <input
                                        className={TABLE_INPUT_CLASS}
                                        type="text"
                                        value={c.fechamento}
+                                       placeholder="0,00"
                                        onChange={(e) => handleChange(c.id, 'fechamento', e.target.value)}
                                     />
                                  </td>
-                                 <td className="px-4 py-3 text-right font-bold text-slate-700">
+                                 <td className="px-4 py-5 text-right font-bold text-slate-700">
                                     {litres > 0 ? formatToBR(litres, 0) : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/30">
-                                    {calcValorParaVenda(c) > 0 ? formatCurrency(calcValorParaVenda(c)) : '-'}
+                                 <td className="px-4 py-5 text-right text-emerald-600 font-bold bg-emerald-50/30">
+                                    {parseValue(c.preco_venda_atual) > 0 ? formatCurrency(parseValue(c.preco_venda_atual)) : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right text-blue-500">
+                                 <td className="px-4 py-5 text-right text-blue-500">
                                     {valorBico > 0 ? formatCurrency(valorBico) : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right text-emerald-500">
+                                 <td className="px-4 py-5 text-right text-amber-500">
                                     {lucroLt !== 0 ? formatCurrency(lucroLt) : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right text-emerald-500">
+                                 <td className="px-4 py-5 text-right text-amber-500">
                                     {lucroBico !== 0 ? formatCurrency(lucroBico) : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right text-red-400">
+                                 <td className="px-4 py-5 text-right text-red-400">
                                     {margemPct !== 0 ? `${formatToBR(margemPct)}%` : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right">
+                                 <td className="px-4 py-5 text-right">
                                     {litres > 0 ? formatToBR(litres, 0) : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right font-bold">
+                                 <td className="px-4 py-5 text-right font-bold">
                                     {produtoPct > 0 ? `${formatToBR(produtoPct)}%` : '-'}
                                  </td>
                               </tr>
@@ -584,8 +508,8 @@ const PurchaseRegistrationScreen: React.FC = () => {
                         onClick={handleSave}
                         disabled={saving || totais.totalCompraLt === 0}
                         className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold shadow-lg transition-all ${saving || totais.totalCompraLt === 0
-                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                              : 'bg-white text-orange-600 hover:bg-orange-50 active:scale-95'
+                           ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                           : 'bg-white text-orange-600 hover:bg-orange-50 active:scale-95'
                            }`}
                      >
                         <Save size={18} />
@@ -603,11 +527,11 @@ const PurchaseRegistrationScreen: React.FC = () => {
                            <th className="px-4 py-2 text-center border-l border-slate-300 text-emerald-700" colSpan={1}>Venda</th>
                         </tr>
                         <tr>
-                           <th className="px-4 py-3 min-w-[120px]">Produtos</th>
-                           <th className="px-4 py-3 text-center border-l border-slate-200">Compra, LT.</th>
-                           <th className="px-4 py-3 text-center">Compra, R$.</th>
-                           <th className="px-4 py-3 text-right text-blue-600">Média LT R$</th>
-                           <th className="px-4 py-3 text-right border-l border-slate-200 text-emerald-600">Valor P/ Venda</th>
+                           <th className="px-4 py-4 min-w-[120px]">Produtos</th>
+                           <th className="px-4 py-4 text-center border-l border-slate-200">Compra, LT.</th>
+                           <th className="px-4 py-4 text-center">Compra, R$.</th>
+                           <th className="px-4 py-4 text-right text-blue-600">Média LT R$</th>
+                           <th className="px-4 py-4 text-right border-l border-slate-200 text-emerald-600">Valor P/ Venda</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-gray-100">
@@ -621,27 +545,29 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
                            return (
                               <tr key={c.id} className={`${rowClass} transition-colors`}>
-                                 <td className="px-4 py-3 font-medium">{c.nome}</td>
-                                 <td className="px-2 py-2 border-l border-dashed border-gray-200">
+                                 <td className="px-4 py-5 font-medium">{c.nome}</td>
+                                 <td className="px-3 py-5 min-w-[180px] border-l border-dashed border-gray-200">
                                     <input
                                        className={TABLE_INPUT_ORANGE_CLASS}
                                        type="text"
                                        value={c.compra_lt}
+                                       placeholder="0"
                                        onChange={(e) => handleChange(c.id, 'compra_lt', e.target.value)}
                                     />
                                  </td>
-                                 <td className="px-2 py-2">
+                                 <td className="px-3 py-5 min-w-[180px]">
                                     <input
                                        className={TABLE_INPUT_ORANGE_CLASS}
                                        type="text"
                                        value={c.compra_rs}
+                                       placeholder="0,00"
                                        onChange={(e) => handleChange(c.id, 'compra_rs', e.target.value)}
                                     />
                                  </td>
-                                 <td className="px-4 py-3 text-right text-blue-500">
+                                 <td className="px-4 py-5 text-right text-blue-500">
                                     {mediaLt > 0 ? formatCurrency(mediaLt) : '-'}
                                  </td>
-                                 <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/30 border-l border-dashed border-gray-200">
+                                 <td className="px-4 py-5 text-right text-emerald-600 font-bold bg-emerald-50/30 border-l border-dashed border-gray-200">
                                     {valorVenda > 0 ? formatCurrency(valorVenda) : '-'}
                                  </td>
                               </tr>
@@ -661,35 +587,6 @@ const PurchaseRegistrationScreen: React.FC = () => {
                </div>
             </section>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 flex flex-col">
-                  <div className="flex items-center gap-3 mb-3">
-                     <TrendingUp className="text-emerald-600" size={20} />
-                     <h3 className="font-bold text-emerald-800">Seção Venda</h3>
-                  </div>
-                  <p className="text-sm text-emerald-900 leading-relaxed">
-                     Registre as leituras iniciais e finais dos bicos para calcular vendas e lucros automaticamente. O sistema utiliza a diferença entre o fechamento e a leitura inicial.
-                  </p>
-               </div>
-               <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 flex flex-col">
-                  <div className="flex items-center gap-3 mb-3">
-                     <Package className="text-orange-600" size={20} />
-                     <h3 className="font-bold text-orange-800">Seção Compra</h3>
-                  </div>
-                  <p className="text-sm text-orange-900 leading-relaxed">
-                     Registre as compras de combustível para calcular o custo médio e controlar o estoque. Insira a quantidade (LT) e o valor total (R$) da nota fiscal.
-                  </p>
-               </div>
-               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex flex-col">
-                  <div className="flex items-center gap-3 mb-3">
-                     <DollarSign className="text-blue-600" size={20} />
-                     <h3 className="font-bold text-blue-800">Integração</h3>
-                  </div>
-                  <p className="text-sm text-blue-900 leading-relaxed">
-                     O <strong>Lucro por Litro</strong> usa o Custo Médio da compra para calcular rentabilidade real. O <strong>Estoque Hoje</strong> desconta as vendas automaticamente do saldo anterior.
-                  </p>
-               </div>
-            </div>
          </main>
       </div>
    );

@@ -494,6 +494,95 @@ export type Database = {
                     },
                 ]
             }
+            Produto: {
+                Row: {
+                    id: number
+                    nome: string
+                    codigo_barras: string | null
+                    categoria: string
+                    descricao: string | null
+                    preco_custo: number
+                    preco_venda: number
+                    estoque_atual: number
+                    estoque_minimo: number
+                    unidade_medida: string
+                    ativo: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: number
+                    nome: string
+                    codigo_barras?: string | null
+                    categoria: string
+                    descricao?: string | null
+                    preco_custo?: number
+                    preco_venda?: number
+                    estoque_atual?: number
+                    estoque_minimo?: number
+                    unidade_medida?: string
+                    ativo?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: number
+                    nome?: string
+                    codigo_barras?: string | null
+                    categoria?: string
+                    descricao?: string | null
+                    preco_custo?: number
+                    preco_venda?: number
+                    estoque_atual?: number
+                    estoque_minimo?: number
+                    unidade_medida?: string
+                    ativo?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: []
+            }
+            MovimentacaoEstoque: {
+                Row: {
+                    id: number
+                    produto_id: number
+                    tipo: 'entrada' | 'saida' | 'ajuste'
+                    quantidade: number
+                    data: string
+                    responsavel: string | null
+                    observacao: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: number
+                    produto_id: number
+                    tipo: 'entrada' | 'saida' | 'ajuste'
+                    quantidade: number
+                    data?: string
+                    responsavel?: string | null
+                    observacao?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: number
+                    produto_id?: number
+                    tipo?: 'entrada' | 'saida' | 'ajuste'
+                    quantidade?: number
+                    data?: string
+                    responsavel?: string | null
+                    observacao?: string | null
+                    created_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "MovimentacaoEstoque_produto_id_fkey"
+                        columns: ["produto_id"]
+                        isOneToOne: false
+                        referencedRelation: "Produto"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             Turno: {
                 Row: {
                     ativo: boolean
@@ -683,6 +772,19 @@ export type Maquininha = Tables<'Maquininha'>
 export type Recebimento = Tables<'Recebimento'>
 export type Turno = Tables<'Turno'>
 export type Usuario = Tables<'Usuario'>
+export type Produto = Tables<'Produto'>
+export type MovimentacaoEstoque = Tables<'MovimentacaoEstoque'>
 
 export type Role = Enums<'Role'>
 export type StatusFechamento = Enums<'StatusFechamento'>
+
+// Tipo para a tabela de Configuração (não gerado automaticamente)
+export interface Configuracao {
+    id: number;
+    chave: string;
+    valor: string;
+    descricao: string | null;
+    tipo: 'texto' | 'numero' | 'booleano';
+    categoria: string;
+    updated_at: string;
+}

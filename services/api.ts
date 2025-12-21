@@ -17,6 +17,7 @@ import type {
   Usuario,
   Emprestimo,
   Parcela,
+  Configuracao,
   InsertTables,
   UpdateTables,
 } from './database.types';
@@ -135,6 +136,70 @@ export const bombaService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+};
+
+// ============================================
+// DESPESAS
+// ============================================
+
+export const despesaService = {
+  async getAll(): Promise<any[]> {
+    const { data, error } = await (supabase as any)
+      .from('Despesa')
+      .select('*')
+      .order('data', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getByMonth(year: number, month: number): Promise<any[]> {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+    const { data, error } = await (supabase as any)
+      .from('Despesa')
+      .select('*')
+      .gte('data', startDate)
+      .lte('data', endDate);
+
+    if (error) {
+      // Fail gracefully if table doesn't exist yet (migration pending)
+      console.warn('Erro ao buscar despesas (tabela pode não existir):', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async create(despesa: any): Promise<any> {
+    const { data, error } = await (supabase as any)
+      .from('Despesa')
+      .insert(despesa)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: number, despesa: any): Promise<any> {
+    const { data, error } = await (supabase as any)
+      .from('Despesa')
+      .update(despesa)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: number): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('Despesa')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   },
 };
 
@@ -285,6 +350,23 @@ export const leituraService = {
       .select()
       .single();
     if (error) throw error;
+
+    // Atualiza estoque
+    const { data: bico } = await supabase
+      .from('Bico')
+      .select('combustivel_id')
+      .eq('id', leitura.bico_id)
+      .single();
+
+    if (bico) {
+      const estoque = await estoqueService.getByCombustivel(bico.combustivel_id);
+      if (estoque) {
+        await estoqueService.update(estoque.id, {
+          quantidade_atual: estoque.quantidade_atual - litros_vendidos,
+        });
+      }
+    }
+
     return data;
   },
 
@@ -318,6 +400,39 @@ export const leituraService = {
       .insert(leiturasWithCalc)
       .select();
     if (error) throw error;
+
+    // Atualiza estoque para todas as leituras
+    const bicosIds = [...new Set(leituras.map(l => l.bico_id))];
+    const { data: bicosData } = await supabase
+      .from('Bico')
+      .select('id, combustivel_id')
+      .in('id', bicosIds);
+
+    if (bicosData) {
+      const bicoToCombustivel = Object.fromEntries(
+        bicosData.map(b => [b.id, b.combustivel_id])
+      );
+
+      // Agrupa litros vendidos por combustível
+      const vendasPorCombustivel: Record<number, number> = {};
+      leiturasWithCalc.forEach(l => {
+        const combId = bicoToCombustivel[l.bico_id];
+        if (combId) {
+          vendasPorCombustivel[combId] = (vendasPorCombustivel[combId] || 0) + l.litros_vendidos;
+        }
+      });
+
+      // Atualiza o estoque de cada combustível
+      for (const [combId, totalLitros] of Object.entries(vendasPorCombustivel)) {
+        const estoque = await estoqueService.getByCombustivel(Number(combId));
+        if (estoque) {
+          await estoqueService.update(estoque.id, {
+            quantidade_atual: estoque.quantidade_atual - totalLitros,
+          });
+        }
+      }
+    }
+
     return data || [];
   },
 
@@ -643,6 +758,20 @@ export const fechamentoFrentistaService = {
     if (error) throw error;
     return data || [];
   },
+
+  async getByDate(dataStr: string) {
+    const { data, error } = await supabase
+      .from('FechamentoFrentista')
+      .select(`
+        *,
+        frentista:Frentista(*),
+        fechamento:Fechamento!inner(data, turno_id, turno:Turno(*))
+      `)
+      .eq('fechamento.data', dataStr);
+
+    if (error) throw error;
+    return data || [];
+  },
 };
 
 // ============================================
@@ -753,8 +882,20 @@ export const compraService = {
     // Atualiza estoque
     const estoque = await estoqueService.getByCombustivel(compra.combustivel_id);
     if (estoque) {
+      const estoqueAtual = estoque.quantidade_atual;
+      const custoMedioAtual = estoque.custo_medio || 0;
+      const novaQuantidade = compra.quantidade_litros;
+      const novoCusto = custo_por_litro;
+
+      // Calcula novo custo médio ponderado
+      const totalValorAntigo = estoqueAtual * custoMedioAtual;
+      const totalValorNovo = totalValorAntigo + (novaQuantidade * novoCusto);
+      const quantidadeTotal = estoqueAtual + novaQuantidade;
+      const novoCustoMedio = quantidadeTotal > 0 ? totalValorNovo / quantidadeTotal : novoCusto;
+
       await estoqueService.update(estoque.id, {
-        quantidade_atual: estoque.quantidade_atual + compra.quantidade_litros,
+        quantidade_atual: quantidadeTotal,
+        custo_medio: novoCustoMedio,
       });
     }
 
@@ -806,6 +947,17 @@ export const turnoService = {
     const { data, error } = await supabase
       .from('Turno')
       .insert(turno)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: number, turno: UpdateTables<'Turno'>): Promise<Turno> {
+    const { data, error } = await supabase
+      .from('Turno')
+      .update(turno)
+      .eq('id', id)
       .select()
       .single();
     if (error) throw error;
@@ -910,6 +1062,71 @@ export const parcelaService = {
 };
 
 // ============================================
+// CONFIGURAÇÕES DO SISTEMA
+// ============================================
+
+export const configuracaoService = {
+  async getAll(): Promise<Configuracao[]> {
+    const { data, error } = await (supabase as any)
+      .from('Configuracao')
+      .select('*')
+      .order('categoria', { ascending: true });
+    if (error) throw error;
+    return (data || []) as Configuracao[];
+  },
+
+  async getByChave(chave: string): Promise<Configuracao | null> {
+    const { data, error } = await (supabase as any)
+      .from('Configuracao')
+      .select('*')
+      .eq('chave', chave)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data as Configuracao | null;
+  },
+
+  async getByCategoria(categoria: string): Promise<Configuracao[]> {
+    const { data, error } = await (supabase as any)
+      .from('Configuracao')
+      .select('*')
+      .eq('categoria', categoria);
+    if (error) throw error;
+    return (data || []) as Configuracao[];
+  },
+
+  async update(chave: string, valor: string): Promise<Configuracao> {
+    const { data, error } = await (supabase as any)
+      .from('Configuracao')
+      .update({ valor, updated_at: new Date().toISOString() })
+      .eq('chave', chave)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as Configuracao;
+  },
+
+  async getValorNumerico(chave: string, valorPadrao: number = 0): Promise<number> {
+    try {
+      const config = await this.getByChave(chave);
+      if (!config) return valorPadrao;
+      return parseFloat(config.valor) || valorPadrao;
+    } catch {
+      return valorPadrao;
+    }
+  },
+
+  async create(config: Omit<Configuracao, 'id' | 'updated_at'>): Promise<Configuracao> {
+    const { data, error } = await (supabase as any)
+      .from('Configuracao')
+      .insert(config)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as Configuracao;
+  }
+};
+
+// ============================================
 // DASHBOARD / ESTATÍSTICAS
 // ============================================
 
@@ -959,6 +1176,252 @@ export const dashboardService = {
   },
 };
 
+// ============================================
+// ANÁLISE DE VENDAS MENSAIS
+// ============================================
+
+interface SalesAnalysisData {
+  products: {
+    id: string;
+    name: string;
+    code: string;
+    colorClass: string;
+    bicos: string;
+    readings: { start: number; end: number };
+    volume: number;
+    price: number;
+    cost: number;
+    total: number;
+    profit: number;
+    margin: number;
+  }[];
+  profitability: {
+    name: string;
+    value: number;
+    percentage: number;
+    margin: number;
+    color: string;
+  }[];
+  totals: {
+    volume: number;
+    revenue: number;
+    profit: number;
+    avgMargin: number;
+    avgProfitPerLiter: number;
+  };
+  previousPeriod?: {
+    volume: number;
+    revenue: number;
+    profit: number;
+  };
+}
+
+export const salesAnalysisService = {
+  async getMonthlyAnalysis(year: number, month: number): Promise<SalesAnalysisData> {
+    // Calculate date range for the month
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+    // 1. Fetch Expenses for the month
+    const despesas = await despesaService.getByMonth(year, month);
+    const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
+
+    // Fetch all readings for the month with bico and combustivel details
+    const { data: leituras, error } = await supabase
+      .from('Leitura')
+      .select(`
+        *,
+        bico:Bico(
+          id,
+          numero,
+          combustivel:Combustivel(*)
+        )
+      `)
+      .gte('data', startDate)
+      .lte('data', endDate)
+      .order('data');
+
+    if (error) throw error;
+
+    // Fetch stock data for cost info
+    const estoques = await estoqueService.getAll();
+    const custoMedioPorCombustivel: Record<number, number> = {};
+    estoques.forEach(e => {
+      if (e.combustivel) {
+        custoMedioPorCombustivel[e.combustivel.id] = e.custo_medio || 0;
+      }
+    });
+
+    // 2. Aggregate by combustivel & Calculate Total Sales Volume
+    let totalSalesVolume = 0;
+
+    // First pass to sum volume
+    (leituras || []).forEach((l: any) => {
+      if (l.litros_vendidos) totalSalesVolume += l.litros_vendidos;
+    });
+
+    // 3. Calculate Expense Per Liter
+    // Se não houver vendas, expensePerLiter seria Infinito, então tratamos como 0 ou baseamos em compras (regra de negócio)
+    // Aqui usaremos 0 se não houver vendas.
+    const despesaPorLitro = totalSalesVolume > 0 ? totalDespesas / totalSalesVolume : 0;
+
+    const porCombustivel: Record<string, {
+      combustivel: any;
+      bicoIds: Set<number>;
+      litros: number;
+      valor: number;
+      custoMedio: number;
+      leituraInicial: number;
+      leituraFinal: number;
+    }> = {};
+
+    (leituras || []).forEach((l: any) => {
+      if (!l.bico || !l.bico.combustivel) return;
+
+      const codigo = l.bico.combustivel.codigo;
+      const combId = l.bico.combustivel.id;
+      const custoMedio = custoMedioPorCombustivel[combId] || 0;
+      const litrosVendidos = l.litros_vendidos || 0;
+      const valorVenda = l.valor_venda || 0;
+
+      if (!porCombustivel[codigo]) {
+        porCombustivel[codigo] = {
+          combustivel: l.bico.combustivel,
+          bicoIds: new Set(),
+          litros: 0,
+          valor: 0,
+          custoMedio: custoMedio,
+          leituraInicial: l.leitura_inicial,
+          leituraFinal: l.leitura_final,
+        };
+      }
+
+      porCombustivel[codigo].bicoIds.add(l.bico.id);
+      porCombustivel[codigo].litros += litrosVendidos;
+      porCombustivel[codigo].valor += valorVenda;
+      porCombustivel[codigo].leituraFinal = l.leitura_final; // Last reading
+    });
+
+    // Calculate totals
+    let totalVolume = 0;
+    let totalRevenue = 0;
+    let totalProfit = 0;
+
+    const products = Object.values(porCombustivel).map(item => {
+      // EXCEL LOGIC IMPLEMENTATION:
+      // 1. Preço Praticado (Actual Price)
+      const precoPraticado = item.litros > 0 ? item.valor / item.litros : (item.combustivel.preco_venda || 0);
+
+      // 2. Valor para Venda Sugerido (Suggested Price) = Custo Médio + Despesa/Litro
+      // G19 in Excel: = F19 (AVG Cost) + H22 (Expense/Liter)
+      const suggestedPrice = item.custoMedio + despesaPorLitro;
+
+      // 3. Lucro por Litro = Preço Praticado - Valor Sugerido
+      // I5 in Excel: = G5 (Actual Price) - G19 (Suggested Price)
+      const profitPerLiter = precoPraticado - suggestedPrice;
+
+      // 4. Lucro Total = Lucro por Litro * Volume
+      const totalLucroProduto = profitPerLiter * item.litros;
+
+      // 5. Margem = Lucro por Litro / Preço Praticado
+      // K5 in Excel: = I5 / G5
+      const margin = precoPraticado > 0 ? (profitPerLiter / precoPraticado) * 100 : 0;
+
+      // Custo Total Visualização (Custo Médio * Volume) - NOTA: Isso é apenas o custo da mercadoria, sem despesa.
+      // Para fins de "Total Cost" visual no grid, geralmente soma-se despesa também? 
+      // Não, geralmente Custo é CMV. Mas o Lucro Liquido desconta despesa.
+      // Vamos manter 'cost' como CMV (custo mercadoria) para consistência visual do "custo do produto", 
+      // mas o lucro será o Liquido.
+      const cmv = item.litros * item.custoMedio;
+
+      totalVolume += item.litros;
+      totalRevenue += item.valor;
+      totalProfit += totalLucroProduto;
+
+      // Color classes based on fuel type
+      const colorClasses: Record<string, string> = {
+        'GC': 'bg-green-100 text-green-700',
+        'GA': 'bg-blue-100 text-blue-700',
+        'ET': 'bg-yellow-100 text-yellow-700',
+        'S10': 'bg-red-100 text-red-700',
+        'DIESEL': 'bg-amber-100 text-amber-700',
+      };
+
+      return {
+        id: String(item.combustivel.id),
+        name: item.combustivel.nome,
+        code: item.combustivel.codigo,
+        colorClass: colorClasses[item.combustivel.codigo] || 'bg-gray-100 text-gray-700',
+        bicos: `Bicos: ${Array.from(item.bicoIds).sort((a, b) => a - b).map(n => String(n).padStart(2, '0')).join(', ')}`,
+        readings: {
+          start: item.leituraInicial,
+          end: item.leituraFinal,
+        },
+        volume: item.litros,
+        price: precoPraticado,
+        cost: cmv, // Exibindo CMV
+        total: item.valor,
+        profit: totalLucroProduto,
+        margin: margin,
+        // Added extra fields for UI insights if needed
+        suggestedPrice,
+        expensePerLiter: despesaPorLitro,
+        avgCost: item.custoMedio
+      };
+    });
+
+    // Profitability data
+    const profitColors: Record<string, string> = {
+      'GC': '#22c55e',
+      'GA': '#3b82f6',
+      'ET': '#eab308',
+      'S10': '#ef4444',
+      'DIESEL': '#f59e0b',
+    };
+
+    const profitability = products.map(p => ({
+      name: p.name,
+      value: p.profit,
+      percentage: totalProfit > 0 ? (p.profit / totalProfit) * 100 : 0,
+      margin: p.margin,
+      color: profitColors[p.code] || '#888888',
+    })).sort((a, b) => b.value - a.value);
+
+    // Get previous month for comparison
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevStartDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+    const prevLastDay = new Date(prevYear, prevMonth, 0).getDate();
+    const prevEndDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${prevLastDay}`;
+
+    const { data: prevLeituras } = await supabase
+      .from('Leitura')
+      .select('litros_vendidos, valor_venda')
+      .gte('data', prevStartDate)
+      .lte('data', prevEndDate);
+
+    const previousPeriod = {
+      volume: (prevLeituras || []).reduce((acc: number, l: any) => acc + (l.litros_vendidos || 0), 0),
+      revenue: (prevLeituras || []).reduce((acc: number, l: any) => acc + (l.valor_venda || 0), 0),
+      profit: 0, // Simplification: we don't recalculate full profit for previous month here to save perf
+    };
+
+    return {
+      products,
+      profitability,
+      totals: {
+        volume: totalVolume,
+        revenue: totalRevenue,
+        profit: totalProfit,
+        avgMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+        avgProfitPerLiter: totalVolume > 0 ? totalProfit / totalVolume : 0,
+      },
+      previousPeriod,
+    };
+  },
+};
+
 // Export all services
 export const api = {
   combustivel: combustivelService,
@@ -978,6 +1441,8 @@ export const api = {
   emprestimo: emprestimoService,
   parcela: parcelaService,
   dashboard: dashboardService,
+  salesAnalysis: salesAnalysisService,
+  despesa: despesaService,
 };
 
 export default api;
@@ -1027,15 +1492,43 @@ export async function fetchSettingsData() {
   };
 }
 
-export async function fetchDashboardData() {
+export async function fetchDashboardData(
+  dateFilter: string = 'hoje',
+  frentistaId: number | null = null,
+  turnoId: number | null = null
+) {
   const [estoque, frentistas, formasPagamento] = await Promise.all([
     estoqueService.getAll(),
     frentistaService.getAll(),
     formaPagamentoService.getAll(),
   ]);
 
-  const hoje = new Date().toISOString().split('T')[0];
-  const vendas = await leituraService.getSalesSummaryByDate(hoje);
+  // Calcula o range de data baseado no filtro
+  const hoje = new Date();
+  let dataInicio: string;
+  let dataFim: string = hoje.toISOString().split('T')[0];
+
+  switch (dateFilter) {
+    case 'ontem':
+      const ontem = new Date(hoje);
+      ontem.setDate(ontem.getDate() - 1);
+      dataInicio = ontem.toISOString().split('T')[0];
+      dataFim = dataInicio;
+      break;
+    case 'semana':
+      const semanaAtras = new Date(hoje);
+      semanaAtras.setDate(semanaAtras.getDate() - 7);
+      dataInicio = semanaAtras.toISOString().split('T')[0];
+      break;
+    case 'mes':
+      const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      dataInicio = inicioMes.toISOString().split('T')[0];
+      break;
+    default: // 'hoje'
+      dataInicio = hoje.toISOString().split('T')[0];
+  }
+
+  const vendas = await leituraService.getSalesSummaryByDate(dataInicio);
 
   // Cores padrão para combustíveis
   const coresCombs: Record<string, string> = {
@@ -1060,48 +1553,56 @@ export async function fetchDashboardData() {
     color: e.combustivel?.cor || coresCombs[e.combustivel?.codigo || ''] || '#888',
   }));
 
-  // PaymentData simulado (já que não temos recebimentos do dia)
-  const totalVendas = vendas.totalVendas || 1; // Evita divisão por 0
+  // PaymentData real (agregado dos fechamentos ou pagamentos do dia)
+  // Como simplificação, se não houver registros de recebimento, retornamos vazio/zeros em vez de simulação
   const paymentData = formasPagamento.map((fp, idx) => ({
     name: fp.nome,
-    percentage: 100 / formasPagamento.length, // Distribuição igual se não tiver dados
-    value: totalVendas / formasPagamento.length,
+    percentage: 0,
+    value: 0,
     color: coresFormas[fp.tipo] || ['#3b82f6', '#22c55e', '#eab308', '#f97316'][idx % 4],
   }));
 
-  // ClosingsData - Lista de fechamentos reais por turno/frentista
-  const fechamentosReais = await fechamentoService.getByDate(hoje);
+  // ClosingsData - Lista consolidada de status dos frentistas
+  const fechamentosFrentistaHoje = await fechamentoFrentistaService.getByDate(dataInicio);
+  const fechamentosMap = new Map(fechamentosFrentistaHoje.map(ff => [ff.frentista_id, ff]));
 
-  let closingsData;
-  if (fechamentosReais && fechamentosReais.length > 0) {
-    closingsData = fechamentosReais.map(fr => ({
-      id: String(fr.id),
-      name: fr.usuario?.nome || 'Operador',
-      avatar: `/avatars/user.jpg`,
-      shift: fr.turno?.nome || 'N/A',
-      totalSales: fr.total_vendas || 0,
-      status: fr.status === 'FECHADO' ? 'OK' : 'Aberto',
-    }));
-  } else {
-    // Fallback para frentistas se não houver fechamentos de caixa ainda hoje
-    closingsData = frentistas.map((f, idx) => ({
+  // Filtra frentistas se houver filtro específico
+  const frentistasToShow = frentistaId
+    ? frentistas.filter(f => f.id === frentistaId)
+    : frentistas;
+
+  const closingsData = frentistasToShow.map((f, idx) => {
+    const fechamento = fechamentosMap.get(f.id);
+    let status: 'OK' | 'Divergente' | 'Aberto' = 'Aberto';
+    let totalSales = 0;
+
+    if (fechamento) {
+      // Filtra por turno se especificado
+      if (turnoId && (fechamento.fechamento as any)?.turno_id !== turnoId) {
+        return null;
+      }
+      status = (fechamento.diferenca === 0) ? 'OK' : 'Divergente';
+      totalSales = fechamento.total || 0;
+    }
+
+    return {
       id: String(f.id),
       name: f.nome,
-      avatar: `/avatars/${f.id}.jpg`,
-      shift: ['Manhã', 'Tarde', 'Noite'][idx % 3],
-      totalSales: 0,
-      status: 'Aberto',
-    }));
-  }
+      avatar: `/avatars/user.jpg`,
+      shift: (fechamento?.fechamento as any)?.turno?.nome || 'Turno Atual',
+      totalSales: totalSales,
+      status: status,
+    };
+  }).filter(Boolean) as any[];
 
-  // PerformanceData
-  const performanceData = frentistas.slice(0, 3).map((f, idx) => ({
+  // PerformanceData - Reduzido para frentistas reais com dados zerados caso não haja histórico processado
+  const performanceData = frentistasToShow.slice(0, 3).map((f, idx) => ({
     id: String(f.id),
     name: f.nome,
-    avatar: `/avatars/${f.id}.jpg`,
-    metric: ['Maior Ticket', 'Maior Volume', 'Menor Divergência'][idx % 3],
-    value: ['R$ 250,00', '1.200 L', 'R$ 0,00'][idx % 3],
-    subValue: ['Gasolina Comum', 'Etanol', 'Sem divergência'][idx % 3],
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(f.nome)}&background=random`,
+    metric: 'N/A',
+    value: '-',
+    subValue: 'Aguardando dados',
     type: (['ticket', 'volume', 'divergence'] as const)[idx % 3],
   }));
 
@@ -1281,10 +1782,21 @@ export async function fetchAttendantsData() {
 }
 
 export async function fetchInventoryData() {
-  const [estoque, compras] = await Promise.all([
+  const dataInicioAnalise = new Date();
+  dataInicioAnalise.setDate(dataInicioAnalise.getDate() - 7);
+
+  const [estoque, compras, leiturasRecentes] = await Promise.all([
     estoqueService.getAll(),
     compraService.getAll(),
+    supabase
+      .from('Leitura')
+      .select('*, bico:Bico(combustivel_id), combustivel:Bico(Combustivel(nome))')
+      .gte('data', dataInicioAnalise.toISOString().split('T')[0])
+      .order('data', { ascending: false })
+      .limit(50)
   ]);
+
+  const leituras = leiturasRecentes.data || [];
 
   // Map código para icon e color
   const iconMap: Record<string, 'pump' | 'leaf' | 'truck'> = {
@@ -1301,18 +1813,42 @@ export async function fetchInventoryData() {
     'S10': 'gray',
   };
 
+  // Prepara dados para o gráfico de 7 dias
+  const last7Days = [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dayStr = d.toISOString().split('T')[0];
+    const dayLabel = d.toLocaleDateString('pt-BR', { weekday: 'short' });
+
+    const salesDay = leituras.filter(l => l.data === dayStr).reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
+    const entryDay = compras.filter(c => c.data === dayStr).reduce((acc, c) => acc + c.quantidade_litros, 0);
+
+    return { day: dayLabel, sales: salesDay, entry: entryDay };
+  }).reverse();
+
+  // Escala para porcentagem do gráfico (opcional ou usa valores reais e o front escala)
+  const maxVal = Math.max(...last7Days.map(d => Math.max(d.sales, d.entry)), 100);
+  const chartData = last7Days.map(d => ({
+    ...d,
+    salesPerc: (d.sales / maxVal) * 100,
+    entryPerc: (d.entry / maxVal) * 100
+  }));
+
   // Items - InventoryItem[]
   const items = estoque.map(e => {
     const percentage = Math.round((e.quantidade_atual / e.capacidade_tanque) * 100);
     const status = percentage < 10 ? 'CRÍTICO' : percentage < 20 ? 'BAIXO' : 'OK';
     const code = e.combustivel?.codigo || 'N/A';
 
-    // Busca última compra do combustível para calcular custo médio
-    const comprasCombustivel = compras.filter(c => c.combustivel_id === e.combustivel_id);
-    const ultimaCompra = comprasCombustivel[0]; // Já ordenado por data desc
-    const custoMedio = ultimaCompra?.custo_por_litro || 0;
+    // Filtra dados do período para este combustível
+    const vendasComb = leituras.filter(l => (l.bico as any)?.combustivel_id === e.combustivel_id);
+    const comprasComb = compras.filter(c => c.combustivel_id === e.combustivel_id);
 
-    // Preço de venda vem do cadastro do combustível
+    const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
+    const volumeComprado = comprasComb.filter(c => c.data >= dataInicioAnalise.toISOString().split('T')[0]).reduce((acc, c) => acc + c.quantidade_litros, 0);
+
+    const mediaDiaria = volumeVendido / 7;
+    const custoMedio = e.custo_medio || comprasComb[0]?.custo_por_litro || 0;
     const precoVenda = e.combustivel?.preco_venda || 0;
 
     return {
@@ -1323,14 +1859,23 @@ export async function fetchInventoryData() {
       capacity: e.capacidade_tanque,
       percentage: percentage,
       status: status as 'OK' | 'BAIXO' | 'CRÍTICO',
-      daysRemaining: Math.floor(e.quantidade_atual / 500), // Assume 500L/dia
+      daysRemaining: mediaDiaria > 0 ? Math.floor(e.quantidade_atual / mediaDiaria) : 99,
       color: colorMap[code] || 'gray',
       iconType: iconMap[code] || 'pump',
-      // Preços reais
       costPrice: custoMedio,
       sellPrice: precoVenda,
+      // Reconciliação
+      previousStock: e.quantidade_atual - volumeComprado + volumeVendido,
+      totalPurchases: volumeComprado,
+      totalSales: volumeVendido,
+      lossOrGain: 0, // Por enquanto zero, precisaria de leitura de tanque real
     };
   });
+
+  // Financeiro Global do Estoque
+  const totalCost = items.reduce((acc, i) => acc + (i.volume * i.costPrice), 0);
+  const totalSell = items.reduce((acc, i) => acc + (i.volume * i.sellPrice), 0);
+  const projectedProfit = totalSell - totalCost;
 
   // Alerts - InventoryAlert[]
   const alerts = estoque
@@ -1350,8 +1895,8 @@ export async function fetchInventoryData() {
     });
 
   // Transactions - InventoryTransaction[]
-  const transactions = compras.slice(0, 10).map((c, idx) => ({
-    id: String(c.id),
+  const purchaseTransactions = compras.slice(0, 10).map((c) => ({
+    id: `compra-${c.id}`,
     date: new Date(c.data).toLocaleDateString('pt-BR') + ' 08:00',
     type: 'Compra' as const,
     product: c.combustivel?.nome || 'N/A',
@@ -1360,6 +1905,80 @@ export async function fetchInventoryData() {
     status: 'Recebido' as const,
   }));
 
-  return { items, alerts, transactions };
+  const salesTransactions = leituras.slice(0, 10).map((l) => ({
+    id: `venda-${l.id}`,
+    date: new Date(l.data).toLocaleDateString('pt-BR') + ' 22:00',
+    type: 'Venda' as const,
+    product: (l.combustivel as any)?.Combustivel?.nome || 'N/A',
+    quantity: -(l.litros_vendidos || 0),
+    responsible: 'Sistema',
+    status: 'Concluído' as const,
+  }));
+
+  const transactions = [...purchaseTransactions, ...salesTransactions]
+    .sort((a, b) => {
+      const dateA = a.date.split('/').reverse().join('-');
+      const dateB = b.date.split('/').reverse().join('-');
+      return dateB.localeCompare(dateA);
+    })
+    .slice(0, 15);
+
+  return { items, alerts, transactions, chartData, summary: { totalCost, totalSell, projectedProfit } };
+}
+
+export async function fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1) {
+  const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
+  const fimMesStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+
+  const [estoque, leiturasMes, despesas] = await Promise.all([
+    estoqueService.getAll(),
+    supabase
+      .from('Leitura')
+      .select('*, bico:Bico(combustivel_id)')
+      .gte('data', inicioMesStr),
+    despesaService.getByMonth(year, month)
+  ]);
+
+  const leituras = leiturasMes.data || [];
+  const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
+  const totalVolumeVendido = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
+
+  // Cálculo de Despesa Operacional Real por Litro (Fórmula Planilha Posto Jorro 2025: H22 = H19/F11)
+  let despOperacional = totalVolumeVendido > 0 ? totalDespesas / totalVolumeVendido : 0;
+
+  // Fallback para configuração se não houver despesas registradas no mês
+  if (despOperacional === 0) {
+    despOperacional = await configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45);
+  }
+
+  return estoque.map(e => {
+    const vendasComb = leituras.filter(l => (l.bico as any)?.combustivel_id === e.combustivel_id);
+    const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
+    const receitaBruta = vendasComb.reduce((acc, l) => acc + (l.valor_venda || 0), 0);
+
+    const custoMedio = e.custo_medio || 0;
+    const custoTotalL = custoMedio + despOperacional;
+
+    const lucroTotal = receitaBruta - (volumeVendido * custoTotalL);
+    const margemLiquidaL = volumeVendido > 0 ? lucroTotal / volumeVendido : 0;
+    const margemBrutaL = (e.combustivel?.preco_venda || 0) - custoMedio;
+
+    return {
+      id: e.id,
+      combustivelId: e.combustivel_id,
+      nome: e.combustivel?.nome || 'N/A',
+      codigo: e.combustivel?.codigo || 'N/A',
+      custoMedio,
+      despOperacional,
+      custoTotalL,
+      precoVenda: e.combustivel?.preco_venda || 0,
+      volumeVendido,
+      receitaBruta,
+      lucroTotal,
+      margemLiquidaL,
+      margemBrutaL,
+      cor: e.combustivel?.cor || 'gray'
+    };
+  });
 }
 

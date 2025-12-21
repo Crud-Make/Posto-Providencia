@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Fuel, Menu, X } from 'lucide-react';
+import { Fuel, Menu, X, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface HeaderProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const handleMobileNavigate = (view: any) => {
     onNavigate(view);
@@ -15,12 +17,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 transition-colors duration-200">
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 transition-colors duration-200">
       <div className="px-4 sm:px-6 h-16 flex items-center justify-between">
 
         <div className="flex items-center gap-3">
           <button
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-lg lg:hidden"
+            className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg lg:hidden text-gray-600 dark:text-gray-300"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -30,14 +32,20 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
               <Fuel size={18} />
             </div>
-            <span className="font-bold text-xl text-gray-900 truncate">
+            <span className="font-bold text-xl text-gray-900 dark:text-white truncate">
               Posto Providência
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-gray-500">
-          <div className="w-8 h-8 rounded-full bg-[#E0D0B8] border-2 border-white overflow-hidden">
+          <button
+            onClick={toggleTheme}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors"
+          >
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+          <div className="w-8 h-8 rounded-full bg-[#E0D0B8] border-2 border-white dark:border-gray-600 overflow-hidden">
             <img src="https://ui-avatars.com/api/?name=Admin+Gerente&background=E0D0B8&color=fff" alt="Admin" className="w-full h-full object-cover" />
           </div>
         </div>
@@ -45,13 +53,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-xl p-4 flex flex-col gap-2 lg:hidden animate-in slide-in-from-top-5">
+        <div className="absolute top-16 left-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-xl p-4 flex flex-col gap-2 lg:hidden animate-in slide-in-from-top-5">
           {[
             { id: 'dashboard', label: 'Dashboard' },
             { id: 'closing', label: 'Vendas' },
             { id: 'purchase', label: 'Compras' },
             { id: 'attendants', label: 'Frentistas' },
-            { id: 'inventory', label: 'Estoque' },
+            { id: 'inventory', label: 'Tanques (Combustível)' },
+            { id: 'products', label: 'Produtos e Estoque' },
             { id: 'finance', label: 'Financeiro' },
             { id: 'analysis', label: 'Análise de Custos' },
             { id: 'settings', label: 'Configurações' },
@@ -61,8 +70,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
               onClick={() => handleMobileNavigate(item.id)}
               className={`w-full text-left px-4 py-3 rounded-lg text-sm font-bold
                   ${currentView === item.id
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }
                 `}
             >

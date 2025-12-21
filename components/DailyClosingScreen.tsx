@@ -18,7 +18,9 @@ import {
    HelpCircle,
    Info,
    Plus,
-   TrendingUp
+   TrendingUp,
+   AlertOctagon,
+   TrendingDown
 } from 'lucide-react';
 import {
    bicoService,
@@ -33,6 +35,7 @@ import {
 } from '../services/api';
 import type { Bico, Bomba, Combustivel, Leitura, Frentista, Turno, FormaPagamento } from '../services/database.types';
 import { useAuth } from '../contexts/AuthContext';
+import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
 
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
@@ -392,6 +395,10 @@ const DailyClosingScreen: React.FC = () => {
       if (totals.litros === 0) return 0;
       return (litros / totals.litros) * 100;
    };
+
+   // Check if difference is significant (> R$ 100)
+   const isDifferenceSignificant = Math.abs(diferenca) > 100;
+   const isDifferenceNegative = diferenca < 0;
 
    // Add a new frentista row
    const handleAddFrentista = () => {
@@ -1057,6 +1064,15 @@ const DailyClosingScreen: React.FC = () => {
                )}
             </div>
          </div>
+
+         {/* Cash Difference Alert - Show when there's a significant difference */}
+         {(frentistasTotals.total > 0 || totalPayments > 0) && totals.valor > 0 && (
+            <DifferenceAlert
+               difference={totalPayments - totals.valor}
+               threshold={100}
+               className="animate-fade-in-up"
+            />
+         )}
 
          {/* Summary Sections (Recebimentos por Forma remain if needed for global count) */}
 

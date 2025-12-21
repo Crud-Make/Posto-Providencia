@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Fuel, Loader2, Lock, Mail } from 'lucide-react';
+import { Loader2, Lock, Mail } from 'lucide-react';
 
 const LoginScreen: React.FC = () => {
     const { signIn } = useAuth();
@@ -20,86 +20,109 @@ const LoginScreen: React.FC = () => {
             setError(signInError.message || 'Falha ao fazer login');
             setLoading(false);
         }
-        // Success is handled by AuthContext state change redirecting in App.tsx
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div
+            className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex items-center justify-end overflow-hidden"
+            style={{
+                backgroundImage: "url('/bg-login-final.png')",
+                fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+            }}
+        >
+            {/* 
+               Container do login flutuante (sem fundo) 
+               Correspondente a .login-floating-container
+            */}
+            <main className="w-full max-w-[450px] p-[30px] mr-[8%] text-center text-white relative z-10 transition-all duration-500">
 
-                {/* Header */}
-                <div className="bg-blue-600 p-8 text-center">
-                    <div className="bg-white/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-                        <Fuel className="text-white" size={32} />
+                {/* --- CORREÇÃO DO LOGO --- */}
+                <header className="mb-8 flex flex-col items-center">
+                    <div className="flex justify-center mb-[15px]">
+                        <img
+                            src="/logo-rede.png"
+                            alt="Posto Providência"
+                            className="logo-img max-w-[300px] h-auto mb-[10px]"
+                            style={{
+                                filter: 'drop-shadow(0 3px 5px rgba(0,0,0,0.5))'
+                            }}
+                        />
                     </div>
-                    <h1 className="text-2xl font-black text-white">Posto Providência</h1>
-                    <p className="text-blue-100 mt-2">Sistema de Gestão Integrada</p>
-                </div>
+                    <p className="text-[1.1rem] mb-[35px] opacity-95 font-medium tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}>
+                        Sistema de Gestão Integrada
+                    </p>
+                </header>
 
-                {/* Form */}
-                <div className="p-8">
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {error && (
-                            <div className="p-4 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 font-medium">
-                                {error}
-                            </div>
+                <form onSubmit={handleSubmit} className="flex flex-col">
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-500/90 text-white rounded-lg font-bold text-sm shadow-lg backdrop-blur-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Campo Email */}
+                    <label className="block text-left text-[0.85rem] font-bold mb-[8px] tracking-[0.5px] uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}>
+                        Email Corporativo
+                    </label>
+                    <div className="bg-white rounded-[8px] flex items-center px-[15px] py-[5px] mb-[20px]" style={{ boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>
+                        <Mail className="text-[#999] w-[20px] h-[20px] mr-[12px]" />
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="flex-grow bg-transparent border-none outline-none py-[12px] text-[1rem] text-[#333] placeholder-[#aaa]"
+                            placeholder="usuario@postoprovidencia.com.br"
+                            required
+                        />
+                    </div>
+
+                    {/* Campo Senha */}
+                    <label className="block text-left text-[0.85rem] font-bold mb-[8px] tracking-[0.5px] uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}>
+                        Senha
+                    </label>
+                    <div className="bg-white rounded-[8px] flex items-center px-[15px] py-[5px] mb-[20px]" style={{ boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>
+                        <Lock className="text-[#999] w-[20px] h-[20px] mr-[12px]" />
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="flex-grow bg-transparent border-none outline-none py-[12px] text-[1rem] text-[#333] placeholder-[#aaa]"
+                            placeholder="••••••••"
+                            required
+                        />
+                    </div>
+
+                    <a href="#" className="block text-right text-white no-underline text-[0.9rem] mt-[-10px] mb-[30px] hover:underline" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}>
+                        Esqueceu sua senha?
+                    </a>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full p-[15px] bg-[#c62828] hover:bg-[#a82020] text-white text-[1.1rem] font-bold rounded-[8px] cursor-pointer flex justify-center items-center transition-colors duration-300 disabled:opacity-70"
+                        style={{ boxShadow: '0 4px 20px rgba(198, 40, 40, 0.6)' }}
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 size={22} className="animate-spin mr-2" />
+                                <span>Acessando...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>ACESSAR SISTEMA</span>
+                                <svg className="ml-[10px] w-[20px] h-[20px] fill-current" viewBox="0 0 24 24">
+                                    <path d="M16.01 11H4v2h12.01v3L20 12l-3.99-4z" />
+                                </svg>
+                            </>
                         )}
+                    </button>
+                </form>
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Email</label>
-                            <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <Mail size={20} />
-                                </div>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                    placeholder="seu@email.com"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Senha</label>
-                            <div className="relative">
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <Lock size={20} />
-                                </div>
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                    placeholder="••••••••"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-500/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 size={20} className="animate-spin" />
-                                    Entrando...
-                                </>
-                            ) : (
-                                'Acessar Sistema'
-                            )}
-                        </button>
-                    </form>
-                </div>
-
-                <div className="px-8 pb-8 text-center text-xs text-gray-400">
-                    &copy; 2025 Posto Providência. Todos os direitos reservados.
-                </div>
-            </div>
+                <footer className="mt-[50px] text-[0.8rem] opacity-80 leading-relaxed" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}>
+                    <p>© 2025 Posto Providência. Todos os direitos reservados.</p>
+                    <p>v2.5.8</p>
+                </footer>
+            </main>
         </div>
     );
 };

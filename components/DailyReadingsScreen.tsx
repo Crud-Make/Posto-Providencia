@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   Clock,
@@ -7,10 +7,14 @@ import {
   Check,
   AlertCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle,
+  TrendingUp,
+  Info
 } from 'lucide-react';
 import { bicoService, leituraService, turnoService, combustivelService } from '../services/api';
 import type { Bico, Bomba, Combustivel, Turno, Leitura } from '../services/database.types';
+import { ProgressIndicator } from './ValidationAlert';
 
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
@@ -131,6 +135,22 @@ const DailyReadingsScreen: React.FC = () => {
     },
     { liters: 0, revenue: 0 }
   );
+
+  // Calculate form completion progress
+  const formProgress = useMemo(() => {
+    const filled = Object.values(readings).filter(r => r && r.length > 0).length;
+    const valid = bicos.filter(bico => {
+      const current = readings[bico.id];
+      if (!current) return false;
+      const initial = getInitialReading(bico.id);
+      const val = parseFloat(current.replace(',', '.'));
+      return !isNaN(val) && val > initial;
+    }).length;
+    return { filled, valid, total: bicos.length };
+  }, [readings, bicos]);
+
+  // Check if volume is unusually high (warning threshold: 3x average ~ 3000L per nozzle)
+  const isVolumeHigh = (volume: number): boolean => volume > 3000;
 
   // Handle save
   const handleSave = async () => {
@@ -287,15 +307,36 @@ const DailyReadingsScreen: React.FC = () => {
                   const initialReading = getInitialReading(bico.id);
                   const volume = hasValue ? calculateVolume(bico.id, currentVal) : 0;
                   const total = calculateTotal(volume, bico.combustivel.preco_venda);
-                  const isInvalid = hasValue && parseFloat(currentVal.replace(',', '.')) < initialReading;
+                  const finalVal = parseFloat(currentVal.replace(',', '.'));
+                  const isInvalid = hasValue && finalVal < initialReading;
+                  const isVeryHigh = hasValue && !isInvalid && isVolumeHigh(volume);
+                  const isValid = hasValue && !isInvalid && !isVeryHigh;
                   const colorClass = FUEL_COLORS[bico.combustivel.codigo] || 'bg-gray-100 text-gray-700';
 
                   return (
-                    <div key={bico.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div key={bico.id} className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all duration-300 ${isInvalid
+                      ? 'border-red-300 animate-shake'
+                      : isVeryHigh
+                        ? 'border-yellow-300'
+                        : isValid
+                          ? 'border-green-200'
+                          : 'border-gray-200'
+                      }`}>
                       {/* Nozzle Header */}
-                      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
+                      <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors ${isInvalid
+                        ? 'bg-red-50 border-red-200'
+                        : isVeryHigh
+                          ? 'bg-yellow-50 border-yellow-200'
+                          : isValid
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-gray-50/50 border-gray-200'
+                        }`}>
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-200 rounded-full text-gray-500">
+                          <div className={`p-2 rounded-full transition-colors ${isInvalid ? 'bg-red-100 text-red-500' :
+                            isVeryHigh ? 'bg-yellow-100 text-yellow-500' :
+                              isValid ? 'bg-green-100 text-green-500' :
+                                'bg-gray-200 text-gray-500'
+                            }`}>
                             <Droplet size={18} fill="currentColor" />
                           </div>
                           <span className="font-bold text-gray-900">Bico {bico.numero}</span>
@@ -303,7 +344,24 @@ const DailyReadingsScreen: React.FC = () => {
                             {bico.combustivel.nome}
                           </span>
                         </div>
-                        <span className="text-xs font-medium text-gray-500">{bico.combustivel.codigo}</span>
+                        <div className="flex items-center gap-2">
+                          {isInvalid && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 uppercase animate-pulse">
+                              Erro
+                            </span>
+                          )}
+                          {isVeryHigh && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-600 uppercase flex items-center gap-1" title="Volume acima da média">
+                              <AlertTriangle size={10} /> Alto
+                            </span>
+                          )}
+                          {isValid && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-600 uppercase">
+                              OK
+                            </span>
+                          )}
+                          <span className="text-xs font-medium text-gray-500">{bico.combustivel.codigo}</span>
+                        </div>
                       </div>
 
                       {/* Nozzle Body */}
@@ -342,7 +400,25 @@ const DailyReadingsScreen: React.FC = () => {
                                   <AlertCircle size={18} />
                                 </div>
                               )}
+                              {isVeryHigh && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500">
+                                  <AlertTriangle size={18} />
+                                </div>
+                              )}
                             </div>
+                            {/* Inline validation message */}
+                            {isInvalid && (
+                              <p className="text-[10px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                                <AlertCircle size={10} />
+                                Leitura final deve ser maior que inicial
+                              </p>
+                            )}
+                            {isVeryHigh && (
+                              <p className="text-[10px] text-yellow-600 font-medium mt-1 flex items-center gap-1">
+                                <Info size={10} />
+                                Volume acima da média. Verifique o valor.
+                              </p>
+                            )}
                           </div>
 
                           {/* Price */}
@@ -387,6 +463,18 @@ const DailyReadingsScreen: React.FC = () => {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
 
           <div className="flex items-center gap-8 w-full sm:w-auto justify-between sm:justify-start">
+            {/* Progress indicator */}
+            <div className="flex flex-col min-w-[120px]">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Progresso</span>
+              <ProgressIndicator
+                current={formProgress.valid}
+                total={formProgress.total}
+                label={`${formProgress.valid}/${formProgress.total} válidos`}
+              />
+            </div>
+
+            <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
+
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Litros</span>
               <div className="flex items-baseline gap-1">
