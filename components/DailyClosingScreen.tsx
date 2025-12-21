@@ -247,10 +247,57 @@ const DailyClosingScreen: React.FC = () => {
    };
 
    useEffect(() => {
-      if (selectedDate) {
-         loadDayClosures();
+      if (selectedDate && selectedTurno) {
+         loadFrentistaSessions();
+      } else {
+         setFrentistaSessions([]);
       }
-   }, [selectedDate]);
+   }, [selectedDate, selectedTurno]);
+
+   const loadFrentistaSessions = async () => {
+      try {
+         // Buscamos se já existe um fechamento para este dia/turno
+         const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!);
+
+         if (fechamento) {
+            const sessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
+            if (sessions && sessions.length > 0) {
+               setFrentistaSessions(sessions.map(s => ({
+                  tempId: s.id.toString(),
+                  frentistaId: s.frentista_id,
+                  valor_cartao: s.valor_cartao?.toString().replace('.', ',') || '',
+                  valor_nota: s.valor_nota?.toString().replace('.', ',') || '',
+                  valor_pix: s.valor_pix?.toString().replace('.', ',') || '',
+                  valor_dinheiro: s.valor_dinheiro?.toString().replace('.', ',') || '',
+                  valor_conferido: s.valor_conferido?.toString().replace('.', ',') || '',
+                  observacoes: s.observacoes || ''
+               })));
+               return;
+            }
+         }
+
+         // Se não encontrou no fechamento consolidado, tenta buscar registros soltos de frentistas para este dia/turno (feitos via mobile)
+         const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate);
+         const shiftSessions = mobileSessions.filter(s => s.fechamento?.turno_id === selectedTurno);
+
+         if (shiftSessions.length > 0) {
+            setFrentistaSessions(shiftSessions.map(s => ({
+               tempId: s.id.toString(),
+               frentistaId: s.frentista_id,
+               valor_cartao: s.valor_cartao?.toString().replace('.', ',') || '',
+               valor_nota: s.valor_nota?.toString().replace('.', ',') || '',
+               valor_pix: s.valor_pix?.toString().replace('.', ',') || '',
+               valor_dinheiro: s.valor_dinheiro?.toString().replace('.', ',') || '',
+               valor_conferido: s.valor_conferido?.toString().replace('.', ',') || '',
+               observacoes: s.observacoes || ''
+            })));
+         } else {
+            setFrentistaSessions([]);
+         }
+      } catch (err) {
+         console.error('Error loading frentista sessions:', err);
+      }
+   };
 
    // Handle inicial input change
    const handleInicialChange = (bicoId: number, value: string) => {
@@ -909,158 +956,145 @@ const DailyClosingScreen: React.FC = () => {
                   <User size={20} className="text-blue-600" />
                   Controle de Frentistas
                </h2>
-               <button
-                  onClick={handleAddFrentista}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
-               >
-                  <Plus size={16} />
-                  Adicionar Frentista
-               </button>
             </div>
 
             <div className="p-6">
-               {frentistaSessions.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                     <User size={48} className="mx-auto text-gray-300 mb-4" />
-                     <p className="text-gray-500 font-medium">Nenhum frentista adicionado para este fechamento.</p>
-                     <button
-                        onClick={handleAddFrentista}
-                        className="mt-4 text-blue-600 font-bold hover:underline"
-                     >
-                        Adicionar o primeiro frentista
-                     </button>
-                  </div>
+               <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                  <User size={48} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 font-medium">Nenhum frentista registrado para este fechamento.</p>
+                  <p className="text-xs text-gray-400 mt-2 italic">Os registros devem ser feitos através do aplicativo mobile pelos frentistas.</p>
+               </div>
                ) : (
-                  <div className="grid grid-cols-1 gap-6">
-                     {frentistaSessions.map((session) => {
-                        const totalInf = parseValue(session.valor_cartao) + parseValue(session.valor_nota) + parseValue(session.valor_pix) + parseValue(session.valor_dinheiro);
+               <div className="grid grid-cols-1 gap-6">
+                  {frentistaSessions.map((session) => {
+                     const totalInf = parseValue(session.valor_cartao) + parseValue(session.valor_nota) + parseValue(session.valor_pix) + parseValue(session.valor_dinheiro);
 
-                        return (
-                           <div key={session.tempId} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm relative group hover:border-blue-200 transition-colors">
-                              <button
-                                 onClick={() => handleRemoveFrentista(session.tempId)}
-                                 className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                 <X size={18} />
-                              </button>
+                     return (
+                        <div key={session.tempId} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm relative group hover:border-blue-200 transition-colors">
+                           <button
+                              onClick={() => handleRemoveFrentista(session.tempId)}
+                              className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                           >
+                              <X size={18} />
+                           </button>
 
-                              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-                                 {/* Frentista selection */}
-                                 <div className="lg:col-span-1 border-r border-gray-100 pr-6">
-                                    <label className="block text-xs font-black text-gray-400 uppercase mb-2">Frentista</label>
-                                    <select
-                                       value={session.frentistaId || ''}
-                                       onChange={(e) => updateFrentistaSession(session.tempId, { frentistaId: Number(e.target.value) })}
-                                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-blue-500 transition-all"
-                                    >
-                                       <option value="">Selecionar...</option>
-                                       {frentistas.map(f => (
-                                          <option key={f.id} value={f.id}>{f.nome}</option>
-                                       ))}
-                                    </select>
+                           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                              {/* Frentista selection */}
+                              <div className="lg:col-span-1 border-r border-gray-100 pr-6">
+                                 <label className="block text-xs font-black text-gray-400 uppercase mb-2">Frentista</label>
+                                 <select
+                                    value={session.frentistaId || ''}
+                                    onChange={(e) => updateFrentistaSession(session.tempId, { frentistaId: Number(e.target.value) })}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-900 outline-none focus:bg-white focus:border-blue-500 transition-all"
+                                 >
+                                    <option value="">Selecionar...</option>
+                                    {frentistas.map(f => (
+                                       <option key={f.id} value={f.id}>{f.nome}</option>
+                                    ))}
+                                 </select>
 
-                                    <div className="mt-4 space-y-3">
-                                       <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                          <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Valor Esperado</label>
-                                          <div className="relative">
-                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                                             <input
-                                                type="text"
-                                                value={session.valor_conferido}
-                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_conferido: formatSimpleValue(e.target.value) })}
-                                                placeholder="0,00"
-                                                className="w-full pl-7 pr-3 py-1.5 bg-white border border-gray-200 rounded text-sm font-black text-gray-700 outline-none focus:border-blue-400"
-                                             />
-                                          </div>
-                                       </div>
-
-                                       <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                          <div className="flex justify-between items-center mb-1">
-                                             <span className="text-[10px] font-black text-blue-400 uppercase">Total Entregue</span>
-                                             {parseValue(session.valor_conferido) > 0 && (
-                                                <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${totalInf >= parseValue(session.valor_conferido) ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                                                   {totalInf - parseValue(session.valor_conferido) >= 0 ? 'Sobra' : 'Falta'}
-                                                </span>
-                                             )}
-                                          </div>
-                                          <span className="text-xl font-black text-blue-700">
-                                             {totalInf.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                          </span>
-                                       </div>
-                                    </div>
-                                 </div>
-
-                                 {/* Values entry */}
-                                 <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                                    <div className="space-y-1">
-                                       <label className="text-xs font-bold text-gray-500 ml-1">Cartão</label>
+                                 <div className="mt-4 space-y-3">
+                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                       <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Valor Esperado</label>
                                        <div className="relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
                                           <input
                                              type="text"
-                                             value={session.valor_cartao}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao: formatSimpleValue(e.target.value) })}
+                                             value={session.valor_conferido}
+                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_conferido: formatSimpleValue(e.target.value) })}
                                              placeholder="0,00"
-                                             className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
-                                          />
-                                       </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                       <label className="text-xs font-bold text-gray-500 ml-1">Nota (Vale)</label>
-                                       <div className="relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                                          <input
-                                             type="text"
-                                             value={session.valor_nota}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatSimpleValue(e.target.value) })}
-                                             placeholder="0,00"
-                                             className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
-                                          />
-                                       </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                       <label className="text-xs font-bold text-gray-500 ml-1">PIX</label>
-                                       <div className="relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                                          <input
-                                             type="text"
-                                             value={session.valor_pix}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
-                                             placeholder="0,00"
-                                             className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
-                                          />
-                                       </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                       <label className="text-xs font-bold text-gray-500 ml-1">Dinheiro</label>
-                                       <div className="relative">
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                                          <input
-                                             type="text"
-                                             value={session.valor_dinheiro}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
-                                             placeholder="0,00"
-                                             className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
+                                             className="w-full pl-7 pr-3 py-1.5 bg-white border border-gray-200 rounded text-sm font-black text-gray-700 outline-none focus:border-blue-400"
                                           />
                                        </div>
                                     </div>
 
-                                    {/* Observation row */}
-                                    <div className="sm:col-span-2 xl:col-span-4 mt-2">
-                                       <input
-                                          type="text"
-                                          value={session.observacoes}
-                                          onChange={(e) => updateFrentistaSession(session.tempId, { observacoes: e.target.value })}
-                                          placeholder="Observações do frentista..."
-                                          className="w-full px-4 py-2 bg-gray-50 border border-gray-100 border-dashed rounded-lg text-xs italic text-gray-500 outline-none focus:bg-white focus:border-blue-300 transition-all"
-                                       />
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                       <div className="flex justify-between items-center mb-1">
+                                          <span className="text-[10px] font-black text-blue-400 uppercase">Total Entregue</span>
+                                          {parseValue(session.valor_conferido) > 0 && (
+                                             <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${totalInf >= parseValue(session.valor_conferido) ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                                                {totalInf - parseValue(session.valor_conferido) >= 0 ? 'Sobra' : 'Falta'}
+                                             </span>
+                                          )}
+                                       </div>
+                                       <span className="text-xl font-black text-blue-700">
+                                          {totalInf.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                       </span>
                                     </div>
                                  </div>
                               </div>
+
+                              {/* Values entry */}
+                              <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                                 <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 ml-1">Cartão</label>
+                                    <div className="relative">
+                                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                       <input
+                                          type="text"
+                                          value={session.valor_cartao}
+                                          onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao: formatSimpleValue(e.target.value) })}
+                                          placeholder="0,00"
+                                          className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
+                                       />
+                                    </div>
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 ml-1">Nota (Vale)</label>
+                                    <div className="relative">
+                                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                       <input
+                                          type="text"
+                                          value={session.valor_nota}
+                                          onChange={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatSimpleValue(e.target.value) })}
+                                          placeholder="0,00"
+                                          className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
+                                       />
+                                    </div>
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 ml-1">PIX</label>
+                                    <div className="relative">
+                                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                       <input
+                                          type="text"
+                                          value={session.valor_pix}
+                                          onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
+                                          placeholder="0,00"
+                                          className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
+                                       />
+                                    </div>
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 ml-1">Dinheiro</label>
+                                    <div className="relative">
+                                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                                       <input
+                                          type="text"
+                                          value={session.valor_dinheiro}
+                                          onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
+                                          placeholder="0,00"
+                                          className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold focus:bg-white outline-none"
+                                       />
+                                    </div>
+                                 </div>
+
+                                 {/* Observation row */}
+                                 <div className="sm:col-span-2 xl:col-span-4 mt-2">
+                                    <input
+                                       type="text"
+                                       value={session.observacoes}
+                                       onChange={(e) => updateFrentistaSession(session.tempId, { observacoes: e.target.value })}
+                                       placeholder="Observações do frentista..."
+                                       className="w-full px-4 py-2 bg-gray-50 border border-gray-100 border-dashed rounded-lg text-xs italic text-gray-500 outline-none focus:bg-white focus:border-blue-300 transition-all"
+                                    />
+                                 </div>
+                              </div>
                            </div>
-                        );
-                     })}
-                  </div>
+                        </div>
+                     );
+                  })}
+               </div>
                )}
             </div>
          </div>
