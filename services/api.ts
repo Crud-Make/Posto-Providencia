@@ -1563,12 +1563,22 @@ export async function fetchDashboardData(
   }));
 
   // ClosingsData - Lista consolidada de status dos frentistas
-  const fechamentosFrentistaHoje = await fechamentoFrentistaService.getByDate(dataInicio);
-  const fechamentosMap = new Map(fechamentosFrentistaHoje.map(ff => [ff.frentista_id, ff]));
+  const fechamentosFrentistaHoje = await fechamentoFrentistaService.getByDate(
+    dataInicio
+  );
+
+  // Mapeia os fechamentos por frentista, filtrando pelo turno se necessário
+  const fechamentosMap = new Map();
+  fechamentosFrentistaHoje.forEach((ff) => {
+    const matchesTurno = !turnoId || (ff.fechamento as any)?.turno_id === turnoId;
+    if (matchesTurno) {
+      fechamentosMap.set(ff.frentista_id, ff);
+    }
+  });
 
   // Filtra frentistas se houver filtro específico
   const frentistasToShow = frentistaId
-    ? frentistas.filter(f => f.id === frentistaId)
+    ? frentistas.filter((f) => f.id === frentistaId)
     : frentistas;
 
   const closingsData = frentistasToShow.map((f, idx) => {
@@ -1577,23 +1587,29 @@ export async function fetchDashboardData(
     let totalSales = 0;
 
     if (fechamento) {
-      // Filtra por turno se especificado
-      if (turnoId && (fechamento.fechamento as any)?.turno_id !== turnoId) {
-        return null;
-      }
-      status = (fechamento.diferenca === 0) ? 'OK' : 'Divergente';
-      totalSales = fechamento.total || 0;
+      // Calcula total a partir dos valores de pagamento
+      totalSales =
+        (fechamento.valor_cartao || 0) +
+        (fechamento.valor_nota || 0) +
+        (fechamento.valor_pix || 0) +
+        (fechamento.valor_dinheiro || 0);
+
+      // Status baseado na diferença (falta de caixa)
+      const diferenca = Math.abs(fechamento.diferenca || 0);
+      status = diferenca === 0 ? 'OK' : diferenca > 50 ? 'Divergente' : 'OK';
     }
 
     return {
       id: String(f.id),
       name: f.nome,
-      avatar: `/avatars/user.jpg`,
-      shift: (fechamento?.fechamento as any)?.turno?.nome || 'Turno Atual',
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(f.nome)}&background=random&size=128`,
+      shift:
+        (fechamento?.fechamento as any)?.turno?.nome ||
+        (turnoId ? 'Aguardando' : 'Pendente'),
       totalSales: totalSales,
       status: status,
     };
-  }).filter(Boolean) as any[];
+  });
 
   // PerformanceData - Reduzido para frentistas reais com dados zerados caso não haja histórico processado
   const performanceData = frentistasToShow.slice(0, 3).map((f, idx) => ({
