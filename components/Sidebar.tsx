@@ -12,13 +12,15 @@ import {
   ClipboardList,
   BarChart2,
   Sun,
-  Moon
+  Moon,
+  Calendar,
+  Target
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule') => void;
   className?: string;
 }
 
@@ -33,8 +35,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
     { id: 'inventory', label: 'Tanques (Combustível)', icon: Fuel },
     { id: 'products', label: 'Produtos e Estoque', icon: Package },
     { id: 'finance', label: 'Financeiro', icon: Banknote },
+    { id: 'solvency', label: 'Painel de Solvência', icon: Target },
     { id: 'analysis', label: 'Análise de Custos', icon: BarChart2 },
     { id: 'settings', label: 'Configurações', icon: Settings },
+    { id: 'schedule', label: 'Escala e Folgas', icon: Calendar },
   ] as const;
 
   return (

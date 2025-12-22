@@ -81,8 +81,10 @@ const PurchaseRegistrationScreen: React.FC = () => {
       if (num === 0 || isNaN(num)) return '-';
       const parts = num.toFixed(decimals).split('.');
       const integer = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      const decimal = parts[1] || '0'.repeat(decimals);
-      return `${integer},${decimal}`;
+      const decimal = parts[1];
+
+      if (decimals === 0) return integer;
+      return `${integer},${decimal || '0'.repeat(decimals)}`;
    };
 
    const formatCurrency = (num: number, decimals: number = 2): string => {
@@ -108,8 +110,8 @@ const PurchaseRegistrationScreen: React.FC = () => {
          const [intPart, decPart] = cleaned.split(',');
          // Adicionar pontos como separadores de milhar na parte inteira
          const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-         // Limitar decimais a 2 casas
-         const formattedDec = decPart ? decPart.slice(0, 2) : '';
+         // Limitar decimais a 3 casas (leituras de bomba usam 3)
+         const formattedDec = decPart ? decPart.slice(0, 3) : '';
          return formattedInt + ',' + formattedDec;
       } else {
          // Apenas números inteiros - adicionar pontos como separadores de milhar
@@ -120,8 +122,8 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
    // Handle input changes
    const handleChange = (id: number, field: keyof CombustivelHibrido, value: string) => {
-      // Campos que permitem decimais
-      const decimalFields = ['compra_rs'];
+      // Campos que permitem decimais (leituras e valores monetários)
+      const decimalFields = ['compra_rs', 'inicial', 'fechamento', 'compra_lt'];
       const allowDecimals = decimalFields.includes(field);
 
       const formatted = formatInputValue(value, allowDecimals);

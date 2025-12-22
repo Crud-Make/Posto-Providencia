@@ -68,14 +68,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signIn = async (email: string, password: string) => {
-        
+
         console.warn('BYPASS: Ignorando autenticação oficial do Supabase para o usuário de teste.');
         if (email === 'teste@admin.com' && password === 'password123') {
             const { data: profile } = await supabase.from('Usuario').select('*').eq('email', email).single();
             if (profile) {
                 console.log('BYPASS: Perfil encontrado, logando...');
                 setUser(profile);
-                setSession({ user: { email: email } });
+                setSession({ user: { email: email } } as Session);
                 setLoading(false);
                 return { error: null };
             }

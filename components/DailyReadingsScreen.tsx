@@ -169,6 +169,7 @@ const DailyReadingsScreen: React.FC = () => {
             data: selectedDate,
             leitura_inicial: getInitialReading(bico.id),
             leitura_final: finalReading,
+            combustivel_id: bico.combustivel.id,
             preco_litro: bico.combustivel.preco_venda,
             usuario_id: 1, // TODO: Get from auth context
           };
