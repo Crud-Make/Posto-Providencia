@@ -20,7 +20,10 @@ import {
    Plus,
    TrendingUp,
    AlertOctagon,
-   TrendingDown
+   TrendingDown,
+   Pencil,
+   Check,
+   ShoppingBag
 } from 'lucide-react';
 import {
    bicoService,
@@ -32,8 +35,11 @@ import {
    fechamentoFrentistaService,
    recebimentoService,
    notificationService,
+   combustivelService,
+   vendaProdutoService,
    api
 } from '../services/api';
+import { supabase } from '../services/supabase';
 import type { Bico, Bomba, Combustivel, Leitura, Frentista, Turno, FormaPagamento } from '../services/database.types';
 import { useAuth } from '../contexts/AuthContext';
 import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
@@ -60,6 +66,7 @@ interface FrentistaSession {
    valor_dinheiro: string;
    valor_conferido: string;
    observacoes: string;
+   valor_produtos: string; // New field
 }
 
 // Fuel colors (mantendo para visualização)
@@ -99,10 +106,31 @@ const formatToBR = (num: number, decimals: number = 3): string => {
    return `${integer},${decimal}`;
 };
 
-// Ensure comma formatting for input
+// Ensure comma formatting and thousands dots for input
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
-   return value.replace(/[^\d,]/g, '').replace(/(\,.*)\,/g, '$1');
+
+   // Remove tudo exceto números e vírgula
+   let cleaned = value.replace(/[^\d,]/g, '');
+
+   // Se houver múltiplas vírgulas, mantém apenas a primeira
+   const parts = cleaned.split(',');
+   let inteiro = parts[0] || '';
+   let decimal = parts.slice(1).join('').slice(0, 2); // Mantém apenas a primeira vírgula e 2 casas
+
+   // Remove zeros à esquerda desnecessários
+   inteiro = inteiro.replace(/^0+(?!$)/, '') || (parts[0] === '0' ? '0' : '');
+
+   // Adiciona pontos de milhar na parte inteira
+   if (inteiro.length > 3) {
+      inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+   }
+
+   // Reconstrói o número
+   if (parts.length > 1) {
+      return `${inteiro},${decimal}`;
+   }
+   return inteiro;
 };
 
 // Get payment icon
@@ -147,6 +175,53 @@ const DailyClosingScreen: React.FC = () => {
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
    const [dayClosures, setDayClosures] = useState<any[]>([]);
+
+   // Estado para edição de preço inline
+   const [editingPrice, setEditingPrice] = useState<number | null>(null); // combustivel_id sendo editado
+   const [tempPrice, setTempPrice] = useState<string>('');
+
+   // --- AUTOSAVE LOGIC ---
+   const [restored, setRestored] = useState(false);
+   const AUTOSAVE_KEY = 'daily_closing_draft_v1';
+
+   // Restore from localStorage when data loading finishes
+   useEffect(() => {
+      if (!loading && !restored) {
+         try {
+            const draft = localStorage.getItem(AUTOSAVE_KEY);
+            if (draft) {
+               const parsed = JSON.parse(draft);
+               if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
+                  setLeituras(prev => ({ ...prev, ...parsed.leituras }));
+               }
+               if (parsed.selectedDate) setSelectedDate(parsed.selectedDate);
+               if (parsed.selectedTurno) setSelectedTurno(parsed.selectedTurno);
+               if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
+                  setFrentistaSessions(parsed.frentistaSessions);
+               }
+               console.log('Rascunho restaurado com sucesso.');
+            }
+         } catch (e) {
+            console.error('Erro ao restaurar rascunho:', e);
+         } finally {
+            setRestored(true);
+         }
+      }
+   }, [loading, restored]);
+
+   // Save to localStorage on changes
+   useEffect(() => {
+      if (!loading && !saving && restored) {
+         const draft = {
+            leituras,
+            selectedDate,
+            selectedTurno,
+            frentistaSessions
+         };
+         localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
+      }
+   }, [leituras, selectedDate, selectedTurno, frentistaSessions, loading, saving, restored]);
+   // ----------------------
 
    // Payment entries (dynamic) - REMAINING FOR GLOBAL AUDIT
    const [payments, setPayments] = useState<PaymentEntry[]>([]);
@@ -197,6 +272,7 @@ const DailyClosingScreen: React.FC = () => {
 
          // Fetch frentistas
          const frentistasData = await frentistaService.getAll();
+         console.log('Frentistas carregados:', frentistasData);
          setFrentistas(frentistasData);
 
          // Fetch turnos
@@ -255,6 +331,69 @@ const DailyClosingScreen: React.FC = () => {
       }
    }, [selectedDate, selectedTurno]);
 
+   // Realtime Subscription para atualizações automáticas do Sistema
+   useEffect(() => {
+      console.log('Iniciando subscriptions realtime...');
+
+      // Canal unificado para monitorar mudanças
+      const channel = supabase
+         .channel('system-updates')
+         .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'FechamentoFrentista' },
+            (payload) => {
+               console.log('Realtime: FechamentoFrentista alterado', payload);
+               if (selectedDate && selectedTurno) loadFrentistaSessions();
+            }
+         )
+         .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'Fechamento' },
+            (payload) => {
+               console.log('Realtime: Fechamento alterado', payload);
+               if (selectedDate) loadDayClosures();
+               if (selectedDate && selectedTurno) loadFrentistaSessions(); // Garantir que sync com fechamento pai ocorra
+            }
+         )
+         .subscribe();
+
+      return () => {
+         supabase.removeChannel(channel);
+      };
+   }, [selectedDate, selectedTurno]);
+
+   // Helper function para atualizar os pagamentos com base nos totais dos frentistas
+   const updatePaymentsFromFrentistas = (sessions: any[]) => {
+      if (sessions.length === 0) return;
+
+      // Soma os valores de todas as sessões de frentistas
+      const totais = sessions.reduce((acc, s) => ({
+         cartao: acc.cartao + (s.valor_cartao || 0),
+         pix: acc.pix + (s.valor_pix || 0),
+         dinheiro: acc.dinheiro + (s.valor_dinheiro || 0),
+         nota: acc.nota + (s.valor_nota || 0),
+      }), { cartao: 0, pix: 0, dinheiro: 0, nota: 0 });
+
+      // Atualiza os payments com os totais dos frentistas
+      setPayments(prev => prev.map(p => {
+         // Mapeia tipos de forma de pagamento para os totais dos frentistas
+         if (p.tipo === 'cartao_credito' || p.tipo === 'cartao_debito') {
+            // Para cartões, divide o total entre crédito e débito ou usa todo no primeiro
+            const valorCartao = p.tipo === 'cartao_credito'
+               ? formatSimpleValue(totais.cartao.toString().replace('.', ','))
+               : p.valor; // Mantém vazio para débito se os dados vêm apenas de "cartão"
+            return { ...p, valor: valorCartao };
+         }
+         if (p.tipo === 'pix') {
+            return { ...p, valor: totais.pix > 0 ? formatSimpleValue(totais.pix.toString().replace('.', ',')) : '' };
+         }
+         if (p.tipo === 'dinheiro') {
+            return { ...p, valor: totais.dinheiro > 0 ? formatSimpleValue(totais.dinheiro.toString().replace('.', ',')) : '' };
+         }
+         return p;
+      }));
+   };
+
    const loadFrentistaSessions = async () => {
       try {
          // Buscamos se já existe um fechamento para este dia/turno
@@ -263,16 +402,26 @@ const DailyClosingScreen: React.FC = () => {
          if (fechamento) {
             const sessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
             if (sessions && sessions.length > 0) {
-               setFrentistaSessions(sessions.map(s => ({
-                  tempId: s.id.toString(),
-                  frentistaId: s.frentista_id,
-                  valor_cartao: s.valor_cartao?.toString().replace('.', ',') || '',
-                  valor_nota: s.valor_nota?.toString().replace('.', ',') || '',
-                  valor_pix: s.valor_pix?.toString().replace('.', ',') || '',
-                  valor_dinheiro: s.valor_dinheiro?.toString().replace('.', ',') || '',
-                  valor_conferido: s.valor_conferido?.toString().replace('.', ',') || '',
-                  observacoes: s.observacoes || ''
-               })));
+               const mappedSessions = await Promise.all(sessions.map(async s => {
+                  const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
+                  const totalProdutos = produtos.reduce((acc, p) => acc + Number(p.valor_total), 0);
+
+                  return {
+                     tempId: s.id.toString(),
+                     frentistaId: s.frentista_id,
+                     valor_cartao: s.valor_cartao ? formatSimpleValue(s.valor_cartao.toString().replace('.', ',')) : '',
+                     valor_nota: s.valor_nota ? formatSimpleValue(s.valor_nota.toString().replace('.', ',')) : '',
+                     valor_pix: s.valor_pix ? formatSimpleValue(s.valor_pix.toString().replace('.', ',')) : '',
+                     valor_dinheiro: s.valor_dinheiro ? formatSimpleValue(s.valor_dinheiro.toString().replace('.', ',')) : '',
+                     valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
+                     observacoes: s.observacoes || '',
+                     valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00'
+                  };
+               }));
+               setFrentistaSessions(mappedSessions);
+
+               // Atualizar os pagamentos com os totais dos frentistas
+               updatePaymentsFromFrentistas(sessions);
                return;
             }
          }
@@ -282,16 +431,26 @@ const DailyClosingScreen: React.FC = () => {
          const shiftSessions = mobileSessions.filter(s => s.fechamento?.turno_id === selectedTurno);
 
          if (shiftSessions.length > 0) {
-            setFrentistaSessions(shiftSessions.map(s => ({
-               tempId: s.id.toString(),
-               frentistaId: s.frentista_id,
-               valor_cartao: s.valor_cartao?.toString().replace('.', ',') || '',
-               valor_nota: s.valor_nota?.toString().replace('.', ',') || '',
-               valor_pix: s.valor_pix?.toString().replace('.', ',') || '',
-               valor_dinheiro: s.valor_dinheiro?.toString().replace('.', ',') || '',
-               valor_conferido: s.valor_conferido?.toString().replace('.', ',') || '',
-               observacoes: s.observacoes || ''
-            })));
+            const mappedSessions = await Promise.all(shiftSessions.map(async s => {
+               const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
+               const totalProdutos = produtos.reduce((acc, p) => acc + Number(p.valor_total), 0);
+
+               return {
+                  tempId: s.id.toString(),
+                  frentistaId: s.frentista_id,
+                  valor_cartao: s.valor_cartao ? formatSimpleValue(s.valor_cartao.toString().replace('.', ',')) : '',
+                  valor_nota: s.valor_nota ? formatSimpleValue(s.valor_nota.toString().replace('.', ',')) : '',
+                  valor_pix: s.valor_pix ? formatSimpleValue(s.valor_pix.toString().replace('.', ',')) : '',
+                  valor_dinheiro: s.valor_dinheiro ? formatSimpleValue(s.valor_dinheiro.toString().replace('.', ',')) : '',
+                  valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
+                  observacoes: s.observacoes || '',
+                  valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00'
+               };
+            }));
+            setFrentistaSessions(mappedSessions);
+
+            // Atualizar os pagamentos com os totais dos frentistas
+            updatePaymentsFromFrentistas(shiftSessions);
          } else {
             setFrentistaSessions([]);
          }
@@ -302,28 +461,98 @@ const DailyClosingScreen: React.FC = () => {
 
    // Handle inicial input change
    const handleInicialChange = (bicoId: number, value: string) => {
-      const cleaned = value.replace(/[^\d,]/g, '').replace(/(\..*\.)/g, '$1');
+      const formatted = formatEncerranteInput(value);
       setLeituras(prev => ({
          ...prev,
-         [bicoId]: { ...prev[bicoId], inicial: cleaned }
+         [bicoId]: { ...prev[bicoId], inicial: formatted }
       }));
    };
 
    // Handle fechamento input change
    const handleFechamentoChange = (bicoId: number, value: string) => {
-      const cleaned = value.replace(/[^\d,]/g, '').replace(/(\..*\.)/g, '$1');
+      const formatted = formatEncerranteInput(value);
       setLeituras(prev => ({
          ...prev,
-         [bicoId]: { ...prev[bicoId], fechamento: cleaned }
+         [bicoId]: { ...prev[bicoId], fechamento: formatted }
       }));
+   };
+
+   // Formata entrada de encerrante: adiciona pontos de milhar e vírgula decimal automaticamente
+   // Ex: "1481883453" -> "1.481.883,453"
+   const formatEncerranteInput = (value: string): string => {
+      // Remove tudo exceto números e vírgula
+      let cleaned = value.replace(/[^\d,]/g, '');
+
+      // Se já tem vírgula, separa parte inteira e decimal
+      const parts = cleaned.split(',');
+      let inteiro = parts[0] || '';
+      let decimal = parts[1] || '';
+
+      // Remove zeros à esquerda desnecessários (exceto se for só "0")
+      inteiro = inteiro.replace(/^0+/, '') || '';
+
+      // Limita decimal a 3 casas
+      decimal = decimal.slice(0, 3);
+
+      // Adiciona pontos de milhar na parte inteira
+      if (inteiro.length > 3) {
+         inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      }
+
+      // Reconstrói o número
+      if (parts.length > 1) {
+         return `${inteiro},${decimal}`;
+      }
+      return inteiro;
+   };
+
+   // Inicia edição de preço inline
+   const handleEditPrice = (combustivelId: number, currentPrice: number) => {
+      setEditingPrice(combustivelId);
+      setTempPrice(currentPrice.toFixed(2).replace('.', ','));
+   };
+
+   // Salva novo preço no banco e atualiza estado local
+   const handleSavePrice = async (combustivelId: number) => {
+      try {
+         const newPrice = parseFloat(tempPrice.replace(',', '.'));
+         if (isNaN(newPrice) || newPrice <= 0) {
+            setError('Preço inválido. Digite um valor maior que zero.');
+            return;
+         }
+
+         // Atualiza no banco
+         await combustivelService.update(combustivelId, { preco_venda: newPrice });
+
+         // Atualiza estado local dos bicos
+         setBicos(prev => prev.map(bico => {
+            if (bico.combustivel.id === combustivelId) {
+               return {
+                  ...bico,
+                  combustivel: { ...bico.combustivel, preco_venda: newPrice }
+               };
+            }
+            return bico;
+         }));
+
+         setEditingPrice(null);
+         setTempPrice('');
+         setSuccess(`Preço atualizado para R$ ${newPrice.toFixed(2).replace('.', ',')}`);
+
+         // Limpa mensagem após 2 segundos
+         setTimeout(() => setSuccess(null), 2000);
+      } catch (err) {
+         console.error('Erro ao salvar preço:', err);
+         setError('Erro ao salvar preço. Tente novamente.');
+      }
    };
 
    // Handle payment change
    const handlePaymentChange = (index: number, value: string) => {
-      const cleaned = value.replace(/[^\d,]/g, '').replace(/(\..*\.)/g, '$1');
+      const formatted = formatSimpleValue(value);
       setPayments(prev => {
          const updated = [...prev];
-         updated[index] = { ...updated[index], valor: cleaned };
+         updated[index] = { ...updated[index], valor: formatted };
          return updated;
       });
    };
@@ -428,6 +657,11 @@ const DailyClosingScreen: React.FC = () => {
       };
    }, [bicos, leituras]);
 
+   // Calculate total products
+   const totalProdutos = useMemo(() => {
+      return frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_produtos || '0'), 0);
+   }, [frentistaSessions]);
+
    // Calculate total payments
    const totalPayments = useMemo(() => {
       return payments.reduce((acc, p) => acc + parseValue(p.valor), 0);
@@ -435,8 +669,10 @@ const DailyClosingScreen: React.FC = () => {
 
    // Calculate difference
    const diferenca = useMemo(() => {
-      return totalPayments - totals.valor;
-   }, [totalPayments, totals.valor]);
+      // Diferença = (Total Pago) - (Venda Combustível + Venda Produtos)
+      const expectedTotal = totals.valor + totalProdutos;
+      return totalPayments - expectedTotal;
+   }, [totalPayments, totals.valor, totalProdutos]);
 
    // Calculate percentage
    const calcPercentage = (litros: number): number => {
@@ -458,7 +694,8 @@ const DailyClosingScreen: React.FC = () => {
          valor_pix: '',
          valor_dinheiro: '',
          valor_conferido: '',
-         observacoes: ''
+         observacoes: '',
+         valor_produtos: ''
       };
       setFrentistaSessions(prev => [...prev, newSession]);
    };
@@ -530,8 +767,10 @@ const DailyClosingScreen: React.FC = () => {
                data: selectedDate,
                leitura_inicial: parseValue(leituras[bico.id]?.inicial || ''),
                leitura_final: parseValue(leituras[bico.id]?.fechamento || ''),
+               combustivel_id: bico.combustivel.id,
                preco_litro: bico.combustivel.preco_venda,
                usuario_id: user.id,
+               turno_id: selectedTurno
             }));
 
          if (leiturasToCreate.length === 0) {
@@ -566,7 +805,6 @@ const DailyClosingScreen: React.FC = () => {
                      valor_pix: parseValue(fs.valor_pix),
                      valor_nota: parseValue(fs.valor_nota),
                      valor_conferido: valorConferido,
-                     diferenca: diferencaFrentista,
                      observacoes: fs.observacoes
                   };
                });
@@ -576,8 +814,12 @@ const DailyClosingScreen: React.FC = () => {
 
                // Enviar notificações para frentistas com diferença negativa (falta de caixa)
                for (const frenData of frentistasToCreate) {
-                  // Se diferença é negativa (total informado > conferido = falta)
-                  if (frenData.diferenca > 0) {
+                  // Calcular diferença: total informado - valor conferido
+                  const totalInformado = frenData.valor_cartao + frenData.valor_nota + frenData.valor_pix + frenData.valor_dinheiro;
+                  const diferencaCalculada = totalInformado - frenData.valor_conferido;
+
+                  // Se diferença é positiva (total informado > conferido = falta)
+                  if (diferencaCalculada > 0) {
                      try {
                         // Buscar o fechamento criado para obter o ID
                         const createdRecord = createdFechamentos?.find(
@@ -588,9 +830,9 @@ const DailyClosingScreen: React.FC = () => {
                            await notificationService.sendFaltaCaixaNotification(
                               frenData.frentista_id,
                               createdRecord.id,
-                              frenData.diferenca
+                              diferencaCalculada
                            );
-                           console.log(`Notificação enviada para frentista ${frenData.frentista_id}: Falta de R$ ${frenData.diferenca.toFixed(2)}`);
+                           console.log(`Notificação enviada para frentista ${frenData.frentista_id}: Falta de R$ ${diferencaCalculada.toFixed(2)}`);
                         }
                      } catch (notifError) {
                         console.error('Erro ao enviar notificação:', notifError);
@@ -618,7 +860,7 @@ const DailyClosingScreen: React.FC = () => {
          // 5. Update Fechamento status and totals
          await fechamentoService.update(fechamento.id, {
             status: 'FECHADO',
-            total_vendas: totals.valor,
+            total_vendas: totals.valor + totalProdutos,
             total_recebido: totalPayments,
             diferenca: diferenca,
             observacoes: observacoes
@@ -639,14 +881,16 @@ const DailyClosingScreen: React.FC = () => {
          setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
          setObservacoes('');
          setFrentistaSessions([]);
+         localStorage.removeItem('daily_closing_draft_v1'); // Limpa rascunho após salvar
 
          // Reload data
          await loadData();
          await loadDayClosures();
 
-      } catch (err) {
-         console.error('Error saving readings:', err);
-         setError('Erro ao salvar leituras e fechamento. Tente novamente.');
+      } catch (err: any) {
+         console.error('Full error object:', err);
+         console.error('Error saving readings:', err?.message || err);
+         setError(`Erro ao salvar: ${err?.message || 'Erro desconhecido'}`);
       } finally {
          setSaving(false);
       }
@@ -722,9 +966,13 @@ const DailyClosingScreen: React.FC = () => {
                <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">&nbsp;</span>
                   <button
-                     onClick={loadData}
+                     onClick={() => {
+                        loadData();
+                        if (selectedDate) loadDayClosures();
+                        if (selectedDate && selectedTurno) loadFrentistaSessions();
+                     }}
                      className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors"
-                     title="Atualizar dados"
+                     title="Atualizar todos os dados"
                   >
                      <RefreshCw size={18} className="text-gray-500" />
                   </button>
@@ -832,7 +1080,7 @@ const DailyClosingScreen: React.FC = () => {
                         <th className="px-4 py-3 text-left">Produtos</th>
                         <th className="px-4 py-3 text-right">Inicial</th>
                         <th className="px-4 py-3 text-right bg-yellow-50">Fechamento</th>
-                        <th className="px-4 py-3 text-right">Litros</th>
+                        <th className="px-4 py-3 text-right">Litros (L)</th>
                         <th className="px-4 py-3 text-right">Valor LT $</th>
                         <th className="px-4 py-3 text-right">Venda bico R$</th>
                      </tr>
@@ -881,12 +1129,52 @@ const DailyClosingScreen: React.FC = () => {
 
                               {/* Litros (CALCULADO - exibe "-" quando inválido) */}
                               <td className="px-4 py-3 text-right font-mono font-bold text-gray-700">
-                                 {litrosData.display}
+                                 {litrosData.display !== '-' ? `${litrosData.display} L` : '-'}
                               </td>
 
-                              {/* Valor LT $ (FIXO - igual planilha) */}
+                              {/* Valor LT $ (EDITÁVEL - clique no lápis para alterar) */}
                               <td className="px-4 py-3 text-right font-mono text-gray-500 bg-gray-50">
-                                 R$ {bico.combustivel.preco_venda.toFixed(2).replace('.', ',')}
+                                 {editingPrice === bico.combustivel.id ? (
+                                    <div className="flex items-center justify-end gap-1">
+                                       <span className="text-xs text-gray-400">R$</span>
+                                       <input
+                                          type="text"
+                                          value={tempPrice}
+                                          onChange={(e) => setTempPrice(e.target.value.replace(/[^0-9,]/g, ''))}
+                                          onKeyDown={(e) => {
+                                             if (e.key === 'Enter') handleSavePrice(bico.combustivel.id);
+                                             if (e.key === 'Escape') setEditingPrice(null);
+                                          }}
+                                          className="w-16 text-right py-1 px-2 border border-blue-300 rounded text-sm font-mono bg-white focus:ring-1 focus:ring-blue-200 outline-none"
+                                          autoFocus
+                                       />
+                                       <button
+                                          onClick={() => handleSavePrice(bico.combustivel.id)}
+                                          className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                          title="Salvar"
+                                       >
+                                          <Check size={14} />
+                                       </button>
+                                       <button
+                                          onClick={() => setEditingPrice(null)}
+                                          className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                          title="Cancelar"
+                                       >
+                                          <X size={14} />
+                                       </button>
+                                    </div>
+                                 ) : (
+                                    <div className="flex items-center justify-end gap-1 group">
+                                       <span>R$ {bico.combustivel.preco_venda.toFixed(2).replace('.', ',')}</span>
+                                       <button
+                                          onClick={() => handleEditPrice(bico.combustivel.id, bico.combustivel.preco_venda)}
+                                          className="p-1 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Editar preço"
+                                       >
+                                          <Pencil size={12} />
+                                       </button>
+                                    </div>
+                                 )}
                               </td>
 
                               {/* Venda bico R$ (CALCULADO - exibe "-" quando litros = "-") */}
@@ -926,7 +1214,7 @@ const DailyClosingScreen: React.FC = () => {
                   <thead>
                      <tr className="bg-gray-100 border-b border-gray-200 text-xs uppercase font-bold text-gray-600">
                         <th className="px-4 py-3 text-left">Combustível</th>
-                        <th className="px-4 py-3 text-right">Litros</th>
+                        <th className="px-4 py-3 text-right">Litros (L)</th>
                         <th className="px-4 py-3 text-right">Valor R$</th>
                         <th className="px-4 py-3 text-right">%</th>
                      </tr>
@@ -944,7 +1232,7 @@ const DailyClosingScreen: React.FC = () => {
                                  </span>
                               </td>
                               <td className="px-4 py-3 text-right font-mono font-bold text-gray-900">
-                                 {formatToBR(item.litros, 3)}
+                                 {formatToBR(item.litros, 3)} L
                               </td>
                               <td className="px-4 py-3 text-right font-mono font-bold text-green-700">
                                  {item.valor.toLocaleString('pt-BR', {
@@ -963,7 +1251,7 @@ const DailyClosingScreen: React.FC = () => {
                      <tr className="bg-gray-200 font-black text-gray-900 border-t-2 border-gray-300">
                         <td className="px-4 py-4">TOTAL</td>
                         <td className="px-4 py-4 text-right font-mono text-blue-700 text-lg">
-                           {totals.litrosDisplay}
+                           {totals.litrosDisplay} L
                         </td>
                         <td className="px-4 py-4 text-right font-mono text-green-700 text-lg">
                            {totals.valorDisplay}
@@ -1029,6 +1317,18 @@ const DailyClosingScreen: React.FC = () => {
 
                {/* Payment Summary Footer */}
                <div className="mt-6 pt-6 border-t border-gray-100 flex flex-wrap gap-8">
+                  {/* Indicador de valores dos frentistas (mobile) */}
+                  {frentistaSessions.length > 0 && (
+                     <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                           <Smartphone size={10} />
+                           Total Frentistas (App)
+                        </span>
+                        <span className="text-xl font-black text-blue-600">
+                           {frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                     </div>
+                  )}
                   <div className="flex flex-col">
                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bruto Informado</span>
                      <span className="text-xl font-black text-gray-900">
@@ -1054,10 +1354,22 @@ const DailyClosingScreen: React.FC = () => {
          {/* Frentistas Section (Based on Spreadsheet Logic) */}
          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:break-inside-avoid">
             <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50 flex justify-between items-center">
-               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <User size={20} className="text-blue-600" />
-                  Controle de Frentistas
-               </h2>
+               <div className="flex items-center gap-4">
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                     <User size={20} className="text-blue-600" />
+                     Controle de Frentistas
+                  </h2>
+                  <button
+                     onClick={() => {
+                        loadData();
+                        loadFrentistaSessions();
+                     }}
+                     className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded-full transition-all shadow-sm border border-transparent hover:border-blue-100"
+                     title="Atualizar dados (sincronizar com App)"
+                  >
+                     <RefreshCw size={18} />
+                  </button>
+               </div>
                <button
                   onClick={handleAddFrentista}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
@@ -1126,7 +1438,19 @@ const DailyClosingScreen: React.FC = () => {
                                  </div>
 
                                  {/* Body do Card - Valores */}
-                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                    {/* Produtos (Read Only) */}
+                                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 flex items-start gap-3">
+                                       <div className="p-2 bg-white rounded-md text-purple-600 shadow-sm">
+                                          <ShoppingBag size={18} />
+                                       </div>
+                                       <div className="flex-1">
+                                          <label className="text-[10px] font-black text-purple-400 uppercase">Produtos</label>
+                                          <div className="w-full bg-transparent font-bold text-purple-900 py-2.5 border-b border-transparent border-none outline-none">
+                                             {session.valor_produtos ? `R$ ${session.valor_produtos}` : 'R$ 0,00'}
+                                          </div>
+                                       </div>
+                                    </div>
                                     {/* Cartão */}
                                     <div className="bg-gray-50/50 p-3 rounded-lg border border-gray-100 flex items-start gap-3">
                                        <div className="p-2 bg-white rounded-md text-blue-600 shadow-sm">

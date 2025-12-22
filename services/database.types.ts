@@ -101,6 +101,33 @@ export type Database = {
         }
         Relationships: []
       }
+      Divida: {
+        Row: {
+          id: number
+          descricao: string
+          valor: number
+          data_vencimento: string
+          status: 'pendente' | 'pago'
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          descricao: string
+          valor: number
+          data_vencimento: string
+          status?: 'pendente' | 'pago'
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          descricao?: string
+          valor?: number
+          data_vencimento?: string
+          status?: 'pendente' | 'pago'
+          created_at?: string
+        }
+        Relationships: []
+      }
       Compra: {
         Row: {
           arquivo_nf: string | null
@@ -787,6 +814,98 @@ export type Database = {
           },
         ]
       }
+      VendaProduto: {
+        Row: {
+          id: number
+          frentista_id: number
+          produto_id: number
+          quantidade: number
+          valor_unitario: number
+          valor_total: number
+          data: string
+          fechamento_frentista_id: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          frentista_id: number
+          produto_id: number
+          quantidade?: number
+          valor_unitario: number
+          valor_total: number
+          data?: string
+          fechamento_frentista_id?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          frentista_id?: number
+          produto_id?: number
+          quantidade?: number
+          valor_unitario?: number
+          valor_total?: number
+          data?: string
+          fechamento_frentista_id?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "VendaProduto_frentista_id_fkey"
+            columns: ["frentista_id"]
+            referencedRelation: "Frentista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "VendaProduto_produto_id_fkey"
+            columns: ["produto_id"]
+            referencedRelation: "Produto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "VendaProduto_fechamento_frentista_id_fkey"
+            columns: ["fechamento_frentista_id"]
+            referencedRelation: "FechamentoFrentista"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      Escala: {
+        Row: {
+          id: number
+          frentista_id: number
+          data: string
+          tipo: 'FOLGA' | 'TRABALHO'
+          turno_id: number | null
+          observacao: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          frentista_id: number
+          data: string
+          tipo: 'FOLGA' | 'TRABALHO'
+          turno_id?: number | null
+          observacao?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          frentista_id?: number
+          data?: string
+          tipo?: 'FOLGA' | 'TRABALHO'
+          turno_id?: number | null
+          observacao?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Escala_frentista_id_fkey"
+            columns: ["frentista_id"]
+            referencedRelation: "Frentista"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       Recebimento: {
         Row: {
           fechamento_id: number
@@ -926,116 +1045,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {
@@ -1049,32 +1168,35 @@ export const Constants = {
 } as const
 
 // === HELPER TYPES ===
-type Tables = Database['public']['Tables'];
+type DbTables = Database['public']['Tables'];
 
-export type Bico = Tables['Bico']['Row'];
-export type Bomba = Tables['Bomba']['Row'];
-export type Combustivel = Tables['Combustivel']['Row'];
-export type Compra = Tables['Compra']['Row'];
-export type Configuracao = Tables['Configuracao']['Row'];
-export type Despesa = Tables['Despesa']['Row'];
-export type Emprestimo = Tables['Emprestimo']['Row'];
-export type Estoque = Tables['Estoque']['Row'];
-export type Fechamento = Tables['Fechamento']['Row'];
-export type FechamentoFrentista = Tables['FechamentoFrentista']['Row'];
-export type FormaPagamento = Tables['FormaPagamento']['Row'];
-export type Fornecedor = Tables['Fornecedor']['Row'];
-export type Frentista = Tables['Frentista']['Row'];
-export type Leitura = Tables['Leitura']['Row'];
-export type Maquininha = Tables['Maquininha']['Row'];
-export type Notificacao = Tables['Notificacao']['Row'];
-export type Parcela = Tables['Parcela']['Row'];
-export type PushToken = Tables['PushToken']['Row'];
-export type Recebimento = Tables['Recebimento']['Row'];
-export type Turno = Tables['Turno']['Row'];
-export type Usuario = Tables['Usuario']['Row'];
+export type Bico = DbTables['Bico']['Row'];
+export type Bomba = DbTables['Bomba']['Row'];
+export type Combustivel = DbTables['Combustivel']['Row'];
+export type Compra = DbTables['Compra']['Row'];
+export type Divida = DbTables['Divida']['Row'];
+export type Configuracao = DbTables['Configuracao']['Row'];
+export type Emprestimo = DbTables['Emprestimo']['Row'];
+export type Estoque = DbTables['Estoque']['Row'];
+export type Fechamento = DbTables['Fechamento']['Row'];
+export type FechamentoFrentista = DbTables['FechamentoFrentista']['Row'];
+export type FormaPagamento = DbTables['FormaPagamento']['Row'];
+export type Fornecedor = DbTables['Fornecedor']['Row'];
+export type Frentista = DbTables['Frentista']['Row'];
+export type Leitura = DbTables['Leitura']['Row'];
+export type Maquininha = DbTables['Maquininha']['Row'];
+export type Notificacao = DbTables['Notificacao']['Row'];
+export type Parcela = DbTables['Parcela']['Row'];
+export type Produto = DbTables['Produto']['Row'];
+export type MovimentacaoEstoque = DbTables['MovimentacaoEstoque']['Row'];
+export type PushToken = DbTables['PushToken']['Row'];
+export type Recebimento = DbTables['Recebimento']['Row'];
+export type Turno = DbTables['Turno']['Row'];
+export type Usuario = DbTables['Usuario']['Row'];
+export type VendaProduto = DbTables['VendaProduto']['Row'];
 
-export type InsertTables<T extends keyof Tables> = Tables[T]['Insert'];
-export type UpdateTables<T extends keyof Tables> = Tables[T]['Update'];
+export type InsertTables<T extends keyof DbTables> = DbTables[T]['Insert'];
+export type UpdateTables<T extends keyof DbTables> = DbTables[T]['Update'];
 
 export type Role = Enums<'Role'>;
 export type StatusFechamento = Enums<'StatusFechamento'>;

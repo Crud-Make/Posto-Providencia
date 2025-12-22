@@ -36,24 +36,35 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
   const [transactions, setTransactions] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ totalCost: 0, totalSell: 0, projectedProfit: 0 });
+  const [measurements, setMeasurements] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await fetchInventoryData();
-        setItems(data.items);
-        setAlerts(data.alerts);
-        setTransactions(data.transactions);
-        setChartData(data.chartData || []);
-        setSummary(data.summary || { totalCost: 0, totalSell: 0, projectedProfit: 0 });
-      } catch (error) {
-        console.error("Failed to load inventory data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+  const handleMeasurementChange = (id: string, value: string) => {
+    // Permite apenas numeros e virgula/ponto
+    const formatted = value.replace(/[^0-9,.]/g, '');
+    setMeasurements(prev => ({ ...prev, [id]: formatted }));
+  };
+
+  const parseMeasure = (val: string) => {
+    if (!val) return 0;
+    return parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
+  };
+
+  // Recalcula totais baseado no físico (se houver) ou lógico
+  const currentSummary = React.useMemo(() => {
+    if (items.length === 0) return summary;
+
+    let totalCost = 0;
+    let totalSell = 0;
+
+    items.forEach(item => {
+      const measureVal = measurements[item.id];
+      const volume = measureVal ? parseMeasure(measureVal) : item.volume;
+      totalCost += volume * (item.costPrice || 0);
+      totalSell += volume * (item.sellPrice || 0);
+    });
+
+    return { totalCost, totalSell, projectedProfit: totalSell - totalCost };
+  }, [items, measurements, summary]);
 
   if (loading) {
     return (
@@ -128,18 +139,26 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
         <>
           {/* Fuel Status Cards (Grid) */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {items.map((item) => (
-              <FuelTank
-                key={item.id}
-                productName={item.name}
-                code={item.code}
-                currentVolume={item.volume}
-                capacity={item.capacity}
-                color={item.color as any}
-                status={item.status as any}
-                daysRemaining={item.daysRemaining}
-              />
-            ))}
+            {items.map((item) => {
+              // Atualiza volume visual se houver medição manual
+              const measureVal = measurements[item.id];
+              const hasMeasure = measureVal && measureVal !== '';
+              const displayVol = hasMeasure ? parseMeasure(measureVal) : item.volume;
+              const percent = Math.min(100, Math.round((displayVol / item.capacity) * 100));
+
+              return (
+                <FuelTank
+                  key={item.id}
+                  productName={item.name}
+                  code={item.code}
+                  currentVolume={displayVol}
+                  capacity={item.capacity}
+                  color={item.color as any}
+                  status={percent < 10 ? 'CRÍTICO' : percent < 20 ? 'BAIXO' : 'OK'}
+                  daysRemaining={item.daysRemaining}
+                />
+              );
+            })}
           </div>
 
           {/* Middle Section: Alerts & Chart */}
@@ -273,7 +292,12 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
           </div>
 
           {/* Financial Charts Section */}
-          <InventoryFinancialCharts items={items} />
+          <InventoryFinancialCharts items={items.map(i => {
+            // Passa para os gráficos os valores ajustados pelo físico
+            const measureVal = measurements[i.id];
+            const volume = measureVal ? parseMeasure(measureVal) : i.volume;
+            return { ...i, volume };
+          })} />
 
           {/* Financial Reconciliation & Stock Analysis */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -285,15 +309,15 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
               <div className="flex gap-2">
                 <div className="px-3 py-1 rounded bg-[#e7f3ec] border border-[#13ec6d]/20 text-[#0d1b13] text-xs font-bold flex flex-col items-end">
                   <span className="text-[10px] text-[#4c9a6c] uppercase">Estoque (Custo)</span>
-                  R$ {summary.totalCost.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  R$ {currentSummary.totalCost.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                 </div>
                 <div className="px-3 py-1 rounded bg-blue-50 border border-blue-100 text-[#0d1b13] text-xs font-bold flex flex-col items-end">
                   <span className="text-[10px] text-blue-500 uppercase">Estoque (Venda)</span>
-                  R$ {summary.totalSell.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  R$ {currentSummary.totalSell.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                 </div>
                 <div className="px-3 py-1 rounded bg-[#13ec6d] text-[#0d1b13] text-xs font-bold flex flex-col items-end shadow-sm">
                   <span className="text-[10px] text-[#0d1b13]/60 uppercase">Lucro Projetado</span>
-                  R$ {summary.projectedProfit.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  R$ {currentSummary.projectedProfit.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                 </div>
               </div>
             </div>
@@ -305,7 +329,8 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                     <th className="px-4 py-3 bg-gray-100/50">Anterior</th>
                     <th className="px-4 py-3 bg-gray-100/50">+ Cmpr</th>
                     <th className="px-4 py-3 bg-gray-100/50">- Vnd</th>
-                    <th className="px-4 py-3 bg-blue-50/30 text-blue-700">Atual</th>
+                    <th className="px-4 py-3 bg-blue-50/30 text-blue-700">Lógico</th>
+                    <th className="px-4 py-3 bg-yellow-50/30 text-yellow-700 w-32">Físico</th>
                     <th className="px-4 py-3 bg-red-50/30 text-red-700">P/S</th>
                     <th className="px-4 py-3 text-right">Custo Médio</th>
                     <th className="px-4 py-3 text-right">Valor Estoque</th>
@@ -313,7 +338,12 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {items.map((item) => {
-                    const stockValue = item.volume * item.costPrice;
+                    const measureVal = measurements[item.id];
+                    const physicalVol = measureVal ? parseMeasure(measureVal) : item.volume;
+                    const diff = measureVal ? physicalVol - item.volume : 0;
+
+                    const stockValue = physicalVol * item.costPrice;
+
                     return (
                       <tr key={item.id} className="hover:bg-gray-50/50 transition-colors text-center">
                         <td className="px-4 py-4 text-left font-bold text-gray-900 border-l-4" style={{ borderColor: item.color === 'green' ? '#13ec6d' : item.color }}>
@@ -323,7 +353,18 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                         <td className="px-4 py-4 text-green-600 font-medium">{item.totalPurchases > 0 ? `+ ${item.totalPurchases.toLocaleString()}` : '-'}</td>
                         <td className="px-4 py-4 text-red-500 font-medium">{item.totalSales > 0 ? `- ${item.totalSales.toLocaleString()}` : '-'}</td>
                         <td className="px-4 py-4 bg-blue-50/20 font-bold text-blue-700">{item.volume.toLocaleString()} L</td>
-                        <td className="px-4 py-4 text-gray-400">-</td>
+                        <td className="px-4 py-4 bg-yellow-50/20">
+                          <input
+                            type="text"
+                            value={measurements[item.id] || ''}
+                            onChange={(e) => handleMeasurementChange(item.id, e.target.value)}
+                            placeholder={item.volume.toLocaleString('pt-BR')}
+                            className="w-full text-center bg-white border border-gray-300 rounded px-2 py-1 text-sm font-bold shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                          />
+                        </td>
+                        <td className={`px-4 py-4 font-bold ${diff < 0 ? 'text-red-500' : diff > 0 ? 'text-green-500' : 'text-gray-400'}`}>
+                          {measureVal ? (diff > 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString()) : '-'}
+                        </td>
                         <td className="px-4 py-4 text-right text-gray-500 font-medium">R$ {item.costPrice.toFixed(2)}</td>
                         <td className="px-4 py-4 text-right font-bold text-gray-900">R$ {stockValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
                       </tr>

@@ -21,6 +21,7 @@ import {
     Moon,
     Sunset
 } from 'lucide-react-native';
+import { registerForPushNotificationsAsync, savePushToken } from '../../lib/notifications';
 
 // Tipos
 interface FormaPagamento {
@@ -143,6 +144,24 @@ export default function RegistroScreen() {
             if (user?.email) {
                 const name = user.email.split('@')[0];
                 setUserName(name.charAt(0).toUpperCase() + name.slice(1));
+
+                // Buscar o frentista e o id do usuario na tabela publica
+                const [frentistaRes, usuarioRes] = await Promise.all([
+                    supabase.from('Frentista').select('id').eq('user_id', user.id).single(),
+                    supabase.from('Usuario').select('id').eq('email', user.email).single()
+                ]);
+
+                if (frentistaRes.data) {
+                    // Tentar registrar notificações push
+                    const token = await registerForPushNotificationsAsync();
+                    if (token) {
+                        await savePushToken(
+                            frentistaRes.data.id,
+                            usuarioRes.data?.id || 1, // Fallback para admin se não achar
+                            token
+                        );
+                    }
+                }
             }
         }
         fetchUser();

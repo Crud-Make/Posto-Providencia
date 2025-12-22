@@ -314,3 +314,31 @@ export interface LoanInstallment {
   status: 'pendente' | 'pago' | 'atrasado';
   jurosMulta?: number;
 }
+
+// --- NEW TYPES FOR FINANCE & SOLVENCY ---
+
+export interface Divida {
+  id: string;
+  descricao: string;
+  valor: number;
+  data_vencimento: string;
+  status: 'pendente' | 'pago';
+}
+
+export interface SolvencyStatus {
+  dividaId: string;
+  descricao: string;
+  valor: number;
+  dataVencimento: string;
+  status: 'verde' | 'amarelo' | 'vermelho';
+  mensagem: string;
+  deficitProjetado?: number;
+  diasAteVencimento: number;
+  coberturaPorcentagem: number;
+}
+
+export interface SolvencyProjection {
+  saldoAtual: number;
+  mediaDiaria: number;
+  proximasParcelas: SolvencyStatus[];
+}

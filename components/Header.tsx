@@ -3,8 +3,8 @@ import { Fuel, Menu, X, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface HeaderProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
@@ -62,8 +62,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
             { id: 'inventory', label: 'Tanques (Combustível)' },
             { id: 'products', label: 'Produtos e Estoque' },
             { id: 'finance', label: 'Financeiro' },
+            { id: 'solvency', label: 'Painel de Solvência' },
             { id: 'analysis', label: 'Análise de Custos' },
             { id: 'settings', label: 'Configurações' },
+            { id: 'schedule', label: 'Escala e Folgas' },
           ].map((item) => (
             <button
               key={item.id}

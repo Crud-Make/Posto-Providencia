@@ -11,14 +11,17 @@ import SalesAnalysisScreen from './components/SalesAnalysisScreen';
 import SalesDashboardScreen from './components/SalesDashboardScreen';
 import AttendantManagementScreen from './components/AttendantManagementScreen';
 import FinanceManagementScreen from './components/FinanceManagementScreen';
+import SolvencyDashboard from './components/SolvencyDashboard';
 import SettingsScreen from './components/SettingsScreen';
+import ScheduleManagementScreen from './components/ScheduleManagementScreen';
 import LoginScreen from './components/LoginScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule'>('dashboard');
+
 
   if (loading) {
     return (
@@ -83,11 +86,17 @@ const AppContent: React.FC = () => {
           {currentView === 'finance' && (
             <FinanceManagementScreen />
           )}
+          {currentView === 'solvency' && (
+            <SolvencyDashboard />
+          )}
           {currentView === 'analysis' && (
             <CostAnalysisScreen />
           )}
           {currentView === 'reports' && (
             <SalesAnalysisScreen />
+          )}
+          {currentView === 'schedule' && (
+            <ScheduleManagementScreen />
           )}
         </main>
       </div>
