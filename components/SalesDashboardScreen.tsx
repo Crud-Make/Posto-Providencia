@@ -102,7 +102,7 @@ const SalesDashboardScreen: React.FC = () => {
 
          // Calculate totals
          const totalLitros = allLeituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-         const totalVendas = allLeituras.reduce((acc, l) => acc + (l.valor_venda || 0), 0);
+         const totalVendas = allLeituras.reduce((acc, l) => acc + (l.valor_total || 0), 0);
 
          // Group by combustivel
          const byCombustivel = allLeituras.reduce((acc, l) => {
@@ -115,7 +115,7 @@ const SalesDashboardScreen: React.FC = () => {
                };
             }
             acc[codigo].litros += l.litros_vendidos || 0;
-            acc[codigo].valor += l.valor_venda || 0;
+            acc[codigo].valor += l.valor_total || 0;
             return acc;
          }, {} as Record<string, { combustivel: Combustivel; litros: number; valor: number }>);
 

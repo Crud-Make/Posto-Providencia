@@ -17,10 +17,17 @@ import type {
   Usuario,
   Emprestimo,
   Parcela,
+  Divida as DBDivida,
   Configuracao,
   InsertTables,
   UpdateTables,
 } from './database.types';
+
+import {
+  Divida,
+  SolvencyStatus,
+  SolvencyProjection
+} from '../types';
 
 // Tipo para o resumo de vendas por combustível
 interface VendaPorCombustivel {
@@ -44,15 +51,28 @@ interface SalesSummary {
 // ============================================
 
 export const combustivelService = {
+  // Ordem customizada dos combustíveis
+  ORDEM_COMBUSTIVEIS: ['GC', 'GA', 'ET', 'S10', 'DIESEL'] as const,
+
   async getAll(): Promise<Combustivel[]> {
     const { data, error } = await supabase
       .from('Combustivel')
       .select('*')
-      .eq('ativo', true)
-      .order('nome');
+      .eq('ativo', true);
     if (error) throw error;
-    return data || [];
+
+    // Ordena por ordem customizada
+    const ordem = this.ORDEM_COMBUSTIVEIS;
+    return (data || []).sort((a, b) => {
+      const indexA = ordem.indexOf(a.codigo as any);
+      const indexB = ordem.indexOf(b.codigo as any);
+      // Itens não encontrados vão para o final
+      const posA = indexA === -1 ? 999 : indexA;
+      const posB = indexB === -1 ? 999 : indexB;
+      return posA - posB;
+    });
   },
+
 
   async getById(id: number): Promise<Combustivel | null> {
     const { data, error } = await supabase
@@ -351,14 +371,14 @@ export const leituraService = {
   async create(leitura: InsertTables<'Leitura'>): Promise<Leitura> {
     // Calcula litros vendidos e valor venda
     const litros_vendidos = leitura.leitura_final - leitura.leitura_inicial;
-    const valor_venda = litros_vendidos * leitura.preco_litro;
+    const valor_total = litros_vendidos * leitura.preco_litro;
 
     const { data, error } = await supabase
       .from('Leitura')
       .insert({
         ...leitura,
         litros_vendidos,
-        valor_venda,
+        valor_total,
       })
       .select()
       .single();
@@ -388,7 +408,7 @@ export const leituraService = {
     let updates = { ...leitura };
     if (leitura.leitura_final !== undefined && leitura.leitura_inicial !== undefined && leitura.preco_litro !== undefined) {
       updates.litros_vendidos = leitura.leitura_final - leitura.leitura_inicial;
-      updates.valor_venda = updates.litros_vendidos * leitura.preco_litro;
+      updates.valor_total = updates.litros_vendidos * leitura.preco_litro;
     }
 
     const { data, error } = await supabase
@@ -401,11 +421,11 @@ export const leituraService = {
     return data;
   },
 
-  async bulkCreate(leituras: InsertTables<'Leitura'>[]): Promise<Leitura[]> {
+  async bulkCreate(leituras: Omit<InsertTables<'Leitura'>, 'litros_vendidos' | 'valor_total'>[]): Promise<Leitura[]> {
     const leiturasWithCalc = leituras.map(l => ({
       ...l,
       litros_vendidos: l.leitura_final - l.leitura_inicial,
-      valor_venda: (l.leitura_final - l.leitura_inicial) * l.preco_litro,
+      valor_total: (l.leitura_final - l.leitura_inicial) * l.preco_litro,
     }));
 
     const { data, error } = await supabase
@@ -454,7 +474,7 @@ export const leituraService = {
     const leituras = await this.getByDate(data);
 
     const totalLitros = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-    const totalVendas = leituras.reduce((acc, l) => acc + (l.valor_venda || 0), 0);
+    const totalVendas = leituras.reduce((acc, l) => acc + (l.valor_total || 0), 0);
 
     // Agrupa por combustível
     const porCombustivel = leituras.reduce((acc, l) => {
@@ -467,7 +487,7 @@ export const leituraService = {
         };
       }
       acc[codigo].litros += l.litros_vendidos || 0;
-      acc[codigo].valor += l.valor_venda || 0;
+      acc[codigo].valor += l.valor_total || 0;
       return acc;
     }, {} as Record<string, { combustivel: Combustivel; litros: number; valor: number }>);
 
@@ -613,10 +633,15 @@ export const fechamentoService = {
     return data || [];
   },
 
-  async create(fechamento: InsertTables<'Fechamento'>): Promise<Fechamento> {
+  async create(fechamento: Omit<InsertTables<'Fechamento'>, 'diferenca' | 'total_recebido' | 'total_vendas'> & Partial<Pick<InsertTables<'Fechamento'>, 'diferenca' | 'total_recebido' | 'total_vendas'>>): Promise<Fechamento> {
     const { data, error } = await supabase
       .from('Fechamento')
-      .insert(fechamento)
+      .insert({
+        ...fechamento,
+        diferenca: fechamento.diferenca ?? 0,
+        total_recebido: fechamento.total_recebido ?? 0,
+        total_vendas: fechamento.total_vendas ?? 0,
+      })
       .select()
       .single();
     if (error) throw error;
@@ -626,10 +651,7 @@ export const fechamentoService = {
   async update(id: number, fechamento: UpdateTables<'Fechamento'>): Promise<Fechamento> {
     const { data, error } = await supabase
       .from('Fechamento')
-      .update({
-        ...fechamento,
-        updated_at: new Date().toISOString(),
-      })
+      .update(fechamento)
       .eq('id', id)
       .select()
       .single();
@@ -709,21 +731,9 @@ export const fechamentoFrentistaService = {
   },
 
   async create(fechamentoFrentista: InsertTables<'FechamentoFrentista'>): Promise<FechamentoFrentista> {
-    // Calcula total e diferença
-    const total =
-      (fechamentoFrentista.valor_cartao || 0) +
-      (fechamentoFrentista.valor_nota || 0) +
-      (fechamentoFrentista.valor_pix || 0) +
-      (fechamentoFrentista.valor_dinheiro || 0);
-    const diferenca = total - (fechamentoFrentista.valor_conferido || 0);
-
     const { data, error } = await supabase
       .from('FechamentoFrentista')
-      .insert({
-        ...fechamentoFrentista,
-        total,
-        diferenca,
-      })
+      .insert(fechamentoFrentista)
       .select()
       .single();
     if (error) throw error;
@@ -731,19 +741,9 @@ export const fechamentoFrentistaService = {
   },
 
   async bulkCreate(items: InsertTables<'FechamentoFrentista'>[]): Promise<FechamentoFrentista[]> {
-    const itemsWithCalc = items.map(item => {
-      const total =
-        (item.valor_cartao || 0) +
-        (item.valor_nota || 0) +
-        (item.valor_pix || 0) +
-        (item.valor_dinheiro || 0);
-      const diferenca = total - (item.valor_conferido || 0);
-      return { ...item, total, diferenca };
-    });
-
     const { data, error } = await supabase
       .from('FechamentoFrentista')
-      .insert(itemsWithCalc)
+      .insert(items)
       .select();
     if (error) throw error;
     return data || [];
@@ -1176,7 +1176,7 @@ export const dashboardService = {
       .select(`
         data,
         litros_vendidos,
-        valor_venda,
+        valor_total,
         bico:Bico(
           combustivel:Combustivel(codigo, nome)
         )
@@ -1296,7 +1296,7 @@ export const salesAnalysisService = {
       const combId = l.bico.combustivel.id;
       const custoMedio = custoMedioPorCombustivel[combId] || 0;
       const litrosVendidos = l.litros_vendidos || 0;
-      const valorVenda = l.valor_venda || 0;
+      const valorVenda = l.valor_total || 0;
 
       if (!porCombustivel[codigo]) {
         porCombustivel[codigo] = {
@@ -1410,13 +1410,13 @@ export const salesAnalysisService = {
 
     const { data: prevLeituras } = await supabase
       .from('Leitura')
-      .select('litros_vendidos, valor_venda')
+      .select('litros_vendidos, valor_total')
       .gte('data', prevStartDate)
       .lte('data', prevEndDate);
 
     const previousPeriod = {
       volume: (prevLeituras || []).reduce((acc: number, l: any) => acc + (l.litros_vendidos || 0), 0),
-      revenue: (prevLeituras || []).reduce((acc: number, l: any) => acc + (l.valor_venda || 0), 0),
+      revenue: (prevLeituras || []).reduce((acc: number, l: any) => acc + (l.valor_total || 0), 0),
       profit: 0, // Simplification: we don't recalculate full profit for previous month here to save perf
     };
 
@@ -1618,6 +1618,142 @@ export const notificationService = {
 };
 
 // Export all services
+// DÍVIDAS E SOLVÊNCIA
+// ============================================
+
+export const dividaService = {
+  async getAll(): Promise<Divida[]> {
+    const { data, error } = await supabase
+      .from('Divida')
+      .select('*')
+      .order('data_vencimento', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(d => ({
+      id: String(d.id),
+      descricao: d.descricao,
+      valor: Number(d.valor),
+      data_vencimento: d.data_vencimento,
+      status: d.status
+    }));
+  },
+
+  async create(divida: Omit<Divida, 'id'>): Promise<Divida> {
+    const { data, error } = await supabase
+      .from('Divida')
+      .insert(divida)
+      .select()
+      .single();
+    if (error) throw error;
+    return {
+      id: String(data.id),
+      descricao: data.descricao,
+      valor: Number(data.valor),
+      data_vencimento: data.data_vencimento,
+      status: data.status
+    };
+  },
+
+  async update(id: string, updates: Partial<Divida>): Promise<Divida> {
+    const { data, error } = await supabase
+      .from('Divida')
+      .update(updates as any)
+      .eq('id', Number(id))
+      .select()
+      .single();
+    if (error) throw error;
+    return {
+      id: String(data.id),
+      descricao: data.descricao,
+      valor: Number(data.valor),
+      data_vencimento: data.data_vencimento,
+      status: data.status
+    };
+  }
+};
+
+export const solvencyService = {
+  async getProjection(): Promise<SolvencyProjection> {
+    const today = new Date();
+    const last30Days = new Date(today);
+    last30Days.setDate(today.getDate() - 30);
+    const last30DaysStr = last30Days.toISOString().split('T')[0];
+
+    // 1. Saldo Real (Vendas Cartão/Pix dos últimos dias)
+    // Vamos considerar os últimos 7 dias de vendas não registradas como "em trânsito"
+    const last7Days = new Date(today);
+    last7Days.setDate(today.getDate() - 7);
+    const last7DaysStr = last7Days.toISOString().split('T')[0];
+
+    // Buscamos recebimentos de Cartão (1, 2) e Pix (3) que possuem fechamento vinculado
+    const { data: recebimentos, error: recError } = await supabase
+      .from('Recebimento')
+      .select('valor, Fechamento!inner(data)')
+      .in('forma_pagamento_id', [1, 2, 3])
+      .gte('Fechamento.data', last7DaysStr);
+
+    if (recError) throw recError;
+    const saldoAtual = recebimentos?.reduce((acc, r) => acc + Number(r.valor), 0) || 0;
+
+    // 2. Média Diária (Faturamento Líquido dos últimos 30 dias)
+    const { data: fechamentos, error: fError } = await supabase
+      .from('Fechamento')
+      .select('total_vendas')
+      .gte('data', last30DaysStr);
+
+    if (fError) throw fError;
+    const totalVendas30 = fechamentos?.reduce((acc, f) => acc + Number(f.total_vendas), 0) || 0;
+    const mediaDiaria = totalVendas30 / 30;
+
+    // 3. Dívidas Pendentes
+    const dividas = await dividaService.getAll();
+    const pendentes = dividas.filter(d => d.status === 'pendente');
+
+    const proximasParcelas: SolvencyStatus[] = pendentes.map(d => {
+      const vencimento = new Date(d.data_vencimento);
+      const diffTime = vencimento.getTime() - today.getTime();
+      const diasAteVencimento = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+      // Saldo Projetado = (Saldo Atual) + (Média Diária * Dias até vencimento)
+      const saldoProjetadoNoVencimento = saldoAtual + (mediaDiaria * diasAteVencimento);
+      const coberturaPorcentagem = Math.min(100, (saldoProjetadoNoVencimento / d.valor) * 100);
+
+      let status: 'verde' | 'amarelo' | 'vermelho' = 'vermelho';
+      let mensagem = '';
+      let deficitProjetado = 0;
+
+      if (saldoAtual >= d.valor) {
+        status = 'verde';
+        mensagem = `Parcela de R$ ${d.valor.toLocaleString('pt-BR')} coberta.`;
+      } else if (saldoProjetadoNoVencimento >= d.valor) {
+        status = 'amarelo';
+        const faltam = d.valor - saldoAtual;
+        mensagem = `Faltam R$ ${faltam.toLocaleString('pt-BR')} para cobrir a parcela. Média atual: R$ ${mediaDiaria.toLocaleString('pt-BR')}/dia. Status: No caminho.`;
+      } else {
+        status = 'vermelho';
+        deficitProjetado = d.valor - saldoProjetadoNoVencimento;
+        mensagem = `Atenção: Saldo insuficiente para ${d.descricao}. Déficit projetado: R$ ${deficitProjetado.toLocaleString('pt-BR')}.`;
+      }
+
+      return {
+        dividaId: d.id,
+        descricao: d.descricao,
+        valor: d.valor,
+        dataVencimento: d.data_vencimento,
+        status,
+        mensagem,
+        deficitProjetado: deficitProjetado > 0 ? deficitProjetado : undefined,
+        diasAteVencimento,
+        coberturaPorcentagem
+      };
+    });
+
+    return {
+      saldoAtual,
+      mediaDiaria,
+      proximasParcelas
+    };
+  }
+};
 export const api = {
   combustivel: combustivelService,
   bomba: bombaService,
@@ -1639,6 +1775,8 @@ export const api = {
   salesAnalysis: salesAnalysisService,
   despesa: despesaService,
   notification: notificationService,
+  divida: dividaService,
+  solvency: solvencyService,
 };
 
 export default api;
@@ -1807,17 +1945,6 @@ export async function fetchDashboardData(
     };
   });
 
-  // PerformanceData - Reduzido para frentistas reais com dados zerados caso não haja histórico processado
-  const performanceData = frentistasToShow.slice(0, 3).map((f, idx) => ({
-    id: String(f.id),
-    name: f.nome,
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(f.nome)}&background=random`,
-    metric: 'N/A',
-    value: '-',
-    subValue: 'Aguardando dados',
-    type: (['ticket', 'volume', 'divergence'] as const)[idx % 3],
-  }));
-
   // Calculate estimated profit
   let totalLucroEstimado = 0;
   if (vendas.porCombustivel) {
@@ -1834,6 +1961,36 @@ export async function fetchDashboardData(
       return acc + lucroItem;
     }, 0);
   }
+
+  // PerformanceData - Calculado com base no lucro estimado proporcional às vendas
+  const totalVendasPeriodo = vendas.totalVendas || 0;
+  const margemMedia = totalVendasPeriodo > 0 ? totalLucroEstimado / totalVendasPeriodo : 0;
+
+  const performanceData = closingsData
+    .map((c) => {
+      const profit = c.totalSales * margemMedia;
+      return {
+        id: c.id,
+        name: c.name,
+        avatar: c.avatar,
+        metric: 'Lucro Est.',
+        value: `R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        subValue: `Vendas: R$ ${c.totalSales.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`,
+        type: (c.totalSales > 0 ? 'ticket' : 'volume') as 'ticket' | 'volume' | 'divergence',
+        rawProfit: profit
+      };
+    })
+    .sort((a, b) => b.rawProfit - a.rawProfit)
+    .slice(0, 5)
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      avatar: item.avatar,
+      metric: item.metric,
+      value: item.value,
+      subValue: item.subValue,
+      type: item.type
+    }));
 
   return {
     fuelData,
@@ -1909,7 +2066,7 @@ export async function fetchClosingData() {
   const nozzleData = bicos.map(b => {
     const leitura = vendas.leituras?.find(l => l.bico_id === b.id);
     const volume = leitura?.litros_vendidos || 0;
-    const total = leitura?.valor_venda || 0;
+    const total = leitura?.valor_total || 0;
     const hasNoSales = !leitura || volume === 0;
 
     return {
@@ -2227,3 +2384,75 @@ export async function fetchProfitabilityData(year: number = new Date().getFullYe
   });
 }
 
+// ============================================
+// VENDA PRODUTOS
+// ============================================
+
+export const vendaProdutoService = {
+  async getByFrentistaAndDate(frentistaId: number, date: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('VendaProduto')
+      .select('*, Produto(nome)')
+      .eq('frentista_id', frentistaId)
+      .eq('data', date);
+    if (error) throw error;
+    return data;
+  }
+};
+
+// ============================================
+// ESCALA / FOLGAS
+// ============================================
+
+export const escalaService = {
+  async getAll(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('Escala')
+      .select('*, Frentista(nome)')
+      .order('data', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async getByMonth(month: number, year: number): Promise<any[]> {
+    const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('Escala')
+      .select('*, Frentista(nome)')
+      .gte('data', startDate)
+      .lte('data', endDate)
+      .order('data', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async create(escala: { frentista_id: number, data: string, tipo: 'FOLGA' | 'TRABALHO', turno_id?: number, observacao?: string }) {
+    const { data, error } = await supabase
+      .from('Escala')
+      .insert(escala)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: number, updates: any) {
+    const { data, error } = await supabase
+      .from('Escala')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: number) {
+    const { error } = await supabase.from('Escala').delete().eq('id', id);
+    if (error) throw error;
+  }
+};
+
+// ============================================
