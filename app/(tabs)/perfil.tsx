@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+import * as Updates from 'expo-updates';
 import { frentistaService, escalaService, type Escala } from '../../lib/api';
 import {
     User,
@@ -19,7 +20,8 @@ import {
     Check,
     Award,
     Calendar,
-    Briefcase
+    Briefcase,
+    RefreshCw
 } from 'lucide-react-native';
 
 interface UserStats {
@@ -45,6 +47,45 @@ export default function PerfilScreen() {
         taxaAcerto: 95.6,
     });
     const [folgas, setFolgas] = useState<Escala[]>([]);
+    const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+    async function checkForUpdates() {
+        if (__DEV__) {
+            Alert.alert('Modo DEV', 'Updates não funcionam em desenvolvimento local.');
+            return;
+        }
+
+        try {
+            setCheckingUpdate(true);
+            const update = await Updates.checkForUpdateAsync();
+            if (update.isAvailable) {
+                Alert.alert(
+                    'Atualização Disponível',
+                    'Uma nova versão do app está pronta. Baixar agora?',
+                    [
+                        { text: 'Não', style: 'cancel' },
+                        {
+                            text: 'Sim, Atualizar',
+                            onPress: async () => {
+                                try {
+                                    await Updates.fetchUpdateAsync();
+                                    await Updates.reloadAsync();
+                                } catch (e) {
+                                    Alert.alert('Erro', 'Falha ao aplicar atualização.');
+                                }
+                            }
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert('Atualizado', 'Você já está usando a versão mais recente.');
+            }
+        } catch (error) {
+            Alert.alert('Erro', 'Falha ao verificar atualizações. Verifique sua conexão.');
+        } finally {
+            setCheckingUpdate(false);
+        }
+    }
 
     useEffect(() => {
         loadData();
@@ -270,6 +311,28 @@ export default function PerfilScreen() {
                     className="bg-white rounded-2xl overflow-hidden border border-gray-100"
                     style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
                 >
+                    <TouchableOpacity
+                        className="flex-row items-center p-4 bg-white"
+                        onPress={checkForUpdates}
+                        activeOpacity={0.7}
+                        disabled={checkingUpdate}
+                    >
+                        <View className="w-10 h-10 rounded-xl items-center justify-center mr-4 bg-purple-50">
+                            {checkingUpdate ? (
+                                <ActivityIndicator size="small" color="#9333ea" />
+                            ) : (
+                                <RefreshCw size={20} color="#9333ea" />
+                            )}
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-base font-semibold text-gray-800">
+                                {checkingUpdate ? 'Verificando...' : 'Buscar Atualizações'}
+                            </Text>
+                            <Text className="text-xs text-gray-400 mt-0.5">Toque para verificar novidades</Text>
+                        </View>
+                        <ChevronRight size={20} color="#d1d5db" />
+                    </TouchableOpacity>
+                    <View className="h-px bg-gray-100 ml-16" />
                     <MenuItem
                         icon={Bell}
                         label="Notificações"
@@ -338,7 +401,7 @@ export default function PerfilScreen() {
 
             {/* Versão */}
             <Text className="text-center text-gray-400 text-xs mt-8" style={{ marginBottom: insets.bottom + 100 }}>
-                Versão 1.0.0 • {postoNome}
+                {postoNome} • Canal: {Updates.channel || 'development'}
             </Text>
         </ScrollView>
     );

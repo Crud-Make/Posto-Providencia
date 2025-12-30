@@ -20,9 +20,11 @@ export default function TabsLayout() {
                     backgroundColor: '#fff',
                     borderTopWidth: 1,
                     borderTopColor: '#f3f4f6',
-                    paddingTop: 8,
-                    paddingBottom: 8,
-                    height: 70,
+                    paddingTop: 10,
+                    // Removemos altura fixa para respeitar o Safe Area do dispositivo
+                    height: 'auto',
+                    paddingBottom: 10,
+                    minHeight: 65,
                 },
                 tabBarLabelStyle: {
                     fontSize: 11,
@@ -84,6 +86,6 @@ export default function TabsLayout() {
                     href: null,
                 }}
             />
-        </Tabs>
+        </Tabs >
     );
 }

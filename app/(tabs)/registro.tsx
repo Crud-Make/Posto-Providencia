@@ -444,6 +444,37 @@ export default function RegistroScreen() {
                     </View>
                 </Modal>
 
+                {/* Seção do Encerrante (MOVIDO PARA O TOPO) */}
+                <View className="px-4 mt-6">
+                    <Text className="text-lg font-bold text-gray-800 mb-1">📊 Encerrante</Text>
+                    <Text className="text-sm text-gray-500 mb-4">Valor total vendido (leitura da bomba)</Text>
+
+                    <View
+                        className="flex-row items-center bg-white rounded-2xl border-2 border-purple-200 overflow-hidden"
+                        style={{ shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}
+                    >
+                        <View className="p-4 items-center justify-center bg-purple-50">
+                            <Gauge size={24} color="#7c3aed" />
+                        </View>
+                        <View className="flex-1 px-4">
+                            <Text className="text-xs font-medium text-purple-600">
+                                Valor do Encerrante
+                            </Text>
+                            <View className="flex-row items-center">
+                                <Text className="text-lg font-medium mr-1 text-purple-600">R$</Text>
+                                <TextInput
+                                    className="flex-1 text-xl font-bold py-2 text-purple-700"
+                                    placeholder="0,00"
+                                    placeholderTextColor="#c4b5fd"
+                                    value={registro.valorEncerrante}
+                                    onChangeText={(text) => handleChange('valorEncerrante', text)}
+                                    keyboardType="decimal-pad"
+                                />
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
                 {/* Seção de Valores */}
                 <View className="px-4 mt-6">
                     <Text className="text-lg font-bold text-gray-800 mb-1">💰 Valores Recebidos</Text>
@@ -503,36 +534,7 @@ export default function RegistroScreen() {
                     {renderInputField(FORMAS_PAGAMENTO[3], registro.valorDinheiro, 'valorDinheiro')}
                 </View>
 
-                {/* Seção do Encerrante */}
-                <View className="px-4 mt-6">
-                    <Text className="text-lg font-bold text-gray-800 mb-1">📊 Encerrante</Text>
-                    <Text className="text-sm text-gray-500 mb-4">Valor total vendido (leitura da bomba)</Text>
 
-                    <View
-                        className="flex-row items-center bg-white rounded-2xl border-2 border-purple-200 overflow-hidden"
-                        style={{ shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}
-                    >
-                        <View className="p-4 items-center justify-center bg-purple-50">
-                            <Gauge size={24} color="#7c3aed" />
-                        </View>
-                        <View className="flex-1 px-4">
-                            <Text className="text-xs font-medium text-purple-600">
-                                Valor do Encerrante
-                            </Text>
-                            <View className="flex-row items-center">
-                                <Text className="text-lg font-medium mr-1 text-purple-600">R$</Text>
-                                <TextInput
-                                    className="flex-1 text-xl font-bold py-2 text-purple-700"
-                                    placeholder="0,00"
-                                    placeholderTextColor="#c4b5fd"
-                                    value={registro.valorEncerrante}
-                                    onChangeText={(text) => handleChange('valorEncerrante', text)}
-                                    keyboardType="decimal-pad"
-                                />
-                            </View>
-                        </View>
-                    </View>
-                </View>
 
                 {/* Seção de Observações */}
                 <View className="px-4 mt-6">
