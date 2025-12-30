@@ -14,13 +14,16 @@ import FinanceManagementScreen from './components/FinanceManagementScreen';
 import SolvencyDashboard from './components/SolvencyDashboard';
 import SettingsScreen from './components/SettingsScreen';
 import ScheduleManagementScreen from './components/ScheduleManagementScreen';
+import PostoManagementScreen from './components/PostoManagementScreen';
+import CustomerManagementScreen from './components/CustomerManagementScreen';
 import LoginScreen from './components/LoginScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PostoProvider } from './contexts/PostoContext';
 import { Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients'>('dashboard');
 
 
   if (loading) {
@@ -98,6 +101,12 @@ const AppContent: React.FC = () => {
           {currentView === 'schedule' && (
             <ScheduleManagementScreen />
           )}
+          {currentView === 'postos' && (
+            <PostoManagementScreen />
+          )}
+          {currentView === 'clients' && (
+            <CustomerManagementScreen />
+          )}
         </main>
       </div>
     </div>
@@ -109,9 +118,11 @@ import { ThemeProvider } from './contexts/ThemeContext';
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
+      <PostoProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </PostoProvider>
     </AuthProvider>
   );
 };

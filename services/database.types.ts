@@ -21,6 +21,7 @@ export type Database = {
           combustivel_id: number
           id: number
           numero: number
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
@@ -28,6 +29,7 @@ export type Database = {
           combustivel_id: number
           id?: number
           numero: number
+          posto_id: number
         }
         Update: {
           ativo?: boolean
@@ -35,6 +37,7 @@ export type Database = {
           combustivel_id?: number
           id?: number
           numero?: number
+          posto_id?: number
         }
         Relationships: [
           {
@@ -51,6 +54,13 @@ export type Database = {
             referencedRelation: "Combustivel"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "Bico_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          },
         ]
       }
       Bomba: {
@@ -59,20 +69,31 @@ export type Database = {
           id: number
           localizacao: string | null
           nome: string
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
           id?: number
           localizacao?: string | null
           nome: string
+          posto_id: number
         }
         Update: {
           ativo?: boolean
           id?: number
           localizacao?: string | null
           nome?: string
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Bomba_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       Combustivel: {
         Row: {
@@ -82,6 +103,7 @@ export type Database = {
           id: number
           nome: string
           preco_venda: number
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
@@ -90,6 +112,7 @@ export type Database = {
           id?: number
           nome: string
           preco_venda?: number
+          posto_id: number
         }
         Update: {
           ativo?: boolean
@@ -98,8 +121,150 @@ export type Database = {
           id?: number
           nome?: string
           preco_venda?: number
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Combustivel_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      Cliente: {
+        Row: {
+          id: number
+          nome: string
+          documento: string | null
+          telefone: string | null
+          email: string | null
+          endereco: string | null
+          limite_credito: number
+          saldo_devedor: number
+          posto_id: number
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          nome: string
+          documento?: string | null
+          telefone?: string | null
+          email?: string | null
+          endereco?: string | null
+          limite_credito?: number
+          saldo_devedor?: number
+          posto_id: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          nome?: string
+          documento?: string | null
+          telefone?: string | null
+          email?: string | null
+          endereco?: string | null
+          limite_credito?: number
+          saldo_devedor?: number
+          posto_id?: number
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Cliente_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      NotaFrentista: {
+        Row: {
+          id: number
+          cliente_id: number
+          frentista_id: number
+          fechamento_frentista_id: number | null
+          valor: number
+          descricao: string | null
+          data: string
+          data_pagamento: string | null
+          status: 'pendente' | 'pago' | 'cancelado'
+          forma_pagamento: string | null
+          observacoes: string | null
+          posto_id: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          cliente_id: number
+          frentista_id: number
+          fechamento_frentista_id?: number | null
+          valor: number
+          descricao?: string | null
+          data?: string
+          data_pagamento?: string | null
+          status?: 'pendente' | 'pago' | 'cancelado'
+          forma_pagamento?: string | null
+          observacoes?: string | null
+          posto_id: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          cliente_id?: number
+          frentista_id?: number
+          fechamento_frentista_id?: number | null
+          valor?: number
+          descricao?: string | null
+          data?: string
+          data_pagamento?: string | null
+          status?: 'pendente' | 'pago' | 'cancelado'
+          forma_pagamento?: string | null
+          observacoes?: string | null
+          posto_id?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "NotaFrentista_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "Cliente"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "NotaFrentista_frentista_id_fkey"
+            columns: ["frentista_id"]
+            isOneToOne: false
+            referencedRelation: "Frentista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "NotaFrentista_fechamento_frentista_id_fkey"
+            columns: ["fechamento_frentista_id"]
+            isOneToOne: false
+            referencedRelation: "FechamentoFrentista"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "NotaFrentista_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       Divida: {
         Row: {
@@ -109,6 +274,7 @@ export type Database = {
           data_vencimento: string
           status: 'pendente' | 'pago'
           created_at: string
+          posto_id: number
         }
         Insert: {
           id?: number
@@ -117,6 +283,7 @@ export type Database = {
           data_vencimento: string
           status?: 'pendente' | 'pago'
           created_at?: string
+          posto_id: number
         }
         Update: {
           id?: number
@@ -125,8 +292,17 @@ export type Database = {
           data_vencimento?: string
           status?: 'pendente' | 'pago'
           created_at?: string
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Divida_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       Compra: {
         Row: {
@@ -141,6 +317,7 @@ export type Database = {
           observacoes: string | null
           quantidade_litros: number
           valor_total: number
+          posto_id: number
         }
         Insert: {
           arquivo_nf?: string | null
@@ -154,6 +331,7 @@ export type Database = {
           observacoes?: string | null
           quantidade_litros: number
           valor_total: number
+          posto_id: number
         }
         Update: {
           arquivo_nf?: string | null
@@ -167,6 +345,7 @@ export type Database = {
           observacoes?: string | null
           quantidade_litros?: number
           valor_total?: number
+          posto_id?: number
         }
         Relationships: [
           {
@@ -181,6 +360,13 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: false
             referencedRelation: "Fornecedor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Compra_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
             referencedColumns: ["id"]
           },
         ]
@@ -229,6 +415,7 @@ export type Database = {
           taxa_juros: number | null
           valor_parcela: number
           valor_total: number
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
@@ -243,6 +430,7 @@ export type Database = {
           taxa_juros?: number | null
           valor_parcela: number
           valor_total: number
+          posto_id: number
         }
         Update: {
           ativo?: boolean
@@ -257,8 +445,17 @@ export type Database = {
           taxa_juros?: number | null
           valor_parcela?: number
           valor_total?: number
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Emprestimo_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       Estoque: {
         Row: {
@@ -268,6 +465,7 @@ export type Database = {
           id: number
           quantidade_atual: number
           ultima_atualizacao: string
+          posto_id: number
         }
         Insert: {
           capacidade_tanque: number
@@ -276,6 +474,7 @@ export type Database = {
           id?: number
           quantidade_atual: number
           ultima_atualizacao?: string
+          posto_id: number
         }
         Update: {
           capacidade_tanque?: number
@@ -284,6 +483,7 @@ export type Database = {
           id?: number
           quantidade_atual?: number
           ultima_atualizacao?: string
+          posto_id?: number
         }
         Relationships: [
           {
@@ -291,6 +491,13 @@ export type Database = {
             columns: ["combustivel_id"]
             isOneToOne: true
             referencedRelation: "Combustivel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Estoque_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
             referencedColumns: ["id"]
           },
         ]
@@ -308,6 +515,7 @@ export type Database = {
           turno_id: number | null
           updatedAt: string
           usuario_id: number
+          posto_id: number
         }
         Insert: {
           createdAt?: string
@@ -321,6 +529,7 @@ export type Database = {
           turno_id?: number | null
           updatedAt?: string
           usuario_id: number
+          posto_id: number
         }
         Update: {
           createdAt?: string
@@ -334,6 +543,7 @@ export type Database = {
           turno_id?: number | null
           updatedAt?: string
           usuario_id?: number
+          posto_id?: number
         }
         Relationships: [
           {
@@ -350,6 +560,13 @@ export type Database = {
             referencedRelation: "Usuario"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "Fechamento_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          },
         ]
       }
       FechamentoFrentista: {
@@ -363,6 +580,10 @@ export type Database = {
           valor_dinheiro: number
           valor_nota: number
           valor_pix: number
+          encerrante: number
+          baratao: number
+          diferenca_calculada: number
+          posto_id: number
         }
         Insert: {
           fechamento_id: number
@@ -374,6 +595,10 @@ export type Database = {
           valor_dinheiro?: number
           valor_nota?: number
           valor_pix?: number
+          encerrante?: number
+          baratao?: number
+          diferenca_calculada?: number
+          posto_id: number
         }
         Update: {
           fechamento_id?: number
@@ -385,6 +610,10 @@ export type Database = {
           valor_dinheiro?: number
           valor_nota?: number
           valor_pix?: number
+          encerrante?: number
+          baratao?: number
+          diferenca_calculada?: number
+          posto_id?: number
         }
         Relationships: [
           {
@@ -401,6 +630,13 @@ export type Database = {
             referencedRelation: "Frentista"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "FechamentoFrentista_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          },
         ]
       }
       FormaPagamento: {
@@ -410,6 +646,7 @@ export type Database = {
           nome: string
           taxa: number | null
           tipo: string
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
@@ -417,6 +654,7 @@ export type Database = {
           nome: string
           taxa?: number | null
           tipo: string
+          posto_id: number
         }
         Update: {
           ativo?: boolean
@@ -424,8 +662,17 @@ export type Database = {
           nome?: string
           taxa?: number | null
           tipo?: string
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "FormaPagamento_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       Fornecedor: {
         Row: {
@@ -434,6 +681,7 @@ export type Database = {
           contato: string | null
           id: number
           nome: string
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
@@ -441,6 +689,7 @@ export type Database = {
           contato?: string | null
           id?: number
           nome: string
+          posto_id: number
         }
         Update: {
           ativo?: boolean
@@ -448,8 +697,17 @@ export type Database = {
           contato?: string | null
           id?: number
           nome?: string
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Fornecedor_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       Frentista: {
         Row: {
@@ -460,6 +718,7 @@ export type Database = {
           nome: string
           telefone: string | null
           user_id: string | null
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
@@ -469,6 +728,7 @@ export type Database = {
           nome: string
           telefone?: string | null
           user_id?: string | null
+          posto_id: number
         }
         Update: {
           ativo?: boolean
@@ -478,8 +738,17 @@ export type Database = {
           nome?: string
           telefone?: string | null
           user_id?: string | null
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Frentista_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       Leitura: {
         Row: {
@@ -495,6 +764,7 @@ export type Database = {
           turno_id: number | null
           usuario_id: number
           valor_total: number
+          posto_id: number
         }
         Insert: {
           bico_id: number
@@ -509,6 +779,7 @@ export type Database = {
           turno_id?: number | null
           usuario_id: number
           valor_total: number
+          posto_id: number
         }
         Update: {
           bico_id?: number
@@ -523,6 +794,7 @@ export type Database = {
           turno_id?: number | null
           usuario_id?: number
           valor_total?: number
+          posto_id?: number
         }
         Relationships: [
           {
@@ -553,6 +825,13 @@ export type Database = {
             referencedRelation: "Usuario"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "Leitura_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          },
         ]
       }
       Maquininha: {
@@ -562,6 +841,7 @@ export type Database = {
           nome: string
           operadora: string | null
           taxa: number | null
+          posto_id: number
         }
         Insert: {
           ativo?: boolean
@@ -569,6 +849,7 @@ export type Database = {
           nome: string
           operadora?: string | null
           taxa?: number | null
+          posto_id: number
         }
         Update: {
           ativo?: boolean
@@ -576,8 +857,17 @@ export type Database = {
           nome?: string
           operadora?: string | null
           taxa?: number | null
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Maquininha_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       MovimentacaoEstoque: {
         Row: {
@@ -589,6 +879,7 @@ export type Database = {
           quantidade: number
           responsavel: string | null
           tipo: string
+          posto_id: number
         }
         Insert: {
           created_at?: string | null
@@ -599,6 +890,7 @@ export type Database = {
           quantidade: number
           responsavel?: string | null
           tipo: string
+          posto_id: number
         }
         Update: {
           created_at?: string | null
@@ -609,6 +901,7 @@ export type Database = {
           quantidade?: number
           responsavel?: string | null
           tipo?: string
+          posto_id?: number
         }
         Relationships: [
           {
@@ -616,6 +909,13 @@ export type Database = {
             columns: ["produto_id"]
             isOneToOne: false
             referencedRelation: "Produto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "MovimentacaoEstoque_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
             referencedColumns: ["id"]
           },
         ]
@@ -733,6 +1033,7 @@ export type Database = {
           preco_venda: number
           unidade_medida: string
           updated_at: string | null
+          posto_id: number
         }
         Insert: {
           ativo?: boolean | null
@@ -748,6 +1049,7 @@ export type Database = {
           preco_venda?: number
           unidade_medida?: string
           updated_at?: string | null
+          posto_id: number
         }
         Update: {
           ativo?: boolean | null
@@ -763,8 +1065,17 @@ export type Database = {
           preco_venda?: number
           unidade_medida?: string
           updated_at?: string | null
+          posto_id?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Produto_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       PushToken: {
         Row: {
@@ -865,6 +1176,88 @@ export type Database = {
             foreignKeyName: "VendaProduto_fechamento_frentista_id_fkey"
             columns: ["fechamento_frentista_id"]
             referencedRelation: "FechamentoFrentista"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      Posto: {
+        Row: {
+          id: number
+          nome: string
+          cnpj: string | null
+          endereco: string | null
+          cidade: string | null
+          estado: string | null
+          telefone: string | null
+          email: string | null
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          nome: string
+          cnpj?: string | null
+          endereco?: string | null
+          cidade?: string | null
+          estado?: string | null
+          telefone?: string | null
+          email?: string | null
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          nome?: string
+          cnpj?: string | null
+          endereco?: string | null
+          cidade?: string | null
+          estado?: string | null
+          telefone?: string | null
+          email?: string | null
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      UsuarioPosto: {
+        Row: {
+          id: number
+          usuario_id: number
+          posto_id: number
+          role: string
+          ativo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          usuario_id: number
+          posto_id: number
+          role?: string
+          ativo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          usuario_id?: number
+          posto_id?: number
+          role?: string
+          ativo?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "UsuarioPosto_usuario_id_fkey"
+            columns: ["usuario_id"]
+            referencedRelation: "Usuario"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "UsuarioPosto_posto_id_fkey"
+            columns: ["posto_id"]
+            referencedRelation: "Posto"
             referencedColumns: ["id"]
           }
         ]
@@ -1194,6 +1587,11 @@ export type Recebimento = DbTables['Recebimento']['Row'];
 export type Turno = DbTables['Turno']['Row'];
 export type Usuario = DbTables['Usuario']['Row'];
 export type VendaProduto = DbTables['VendaProduto']['Row'];
+
+export type Posto = DbTables['Posto']['Row'];
+export type UsuarioPosto = DbTables['UsuarioPosto']['Row'];
+export type Cliente = DbTables['Cliente']['Row'];
+export type NotaFrentista = DbTables['NotaFrentista']['Row'];
 
 export type InsertTables<T extends keyof DbTables> = DbTables[T]['Insert'];
 export type UpdateTables<T extends keyof DbTables> = DbTables[T]['Update'];

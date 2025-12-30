@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Fuel, Menu, X, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import PostoSelector from './PostoSelector';
 
 interface HeaderProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
@@ -28,13 +29,14 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('dashboard')}>
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white cursor-pointer"
+              onClick={() => onNavigate('dashboard')}
+            >
               <Fuel size={18} />
             </div>
-            <span className="font-bold text-xl text-gray-900 dark:text-white truncate">
-              Posto Providência
-            </span>
+            <PostoSelector />
           </div>
         </div>
 
@@ -59,6 +61,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
             { id: 'closing', label: 'Vendas' },
             { id: 'purchase', label: 'Compras' },
             { id: 'attendants', label: 'Frentistas' },
+            { id: 'clients', label: 'Clientes / Fiado' },
             { id: 'inventory', label: 'Tanques (Combustível)' },
             { id: 'products', label: 'Produtos e Estoque' },
             { id: 'finance', label: 'Financeiro' },

@@ -212,6 +212,7 @@ export interface AttendantProfile {
   riskLevel: 'Baixo Risco' | 'Médio Risco' | 'Alto Risco';
   avatarColorClass: string;
   email: string;
+  posto_id: number;
 }
 
 export interface AttendantHistoryEntry {
@@ -323,6 +324,7 @@ export interface Divida {
   valor: number;
   data_vencimento: string;
   status: 'pendente' | 'pago';
+  posto_id: number;
 }
 
 export interface SolvencyStatus {

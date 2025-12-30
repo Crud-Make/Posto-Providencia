@@ -64,7 +64,7 @@ const FuelTank: React.FC<FuelTankProps> = ({
     const theme = colorMap[color];
 
     return (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center gap-4 relative overflow-hidden group hover:shadow-md transition-all duration-300">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center gap-4 relative overflow-hidden group hover:shadow-md transition-all duration-300">
 
             {/* Header */}
             <div className="w-full flex justify-between items-start z-10">
@@ -72,7 +72,7 @@ const FuelTank: React.FC<FuelTankProps> = ({
                     <span className={`inline-block px-2 py-0.5 rounded textxs font-bold mb-1 ${theme.bg} ${theme.text} border ${theme.border}`}>
                         {code}
                     </span>
-                    <h3 className="font-bold text-gray-900 leading-tight">{productName}</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white leading-tight">{productName}</h3>
                 </div>
 
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border
@@ -92,15 +92,15 @@ const FuelTank: React.FC<FuelTankProps> = ({
             {/* Tank Visualization (Bucket Style) */}
             <div className="relative w-32 h-40 mt-2 mb-2">
                 {/* Tank Container */}
-                <div className="absolute inset-0 border-2 border-gray-200 rounded-b-3xl rounded-t-lg bg-gray-50/50 backdrop-blur-sm overflow-hidden z-20">
+                <div className="absolute inset-0 border-2 border-gray-200 dark:border-gray-600 rounded-b-3xl rounded-t-lg bg-gray-50/50 dark:bg-gray-700/50 backdrop-blur-sm overflow-hidden z-20">
                     {/* Measurement Lines */}
-                    <div className="absolute top-[25%] left-0 w-2 h-[1px] bg-gray-300"></div>
-                    <div className="absolute top-[50%] left-0 w-3 h-[1px] bg-gray-300"></div>
-                    <div className="absolute top-[75%] left-0 w-2 h-[1px] bg-gray-300"></div>
+                    <div className="absolute top-[25%] left-0 w-2 h-[1px] bg-gray-300 dark:bg-gray-500"></div>
+                    <div className="absolute top-[50%] left-0 w-3 h-[1px] bg-gray-300 dark:bg-gray-500"></div>
+                    <div className="absolute top-[75%] left-0 w-2 h-[1px] bg-gray-300 dark:bg-gray-500"></div>
 
-                    <div className="absolute top-[25%] right-0 w-2 h-[1px] bg-gray-300"></div>
-                    <div className="absolute top-[50%] right-0 w-3 h-[1px] bg-gray-300"></div>
-                    <div className="absolute top-[75%] right-0 w-2 h-[1px] bg-gray-300"></div>
+                    <div className="absolute top-[25%] right-0 w-2 h-[1px] bg-gray-300 dark:bg-gray-500"></div>
+                    <div className="absolute top-[50%] right-0 w-3 h-[1px] bg-gray-300 dark:bg-gray-500"></div>
+                    <div className="absolute top-[75%] right-0 w-2 h-[1px] bg-gray-300 dark:bg-gray-500"></div>
                 </div>
 
                 {/* Liquid Fill */}
@@ -121,21 +121,21 @@ const FuelTank: React.FC<FuelTankProps> = ({
 
                 {/* Percentage Label */}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
-                    <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-gray-100">
-                        <span className="text-xl font-black text-gray-900">{Math.round(percentage)}%</span>
+                    <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm border border-gray-100 dark:border-gray-600">
+                        <span className="text-xl font-black text-gray-900 dark:text-white">{Math.round(percentage)}%</span>
                     </div>
                 </div>
             </div>
 
             {/* Stats */}
             <div className="w-full grid grid-cols-2 gap-2 text-center">
-                <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    <p className="text-[10px] uppercase text-gray-500 font-bold mb-0.5">Volume</p>
-                    <p className="text-sm font-bold text-gray-900">{currentVolume.toLocaleString('pt-BR')} L</p>
+                <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600">
+                    <p className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-bold mb-0.5">Volume</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{currentVolume.toLocaleString('pt-BR')} L</p>
                 </div>
-                <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    <p className="text-[10px] uppercase text-gray-500 font-bold mb-0.5">Previsão</p>
-                    <p className={`text-sm font-bold ${daysRemaining < 3 ? 'text-red-600' : 'text-gray-900'}`}>
+                <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600">
+                    <p className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-bold mb-0.5">Previsão</p>
+                    <p className={`text-sm font-bold ${daysRemaining < 3 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
                         {daysRemaining} dias
                     </p>
                 </div>
