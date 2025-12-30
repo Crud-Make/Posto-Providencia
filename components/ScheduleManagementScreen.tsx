@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, User, Save, RefreshCw } from 'lucide-react';
 import { frentistaService, escalaService } from '../services/api';
+import { usePosto } from '../contexts/PostoContext';
+
 
 interface Frentista {
     id: number;
@@ -16,7 +18,9 @@ interface Escala {
 }
 
 const ScheduleManagementScreen: React.FC = () => {
+    const { postoAtivoId } = usePosto();
     const [currentDate, setCurrentDate] = useState(new Date());
+
     const [frentistas, setFrentistas] = useState<Frentista[]>([]);
     const [escalas, setEscalas] = useState<Escala[]>([]);
     const [loading, setLoading] = useState(false);
@@ -24,15 +28,17 @@ const ScheduleManagementScreen: React.FC = () => {
 
     useEffect(() => {
         loadData();
-    }, [currentDate]);
+    }, [currentDate, postoAtivoId]);
+
 
     const loadData = async () => {
         try {
             setLoading(true);
             const [frentistasData, escalasData] = await Promise.all([
-                frentistaService.getAll(),
-                escalaService.getByMonth(currentDate.getMonth() + 1, currentDate.getFullYear())
+                frentistaService.getAll(postoAtivoId),
+                escalaService.getByMonth(currentDate.getMonth() + 1, currentDate.getFullYear(), postoAtivoId)
             ]);
+
             setFrentistas(frentistasData.filter(f => f.ativo));
             setEscalas(escalasData);
         } catch (error) {
@@ -61,8 +67,10 @@ const ScheduleManagementScreen: React.FC = () => {
                 const newEscala = await escalaService.create({
                     frentista_id: frentistaId,
                     data: dateStr,
-                    tipo: 'FOLGA'
+                    tipo: 'FOLGA',
+                    posto_id: postoAtivoId || 1
                 });
+
                 setEscalas(prev => [...prev, newEscala]);
             }
         } catch (error) {
@@ -156,8 +164,8 @@ const ScheduleManagementScreen: React.FC = () => {
                                                 className={`p-1 border-l border-gray-100 dark:border-gray-700 cursor-pointer text-center relative group ${isWeekend(day) ? 'bg-gray-50/50' : ''}`}
                                             >
                                                 <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isFolga
-                                                        ? 'bg-red-100 text-red-600 font-bold border-2 border-red-200'
-                                                        : 'hover:bg-blue-50 text-transparent hover:text-blue-300'
+                                                    ? 'bg-red-100 text-red-600 font-bold border-2 border-red-200'
+                                                    : 'hover:bg-blue-50 text-transparent hover:text-blue-300'
                                                     }`}>
                                                     {isFolga ? 'F' : '•'}
                                                 </div>

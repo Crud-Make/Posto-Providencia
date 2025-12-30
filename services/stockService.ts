@@ -4,22 +4,28 @@ import type { InsertTables, UpdateTables, Produto, MovimentacaoEstoque } from '.
 export const stockService = {
     // === PRODUTOS ===
 
-    async getAllProducts(): Promise<Produto[]> {
-        const { data, error } = await supabase
+    async getAllProducts(postoId?: number): Promise<Produto[]> {
+        let query = supabase
             .from('Produto')
             .select('*')
-            .eq('ativo', true)
-            .order('nome');
+            .eq('ativo', true);
+
+        if (postoId) query = query.eq('posto_id', postoId);
+
+        const { data, error } = await query.order('nome');
         if (error) throw error;
         return data || [];
     },
 
-    async getProductById(id: number): Promise<Produto | null> {
-        const { data, error } = await supabase
+    async getProductById(id: number, postoId?: number): Promise<Produto | null> {
+        let query = supabase
             .from('Produto')
             .select('*')
-            .eq('id', id)
-            .single();
+            .eq('id', id);
+
+        if (postoId) query = query.eq('posto_id', postoId);
+
+        const { data, error } = await query.single();
         if (error) throw error;
         return data;
     },
@@ -119,15 +125,15 @@ export const stockService = {
         return data || [];
     },
 
-    async getLowStockProducts(): Promise<Produto[]> {
-        // Supabase doesn't support "estoque_atual <= estoque_minimo" directly in simple filters easily without raw SQL or client side filtering if the logic is complex.
-        // But we can try simple RPC or client side filter for small catalogs.
-
-        const { data, error } = await supabase
+    async getLowStockProducts(postoId?: number): Promise<Produto[]> {
+        let query = supabase
             .from('Produto')
             .select('*')
             .eq('ativo', true);
 
+        if (postoId) query = query.eq('posto_id', postoId);
+
+        const { data, error } = await query;
         if (error) throw error;
 
         return (data || []).filter(p => p.estoque_atual <= p.estoque_minimo);

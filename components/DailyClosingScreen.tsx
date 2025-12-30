@@ -23,7 +23,9 @@ import {
    TrendingDown,
    Pencil,
    Check,
-   ShoppingBag
+   ShoppingBag,
+   Calculator,
+   Building2
 } from 'lucide-react';
 import {
    bicoService,
@@ -42,6 +44,7 @@ import {
 import { supabase } from '../services/supabase';
 import type { Bico, Bomba, Combustivel, Leitura, Frentista, Turno, FormaPagamento } from '../services/database.types';
 import { useAuth } from '../contexts/AuthContext';
+import { usePosto } from '../contexts/PostoContext';
 import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
 
 // Type for bico with related data
@@ -64,6 +67,8 @@ interface FrentistaSession {
    valor_nota: string;
    valor_pix: string;
    valor_dinheiro: string;
+   valor_baratao: string;
+   valor_encerrante: string;
    valor_conferido: string;
    observacoes: string;
    valor_produtos: string; // New field
@@ -157,6 +162,7 @@ const getPaymentLabel = (tipo: string) => {
 
 const DailyClosingScreen: React.FC = () => {
    const { user } = useAuth();
+   const { postoAtivoId, postos, setPostoAtivoById, postoAtivo } = usePosto();
 
    // State
    const [bicos, setBicos] = useState<BicoWithDetails[]>([]);
@@ -181,8 +187,14 @@ const DailyClosingScreen: React.FC = () => {
    const [tempPrice, setTempPrice] = useState<string>('');
 
    // --- AUTOSAVE LOGIC ---
+   // --- AUTOSAVE LOGIC ---
    const [restored, setRestored] = useState(false);
-   const AUTOSAVE_KEY = 'daily_closing_draft_v1';
+   const AUTOSAVE_KEY = useMemo(() => `daily_closing_draft_v1_${postoAtivoId}`, [postoAtivoId]);
+
+   // Reset restored state when posto changes
+   useEffect(() => {
+      setRestored(false);
+   }, [postoAtivoId]);
 
    // Restore from localStorage when data loading finishes
    useEffect(() => {
@@ -199,7 +211,7 @@ const DailyClosingScreen: React.FC = () => {
                if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
                   setFrentistaSessions(parsed.frentistaSessions);
                }
-               console.log('Rascunho restaurado com sucesso.');
+               console.log('Rascunho restaurado com sucesso para posto:', postoAtivoId);
             }
          } catch (e) {
             console.error('Erro ao restaurar rascunho:', e);
@@ -207,7 +219,7 @@ const DailyClosingScreen: React.FC = () => {
             setRestored(true);
          }
       }
-   }, [loading, restored]);
+   }, [loading, restored, AUTOSAVE_KEY]);
 
    // Save to localStorage on changes
    useEffect(() => {
@@ -220,7 +232,7 @@ const DailyClosingScreen: React.FC = () => {
          };
          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
       }
-   }, [leituras, selectedDate, selectedTurno, frentistaSessions, loading, saving, restored]);
+   }, [leituras, selectedDate, selectedTurno, frentistaSessions, loading, saving, restored, AUTOSAVE_KEY]);
    // ----------------------
 
    // Payment entries (dynamic) - REMAINING FOR GLOBAL AUDIT
@@ -259,7 +271,7 @@ const DailyClosingScreen: React.FC = () => {
    // Load data on mount
    useEffect(() => {
       loadData();
-   }, []);
+   }, [postoAtivoId]);
 
    const loadData = async () => {
       try {
@@ -267,20 +279,20 @@ const DailyClosingScreen: React.FC = () => {
          setError(null);
 
          // Fetch bicos with details
-         const bicosData = await bicoService.getWithDetails();
+         const bicosData = await bicoService.getWithDetails(postoAtivoId);
          setBicos(bicosData);
 
          // Fetch frentistas
-         const frentistasData = await frentistaService.getAll();
+         const frentistasData = await frentistaService.getAll(postoAtivoId);
          console.log('Frentistas carregados:', frentistasData);
          setFrentistas(frentistasData);
 
          // Fetch turnos
-         const turnosData = await turnoService.getAll();
+         const turnosData = await turnoService.getAll(postoAtivoId);
          setTurnos(turnosData.length > 0 ? turnosData : DEFAULT_TURNOS as Turno[]);
 
          // Fetch Payment Methods
-         const paymentMethodsData = await formaPagamentoService.getAll();
+         const paymentMethodsData = await formaPagamentoService.getAll(postoAtivoId);
          const initialPayments: PaymentEntry[] = paymentMethodsData.map(pm => ({
             id: pm.id,
             nome: pm.nome,
@@ -316,7 +328,7 @@ const DailyClosingScreen: React.FC = () => {
 
    const loadDayClosures = async () => {
       try {
-         const closures = await fechamentoService.getByDate(selectedDate);
+         const closures = await fechamentoService.getByDate(selectedDate, postoAtivoId);
          setDayClosures(closures);
       } catch (err) {
          console.error('Error loading day closures:', err);
@@ -324,12 +336,16 @@ const DailyClosingScreen: React.FC = () => {
    };
 
    useEffect(() => {
+      if (selectedDate) {
+         loadDayClosures();
+      }
+
       if (selectedDate && selectedTurno) {
          loadFrentistaSessions();
       } else {
          setFrentistaSessions([]);
       }
-   }, [selectedDate, selectedTurno]);
+   }, [selectedDate, selectedTurno, postoAtivoId]);
 
    // Realtime Subscription para atualizações automáticas do Sistema
    useEffect(() => {
@@ -368,27 +384,35 @@ const DailyClosingScreen: React.FC = () => {
 
       // Soma os valores de todas as sessões de frentistas
       const totais = sessions.reduce((acc, s) => ({
-         cartao: acc.cartao + (s.valor_cartao || 0),
-         pix: acc.pix + (s.valor_pix || 0),
-         dinheiro: acc.dinheiro + (s.valor_dinheiro || 0),
-         nota: acc.nota + (s.valor_nota || 0),
-      }), { cartao: 0, pix: 0, dinheiro: 0, nota: 0 });
+         cartao: acc.cartao + (Number(s.valor_cartao) || Number(s.cartao) || 0),
+         pix: acc.pix + (Number(s.valor_pix) || Number(s.pix) || 0),
+         dinheiro: acc.dinheiro + (Number(s.valor_dinheiro) || Number(s.dinheiro) || 0),
+         nota: acc.nota + (Number(s.valor_nota) || Number(s.nota) || 0),
+         baratao: acc.baratao + (Number(s.valor_baratao) || Number(s.baratao) || 0),
+      }), { cartao: 0, pix: 0, dinheiro: 0, nota: 0, baratao: 0 });
 
       // Atualiza os payments com os totais dos frentistas
       setPayments(prev => prev.map(p => {
          // Mapeia tipos de forma de pagamento para os totais dos frentistas
-         if (p.tipo === 'cartao_credito' || p.tipo === 'cartao_debito') {
-            // Para cartões, divide o total entre crédito e débito ou usa todo no primeiro
-            const valorCartao = p.tipo === 'cartao_credito'
-               ? formatSimpleValue(totais.cartao.toString().replace('.', ','))
-               : p.valor; // Mantém vazio para débito se os dados vêm apenas de "cartão"
-            return { ...p, valor: valorCartao };
+         if (p.tipo === 'cartao' || p.nome.toLowerCase().includes('cartão')) {
+            // Se houver apenas um campo de cartão nos frentistas, mas vários métodos de cartão no fechamento, 
+            // colocamos o total no primeiro que encontrarmos (geralmente crédito)
+            if (p.nome.includes('Crédito')) {
+               return { ...p, valor: totais.cartao > 0 ? formatSimpleValue(totais.cartao.toString().replace('.', ',')) : '' };
+            }
+            return p;
          }
-         if (p.tipo === 'pix') {
+         if (p.tipo === 'digital' || p.nome.toLowerCase().includes('pix')) {
             return { ...p, valor: totais.pix > 0 ? formatSimpleValue(totais.pix.toString().replace('.', ',')) : '' };
          }
-         if (p.tipo === 'dinheiro') {
+         if (p.tipo === 'fisico' || p.nome.toLowerCase().includes('dinheiro')) {
             return { ...p, valor: totais.dinheiro > 0 ? formatSimpleValue(totais.dinheiro.toString().replace('.', ',')) : '' };
+         }
+         if (p.nome.toLowerCase().includes('baratão')) {
+            return { ...p, valor: totais.baratao > 0 ? formatSimpleValue(totais.baratao.toString().replace('.', ',')) : '' };
+         }
+         if (p.nome.toLowerCase().includes('nota') || p.nome.toLowerCase().includes('vale')) {
+            return { ...p, valor: totais.nota > 0 ? formatSimpleValue(totais.nota.toString().replace('.', ',')) : '' };
          }
          return p;
       }));
@@ -397,7 +421,7 @@ const DailyClosingScreen: React.FC = () => {
    const loadFrentistaSessions = async () => {
       try {
          // Buscamos se já existe um fechamento para este dia/turno
-         const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!);
+         const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!, postoAtivoId);
 
          if (fechamento) {
             const sessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
@@ -413,6 +437,8 @@ const DailyClosingScreen: React.FC = () => {
                      valor_nota: s.valor_nota ? formatSimpleValue(s.valor_nota.toString().replace('.', ',')) : '',
                      valor_pix: s.valor_pix ? formatSimpleValue(s.valor_pix.toString().replace('.', ',')) : '',
                      valor_dinheiro: s.valor_dinheiro ? formatSimpleValue(s.valor_dinheiro.toString().replace('.', ',')) : '',
+                     valor_baratao: s.baratao ? formatSimpleValue(s.baratao.toString().replace('.', ',')) : '',
+                     valor_encerrante: s.encerrante ? formatSimpleValue(s.encerrante.toString().replace('.', ',')) : '',
                      valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
                      observacoes: s.observacoes || '',
                      valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00'
@@ -427,7 +453,7 @@ const DailyClosingScreen: React.FC = () => {
          }
 
          // Se não encontrou no fechamento consolidado, tenta buscar registros soltos de frentistas para este dia/turno (feitos via mobile)
-         const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate);
+         const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate, postoAtivoId);
          const shiftSessions = mobileSessions.filter(s => s.fechamento?.turno_id === selectedTurno);
 
          if (shiftSessions.length > 0) {
@@ -442,6 +468,8 @@ const DailyClosingScreen: React.FC = () => {
                   valor_nota: s.valor_nota ? formatSimpleValue(s.valor_nota.toString().replace('.', ',')) : '',
                   valor_pix: s.valor_pix ? formatSimpleValue(s.valor_pix.toString().replace('.', ',')) : '',
                   valor_dinheiro: s.valor_dinheiro ? formatSimpleValue(s.valor_dinheiro.toString().replace('.', ',')) : '',
+                  valor_baratao: s.baratao ? formatSimpleValue(s.baratao.toString().replace('.', ',')) : '',
+                  valor_encerrante: s.encerrante ? formatSimpleValue(s.encerrante.toString().replace('.', ',')) : '',
                   valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
                   observacoes: s.observacoes || '',
                   valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00'
@@ -693,6 +721,8 @@ const DailyClosingScreen: React.FC = () => {
          valor_nota: '',
          valor_pix: '',
          valor_dinheiro: '',
+         valor_baratao: '',
+         valor_encerrante: '',
          valor_conferido: '',
          observacoes: '',
          valor_produtos: ''
@@ -747,7 +777,7 @@ const DailyClosingScreen: React.FC = () => {
             return;
          }
 
-         let fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno);
+         let fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno, postoAtivoId);
 
          if (!fechamento) {
             console.log("Criando novo fechamento para data:", selectedDate, "turno:", selectedTurno);
@@ -755,7 +785,8 @@ const DailyClosingScreen: React.FC = () => {
                data: selectedDate,
                usuario_id: user.id,
                turno_id: selectedTurno,
-               status: 'RASCUNHO'
+               status: 'RASCUNHO',
+               posto_id: postoAtivoId
             });
          }
 
@@ -770,7 +801,8 @@ const DailyClosingScreen: React.FC = () => {
                combustivel_id: bico.combustivel.id,
                preco_litro: bico.combustivel.preco_venda,
                usuario_id: user.id,
-               turno_id: selectedTurno
+               turno_id: selectedTurno,
+               posto_id: postoAtivoId
             }));
 
          if (leiturasToCreate.length === 0) {
@@ -790,12 +822,15 @@ const DailyClosingScreen: React.FC = () => {
                      parseValue(fs.valor_cartao) +
                      parseValue(fs.valor_nota) +
                      parseValue(fs.valor_pix) +
-                     parseValue(fs.valor_dinheiro);
+                     parseValue(fs.valor_dinheiro) +
+                     parseValue(fs.valor_baratao);
 
-                  // Use total expected for this day as base for difference calculation if not individual
-                  // For now, following logic where sum of frentistas matches global total
-                  const valorConferido = parseValue(fs.valor_conferido) || totalInformado;
-                  const diferencaFrentista = totalInformado - valorConferido;
+                  const totalVendido = parseValue(fs.valor_encerrante);
+
+                  // Se o encerrante for informado, a diferença é automática (falta)
+                  // Caso contrário usa a lógica de valor_conferido manual
+                  const diferencaFinal = totalVendido > 0 ? (totalVendido - totalInformado) : 0;
+                  const valorConferido = totalVendido > 0 ? totalVendido : (parseValue(fs.valor_conferido) || totalInformado);
 
                   return {
                      fechamento_id: fechamento!.id,
@@ -804,8 +839,12 @@ const DailyClosingScreen: React.FC = () => {
                      valor_dinheiro: parseValue(fs.valor_dinheiro),
                      valor_pix: parseValue(fs.valor_pix),
                      valor_nota: parseValue(fs.valor_nota),
+                     baratao: parseValue(fs.valor_baratao),
+                     encerrante: totalVendido,
+                     diferenca_calculada: diferencaFinal,
                      valor_conferido: valorConferido,
-                     observacoes: fs.observacoes
+                     observacoes: fs.observacoes,
+                     posto_id: postoAtivoId
                   };
                });
 
@@ -814,12 +853,8 @@ const DailyClosingScreen: React.FC = () => {
 
                // Enviar notificações para frentistas com diferença negativa (falta de caixa)
                for (const frenData of frentistasToCreate) {
-                  // Calcular diferença: total informado - valor conferido
-                  const totalInformado = frenData.valor_cartao + frenData.valor_nota + frenData.valor_pix + frenData.valor_dinheiro;
-                  const diferencaCalculada = totalInformado - frenData.valor_conferido;
-
-                  // Se diferença é positiva (total informado > conferido = falta)
-                  if (diferencaCalculada > 0) {
+                  // Se diferença é positiva (total vendido > total informado = falta)
+                  if (frenData.diferenca_calculada > 0) {
                      try {
                         // Buscar o fechamento criado para obter o ID
                         const createdRecord = createdFechamentos?.find(
@@ -830,9 +865,9 @@ const DailyClosingScreen: React.FC = () => {
                            await notificationService.sendFaltaCaixaNotification(
                               frenData.frentista_id,
                               createdRecord.id,
-                              diferencaCalculada
+                              frenData.diferenca_calculada
                            );
-                           console.log(`Notificação enviada para frentista ${frenData.frentista_id}: Falta de R$ ${diferencaCalculada.toFixed(2)}`);
+                           console.log(`Notificação enviada para frentista ${frenData.frentista_id}: Falta de R$ ${frenData.diferenca_calculada.toFixed(2)}`);
                         }
                      } catch (notifError) {
                         console.error('Erro ao enviar notificação:', notifError);
@@ -902,7 +937,7 @@ const DailyClosingScreen: React.FC = () => {
          <div className="flex items-center justify-center min-h-screen">
             <div className="flex flex-col items-center gap-4">
                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-               <span className="text-gray-500 font-medium">Carregando dados...</span>
+               <span className="text-gray-500 dark:text-gray-400 font-medium">Carregando dados...</span>
             </div>
          </div>
       );
@@ -916,28 +951,55 @@ const DailyClosingScreen: React.FC = () => {
          {/* Header */}
          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 print:hidden">
             <div>
-               <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-wider mb-2 bg-blue-50 px-3 py-1 rounded-full w-fit">
+               <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-wider mb-2 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full w-fit">
                   <Fuel size={14} />
                   Venda Concentrador
                </div>
-               <h1 className="text-3xl font-black text-gray-900">Fechamento de Caixa</h1>
-               <p className="text-gray-500 mt-2">Insira as leituras de fechamento para calcular as vendas do dia.</p>
+               <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-black text-gray-900 dark:text-white">Fechamento de Caixa</h1>
+                  <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700">
+                     <Building2 size={16} className="text-gray-500 dark:text-gray-400" />
+                     <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 transform translate-y-[1px]">
+                        {postoAtivo?.nome}
+                     </span>
+                  </div>
+               </div>
+               <p className="text-gray-500 dark:text-gray-400 mt-2">Insira as leituras de fechamento para calcular as vendas do dia.</p>
             </div>
 
             <div className="flex flex-wrap gap-4">
+               {/* Posto Selector */}
+               <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                     <Building2 size={12} />
+                     Posto
+                  </span>
+                  <select
+                     value={postoAtivoId}
+                     onChange={(e) => setPostoAtivoById(Number(e.target.value))}
+                     className="h-[42px] px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm text-sm font-semibold text-gray-900 dark:text-white outline-none cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors min-w-[200px]"
+                  >
+                     {postos.map(posto => (
+                        <option key={posto.id} value={posto.id}>
+                           {posto.nome}
+                        </option>
+                     ))}
+                  </select>
+               </div>
+
                {/* Date Picker */}
                <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                      <Calendar size={12} />
                      Data do Fechamento
                   </span>
-                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
                      <Calendar size={18} className="text-gray-400 ml-4" />
                      <input
                         type="date"
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
-                        className="px-2 py-2.5 text-sm font-semibold text-gray-900 outline-none border-none"
+                        className="px-2 py-2.5 text-sm font-semibold text-gray-900 dark:text-white outline-none border-none bg-transparent dark:bg-gray-800"
                      />
                   </div>
                </div>
@@ -951,7 +1013,7 @@ const DailyClosingScreen: React.FC = () => {
                   <select
                      value={selectedTurno || ''}
                      onChange={(e) => setSelectedTurno(e.target.value ? Number(e.target.value) : null)}
-                     className="h-[42px] px-4 bg-white border border-gray-200 rounded-lg shadow-sm text-sm font-semibold text-gray-900 outline-none cursor-pointer hover:border-gray-300 transition-colors"
+                     className="h-[42px] px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm text-sm font-semibold text-gray-900 dark:text-white outline-none cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                   >
                      <option value="">Selecionar turno...</option>
                      {turnos.map(turno => (
@@ -971,10 +1033,10 @@ const DailyClosingScreen: React.FC = () => {
                         if (selectedDate) loadDayClosures();
                         if (selectedDate && selectedTurno) loadFrentistaSessions();
                      }}
-                     className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2.5 shadow-sm hover:bg-gray-50 transition-colors"
+                     className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                      title="Atualizar todos os dados"
                   >
-                     <RefreshCw size={18} className="text-gray-500" />
+                     <RefreshCw size={18} className="text-gray-500 dark:text-gray-400" />
                   </button>
                </div>
 
@@ -1065,9 +1127,9 @@ const DailyClosingScreen: React.FC = () => {
          </div>
 
          {/* Main Table - Venda Concentrador (EXATO como planilha) */}
-         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b bg-gradient-to-r from-yellow-50 to-green-50 border-gray-200">
-               <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-900/20 dark:to-green-900/20 border-gray-200 dark:border-gray-700">
+               <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
                   <Fuel size={20} className="text-blue-600" />
                   Venda Concentrador
                </h2>
@@ -1076,16 +1138,16 @@ const DailyClosingScreen: React.FC = () => {
             <div className="overflow-x-auto">
                <table className="w-full text-sm">
                   <thead>
-                     <tr className="bg-gray-100 border-b border-gray-200 text-xs uppercase font-bold text-gray-600">
+                     <tr className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs uppercase font-bold text-gray-600 dark:text-gray-300">
                         <th className="px-4 py-3 text-left">Produtos</th>
                         <th className="px-4 py-3 text-right">Inicial</th>
-                        <th className="px-4 py-3 text-right bg-yellow-50">Fechamento</th>
+                        <th className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/20">Fechamento</th>
                         <th className="px-4 py-3 text-right">Litros (L)</th>
                         <th className="px-4 py-3 text-right">Valor LT $</th>
                         <th className="px-4 py-3 text-right">Venda bico R$</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                      {bicos.map((bico) => {
                         const colors = FUEL_COLORS[bico.combustivel.codigo] || FUEL_COLORS['GC'];
                         const inicial = leituras[bico.id]?.inicial || '';
@@ -1095,7 +1157,7 @@ const DailyClosingScreen: React.FC = () => {
                         const isValid = isReadingValid(bico.id);
 
                         return (
-                           <tr key={bico.id} className={`hover:bg-gray-50 ${colors.bg}`}>
+                           <tr key={bico.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${colors.bg} dark:bg-opacity-20`}>
                               {/* Produtos - Combustivel + Bico */}
                               <td className={`px-4 py-3 font-bold ${colors.text}`}>
                                  {bico.combustivel.codigo}, Bico {bico.numero.toString().padStart(2, '0')}
@@ -1107,33 +1169,33 @@ const DailyClosingScreen: React.FC = () => {
                                     type="text"
                                     value={inicial}
                                     onChange={(e) => handleInicialChange(bico.id, e.target.value)}
-                                    className="w-full text-right font-mono py-2 px-3 rounded-lg border border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
+                                    className="w-full text-right font-mono py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
                                     placeholder="0,000"
                                  />
                               </td>
 
                               {/* Fechamento (INPUT) */}
-                              <td className="px-4 py-3 bg-yellow-50/50">
+                              <td className="px-4 py-3 bg-yellow-50/50 dark:bg-yellow-900/10">
                                  <input
                                     type="text"
                                     value={fechamento}
                                     onChange={(e) => handleFechamentoChange(bico.id, e.target.value)}
                                     className={`w-full text-right font-mono py-2 px-3 rounded-lg border outline-none
                                     ${fechamento && !isValid
-                                          ? 'border-red-300 bg-red-50 text-red-700'
-                                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'}
+                                          ? 'border-red-300 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100'}
                                     `}
                                     placeholder="0,000"
                                  />
                               </td>
 
                               {/* Litros (CALCULADO - exibe "-" quando inválido) */}
-                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-700">
+                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 dark:text-gray-300">
                                  {litrosData.display !== '-' ? `${litrosData.display} L` : '-'}
                               </td>
 
                               {/* Valor LT $ (EDITÁVEL - clique no lápis para alterar) */}
-                              <td className="px-4 py-3 text-right font-mono text-gray-500 bg-gray-50">
+                              <td className="px-4 py-3 text-right font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">
                                  {editingPrice === bico.combustivel.id ? (
                                     <div className="flex items-center justify-end gap-1">
                                        <span className="text-xs text-gray-400">R$</span>
@@ -1145,7 +1207,7 @@ const DailyClosingScreen: React.FC = () => {
                                              if (e.key === 'Enter') handleSavePrice(bico.combustivel.id);
                                              if (e.key === 'Escape') setEditingPrice(null);
                                           }}
-                                          className="w-16 text-right py-1 px-2 border border-blue-300 rounded text-sm font-mono bg-white focus:ring-1 focus:ring-blue-200 outline-none"
+                                          className="w-16 text-right py-1 px-2 border border-blue-300 rounded text-sm font-mono bg-white dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-blue-200 outline-none"
                                           autoFocus
                                        />
                                        <button
@@ -1178,7 +1240,7 @@ const DailyClosingScreen: React.FC = () => {
                               </td>
 
                               {/* Venda bico R$ (CALCULADO - exibe "-" quando litros = "-") */}
-                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-700">
+                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 dark:text-gray-300">
                                  {vendaData.display}
                               </td>
                            </tr>
@@ -1188,13 +1250,13 @@ const DailyClosingScreen: React.FC = () => {
 
                   {/* TOTAL Row (EXATO como planilha - "RES X,XX") */}
                   <tfoot>
-                     <tr className="bg-gray-200 font-black text-gray-900 border-t-2 border-gray-300">
+                     <tr className="bg-gray-200 dark:bg-gray-700 font-black text-gray-900 dark:text-white border-t-2 border-gray-300 dark:border-gray-600">
                         <td className="px-4 py-4">Total.</td>
                         <td className="px-4 py-4 text-right">-</td>
                         <td className="px-4 py-4 text-right">-</td>
                         <td className="px-4 py-4 text-right">-</td>
                         <td className="px-4 py-4 text-right">-</td>
-                        <td className="px-4 py-4 text-right font-mono text-green-700 text-lg">
+                        <td className="px-4 py-4 text-right font-mono text-green-700 dark:text-green-400 text-lg">
                            RES {totals.valorDisplay}
                         </td>
                      </tr>
@@ -1204,43 +1266,43 @@ const DailyClosingScreen: React.FC = () => {
          </div>
 
          {/* Summary by Fuel Type */}
-         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-               <h2 className="text-lg font-bold text-gray-900">Resumo por Combustível</h2>
+         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+               <h2 className="text-lg font-bold text-gray-900 dark:text-white">Resumo por Combustível</h2>
             </div>
 
             <div className="overflow-x-auto">
                <table className="w-full text-sm">
                   <thead>
-                     <tr className="bg-gray-100 border-b border-gray-200 text-xs uppercase font-bold text-gray-600">
+                     <tr className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs uppercase font-bold text-gray-600 dark:text-gray-300">
                         <th className="px-4 py-3 text-left">Combustível</th>
                         <th className="px-4 py-3 text-right">Litros (L)</th>
                         <th className="px-4 py-3 text-right">Valor R$</th>
                         <th className="px-4 py-3 text-right">%</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                      {summaryData.map((item) => {
                         const colors = FUEL_COLORS[item.codigo] || FUEL_COLORS['GC'];
                         const percentage = calcPercentage(item.litros);
 
                         return (
-                           <tr key={item.codigo} className={`${colors.bg}`}>
+                           <tr key={item.codigo} className={`${colors.bg} dark:bg-opacity-20`}>
                               <td className={`px-4 py-3 font-bold ${colors.text}`}>
                                  <span className={`inline-block px-2 py-1 rounded ${colors.bg} ${colors.border} border`}>
                                     {item.nome}
                                  </span>
                               </td>
-                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-900">
+                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-900 dark:text-white">
                                  {formatToBR(item.litros, 3)} L
                               </td>
-                              <td className="px-4 py-3 text-right font-mono font-bold text-green-700">
+                              <td className="px-4 py-3 text-right font-mono font-bold text-green-700 dark:text-green-400">
                                  {item.valor.toLocaleString('pt-BR', {
                                     style: 'currency',
                                     currency: 'BRL'
                                  })}
                               </td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-700">
+                              <td className="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">
                                  {percentage.toFixed(1)}%
                               </td>
                            </tr>
@@ -1248,12 +1310,12 @@ const DailyClosingScreen: React.FC = () => {
                      })}
                   </tbody>
                   <tfoot>
-                     <tr className="bg-gray-200 font-black text-gray-900 border-t-2 border-gray-300">
+                     <tr className="bg-gray-200 dark:bg-gray-700 font-black text-gray-900 dark:text-white border-t-2 border-gray-300 dark:border-gray-600">
                         <td className="px-4 py-4">TOTAL</td>
-                        <td className="px-4 py-4 text-right font-mono text-blue-700 text-lg">
+                        <td className="px-4 py-4 text-right font-mono text-blue-700 dark:text-blue-400 text-lg">
                            {totals.litrosDisplay} L
                         </td>
-                        <td className="px-4 py-4 text-right font-mono text-green-700 text-lg">
+                        <td className="px-4 py-4 text-right font-mono text-green-700 dark:text-green-400 text-lg">
                            {totals.valorDisplay}
                         </td>
                         <td className="px-4 py-4 text-right">100%</td>
@@ -1264,16 +1326,16 @@ const DailyClosingScreen: React.FC = () => {
          </div>
 
          {/* Global Payment Recording (Stage 2) */}
-         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <CreditCard size={20} className="text-gray-600" />
+         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
+               <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <CreditCard size={20} className="text-gray-600 dark:text-gray-400" />
                   Fechamento Financeiro (Totais do Turno)
                </h2>
                <div className="flex items-center gap-4">
                   <div className="flex flex-col items-end">
                      <span className="text-[10px] font-black text-gray-400 uppercase">Diferença Global</span>
-                     <span className={`text-sm font-black ${Math.abs(diferenca) < 0.01 ? 'text-gray-400' : (diferenca >= 0 ? 'text-green-600' : 'text-red-600')}`}>
+                     <span className={`text-sm font-black ${Math.abs(diferenca) < 0.01 ? 'text-gray-400' : (diferenca >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}`}>
                         {diferenca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                      </span>
                   </div>
@@ -1283,14 +1345,14 @@ const DailyClosingScreen: React.FC = () => {
             <div className="p-6">
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {payments.map((payment, index) => (
-                     <div key={payment.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-blue-100 transition-all">
+                     <div key={payment.id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 hover:border-blue-100 dark:hover:border-blue-800 transition-all">
                         <div className="flex items-center gap-3 mb-3">
-                           <div className="p-2 bg-white rounded-lg shadow-sm">
+                           <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                               {getPaymentIcon(payment.tipo)}
                            </div>
                            <div>
                               <p className="text-xs font-black text-gray-400 uppercase leading-none">{getPaymentLabel(payment.tipo)}</p>
-                              <p className="text-sm font-bold text-gray-700 mt-1">{payment.nome}</p>
+                              <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mt-1">{payment.nome}</p>
                            </div>
                         </div>
                         <div className="relative">
@@ -1300,13 +1362,13 @@ const DailyClosingScreen: React.FC = () => {
                               value={payment.valor}
                               onChange={(e) => handlePaymentChange(index, e.target.value)}
                               placeholder="0,00"
-                              className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-base font-black text-gray-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition-all"
+                              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-base font-black text-gray-900 dark:text-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/50 outline-none transition-all"
                            />
                         </div>
                         {payment.taxa > 0 && (
                            <div className="mt-2 flex justify-between items-center text-[10px]">
                               <span className="text-gray-400 font-bold uppercase tracking-tighter">Taxa: {payment.taxa}%</span>
-                              <span className="text-gray-500 font-mono">
+                              <span className="text-gray-500 dark:text-gray-400 font-mono">
                                  - {(parseValue(payment.valor) * (payment.taxa / 100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </span>
                            </div>
@@ -1316,7 +1378,7 @@ const DailyClosingScreen: React.FC = () => {
                </div>
 
                {/* Payment Summary Footer */}
-               <div className="mt-6 pt-6 border-t border-gray-100 flex flex-wrap gap-8">
+               <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-8">
                   {/* Indicador de valores dos frentistas (mobile) */}
                   {frentistaSessions.length > 0 && (
                      <div className="flex flex-col">
@@ -1324,26 +1386,26 @@ const DailyClosingScreen: React.FC = () => {
                            <Smartphone size={10} />
                            Total Frentistas (App)
                         </span>
-                        <span className="text-xl font-black text-blue-600">
+                        <span className="text-xl font-black text-blue-600 dark:text-blue-400">
                            {frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                      </div>
                   )}
                   <div className="flex flex-col">
                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bruto Informado</span>
-                     <span className="text-xl font-black text-gray-900">
+                     <span className="text-xl font-black text-gray-900 dark:text-white">
                         {totalPayments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                      </span>
                   </div>
                   <div className="flex flex-col">
                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total de Taxas</span>
-                     <span className="text-xl font-black text-amber-600">
+                     <span className="text-xl font-black text-amber-600 dark:text-amber-400">
                         - {totalTaxas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                      </span>
                   </div>
                   <div className="flex flex-col">
                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Líquido Estimado</span>
-                     <span className="text-xl font-black text-green-600">
+                     <span className="text-xl font-black text-green-600 dark:text-green-400">
                         {totalLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                      </span>
                   </div>
@@ -1352,10 +1414,10 @@ const DailyClosingScreen: React.FC = () => {
          </div>
 
          {/* Frentistas Section (Based on Spreadsheet Logic) */}
-         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:break-inside-avoid">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50 flex justify-between items-center">
+         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden print:break-inside-avoid">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-700/50 dark:to-blue-900/20 flex justify-between items-center">
                <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                      <User size={20} className="text-blue-600" />
                      Controle de Frentistas
                   </h2>
@@ -1364,7 +1426,7 @@ const DailyClosingScreen: React.FC = () => {
                         loadData();
                         loadFrentistaSessions();
                      }}
-                     className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded-full transition-all shadow-sm border border-transparent hover:border-blue-100"
+                     className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 rounded-full transition-all shadow-sm border border-transparent hover:border-blue-100 dark:hover:border-blue-800"
                      title="Atualizar dados (sincronizar com App)"
                   >
                      <RefreshCw size={18} />
@@ -1389,12 +1451,19 @@ const DailyClosingScreen: React.FC = () => {
                ) : (
                   <div className="grid grid-cols-1 gap-6">
                      {frentistaSessions.map((session) => {
-                        const totalInf = parseValue(session.valor_cartao) + parseValue(session.valor_nota) + parseValue(session.valor_pix) + parseValue(session.valor_dinheiro);
+                        const totalInf =
+                           parseValue(session.valor_cartao) +
+                           parseValue(session.valor_nota) +
+                           parseValue(session.valor_pix) +
+                           parseValue(session.valor_dinheiro) +
+                           parseValue(session.valor_baratao);
+
+                        const totalVendido = parseValue(session.valor_encerrante);
 
                         const frentista = frentistas.find(f => f.id === session.frentistaId);
-                        const conf = parseValue(session.valor_conferido);
-                        const diff = totalInf - conf;
-                        const hasDiff = conf > 0 && Math.abs(diff) > 0.01;
+                        const confReference = totalVendido > 0 ? totalVendido : parseValue(session.valor_conferido);
+                        const diff = totalInf - confReference;
+                        const hasDiff = (totalVendido > 0 || parseValue(session.valor_conferido) > 0) && Math.abs(diff) > 0.01;
 
                         return (
                            <div key={session.tempId} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm relative group hover:border-blue-200 transition-all">
@@ -1428,6 +1497,12 @@ const DailyClosingScreen: React.FC = () => {
                                           </select>
                                        )}
                                        <p className="text-xs text-gray-400 font-bold uppercase mt-0.5">Fechamento Individual via App</p>
+                                    </div>
+                                    <div className="text-right">
+                                       <p className="text-[10px] font-black text-gray-400 uppercase">Total Vendido (Encerrante)</p>
+                                       <p className="text-xl font-bold text-gray-700">
+                                          {totalVendido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                       </p>
                                     </div>
                                     <div className="text-right">
                                        <p className="text-[10px] font-black text-gray-400 uppercase">Total Informado</p>
@@ -1497,6 +1572,40 @@ const DailyClosingScreen: React.FC = () => {
                                              value={session.valor_dinheiro}
                                              onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
                                              className="w-full bg-transparent font-bold text-gray-800 outline-none border-b border-transparent focus:border-green-300 placeholder-gray-300"
+                                             placeholder="R$ 0,00"
+                                          />
+                                       </div>
+                                    </div>
+
+                                    {/* Baratão */}
+                                    <div className="bg-rose-50/50 p-3 rounded-lg border border-rose-100 flex items-start gap-3">
+                                       <div className="p-2 bg-white rounded-md text-rose-600 shadow-sm">
+                                          <ShoppingBag size={18} />
+                                       </div>
+                                       <div className="flex-1">
+                                          <label className="text-[10px] font-black text-rose-400 uppercase">Baratão</label>
+                                          <input
+                                             type="text"
+                                             value={session.valor_baratao}
+                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatSimpleValue(e.target.value) })}
+                                             className="w-full bg-transparent font-bold text-rose-900 outline-none border-b border-transparent focus:border-rose-300 placeholder-rose-200"
+                                             placeholder="R$ 0,00"
+                                          />
+                                       </div>
+                                    </div>
+
+                                    {/* Encerrante (Vendido) */}
+                                    <div className="bg-amber-50/50 p-3 rounded-lg border border-amber-100 flex items-start gap-3">
+                                       <div className="p-2 bg-white rounded-md text-amber-600 shadow-sm">
+                                          <Calculator size={18} />
+                                       </div>
+                                       <div className="flex-1">
+                                          <label className="text-[10px] font-black text-amber-400 uppercase">Vendido (Encerrante)</label>
+                                          <input
+                                             type="text"
+                                             value={session.valor_encerrante}
+                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_encerrante: formatSimpleValue(e.target.value) })}
+                                             className="w-full bg-transparent font-bold text-amber-900 outline-none border-b border-transparent focus:border-amber-300 placeholder-amber-200"
                                              placeholder="R$ 0,00"
                                           />
                                        </div>

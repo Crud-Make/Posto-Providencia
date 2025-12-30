@@ -11,9 +11,9 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-100 shadow-lg rounded-lg">
-          <p className="text-sm font-semibold text-gray-800">{label}</p>
-          <p className="text-sm text-blue-600 font-medium">
+        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-100 dark:border-gray-700 shadow-lg rounded-lg">
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{label}</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
             {payload[0].value.toLocaleString('pt-BR')} Litros
           </p>
         </div>
@@ -25,20 +25,20 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
   const COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm h-full flex flex-col">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm h-full flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Volume Vendido (Litros)</h2>
-            <p className="text-sm text-gray-500">Total de litros por combustível</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Volume Vendido (Litros)</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total de litros por combustível</p>
           </div>
         </div>
       </div>
 
       <div className="flex-1 min-h-[300px] w-full">
         {(!data || data.length === 0) ? (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm italic">
+          <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm italic">
             Nenhum dado disponível
           </div>
         ) : (

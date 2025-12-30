@@ -19,6 +19,8 @@ import {
    RefreshCw
 } from 'lucide-react';
 import { salesAnalysisService } from '../services/api';
+import { usePosto } from '../contexts/PostoContext';
+
 
 // Type definitions
 interface ProductData {
@@ -56,7 +58,9 @@ interface Totals {
 }
 
 const SalesAnalysisScreen: React.FC = () => {
+   const { postoAtivoId } = usePosto();
    const [loading, setLoading] = useState(true);
+
    const [error, setError] = useState<string | null>(null);
    const [products, setProducts] = useState<ProductData[]>([]);
    const [profitability, setProfitability] = useState<ProfitabilityData[]>([]);
@@ -89,9 +93,10 @@ const SalesAnalysisScreen: React.FC = () => {
          setLoading(true);
          setError(null);
 
-         const data = await salesAnalysisService.getMonthlyAnalysis(selectedYear, selectedMonth);
+         const data = await salesAnalysisService.getMonthlyAnalysis(selectedYear, selectedMonth, postoAtivoId);
 
          setProducts(data.products);
+
          setProfitability(data.profitability);
          setTotals(data.totals);
          setPreviousPeriod(data.previousPeriod || null);
@@ -105,7 +110,8 @@ const SalesAnalysisScreen: React.FC = () => {
 
    useEffect(() => {
       loadData();
-   }, [selectedYear, selectedMonth]);
+   }, [selectedYear, selectedMonth, postoAtivoId]);
+
 
    // Generate insights based on data
    const insights = useMemo(() => {

@@ -16,6 +16,8 @@ import {
    Loader2
 } from 'lucide-react';
 import { leituraService, combustivelService, estoqueService } from '../services/api';
+import { usePosto } from '../contexts/PostoContext';
+
 import type { Combustivel, Leitura, Bico, Bomba } from '../services/database.types';
 
 // Types
@@ -53,7 +55,9 @@ const FUEL_COLORS: Record<string, string> = {
 };
 
 const SalesDashboardScreen: React.FC = () => {
+   const { postoAtivoId } = usePosto();
    // State
+
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
    const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -75,7 +79,8 @@ const SalesDashboardScreen: React.FC = () => {
    // Load data
    useEffect(() => {
       loadData();
-   }, [selectedMonth]);
+   }, [selectedMonth, postoAtivoId]);
+
 
    const loadData = async () => {
       try {
@@ -88,7 +93,8 @@ const SalesDashboardScreen: React.FC = () => {
          const endDate = new Date(year, month, 0);
 
          // Fetch combustiveis for reference
-         const combustiveis = await combustivelService.getAll();
+         const combustiveis = await combustivelService.getAll(postoAtivoId);
+
 
          // Fetch sales summary for each day of the month and aggregate
          const allLeituras: (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[] = [];
@@ -96,9 +102,10 @@ const SalesDashboardScreen: React.FC = () => {
          // Iterate through each day of the month
          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
             const dateStr = d.toISOString().split('T')[0];
-            const dayLeituras = await leituraService.getByDate(dateStr);
+            const dayLeituras = await leituraService.getByDate(dateStr, postoAtivoId);
             allLeituras.push(...dayLeituras);
          }
+
 
          // Calculate totals
          const totalLitros = allLeituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
@@ -137,7 +144,8 @@ const SalesDashboardScreen: React.FC = () => {
 
          // Calculate estimated profit (using a simple margin estimate)
          // In a real app, this would come from cost data
-         const estoquesData = await estoqueService.getAll();
+         const estoquesData = await estoqueService.getAll(postoAtivoId);
+
          let totalCost = 0;
          Object.values(byCombustivel).forEach(item => {
             const estoque = estoquesData.find(e => e.combustivel_id === item.combustivel.id);
@@ -202,7 +210,7 @@ const SalesDashboardScreen: React.FC = () => {
          <div className="flex items-center justify-center min-h-screen">
             <div className="flex flex-col items-center gap-4">
                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-               <span className="text-gray-500 font-medium">Carregando dados de vendas...</span>
+               <span className="text-gray-500 dark:text-gray-400 font-medium">Carregando dados de vendas...</span>
             </div>
          </div>
       );
@@ -212,39 +220,39 @@ const SalesDashboardScreen: React.FC = () => {
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-24">
 
          {/* Breadcrumbs */}
-         <div className="flex items-center gap-2 text-sm text-gray-500">
+         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="hover:text-blue-600 cursor-pointer transition-colors">Home</span>
             <span>/</span>
             <span className="hover:text-blue-600 cursor-pointer transition-colors">Relatórios</span>
             <span>/</span>
-            <span className="font-semibold text-gray-900">Dashboard de Vendas</span>
+            <span className="font-semibold text-gray-900 dark:text-white">Dashboard de Vendas</span>
          </div>
 
          {/* Header */}
          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-               <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Dashboard de Vendas</h1>
+               <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 dark:text-white">Dashboard de Vendas</h1>
                <div className="flex items-center gap-2 mt-3">
-                  <span className="text-gray-500 text-sm font-medium">Período de Análise:</span>
-                  <div className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm">
+                  <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Período de Análise:</span>
+                  <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg shadow-sm">
                      <Calendar size={18} className="text-blue-600" />
                      <input
                         type="month"
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="font-bold text-gray-900 text-sm outline-none border-none bg-transparent"
+                        className="font-bold text-gray-900 dark:text-white text-sm outline-none border-none bg-transparent"
                      />
                   </div>
                   <button
                      onClick={loadData}
-                     className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                     className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
-                     <RefreshCw size={18} className="text-gray-500" />
+                     <RefreshCw size={18} className="text-gray-500 dark:text-gray-400" />
                   </button>
                </div>
             </div>
             <div className="flex gap-3">
-               <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
+               <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
                   <Printer size={18} />
                   <span>Imprimir</span>
                </button>
@@ -257,7 +265,7 @@ const SalesDashboardScreen: React.FC = () => {
 
          {/* Error Message */}
          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 font-medium flex items-center gap-2">
+            <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 font-medium flex items-center gap-2">
                <AlertTriangle size={18} />
                {error}
             </div>
@@ -267,14 +275,14 @@ const SalesDashboardScreen: React.FC = () => {
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
             {/* Card 1: Litros Vendidos */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-40">
-               <div className="flex items-center gap-2 text-gray-500">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between h-40">
+               <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Droplet size={18} className="text-blue-500" fill="currentColor" />
-                  <span className="text-sm font-bold text-gray-600">Litros Vendidos</span>
+                  <span className="text-sm font-bold text-gray-600 dark:text-gray-400">Litros Vendidos</span>
                </div>
                <div>
-                  <h3 className="text-3xl font-black text-gray-900">{formatNumber(salesSummary.totalLitros)} L</h3>
-                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-600 text-xs font-bold mt-2">
+                  <h3 className="text-3xl font-black text-gray-900 dark:text-white">{formatNumber(salesSummary.totalLitros)} L</h3>
+                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-bold mt-2">
                      <TrendingUp size={14} />
                      Dados do mês
                   </div>
@@ -282,14 +290,14 @@ const SalesDashboardScreen: React.FC = () => {
             </div>
 
             {/* Card 2: Faturamento */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-40">
-               <div className="flex items-center gap-2 text-gray-500">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between h-40">
+               <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Banknote size={18} className="text-green-500" />
-                  <span className="text-sm font-bold text-gray-600">Faturamento</span>
+                  <span className="text-sm font-bold text-gray-600 dark:text-gray-400">Faturamento</span>
                </div>
                <div>
-                  <h3 className="text-3xl font-black text-gray-900">{formatCurrency(salesSummary.totalVendas)}</h3>
-                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-green-600 text-xs font-bold mt-2">
+                  <h3 className="text-3xl font-black text-gray-900 dark:text-white">{formatCurrency(salesSummary.totalVendas)}</h3>
+                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-bold mt-2">
                      <TrendingUp size={14} />
                      Receita bruta
                   </div>
@@ -315,14 +323,14 @@ const SalesDashboardScreen: React.FC = () => {
             </div>
 
             {/* Card 4: Margem Média */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-40">
-               <div className="flex items-center gap-2 text-gray-500">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between h-40">
+               <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <Percent size={18} className="text-orange-500" />
-                  <span className="text-sm font-bold text-gray-600">Margem Média</span>
+                  <span className="text-sm font-bold text-gray-600 dark:text-gray-400">Margem Média</span>
                </div>
                <div>
-                  <h3 className="text-3xl font-black text-gray-900">{averageMargin.toFixed(1)}%</h3>
-                  <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold mt-2 ${averageMargin >= 10 ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'
+                  <h3 className="text-3xl font-black text-gray-900 dark:text-white">{averageMargin.toFixed(1)}%</h3>
+                  <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold mt-2 ${averageMargin >= 10 ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
                      }`}>
                      {averageMargin >= 10 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                      {averageMargin >= 10 ? 'Saudável' : 'Atenção'}
@@ -335,13 +343,13 @@ const SalesDashboardScreen: React.FC = () => {
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             {/* Left Column: Sales Evolution Chart */}
-            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col">
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col">
                <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-2">
                      <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-                     <h3 className="text-lg font-bold text-gray-900">Evolução de Vendas (Últimos 6 Meses)</h3>
+                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Evolução de Vendas (Últimos 6 Meses)</h3>
                   </div>
-                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Volume (L)</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">Volume (L)</span>
                </div>
 
                {/* Chart Container */}
@@ -353,10 +361,10 @@ const SalesDashboardScreen: React.FC = () => {
                   <div className="flex-1 relative min-h-[300px] flex items-end justify-between px-4 pb-2 pt-12">
                      {/* Reference Grid Lines */}
                      <div className="absolute inset-x-0 top-0 bottom-8 flex flex-col justify-between pointer-events-none z-0">
-                        <div className="w-full border-b border-dashed border-gray-200 h-0"></div>
-                        <div className="w-full border-b border-dashed border-gray-200 h-0"></div>
-                        <div className="w-full border-b border-dashed border-gray-200 h-0"></div>
-                        <div className="w-full border-b border-gray-200 h-0"></div>
+                        <div className="w-full border-b border-dashed border-gray-200 dark:border-gray-700 h-0"></div>
+                        <div className="w-full border-b border-dashed border-gray-200 dark:border-gray-700 h-0"></div>
+                        <div className="w-full border-b border-dashed border-gray-200 dark:border-gray-700 h-0"></div>
+                        <div className="w-full border-b border-gray-200 dark:border-gray-700 h-0"></div>
                      </div>
 
                      {/* Bars */}
@@ -391,12 +399,12 @@ const SalesDashboardScreen: React.FC = () => {
                )}
 
                {/* Chart Footer */}
-               <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-4">
+               <div className="mt-8 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4">
                   <div className="flex items-center gap-2">
                      <div className="size-3 bg-blue-500 rounded-sm"></div>
-                     <span className="text-sm text-gray-600">Vendas {new Date().getFullYear()}</span>
+                     <span className="text-sm text-gray-600 dark:text-gray-400">Vendas {new Date().getFullYear()}</span>
                   </div>
-                  <div className="bg-green-50 px-3 py-1 rounded-full flex items-center gap-1.5 text-xs font-bold text-green-700 border border-green-100">
+                  <div className="bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-full flex items-center gap-1.5 text-xs font-bold text-green-700 dark:text-green-400 border border-green-100 dark:border-green-800">
                      <TrendingUp size={12} />
                      Período: {formatMonthDisplay(selectedMonth)}
                   </div>
@@ -407,12 +415,12 @@ const SalesDashboardScreen: React.FC = () => {
             <div className="space-y-6">
 
                {/* Product Mix Widget */}
-               <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
-                     <div className="p-2 rounded-full bg-blue-50 text-blue-600">
+                     <div className="p-2 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                         <PieChart size={20} />
                      </div>
-                     <h3 className="text-lg font-bold text-gray-900">Mix de Produtos (Litros)</h3>
+                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">Mix de Produtos (Litros)</h3>
                   </div>
 
                   <div className="space-y-6">
@@ -424,14 +432,14 @@ const SalesDashboardScreen: React.FC = () => {
                               <div className="flex justify-between items-center text-sm">
                                  <div className="flex items-center gap-2">
                                     <div className={`size-3 rounded-full ${item.color}`}></div>
-                                    <span className="font-bold text-gray-900">{item.name}</span>
+                                    <span className="font-bold text-gray-900 dark:text-white">{item.name}</span>
                                  </div>
                                  <div className="flex items-baseline gap-1.5">
-                                    <span className="font-bold text-gray-900">{formatNumber(item.volume)} L</span>
+                                    <span className="font-bold text-gray-900 dark:text-white">{formatNumber(item.volume)} L</span>
                                     <span className="text-xs text-gray-400 font-medium">{item.percentage.toFixed(1)}%</span>
                                  </div>
                               </div>
-                              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-3 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.percentage}%` }}></div>
                               </div>
                            </div>

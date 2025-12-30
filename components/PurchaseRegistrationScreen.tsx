@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { combustivelService, compraService, estoqueService } from '../services/api';
 import type { Combustivel } from '../services/database.types';
+import { usePosto } from '../contexts/PostoContext';
 
 type CombustivelHibrido = {
    id: number;
@@ -19,12 +20,13 @@ type CombustivelHibrido = {
    estoque_anterior: string;   // Estoque ano passado
 };
 
-const TABLE_INPUT_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 rounded-lg focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white hover:border-emerald-300";
-const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 rounded-lg focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all shadow-sm bg-white hover:border-orange-300";
+const TABLE_INPUT_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white dark:bg-gray-700 dark:text-white hover:border-emerald-300 dark:hover:border-emerald-600";
+const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all shadow-sm bg-white dark:bg-gray-700 dark:text-white hover:border-orange-300 dark:hover:border-orange-600";
 
 
 
 const PurchaseRegistrationScreen: React.FC = () => {
+   const { postoAtivoId } = usePosto();
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState(false);
 
@@ -37,13 +39,13 @@ const PurchaseRegistrationScreen: React.FC = () => {
    // Carregar dados iniciais
    useEffect(() => {
       loadData();
-   }, []);
+   }, [postoAtivoId]);
 
    const loadData = async () => {
       try {
          setLoading(true);
-         const data = await combustivelService.getAll();
-         const estoques = await estoqueService.getAll();
+         const data = await combustivelService.getAll(postoAtivoId);
+         const estoques = await estoqueService.getAll(postoAtivoId);
 
          // Mapear combustíveis do banco para o estado local
          const mapped: CombustivelHibrido[] = data.map(c => {
@@ -303,7 +305,8 @@ const PurchaseRegistrationScreen: React.FC = () => {
                quantidade_litros: litros,
                valor_total: valorTotal,
                custo_por_litro: valorTotal / litros,
-               observacoes: `Atualização de estoque/preço via Painel de Compras`
+               observacoes: `Atualização de estoque/preço via Painel de Compras`,
+               posto_id: postoAtivoId
             });
 
             // 2. Atualizar Preço de Venda no Sistema (Tabela Combustivel)
@@ -336,25 +339,25 @@ const PurchaseRegistrationScreen: React.FC = () => {
    };
 
    if (loading) {
-      return <div className="p-8 text-center text-slate-500">Carregando dados...</div>;
+      return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Carregando dados...</div>;
    }
 
    return (
-      <div className="bg-gray-50 font-sans text-slate-800 transition-colors duration-300 pb-12 min-h-screen">
+      <div className="bg-gray-50 dark:bg-gray-900 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300 pb-12 min-h-screen">
          <header className="w-[98%] mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                <div>
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                      Compra e Venda
                   </h1>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                      Sistema integrado de gestão baseado na planilha Posto Jorro 2025.
                   </p>
                </div>
                <div className="flex gap-4 items-center">
                   <button
                      onClick={loadData}
-                     className="p-2 text-slate-500 hover:text-slate-700 transition-colors"
+                     className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                      title="Recarregar dados"
                   >
                      <RefreshCw size={20} />
@@ -375,14 +378,14 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
 
             {/* === SEÇÃO VENDA === */}
-            <section className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                <div className="bg-emerald-600 px-6 py-4 flex items-center gap-2">
                   <TrendingUp className="text-white" size={24} />
                   <h2 className="text-white font-semibold text-lg">Venda</h2>
                </div>
                <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-sm text-left">
-                     <thead className="bg-slate-100 text-xs uppercase font-semibold text-slate-600 whitespace-nowrap">
+                     <thead className="bg-slate-100 dark:bg-gray-700 text-xs uppercase font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         <tr>
                            <th className="px-4 py-4 min-w-[120px]">Produtos</th>
                            <th className="px-4 py-4 text-center">Inicial</th>
@@ -397,7 +400,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
                            <th className="px-4 py-4 text-right">Produto %</th>
                         </tr>
                      </thead>
-                     <tbody className="divide-y divide-gray-100">
+                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {combustiveis.map((c, index) => {
                            const litres = calcLitrosVendidos(c);
                            const valorBico = calcValorPorBico(c);
@@ -405,11 +408,11 @@ const PurchaseRegistrationScreen: React.FC = () => {
                            const lucroBico = calcLucroBico(c);
                            const margemPct = calcMargemPct(c);
                            const produtoPct = calcProdutoPct(c);
-                           const rowClass = index % 2 === 0 ? "hover:bg-gray-50" : "bg-gray-50/50 hover:bg-gray-100";
+                           const rowClass = index % 2 === 0 ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : "bg-gray-50/50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/70";
 
                            return (
                               <tr key={c.id} className={`${rowClass} transition-colors`}>
-                                 <td className="px-4 py-5 font-medium">{c.nome}</td>
+                                 <td className="px-4 py-5 font-medium dark:text-white">{c.nome}</td>
                                  <td className="px-3 py-5 min-w-[180px]">
                                     <input
                                        className={TABLE_INPUT_CLASS}
@@ -428,10 +431,10 @@ const PurchaseRegistrationScreen: React.FC = () => {
                                        onChange={(e) => handleChange(c.id, 'fechamento', e.target.value)}
                                     />
                                  </td>
-                                 <td className="px-4 py-5 text-right font-bold text-slate-700">
+                                 <td className="px-4 py-5 text-right font-bold text-slate-700 dark:text-slate-300">
                                     {litres > 0 ? formatToBR(litres, 0) : '-'}
                                  </td>
-                                 <td className="px-4 py-5 text-right text-emerald-600 font-bold bg-emerald-50/30">
+                                 <td className="px-4 py-5 text-right text-emerald-600 font-bold bg-emerald-50/30 dark:bg-emerald-900/20">
                                     {parseValue(c.preco_venda_atual) > 0 ? formatCurrency(parseValue(c.preco_venda_atual)) : '-'}
                                  </td>
                                  <td className="px-4 py-5 text-right text-blue-500">
@@ -476,7 +479,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
             </section>
 
             {/* === SEÇÃO COMPRA === */}
-            <section className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                <div className="bg-orange-600 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                      <Package className="text-white" size={24} />
@@ -521,34 +524,34 @@ const PurchaseRegistrationScreen: React.FC = () => {
                </div>
                <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-sm text-left">
-                     <thead className="bg-slate-100 text-xs uppercase font-semibold text-slate-600 whitespace-nowrap">
-                        <tr className="bg-slate-200 border-b border-slate-300">
-                           <th className="px-4 py-2 bg-slate-100"></th>
-                           <th className="px-4 py-2 text-center border-l border-slate-300 text-orange-700" colSpan={2}>Compra</th>
-                           <th className="px-4 py-2 text-center border-l border-slate-300 text-blue-700" colSpan={1}>Custo</th>
-                           <th className="px-4 py-2 text-center border-l border-slate-300 text-emerald-700" colSpan={1}>Venda</th>
+                     <thead className="bg-slate-100 dark:bg-gray-700 text-xs uppercase font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        <tr className="bg-slate-200 dark:bg-gray-600 border-b border-slate-300 dark:border-gray-500">
+                           <th className="px-4 py-2 bg-slate-100 dark:bg-gray-700"></th>
+                           <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-orange-700 dark:text-orange-400" colSpan={2}>Compra</th>
+                           <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-blue-700 dark:text-blue-400" colSpan={1}>Custo</th>
+                           <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-emerald-700 dark:text-emerald-400" colSpan={1}>Venda</th>
                         </tr>
                         <tr>
                            <th className="px-4 py-4 min-w-[120px]">Produtos</th>
-                           <th className="px-4 py-4 text-center border-l border-slate-200">Compra, LT.</th>
+                           <th className="px-4 py-4 text-center border-l border-slate-200 dark:border-gray-600">Compra, LT.</th>
                            <th className="px-4 py-4 text-center">Compra, R$.</th>
                            <th className="px-4 py-4 text-right text-blue-600">Média LT R$</th>
                            <th className="px-4 py-4 text-right border-l border-slate-200 text-emerald-600">Valor P/ Venda</th>
                         </tr>
                      </thead>
-                     <tbody className="divide-y divide-gray-100">
+                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {combustiveis.map((c, index) => {
                            const mediaLt = calcMediaLtRs(c);
                            const valorVenda = calcValorParaVenda(c);
                            const compraEstoque = calcCompraEEstoque(c);
                            const estoqueHoje = calcEstoqueHoje(c);
                            const percaSobra = calcPercaSobra(c);
-                           const rowClass = index % 2 === 0 ? "hover:bg-gray-50" : "bg-gray-50/50 hover:bg-gray-100";
+                           const rowClass = index % 2 === 0 ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : "bg-gray-50/50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/70";
 
                            return (
                               <tr key={c.id} className={`${rowClass} transition-colors`}>
-                                 <td className="px-4 py-5 font-medium">{c.nome}</td>
-                                 <td className="px-3 py-5 min-w-[180px] border-l border-dashed border-gray-200">
+                                 <td className="px-4 py-5 font-medium dark:text-white">{c.nome}</td>
+                                 <td className="px-3 py-5 min-w-[180px] border-l border-dashed border-gray-200 dark:border-gray-600">
                                     <input
                                        className={TABLE_INPUT_ORANGE_CLASS}
                                        type="text"
@@ -569,7 +572,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
                                  <td className="px-4 py-5 text-right text-blue-500">
                                     {mediaLt > 0 ? formatCurrency(mediaLt) : '-'}
                                  </td>
-                                 <td className="px-4 py-5 text-right text-emerald-600 font-bold bg-emerald-50/30 border-l border-dashed border-gray-200">
+                                 <td className="px-4 py-5 text-right text-emerald-600 font-bold bg-emerald-50/30 dark:bg-emerald-900/20 border-l border-dashed border-gray-200 dark:border-gray-600">
                                     {valorVenda > 0 ? formatCurrency(valorVenda) : '-'}
                                  </td>
                               </tr>

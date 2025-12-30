@@ -14,13 +14,14 @@ import {
   Sun,
   Moon,
   Calendar,
-  Target
+  Target,
+  Building2
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients') => void;
   className?: string;
 }
 
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
     { id: 'closing', label: 'Vendas', icon: ShoppingCart },
     { id: 'purchase', label: 'Compras', icon: ShoppingBag },
     { id: 'attendants', label: 'Frentistas', icon: Users },
+    { id: 'clients', label: 'Clientes / Fiado', icon: Users },
     { id: 'inventory', label: 'Tanques (Combustível)', icon: Fuel },
     { id: 'products', label: 'Produtos e Estoque', icon: Package },
     { id: 'finance', label: 'Financeiro', icon: Banknote },
@@ -39,6 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
     { id: 'analysis', label: 'Análise de Custos', icon: BarChart2 },
     { id: 'settings', label: 'Configurações', icon: Settings },
     { id: 'schedule', label: 'Escala e Folgas', icon: Calendar },
+    { id: 'postos', label: 'Gerenciar Postos', icon: Building2 },
   ] as const;
 
   return (

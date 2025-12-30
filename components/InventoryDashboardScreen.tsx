@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { fetchInventoryData } from '../services/api';
 import { InventoryItem, InventoryAlert, InventoryTransaction } from '../types';
+import { usePosto } from '../contexts/PostoContext';
 import InventoryFinancialCharts from './InventoryFinancialCharts';
 import FuelTank from './FuelTank';
 import StockManagementScreen from './StockManagementScreen';
@@ -29,6 +30,7 @@ interface InventoryDashboardProps {
 }
 
 const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegisterPurchase, initialTab = 'fuels' }) => {
+  const { postoAtivoId } = usePosto();
   const [activeTab, setActiveTab] = useState<'fuels' | 'stock'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
@@ -37,6 +39,27 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
   const [chartData, setChartData] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ totalCost: 0, totalSell: 0, projectedProfit: 0 });
   const [measurements, setMeasurements] = useState<Record<string, string>>({});
+
+  // Carrega os dados do inventário
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchInventoryData(postoAtivoId);
+        setItems(data.items);
+        setAlerts(data.alerts);
+        setTransactions(data.transactions);
+        setChartData(data.chartData);
+        setSummary(data.summary);
+      } catch (error) {
+        console.error('Erro ao carregar dados do inventário:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [postoAtivoId]);
 
   const handleMeasurementChange = (id: string, value: string) => {
     // Permite apenas numeros e virgula/ponto
@@ -70,7 +93,7 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
     return (
       <div className="flex flex-col items-center justify-center min-h-[500px] w-full text-blue-600">
         <Loader2 size={48} className="animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Sincronizando estoque...</p>
+        <p className="text-gray-500 dark:text-gray-400 font-medium">Sincronizando estoque...</p>
       </div>
     );
   }
@@ -85,11 +108,11 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
             <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#13ec6d]/10 text-[#0eb553] border border-[#13ec6d]/20">Tempo Real</span>
             <span className="text-xs text-gray-400">Atualizado agora</span>
           </div>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Dashboard de Estoque</h2>
-          <p className="text-gray-500 mt-2 max-w-2xl">Gerencie combustíveis, lubrificantes e outros produtos do posto em um só lugar.</p>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 dark:text-white">Dashboard de Estoque</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-2xl">Gerencie combustíveis, lubrificantes e outros produtos do posto em um só lugar.</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 h-10 rounded-lg border border-gray-200 bg-white text-gray-900 text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
+          <button className="flex items-center gap-2 px-4 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
             <RefreshCw size={18} />
             <span>Atualizar</span>
           </button>
@@ -104,15 +127,15 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
       </div>
 
       {/* Navigation Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
           <button
             onClick={() => setActiveTab('fuels')}
             className={`
               whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm
               ${activeTab === 'fuels'
-                ? 'border-[#13ec6d] text-[#0d1b13]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-[#13ec6d] text-[#0d1b13] dark:text-white'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
               }
             `}
           >
@@ -124,7 +147,7 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
               whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm
               ${activeTab === 'stock'
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
               }
             `}
           >
@@ -166,12 +189,12 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
 
             {/* Alerts Panel */}
             <div className="lg:col-span-1 flex flex-col gap-4">
-              <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 h-full flex flex-col">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-lg text-gray-900">Ações Recomendadas</h3>
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">Ações Recomendadas</h3>
                   <span className={`px-2 py-1 rounded-full text-xs font-bold ${alerts.some(a => a.type === 'critical')
-                    ? 'bg-red-50 text-red-600 animate-pulse-subtle'
-                    : 'bg-yellow-50 text-yellow-600'
+                    ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse-subtle'
+                    : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
                     }`}>
                     {alerts.length} {alerts.length === 1 ? 'Alerta' : 'Alertas'}
                   </span>
@@ -180,10 +203,10 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                 <div className="space-y-4 flex-1">
                   {alerts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
-                        <TrendingUp size={24} className="text-green-600" />
+                      <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
+                        <TrendingUp size={24} className="text-green-600 dark:text-green-400" />
                       </div>
-                      <p className="text-sm font-medium text-gray-700">Tudo em ordem!</p>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Tudo em ordem!</p>
                       <p className="text-xs text-gray-400 mt-1">Nenhum alerta pendente no momento.</p>
                     </div>
                   ) : alerts.map((alert) => (
@@ -237,22 +260,22 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
 
             {/* Chart Section */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 h-full flex flex-col">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                   <div>
-                    <h3 className="font-bold text-lg text-gray-900">Movimentação dos Últimos 7 Dias</h3>
-                    <p className="text-sm text-gray-500">Comparativo de Vendas vs. Entradas de Combustível</p>
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Movimentação dos Últimos 7 Dias</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Comparativo de Vendas vs. Entradas de Combustível</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       <span className="size-3 rounded-full bg-[#13ec6d]"></span>
-                      <span className="text-xs font-medium text-gray-500">Vendas (L)</span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Vendas (L)</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="size-3 rounded-full bg-gray-300"></span>
-                      <span className="text-xs font-medium text-gray-500">Entradas (L)</span>
+                      <span className="size-3 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Entradas (L)</span>
                     </div>
-                    <select className="text-xs border-none bg-gray-100 rounded-lg py-1.5 pl-3 pr-8 font-medium text-gray-700 focus:ring-0 cursor-pointer ml-2">
+                    <select className="text-xs border-none bg-gray-100 dark:bg-gray-700 rounded-lg py-1.5 pl-3 pr-8 font-medium text-gray-700 dark:text-gray-300 focus:ring-0 cursor-pointer ml-2">
                       <option>Últimos 7 dias</option>
                       <option>Este Mês</option>
                     </select>
@@ -275,7 +298,7 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                         </div>
                         {/* Entry Bar */}
                         <div
-                          className="w-3 sm:w-6 bg-gray-300 rounded-t-sm relative group-hover:bg-gray-400 transition-all"
+                          className="w-3 sm:w-6 bg-gray-300 dark:bg-gray-600 rounded-t-sm relative group-hover:bg-gray-400 dark:group-hover:bg-gray-500 transition-all"
                           style={{ height: `${data.entryPerc || 0}%` }}
                         >
                           <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
@@ -300,11 +323,11 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
           })} />
 
           {/* Financial Reconciliation & Stock Analysis */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/50">
               <div>
-                <h3 className="font-bold text-lg text-gray-900">Conciliação e Financeiro</h3>
-                <p className="text-sm text-gray-500">Análise financeira do estoque atual e projeção de lucro</p>
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">Conciliação e Financeiro</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Análise financeira do estoque atual e projeção de lucro</p>
               </div>
               <div className="flex gap-2">
                 <div className="px-3 py-1 rounded bg-[#e7f3ec] border border-[#13ec6d]/20 text-[#0d1b13] text-xs font-bold flex flex-col items-end">
@@ -324,19 +347,19 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500 font-bold text-center">
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold text-center">
                     <th className="px-4 py-3 text-left">Produto</th>
-                    <th className="px-4 py-3 bg-gray-100/50">Anterior</th>
-                    <th className="px-4 py-3 bg-gray-100/50">+ Cmpr</th>
-                    <th className="px-4 py-3 bg-gray-100/50">- Vnd</th>
-                    <th className="px-4 py-3 bg-blue-50/30 text-blue-700">Lógico</th>
-                    <th className="px-4 py-3 bg-yellow-50/30 text-yellow-700 w-32">Físico</th>
-                    <th className="px-4 py-3 bg-red-50/30 text-red-700">P/S</th>
+                    <th className="px-4 py-3 bg-gray-100/50 dark:bg-gray-600/50">Anterior</th>
+                    <th className="px-4 py-3 bg-gray-100/50 dark:bg-gray-600/50">+ Cmpr</th>
+                    <th className="px-4 py-3 bg-gray-100/50 dark:bg-gray-600/50">- Vnd</th>
+                    <th className="px-4 py-3 bg-blue-50/30 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Lógico</th>
+                    <th className="px-4 py-3 bg-yellow-50/30 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 w-32">Físico</th>
+                    <th className="px-4 py-3 bg-red-50/30 dark:bg-red-900/20 text-red-700 dark:text-red-400">P/S</th>
                     <th className="px-4 py-3 text-right">Custo Médio</th>
                     <th className="px-4 py-3 text-right">Valor Estoque</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {items.map((item) => {
                     const measureVal = measurements[item.id];
                     const physicalVol = measureVal ? parseMeasure(measureVal) : item.volume;
@@ -345,28 +368,28 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                     const stockValue = physicalVol * item.costPrice;
 
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors text-center">
-                        <td className="px-4 py-4 text-left font-bold text-gray-900 border-l-4" style={{ borderColor: item.color === 'green' ? '#13ec6d' : item.color }}>
+                      <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors text-center">
+                        <td className="px-4 py-4 text-left font-bold text-gray-900 dark:text-white border-l-4" style={{ borderColor: item.color === 'green' ? '#13ec6d' : item.color }}>
                           {item.name}
                         </td>
-                        <td className="px-4 py-4 text-gray-500">{item.previousStock?.toLocaleString() || 0} L</td>
+                        <td className="px-4 py-4 text-gray-500 dark:text-gray-400">{item.previousStock?.toLocaleString() || 0} L</td>
                         <td className="px-4 py-4 text-green-600 font-medium">{item.totalPurchases > 0 ? `+ ${item.totalPurchases.toLocaleString()}` : '-'}</td>
                         <td className="px-4 py-4 text-red-500 font-medium">{item.totalSales > 0 ? `- ${item.totalSales.toLocaleString()}` : '-'}</td>
-                        <td className="px-4 py-4 bg-blue-50/20 font-bold text-blue-700">{item.volume.toLocaleString()} L</td>
-                        <td className="px-4 py-4 bg-yellow-50/20">
+                        <td className="px-4 py-4 bg-blue-50/20 dark:bg-blue-900/10 font-bold text-blue-700 dark:text-blue-400">{item.volume.toLocaleString()} L</td>
+                        <td className="px-4 py-4 bg-yellow-50/20 dark:bg-yellow-900/10">
                           <input
                             type="text"
                             value={measurements[item.id] || ''}
                             onChange={(e) => handleMeasurementChange(item.id, e.target.value)}
                             placeholder={item.volume.toLocaleString('pt-BR')}
-                            className="w-full text-center bg-white border border-gray-300 rounded px-2 py-1 text-sm font-bold shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none"
+                            className="w-full text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm font-bold shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none dark:text-white"
                           />
                         </td>
                         <td className={`px-4 py-4 font-bold ${diff < 0 ? 'text-red-500' : diff > 0 ? 'text-green-500' : 'text-gray-400'}`}>
                           {measureVal ? (diff > 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString()) : '-'}
                         </td>
-                        <td className="px-4 py-4 text-right text-gray-500 font-medium">R$ {item.costPrice.toFixed(2)}</td>
-                        <td className="px-4 py-4 text-right font-bold text-gray-900">R$ {stockValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
+                        <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400 font-medium">R$ {item.costPrice.toFixed(2)}</td>
+                        <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-white">R$ {stockValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
                       </tr>
                     );
                   })}
@@ -376,9 +399,9 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
           </div>
 
           {/* Recent Activity Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-20">
-            <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-gray-900">Últimos Registros</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-20">
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Últimos Registros</h3>
               <button className="text-sm font-bold text-[#13ec6d] hover:text-[#0eb553] transition-colors">Ver Histórico</button>
             </div>
             <div className="overflow-x-auto">
@@ -386,7 +409,7 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                 <div className="p-8 text-center text-gray-400 text-sm italic">Nenhum registro encontrado.</div>
               ) : (
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-400 uppercase text-xs font-bold">
+                  <thead className="bg-gray-50 dark:bg-gray-700 text-gray-400 uppercase text-xs font-bold">
                     <tr>
                       <th className="px-6 py-3">Data/Hora</th>
                       <th className="px-6 py-3">Tipo</th>
@@ -396,23 +419,23 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
                       <th className="px-6 py-3 text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-gray-900">{tx.date}</td>
+                      <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td className="px-6 py-4 text-gray-900 dark:text-white">{tx.date}</td>
                         <td className="px-6 py-4">
-                          <span className="flex items-center gap-1.5 text-gray-900 font-medium">
+                          <span className="flex items-center gap-1.5 text-gray-900 dark:text-white font-medium">
                             {tx.type === 'Venda' ? <ArrowDown size={16} className="text-green-500" /> : <ArrowUp size={16} className="text-blue-500" />}
                             {tx.type}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-500">{tx.product}</td>
-                        <td className="px-6 py-4 text-right font-medium text-gray-900">
+                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{tx.product}</td>
+                        <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
                           {tx.quantity > 0 ? `+ ${tx.quantity.toLocaleString('pt-BR')} L` : `${tx.quantity.toLocaleString('pt-BR')} L`}
                         </td>
-                        <td className="px-6 py-4 text-gray-500">{tx.responsible}</td>
+                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{tx.responsible}</td>
                         <td className="px-6 py-4 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.status === 'Concluído' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.status === 'Concluído' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'}`}>
                             {tx.status}
                           </span>
                         </td>
@@ -428,13 +451,13 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
       )}
 
       {/* Sticky Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center gap-4">
-          <p className="text-xs text-gray-500 hidden sm:block">
+          <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
             Último backup do sistema: Hoje às 03:00 AM • Versão 2.4.1
           </p>
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 text-sm font-bold hover:bg-gray-50 transition-colors">
+            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
               <FileText size={20} />
               Relatório Completo
             </button>

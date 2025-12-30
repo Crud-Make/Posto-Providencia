@@ -21,6 +21,8 @@ import type {
   Configuracao,
   InsertTables,
   UpdateTables,
+  Posto,
+  UsuarioPosto,
 } from './database.types';
 
 import {
@@ -45,6 +47,85 @@ interface SalesSummary {
   leituras: (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[];
 }
 
+// ============================================
+// POSTOS
+// ============================================
+
+export const postoService = {
+  async getAll(): Promise<Posto[]> {
+    const { data, error } = await supabase
+      .from('Posto')
+      .select('*')
+      .eq('ativo', true)
+      .order('id');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getById(id: number): Promise<Posto | null> {
+    const { data, error } = await supabase
+      .from('Posto')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async getByUser(usuarioId: number): Promise<Posto[]> {
+    const { data, error } = await supabase
+      .from('UsuarioPosto')
+      .select(`
+        *,
+        posto:Posto(*)
+      `)
+      .eq('usuario_id', usuarioId)
+      .eq('ativo', true);
+
+    if (error) throw error;
+    return (data || []).map(up => up.posto).filter(Boolean) as Posto[];
+  },
+
+  async getAllIncludingInactive(): Promise<Posto[]> {
+    const { data, error } = await supabase
+      .from('Posto')
+      .select('*')
+      .order('id');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async create(posto: Omit<InsertTables<'Posto'>, 'id' | 'created_at'>): Promise<Posto> {
+    const { data, error } = await supabase
+      .from('Posto')
+      .insert(posto)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: number, posto: UpdateTables<'Posto'>): Promise<Posto> {
+    const { data, error } = await supabase
+      .from('Posto')
+      .update(posto)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: number): Promise<void> {
+    // Soft delete - apenas desativa o posto
+    const { error } = await supabase
+      .from('Posto')
+      .update({ ativo: false })
+      .eq('id', id);
+    if (error) throw error;
+  }
+};
+
 
 // ============================================
 // COMBUSTÍVEIS
@@ -54,11 +135,17 @@ export const combustivelService = {
   // Ordem customizada dos combustíveis
   ORDEM_COMBUSTIVEIS: ['GC', 'GA', 'ET', 'S10', 'DIESEL'] as const,
 
-  async getAll(): Promise<Combustivel[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<Combustivel[]> {
+    let query = (supabase as any)
       .from('Combustivel')
       .select('*')
       .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
 
     // Ordena por ordem customizada
@@ -111,18 +198,24 @@ export const combustivelService = {
 // ============================================
 
 export const bombaService = {
-  async getAll(): Promise<Bomba[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<Bomba[]> {
+    let query = (supabase as any)
       .from('Bomba')
       .select('*')
       .eq('ativo', true)
       .order('nome');
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   },
 
-  async getWithBicos(): Promise<(Bomba & { bicos: (Bico & { combustivel: Combustivel })[] })[]> {
-    const { data, error } = await supabase
+  async getWithBicos(postoId?: number): Promise<(Bomba & { bicos: (Bico & { combustivel: Combustivel })[] })[]> {
+    let query = (supabase as any)
       .from('Bomba')
       .select(`
         *,
@@ -131,8 +224,13 @@ export const bombaService = {
           combustivel:Combustivel(*)
         )
       `)
-      .eq('ativo', true)
-      .order('nome');
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome');
     if (error) throw error;
     return data || [];
   },
@@ -165,25 +263,36 @@ export const bombaService = {
 // ============================================
 
 export const despesaService = {
-  async getAll(): Promise<any[]> {
-    const { data, error } = await (supabase as any)
+  async getAll(postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
       .from('Despesa')
-      .select('*')
-      .order('data', { ascending: false });
+      .select('*');
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
     return data || [];
   },
 
-  async getByMonth(year: number, month: number): Promise<any[]> {
+  async getByMonth(year: number, month: number, postoId?: number): Promise<any[]> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
 
-    const { data, error } = await (supabase as any)
+    let query = (supabase as any)
       .from('Despesa')
       .select('*')
       .gte('data', startDate)
       .lte('data', endDate);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       // Fail gracefully if table doesn't exist yet (migration pending)
@@ -228,26 +337,36 @@ export const despesaService = {
 // ============================================
 
 export const bicoService = {
-  async getAll(): Promise<Bico[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<Bico[]> {
+    let query = (supabase as any)
       .from('Bico')
       .select('*')
-      .eq('ativo', true)
-      .order('numero');
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('numero');
     if (error) throw error;
     return data || [];
   },
 
-  async getWithDetails(): Promise<(Bico & { bomba: Bomba; combustivel: Combustivel })[]> {
-    const { data, error } = await supabase
+  async getWithDetails(postoId?: number): Promise<(Bico & { bomba: Bomba; combustivel: Combustivel })[]> {
+    let query = (supabase as any)
       .from('Bico')
       .select(`
         *,
         bomba:Bomba(*),
         combustivel:Combustivel(*)
       `)
-      .eq('ativo', true)
-      .order('numero');
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('numero');
     if (error) throw error;
     return data || [];
   },
@@ -279,17 +398,29 @@ export const bicoService = {
 // ============================================
 
 export const frentistaService = {
-  async getWithEmail(): Promise<(Frentista & { email: string | null })[]> {
-    const { data, error } = await (supabase as any).rpc('get_frentistas_with_email');
+  async getWithEmail(postoId?: number): Promise<(Frentista & { email: string | null })[]> {
+    let query = (supabase as any).rpc('get_frentistas_with_email');
+
+    const { data, error } = await query;
     if (error) throw error;
+
+    if (postoId && data) {
+      return data.filter((f: any) => f.posto_id === postoId);
+    }
+
     return data || [];
   },
-  async getAll(): Promise<Frentista[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<Frentista[]> {
+    let query = (supabase as any)
       .from('Frentista')
       .select('*')
-      .eq('ativo', true)
-      .order('nome');
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome');
     if (error) throw error;
     return data || [];
   },
@@ -339,8 +470,8 @@ export const frentistaService = {
 // ============================================
 
 export const leituraService = {
-  async getByDate(data: string): Promise<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]> {
-    const { data: leituras, error } = await supabase
+  async getByDate(data: string, postoId?: number): Promise<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]> {
+    let query = (supabase as any)
       .from('Leitura')
       .select(`
         *,
@@ -350,8 +481,13 @@ export const leituraService = {
           bomba:Bomba(*)
         )
       `)
-      .eq('data', data)
-      .order('id');
+      .eq('data', data);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data: leituras, error } = await query.order('id');
     if (error) throw error;
     return leituras || [];
   },
@@ -470,8 +606,8 @@ export const leituraService = {
   },
 
   // Resumo de vendas por data
-  async getSalesSummaryByDate(data: string): Promise<SalesSummary> {
-    const leituras = await this.getByDate(data);
+  async getSalesSummaryByDate(data: string, postoId?: number): Promise<SalesSummary> {
+    const leituras = await this.getByDate(data, postoId);
 
     const totalLitros = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
     const totalVendas = leituras.reduce((acc, l) => acc + (l.valor_total || 0), 0);
@@ -506,12 +642,17 @@ export const leituraService = {
 // ============================================
 
 export const formaPagamentoService = {
-  async getAll(): Promise<FormaPagamento[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<FormaPagamento[]> {
+    let query = (supabase as any)
       .from('FormaPagamento')
       .select('*')
-      .eq('ativo', true)
-      .order('nome');
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome');
     if (error) throw error;
     return data || [];
   },
@@ -551,12 +692,17 @@ export const formaPagamentoService = {
 // ============================================
 
 export const maquininhaService = {
-  async getAll(): Promise<Maquininha[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<Maquininha[]> {
+    let query = (supabase as any)
       .from('Maquininha')
       .select('*')
-      .eq('ativo', true)
-      .order('nome');
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome');
     if (error) throw error;
     return data || [];
   },
@@ -577,19 +723,24 @@ export const maquininhaService = {
 // ============================================
 
 export const fechamentoService = {
-  async getByDateAndTurno(data: string, turnoId: number): Promise<Fechamento | null> {
-    const { data: fechamento, error } = await supabase
+  async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<Fechamento | null> {
+    let query = (supabase as any)
       .from('Fechamento')
       .select('*')
       .eq('data', data)
-      .eq('turno_id', turnoId)
-      .maybeSingle();
+      .eq('turno_id', turnoId);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data: fechamento, error } = await query.maybeSingle();
     if (error) throw error;
     return fechamento;
   },
 
-  async getByDate(data: string): Promise<any[]> {
-    const { data: fechamentos, error } = await supabase
+  async getByDate(data: string, postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
       .from('Fechamento')
       .select(`
         *,
@@ -597,6 +748,12 @@ export const fechamentoService = {
         usuario:Usuario(id, nome)
       `)
       .eq('data', data);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data: fechamentos, error } = await query;
     if (error) throw error;
     return fechamentos || [];
   },
@@ -623,10 +780,16 @@ export const fechamentoService = {
     return data;
   },
 
-  async getRecent(limit = 10): Promise<Fechamento[]> {
-    const { data, error } = await supabase
+  async getRecent(limit = 10, postoId?: number): Promise<Fechamento[]> {
+    let query = (supabase as any)
       .from('Fechamento')
-      .select('*')
+      .select('*');
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query
       .order('data', { ascending: false })
       .limit(limit);
     if (error) throw error;
@@ -772,15 +935,21 @@ export const fechamentoFrentistaService = {
     return data || [];
   },
 
-  async getByDate(dataStr: string) {
-    const { data, error } = await supabase
+  async getByDate(dataStr: string, postoId?: number) {
+    let query = (supabase as any)
       .from('FechamentoFrentista')
       .select(`
         *,
         frentista:Frentista(*),
-        fechamento:Fechamento!inner(data, turno_id, turno:Turno(*))
+        fechamento:Fechamento!inner(data, turno_id, turno:Turno(*), posto_id)
       `)
       .eq('fechamento.data', dataStr);
+
+    if (postoId) {
+      query = query.eq('fechamento.posto_id', postoId);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return data || [];
@@ -792,13 +961,19 @@ export const fechamentoFrentistaService = {
 // ============================================
 
 export const estoqueService = {
-  async getAll(): Promise<(Estoque & { combustivel: Combustivel })[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<(Estoque & { combustivel: Combustivel })[]> {
+    let query = (supabase as any)
       .from('Estoque')
       .select(`
         *,
         combustivel:Combustivel(*)
       `);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   },
@@ -865,15 +1040,20 @@ export const estoqueService = {
 // ============================================
 
 export const compraService = {
-  async getAll(): Promise<(Compra & { combustivel: Combustivel; fornecedor: Fornecedor })[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<(Compra & { combustivel: Combustivel; fornecedor: Fornecedor })[]> {
+    let query = (supabase as any)
       .from('Compra')
       .select(`
         *,
         combustivel:Combustivel(*),
         fornecedor:Fornecedor(*)
-      `)
-      .order('data', { ascending: false });
+      `);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
     return data || [];
   },
@@ -921,12 +1101,17 @@ export const compraService = {
 // ============================================
 
 export const fornecedorService = {
-  async getAll(): Promise<Fornecedor[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<Fornecedor[]> {
+    let query = (supabase as any)
       .from('Fornecedor')
       .select('*')
-      .eq('ativo', true)
-      .order('nome');
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome');
     if (error) throw error;
     return data || [];
   },
@@ -947,11 +1132,16 @@ export const fornecedorService = {
 // ============================================
 
 export const turnoService = {
-  async getAll(): Promise<Turno[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<Turno[]> {
+    let query: any = supabase
       .from('Turno')
-      .select('*')
-      .order('horario_inicio');
+      .select('*');
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('horario_inicio');
     if (error) throw error;
     return data || [];
   },
@@ -983,12 +1173,17 @@ export const turnoService = {
 // ============================================
 
 export const emprestimoService = {
-  async getAll(): Promise<(Emprestimo & { parcelas: Parcela[] })[]> {
-    const { data, error } = await supabase
+  async getAll(postoId?: number): Promise<(Emprestimo & { parcelas: Parcela[] })[]> {
+    let query: any = supabase
       .from('Emprestimo')
       .select('*, parcelas:Parcela(*)')
-      .eq('ativo', true)
-      .order('created_at', { ascending: false });
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
   },
@@ -1079,39 +1274,61 @@ export const parcelaService = {
 // ============================================
 
 export const configuracaoService = {
-  async getAll(): Promise<Configuracao[]> {
-    const { data, error } = await (supabase as any)
+  async getAll(postoId?: number): Promise<Configuracao[]> {
+    let query = (supabase as any)
       .from('Configuracao')
-      .select('*')
-      .order('categoria', { ascending: true });
+      .select('*');
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('categoria', { ascending: true });
     if (error) throw error;
     return (data || []) as Configuracao[];
   },
 
-  async getByChave(chave: string): Promise<Configuracao | null> {
-    const { data, error } = await (supabase as any)
+  async getByChave(chave: string, postoId?: number): Promise<Configuracao | null> {
+    let query = (supabase as any)
       .from('Configuracao')
       .select('*')
-      .eq('chave', chave)
-      .single();
+      .eq('chave', chave);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.maybeSingle();
     if (error && error.code !== 'PGRST116') throw error;
     return data as Configuracao | null;
   },
 
-  async getByCategoria(categoria: string): Promise<Configuracao[]> {
-    const { data, error } = await (supabase as any)
+  async getByCategoria(categoria: string, postoId?: number): Promise<Configuracao[]> {
+    let query = (supabase as any)
       .from('Configuracao')
       .select('*')
       .eq('categoria', categoria);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data || []) as Configuracao[];
   },
 
-  async update(chave: string, valor: string): Promise<Configuracao> {
-    const { data, error } = await (supabase as any)
+  async update(chave: string, valor: string, postoId?: number): Promise<Configuracao> {
+    let query = (supabase as any)
       .from('Configuracao')
       .update({ valor, updated_at: new Date().toISOString() })
-      .eq('chave', chave)
+      .eq('chave', chave);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query
       .select()
       .single();
     if (error) throw error;
@@ -1144,17 +1361,17 @@ export const configuracaoService = {
 // ============================================
 
 export const dashboardService = {
-  async getResumoHoje() {
+  async getResumoHoje(postoId?: number) {
     const hoje = new Date().toISOString().split('T')[0];
 
     // Vendas do dia
-    const vendas = await leituraService.getSalesSummaryByDate(hoje);
+    const vendas = await leituraService.getSalesSummaryByDate(hoje, postoId);
 
     // Fechamento do dia
-    const fechamento = await fechamentoService.getByDate(hoje);
+    const fechamento = await fechamentoService.getByDate(hoje, postoId);
 
     // Estoque
-    const estoque = await estoqueService.getAll();
+    const estoque = await estoqueService.getAll(postoId);
 
     return {
       data: hoje,
@@ -1170,8 +1387,8 @@ export const dashboardService = {
     };
   },
 
-  async getVendasPeriodo(dataInicio: string, dataFim: string) {
-    const { data, error } = await supabase
+  async getVendasPeriodo(dataInicio: string, dataFim: string, postoId?: number) {
+    let query = (supabase as any)
       .from('Leitura')
       .select(`
         data,
@@ -1182,8 +1399,13 @@ export const dashboardService = {
         )
       `)
       .gte('data', dataInicio)
-      .lte('data', dataFim)
-      .order('data');
+      .lte('data', dataFim);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('data');
     if (error) throw error;
     return data || [];
   },
@@ -1230,18 +1452,18 @@ interface SalesAnalysisData {
 }
 
 export const salesAnalysisService = {
-  async getMonthlyAnalysis(year: number, month: number): Promise<SalesAnalysisData> {
+  async getMonthlyAnalysis(year: number, month: number, postoId?: number): Promise<SalesAnalysisData> {
     // Calculate date range for the month
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
 
     // 1. Fetch Expenses for the month
-    const despesas = await despesaService.getByMonth(year, month);
+    const despesas = await despesaService.getByMonth(year, month, postoId);
     const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
 
     // Fetch all readings for the month with bico and combustivel details
-    const { data: leituras, error } = await supabase
+    let query = (supabase as any)
       .from('Leitura')
       .select(`
         *,
@@ -1252,13 +1474,18 @@ export const salesAnalysisService = {
         )
       `)
       .gte('data', startDate)
-      .lte('data', endDate)
-      .order('data');
+      .lte('data', endDate);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data: leituras, error } = await query.order('data');
 
     if (error) throw error;
 
     // Fetch stock data for cost info
-    const estoques = await estoqueService.getAll();
+    const estoques = await estoqueService.getAll(postoId);
     const custoMedioPorCombustivel: Record<number, number> = {};
     estoques.forEach(e => {
       if (e.combustivel) {
@@ -1622,18 +1849,19 @@ export const notificationService = {
 // ============================================
 
 export const dividaService = {
-  async getAll(): Promise<Divida[]> {
-    const { data, error } = await supabase
-      .from('Divida')
-      .select('*')
-      .order('data_vencimento', { ascending: true });
+  async getAll(postoId?: number): Promise<Divida[]> {
+    let query: any = supabase.from('Divida').select('*');
+    if (postoId) query = query.eq('posto_id', postoId);
+
+    const { data, error } = await query.order('data_vencimento', { ascending: true });
     if (error) throw error;
-    return (data || []).map(d => ({
+    return data.map((d: any) => ({
       id: String(d.id),
       descricao: d.descricao,
       valor: Number(d.valor),
       data_vencimento: d.data_vencimento,
-      status: d.status
+      status: d.status,
+      posto_id: d.posto_id
     }));
   },
 
@@ -1649,7 +1877,8 @@ export const dividaService = {
       descricao: data.descricao,
       valor: Number(data.valor),
       data_vencimento: data.data_vencimento,
-      status: data.status
+      status: data.status,
+      posto_id: data.posto_id
     };
   },
 
@@ -1666,13 +1895,22 @@ export const dividaService = {
       descricao: data.descricao,
       valor: Number(data.valor),
       data_vencimento: data.data_vencimento,
-      status: data.status
+      status: data.status,
+      posto_id: data.posto_id
     };
+  },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('Divida')
+      .delete()
+      .eq('id', Number(id));
+    if (error) throw error;
   }
 };
 
 export const solvencyService = {
-  async getProjection(): Promise<SolvencyProjection> {
+  async getProjection(postoId?: number): Promise<SolvencyProjection> {
     const today = new Date();
     const last30Days = new Date(today);
     last30Days.setDate(today.getDate() - 30);
@@ -1685,27 +1923,39 @@ export const solvencyService = {
     const last7DaysStr = last7Days.toISOString().split('T')[0];
 
     // Buscamos recebimentos de Cartão (1, 2) e Pix (3) que possuem fechamento vinculado
-    const { data: recebimentos, error: recError } = await supabase
+    let queryRec = supabase
       .from('Recebimento')
-      .select('valor, Fechamento!inner(data)')
+      .select('valor, Fechamento!inner(data, posto_id)')
       .in('forma_pagamento_id', [1, 2, 3])
       .gte('Fechamento.data', last7DaysStr);
+
+    if (postoId) {
+      queryRec = queryRec.eq('Fechamento.posto_id', postoId);
+    }
+
+    const { data: recebimentos, error: recError } = await queryRec;
 
     if (recError) throw recError;
     const saldoAtual = recebimentos?.reduce((acc, r) => acc + Number(r.valor), 0) || 0;
 
     // 2. Média Diária (Faturamento Líquido dos últimos 30 dias)
-    const { data: fechamentos, error: fError } = await supabase
+    let queryFech = supabase
       .from('Fechamento')
       .select('total_vendas')
       .gte('data', last30DaysStr);
+
+    if (postoId) {
+      queryFech = queryFech.eq('posto_id', postoId);
+    }
+
+    const { data: fechamentos, error: fError } = await queryFech;
 
     if (fError) throw fError;
     const totalVendas30 = fechamentos?.reduce((acc, f) => acc + Number(f.total_vendas), 0) || 0;
     const mediaDiaria = totalVendas30 / 30;
 
     // 3. Dívidas Pendentes
-    const dividas = await dividaService.getAll();
+    const dividas = await dividaService.getAll(postoId);
     const pendentes = dividas.filter(d => d.status === 'pendente');
 
     const proximasParcelas: SolvencyStatus[] = pendentes.map(d => {
@@ -1787,12 +2037,12 @@ export default api;
 // Estas funções adaptam os dados do Supabase para o formato
 // esperado pelos componentes existentes
 
-export async function fetchSettingsData() {
+export async function fetchSettingsData(postoId?: number) {
   const [combustiveis, bicos, turnos, formasPagamento] = await Promise.all([
-    combustivelService.getAll(),
-    bicoService.getWithDetails(),
-    turnoService.getAll(),
-    formaPagamentoService.getAll(),
+    combustivelService.getAll(postoId),
+    bicoService.getWithDetails(postoId),
+    turnoService.getAll(postoId),
+    formaPagamentoService.getAll(postoId),
   ]);
 
   return {
@@ -1829,12 +2079,13 @@ export async function fetchSettingsData() {
 export async function fetchDashboardData(
   dateFilter: string = 'hoje',
   frentistaId: number | null = null,
-  turnoId: number | null = null
+  turnoId: number | null = null,
+  postoId?: number
 ) {
   const [estoque, frentistas, formasPagamento] = await Promise.all([
-    estoqueService.getAll(),
-    frentistaService.getAll(),
-    formaPagamentoService.getAll(),
+    estoqueService.getAll(postoId),
+    frentistaService.getAll(postoId),
+    formaPagamentoService.getAll(postoId),
   ]);
 
   // Calcula o range de data baseado no filtro
@@ -1862,7 +2113,7 @@ export async function fetchDashboardData(
       dataInicio = hoje.toISOString().split('T')[0];
   }
 
-  const vendas = await leituraService.getSalesSummaryByDate(dataInicio);
+  const vendas = await leituraService.getSalesSummaryByDate(dataInicio, postoId);
 
   // Cores padrão para combustíveis
   const coresCombs: Record<string, string> = {
@@ -1898,7 +2149,8 @@ export async function fetchDashboardData(
 
   // ClosingsData - Lista consolidada de status dos frentistas
   const fechamentosFrentistaHoje = await fechamentoFrentistaService.getByDate(
-    dataInicio
+    dataInicio,
+    postoId
   );
 
   // Mapeia os fechamentos por frentista, filtrando pelo turno se necessário
@@ -2007,15 +2259,15 @@ export async function fetchDashboardData(
   };
 }
 
-export async function fetchClosingData() {
+export async function fetchClosingData(postoId?: number) {
   const [frentistas, combustiveis, bicos] = await Promise.all([
-    frentistaService.getAll(),
-    combustivelService.getAll(),
-    bicoService.getWithDetails(),
+    frentistaService.getAll(postoId),
+    combustivelService.getAll(postoId),
+    bicoService.getWithDetails(postoId),
   ]);
 
   const hoje = new Date().toISOString().split('T')[0];
-  const vendas = await leituraService.getSalesSummaryByDate(hoje);
+  const vendas = await leituraService.getSalesSummaryByDate(hoje, postoId);
 
   // Mapeamento de cores
   const colorClasses: Record<string, string> = {
@@ -2106,9 +2358,9 @@ export async function fetchClosingData() {
   return { summaryData, nozzleData, attendantsData };
 }
 
-export async function fetchAttendantsData() {
-  const frentistas = await frentistaService.getWithEmail();
-  const turnos = await turnoService.getAll();
+export async function fetchAttendantsData(postoId?: number) {
+  const frentistas = await frentistaService.getWithEmail(postoId);
+  const turnos = await turnoService.getAll(postoId);
 
   // Buscar histórico de fechamentos por frentista
   const fechamentos = await Promise.all(
@@ -2183,16 +2435,17 @@ export async function fetchAttendantsData() {
   return { list, history };
 }
 
-export async function fetchInventoryData() {
+export async function fetchInventoryData(postoId?: number) {
   const dataInicioAnalise = new Date();
   dataInicioAnalise.setDate(dataInicioAnalise.getDate() - 7);
 
   const [estoque, compras, leiturasRecentes] = await Promise.all([
-    estoqueService.getAll(),
-    compraService.getAll(),
+    estoqueService.getAll(postoId),
+    compraService.getAll(postoId),
     supabase
       .from('Leitura')
       .select('*, bico:Bico(combustivel_id), combustivel:Bico(Combustivel(nome))')
+      .eq(postoId ? 'posto_id' : '', postoId)
       .gte('data', dataInicioAnalise.toISOString().split('T')[0])
       .order('data', { ascending: false })
       .limit(50)
@@ -2328,18 +2581,23 @@ export async function fetchInventoryData() {
   return { items, alerts, transactions, chartData, summary: { totalCost, totalSell, projectedProfit } };
 }
 
-export async function fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1) {
+export async function fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1, postoId?: number) {
   const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
   const fimMesStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
 
+  let queryLeitura = supabase
+    .from('Leitura')
+    .select('*, bico:Bico(combustivel_id)')
+    .gte('data', inicioMesStr);
+
+  if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
+
   const [estoque, leiturasMes, despesas] = await Promise.all([
-    estoqueService.getAll(),
-    supabase
-      .from('Leitura')
-      .select('*, bico:Bico(combustivel_id)')
-      .gte('data', inicioMesStr),
-    despesaService.getByMonth(year, month)
+    estoqueService.getAll(postoId),
+    queryLeitura,
+    despesaService.getByMonth(year, month, postoId)
   ]);
+
 
   const leituras = leiturasMes.data || [];
   const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
@@ -2405,30 +2663,51 @@ export const vendaProdutoService = {
 // ============================================
 
 export const escalaService = {
-  async getAll(): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('Escala')
-      .select('*, Frentista(nome)')
-      .order('data', { ascending: true });
-    if (error) throw error;
-    return data;
+  async getAll(_postoId?: number): Promise<any[]> {
+    // Nota: A tabela Escala não possui campo posto_id
+    // Futuramente, filtrar pelo posto_id dos frentistas relacionados
+    try {
+      const { data, error } = await (supabase as any)
+        .from('Escala')
+        .select('*, Frentista(nome)')
+        .order('data', { ascending: true });
+
+      if (error) {
+        console.warn('Erro ao buscar escalas (tabela pode não existir):', error);
+        return [];
+      }
+      return data || [];
+    } catch (error) {
+      console.warn('Erro ao buscar escalas:', error);
+      return [];
+    }
   },
 
-  async getByMonth(month: number, year: number): Promise<any[]> {
+  async getByMonth(month: number, year: number, _postoId?: number): Promise<any[]> {
+    // Nota: A tabela Escala não possui campo posto_id
     const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-    const { data, error } = await supabase
-      .from('Escala')
-      .select('*, Frentista(nome)')
-      .gte('data', startDate)
-      .lte('data', endDate)
-      .order('data', { ascending: true });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await (supabase as any)
+        .from('Escala')
+        .select('*, Frentista(nome)')
+        .gte('data', startDate)
+        .lte('data', endDate)
+        .order('data', { ascending: true });
+
+      if (error) {
+        console.warn('Erro ao buscar escalas por mês (tabela pode não existir):', error);
+        return [];
+      }
+      return data || [];
+    } catch (error) {
+      console.warn('Erro ao buscar escalas por mês:', error);
+      return [];
+    }
   },
 
-  async create(escala: { frentista_id: number, data: string, tipo: 'FOLGA' | 'TRABALHO', turno_id?: number, observacao?: string }) {
+  async create(escala: { frentista_id: number, data: string, tipo: 'FOLGA' | 'TRABALHO', turno_id?: number, observacao?: string, posto_id?: number }) {
     const { data, error } = await supabase
       .from('Escala')
       .insert(escala)
@@ -2456,3 +2735,336 @@ export const escalaService = {
 };
 
 // ============================================
+// CLIENTES (FIADO)
+// ============================================
+
+export const clienteService = {
+  async getAll(postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
+      .from('Cliente')
+      .select('*')
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getAllWithSaldo(postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
+      .from('Cliente')
+      .select(`
+        *,
+        notas:NotaFrentista(id, valor, status, data)
+      `)
+      .eq('ativo', true);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome');
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getById(id: number): Promise<any | null> {
+    const { data, error } = await supabase
+      .from('Cliente')
+      .select(`
+        *,
+        notas:NotaFrentista(
+          *,
+          frentista:Frentista(id, nome)
+        )
+      `)
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async getDevedores(postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
+      .from('Cliente')
+      .select('*')
+      .eq('ativo', true)
+      .gt('saldo_devedor', 0);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('saldo_devedor', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async create(cliente: {
+    nome: string;
+    documento?: string;
+    telefone?: string;
+    email?: string;
+    endereco?: string;
+    limite_credito?: number;
+    posto_id: number;
+  }): Promise<any> {
+    const { data, error } = await supabase
+      .from('Cliente')
+      .insert(cliente)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: number, updates: {
+    nome?: string;
+    documento?: string;
+    telefone?: string;
+    email?: string;
+    endereco?: string;
+    limite_credito?: number;
+    ativo?: boolean;
+  }): Promise<any> {
+    const { data, error } = await supabase
+      .from('Cliente')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: number): Promise<void> {
+    // Soft delete
+    const { error } = await supabase
+      .from('Cliente')
+      .update({ ativo: false })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async search(termo: string, postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
+      .from('Cliente')
+      .select('*')
+      .eq('ativo', true)
+      .or(`nome.ilike.%${termo}%,documento.ilike.%${termo}%,telefone.ilike.%${termo}%`);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('nome').limit(20);
+    if (error) throw error;
+    return data || [];
+  }
+};
+
+// ============================================
+// NOTAS FRENTISTA (FIADO)
+// ============================================
+
+export const notaFrentistaService = {
+  async getAll(postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
+      .from('NotaFrentista')
+      .select(`
+        *,
+        cliente:Cliente(id, nome, documento),
+        frentista:Frentista(id, nome)
+      `);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('data', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getPendentes(postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
+      .from('NotaFrentista')
+      .select(`
+        *,
+        cliente:Cliente(id, nome, documento, telefone),
+        frentista:Frentista(id, nome)
+      `)
+      .eq('status', 'pendente');
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('data', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getByCliente(clienteId: number): Promise<any[]> {
+    const { data, error } = await (supabase as any)
+      .from('NotaFrentista')
+      .select(`
+        *,
+        frentista:Frentista(id, nome)
+      `)
+      .eq('cliente_id', clienteId)
+      .order('data', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getByDateRange(dataInicio: string, dataFim: string, postoId?: number): Promise<any[]> {
+    let query = (supabase as any)
+      .from('NotaFrentista')
+      .select(`
+        *,
+        cliente:Cliente(id, nome),
+        frentista:Frentista(id, nome)
+      `)
+      .gte('data', dataInicio)
+      .lte('data', dataFim);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('data', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async create(nota: {
+    cliente_id: number;
+    frentista_id: number;
+    fechamento_frentista_id?: number;
+    valor: number;
+    descricao?: string;
+    data?: string;
+    posto_id: number;
+  }): Promise<any> {
+    const { data, error } = await supabase
+      .from('NotaFrentista')
+      .insert({
+        ...nota,
+        data: nota.data || new Date().toISOString().split('T')[0],
+        status: 'pendente'
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async registrarPagamento(id: number, formaPagamento: string, observacoes?: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('NotaFrentista')
+      .update({
+        status: 'pago',
+        data_pagamento: new Date().toISOString().split('T')[0],
+        forma_pagamento: formaPagamento,
+        observacoes
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async cancelar(id: number, observacoes?: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('NotaFrentista')
+      .update({
+        status: 'cancelado',
+        observacoes
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: number, updates: {
+    valor?: number;
+    descricao?: string;
+    observacoes?: string;
+  }): Promise<any> {
+    const { data, error } = await supabase
+      .from('NotaFrentista')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id: number): Promise<void> {
+    const { error } = await supabase
+      .from('NotaFrentista')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  // Resumo de fiado
+  async getResumo(postoId?: number): Promise<{
+    totalPendente: number;
+    totalClientes: number;
+    notasPendentes: number;
+    maiorDevedor: { nome: string; valor: number } | null;
+  }> {
+    let query = (supabase as any)
+      .from('NotaFrentista')
+      .select(`
+        valor,
+        cliente:Cliente(id, nome)
+      `)
+      .eq('status', 'pendente');
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const notas = data || [];
+    const totalPendente = notas.reduce((acc: number, n: any) => acc + n.valor, 0);
+
+    // Agrupa por cliente
+    const porCliente: Record<string, { nome: string; valor: number }> = {};
+    notas.forEach((n: any) => {
+      const clienteId = n.cliente?.id?.toString() || 'unknown';
+      const clienteNome = n.cliente?.nome || 'Desconhecido';
+      if (!porCliente[clienteId]) {
+        porCliente[clienteId] = { nome: clienteNome, valor: 0 };
+      }
+      porCliente[clienteId].valor += n.valor;
+    });
+
+    const clientesUnicos = Object.keys(porCliente).length;
+    const maiorDevedor = Object.values(porCliente).sort((a, b) => b.valor - a.valor)[0] || null;
+
+    return {
+      totalPendente,
+      totalClientes: clientesUnicos,
+      notasPendentes: notas.length,
+      maiorDevedor
+    };
+  }
+};
+
+// ============================================
+

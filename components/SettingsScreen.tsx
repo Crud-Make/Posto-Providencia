@@ -21,6 +21,7 @@ import {
   configuracaoService,
   turnoService,
 } from "../services/api";
+import { usePosto } from "../contexts/PostoContext";
 import {
   ProductConfig,
   NozzleConfig,
@@ -29,7 +30,9 @@ import {
 } from "../types";
 
 const SettingsScreen: React.FC = () => {
+  const { postoAtivoId } = usePosto();
   const [loading, setLoading] = useState(true);
+
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<ProductConfig[]>([]);
   const [nozzles, setNozzles] = useState<NozzleConfig[]>([]);
@@ -100,12 +103,12 @@ const SettingsScreen: React.FC = () => {
           prev.map((p) =>
             p.id === editingPayment.id
               ? {
-                  ...p,
-                  name: updated.nome,
-                  type: updated.tipo as any,
-                  tax: updated.taxa || 0,
-                  active: updated.ativo || false,
-                }
+                ...p,
+                name: updated.nome,
+                type: updated.tipo as any,
+                tax: updated.taxa || 0,
+                active: updated.ativo || false,
+              }
               : p,
           ),
         );
@@ -116,7 +119,9 @@ const SettingsScreen: React.FC = () => {
           tipo: paymentForm.type || "outros",
           taxa: paymentForm.tax || 0,
           ativo: paymentForm.active,
+          posto_id: postoAtivoId || 1,
         });
+
 
         setPaymentMethods((prev) => [
           ...prev,
@@ -144,11 +149,13 @@ const SettingsScreen: React.FC = () => {
         configuracaoService.update(
           "despesa_operacional_litro",
           despesaOperacional,
+          postoAtivoId
         ),
-        configuracaoService.update("tolerancia_divergencia", tolerance),
-        configuracaoService.update("dias_estoque_critico", diasEstoqueCritico),
-        configuracaoService.update("dias_estoque_baixo", diasEstoqueBaixo),
+        configuracaoService.update("tolerancia_divergencia", tolerance, postoAtivoId),
+        configuracaoService.update("dias_estoque_critico", diasEstoqueCritico, postoAtivoId),
+        configuracaoService.update("dias_estoque_baixo", diasEstoqueBaixo, postoAtivoId),
       ]);
+
       setConfigsModified(false);
       alert("Configurações salvas com sucesso!");
     } catch (error) {
@@ -186,9 +193,10 @@ const SettingsScreen: React.FC = () => {
     const loadData = async () => {
       try {
         const [data, configs] = await Promise.all([
-          fetchSettingsData(),
-          configuracaoService.getAll().catch(() => []),
+          fetchSettingsData(postoAtivoId),
+          configuracaoService.getAll(postoAtivoId).catch(() => []),
         ]);
+
 
         setProducts(data.products);
         setNozzles(data.nozzles);
@@ -216,7 +224,8 @@ const SettingsScreen: React.FC = () => {
       }
     };
     loadData();
-  }, []);
+  }, [postoAtivoId]);
+
 
   const getProductTypeStyle = (type: string) => {
     switch (type) {

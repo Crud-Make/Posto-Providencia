@@ -13,24 +13,24 @@ interface ToastProps {
 
 const toastStyles: Record<ToastType, { bg: string; icon: React.ReactNode; iconBg: string }> = {
     success: {
-        bg: 'bg-green-50 border-green-200',
-        iconBg: 'bg-green-100',
-        icon: <CheckCircle2 size={20} className="text-green-600" />
+        bg: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800',
+        iconBg: 'bg-green-100 dark:bg-green-900/50',
+        icon: <CheckCircle2 size={20} className="text-green-600 dark:text-green-400" />
     },
     error: {
-        bg: 'bg-red-50 border-red-200',
-        iconBg: 'bg-red-100',
-        icon: <AlertOctagon size={20} className="text-red-600" />
+        bg: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800',
+        iconBg: 'bg-red-100 dark:bg-red-900/50',
+        icon: <AlertOctagon size={20} className="text-red-600 dark:text-red-400" />
     },
     warning: {
-        bg: 'bg-yellow-50 border-yellow-200',
-        iconBg: 'bg-yellow-100',
-        icon: <AlertTriangle size={20} className="text-yellow-600" />
+        bg: 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800',
+        iconBg: 'bg-yellow-100 dark:bg-yellow-900/50',
+        icon: <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400" />
     },
     info: {
-        bg: 'bg-blue-50 border-blue-200',
-        iconBg: 'bg-blue-100',
-        icon: <Info size={20} className="text-blue-600" />
+        bg: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800',
+        iconBg: 'bg-blue-100 dark:bg-blue-900/50',
+        icon: <Info size={20} className="text-blue-600 dark:text-blue-400" />
     }
 };
 
@@ -72,21 +72,21 @@ const Toast: React.FC<ToastProps> = ({ type, title, message, duration = 5000, on
                         {styles.icon}
                     </div>
                     <div className="flex-1 pt-0.5">
-                        <p className="font-bold text-gray-900 text-sm">{title}</p>
+                        <p className="font-bold text-gray-900 dark:text-white text-sm">{title}</p>
                         {message && (
-                            <p className="text-gray-600 text-xs mt-1 leading-relaxed">{message}</p>
+                            <p className="text-gray-600 dark:text-gray-300 text-xs mt-1 leading-relaxed">{message}</p>
                         )}
                     </div>
                     <button
                         onClick={handleClose}
-                        className="p-1 rounded-lg hover:bg-black/5 transition-colors flex-shrink-0"
+                        className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors flex-shrink-0"
                     >
-                        <X size={16} className="text-gray-400" />
+                        <X size={16} className="text-gray-400 dark:text-gray-500" />
                     </button>
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-3 h-1 bg-black/5 rounded-full overflow-hidden">
+                <div className="mt-3 h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-current opacity-30 rounded-full"
                         style={{

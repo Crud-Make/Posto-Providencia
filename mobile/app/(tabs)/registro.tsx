@@ -19,7 +19,8 @@ import {
     Coffee,
     Sun,
     Moon,
-    Sunset
+    Sunset,
+    ShoppingBag
 } from 'lucide-react-native';
 import { registerForPushNotificationsAsync, savePushToken } from '../../lib/notifications';
 
@@ -37,6 +38,8 @@ interface RegistroTurno {
     valorNota: string;
     valorPix: string;
     valorDinheiro: string;
+    valorEncerrante: string;
+    valorBaratao: string;
     faltaCaixa: string;
     observacoes: string;
 }
@@ -60,6 +63,7 @@ const FORMAS_PAGAMENTO: FormaPagamento[] = [
     { id: 'nota', label: 'Nota/Vale', icon: Receipt, color: '#0891b2', bgColor: '#ecfeff' },
     { id: 'pix', label: 'PIX', icon: Smartphone, color: '#059669', bgColor: '#ecfdf5' },
     { id: 'dinheiro', label: 'Dinheiro', icon: Banknote, color: '#16a34a', bgColor: '#f0fdf4' },
+    { id: 'baratao', label: 'Baratão', icon: ShoppingBag, color: '#e11d48', bgColor: '#fff1f2' },
 ];
 
 const TURNOS: Turno[] = [
@@ -91,6 +95,8 @@ export default function RegistroScreen() {
         valorNota: '',
         valorPix: '',
         valorDinheiro: '',
+        valorEncerrante: '',
+        valorBaratao: '',
         faltaCaixa: '',
         observacoes: '',
     });
@@ -129,11 +135,19 @@ export default function RegistroScreen() {
         parseValue(registro.valorCartao) +
         parseValue(registro.valorNota) +
         parseValue(registro.valorPix) +
-        parseValue(registro.valorDinheiro);
+        parseValue(registro.valorDinheiro) +
+        parseValue(registro.valorBaratao);
 
-    const faltaCaixaValue = parseValue(registro.faltaCaixa);
+    const encerranteValue = parseValue(registro.valorEncerrante);
 
-    const totalFinal = totalInformado - faltaCaixaValue;
+    // Se o encerrante for informado, calcula a falta automaticamente
+    // Se o total informado for menor que o encerrante, a diferença é falta de caixa
+    const faltaCaixaCalculada = encerranteValue > totalInformado ? encerranteValue - totalInformado : 0;
+
+    // Usa o valor calculado se o encerrante existir, senão usa o manual
+    const faltaCaixaValue = encerranteValue > 0 ? faltaCaixaCalculada : parseValue(registro.faltaCaixa);
+
+    const totalFinal = totalInformado; // O frentista entrega o que informou
 
     const temFalta = faltaCaixaValue > 0;
 
@@ -227,9 +241,63 @@ export default function RegistroScreen() {
                         setSubmitting(true);
                         try {
                             const { data: { user } } = await supabase.auth.getUser();
+                            if (!user) throw new Error('Usuário não autenticado');
 
-                            // Aqui você integraria com o Supabase
-                            await new Promise(resolve => setTimeout(resolve, 1500));
+                            // 1. Buscar ID do Frentista
+                            const { data: frentista } = await supabase
+                                .from('Frentista')
+                                .select('id')
+                                .eq('user_id', user.id)
+                                .single();
+
+                            if (!frentista) throw new Error('Frentista não encontrado');
+
+                            // 2. Buscar ou Criar Fechamento (Pai) para o dia/turno
+                            const hoje = new Date().toISOString().split('T')[0];
+                            let { data: fechamento } = await supabase
+                                .from('Fechamento')
+                                .select('id')
+                                .eq('data', hoje)
+                                .eq('turno_id', turnoSelecionado.id === 'manha' ? 1 : turnoSelecionado.id === 'tarde' ? 2 : 3)
+                                .maybeSingle();
+
+                            if (!fechamento) {
+                                const { data: newFechamento, error: errorFechamento } = await supabase
+                                    .from('Fechamento')
+                                    .insert({
+                                        data: hoje,
+                                        turno_id: turnoSelecionado.id === 'manha' ? 1 : turnoSelecionado.id === 'tarde' ? 2 : 3,
+                                        usuario_id: 1, // Admin default ou id do usuário
+                                        status: 'RASCUNHO',
+                                        total_vendas: 0,
+                                        total_recebido: 0,
+                                        diferenca: 0
+                                    })
+                                    .select('id')
+                                    .single();
+
+                                if (errorFechamento) throw errorFechamento;
+                                fechamento = newFechamento;
+                            }
+
+                            // 3. Enviar FechamentoFrentista
+                            const { error: errorFrentista } = await supabase
+                                .from('FechamentoFrentista')
+                                .insert({
+                                    fechamento_id: fechamento.id,
+                                    frentista_id: frentista.id,
+                                    valor_cartao: parseValue(registro.valorCartao),
+                                    valor_nota: parseValue(registro.valorNota),
+                                    valor_pix: parseValue(registro.valorPix),
+                                    valor_dinheiro: parseValue(registro.valorDinheiro),
+                                    baratao: parseValue(registro.valorBaratao),
+                                    encerrante: parseValue(registro.valorEncerrante),
+                                    diferenca_calculada: faltaCaixaValue,
+                                    valor_conferido: totalInformado,
+                                    observacoes: registro.observacoes
+                                });
+
+                            if (errorFrentista) throw errorFrentista;
 
                             Alert.alert(
                                 '✅ Enviado!',
@@ -242,14 +310,17 @@ export default function RegistroScreen() {
                                             valorNota: '',
                                             valorPix: '',
                                             valorDinheiro: '',
+                                            valorEncerrante: '',
+                                            valorBaratao: '',
                                             faltaCaixa: '',
                                             observacoes: '',
                                         });
                                     }
                                 }]
                             );
-                        } catch (error) {
-                            Alert.alert('Erro', 'Não foi possível enviar o registro. Tente novamente.');
+                        } catch (error: any) {
+                            console.error(error);
+                            Alert.alert('Erro', `Não foi possível enviar o registro: ${error.message}`);
                         } finally {
                             setSubmitting(false);
                         }
@@ -374,6 +445,35 @@ export default function RegistroScreen() {
                     </View>
                 </TouchableOpacity>
 
+                {/* Seção de Encerrante */}
+                <View className="px-4 mt-6">
+                    <Text className="text-lg font-bold text-gray-800 mb-1">⛽ Encerrante Total</Text>
+                    <Text className="text-sm text-gray-500 mb-4">Valor total vendido (leitura da bomba)</Text>
+
+                    <View
+                        className="flex-row items-center bg-white rounded-2xl border-2 border-primary-100 overflow-hidden"
+                        style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}
+                    >
+                        <View className="p-4 items-center justify-center bg-primary-50">
+                            <Calculator size={24} color="#b91c1c" />
+                        </View>
+                        <View className="flex-1 px-4">
+                            <Text className="text-xs text-primary-600 font-medium">Valor Vendido (Encerrante)</Text>
+                            <View className="flex-row items-center">
+                                <Text className="text-primary-700 text-lg font-medium mr-1">R$</Text>
+                                <TextInput
+                                    className="flex-1 text-xl font-bold text-primary-900 py-2"
+                                    placeholder="0,00"
+                                    placeholderTextColor="#fca5a5"
+                                    value={registro.valorEncerrante}
+                                    onChangeText={(text) => handleChange('valorEncerrante', text)}
+                                    keyboardType="decimal-pad"
+                                />
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
                 {/* Seção de Valores */}
                 <View className="px-4 mt-6">
                     <Text className="text-lg font-bold text-gray-800 mb-1">💰 Valores Recebidos</Text>
@@ -383,6 +483,7 @@ export default function RegistroScreen() {
                     {renderInputField(FORMAS_PAGAMENTO[1], registro.valorNota, 'valorNota')}
                     {renderInputField(FORMAS_PAGAMENTO[2], registro.valorPix, 'valorPix')}
                     {renderInputField(FORMAS_PAGAMENTO[3], registro.valorDinheiro, 'valorDinheiro')}
+                    {renderInputField(FORMAS_PAGAMENTO[4], registro.valorBaratao, 'valorBaratao')}
                 </View>
 
                 {/* Seção de Falta de Caixa */}
@@ -470,13 +571,21 @@ export default function RegistroScreen() {
 
                         <View className="p-5">
                             <View className="flex-row justify-between items-center mb-3">
-                                <Text className="text-gray-500">Total Informado</Text>
+                                <Text className="text-gray-500">Total Vendido (Encerrante)</Text>
+                                <Text className="text-lg font-bold text-primary-700">{formatCurrency(encerranteValue)}</Text>
+                            </View>
+
+                            <View className="flex-row justify-between items-center mb-3">
+                                <Text className="text-gray-500">Total Recebido</Text>
                                 <Text className="text-lg font-bold text-gray-800">{formatCurrency(totalInformado)}</Text>
                             </View>
 
-                            {temFalta && (
+                            {faltaCaixaValue > 0 && (
                                 <View className="flex-row justify-between items-center mb-3 py-2 px-3 bg-red-50 rounded-lg -mx-1">
-                                    <Text className="text-red-600 font-medium">Falta de Caixa</Text>
+                                    <View>
+                                        <Text className="text-red-600 font-medium">Falta de Caixa</Text>
+                                        {encerranteValue > 0 && <Text className="text-[10px] text-red-400">Calculado automaticamente</Text>}
+                                    </View>
                                     <Text className="text-lg font-bold text-red-600">- {formatCurrency(faltaCaixaValue)}</Text>
                                 </View>
                             )}

@@ -20,8 +20,10 @@ import {
 } from 'lucide-react';
 import { stockService } from '../services/stockService';
 import { Produto, MovimentacaoEstoque } from '../services/database.types';
+import { usePosto } from '../contexts/PostoContext';
 
 const StockManagementScreen: React.FC = () => {
+    const { postoAtivoId } = usePosto();
     const [loading, setLoading] = useState(true);
     const [products, setProducts] = useState<Produto[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -40,12 +42,12 @@ const StockManagementScreen: React.FC = () => {
 
     useEffect(() => {
         loadProducts();
-    }, []);
+    }, [postoAtivoId]);
 
     const loadProducts = async () => {
         setLoading(true);
         try {
-            const data = await stockService.getAllProducts();
+            const data = await stockService.getAllProducts(postoAtivoId);
             setProducts(data);
         } catch (error) {
             console.error('Error loading products:', error);
@@ -80,7 +82,11 @@ const StockManagementScreen: React.FC = () => {
             if (editingProduct) {
                 await stockService.updateProduct(editingProduct.id, productData);
             } else {
-                await stockService.createProduct({ ...productData, estoque_atual: Number(formData.get('estoque_inicial') || 0) });
+                await stockService.createProduct({
+                    ...productData,
+                    estoque_atual: Number(formData.get('estoque_inicial') || 0),
+                    posto_id: postoAtivoId
+                });
             }
             setIsProductModalOpen(false);
             setEditingProduct(null);
@@ -106,8 +112,9 @@ const StockManagementScreen: React.FC = () => {
                 quantidade: quantity,
                 valor_unitario: type === 'entrada' ? Number(formData.get('valor_unitario')) : undefined,
                 observacao: formData.get('observacao') as string,
-                data: new Date().toISOString()
-            });
+                data: new Date().toISOString(),
+                posto_id: postoAtivoId
+            } as any);
             setIsMovementModalOpen(false);
             setSelectedProductForMovement(null);
             setMovementType('entrada'); // Reset default

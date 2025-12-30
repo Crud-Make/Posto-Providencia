@@ -16,7 +16,12 @@ import {
     Wallet,
     DollarSign,
     Target,
-    LineChart as ChartIcon
+    LineChart as ChartIcon,
+    Edit,
+    Trash2,
+    X,
+    Check,
+    Building2
 } from 'lucide-react';
 import {
     LineChart,
@@ -32,15 +37,30 @@ import {
 } from 'recharts';
 import { solvencyService, dividaService } from '../services/api';
 import { SolvencyProjection, SolvencyStatus, Divida } from '../types';
+import { usePosto } from '../contexts/PostoContext';
 
 const SolvencyDashboard: React.FC = () => {
+    const { postoAtivoId } = usePosto();
+
     const [projection, setProjection] = useState<SolvencyProjection | null>(null);
     const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [editingDivida, setEditingDivida] = useState<Divida | null>(null);
+    const [saving, setSaving] = useState(false);
+
+    // Form state
+    const [formState, setFormState] = useState<Omit<Divida, 'id'>>({
+        descricao: '',
+        valor: 0,
+        data_vencimento: new Date().toISOString().split('T')[0],
+        status: 'pendente',
+        posto_id: postoAtivoId || 1
+    });
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const data = await solvencyService.getProjection();
+            const data = await solvencyService.getProjection(postoAtivoId);
             setProjection(data);
         } catch (error) {
             console.error("Failed to load solvency data", error);
@@ -49,9 +69,63 @@ const SolvencyDashboard: React.FC = () => {
         }
     };
 
+    const handleOpenModal = (divida?: Divida) => {
+        if (divida) {
+            setEditingDivida(divida);
+            setFormState({
+                descricao: divida.descricao,
+                valor: divida.valor,
+                data_vencimento: divida.data_vencimento,
+                status: divida.status,
+                posto_id: divida.posto_id
+            });
+        } else {
+            setEditingDivida(null);
+            setFormState({
+                descricao: '',
+                valor: 0,
+                data_vencimento: new Date().toISOString().split('T')[0],
+                status: 'pendente',
+                posto_id: postoAtivoId || 1
+            });
+        }
+        setShowModal(true);
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            if (editingDivida) {
+                await dividaService.update(editingDivida.id, formState);
+            } else {
+                await dividaService.create(formState);
+            }
+            setShowModal(false);
+            loadData();
+        } catch (error) {
+            console.error("Failed to save debt", error);
+            alert("Erro ao salvar dívida.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Tem certeza que deseja excluir esta dívida?")) return;
+
+        try {
+            await dividaService.delete(id);
+            loadData();
+        } catch (error) {
+            console.error("Failed to delete debt", error);
+            alert("Erro ao excluir dívida.");
+        }
+    };
+
     useEffect(() => {
         loadData();
-    }, []);
+    }, [postoAtivoId]);
 
     const getStatusColor = (status: 'verde' | 'amarelo' | 'vermelho') => {
         switch (status) {
@@ -140,6 +214,13 @@ const SolvencyDashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Última atualização: Hoje, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 transition-all active:scale-95"
+                    >
+                        <Plus size={18} />
+                        Nova Dívida
+                    </button>
                     <button
                         onClick={loadData}
                         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition-colors"
@@ -355,9 +436,32 @@ const SolvencyDashboard: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                                            <MoreVertical size={18} />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    const fullDivida = {
+                                                        id: p.dividaId,
+                                                        descricao: p.descricao,
+                                                        valor: p.valor,
+                                                        data_vencimento: p.dataVencimento,
+                                                        status: 'pendente' as 'pendente' | 'pago',
+                                                        posto_id: postoAtivoId || 1
+                                                    };
+                                                    handleOpenModal(fullDivida);
+                                                }}
+                                                className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+                                                title="Editar"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(p.dividaId)}
+                                                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -365,6 +469,115 @@ const SolvencyDashboard: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Modal de Cadastro/Edição */}
+            {showModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/50">
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 dark:text-white">
+                                    {editingDivida ? 'Editar Dívida' : 'Nova Dívida'}
+                                </h2>
+                                <p className="text-sm text-gray-500">Preencha os dados do pagamento.</p>
+                            </div>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
+                            >
+                                <X size={20} className="text-gray-500 dark:text-gray-400" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSave} className="p-8 space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Descrição</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={formState.descricao}
+                                    onChange={(e) => setFormState({ ...formState, descricao: e.target.value })}
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
+                                    placeholder="Ex: Vibra Energia, Aluguel..."
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Valor (R$)</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="0"
+                                        step="0.01"
+                                        value={formState.valor}
+                                        onChange={(e) => setFormState({ ...formState, valor: parseFloat(e.target.value) })}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Vencimento</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={formState.data_vencimento}
+                                        onChange={(e) => setFormState({ ...formState, data_vencimento: e.target.value })}
+                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Status</label>
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormState({ ...formState, status: 'pendente' })}
+                                        className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all ${formState.status === 'pendente'
+                                            ? 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20'
+                                            : 'border-transparent bg-gray-50 dark:bg-gray-700 text-gray-500'
+                                            }`}
+                                    >
+                                        Pendente
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormState({ ...formState, status: 'pago' })}
+                                        className={`flex-1 py-3 rounded-xl font-bold border-2 transition-all ${formState.status === 'pago'
+                                            ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/20'
+                                            : 'border-transparent bg-gray-50 dark:bg-gray-700 text-gray-500'
+                                            }`}
+                                    >
+                                        Pago
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="flex-1 py-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-black rounded-2xl transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="flex-3 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {saving ? (
+                                        <Loader2 size={20} className="animate-spin" />
+                                    ) : (
+                                        <Check size={20} />
+                                    )}
+                                    {editingDivida ? 'Salvar Alterações' : 'Cadastrar Dívida'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
