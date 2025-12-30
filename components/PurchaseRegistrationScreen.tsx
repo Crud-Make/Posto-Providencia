@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-   FileText, Calculator, TrendingUp, Package, DollarSign, MoreVertical, Settings, Calendar, Save, RefreshCw
+   FileText, Calculator, TrendingUp, Package, DollarSign, MoreVertical, Settings, Calendar, Save, RefreshCw, ChevronDown
 } from 'lucide-react';
 import { combustivelService, compraService, estoqueService } from '../services/api';
 import type { Combustivel } from '../services/database.types';
@@ -26,9 +26,10 @@ const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-med
 
 
 const PurchaseRegistrationScreen: React.FC = () => {
-   const { postoAtivoId } = usePosto();
+   const { postoAtivoId, postos, postoAtivo, setPostoAtivoById } = usePosto();
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState(false);
+   const [postoDropdownOpen, setPostoDropdownOpen] = useState(false);
 
    // State com dados unificados
    const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([]);
@@ -86,12 +87,12 @@ const PurchaseRegistrationScreen: React.FC = () => {
       const decimal = parts[1];
 
       if (decimals === 0) return integer;
-      return `${integer},${decimal || '0'.repeat(decimals)}`;
+      return `${integer},${decimal || '0'.repeat(decimals)} `;
    };
 
    const formatCurrency = (num: number, decimals: number = 2): string => {
       if (num === 0 || isNaN(num)) return '-';
-      return `R$ ${formatToBR(num, decimals)}`;
+      return `R$ ${formatToBR(num, decimals)} `;
    };
 
    // Format input value with thousand separators (Brazilian format)
@@ -284,7 +285,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
          return;
       }
 
-      if (!confirm(`Deseja salvar ${comprasParaSalvar.length} compras e ATUALIZAR os preços de venda no sistema?`)) {
+      if (!confirm(`Deseja salvar ${comprasParaSalvar.length} compras e ATUALIZAR os preços de venda no sistema ? `)) {
          return;
       }
 
@@ -305,7 +306,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
                quantidade_litros: litros,
                valor_total: valorTotal,
                custo_por_litro: valorTotal / litros,
-               observacoes: `Atualização de estoque/preço via Painel de Compras`,
+               observacoes: `Atualização de estoque / preço via Painel de Compras`,
                posto_id: postoAtivoId
             });
 
@@ -362,13 +363,40 @@ const PurchaseRegistrationScreen: React.FC = () => {
                   >
                      <RefreshCw size={20} />
                   </button>
-                  <div className="flex shadow-md rounded-lg overflow-hidden">
-                     <div className="bg-red-600 text-white px-4 py-2 font-bold text-sm tracking-wide flex items-center">
-                        POSTO
-                     </div>
-                     <div className="bg-amber-400 text-red-900 px-4 py-2 font-bold text-sm tracking-wide flex items-center">
-                        PROVIDÊNCIA
-                     </div>
+                  <div className="relative">
+                     <button
+                        onClick={() => setPostoDropdownOpen(!postoDropdownOpen)}
+                        className="flex shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                     >
+                        <div className="bg-red-600 text-white px-4 py-2 font-bold text-sm tracking-wide flex items-center">
+                           POSTO
+                        </div>
+                        <div className="bg-amber-400 text-red-900 px-4 py-2 font-bold text-sm tracking-wide flex items-center gap-2">
+                           {postoAtivo?.nome?.toUpperCase() || 'SELECIONE'}
+                           <ChevronDown size={16} className={`transition-transform ${postoDropdownOpen ? 'rotate-180' : ''}`} />
+                        </div>
+                     </button>
+
+                     {/* Dropdown de Postos */}
+                     {postoDropdownOpen && (
+                        <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 min-w-[200px] z-50 overflow-hidden">
+                           {postos.map(posto => (
+                              <button
+                                 key={posto.id}
+                                 onClick={() => {
+                                    setPostoAtivoById(posto.id);
+                                    setPostoDropdownOpen(false);
+                                 }}
+                                 className={`w-full px-4 py-3 text-left text-sm font-semibold transition-colors ${posto.id === postoAtivoId
+                                    ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    }`}
+                              >
+                                 {posto.nome}
+                              </button>
+                           ))}
+                        </div>
+                     )}
                   </div>
                </div>
             </div>
@@ -411,7 +439,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
                            const rowClass = index % 2 === 0 ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : "bg-gray-50/50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/70";
 
                            return (
-                              <tr key={c.id} className={`${rowClass} transition-colors`}>
+                              <tr key={c.id} className={`${rowClass} transition - colors`}>
                                  <td className="px-4 py-5 font-medium dark:text-white">{c.nome}</td>
                                  <td className="px-3 py-5 min-w-[180px]">
                                     <input
@@ -447,13 +475,13 @@ const PurchaseRegistrationScreen: React.FC = () => {
                                     {lucroBico !== 0 ? formatCurrency(lucroBico) : '-'}
                                  </td>
                                  <td className="px-4 py-5 text-right text-red-400">
-                                    {margemPct !== 0 ? `${formatToBR(margemPct)}%` : '-'}
+                                    {margemPct !== 0 ? `${formatToBR(margemPct)}% ` : '-'}
                                  </td>
                                  <td className="px-4 py-5 text-right">
                                     {litres > 0 ? formatToBR(litres, 0) : '-'}
                                  </td>
                                  <td className="px-4 py-5 text-right font-bold">
-                                    {produtoPct > 0 ? `${formatToBR(produtoPct)}%` : '-'}
+                                    {produtoPct > 0 ? `${formatToBR(produtoPct)}% ` : '-'}
                                  </td>
                               </tr>
                            );
@@ -512,10 +540,10 @@ const PurchaseRegistrationScreen: React.FC = () => {
                      <button
                         onClick={handleSave}
                         disabled={saving || totais.totalCompraLt === 0}
-                        className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold shadow-lg transition-all ${saving || totais.totalCompraLt === 0
+                        className={`flex items - center gap - 2 px - 6 py - 2 rounded - lg font - bold shadow - lg transition - all ${saving || totais.totalCompraLt === 0
                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                            : 'bg-white text-orange-600 hover:bg-orange-50 active:scale-95'
-                           }`}
+                           } `}
                      >
                         <Save size={18} />
                         {saving ? 'Salvando...' : 'FINALIZAR COMPRA'}
@@ -549,7 +577,7 @@ const PurchaseRegistrationScreen: React.FC = () => {
                            const rowClass = index % 2 === 0 ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : "bg-gray-50/50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/70";
 
                            return (
-                              <tr key={c.id} className={`${rowClass} transition-colors`}>
+                              <tr key={c.id} className={`${rowClass} transition - colors`}>
                                  <td className="px-4 py-5 font-medium dark:text-white">{c.nome}</td>
                                  <td className="px-3 py-5 min-w-[180px] border-l border-dashed border-gray-200 dark:border-gray-600">
                                     <input

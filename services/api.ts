@@ -2359,7 +2359,24 @@ export async function fetchClosingData(postoId?: number) {
 }
 
 export async function fetchAttendantsData(postoId?: number) {
-  const frentistas = await frentistaService.getWithEmail(postoId);
+  // Query frentistas directly from the table (including inactive for management screen)
+  let query = supabase
+    .from('Frentista')
+    .select('*')
+    .order('nome');
+
+  if (postoId) {
+    query = query.eq('posto_id', postoId);
+  }
+
+  const { data: frentistasData, error: frentistasError } = await query;
+
+  if (frentistasError) {
+    console.error('Error fetching frentistas:', frentistasError);
+  }
+
+  const frentistas = (frentistasData || []).map((f: any) => ({ ...f, email: null }));
+
   const turnos = await turnoService.getAll(postoId);
 
   // Buscar histórico de fechamentos por frentista
@@ -2419,6 +2436,7 @@ export async function fetchAttendantsData(postoId?: number) {
       riskLevel: (divergenceRate <= 10 ? 'Baixo Risco' : divergenceRate <= 30 ? 'Médio Risco' : 'Alto Risco') as 'Baixo Risco' | 'Médio Risco' | 'Alto Risco',
       avatarColorClass: avatarColors[idx % avatarColors.length],
       email: f.email || 'Não cadastrado',
+      posto_id: f.posto_id,
     };
   });
 

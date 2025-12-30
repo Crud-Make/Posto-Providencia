@@ -15,7 +15,8 @@ import {
   ArrowUp,
   FileText,
   ShoppingCart,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
 import { fetchInventoryData } from '../services/api';
 import { InventoryItem, InventoryAlert, InventoryTransaction } from '../types';
@@ -30,9 +31,10 @@ interface InventoryDashboardProps {
 }
 
 const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegisterPurchase, initialTab = 'fuels' }) => {
-  const { postoAtivoId } = usePosto();
+  const { postoAtivoId, postos, postoAtivo, setPostoAtivoById } = usePosto();
   const [activeTab, setActiveTab] = useState<'fuels' | 'stock'>(initialTab);
   const [loading, setLoading] = useState(true);
+  const [postoDropdownOpen, setPostoDropdownOpen] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -111,7 +113,43 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
           <h2 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 dark:text-white">Dashboard de Estoque</h2>
           <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-2xl">Gerencie combustíveis, lubrificantes e outros produtos do posto em um só lugar.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          {/* Posto Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setPostoDropdownOpen(!postoDropdownOpen)}
+              className="flex items-center gap-2 px-4 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+            >
+              <Fuel size={18} className="text-blue-500" />
+              <span className="max-w-[150px] truncate">{postoAtivo?.nome || 'Selecione o Posto'}</span>
+              <ChevronDown size={16} className={`text-gray-400 transition-transform ${postoDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {postoDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 min-w-[220px] z-50 overflow-hidden">
+                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                  <span className="text-[10px] font-bold uppercase text-gray-400">Selecione o Posto</span>
+                </div>
+                {postos.map(posto => (
+                  <button
+                    key={posto.id}
+                    onClick={() => {
+                      setPostoAtivoById(posto.id);
+                      setPostoDropdownOpen(false);
+                    }}
+                    className={`w-full px-4 py-3 text-left text-sm font-semibold transition-colors flex items-center gap-2 ${posto.id === postoAtivoId
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                  >
+                    <Fuel size={16} className={posto.id === postoAtivoId ? 'text-blue-500' : 'text-gray-400'} />
+                    {posto.nome}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button className="flex items-center gap-2 px-4 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
             <RefreshCw size={18} />
             <span>Atualizar</span>

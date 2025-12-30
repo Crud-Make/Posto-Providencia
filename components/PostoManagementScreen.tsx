@@ -11,9 +11,16 @@ import {
     FileText,
     Power,
     AlertTriangle,
-    Loader2
+    Loader2,
+    TrendingUp,
+    TrendingDown,
+    Users,
+    Fuel,
+    DollarSign,
+    ShoppingCart,
+    BarChart3
 } from 'lucide-react';
-import { postoService } from '../services/api';
+import { postoService, frentistaService, fechamentoService, compraService } from '../services/api';
 import type { Posto } from '../services/database.types';
 
 interface PostoFormData {
@@ -38,6 +45,14 @@ const initialFormData: PostoFormData = {
     ativo: true
 };
 
+interface PostoSummary {
+    postoId: number;
+    frentistasCount: number;
+    vendasMes: number;
+    comprasMes: number;
+    lucroEstimado: number;
+}
+
 const PostoManagementScreen: React.FC = () => {
     const [postos, setPostos] = useState<Posto[]>([]);
     const [loading, setLoading] = useState(true);
@@ -46,6 +61,7 @@ const PostoManagementScreen: React.FC = () => {
     const [editingPosto, setEditingPosto] = useState<Posto | null>(null);
     const [formData, setFormData] = useState<PostoFormData>(initialFormData);
     const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+    const [summaries, setSummaries] = useState<Record<number, PostoSummary>>({});
 
     useEffect(() => {
         loadPostos();
@@ -56,11 +72,61 @@ const PostoManagementScreen: React.FC = () => {
         try {
             const data = await postoService.getAllIncludingInactive();
             setPostos(data);
+
+            // Load summaries for each posto
+            await loadSummaries(data);
         } catch (error) {
             console.error('Erro ao carregar postos:', error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const loadSummaries = async (postosData: Posto[]) => {
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+        const startOfMonth = `${currentMonth}-01`;
+        const today = new Date().toISOString().split('T')[0];
+
+        const summaryPromises = postosData.map(async (posto) => {
+            try {
+                // Get frentistas count
+                const frentistas = await frentistaService.getAll(posto.id);
+
+                // Get fechamentos for this month to calculate sales
+                const fechamentos = await fechamentoService.getByDate(today, posto.id);
+                const vendasMes = fechamentos.reduce((acc: number, f: any) => acc + (f.total_vendas || 0), 0);
+
+                // Estimate purchases (simplified - would need compraService.getByMonth)
+                const comprasMes = 0; // TODO: implement if needed
+
+                // Estimate profit
+                const lucroEstimado = vendasMes * 0.12; // ~12% margin estimate
+
+                return {
+                    postoId: posto.id,
+                    frentistasCount: frentistas.length,
+                    vendasMes,
+                    comprasMes,
+                    lucroEstimado
+                } as PostoSummary;
+            } catch (error) {
+                console.error(`Erro ao carregar resumo do posto ${posto.id}:`, error);
+                return {
+                    postoId: posto.id,
+                    frentistasCount: 0,
+                    vendasMes: 0,
+                    comprasMes: 0,
+                    lucroEstimado: 0
+                } as PostoSummary;
+            }
+        });
+
+        const results = await Promise.all(summaryPromises);
+        const summaryMap: Record<number, PostoSummary> = {};
+        results.forEach(s => {
+            summaryMap[s.postoId] = s;
+        });
+        setSummaries(summaryMap);
     };
 
     const handleOpenModal = (posto?: Posto) => {
@@ -218,6 +284,47 @@ const PostoManagementScreen: React.FC = () => {
                                 </p>
                             )}
                         </div>
+
+                        {/* Financial Summary */}
+                        {summaries[posto.id] && (
+                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5">
+                                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                                        <Users className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase">Frentistas</span>
+                                    </div>
+                                    <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                                        {summaries[posto.id].frentistasCount}
+                                    </p>
+                                </div>
+                                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2.5">
+                                    <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                                        <TrendingUp className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase">Vendas Hoje</span>
+                                    </div>
+                                    <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                                        {summaries[posto.id].vendasMes > 0
+                                            ? `R$ ${summaries[posto.id].vendasMes.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
+                                            : '-'
+                                        }
+                                    </p>
+                                </div>
+                                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2.5 col-span-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                                            <DollarSign className="w-3.5 h-3.5" />
+                                            <span className="text-[10px] font-bold uppercase">Lucro Est. (12%)</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                                            {summaries[posto.id].lucroEstimado > 0
+                                                ? `R$ ${summaries[posto.id].lucroEstimado.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
+                                                : '-'
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                             {posto.cidade && (

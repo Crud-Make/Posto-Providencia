@@ -15,6 +15,7 @@ import {
 import { bicoService, leituraService, turnoService, combustivelService } from '../services/api';
 import type { Bico, Bomba, Combustivel, Turno, Leitura } from '../services/database.types';
 import { ProgressIndicator } from './ValidationAlert';
+import { usePosto } from '../contexts/PostoContext';
 
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
@@ -35,6 +36,9 @@ const FUEL_COLORS: Record<string, string> = {
 };
 
 const DailyReadingsScreen: React.FC = () => {
+  // Posto Context
+  const { postoAtivoId } = usePosto();
+
   // State
   const [bicos, setBicos] = useState<BicoWithDetails[]>([]);
   const [turnos, setTurnos] = useState<Turno[]>([]);
@@ -47,10 +51,12 @@ const DailyReadingsScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Load data on mount
+  // Load data on mount and when posto changes
   useEffect(() => {
-    loadData();
-  }, []);
+    if (postoAtivoId) {
+      loadData();
+    }
+  }, [postoAtivoId]);
 
   const loadData = async () => {
     try {
@@ -59,8 +65,8 @@ const DailyReadingsScreen: React.FC = () => {
 
       // Fetch bicos with details and turnos in parallel
       const [bicosData, turnosData] = await Promise.all([
-        bicoService.getWithDetails(),
-        turnoService.getAll(),
+        bicoService.getWithDetails(postoAtivoId),
+        turnoService.getAll(postoAtivoId),
       ]);
 
       setBicos(bicosData);
