@@ -3,7 +3,7 @@
     "name": "Posto Providência - Frentista",
     "slug": "posto-frentista",
     "scheme": "posto-frentista",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

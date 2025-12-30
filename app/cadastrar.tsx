@@ -1,9 +1,9 @@
-
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
-import { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, Modal, FlatList } from 'react-native';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { postoService, type Posto } from '../lib/api';
 import { router } from 'expo-router';
-import { UserPlus, ArrowLeft, User, Phone, FileText, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { UserPlus, ArrowLeft, User, Phone, FileText, Mail, Lock, Eye, EyeOff, Building2, ChevronDown } from 'lucide-react-native';
 
 export default function SignUp() {
     const [name, setName] = useState('');
@@ -14,9 +14,39 @@ export default function SignUp() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
+    // Postos
+    const [postos, setPostos] = useState<Posto[]>([]);
+    const [selectedPosto, setSelectedPosto] = useState<Posto | null>(null);
+    const [modalPostoVisible, setModalPostoVisible] = useState(false);
+    const [loadingPostos, setLoadingPostos] = useState(true);
+
+    useEffect(() => {
+        loadPostos();
+    }, []);
+
+    const loadPostos = async () => {
+        setLoadingPostos(true);
+        try {
+            const data = await postoService.getAll();
+            setPostos(data);
+            if (data.length === 1) {
+                setSelectedPosto(data[0]); // Auto-seleciona se só tiver 1
+            }
+        } catch (error) {
+            console.error('Erro ao carregar postos:', error);
+        } finally {
+            setLoadingPostos(false);
+        }
+    };
+
     async function handleSignUp() {
         if (!name || !cpf || !email || !password) {
             Alert.alert('Atenção', 'Preencha os campos obrigatórios (Nome, CPF, Email, Senha)');
+            return;
+        }
+
+        if (!selectedPosto) {
+            Alert.alert('Atenção', 'Selecione o posto onde você trabalha');
             return;
         }
 
@@ -31,7 +61,8 @@ export default function SignUp() {
                     data: {
                         nome: name,
                         cpf: cpf,
-                        telefone: phone
+                        telefone: phone,
+                        posto_id: selectedPosto.id
                     }
                 }
             });
@@ -84,6 +115,22 @@ export default function SignUp() {
                             className="w-32 h-32"
                             resizeMode="contain"
                         />
+                    </View>
+
+                    {/* Seleção de Posto */}
+                    <View className="mb-5">
+                        <Text className="text-gray-600 font-semibold text-sm mb-2 ml-1">Posto *</Text>
+                        <TouchableOpacity
+                            onPress={() => setModalPostoVisible(true)}
+                            className="flex-row items-center bg-gray-50 border-2 border-gray-200 rounded-2xl px-4 py-4"
+                            disabled={loadingPostos}
+                        >
+                            <Building2 size={20} color="#9ca3af" />
+                            <Text className={`flex-1 px-3 text-base ${selectedPosto ? 'text-gray-800' : 'text-gray-400'}`}>
+                                {loadingPostos ? 'Carregando...' : selectedPosto?.nome || 'Selecione o posto'}
+                            </Text>
+                            <ChevronDown size={20} color="#9ca3af" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Nome Completo */}
@@ -189,6 +236,53 @@ export default function SignUp() {
 
                 </View>
             </ScrollView>
+
+            {/* Modal de Seleção de Posto */}
+            <Modal
+                visible={modalPostoVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setModalPostoVisible(false)}
+            >
+                <View className="flex-1 bg-black/50 justify-end">
+                    <View className="bg-white rounded-t-3xl max-h-[70%]">
+                        <View className="p-4 border-b border-gray-100 flex-row items-center justify-between">
+                            <Text className="text-xl font-bold text-gray-800">Selecione o Posto</Text>
+                            <TouchableOpacity onPress={() => setModalPostoVisible(false)}>
+                                <Text className="text-primary-600 font-semibold">Fechar</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={postos}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    className={`p-4 border-b border-gray-100 flex-row items-center gap-3 ${selectedPosto?.id === item.id ? 'bg-primary-50' : ''}`}
+                                    onPress={() => {
+                                        setSelectedPosto(item);
+                                        setModalPostoVisible(false);
+                                    }}
+                                >
+                                    <Building2 size={24} color={selectedPosto?.id === item.id ? '#b91c1c' : '#6b7280'} />
+                                    <View className="flex-1">
+                                        <Text className={`text-base font-semibold ${selectedPosto?.id === item.id ? 'text-primary-700' : 'text-gray-800'}`}>
+                                            {item.nome}
+                                        </Text>
+                                        {item.cidade && (
+                                            <Text className="text-sm text-gray-500">{item.cidade} - {item.estado}</Text>
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={
+                                <View className="p-8 items-center">
+                                    <Text className="text-gray-500">Nenhum posto cadastrado</Text>
+                                </View>
+                            }
+                        />
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }

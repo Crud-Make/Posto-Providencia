@@ -8,6 +8,7 @@ import {
     setupNotificationListeners
 } from '../lib/notifications';
 import { supabase } from '../lib/supabase';
+import { PostoProvider } from '../lib/PostoContext';
 import "../global.css";
 
 export default function RootLayout() {
@@ -52,13 +53,13 @@ export default function RootLayout() {
     }, [pathname]);
 
     return (
-        <>
+        <PostoProvider>
             <StatusBar style="light" backgroundColor="#b91c1c" />
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="cadastrar" />
                 <Stack.Screen name="(tabs)" />
             </Stack>
-        </>
+        </PostoProvider>
     );
 }

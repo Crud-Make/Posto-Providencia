@@ -1,7 +1,9 @@
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
+import { frentistaService, escalaService, type Escala } from '../../lib/api';
 import {
     User,
     LogOut,
@@ -15,7 +17,9 @@ import {
     TrendingUp,
     AlertTriangle,
     Check,
-    Award
+    Award,
+    Calendar,
+    Briefcase
 } from 'lucide-react-native';
 
 interface UserStats {
@@ -26,8 +30,10 @@ interface UserStats {
 }
 
 export default function PerfilScreen() {
+    const insets = useSafeAreaInsets();
     const [userName, setUserName] = useState('Frentista');
     const [userEmail, setUserEmail] = useState('');
+    const [postoNome, setPostoNome] = useState('Posto Providência');
     const [turno, setTurno] = useState('Manhã');
     const [loading, setLoading] = useState(false);
 
@@ -38,18 +44,38 @@ export default function PerfilScreen() {
         registrosComFalta: 2,
         taxaAcerto: 95.6,
     });
+    const [folgas, setFolgas] = useState<Escala[]>([]);
 
     useEffect(() => {
-        async function fetchUser() {
+        loadData();
+    }, []);
+
+    async function loadData() {
+        setLoading(true);
+        try {
             const { data: { user } } = await supabase.auth.getUser();
             if (user?.email) {
                 setUserEmail(user.email);
                 const name = user.email.split('@')[0];
                 setUserName(name.charAt(0).toUpperCase() + name.slice(1));
+
+                const frentista = await frentistaService.getByUserId(user.id);
+                if (frentista) {
+                    const upcomingFolgas = await escalaService.getMyUpcomingFolgas(frentista.id);
+                    setFolgas(upcomingFolgas);
+
+                    // Buscar o nome do posto (mock por enquanto baseado no posto_id)
+                    if (frentista.posto_id === 1) setPostoNome('Posto Providência');
+                    else if (frentista.posto_id === 2) setPostoNome('Posto Jorro');
+                    else if (frentista.posto_id === 3) setPostoNome('Posto Sertão');
+                }
             }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
         }
-        fetchUser();
-    }, []);
+    }
 
     const handleLogout = () => {
         Alert.alert(
@@ -137,6 +163,47 @@ export default function PerfilScreen() {
                         <Text className="text-white font-medium text-sm ml-2">Turno {turno}</Text>
                     </View>
                 </View>
+            </View>
+
+            {/* Escala / Folgas */}
+            <View className="px-4 mt-6">
+                <Text className="text-lg font-bold text-gray-800 mb-4">📅 Minha Escala</Text>
+
+                {folgas.length === 0 ? (
+                    <View className="bg-white rounded-2xl p-6 border border-gray-100 items-center justify-center">
+                        <Calendar size={32} color="#9ca3af" />
+                        <Text className="text-gray-400 mt-2 text-center">Nenhuma folga agendada para os próximos dias.</Text>
+                    </View>
+                ) : (
+                    <View
+                        className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                        style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
+                    >
+                        {folgas.map((folga, index) => {
+                            const date = new Date(folga.data);
+                            date.setMinutes(date.getMinutes() + date.getTimezoneOffset()); // Fix timezone visual
+                            const day = date.getDate();
+                            const month = date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
+                            const weekDay = date.toLocaleString('pt-BR', { weekday: 'long' });
+
+                            return (
+                                <View key={folga.id} className={`flex-row items-center p-4 ${index !== folgas.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                    <View className="bg-red-50 rounded-xl p-2 items-center justify-center w-14 h-14 mr-4 border border-red-100">
+                                        <Text className="text-xs font-bold text-red-600">{month}</Text>
+                                        <Text className="text-xl font-black text-red-700">{day}</Text>
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-base font-bold text-gray-800 capitalize">{weekDay}</Text>
+                                        <Text className="text-sm text-gray-500">Folga Programada</Text>
+                                    </View>
+                                    <View className="bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                                        <Text className="text-xs font-bold text-green-700">Confirmado</Text>
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
             </View>
 
             {/* Estatísticas */}
@@ -270,8 +337,8 @@ export default function PerfilScreen() {
             </View>
 
             {/* Versão */}
-            <Text className="text-center text-gray-400 text-xs mt-8">
-                Versão 1.0.0 • Posto Providência
+            <Text className="text-center text-gray-400 text-xs mt-8" style={{ marginBottom: insets.bottom + 100 }}>
+                Versão 1.0.0 • {postoNome}
             </Text>
         </ScrollView>
     );

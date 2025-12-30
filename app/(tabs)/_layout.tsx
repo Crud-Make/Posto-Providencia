@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { ClipboardList, History, User, Home } from 'lucide-react-native';
+import { ClipboardList, History, User, Home, ShoppingBag } from 'lucide-react-native';
 import { View } from 'react-native';
 
 export default function TabsLayout() {
@@ -44,6 +44,18 @@ export default function TabsLayout() {
                 }}
             />
             <Tabs.Screen
+                name="vendas"
+                options={{
+                    title: 'Venda de Produtos',
+                    tabBarLabel: 'Vendas',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View className={`p-2 rounded-xl ${focused ? 'bg-primary-50' : ''}`}>
+                            <ShoppingBag size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+                        </View>
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="historico"
                 options={{
                     title: 'Histórico',
@@ -64,6 +76,12 @@ export default function TabsLayout() {
                             <User size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
                         </View>
                     ),
+                }}
+            />
+            <Tabs.Screen
+                name="index"
+                options={{
+                    href: null,
                 }}
             />
         </Tabs>

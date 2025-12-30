@@ -1,83 +1,63 @@
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../../lib/supabase';
+import { frentistaService, fechamentoFrentistaService } from '../../lib/api';
+import { usePosto } from '../../lib/PostoContext';
 import {
     Calendar,
     Check,
     AlertTriangle,
     ChevronRight,
     Clock,
-    TrendingUp,
-    TrendingDown,
-    Filter
+    Gauge
 } from 'lucide-react-native';
 
 interface HistoricoItem {
-    id: string;
+    id: number;
     data: string;
     turno: string;
     totalInformado: number;
-    faltaCaixa: number;
+    encerrante: number;
+    diferenca: number;
     status: 'ok' | 'divergente';
     observacoes?: string;
 }
 
-// Dados mock para demonstração
-const MOCK_HISTORICO: HistoricoItem[] = [
-    {
-        id: '1',
-        data: '21/12/2024',
-        turno: 'Manhã',
-        totalInformado: 2839.08,
-        faltaCaixa: 0,
-        status: 'ok',
-    },
-    {
-        id: '2',
-        data: '20/12/2024',
-        turno: 'Manhã',
-        totalInformado: 3156.50,
-        faltaCaixa: 45.30,
-        status: 'divergente',
-        observacoes: 'Cliente foi embora sem pagar R$ 45,30'
-    },
-    {
-        id: '3',
-        data: '19/12/2024',
-        turno: 'Manhã',
-        totalInformado: 2654.00,
-        faltaCaixa: 0,
-        status: 'ok',
-    },
-    {
-        id: '4',
-        data: '18/12/2024',
-        turno: 'Manhã',
-        totalInformado: 2987.75,
-        faltaCaixa: 0,
-        status: 'ok',
-    },
-    {
-        id: '5',
-        data: '17/12/2024',
-        turno: 'Manhã',
-        totalInformado: 2456.00,
-        faltaCaixa: 20.00,
-        status: 'divergente',
-        observacoes: 'Erro no troco'
-    },
-];
-
 export default function HistoricoScreen() {
-    const [historico, setHistorico] = useState<HistoricoItem[]>(MOCK_HISTORICO);
+    const insets = useSafeAreaInsets();
+    const { postoAtivoId } = usePosto();
+    const [historico, setHistorico] = useState<HistoricoItem[]>([]);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filtroAtivo, setFiltroAtivo] = useState<'todos' | 'ok' | 'divergente'>('todos');
 
-    const onRefresh = useCallback(() => {
+    const loadHistorico = async () => {
+        if (!postoAtivoId) return;
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const frentista = await frentistaService.getByUserId(user.id);
+            if (!frentista) return;
+
+            const dados = await fechamentoFrentistaService.getHistorico(frentista.id, postoAtivoId);
+            setHistorico(dados);
+        } catch (error) {
+            console.error('Erro ao carregar histórico:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadHistorico();
+    }, [postoAtivoId]);
+
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        // Simula busca de dados
-        setTimeout(() => {
-            setRefreshing(false);
-        }, 1500);
+        await loadHistorico();
+        setRefreshing(false);
     }, []);
 
     const formatCurrency = (value: number): string => {
@@ -87,6 +67,13 @@ export default function HistoricoScreen() {
         });
     };
 
+    const formatDate = (dateStr: string): string => {
+        if (!dateStr) return 'N/A';
+        const date = new Date(dateStr);
+        date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+        return date.toLocaleDateString('pt-BR');
+    };
+
     const historicoFiltrado = historico.filter(item => {
         if (filtroAtivo === 'todos') return true;
         return item.status === filtroAtivo;
@@ -94,6 +81,15 @@ export default function HistoricoScreen() {
 
     const totalOk = historico.filter(h => h.status === 'ok').length;
     const totalDivergente = historico.filter(h => h.status === 'divergente').length;
+
+    if (loading) {
+        return (
+            <View className="flex-1 bg-gray-50 items-center justify-center">
+                <ActivityIndicator size="large" color="#b91c1c" />
+                <Text className="text-gray-500 mt-4">Carregando histórico...</Text>
+            </View>
+        );
+    }
 
     return (
         <View className="flex-1 bg-gray-50">
@@ -107,7 +103,7 @@ export default function HistoricoScreen() {
                         <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center">
                             <Check size={16} color="#16a34a" strokeWidth={3} />
                         </View>
-                        <Text className="text-gray-500 text-xs font-medium">Sem Falta</Text>
+                        <Text className="text-gray-500 text-xs font-medium">Caixa OK</Text>
                     </View>
                     <Text className="text-3xl font-black text-gray-800">{totalOk}</Text>
                     <Text className="text-xs text-gray-400 mt-1">registros</Text>
@@ -121,7 +117,7 @@ export default function HistoricoScreen() {
                         <View className="w-8 h-8 bg-red-100 rounded-full items-center justify-center">
                             <AlertTriangle size={16} color="#dc2626" />
                         </View>
-                        <Text className="text-gray-500 text-xs font-medium">Com Falta</Text>
+                        <Text className="text-gray-500 text-xs font-medium">Divergente</Text>
                     </View>
                     <Text className="text-3xl font-black text-gray-800">{totalDivergente}</Text>
                     <Text className="text-xs text-gray-400 mt-1">registros</Text>
@@ -132,8 +128,8 @@ export default function HistoricoScreen() {
             <View className="flex-row px-4 mt-4 gap-2">
                 {[
                     { key: 'todos', label: 'Todos' },
-                    { key: 'ok', label: 'Sem Falta' },
-                    { key: 'divergente', label: 'Com Falta' },
+                    { key: 'ok', label: 'Caixa OK' },
+                    { key: 'divergente', label: 'Divergente' },
                 ].map((filtro) => (
                     <TouchableOpacity
                         key={filtro.key}
@@ -150,7 +146,7 @@ export default function HistoricoScreen() {
             {/* Lista de Histórico */}
             <ScrollView
                 className="flex-1 px-4 mt-4"
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -180,7 +176,7 @@ export default function HistoricoScreen() {
                                         )}
                                     </View>
                                     <View>
-                                        <Text className="text-base font-bold text-gray-800">{item.data}</Text>
+                                        <Text className="text-base font-bold text-gray-800">{formatDate(item.data)}</Text>
                                         <View className="flex-row items-center gap-1 mt-0.5">
                                             <Clock size={12} color="#9ca3af" />
                                             <Text className="text-xs text-gray-400">Turno {item.turno}</Text>
@@ -193,14 +189,26 @@ export default function HistoricoScreen() {
                             {/* Valores */}
                             <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
                                 <View>
-                                    <Text className="text-xs text-gray-400 mb-1">Total Informado</Text>
+                                    <Text className="text-xs text-gray-400 mb-1">Total Pagamentos</Text>
                                     <Text className="text-lg font-bold text-gray-800">{formatCurrency(item.totalInformado)}</Text>
                                 </View>
 
-                                {item.faltaCaixa > 0 && (
-                                    <View className="bg-red-50 px-3 py-2 rounded-xl">
-                                        <Text className="text-xs text-red-500 mb-0.5">Falta</Text>
-                                        <Text className="text-base font-bold text-red-600">- {formatCurrency(item.faltaCaixa)}</Text>
+                                <View className="items-end">
+                                    <View className="flex-row items-center gap-1 mb-1">
+                                        <Gauge size={12} color="#7c3aed" />
+                                        <Text className="text-xs text-purple-600">Encerrante</Text>
+                                    </View>
+                                    <Text className="text-lg font-bold text-purple-700">{formatCurrency(item.encerrante)}</Text>
+                                </View>
+
+                                {item.diferenca !== 0 && (
+                                    <View className={`px-3 py-2 rounded-xl ${item.diferenca > 0 ? 'bg-red-50' : 'bg-yellow-50'}`}>
+                                        <Text className={`text-xs ${item.diferenca > 0 ? 'text-red-500' : 'text-yellow-600'} mb-0.5`}>
+                                            {item.diferenca > 0 ? 'Falta' : 'Sobra'}
+                                        </Text>
+                                        <Text className={`text-base font-bold ${item.diferenca > 0 ? 'text-red-600' : 'text-yellow-700'}`}>
+                                            {item.diferenca > 0 ? '- ' : '+ '}{formatCurrency(Math.abs(item.diferenca))}
+                                        </Text>
                                     </View>
                                 )}
                             </View>
@@ -219,6 +227,7 @@ export default function HistoricoScreen() {
                     <View className="items-center justify-center py-16">
                         <Calendar size={48} color="#d1d5db" />
                         <Text className="text-gray-400 text-base mt-4">Nenhum registro encontrado</Text>
+                        <Text className="text-gray-300 text-sm mt-1">Seus fechamentos aparecerão aqui</Text>
                     </View>
                 )}
             </ScrollView>

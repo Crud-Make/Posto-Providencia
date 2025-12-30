@@ -1,7 +1,9 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { submitMobileClosing, turnoService, frentistaService, type SubmitClosingData } from '../../lib/api';
+import { submitMobileClosing, turnoService, frentistaService, clienteService, type SubmitClosingData, type Cliente, type Turno } from '../../lib/api';
+import { usePosto } from '../../lib/PostoContext';
 import {
     CreditCard,
     Receipt,
@@ -14,7 +16,12 @@ import {
     CircleDollarSign,
     ChevronDown,
     Clock,
-    User
+    User,
+    Gauge,
+    Plus,
+    Trash2,
+    X,
+    Search
 } from 'lucide-react-native';
 
 // Tipos
@@ -26,12 +33,19 @@ interface FormaPagamento {
     bgColor: string;
 }
 
+interface NotaItem {
+    cliente_id: number;
+    cliente_nome: string;
+    valor: string; // formato exibição
+    valor_number: number;
+}
+
 interface RegistroTurno {
-    valorCartao: string;
-    valorNota: string;
+    valorEncerrante: string;
+    valorCartaoDebito: string;
+    valorCartaoCredito: string;
     valorPix: string;
     valorDinheiro: string;
-    faltaCaixa: string;
     observacoes: string;
 }
 
@@ -43,22 +57,35 @@ const FORMAS_PAGAMENTO: FormaPagamento[] = [
 ];
 
 export default function RegistroScreen() {
-    const [loading, setLoading] = useState(false);
+    const insets = useSafeAreaInsets();
+    const { postoAtivo, postoAtivoId } = usePosto();
+
+    // Estados principais
+    const [turnos, setTurnos] = useState<Turno[]>([]);
+    const [clientes, setClientes] = useState<Cliente[]>([]);
+    const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [userName, setUserName] = useState('Frentista');
     const [turnoAtual, setTurnoAtual] = useState('Carregando...');
     const [turnoId, setTurnoId] = useState<number | null>(null);
 
     const [registro, setRegistro] = useState<RegistroTurno>({
-        valorCartao: '',
-        valorNota: '',
+        valorEncerrante: '',
+        valorCartaoDebito: '',
+        valorCartaoCredito: '',
         valorPix: '',
         valorDinheiro: '',
-        faltaCaixa: '',
         observacoes: '',
     });
 
-    // Formata um valor numérico para moeda BRL (ex: 1234.56 -> R$ 1.234,56)
+    const [notasAdicionadas, setNotasAdicionadas] = useState<NotaItem[]>([]);
+    const [modalNotaVisible, setModalNotaVisible] = useState(false);
+    const [modalTurnoVisible, setModalTurnoVisible] = useState(false);
+    const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+    const [valorNotaTemp, setValorNotaTemp] = useState('');
+    const [buscaCliente, setBuscaCliente] = useState(''); // Novo estado para busca
+
+    // Formatação de Moeda
     const formatCurrency = (value: number): string => {
         return value.toLocaleString('pt-BR', {
             style: 'currency',
@@ -66,30 +93,17 @@ export default function RegistroScreen() {
         });
     };
 
-    // Converte string BRL (R$ 1.234,56) para number (1234.56)
     const parseValue = (value: string): number => {
         if (!value) return 0;
-        // Remove tudo que não é dígito ou vírgula
-        // Remove R$, pontos e espaços
         const cleanStr = value.replace(/[^\d,]/g, '').replace(',', '.');
         const parsed = parseFloat(cleanStr);
         return isNaN(parsed) ? 0 : parsed;
     };
 
-    // Formata o input enquanto digita (máscara de dinheiro)
-    // 1 -> 0,01
-    // 12 -> 0,12
-    // 123 -> 1,23
     const formatCurrencyInput = (value: string) => {
-        // Remove tudo que não for dígito
         const onlyNumbers = value.replace(/\D/g, '');
-
         if (onlyNumbers === '') return '';
-
-        // Converte para centavos
         const amount = parseInt(onlyNumbers) / 100;
-
-        // Formata para string BR
         return amount.toLocaleString('pt-BR', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -97,91 +111,115 @@ export default function RegistroScreen() {
     };
 
     const handleChange = (field: keyof RegistroTurno, value: string) => {
-        // Se o campo for observações, não aplica máscara
         if (field === 'observacoes') {
             setRegistro(prev => ({ ...prev, [field]: value }));
             return;
         }
-
-        // Para campos numéricos, aplica máscara de moeda
         const formatted = formatCurrencyInput(value);
         setRegistro(prev => ({ ...prev, [field]: formatted }));
     };
 
-    const totalInformado =
-        parseValue(registro.valorCartao) +
-        parseValue(registro.valorNota) +
-        parseValue(registro.valorPix) +
-        parseValue(registro.valorDinheiro);
+    // Cálculos
+    const valorEncerrante = parseValue(registro.valorEncerrante);
+    const totalCartao = parseValue(registro.valorCartaoDebito) + parseValue(registro.valorCartaoCredito);
+    const totalNotas = notasAdicionadas.reduce((acc, current) => acc + current.valor_number, 0);
+    const totalInformado = totalCartao + totalNotas + parseValue(registro.valorPix) + parseValue(registro.valorDinheiro);
+    const diferencaCaixa = valorEncerrante - totalInformado;
+    const temFalta = diferencaCaixa > 0;
+    const temSobra = diferencaCaixa < 0;
+    const caixaBateu = diferencaCaixa === 0 && valorEncerrante > 0;
 
-    const faltaCaixaValue = parseValue(registro.faltaCaixa);
-
-    const totalFinal = totalInformado - faltaCaixaValue;
-
-    const temFalta = faltaCaixaValue > 0;
-
-    // Buscar dados do usuário
+    // Carregar dados (User, Turnos, Clientes)
     useEffect(() => {
-        async function fetchUser() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user?.email) {
-                // Pegar nome do email antes do @
-                const name = user.email.split('@')[0];
-                setUserName(name.charAt(0).toUpperCase() + name.slice(1));
-            }
-        }
-        fetchUser();
-    }, []);
+        async function loadAllData() {
+            if (!postoAtivoId) return;
 
-    const [turnos, setTurnos] = useState<any[]>([]);
-    const [modalTurnoVisible, setModalTurnoVisible] = useState(false);
-
-    // ... (rest of the state)
-
-    // Determinar turno atual e carregar lista
-    useEffect(() => {
-        async function loadTurnos() {
+            setLoading(true);
             try {
-                // Carregar todos os turnos
-                const todosTurnos = await turnoService.getAll();
-                setTurnos(todosTurnos);
+                // 1. Dados do Usuário
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const frentistaData = await frentistaService.getByUserId(user.id);
+                    if (frentistaData?.nome) {
+                        setUserName(frentistaData.nome);
+                    } else if (user.email) {
+                        const name = user.email.split('@')[0];
+                        setUserName(name.charAt(0).toUpperCase() + name.slice(1));
+                    }
+                }
 
-                // Tentar identificar o turno atual automaticamente
-                const turnoAuto = await turnoService.getCurrentTurno();
+                // 2. Turnos e Clientes em paralelo
+                const [turnosData, clientesData, turnoAuto] = await Promise.all([
+                    turnoService.getAll(postoAtivoId),
+                    clienteService.getAll(postoAtivoId),
+                    turnoService.getCurrentTurno(postoAtivoId)
+                ]);
+
+                setTurnos(turnosData);
+                setClientes(clientesData);
 
                 if (turnoAuto) {
                     setTurnoAtual(turnoAuto.nome);
                     setTurnoId(turnoAuto.id);
-                } else if (todosTurnos.length > 0) {
-                    // Fallback para o primeiro da lista
-                    setTurnoAtual(todosTurnos[0].nome);
-                    setTurnoId(todosTurnos[0].id);
+                } else if (turnosData.length > 0) {
+                    setTurnoAtual(turnosData[0].nome);
+                    setTurnoId(turnosData[0].id);
                 } else {
                     setTurnoAtual('Selecione');
                 }
             } catch (error) {
-                console.error('Error loading turnos:', error);
-                setTurnoAtual('Selecione');
+                console.error('Erro ao carregar dados:', error);
+            } finally {
+                setLoading(false);
             }
         }
-        loadTurnos();
 
-        // Subscription para atualizações em tempo real
+        loadAllData();
+
+        // Realtime para Turnos
         const subscription = supabase
             .channel('turnos_changes')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'Turno' },
-                () => loadTurnos()
-            )
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'Turno' }, () => loadAllData())
             .subscribe();
 
-        return () => {
-            subscription.unsubscribe();
+        return () => { subscription.unsubscribe(); };
+    }, [postoAtivoId]);
+
+    const handleAddNota = () => {
+        if (!selectedCliente || !valorNotaTemp) {
+            Alert.alert('Atenção', 'Selecione um cliente e informe o valor');
+            return;
+        }
+
+        const valorNumber = parseValue(valorNotaTemp);
+        if (valorNumber <= 0) {
+            Alert.alert('Atenção', 'O valor deve ser maior que zero');
+            return;
+        }
+
+        const novaNota: NotaItem = {
+            cliente_id: selectedCliente.id,
+            cliente_nome: selectedCliente.nome,
+            valor: valorNotaTemp,
+            valor_number: valorNumber
         };
-    }, []);
+
+        setNotasAdicionadas(prev => [...prev, novaNota]);
+        setModalNotaVisible(false);
+        setSelectedCliente(null);
+        setValorNotaTemp('');
+    };
+
+    const handleRemoveNota = (index: number) => {
+        setNotasAdicionadas(prev => prev.filter((_, i) => i !== index));
+    };
 
     const handleSubmit = async () => {
+        if (valorEncerrante === 0) {
+            Alert.alert('Atenção', 'Informe o valor do encerrante');
+            return;
+        }
+
         if (totalInformado === 0) {
             Alert.alert('Atenção', 'Preencha pelo menos um valor de pagamento');
             return;
@@ -197,9 +235,20 @@ export default function RegistroScreen() {
             return;
         }
 
+        // Montar mensagem de confirmação
+        let mensagemConfirmacao = `Encerrante: ${formatCurrency(valorEncerrante)}\nTotal Pagamentos: ${formatCurrency(totalInformado)}`;
+
+        if (caixaBateu) {
+            mensagemConfirmacao += '\n\n✅ Caixa bateu!';
+        } else if (temFalta) {
+            mensagemConfirmacao += `\n\n❌ Falta: ${formatCurrency(diferencaCaixa)}`;
+        } else if (temSobra) {
+            mensagemConfirmacao += `\n\n⚠️ Sobra: ${formatCurrency(Math.abs(diferencaCaixa))}`;
+        }
+
         Alert.alert(
             'Confirmar Envio',
-            `Deseja enviar o registro do turno?\n\nTotal Informado: ${formatCurrency(totalInformado)}\n${temFalta ? `Falta de Caixa: ${formatCurrency(faltaCaixaValue)}\nTotal Final: ${formatCurrency(totalFinal)}` : ''}`,
+            mensagemConfirmacao,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -211,12 +260,19 @@ export default function RegistroScreen() {
                             const closingData: SubmitClosingData = {
                                 data: new Date().toISOString().split('T')[0],
                                 turno_id: turnoId!,
-                                valor_cartao: parseValue(registro.valorCartao),
-                                valor_nota: parseValue(registro.valorNota),
+                                valor_cartao_debito: parseValue(registro.valorCartaoDebito),
+                                valor_cartao_credito: parseValue(registro.valorCartaoCredito),
+                                valor_nota: totalNotas,
                                 valor_pix: parseValue(registro.valorPix),
                                 valor_dinheiro: parseValue(registro.valorDinheiro),
-                                falta_caixa: faltaCaixaValue,
+                                valor_encerrante: valorEncerrante,
+                                falta_caixa: temFalta ? diferencaCaixa : 0,
                                 observacoes: registro.observacoes,
+                                posto_id: postoAtivoId!,
+                                notas: notasAdicionadas.map(n => ({
+                                    cliente_id: n.cliente_id,
+                                    valor: n.valor_number
+                                }))
                             };
 
                             // Enviar para o Supabase
@@ -231,13 +287,14 @@ export default function RegistroScreen() {
                                         onPress: () => {
                                             // Limpar formulário
                                             setRegistro({
-                                                valorCartao: '',
-                                                valorNota: '',
+                                                valorEncerrante: '',
+                                                valorCartaoDebito: '',
+                                                valorCartaoCredito: '',
                                                 valorPix: '',
                                                 valorDinheiro: '',
-                                                faltaCaixa: '',
                                                 observacoes: '',
                                             });
+                                            setNotasAdicionadas([]);
                                         }
                                     }]
                                 );
@@ -303,7 +360,7 @@ export default function RegistroScreen() {
         >
             <ScrollView
                 className="flex-1"
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 180 }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Header Card */}
@@ -318,7 +375,7 @@ export default function RegistroScreen() {
                             </View>
                             <View>
                                 <Text className="text-lg font-bold text-gray-800">Olá, {userName}!</Text>
-                                <Text className="text-sm text-gray-500">Registre seu turno</Text>
+                                <Text className="text-sm text-gray-500">{postoAtivo?.nome || 'Registre seu turno'}</Text>
                             </View>
                         </View>
                         <TouchableOpacity
@@ -360,11 +417,13 @@ export default function RegistroScreen() {
                                             setModalTurnoVisible(false);
 
                                             // Sincroniza turno imediatamente com o banco
-                                            const { data: { user } } = await supabase.auth.getUser();
-                                            if (user) {
-                                                const frentista = await frentistaService.getByUserId(user.id);
-                                                if (frentista) {
-                                                    await frentistaService.update(frentista.id, { turno_id: item.id });
+                                            if (postoAtivoId) {
+                                                const { data: { user } } = await supabase.auth.getUser();
+                                                if (user) {
+                                                    const frentista = await frentistaService.getByUserId(user.id);
+                                                    if (frentista) {
+                                                        await frentistaService.update(frentista.id, { turno_id: item.id });
+                                                    }
                                                 }
                                             }
                                         }}
@@ -390,52 +449,89 @@ export default function RegistroScreen() {
                     <Text className="text-lg font-bold text-gray-800 mb-1">💰 Valores Recebidos</Text>
                     <Text className="text-sm text-gray-500 mb-4">Informe os valores por forma de pagamento</Text>
 
-                    {renderInputField(FORMAS_PAGAMENTO[0], registro.valorCartao, 'valorCartao')}
-                    {renderInputField(FORMAS_PAGAMENTO[1], registro.valorNota, 'valorNota')}
+                    {/* Campos de Cartão - Débito e Crédito */}
+                    {renderInputField({ ...FORMAS_PAGAMENTO[0], label: 'Cartão Débito' }, registro.valorCartaoDebito, 'valorCartaoDebito')}
+                    {renderInputField({ ...FORMAS_PAGAMENTO[0], label: 'Cartão Crédito' }, registro.valorCartaoCredito, 'valorCartaoCredito')}
+
+                    {/* Seção de Notas/Vales */}
+                    <View className="mb-4">
+                        <View className="flex-row items-center justify-between mb-2">
+                            <View className="flex-row items-center gap-2">
+                                <Receipt size={20} color="#0891b2" />
+                                <Text className="font-bold text-gray-700">Notas / Vales</Text>
+                            </View>
+                            <TouchableOpacity
+                                className="bg-cyan-50 px-3 py-1.5 rounded-full flex-row items-center gap-1 border border-cyan-100"
+                                onPress={() => setModalNotaVisible(true)}
+                            >
+                                <Plus size={14} color="#0891b2" />
+                                <Text className="text-cyan-700 font-bold text-xs">Adicionar</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {notasAdicionadas.length === 0 ? (
+                            <View className="bg-white rounded-2xl p-6 border-2 border-gray-50 border-dashed items-center justify-center">
+                                <Receipt size={32} color="#e5e7eb" style={{ marginBottom: 8 }} />
+                                <Text className="text-gray-400 text-sm italic text-center">Nenhuma nota adicionada para este turno</Text>
+                            </View>
+                        ) : (
+                            <View className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 }}>
+                                {notasAdicionadas.map((item, index) => (
+                                    <View key={index} className={`flex-row items-center justify-between p-4 ${index !== notasAdicionadas.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                        <View className="flex-1 pr-2">
+                                            <Text className="text-gray-800 font-bold" numberOfLines={1}>{item.cliente_nome}</Text>
+                                        </View>
+                                        <View className="flex-row items-center gap-4">
+                                            <Text className="font-black text-cyan-700 text-base">{formatCurrency(item.valor_number)}</Text>
+                                            <TouchableOpacity onPress={() => handleRemoveNota(index)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                                <Trash2 size={18} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                                <View className="bg-cyan-600 p-3 flex-row justify-between items-center">
+                                    <Text className="text-white font-bold text-xs uppercase tracking-wider">Total em Notas</Text>
+                                    <View className="bg-white/20 px-3 py-1 rounded-lg">
+                                        <Text className="text-white font-black text-base">{formatCurrency(totalNotas)}</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+
                     {renderInputField(FORMAS_PAGAMENTO[2], registro.valorPix, 'valorPix')}
                     {renderInputField(FORMAS_PAGAMENTO[3], registro.valorDinheiro, 'valorDinheiro')}
                 </View>
 
-                {/* Seção de Falta de Caixa */}
+                {/* Seção do Encerrante */}
                 <View className="px-4 mt-6">
-                    <Text className="text-lg font-bold text-gray-800 mb-1">⚠️ Falta de Caixa</Text>
-                    <Text className="text-sm text-gray-500 mb-4">Informe se houver diferença no caixa</Text>
+                    <Text className="text-lg font-bold text-gray-800 mb-1">📊 Encerrante</Text>
+                    <Text className="text-sm text-gray-500 mb-4">Valor total vendido (leitura da bomba)</Text>
 
                     <View
-                        className={`flex-row items-center bg-white rounded-2xl border-2 overflow-hidden ${temFalta ? 'border-red-300 bg-red-50' : 'border-gray-100'}`}
-                        style={{ shadowColor: temFalta ? '#ef4444' : '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: temFalta ? 0.15 : 0.05, shadowRadius: 8, elevation: 2 }}
+                        className="flex-row items-center bg-white rounded-2xl border-2 border-purple-200 overflow-hidden"
+                        style={{ shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}
                     >
-                        <View
-                            className={`p-4 items-center justify-center ${temFalta ? 'bg-red-100' : 'bg-orange-50'}`}
-                        >
-                            <AlertTriangle size={24} color={temFalta ? '#dc2626' : '#f59e0b'} />
+                        <View className="p-4 items-center justify-center bg-purple-50">
+                            <Gauge size={24} color="#7c3aed" />
                         </View>
                         <View className="flex-1 px-4">
-                            <Text className={`text-xs font-medium ${temFalta ? 'text-red-500' : 'text-gray-400'}`}>
-                                Valor da Falta
+                            <Text className="text-xs font-medium text-purple-600">
+                                Valor do Encerrante
                             </Text>
                             <View className="flex-row items-center">
-                                <Text className={`text-lg font-medium mr-1 ${temFalta ? 'text-red-500' : 'text-gray-500'}`}>R$</Text>
+                                <Text className="text-lg font-medium mr-1 text-purple-600">R$</Text>
                                 <TextInput
-                                    className={`flex-1 text-xl font-bold py-2 ${temFalta ? 'text-red-600' : 'text-gray-800'}`}
+                                    className="flex-1 text-xl font-bold py-2 text-purple-700"
                                     placeholder="0,00"
-                                    placeholderTextColor="#d1d5db"
-                                    value={registro.faltaCaixa}
-                                    onChangeText={(text) => handleChange('faltaCaixa', text)}
+                                    placeholderTextColor="#c4b5fd"
+                                    value={registro.valorEncerrante}
+                                    onChangeText={(text) => handleChange('valorEncerrante', text)}
                                     keyboardType="decimal-pad"
                                 />
                             </View>
                         </View>
                     </View>
-
-                    {temFalta && (
-                        <View className="mt-3 p-3 bg-red-50 rounded-xl border border-red-200 flex-row items-start gap-2">
-                            <AlertTriangle size={16} color="#dc2626" />
-                            <Text className="flex-1 text-red-700 text-xs font-medium">
-                                Quando há falta de caixa, é obrigatório informar o motivo nas observações abaixo.
-                            </Text>
-                        </View>
-                    )}
                 </View>
 
                 {/* Seção de Observações */}
@@ -475,32 +571,96 @@ export default function RegistroScreen() {
                         </View>
 
                         <View className="p-5">
+                            {/* Encerrante */}
                             <View className="flex-row justify-between items-center mb-3">
-                                <Text className="text-gray-500">Total Informado</Text>
+                                <Text className="text-gray-500">Encerrante</Text>
+                                <Text className="text-lg font-bold text-purple-700">{formatCurrency(valorEncerrante)}</Text>
+                            </View>
+
+                            {/* Total Pagamentos */}
+                            <View className="flex-row justify-between items-center mb-2">
+                                <Text className="text-gray-500">Total Pagamentos</Text>
                                 <Text className="text-lg font-bold text-gray-800">{formatCurrency(totalInformado)}</Text>
                             </View>
 
-                            {temFalta && (
-                                <View className="flex-row justify-between items-center mb-3 py-2 px-3 bg-red-50 rounded-lg -mx-1">
-                                    <Text className="text-red-600 font-medium">Falta de Caixa</Text>
-                                    <Text className="text-lg font-bold text-red-600">- {formatCurrency(faltaCaixaValue)}</Text>
-                                </View>
-                            )}
+                            {/* Detalhamento de Pagamentos */}
+                            <View className="pl-2 border-l-2 border-gray-100 mb-3">
+                                {parseValue(registro.valorCartaoDebito) > 0 && (
+                                    <View className="flex-row justify-between items-center mb-1">
+                                        <Text className="text-gray-400 text-xs">Cartão Débito</Text>
+                                        <Text className="text-xs font-medium text-gray-600">{formatCurrency(parseValue(registro.valorCartaoDebito))}</Text>
+                                    </View>
+                                )}
+                                {parseValue(registro.valorCartaoCredito) > 0 && (
+                                    <View className="flex-row justify-between items-center mb-1">
+                                        <Text className="text-gray-400 text-xs">Cartão Crédito</Text>
+                                        <Text className="text-xs font-medium text-gray-600">{formatCurrency(parseValue(registro.valorCartaoCredito))}</Text>
+                                    </View>
+                                )}
+                                {totalNotas > 0 && (
+                                    <View className="flex-row justify-between items-center mb-1">
+                                        <Text className="text-gray-400 text-xs">Notas/Vales ({notasAdicionadas.length})</Text>
+                                        <Text className="text-xs font-medium text-gray-600">{formatCurrency(totalNotas)}</Text>
+                                    </View>
+                                )}
+                                {parseValue(registro.valorPix) > 0 && (
+                                    <View className="flex-row justify-between items-center mb-1">
+                                        <Text className="text-gray-400 text-xs">PIX</Text>
+                                        <Text className="text-xs font-medium text-gray-600">{formatCurrency(parseValue(registro.valorPix))}</Text>
+                                    </View>
+                                )}
+                                {parseValue(registro.valorDinheiro) > 0 && (
+                                    <View className="flex-row justify-between items-center">
+                                        <Text className="text-gray-400 text-xs">Dinheiro</Text>
+                                        <Text className="text-xs font-medium text-gray-600">{formatCurrency(parseValue(registro.valorDinheiro))}</Text>
+                                    </View>
+                                )}
+                            </View>
 
+                            {/* Status da Diferença */}
                             <View className="border-t border-dashed border-gray-200 pt-3 mt-2">
-                                <View className="flex-row justify-between items-center">
-                                    <Text className="text-gray-700 font-bold">Total Final</Text>
-                                    <Text className={`text-2xl font-black ${temFalta ? 'text-red-600' : 'text-primary-700'}`}>
-                                        {formatCurrency(totalFinal)}
-                                    </Text>
-                                </View>
+                                {caixaBateu && (
+                                    <View className="flex-row justify-between items-center py-2 px-3 bg-green-50 rounded-lg -mx-1">
+                                        <View className="flex-row items-center gap-2">
+                                            <Check size={18} color="#16a34a" />
+                                            <Text className="text-green-700 font-bold">Caixa Bateu!</Text>
+                                        </View>
+                                        <Text className="text-lg font-black text-green-600">✓</Text>
+                                    </View>
+                                )}
+
+                                {temFalta && (
+                                    <View className="flex-row justify-between items-center py-2 px-3 bg-red-50 rounded-lg -mx-1">
+                                        <View className="flex-row items-center gap-2">
+                                            <AlertTriangle size={18} color="#dc2626" />
+                                            <Text className="text-red-600 font-bold">Falta de Caixa</Text>
+                                        </View>
+                                        <Text className="text-lg font-black text-red-600">- {formatCurrency(diferencaCaixa)}</Text>
+                                    </View>
+                                )}
+
+                                {temSobra && (
+                                    <View className="flex-row justify-between items-center py-2 px-3 bg-yellow-50 rounded-lg -mx-1">
+                                        <View className="flex-row items-center gap-2">
+                                            <AlertTriangle size={18} color="#ca8a04" />
+                                            <Text className="text-yellow-700 font-bold">Sobra de Caixa</Text>
+                                        </View>
+                                        <Text className="text-lg font-black text-yellow-600">+ {formatCurrency(Math.abs(diferencaCaixa))}</Text>
+                                    </View>
+                                )}
+
+                                {valorEncerrante === 0 && (
+                                    <View className="flex-row items-center gap-2 py-2">
+                                        <Text className="text-gray-400 text-sm">Informe o encerrante para ver o status</Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
                     </View>
                 </View>
 
                 {/* Botão Enviar */}
-                <View className="px-4 mt-8 mb-4">
+                <View className="px-4 mt-8" style={{ marginBottom: insets.bottom + 40 }}>
                     <TouchableOpacity
                         className={`w-full py-5 rounded-2xl flex-row items-center justify-center gap-3 ${submitting || totalInformado === 0 ? 'bg-gray-300' : 'bg-primary-700'}`}
                         style={totalInformado > 0 ? { shadowColor: '#b91c1c', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 10 } : {}}
@@ -519,6 +679,128 @@ export default function RegistroScreen() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-        </KeyboardAvoidingView>
+
+            {/* Modal de Adicionar Nota */}
+            <Modal
+                visible={modalNotaVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setModalNotaVisible(false)}
+            >
+                <View className="flex-1 bg-black/60 justify-end">
+                    <TouchableOpacity
+                        className="absolute inset-0"
+                        onPress={() => setModalNotaVisible(false)}
+                    />
+                    <View className="bg-white rounded-t-[40px] p-6 shadow-2xl">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-2xl font-black text-gray-800">Nova Nota / Vale</Text>
+                            <TouchableOpacity
+                                onPress={() => setModalNotaVisible(false)}
+                                className="bg-gray-100 p-2 rounded-full"
+                            >
+                                <X size={20} color="#6b7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Cliente</Text>
+
+                        {/* Campo de Busca de Cliente */}
+                        <View className="flex-row items-center bg-gray-50 rounded-2xl border border-gray-200 px-4 py-3 mb-4">
+                            <Search size={20} color="#9ca3af" style={{ marginRight: 8 }} />
+                            <TextInput
+                                className="flex-1 text-base text-gray-800"
+                                placeholder="Buscar cliente..."
+                                placeholderTextColor="#9ca3af"
+                                value={buscaCliente}
+                                onChangeText={setBuscaCliente}
+                                autoCapitalize="words"
+                            />
+                            {buscaCliente.length > 0 && (
+                                <TouchableOpacity onPress={() => setBuscaCliente('')}>
+                                    <X size={18} color="#9ca3af" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <View className="mb-6 h-64">
+                            {clientes.length === 0 ? (
+                                <View className="p-4 bg-gray-50 rounded-2xl items-center border border-gray-100">
+                                    <Text className="text-gray-400 italic">Nenhum cliente cadastrado no sistema</Text>
+                                </View>
+                            ) : buscaCliente.length === 0 ? (
+                                <View className="flex-1 items-center justify-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 p-4">
+                                    <Search size={32} color="#9ca3af" style={{ opacity: 0.5, marginBottom: 8 }} />
+                                    <Text className="text-gray-400 text-center font-medium">Digite o nome para buscar...</Text>
+                                </View>
+                            ) : (
+                                <ScrollView
+                                    nestedScrollEnabled={true}
+                                    keyboardShouldPersistTaps="handled"
+                                    showsVerticalScrollIndicator={true}
+                                    className="border border-gray-100 rounded-2xl bg-gray-50/50"
+                                >
+                                    <View className="p-2">
+                                        {clientes.filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase())).length === 0 ? (
+                                            <View className="p-4 items-center">
+                                                <Text className="text-gray-400">Nenhum cliente encontrado</Text>
+                                            </View>
+                                        ) : (
+                                            clientes
+                                                .filter(c => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
+                                                .map((cliente) => (
+                                                    <TouchableOpacity
+                                                        key={cliente.id}
+                                                        onPress={() => {
+                                                            setSelectedCliente(cliente);
+                                                            setBuscaCliente(''); // Limpa busca pra UX ficar top (ou não, dependendo, mas aqui fecha o modal depois né?)
+                                                            // Ah, não, aqui só seleciona. Então talvez manter o texto ajude a confirmar. Mas vou limpar pra ficar clean.
+                                                        }}
+                                                        className={`px-4 py-3 rounded-xl border-2 mb-2 w-full flex-row justify-between items-center ${selectedCliente?.id === cliente.id ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'}`}
+                                                    >
+                                                        <View className="flex-1">
+                                                            <Text className={`font-bold text-base ${selectedCliente?.id === cliente.id ? 'text-white' : 'text-gray-800'}`}>
+                                                                {cliente.nome}
+                                                            </Text>
+                                                            {cliente.documento && (
+                                                                <Text className={`text-xs mt-0.5 ${selectedCliente?.id === cliente.id ? 'text-cyan-100' : 'text-gray-400'}`}>
+                                                                    {cliente.documento}
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                        {selectedCliente?.id === cliente.id && <Check size={20} color="white" />}
+                                                    </TouchableOpacity>
+                                                ))
+                                        )}
+                                    </View>
+                                </ScrollView>
+                            )}
+                        </View>
+
+                        <Text className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Valor da Nota</Text>
+                        <View className="flex-row items-center bg-gray-50 rounded-3xl p-4 border-2 border-cyan-100 mb-8">
+                            <Text className="text-2xl font-bold text-cyan-600 mr-2">R$</Text>
+                            <TextInput
+                                className="flex-1 text-3xl font-black text-gray-800"
+                                placeholder="0,00"
+                                value={valorNotaTemp}
+                                onChangeText={(text) => setValorNotaTemp(formatCurrencyInput(text))}
+                                keyboardType="numeric"
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleAddNota}
+                            className={`py-4 rounded-3xl flex-row justify-center items-center shadow-lg ${!selectedCliente || parseValue(valorNotaTemp) === 0 ? 'bg-gray-300' : 'bg-cyan-600 shadow-cyan-200'}`}
+                            disabled={!selectedCliente || parseValue(valorNotaTemp) === 0}
+                        >
+                            <Plus size={24} color="white" style={{ marginRight: 8 }} />
+                            <Text className="text-white text-lg font-black">Adicionar Nota</Text>
+                        </TouchableOpacity>
+                        <View style={{ height: insets.bottom + 20 }} />
+                    </View>
+                </View>
+            </Modal>
+        </KeyboardAvoidingView >
     );
 }
