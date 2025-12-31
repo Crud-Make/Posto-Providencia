@@ -243,14 +243,21 @@ export default function RegistroScreen() {
                             const { data: { user } } = await supabase.auth.getUser();
                             if (!user) throw new Error('Usuário não autenticado');
 
-                            // 1. Buscar ID do Frentista
+                            // 1. Buscar ID do Frentista e Posto
                             const { data: frentista } = await supabase
                                 .from('Frentista')
-                                .select('id')
+                                .select('id, posto_id')
                                 .eq('user_id', user.id)
                                 .single();
 
                             if (!frentista) throw new Error('Frentista não encontrado');
+
+                            // Buscar ID do Usuario p/ o fechamento (pai)
+                            const { data: usuario } = await supabase
+                                .from('Usuario')
+                                .select('id')
+                                .eq('email', user.email)
+                                .single();
 
                             // 2. Buscar ou Criar Fechamento (Pai) para o dia/turno
                             const hoje = new Date().toISOString().split('T')[0];
@@ -259,6 +266,7 @@ export default function RegistroScreen() {
                                 .select('id')
                                 .eq('data', hoje)
                                 .eq('turno_id', turnoSelecionado.id === 'manha' ? 1 : turnoSelecionado.id === 'tarde' ? 2 : 3)
+                                .eq('posto_id', frentista.posto_id)
                                 .maybeSingle();
 
                             if (!fechamento) {
@@ -267,11 +275,12 @@ export default function RegistroScreen() {
                                     .insert({
                                         data: hoje,
                                         turno_id: turnoSelecionado.id === 'manha' ? 1 : turnoSelecionado.id === 'tarde' ? 2 : 3,
-                                        usuario_id: 1, // Admin default ou id do usuário
+                                        usuario_id: usuario?.id || 1,
                                         status: 'RASCUNHO',
                                         total_vendas: 0,
                                         total_recebido: 0,
-                                        diferenca: 0
+                                        diferenca: 0,
+                                        posto_id: frentista.posto_id
                                     })
                                     .select('id')
                                     .single();
@@ -294,7 +303,8 @@ export default function RegistroScreen() {
                                     encerrante: parseValue(registro.valorEncerrante),
                                     diferenca_calculada: faltaCaixaValue,
                                     valor_conferido: totalInformado,
-                                    observacoes: registro.observacoes
+                                    observacoes: registro.observacoes,
+                                    posto_id: frentista.posto_id
                                 });
 
                             if (errorFrentista) throw errorFrentista;

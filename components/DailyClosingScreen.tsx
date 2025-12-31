@@ -420,11 +420,15 @@ const DailyClosingScreen: React.FC = () => {
 
    const loadFrentistaSessions = async () => {
       try {
+         console.log('[DEBUG] loadFrentistaSessions chamada:', { selectedDate, selectedTurno, postoAtivoId });
+
          // Buscamos se já existe um fechamento para este dia/turno
          const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!, postoAtivoId);
+         console.log('[DEBUG] Fechamento encontrado:', fechamento);
 
          if (fechamento) {
             const sessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
+            console.log('[DEBUG] Sessions do fechamento:', sessions);
             if (sessions && sessions.length > 0) {
                const mappedSessions = await Promise.all(sessions.map(async s => {
                   const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);

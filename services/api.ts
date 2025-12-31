@@ -2534,16 +2534,22 @@ export async function fetchInventoryData(postoId?: number) {
   const dataInicioAnalise = new Date();
   dataInicioAnalise.setDate(dataInicioAnalise.getDate() - 7);
 
+  // Build leituras query with proper posto_id filter
+  let leiturasQuery = supabase
+    .from('Leitura')
+    .select('*, bico:Bico(combustivel_id), combustivel:Bico(Combustivel(nome))')
+    .gte('data', dataInicioAnalise.toISOString().split('T')[0])
+    .order('data', { ascending: false })
+    .limit(100);
+
+  if (postoId) {
+    leiturasQuery = leiturasQuery.eq('posto_id', postoId);
+  }
+
   const [estoque, compras, leiturasRecentes] = await Promise.all([
     estoqueService.getAll(postoId),
     compraService.getAll(postoId, dataInicioAnalise.toISOString().split('T')[0]),
-    supabase
-      .from('Leitura')
-      .select('*, bico:Bico(combustivel_id), combustivel:Bico(Combustivel(nome))')
-      .eq(postoId ? 'posto_id' : '', postoId)
-      .gte('data', dataInicioAnalise.toISOString().split('T')[0])
-      .order('data', { ascending: false })
-      .limit(100)
+    leiturasQuery
   ]);
 
   const leituras = leiturasRecentes.data || [];
