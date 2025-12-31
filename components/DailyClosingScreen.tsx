@@ -302,21 +302,9 @@ const DailyClosingScreen: React.FC = () => {
          }));
          setPayments(initialPayments);
 
-         // Auto-populate inicial with last reading
-         const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
-
-         await Promise.all(
-            bicosData.map(async (bico) => {
-               const lastReading = await leituraService.getLastReadingByBico(bico.id);
-
-               leiturasMap[bico.id] = {
-                  inicial: lastReading?.leitura_final?.toFixed(3).replace('.', ',') || '',
-                  fechamento: ''
-               };
-            })
-         );
-
-         setLeituras(leiturasMap);
+         // Auto-populate logic moved to loadLeituras controlled by useEffect
+         // keeping the setLeituras cleared or empty initially
+         // setLeituras(leiturasMap);
 
       } catch (err) {
          console.error('Error loading data:', err);
@@ -349,7 +337,7 @@ const DailyClosingScreen: React.FC = () => {
 
    // Realtime Subscription para atualizações automáticas do Sistema
    useEffect(() => {
-      console.log('Iniciando subscriptions realtime...');
+      console.log('Iniciando subscriptions realtime...', { selectedDate, selectedTurno });
 
       // Canal unificado para monitorar mudanças
       const channel = supabase
@@ -358,23 +346,40 @@ const DailyClosingScreen: React.FC = () => {
             'postgres_changes',
             { event: '*', schema: 'public', table: 'FechamentoFrentista' },
             (payload) => {
-               console.log('Realtime: FechamentoFrentista alterado', payload);
-               if (selectedDate && selectedTurno) loadFrentistaSessions();
+               console.log('🔔 Realtime: FechamentoFrentista alterado', payload);
+               if (selectedDate && selectedTurno) {
+                  console.log('Recarregando frentistas...');
+                  loadFrentistaSessions();
+               }
             }
          )
          .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'Fechamento' },
             (payload) => {
-               console.log('Realtime: Fechamento alterado', payload);
+               console.log('🔔 Realtime: Fechamento alterado', payload);
                if (selectedDate) loadDayClosures();
-               if (selectedDate && selectedTurno) loadFrentistaSessions(); // Garantir que sync com fechamento pai ocorra
+               if (selectedDate && selectedTurno) loadFrentistaSessions();
             }
          )
-         .subscribe();
+         .subscribe((status) => {
+            console.log('Status da subscription realtime:', status);
+         });
+
+      // Polling de segurança: Verifica a cada 5 segundos se chegou algo novo
+      // Isso garante que o frentista apareça mesmo se o Realtime falhar
+      const intervalId = setInterval(() => {
+         if (selectedDate && selectedTurno) {
+            // Silencioso para não poluir o log, ou com log se preferir debug
+            // loadFrentistaSessions(); 
+            // Vou usar a função existente mas talvez valha a pena criar uma versão "silent" se tivesse muito log
+            loadFrentistaSessions();
+         }
+      }, 5000);
 
       return () => {
          supabase.removeChannel(channel);
+         clearInterval(intervalId);
       };
    }, [selectedDate, selectedTurno]);
 
@@ -420,15 +425,11 @@ const DailyClosingScreen: React.FC = () => {
 
    const loadFrentistaSessions = async () => {
       try {
-         console.log('[DEBUG] loadFrentistaSessions chamada:', { selectedDate, selectedTurno, postoAtivoId });
-
          // Buscamos se já existe um fechamento para este dia/turno
          const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!, postoAtivoId);
-         console.log('[DEBUG] Fechamento encontrado:', fechamento);
 
          if (fechamento) {
             const sessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
-            console.log('[DEBUG] Sessions do fechamento:', sessions);
             if (sessions && sessions.length > 0) {
                const mappedSessions = await Promise.all(sessions.map(async s => {
                   const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
@@ -458,7 +459,17 @@ const DailyClosingScreen: React.FC = () => {
 
          // Se não encontrou no fechamento consolidado, tenta buscar registros soltos de frentistas para este dia/turno (feitos via mobile)
          const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate, postoAtivoId);
-         const shiftSessions = mobileSessions.filter(s => s.fechamento?.turno_id === selectedTurno);
+
+         // Log para debug
+         console.log('Frentistas brutos do banco:', mobileSessions.length);
+
+         const shiftSessions = mobileSessions.filter(s => {
+            // O turno vem do fechamento pai
+            const sessionTurno = s.fechamento?.turno_id;
+            return Number(sessionTurno) === Number(selectedTurno);
+         });
+
+         console.log('Frentistas após filtro de turno:', shiftSessions.length);
 
          if (shiftSessions.length > 0) {
             const mappedSessions = await Promise.all(shiftSessions.map(async s => {
@@ -480,8 +491,6 @@ const DailyClosingScreen: React.FC = () => {
                };
             }));
             setFrentistaSessions(mappedSessions);
-
-            // Atualizar os pagamentos com os totais dos frentistas
             updatePaymentsFromFrentistas(shiftSessions);
          } else {
             setFrentistaSessions([]);
@@ -490,6 +499,60 @@ const DailyClosingScreen: React.FC = () => {
          console.error('Error loading frentista sessions:', err);
       }
    };
+
+   // Nova função para carregar as leituras dos bicos com migração automática
+   const loadLeituras = async () => {
+      // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
+      if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
+
+      try {
+         // Verifica se temos leituras salvas para este turno específico (Modo Edição)
+         const dayReadings = await leituraService.getByDate(selectedDate, postoAtivoId);
+         const shiftReadings = dayReadings.filter(l => l.turno_id === selectedTurno);
+
+         // Se temos leituras SALVAS no banco, usamos elas (Modo Edição)
+         if (shiftReadings.length > 0) {
+            const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
+            shiftReadings.forEach(reading => {
+               leiturasMap[reading.bico_id] = {
+                  inicial: reading.leitura_inicial.toFixed(3).replace('.', ','),
+                  fechamento: reading.leitura_final.toFixed(3).replace('.', ',')
+               };
+            });
+            setLeituras(leiturasMap);
+         } else {
+            // MODO CRIAÇÃO: Só preenche se não tiver dados já digitados pelo usuário
+            // Verifica se já existe algum "fechamento" preenchido (indica que o usuário já digitou algo)
+            const hasUserInput = Object.values(leituras).some(l => l.fechamento && l.fechamento.trim() !== '');
+
+            if (!hasUserInput) {
+               // Nenhum dado digitado ainda - popula com as últimas leituras
+               const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
+               await Promise.all(
+                  bicos.map(async (bico) => {
+                     const lastReading = await leituraService.getLastReadingByBico(bico.id);
+                     // Preserva o inicial do autosave se existir, senão usa do banco
+                     const existingInicial = leituras[bico.id]?.inicial;
+                     const existingFechamento = leituras[bico.id]?.fechamento;
+
+                     leiturasMap[bico.id] = {
+                        inicial: existingInicial || lastReading?.leitura_final?.toFixed(3).replace('.', ',') || '0,000',
+                        fechamento: existingFechamento || ''
+                     };
+                  })
+               );
+               setLeituras(leiturasMap);
+            }
+         }
+      } catch (err) {
+         console.error('Error loading leituras:', err);
+      }
+   };
+
+   // Effect para recarregar leituras quando data ou turno mudam
+   useEffect(() => {
+      loadLeituras();
+   }, [selectedDate, selectedTurno, bicos, restored]);
 
    // Handle inicial input change
    const handleInicialChange = (bicoId: number, value: string) => {
