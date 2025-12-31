@@ -97,14 +97,12 @@ const SalesDashboardScreen: React.FC = () => {
 
 
          // Fetch sales summary for each day of the month and aggregate
-         const allLeituras: (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[] = [];
-
-         // Iterate through each day of the month
-         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
-            const dayLeituras = await leituraService.getByDate(dateStr, postoAtivoId);
-            allLeituras.push(...dayLeituras);
-         }
+         // Fetch sales summary for the month in one call
+         const allLeituras = await leituraService.getByDateRange(
+            startDate.toISOString().split('T')[0],
+            endDate.toISOString().split('T')[0],
+            postoAtivoId
+         );
 
 
          // Calculate totals

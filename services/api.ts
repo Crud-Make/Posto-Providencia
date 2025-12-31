@@ -492,6 +492,29 @@ export const leituraService = {
     return leituras || [];
   },
 
+  async getByDateRange(startDate: string, endDate: string, postoId?: number): Promise<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]> {
+    let query = (supabase as any)
+      .from('Leitura')
+      .select(`
+        *,
+        bico:Bico(
+          *,
+          combustivel:Combustivel(*),
+          bomba:Bomba(*)
+        )
+      `)
+      .gte('data', startDate)
+      .lte('data', endDate);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data: leituras, error } = await query.order('data', { ascending: true });
+    if (error) throw error;
+    return leituras || [];
+  },
+
   async getLastReadingByBico(bicoId: number): Promise<Leitura | null> {
     const { data, error } = await supabase
       .from('Leitura')
@@ -727,16 +750,17 @@ export const fechamentoService = {
     let query = (supabase as any)
       .from('Fechamento')
       .select('*')
-      .eq('data', data)
+      .gte('data', `${data}T00:00:00`)
+      .lte('data', `${data}T23:59:59`)
       .eq('turno_id', turnoId);
 
     if (postoId) {
       query = query.eq('posto_id', postoId);
     }
 
-    const { data: fechamento, error } = await query.maybeSingle();
+    const { data: fechamentos, error } = await query.order('id', { ascending: false }).limit(1);
     if (error) throw error;
-    return fechamento;
+    return fechamentos && fechamentos.length > 0 ? fechamentos[0] : null;
   },
 
   async getByDate(data: string, postoId?: number): Promise<any[]> {
@@ -747,7 +771,8 @@ export const fechamentoService = {
         turno:Turno(*),
         usuario:Usuario(id, nome)
       `)
-      .eq('data', data);
+      .gte('data', `${data}T00:00:00`)
+      .lte('data', `${data}T23:59:59`);
 
     if (postoId) {
       query = query.eq('posto_id', postoId);
@@ -943,7 +968,8 @@ export const fechamentoFrentistaService = {
         frentista:Frentista(*),
         fechamento:Fechamento!inner(data, turno_id, turno:Turno(*), posto_id)
       `)
-      .eq('fechamento.data', dataStr);
+      .gte('fechamento.data', `${dataStr}T00:00:00`)
+      .lte('fechamento.data', `${dataStr}T23:59:59`);
 
     if (postoId) {
       query = query.eq('fechamento.posto_id', postoId);
@@ -1040,7 +1066,7 @@ export const estoqueService = {
 // ============================================
 
 export const compraService = {
-  async getAll(postoId?: number): Promise<(Compra & { combustivel: Combustivel; fornecedor: Fornecedor })[]> {
+  async getAll(postoId?: number, startDate?: string): Promise<(Compra & { combustivel: Combustivel; fornecedor: Fornecedor })[]> {
     let query = (supabase as any)
       .from('Compra')
       .select(`
@@ -1051,6 +1077,10 @@ export const compraService = {
 
     if (postoId) {
       query = query.eq('posto_id', postoId);
+    }
+
+    if (startDate) {
+      query = query.gte('data', startDate);
     }
 
     const { data, error } = await query.order('data', { ascending: false });
@@ -2113,7 +2143,37 @@ export async function fetchDashboardData(
       dataInicio = hoje.toISOString().split('T')[0];
   }
 
-  const vendas = await leituraService.getSalesSummaryByDate(dataInicio, postoId);
+  // Otimização: Busca dados em paralelo e limita o range de datas
+  const [leiturasData, fechamentosFrentistaHoje] = await Promise.all([
+    leituraService.getByDateRange(dataInicio, dataFim, postoId),
+    fechamentoFrentistaService.getByDate(dataInicio, postoId)
+  ]);
+
+  // Agrega as leituras para o formato SalesSummary esperado pelo dashboard antigo (compatibilidade)
+  const totalLitrosVendas = leiturasData.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
+  const totalValorVendas = leiturasData.reduce((acc, l) => acc + (l.valor_total || 0), 0);
+
+  const porCombustivelVendas = leiturasData.reduce((acc, l) => {
+    const codigo = l.bico.combustivel.codigo;
+    if (!acc[codigo]) {
+      acc[codigo] = {
+        combustivel: l.bico.combustivel,
+        litros: 0,
+        valor: 0,
+      };
+    }
+    acc[codigo].litros += l.litros_vendidos || 0;
+    acc[codigo].valor += l.valor_total || 0;
+    return acc;
+  }, {} as Record<string, { combustivel: Combustivel; litros: number; valor: number }>);
+
+  const vendas = {
+    data: dataInicio,
+    totalLitros: totalLitrosVendas,
+    totalVendas: totalValorVendas,
+    porCombustivel: Object.values(porCombustivelVendas),
+    leituras: leiturasData
+  };
 
   // Cores padrão para combustíveis
   const coresCombs: Record<string, string> = {
@@ -2148,11 +2208,6 @@ export async function fetchDashboardData(
   }));
 
   // ClosingsData - Lista consolidada de status dos frentistas
-  const fechamentosFrentistaHoje = await fechamentoFrentistaService.getByDate(
-    dataInicio,
-    postoId
-  );
-
   // Mapeia os fechamentos por frentista, filtrando pelo turno se necessário
   const fechamentosMap = new Map();
   fechamentosFrentistaHoje.forEach((ff) => {
@@ -2393,6 +2448,24 @@ export async function fetchAttendantsData(postoId?: number) {
     'bg-red-100 text-red-700',
   ];
 
+  // Buscar caixas abertos hoje (Prioridade 1)
+  const hojeStr = new Date().toISOString().split('T')[0];
+  const { data: caixasAbertos } = await supabase
+    .from('FechamentoFrentista')
+    .select('frentista_id, fechamento:Fechamento!inner(status, data, turno_id)')
+    .eq('fechamento.status', 'ABERTO')
+    .gte('fechamento.data', `${hojeStr}T00:00:00`)
+    .lte('fechamento.data', `${hojeStr}T23:59:59`);
+
+  const mapCaixaAberto = new Map();
+  if (caixasAbertos) {
+    caixasAbertos.forEach((c: any) => {
+      const turnoId = c.fechamento.turno_id;
+      const turnoNome = turnos.find(t => t.id === turnoId)?.nome;
+      if (turnoNome) mapCaixaAberto.set(c.frentista_id, turnoNome);
+    });
+  }
+
   // Lista de frentistas no formato AttendantProfile
   const list = frentistas.map((f, idx) => {
     const hist = fechamentos[idx] || [];
@@ -2410,7 +2483,10 @@ export async function fetchAttendantsData(postoId?: number) {
     const turnoAtualId = (f as any).turno_id;
     const turnoAtualNome = turnoAtualId ? turnos.find(t => t.id === turnoAtualId)?.nome : null;
     const turnoHistorico = (hist[0]?.fechamento as any)?.turno?.nome;
-    const displayShift = turnoAtualNome || turnoHistorico || 'Indefinido';
+
+    // Prioridade: 1. Aberto Agora, 2. Fixo no Cadastro, 3. Histórico
+    const turnoAberto = mapCaixaAberto.get(f.id);
+    const displayShift = turnoAberto || turnoAtualNome || turnoHistorico || 'Indefinido';
 
     // Pega iniciais do nome
     const nameParts = f.nome.trim().split(/\s+/);
@@ -2437,6 +2513,7 @@ export async function fetchAttendantsData(postoId?: number) {
       avatarColorClass: avatarColors[idx % avatarColors.length],
       email: f.email || 'Não cadastrado',
       posto_id: f.posto_id,
+      turno_id: f.turno_id, // Add this line
     };
   });
 
@@ -2459,14 +2536,14 @@ export async function fetchInventoryData(postoId?: number) {
 
   const [estoque, compras, leiturasRecentes] = await Promise.all([
     estoqueService.getAll(postoId),
-    compraService.getAll(postoId),
+    compraService.getAll(postoId, dataInicioAnalise.toISOString().split('T')[0]),
     supabase
       .from('Leitura')
       .select('*, bico:Bico(combustivel_id), combustivel:Bico(Combustivel(nome))')
       .eq(postoId ? 'posto_id' : '', postoId)
       .gte('data', dataInicioAnalise.toISOString().split('T')[0])
       .order('data', { ascending: false })
-      .limit(50)
+      .limit(100)
   ]);
 
   const leituras = leiturasRecentes.data || [];
@@ -2848,6 +2925,7 @@ export const clienteService = {
     endereco?: string;
     limite_credito?: number;
     ativo?: boolean;
+    bloqueado?: boolean;
   }): Promise<any> {
     const { data, error } = await supabase
       .from('Cliente')
