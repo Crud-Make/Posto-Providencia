@@ -178,6 +178,7 @@ const DailyReadingsScreen: React.FC = () => {
             combustivel_id: bico.combustivel.id,
             preco_litro: bico.combustivel.preco_venda,
             usuario_id: 1, // TODO: Get from auth context
+            posto_id: postoAtivoId,
           };
         });
 

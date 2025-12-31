@@ -5,7 +5,8 @@ import DashboardScreen from './components/DashboardScreen';
 import DailyClosingScreen from './components/DailyClosingScreen';
 import DailyReportScreen from './components/DailyReportScreen';
 import PurchaseRegistrationScreen from './components/PurchaseRegistrationScreen';
-import InventoryDashboardScreen from './components/InventoryDashboardScreen';
+import InventoryDashboardScreen from './components/InventoryDashboardScreen'; // Mantido caso queira reverter futuramente
+import StockManagementScreen from './components/StockManagementScreen';
 import CostAnalysisScreen from './components/CostAnalysisScreen';
 import DailyReadingsScreen from './components/DailyReadingsScreen';
 import SalesAnalysisScreen from './components/SalesAnalysisScreen';
@@ -79,10 +80,10 @@ const AppContent: React.FC = () => {
             <DailyReadingsScreen />
           )}
           {currentView === 'inventory' && (
-            <InventoryDashboardScreen initialTab="fuels" onRegisterPurchase={() => setCurrentView('purchase')} />
+            <InventoryDashboardScreen />
           )}
           {currentView === 'products' && (
-            <InventoryDashboardScreen initialTab="stock" onRegisterPurchase={() => setCurrentView('purchase')} />
+            <StockManagementScreen />
           )}
           {currentView === 'purchase' && (
             <PurchaseRegistrationScreen />

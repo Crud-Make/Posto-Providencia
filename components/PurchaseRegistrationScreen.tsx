@@ -3,6 +3,7 @@ import {
    FileText, Calculator, TrendingUp, Package, DollarSign, MoreVertical, Settings, Calendar, Save, RefreshCw, ChevronDown
 } from 'lucide-react';
 import { combustivelService, compraService, estoqueService } from '../services/api';
+import { tanqueService } from '../services/tanqueService';
 import type { Combustivel } from '../services/database.types';
 import { usePosto } from '../contexts/PostoContext';
 
@@ -17,7 +18,10 @@ type CombustivelHibrido = {
    // Campos de COMPRA
    compra_lt: string;          // Litros comprados
    compra_rs: string;          // Valor total da compra
-   estoque_anterior: string;   // Estoque ano passado
+   estoque_anterior: string;   // Estoque ano passado (J na planilha)
+   estoque_tanque: string;     // Medição física do tanque (N na planilha)
+   tanque_id?: number;
+   preco_custo_cadastro: number; // Preço de custo atual no cadastro
 };
 
 const TABLE_INPUT_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white dark:bg-gray-700 dark:text-white hover:border-emerald-300 dark:hover:border-emerald-600";
@@ -45,12 +49,17 @@ const PurchaseRegistrationScreen: React.FC = () => {
    const loadData = async () => {
       try {
          setLoading(true);
-         const data = await combustivelService.getAll(postoAtivoId);
-         const estoques = await estoqueService.getAll(postoAtivoId);
+         const [data, estoques, tanques] = await Promise.all([
+            combustivelService.getAll(postoAtivoId),
+            estoqueService.getAll(postoAtivoId),
+            tanqueService.getAll(postoAtivoId)
+         ]);
 
          // Mapear combustíveis do banco para o estado local
          const mapped: CombustivelHibrido[] = data.map(c => {
             const est = estoques.find(e => e.combustivel_id === c.id);
+            const tanque = tanques.find(t => t.combustivel_id === c.id);
+
             return {
                id: c.id,
                nome: c.nome,
@@ -60,7 +69,10 @@ const PurchaseRegistrationScreen: React.FC = () => {
                preco_venda_atual: c.preco_venda ? c.preco_venda.toString().replace('.', ',') : '0',
                compra_lt: '',
                compra_rs: '',
-               estoque_anterior: est ? est.quantidade_atual.toString() : '0',
+               estoque_anterior: tanque ? tanque.estoque_atual.toString() : (est ? est.quantidade_atual.toString() : '0'),
+               estoque_tanque: '',
+               tanque_id: tanque?.id,
+               preco_custo_cadastro: c.preco_custo || 0
             };
          });
          setCombustiveis(mapped);
@@ -143,8 +155,13 @@ const PurchaseRegistrationScreen: React.FC = () => {
    const calcMediaLtRs = (c: CombustivelHibrido): number => {
       const compra_lt = parseValue(c.compra_lt);
       const compra_rs = parseValue(c.compra_rs);
-      if (compra_lt === 0) return 0;
-      return compra_rs / compra_lt;
+
+      // Se houver compra hoje, calcula média. 
+      // Se não, usa o preço de custo do cadastro.
+      if (compra_lt > 0) {
+         return compra_rs / compra_lt;
+      }
+      return c.preco_custo_cadastro || 0;
    };
 
    // Calcula a despesa por litro conforme planilha: H22:=H19/F11
@@ -230,11 +247,14 @@ const PurchaseRegistrationScreen: React.FC = () => {
       return compraEstoque - litrosVendidos;
    };
 
+   // Perca e Sobra conforme planilha: M19 = N19 - L19 (Estoque Tanque - Estoque Hoje)
+   // Valor positivo = SOBRA (tanque tem mais que o calculado)
+   // Valor negativo = PERCA (tanque tem menos que o calculado)
    const calcPercaSobra = (c: CombustivelHibrido): number => {
-      // Planilha: M19:=N19-L19 (Estoque Tanque - Estoque Hoje)
-      // Requer campo estoque_tanque para funcionar corretamente
-      // Por ora, retorna 0 pois não temos o dado do tanque físico
-      return 0;
+      const estoqueTanque = parseValue(c.estoque_tanque); // N - Medição física
+      if (estoqueTanque === 0) return 0; // Se não informou, não calcula
+      const estoqueHoje = calcEstoqueHoje(c);             // L - Estoque calculado
+      return estoqueTanque - estoqueHoje;
    };
 
    // === TOTAIS ===
@@ -253,6 +273,9 @@ const PurchaseRegistrationScreen: React.FC = () => {
          totalCompraRs += parseValue(c.compra_rs);
       });
 
+      const totalCustoEstoque = combustiveis.reduce((acc, c) => acc + (calcEstoqueHoje(c) * calcMediaLtRs(c)), 0);
+      const totalLucroEstoque = combustiveis.reduce((acc, c) => acc + (calcEstoqueHoje(c) * calcLucroLt(c)), 0);
+
       const mediaTotal = totalCompraLt > 0 ? totalCompraRs / totalCompraLt : 0;
       // Margem média = lucro total / valor total de venda
       const margemMedia = totalValorBico > 0 ? (totalLucroBico / totalValorBico) * 100 : 0;
@@ -265,7 +288,9 @@ const PurchaseRegistrationScreen: React.FC = () => {
          totalCompraRs,
          despesasMesTotal: parseValue(despesasMes),
          mediaTotal,
-         margemMedia
+         margemMedia,
+         totalCustoEstoque,
+         totalLucroEstoque
       };
    }, [combustiveis, despesasMes]);
 
@@ -278,14 +303,19 @@ const PurchaseRegistrationScreen: React.FC = () => {
 
    // === SALVAR E ATUALIZAR SISTEMA ===
    const handleSave = async () => {
-      const comprasParaSalvar = combustiveis.filter(c => parseValue(c.compra_lt) > 0);
+      const itensComMovimentacao = combustiveis.filter(c =>
+         parseValue(c.compra_lt) > 0 || calcLitrosVendidos(c) > 0 || parseValue(c.estoque_tanque) > 0
+      );
 
-      if (comprasParaSalvar.length === 0) {
-         alert('Nenhuma compra registrada para salvar.');
+      if (itensComMovimentacao.length === 0) {
+         alert('Nenhuma movimentação (compra ou venda) registrada para salvar.');
          return;
       }
 
-      if (!confirm(`Deseja salvar ${comprasParaSalvar.length} compras e ATUALIZAR os preços de venda no sistema ? `)) {
+      const comprasCount = itensComMovimentacao.filter(c => parseValue(c.compra_lt) > 0).length;
+      const vendasCount = itensComMovimentacao.filter(c => calcLitrosVendidos(c) > 0).length;
+
+      if (!confirm(`Deseja salvar as alterações?\n\n- ${comprasCount} Compras\n- ${vendasCount} Vendas (Baixa de Estoque)\n\nO estoque dos tanques será atualizado.`)) {
          return;
       }
 
@@ -293,40 +323,80 @@ const PurchaseRegistrationScreen: React.FC = () => {
          setSaving(true);
          const hoje = new Date().toISOString().split('T')[0];
 
-         for (const c of comprasParaSalvar) {
-            const valorTotal = parseValue(c.compra_rs);
-            const litros = parseValue(c.compra_lt);
-            const fornecedorId = 1; // Ajustar conforme fornecedor selecionado. Idealmente deveria haver um select.
+         for (const c of itensComMovimentacao) {
+            // Processar Venda (Baixa de Estoque)
+            const litrosVendidos = calcLitrosVendidos(c);
+            if (litrosVendidos > 0 && c.tanque_id) {
+               await tanqueService.updateStock(c.tanque_id, -litrosVendidos);
+            }
 
-            // 1. Criar registro de Compra
-            await compraService.create({
-               combustivel_id: c.id,
-               data: hoje,
-               fornecedor_id: fornecedorId,
-               quantidade_litros: litros,
-               valor_total: valorTotal,
-               custo_por_litro: valorTotal / litros,
-               observacoes: `Atualização de estoque / preço via Painel de Compras`,
-               posto_id: postoAtivoId
-            });
+            // Processar Compra (Entrada de Estoque)
+            const litrosCompra = parseValue(c.compra_lt);
+            if (litrosCompra > 0) {
+               const valorTotal = parseValue(c.compra_rs);
+               const fornecedorId = 1;
 
-            // 2. Atualizar Preço de Venda no Sistema (Tabela Combustivel)
-            const novoPrecoVenda = calcValorParaVenda(c);
-            if (novoPrecoVenda > 0) {
+               // 1. Criar registro de Compra
+               await compraService.create({
+                  combustivel_id: c.id,
+                  data: hoje,
+                  fornecedor_id: fornecedorId,
+                  quantidade_litros: litrosCompra,
+                  valor_total: valorTotal,
+                  custo_por_litro: litrosCompra > 0 ? valorTotal / litrosCompra : 0,
+                  observacoes: `Atualização de estoque via Painel`,
+                  posto_id: postoAtivoId
+               });
+
+               if (c.tanque_id) {
+                  await tanqueService.updateStock(c.tanque_id, litrosCompra);
+               }
+            }
+
+            // Se houver compra, atualizar preço de custo médio ponderado
+            if (litrosCompra > 0) {
+               const estoqueAntes = parseValue(c.estoque_anterior);
+               const custoAntigo = c.preco_custo_cadastro;
+               const valorCompra = parseValue(c.compra_rs); // Total da compra (R$)
+
+               let novoCusto = custoAntigo;
+               const estoqueAjustado = Math.max(estoqueAntes, 0); // Evitar distorção com estoque negativo
+
+               const valorEstoqueAntigo = estoqueAjustado * custoAntigo;
+               const novoTotalValor = valorEstoqueAntigo + valorCompra;
+               const novoTotalLitros = estoqueAjustado + litrosCompra;
+
+               if (novoTotalLitros > 0) {
+                  novoCusto = novoTotalValor / novoTotalLitros;
+               }
+
+               // Atualizar Combustivel
                await combustivelService.update(c.id, {
-                  preco_venda: novoPrecoVenda
+                  preco_custo: novoCusto
+               });
+            }
+
+            // Salvar Histórico Diário
+            if (c.tanque_id) {
+               const estoqueFisico = parseValue(c.estoque_tanque);
+               await tanqueService.saveHistory({
+                  tanque_id: c.tanque_id,
+                  data: hoje,
+                  volume_livro: calcEstoqueHoje(c),
+                  volume_fisico: estoqueFisico > 0 ? estoqueFisico : undefined
                });
             }
          }
 
-         alert('Compras salvas e preços atualizados com sucesso!');
+         alert('Movimentações salvas e estoque atualizado com sucesso!');
 
-         // Limpar campos de compra após salvar
+         // Limpar campos de compra e recarregar
          setCombustiveis(prev => prev.map(c => ({
             ...c,
             compra_lt: '',
             compra_rs: ''
          })));
+
 
          // Recarregar dados para garantir sincronia
          loadData();
@@ -614,6 +684,116 @@ const PurchaseRegistrationScreen: React.FC = () => {
                            <td className="px-4 py-3 text-center">{formatCurrency(totais.totalCompraRs)}</td>
                            <td className="px-4 py-3 text-right bg-blue-900">{formatCurrency(totais.mediaTotal)}</td>
                            <td className="px-4 py-3 text-right text-slate-400">-</td>
+                        </tr>
+                     </tfoot>
+                  </table>
+               </div>
+            </section>
+
+            {/* === SEÇÃO ESTOQUE === */}
+            <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+               <div className="bg-purple-600 px-6 py-4 flex items-center gap-2">
+                  <Package className="text-white" size={24} />
+                  <h2 className="text-white font-semibold text-lg">Controle de Estoque</h2>
+               </div>
+               <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-sm text-left">
+                     <thead className="bg-slate-100 dark:bg-gray-700 text-xs uppercase font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        <tr>
+                           <th className="px-4 py-4 min-w-[120px]">Produtos</th>
+                           <th className="px-4 py-4 text-right">Estoque Anterior</th>
+                           <th className="px-4 py-4 text-right text-purple-600">Compra + Estoque</th>
+                           <th className="px-4 py-4 text-right text-blue-600">Estoque Hoje</th>
+                           <th className="px-4 py-4 text-right text-gray-500">Valor Estoque (R$)</th>
+                           <th className="px-4 py-4 text-right text-green-600">Lucro Previsto (R$)</th>
+                           <th className="px-4 py-4 text-center text-amber-600">Estoque Tanque</th>
+                           <th className="px-4 py-4 text-right">Perca / Sobra</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {combustiveis.map((c, index) => {
+                           const compraEstoque = calcCompraEEstoque(c);
+                           const estoqueHoje = calcEstoqueHoje(c);
+                           const percaSobra = calcPercaSobra(c);
+                           const rowClass = index % 2 === 0 ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : "bg-gray-50/50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/70";
+
+                           return (
+                              <tr key={c.id} className={`${rowClass} transition-colors`}>
+                                 <td className="px-4 py-5 font-medium dark:text-white">{c.nome}</td>
+                                 <td className="px-4 py-5 text-right text-slate-600 dark:text-slate-400">
+                                    {parseValue(c.estoque_anterior) > 0 ? formatToBR(parseValue(c.estoque_anterior), 0) : '-'}
+                                 </td>
+                                 <td className="px-4 py-5 text-right text-purple-600 font-semibold">
+                                    {compraEstoque > 0 ? formatToBR(compraEstoque, 0) : '-'}
+                                 </td>
+                                 <td className="px-4 py-5 text-right text-blue-500 font-bold">
+                                    {estoqueHoje !== 0 ? formatToBR(estoqueHoje, 0) : '-'}
+                                 </td>
+                                 <td className="px-4 py-5 text-right text-gray-600 bg-gray-50 dark:bg-gray-700/50">
+                                    {formatCurrency(estoqueHoje * calcMediaLtRs(c))}
+                                 </td>
+                                 <td className="px-4 py-5 text-right text-green-600 font-bold bg-green-50 dark:bg-green-900/10">
+                                    {formatCurrency(estoqueHoje * calcLucroLt(c))}
+                                 </td>
+                                 <td className="px-3 py-5 min-w-[150px]">
+                                    <input
+                                       className="w-full px-3 py-3 text-right text-base font-medium border border-amber-300 dark:border-amber-600 rounded-lg focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all shadow-sm bg-amber-50/50 dark:bg-amber-900/20 dark:text-white hover:border-amber-400"
+                                       type="text"
+                                       value={c.estoque_tanque}
+                                       placeholder="Medição física"
+                                       onChange={(e) => handleChange(c.id, 'estoque_tanque', e.target.value)}
+                                    />
+                                 </td>
+                                 <td className={`px-4 py-5 text-right font-bold ${percaSobra > 0
+                                    ? 'text-emerald-500' // SOBRA - positivo
+                                    : percaSobra < 0
+                                       ? 'text-red-500'  // PERCA - negativo
+                                       : 'text-slate-400'
+                                    }`}>
+                                    {percaSobra !== 0 ? (
+                                       <span className="flex items-center justify-end gap-1">
+                                          {percaSobra > 0 ? '+' : ''}{formatToBR(percaSobra, 0)}
+                                          <span className="text-xs opacity-75">
+                                             {percaSobra > 0 ? 'SOBRA' : 'PERCA'}
+                                          </span>
+                                       </span>
+                                    ) : '-'}
+                                 </td>
+                              </tr>
+                           );
+                        })}
+                     </tbody>
+                     <tfoot className="bg-slate-800 text-white font-bold text-xs uppercase">
+                        <tr>
+                           <td className="px-4 py-3 flex items-center gap-1">Total</td>
+                           <td className="px-4 py-3 text-right">
+                              {formatToBR(combustiveis.reduce((acc, c) => acc + parseValue(c.estoque_anterior), 0), 0)}
+                           </td>
+                           <td className="px-4 py-3 text-right bg-purple-900">
+                              {formatToBR(combustiveis.reduce((acc, c) => acc + calcCompraEEstoque(c), 0), 0)}
+                           </td>
+                           <td className="px-4 py-3 text-right bg-blue-900">
+                              {formatToBR(combustiveis.reduce((acc, c) => acc + calcEstoqueHoje(c), 0), 0)}
+                           </td>
+                           <td className="px-4 py-3 text-right bg-gray-700">
+                              {formatCurrency(totais.totalCustoEstoque)}
+                           </td>
+                           <td className="px-4 py-3 text-right bg-green-800">
+                              {formatCurrency(totais.totalLucroEstoque)}
+                           </td>
+                           <td className="px-4 py-3 text-center">
+                              {formatToBR(combustiveis.reduce((acc, c) => acc + parseValue(c.estoque_tanque), 0), 0)}
+                           </td>
+                           <td className="px-4 py-3 text-right">
+                              {(() => {
+                                 const totalPercaSobra = combustiveis.reduce((acc, c) => acc + calcPercaSobra(c), 0);
+                                 return totalPercaSobra !== 0 ? (
+                                    <span className={totalPercaSobra > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                                       {totalPercaSobra > 0 ? '+' : ''}{formatToBR(totalPercaSobra, 0)}
+                                    </span>
+                                 ) : '-';
+                              })()}
+                           </td>
                         </tr>
                      </tfoot>
                   </table>
