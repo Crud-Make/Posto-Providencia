@@ -15,7 +15,8 @@ import {
     Receipt,
     MoreVertical,
     Trash2,
-    Edit
+    Edit,
+    Ban
 } from 'lucide-react';
 import { usePosto } from '../contexts/PostoContext';
 import { clienteService, notaFrentistaService } from '../services/api';
@@ -170,6 +171,50 @@ const CustomerManagementScreen: React.FC = () => {
         }
     };
 
+    const handleBloquearCliente = async () => {
+        console.log('handleBloquearCliente chamado', selectedCliente);
+        if (!selectedCliente) return;
+        const isBlocked = selectedCliente.ativo === false;
+
+        try {
+            await clienteService.update(selectedCliente.id, { ativo: !selectedCliente.ativo });
+            alert(`Cliente ${isBlocked ? 'desbloqueado' : 'bloqueado'} com sucesso!`);
+            setSelectedCliente(null);
+            loadClientes();
+        } catch (error) {
+            console.error('Erro ao bloquear/desbloquear cliente:', error);
+            alert('Erro ao atualizar cliente.');
+        }
+    };
+
+    const handleApagarCliente = async () => {
+        console.log('1. handleApagarCliente chamado', selectedCliente);
+        if (!selectedCliente) {
+            console.log('2. selectedCliente é null, retornando');
+            return;
+        }
+
+        console.log('3. saldo_devedor:', selectedCliente.saldo_devedor);
+        if (selectedCliente.saldo_devedor > 0) {
+            console.log('4. Cliente tem saldo devedor, não pode apagar');
+            alert('Não é possível apagar um cliente com saldo devedor.');
+            return;
+        }
+
+        console.log('5. Tentando apagar cliente...');
+        try {
+            console.log('6. Chamando clienteService.delete');
+            await clienteService.delete(selectedCliente.id);
+            console.log('7. Cliente apagado com sucesso!');
+            alert('Cliente apagado com sucesso!');
+            setSelectedCliente(null);
+            loadClientes();
+        } catch (error) {
+            console.error('ERRO ao apagar cliente:', error);
+            alert('Erro ao apagar cliente.');
+        }
+    };
+
     const filteredClientes = clientes.filter(c =>
         c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.documento?.includes(searchTerm)
@@ -261,8 +306,8 @@ const CustomerManagementScreen: React.FC = () => {
                                     key={cliente.id}
                                     onClick={() => handleClienteClick(cliente)}
                                     className={`p-3 rounded-lg cursor-pointer transition-all border ${selectedCliente?.id === cliente.id
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                                            : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                                        : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
                                         }`}
                                 >
                                     <div className="flex justify-between items-start">
@@ -327,10 +372,24 @@ const CustomerManagementScreen: React.FC = () => {
                                 </div>
 
                                 <div className="flex gap-2">
-                                    <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50">
+                                    <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                                         <Edit size={16} /> Editar Dados
                                     </button>
-                                    {/* Futuro: Gerar Extrato PDF */}
+                                    <button
+                                        onClick={handleBloquearCliente}
+                                        className={`flex items-center gap-2 px-3 py-1.5 border rounded-md text-sm font-medium transition-colors ${selectedCliente.ativo === false
+                                            ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                                            : 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
+                                            }`}
+                                    >
+                                        <Ban size={16} /> {selectedCliente.ativo === false ? 'Desbloquear' : 'Bloquear'}
+                                    </button>
+                                    <button
+                                        onClick={handleApagarCliente}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-md text-sm font-medium text-red-700 hover:bg-red-100 transition-colors"
+                                    >
+                                        <Trash2 size={16} /> Apagar
+                                    </button>
                                 </div>
                             </div>
 
