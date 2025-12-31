@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useMemo, useCallback } from 'react';
 import {
   Fuel,
   Leaf,
@@ -23,7 +23,9 @@ import { InventoryItem, InventoryAlert, InventoryTransaction } from '../types';
 import { usePosto } from '../contexts/PostoContext';
 import InventoryFinancialCharts from './InventoryFinancialCharts';
 import FuelTank from './FuelTank';
-import StockManagementScreen from './StockManagementScreen';
+
+// Lazy load StockManagementScreen para melhor performance
+const StockManagementScreen = lazy(() => import('./StockManagementScreen'));
 
 interface InventoryDashboardProps {
   onRegisterPurchase: () => void;
@@ -63,19 +65,28 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
     loadData();
   }, [postoAtivoId]);
 
-  const handleMeasurementChange = (id: string, value: string) => {
+  const handleMeasurementChange = useCallback((id: string, value: string) => {
     // Permite apenas numeros e virgula/ponto
     const formatted = value.replace(/[^0-9,.]/g, '');
     setMeasurements(prev => ({ ...prev, [id]: formatted }));
-  };
+  }, []);
 
-  const parseMeasure = (val: string) => {
+  const parseMeasure = useCallback((val: string) => {
     if (!val) return 0;
     return parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
-  };
+  }, []);
+
+  // Memoiza os items ajustados para os gráficos
+  const chartItems = useMemo(() => {
+    return items.map(i => {
+      const measureVal = measurements[i.id];
+      const volume = measureVal ? parseMeasure(measureVal) : i.volume;
+      return { ...i, volume };
+    });
+  }, [items, measurements, parseMeasure]);
 
   // Recalcula totais baseado no físico (se houver) ou lógico
-  const currentSummary = React.useMemo(() => {
+  const currentSummary = useMemo(() => {
     if (items.length === 0) return summary;
 
     let totalCost = 0;
@@ -89,7 +100,7 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
     });
 
     return { totalCost, totalSell, projectedProfit: totalSell - totalCost };
-  }, [items, measurements, summary]);
+  }, [items, measurements, summary, parseMeasure]);
 
   if (loading) {
     return (
@@ -195,7 +206,14 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
       </div>
 
       {activeTab === 'stock' ? (
-        <StockManagementScreen />
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center min-h-[400px] w-full">
+            <Loader2 size={40} className="animate-spin text-blue-600 mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Carregando gestão de estoque...</p>
+          </div>
+        }>
+          <StockManagementScreen />
+        </Suspense>
       ) : (
         <>
           {/* Fuel Status Cards (Grid) */}
@@ -353,12 +371,7 @@ const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegiste
           </div>
 
           {/* Financial Charts Section */}
-          <InventoryFinancialCharts items={items.map(i => {
-            // Passa para os gráficos os valores ajustados pelo físico
-            const measureVal = measurements[i.id];
-            const volume = measureVal ? parseMeasure(measureVal) : i.volume;
-            return { ...i, volume };
-          })} />
+          <InventoryFinancialCharts items={chartItems} />
 
           {/* Financial Reconciliation & Stock Analysis */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">

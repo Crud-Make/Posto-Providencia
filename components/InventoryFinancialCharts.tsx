@@ -191,4 +191,4 @@ const InventoryFinancialCharts: React.FC<InventoryFinancialChartsProps> = ({ ite
     );
 };
 
-export default InventoryFinancialCharts;
+export default React.memo(InventoryFinancialCharts);

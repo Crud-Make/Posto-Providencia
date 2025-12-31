@@ -145,4 +145,4 @@ const FuelTank: React.FC<FuelTankProps> = ({
     );
 };
 
-export default FuelTank;
+export default React.memo(FuelTank);
