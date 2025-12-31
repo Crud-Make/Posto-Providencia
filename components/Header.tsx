@@ -4,8 +4,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import PostoSelector from './PostoSelector';
 
 interface HeaderProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
@@ -70,6 +70,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
             { id: 'solvency', label: 'Painel de Solvência' },
             { id: 'settings', label: 'Configurações' },
             { id: 'schedule', label: 'Escala e Folgas' },
+            { id: 'ai_strategy', label: 'Estrategista IA' },
           ].map((item) => (
             <button
               key={item.id}
