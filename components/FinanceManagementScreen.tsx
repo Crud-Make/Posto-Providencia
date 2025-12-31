@@ -27,6 +27,7 @@ import { api } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
 import { Loan, LoanInstallment } from '../types';
 import KPICard from './KPICard';
+import { toast } from 'sonner';
 
 const FinanceManagementScreen: React.FC = () => {
     const { postoAtivoId } = usePosto();
@@ -48,6 +49,8 @@ const FinanceManagementScreen: React.FC = () => {
         observacoes: '',
         posto_id: postoAtivoId || 1
     });
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
 
     const loadData = async () => {
         setLoading(true);
@@ -90,8 +93,16 @@ const FinanceManagementScreen: React.FC = () => {
     const handleCreateLoan = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.emprestimo.create(formData as any);
+            if (isEditing && editingLoanId) {
+                await api.emprestimo.update(Number(editingLoanId), formData as any);
+                toast.success("Empréstimo atualizado com sucesso!");
+            } else {
+                await api.emprestimo.create(formData as any);
+                toast.success("Empréstimo criado com sucesso!");
+            }
             setShowNewLoanModal(false);
+            setIsEditing(false);
+            setEditingLoanId(null);
             loadData();
             // Reset form
             setFormData({
@@ -107,9 +118,41 @@ const FinanceManagementScreen: React.FC = () => {
                 posto_id: postoAtivoId || 1
             });
         } catch (error) {
-            console.error("Failed to create loan", error);
-            alert("Erro ao criar empréstimo. Verifique se as tabelas foram criadas no banco.");
+            console.error("Failed to handle loan", error);
+            toast.error("Erro ao processar empréstimo. Verifique sua conexão.");
         }
+    };
+
+    const handleDeleteLoan = async (loanId: string) => {
+        if (!confirm("Tem certeza que deseja excluir este empréstimo e todas as suas parcelas?")) return;
+
+        try {
+            await api.emprestimo.delete(Number(loanId));
+            toast.success("Empréstimo excluído com sucesso!");
+            setSelectedLoan(null);
+            loadData();
+        } catch (error) {
+            console.error("Failed to delete loan", error);
+            toast.error("Erro ao excluir empréstimo.");
+        }
+    };
+
+    const handleEditLoan = (loan: Loan) => {
+        setIsEditing(true);
+        setEditingLoanId(loan.id);
+        setFormData({
+            credor: loan.credor,
+            valor_total: loan.valorTotal,
+            quantidade_parcelas: loan.quantidadeParcelas,
+            valor_parcela: loan.valorParcela,
+            data_emprestimo: loan.dataEmprestimo,
+            data_primeiro_vencimento: loan.dataPrimeiroVencimento,
+            periodicidade: loan.periodicidade as any,
+            taxa_juros: loan.taxaJuros,
+            observacoes: loan.observacoes,
+            posto_id: postoAtivoId || 1
+        });
+        setShowNewLoanModal(true);
     };
 
     const handlePayInstallment = async (installmentId: string, status: 'pago' | 'pendente') => {
@@ -310,10 +353,16 @@ const FinanceManagementScreen: React.FC = () => {
                                     </p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors">
+                                    <button
+                                        onClick={() => handleEditLoan(selectedLoan)}
+                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                                    >
                                         <Edit size={18} />
                                     </button>
-                                    <button className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-red-400 transition-colors">
+                                    <button
+                                        onClick={() => handleDeleteLoan(selectedLoan.id)}
+                                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-red-400 transition-colors"
+                                    >
                                         <Trash2 size={18} />
                                     </button>
                                 </div>
@@ -392,8 +441,10 @@ const FinanceManagementScreen: React.FC = () => {
                     <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
                         <div className="px-8 py-6 bg-red-700 text-white flex justify-between items-center">
                             <div>
-                                <h2 className="text-2xl font-black tracking-tight">Novo Empréstimo</h2>
-                                <p className="text-red-100 text-sm font-medium">Preencha os dados para gerar o cronograma de parcelas.</p>
+                                <h2 className="text-2xl font-black tracking-tight">{isEditing ? 'Editar Empréstimo' : 'Novo Empréstimo'}</h2>
+                                <p className="text-red-100 text-sm font-medium">
+                                    {isEditing ? 'Atualize os dados básicos do compromisso.' : 'Preencha os dados para gerar o cronograma de parcelas.'}
+                                </p>
                             </div>
                             <button
                                 onClick={() => setShowNewLoanModal(false)}

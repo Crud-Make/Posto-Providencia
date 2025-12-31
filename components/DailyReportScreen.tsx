@@ -29,7 +29,8 @@ import {
     fechamentoService,
     leituraService,
     turnoService,
-    frentistaService
+    frentistaService,
+    despesaService
 } from '../services/api';
 
 
@@ -49,6 +50,8 @@ interface DailyTotals {
     vendas: number;
     litros: number;
     lucro: number;
+    despesas: number;
+    lucroLiquido: number;
     diferenca: number;
     projetadoMensal: number;
 }
@@ -62,20 +65,29 @@ const DailyReportScreen: React.FC = () => {
         vendas: 0,
         litros: 0,
         lucro: 0,
+        despesas: 0,
+        lucroLiquido: 0,
         diferenca: 0,
         projetadoMensal: 0
     });
+    const [expensesDay, setExpensesDay] = useState<any[]>([]);
 
     const loadData = async () => {
         try {
             setLoading(true);
 
             // 1. Load basic data
-            const [fechamentos, leituras, turnos] = await Promise.all([
+            const [fechamentos, leituras, turnos, despesas] = await Promise.all([
                 fechamentoService.getByDate(selectedDate, postoAtivoId),
                 leituraService.getByDate(selectedDate, postoAtivoId),
-                turnoService.getAll(postoAtivoId)
+                turnoService.getAll(postoAtivoId),
+                despesaService.getAll(postoAtivoId)
             ]);
+
+            // Filter expenses for the specific day
+            const dayExpenses = despesas.filter(d => d.data === selectedDate);
+            setExpensesDay(dayExpenses);
+            const totalDespesas = dayExpenses.reduce((sum, d) => sum + Number(d.valor), 0);
 
             // 2. Process Shifts
             const processedShifts: ShiftData[] = turnos.map(turno => {
@@ -131,6 +143,8 @@ const DailyReportScreen: React.FC = () => {
                 vendas: totalVendas,
                 litros: totalLitros,
                 lucro: totalLucro,
+                despesas: totalDespesas,
+                lucroLiquido: totalLucro - totalDespesas,
                 diferenca: totalDiferenca,
                 projetadoMensal: totalVendas * 30 // Naive projection
             });
@@ -194,22 +208,44 @@ const DailyReportScreen: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Lucro Estimado */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden group">
                     <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                        <TrendingUp size={80} />
+                        <ArrowRight size={80} className="text-red-500" />
                     </div>
                     <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
-                            <TrendingUp size={20} />
+                        <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg text-red-600 dark:text-red-400">
+                            <ArrowRight size={20} className="rotate-90" />
                         </div>
-                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Lucro Estimado</span>
+                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Despesas do Dia</span>
                     </div>
-                    <h3 className="text-3xl font-black text-gray-900 dark:text-gray-100">{fmtMoney(totals.lucro)}</h3>
+                    <h3 className="text-3xl font-black text-gray-900 dark:text-gray-100">{fmtMoney(totals.despesas)}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Margem aprox. {totals.vendas > 0 ? ((totals.lucro / totals.vendas) * 100).toFixed(1) : 0}%
+                        {expensesDay.length} registros hoje
                     </p>
                 </div>
+
+                {/* Lucro Líquido */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border-2 border-blue-500/20 dark:border-blue-500/30 shadow-lg shadow-blue-500/5 relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                        <TrendingUp size={80} className="text-blue-500" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                            <TrendingUp size={20} />
+                        </div>
+                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase">Lucro Líquido (Real)</span>
+                    </div>
+                    <h3 className="text-3xl font-black text-gray-900 dark:text-gray-100">{fmtMoney(totals.lucroLiquido)}</h3>
+                    <div className="mt-2 h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${Math.min(100, totals.lucro > 0 ? (totals.lucroLiquido / totals.lucro) * 100 : 0)}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Diferença de Caixa (Moved to 5th or shared) */}
+                {/* Note: In 4 cols grid, this will wrap or need adjustment. I'll replace the Status card for now or adjust grid. */}
 
                 {/* Diferença de Caixa */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden group">
@@ -254,129 +290,169 @@ const DailyReportScreen: React.FC = () => {
                 </div>
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Vendas por Turno */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm h-[400px]">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
-                        <BarChart2 size={20} className="text-blue-600" />
-                        Performance por Turno
-                    </h3>
-                    <ResponsiveContainer width="100%" height="85%">
-                        <BarChart data={shiftsData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                            <XAxis dataKey="turnoName" tickLine={false} axisLine={false} />
-                            <YAxis
-                                yAxisId="left"
-                                orientation="left"
-                                tickFormatter={(value) => `R$${value / 1000}k`}
-                                axisLine={false}
-                                tickLine={false}
-                            />
-                            <YAxis
-                                yAxisId="right"
-                                orientation="right"
-                                tickFormatter={(value) => `${value}L`}
-                                axisLine={false}
-                                tickLine={false}
-                            />
-                            <Tooltip
-                                formatter={(value: number, name: string) => [
-                                    name === 'vendas' ? fmtMoney(value) : fmtLitros(value),
-                                    name === 'vendas' ? 'Vendas' : 'Volume'
-                                ]}
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Legend />
-                            <Bar yAxisId="left" dataKey="vendas" name="Vendas (R$)" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={40} />
-                            <Bar yAxisId="right" dataKey="litros" name="Volume (L)" fill="#93C5FD" radius={[4, 4, 0, 0]} barSize={40} />
-                        </BarChart>
-                    </ResponsiveContainer>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column: Shifts and Charts */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Detailed Table */}
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <BarChart2 size={20} className="text-blue-600" />
+                                Detalhamento por Turno
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left font-sans">
+                                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 uppercase text-xs font-bold tracking-wider">
+                                    <tr>
+                                        <th className="px-6 py-4">Turno</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4 text-right">Vendas</th>
+                                        <th className="px-6 py-4 text-right">Volume</th>
+                                        <th className="px-6 py-4 text-right">Lucro Est.</th>
+                                        <th className="px-6 py-4 text-right">Quebra/Sobra</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                    {shiftsData.map((shift) => (
+                                        <tr key={shift.turnoId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
+                                                {shift.turnoName}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase ${shift.status === 'Fechado'
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                                    }`}>
+                                                    {shift.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-gray-100">
+                                                {fmtMoney(shift.vendas)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 font-medium">
+                                                {fmtLitros(shift.litros)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-black text-green-600 dark:text-green-400">
+                                                {fmtMoney(shift.lucro)}
+                                            </td>
+                                            <td className={`px-6 py-4 text-right font-bold ${shift.diferenca < 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                                                {fmtMoney(shift.diferenca)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {/* Total Row */}
+                                    <tr className="bg-gray-50 dark:bg-gray-900/50 font-black text-gray-900 dark:text-white border-t-2 border-gray-200 dark:border-gray-700">
+                                        <td className="px-6 py-4">TOTAL ACUMULADO</td>
+                                        <td className="px-6 py-4"></td>
+                                        <td className="px-6 py-4 text-right">{fmtMoney(totals.vendas)}</td>
+                                        <td className="px-6 py-4 text-right">{fmtLitros(totals.litros)}</td>
+                                        <td className="px-6 py-4 text-right text-green-600 dark:text-green-400">{fmtMoney(totals.lucro)}</td>
+                                        <td className={`px-6 py-4 text-right ${totals.diferenca < 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                                            {fmtMoney(totals.diferenca)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Chart */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm h-[400px]">
+                        <h3 className="text-lg font-black text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2 uppercase tracking-tight">
+                            <TrendingUp size={20} className="text-green-600" />
+                            Lucratividade vs Quebras por Turno
+                        </h3>
+                        <ResponsiveContainer width="100%" height="85%">
+                            <BarChart data={shiftsData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                <XAxis dataKey="turnoName" tickLine={false} axisLine={false} />
+                                <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `R$${val}`} />
+                                <Tooltip
+                                    formatter={(value: number) => fmtMoney(value)}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                />
+                                <Legend />
+                                <Bar dataKey="lucro" name="Lucro Bruto" fill="#10B981" radius={[4, 4, 0, 0]} barSize={40} />
+                                <Bar dataKey="diferenca" name="Diferença Caixa" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
-                {/* Lucro vs Diferença */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm h-[400px]">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
-                        <TrendingUp size={20} className="text-green-600" />
-                        Lucratividade vs Quebras
-                    </h3>
-                    <ResponsiveContainer width="100%" height="85%">
-                        <BarChart data={shiftsData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                            <XAxis dataKey="turnoName" tickLine={false} axisLine={false} />
-                            <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `R$${val}`} />
-                            <Tooltip formatter={(value: number) => fmtMoney(value)} />
-                            <Legend />
-                            <Bar dataKey="lucro" name="Lucro Bruto" fill="#10B981" radius={[4, 4, 0, 0]} barSize={40} />
-                            <Bar dataKey="diferenca" name="Diferença Caixa" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={40} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
+                {/* Right Column: Expenses and Summary */}
+                <div className="space-y-6">
+                    {/* Expenses List */}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/20">
+                            <h3 className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <DollarSign size={18} className="text-red-500" />
+                                Despesas do Dia
+                            </h3>
+                            <span className="text-xs font-black text-red-500 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-lg">
+                                {fmtMoney(totals.despesas)}
+                            </span>
+                        </div>
+                        <div className="p-4 max-h-[400px] overflow-y-auto">
+                            {expensesDay.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                                    <FileText size={48} className="opacity-10 mb-2" />
+                                    <p className="text-sm">Nenhuma despesa registrada</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {expensesDay.map((expense) => (
+                                        <div key={expense.id} className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 flex justify-between items-center hover:shadow-sm transition-shadow">
+                                            <div className="min-w-0 pr-2">
+                                                <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{expense.descricao}</div>
+                                                <div className="text-[10px] text-gray-500 uppercase font-black tracking-wider">{expense.categoria}</div>
+                                            </div>
+                                            <div className="text-sm font-black text-red-500 whitespace-nowrap">
+                                                - {fmtMoney(expense.valor)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-            {/* Detailed Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                        Detalhamento por Turno
-                    </h3>
-                    <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors">
-                        <FileText size={16} /> Exportar CSV
-                    </button>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 uppercase text-xs font-bold tracking-wider">
-                            <tr>
-                                <th className="px-6 py-4">Turno</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-right">Vendas</th>
-                                <th className="px-6 py-4 text-right">Volume</th>
-                                <th className="px-6 py-4 text-right">Lucro Est.</th>
-                                <th className="px-6 py-4 text-right">Quebra/Sobra</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {shiftsData.map((shift) => (
-                                <tr key={shift.turnoId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                    <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
-                                        {shift.turnoName}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${shift.status === 'Fechado'
-                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                                            }`}>
-                                            {shift.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-gray-100">
-                                        {fmtMoney(shift.vendas)}
-                                    </td>
-                                    <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400">
-                                        {fmtLitros(shift.litros)}
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-bold text-green-600 dark:text-green-400">
-                                        {fmtMoney(shift.lucro)}
-                                    </td>
-                                    <td className={`px-6 py-4 text-right font-bold ${shift.diferenca < 0 ? 'text-red-500' : 'text-blue-600'}`}>
-                                        {fmtMoney(shift.diferenca)}
-                                    </td>
-                                </tr>
-                            ))}
-                            {/* Total Row */}
-                            <tr className="bg-gray-50 dark:bg-gray-700/50 font-black text-gray-900 dark:text-white border-t-2 border-gray-200 dark:border-gray-600">
-                                <td className="px-6 py-4">TOTAL DO DIA</td>
-                                <td className="px-6 py-4"></td>
-                                <td className="px-6 py-4 text-right">{fmtMoney(totals.vendas)}</td>
-                                <td className="px-6 py-4 text-right">{fmtLitros(totals.litros)}</td>
-                                <td className="px-6 py-4 text-right text-green-600 dark:text-green-400">{fmtMoney(totals.lucro)}</td>
-                                <td className={`px-6 py-4 text-right ${totals.diferenca < 0 ? 'text-red-500' : 'text-blue-600'}`}>
-                                    {fmtMoney(totals.diferenca)}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    {/* Final Result Card */}
+                    <div className="bg-blue-600 dark:bg-blue-700 p-6 rounded-3xl text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
+                        <div className="absolute -right-4 -bottom-4 opacity-10">
+                            <TrendingUp size={160} />
+                        </div>
+                        <h4 className="font-black opacity-80 uppercase text-[10px] tracking-widest mb-6">Fechamento do Dia</h4>
+
+                        <div className="space-y-4 relative z-10">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm opacity-80 font-medium">Lucro Bruto (Comb.)</span>
+                                <span className="font-bold">{fmtMoney(totals.lucro)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-red-200">
+                                <span className="text-sm opacity-80 font-medium">Total de Despesas</span>
+                                <span className="font-bold">- {fmtMoney(totals.despesas)}</span>
+                            </div>
+
+                            <div className="h-px bg-white/20 w-full my-2" />
+
+                            <div>
+                                <div className="flex justify-between items-center text-2xl font-black">
+                                    <span>LUCRO LÍQUIDO</span>
+                                    <span>{fmtMoney(totals.lucroLiquido)}</span>
+                                </div>
+                                <p className="text-[10px] opacity-60 mt-1 uppercase font-bold text-right">
+                                    {totals.lucroLiquido > 0 ? "Saldo Positivo" : "Saldo Negativo"}
+                                </p>
+                            </div>
+
+                            <button className="w-full mt-4 bg-white/10 hover:bg-white/20 border border-white/20 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 flex items-center justify-center gap-2">
+                                <Download size={18} />
+                                Baixar Relatório PDF
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

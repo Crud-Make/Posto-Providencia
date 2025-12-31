@@ -353,6 +353,54 @@ export type Database = {
           }
         ]
       }
+      Despesa: {
+        Row: {
+          id: number
+          descricao: string
+          categoria: string | null
+          valor: number
+          data: string
+          status: 'pendente' | 'pago'
+          created_at: string
+          posto_id: number
+          data_pagamento: string | null
+          observacoes: string | null
+        }
+        Insert: {
+          id?: number
+          descricao: string
+          categoria?: string | null
+          valor: number
+          data: string
+          status?: 'pendente' | 'pago'
+          created_at?: string
+          posto_id: number
+          data_pagamento?: string | null
+          observacoes?: string | null
+        }
+        Update: {
+          id?: number
+          descricao?: string
+          categoria?: string | null
+          valor?: number
+          data?: string
+          status?: 'pendente' | 'pago'
+          created_at?: string
+          posto_id?: number
+          data_pagamento?: string | null
+          observacoes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Despesa_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
       Compra: {
         Row: {
           arquivo_nf: string | null

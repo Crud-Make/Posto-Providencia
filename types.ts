@@ -327,6 +327,18 @@ export interface Divida {
   posto_id: number;
 }
 
+export interface Despesa {
+  id: string;
+  descricao: string;
+  categoria: string;
+  valor: number;
+  data: string;
+  status: 'pendente' | 'pago';
+  posto_id: number;
+  data_pagamento?: string | null;
+  observacoes?: string;
+}
+
 export interface SolvencyStatus {
   dividaId: string;
   descricao: string;
@@ -343,4 +355,13 @@ export interface SolvencyProjection {
   saldoAtual: number;
   mediaDiaria: number;
   proximasParcelas: SolvencyStatus[];
+  metaVendas?: {
+    totalCompromissos: number;
+    litrosNecessarios: number;
+    margemPorLitro: number;
+    litrosVendidosMes: number;
+    lucroGeradoMes: number;
+    progressoPorcentagem: number;
+    valorRestante: number;
+  };
 }

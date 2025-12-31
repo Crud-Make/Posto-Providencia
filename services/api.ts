@@ -1279,6 +1279,16 @@ export const emprestimoService = {
     if (error) throw error;
     return data;
   },
+
+  async delete(id: number): Promise<void> {
+    // Delete installments first (or rely on DB cascade if configured)
+    await (supabase as any).from('Parcela').delete().eq('emprestimo_id', id);
+    const { error } = await supabase
+      .from('Emprestimo')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
 };
 
 export const parcelaService = {
@@ -2041,13 +2051,72 @@ export const solvencyService = {
       };
     });
 
+    // 4. Calcular Meta de Vendas para quitar compromissos
+    // Precisamos buscar a margem média de lucro por litro
+    const estoques = await estoqueService.getAll(postoId);
+    let margemMediaPorLitro = 0.30; // Default: R$ 0.30 por litro
+
+    if (estoques.length > 0) {
+      // Pegar margem média dos combustíveis ativos
+      const combustiveisComMargem = estoques.filter(e => e.combustivel?.preco_venda && e.custo_medio);
+      if (combustiveisComMargem.length > 0) {
+        const somaMargens = combustiveisComMargem.reduce((acc, e) => {
+          const precoVenda = e.combustivel?.preco_venda || 0;
+          const custoMedio = e.custo_medio || 0;
+          return acc + (precoVenda - custoMedio);
+        }, 0);
+        margemMediaPorLitro = somaMargens / combustiveisComMargem.length;
+      }
+    }
+
+    const totalCompromissosPendentes = pendentes.reduce((acc, d) => acc + d.valor, 0);
+
+    // Litros necessários para quitar = Total Pendente / Margem por Litro
+    const litrosNecessarios = margemMediaPorLitro > 0
+      ? Math.ceil(totalCompromissosPendentes / margemMediaPorLitro)
+      : 0;
+
+    // 5. Progresso: Vendas (lucro) acumuladas no mês atual
+    const inicioMes = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+
+    let queryLeituras = supabase
+      .from('Leitura')
+      .select('litros_vendidos')
+      .gte('data', inicioMes);
+
+    if (postoId) {
+      queryLeituras = queryLeituras.eq('posto_id', postoId);
+    }
+
+    const { data: leituras, error: lError } = await queryLeituras;
+    if (lError) console.warn('Erro ao buscar leituras:', lError);
+
+    const litrosVendidosMes = leituras?.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0) || 0;
+    const lucroGeradoMes = litrosVendidosMes * margemMediaPorLitro;
+
+    // Progresso em porcentagem
+    const progressoMeta = totalCompromissosPendentes > 0
+      ? Math.min(100, (lucroGeradoMes / totalCompromissosPendentes) * 100)
+      : 100;
+
     return {
       saldoAtual,
       mediaDiaria,
-      proximasParcelas
+      proximasParcelas,
+      // Novos campos para meta de vendas
+      metaVendas: {
+        totalCompromissos: totalCompromissosPendentes,
+        litrosNecessarios,
+        margemPorLitro: margemMediaPorLitro,
+        litrosVendidosMes,
+        lucroGeradoMes,
+        progressoPorcentagem: progressoMeta,
+        valorRestante: Math.max(0, totalCompromissosPendentes - lucroGeradoMes)
+      }
     };
   }
 };
+
 export const api = {
   combustivel: combustivelService,
   bomba: bombaService,
@@ -2072,6 +2141,7 @@ export const api = {
   divida: dividaService,
   solvency: solvencyService,
 };
+
 
 export default api;
 

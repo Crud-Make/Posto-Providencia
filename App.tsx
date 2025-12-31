@@ -18,14 +18,16 @@ import SettingsScreen from './components/SettingsScreen';
 import ScheduleManagementScreen from './components/ScheduleManagementScreen';
 import PostoManagementScreen from './components/PostoManagementScreen';
 import CustomerManagementScreen from './components/CustomerManagementScreen';
+import ExpenseManagementScreen from './components/ExpenseManagementScreen';
 import LoginScreen from './components/LoginScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
 import { Loader2 } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses'>('dashboard');
 
 
   if (loading) {
@@ -112,6 +114,9 @@ const AppContent: React.FC = () => {
           {currentView === 'daily_report' && (
             <DailyReportScreen />
           )}
+          {currentView === 'expenses' && (
+            <ExpenseManagementScreen />
+          )}
         </main>
       </div>
     </div>
@@ -125,6 +130,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <PostoProvider>
         <ThemeProvider>
+          <Toaster position="top-right" richColors closeButton />
           <AppContent />
         </ThemeProvider>
       </PostoProvider>
