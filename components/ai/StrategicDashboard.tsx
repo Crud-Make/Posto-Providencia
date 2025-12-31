@@ -15,7 +15,11 @@ import {
     Settings,
     X,
     Key,
-    Save
+    Save,
+    Loader2,
+    CheckCircle,
+    XCircle,
+    PlayCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -113,17 +117,85 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
 const SettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [openAiKey, setOpenAiKey] = useState('');
     const [geminiKey, setGeminiKey] = useState('');
+    const [testingOpenAi, setTestingOpenAi] = useState(false);
+    const [testingGemini, setTestingGemini] = useState(false);
+    const [openAiStatus, setOpenAiStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [geminiStatus, setGeminiStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
     useEffect(() => {
         setOpenAiKey(localStorage.getItem('openai_api_key') || '');
         setGeminiKey(localStorage.getItem('gemini_api_key') || '');
     }, []);
 
+    const testOpenAiKey = async () => {
+        if (!openAiKey.trim()) {
+            toast.error('Insira uma chave de API da OpenAI');
+            return;
+        }
+        setTestingOpenAi(true);
+        setOpenAiStatus('idle');
+        try {
+            const response = await fetch('https://api.openai.com/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${openAiKey}`,
+                },
+            });
+            if (response.ok) {
+                setOpenAiStatus('success');
+                toast.success('Chave OpenAI válida! Conexão estabelecida.');
+            } else {
+                setOpenAiStatus('error');
+                const errorData = await response.json();
+                toast.error(`Erro OpenAI: ${errorData.error?.message || 'Chave inválida'}`);
+            }
+        } catch (error) {
+            setOpenAiStatus('error');
+            toast.error('Falha ao conectar com a API da OpenAI');
+        } finally {
+            setTestingOpenAi(false);
+        }
+    };
+
+    const testGeminiKey = async () => {
+        if (!geminiKey.trim()) {
+            toast.error('Insira uma chave de API do Gemini');
+            return;
+        }
+        setTestingGemini(true);
+        setGeminiStatus('idle');
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`,
+                { method: 'GET' }
+            );
+            if (response.ok) {
+                setGeminiStatus('success');
+                toast.success('Chave Gemini válida! Conexão estabelecida.');
+            } else {
+                setGeminiStatus('error');
+                const errorData = await response.json();
+                toast.error(`Erro Gemini: ${errorData.error?.message || 'Chave inválida'}`);
+            }
+        } catch (error) {
+            setGeminiStatus('error');
+            toast.error('Falha ao conectar com a API do Gemini');
+        } finally {
+            setTestingGemini(false);
+        }
+    };
+
     const handleSave = () => {
         localStorage.setItem('openai_api_key', openAiKey);
         localStorage.setItem('gemini_api_key', geminiKey);
         toast.success('Chaves de API salvas com sucesso!');
         onClose();
+    };
+
+    const getStatusIcon = (status: 'idle' | 'success' | 'error') => {
+        if (status === 'success') return <CheckCircle size={16} className="text-emerald-500" />;
+        if (status === 'error') return <XCircle size={16} className="text-red-500" />;
+        return null;
     };
 
     return (
@@ -146,31 +218,69 @@ const SettingsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         Insira suas chaves de API para habilitar os recursos avançados de geração de texto e insights profundos.
                     </p>
 
-                    <div className="space-y-4">
+                    <div className="space-y-5">
+                        {/* OpenAI Key */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                                 <Key size={14} /> OpenAI API Key
+                                {getStatusIcon(openAiStatus)}
                             </label>
-                            <input
-                                type="password"
-                                value={openAiKey}
-                                onChange={(e) => setOpenAiKey(e.target.value)}
-                                placeholder="sk-..."
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="password"
+                                    value={openAiKey}
+                                    onChange={(e) => { setOpenAiKey(e.target.value); setOpenAiStatus('idle'); }}
+                                    placeholder="sk-..."
+                                    className={`flex-1 px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white ${openAiStatus === 'success' ? 'border-emerald-400' :
+                                            openAiStatus === 'error' ? 'border-red-400' :
+                                                'border-gray-200 dark:border-gray-700'
+                                        }`}
+                                />
+                                <button
+                                    onClick={testOpenAiKey}
+                                    disabled={testingOpenAi || !openAiKey.trim()}
+                                    className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+                                >
+                                    {testingOpenAi ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <PlayCircle size={16} />
+                                    )}
+                                    Testar
+                                </button>
+                            </div>
                         </div>
 
+                        {/* Gemini Key */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                                 <BrainCircuit size={14} /> Gemini API Key
+                                {getStatusIcon(geminiStatus)}
                             </label>
-                            <input
-                                type="password"
-                                value={geminiKey}
-                                onChange={(e) => setGeminiKey(e.target.value)}
-                                placeholder="AIza..."
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="password"
+                                    value={geminiKey}
+                                    onChange={(e) => { setGeminiKey(e.target.value); setGeminiStatus('idle'); }}
+                                    placeholder="AIza..."
+                                    className={`flex-1 px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white ${geminiStatus === 'success' ? 'border-emerald-400' :
+                                            geminiStatus === 'error' ? 'border-red-400' :
+                                                'border-gray-200 dark:border-gray-700'
+                                        }`}
+                                />
+                                <button
+                                    onClick={testGeminiKey}
+                                    disabled={testingGemini || !geminiKey.trim()}
+                                    className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+                                >
+                                    {testingGemini ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <PlayCircle size={16} />
+                                    )}
+                                    Testar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

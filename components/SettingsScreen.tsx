@@ -14,12 +14,15 @@ import {
   DollarSign,
   TrendingUp,
   AlertCircle,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import {
   fetchSettingsData,
   formaPagamentoService,
   configuracaoService,
   turnoService,
+  resetService,
 } from "../services/api";
 import { usePosto } from "../contexts/PostoContext";
 import {
@@ -60,6 +63,12 @@ const SettingsScreen: React.FC = () => {
     tax: 0,
     active: true,
   });
+
+  // Estados para reset do sistema
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+
 
   // Função para abrir modal (criar ou editar)
   const openPaymentModal = (method?: PaymentMethodConfig) => {
@@ -180,9 +189,49 @@ const SettingsScreen: React.FC = () => {
       alert("Turnos atualizados com sucesso!");
     } catch (error) {
       console.error("Erro ao salvar turnos", error);
-      alert("Erro ao salvar turnos. Tente novamente.");
+      alert("Erro ao salvar turnos. Tente novamente!");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Função para resetar o sistema
+  const handleResetSystem = async () => {
+    // Validação de segurança
+    if (resetConfirmText !== "RESETAR") {
+      alert('Por favor, digite "RESETAR" para confirmar.');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const result = await resetService.resetAllData(postoAtivoId);
+
+      if (result.success) {
+        // Mostra resumo do que foi deletado
+        const summary = Object.entries(result.deletedCounts)
+          .map(([table, count]) => `• ${table}: ${count} registros`)
+          .join('\n');
+
+        alert(
+          `✅ ${result.message}\n\n` +
+          `Resumo:\n${summary}`
+        );
+
+        // Fecha o modal
+        setShowResetConfirm(false);
+        setResetConfirmText("");
+
+        // Recarrega a página para atualizar os dados
+        window.location.reload();
+      } else {
+        alert(`❌ ${result.message}`);
+      }
+    } catch (error: any) {
+      console.error("Erro ao resetar sistema:", error);
+      alert(`Erro ao resetar sistema: ${error.message}`);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -903,6 +952,156 @@ const SettingsScreen: React.FC = () => {
                 >
                   Salvar
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Zona de Perigo - Reset do Sistema */}
+        <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 rounded-xl border-2 border-red-200 dark:border-red-800 shadow-lg overflow-hidden">
+          <div className="p-6 border-b-2 border-red-200 dark:border-red-800">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg text-red-600 dark:text-red-400">
+                <AlertTriangle size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-red-900 dark:text-red-200 uppercase tracking-tight">
+                  ⚠️ Zona de Perigo
+                </h3>
+                <p className="text-xs text-red-700 dark:text-red-400 font-medium mt-1">
+                  Ações irreversíveis que afetam todos os dados
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-red-200 dark:border-red-800">
+              <div className="flex items-start gap-3">
+                <RotateCcw size={20} className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-1">
+                    Resetar Sistema Completo
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Remove <strong>TODOS</strong> os dados transacionais (vendas, fechamentos, compras, despesas, etc).
+                    Mantém apenas configurações básicas (combustíveis, bombas, bicos, turnos).
+                  </p>
+                  <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-4 ml-4 list-disc">
+                    <li>Zera o estoque de todos os combustíveis</li>
+                    <li>Remove todas as leituras e fechamentos de caixa</li>
+                    <li>Apaga todas as notas de frentista e fiados</li>
+                    <li>Remove compras, despesas, dívidas e empréstimos</li>
+                    <li><strong className="text-red-600 dark:text-red-400">Esta ação NÃO pode ser desfeita!</strong></li>
+                  </ul>
+                  <button
+                    onClick={() => setShowResetConfirm(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-all shadow-lg shadow-red-500/20 hover:shadow-red-500/40"
+                  >
+                    <RotateCcw size={16} />
+                    <span>Resetar Tudo</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal de Confirmação de Reset */}
+        {showResetConfirm && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg border-2 border-red-500 overflow-hidden">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-red-600 to-orange-600 p-6">
+                <div className="flex items-center gap-3 text-white">
+                  <AlertTriangle size={32} className="animate-pulse" />
+                  <div>
+                    <h3 className="text-xl font-black uppercase tracking-tight">
+                      ⚠️ Confirmação Necessária
+                    </h3>
+                    <p className="text-red-100 text-sm font-medium mt-1">
+                      Esta ação é IRREVERSÍVEL!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <p className="text-sm text-gray-900 dark:text-white font-bold mb-2">
+                    📋 O que será removido:
+                  </p>
+                  <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4 list-disc">
+                    <li>Todas as leituras e vendas registradas</li>
+                    <li>Todos os fechamentos de caixa</li>
+                    <li>Todas as notas de frentista</li>
+                    <li>Todas as compras de combustível</li>
+                    <li>Todas as despesas registradas</li>
+                    <li>Todas as dívidas e empréstimos</li>
+                    <li>Todo o histórico de tanques</li>
+                    <li>O estoque será zerado completamente</li>
+                  </ul>
+                </div>
+
+                <div className="bg-green-50 dark:bg-green-950/30 border-2 border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <p className="text-sm text-gray-900 dark:text-white font-bold mb-2">
+                    ✅ O que será mantido:
+                  </p>
+                  <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1 ml-4 list-disc">
+                    <li>Cadastros de postos</li>
+                    <li>Combustíveis, bombas e bicos</li>
+                    <li>Fornecedores e formas de pagamento</li>
+                    <li>Frentistas e turnos</li>
+                    <li>Clientes (com saldo zerado)</li>
+                    <li>Configurações do sistema</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-gray-900 dark:text-white">
+                    Para continuar, digite <span className="text-red-600 dark:text-red-400">RESETAR</span> abaixo:
+                  </label>
+                  <input
+                    type="text"
+                    value={resetConfirmText}
+                    onChange={(e) => setResetConfirmText(e.target.value.toUpperCase())}
+                    placeholder="Digite RESETAR"
+                    className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-bold text-center text-lg"
+                    disabled={isResetting}
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowResetConfirm(false);
+                      setResetConfirmText("");
+                    }}
+                    disabled={isResetting}
+                    className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleResetSystem}
+                    disabled={isResetting || resetConfirmText !== "RESETAR"}
+                    className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isResetting ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>Resetando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={18} />
+                        <span>Confirmar Reset</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
