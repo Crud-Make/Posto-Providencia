@@ -39,6 +39,12 @@
         "projectId": "e62f5bc8-d8ea-42cc-82b2-8fddace513db"
       }
     },
-    "owner": "thygas8477"
+    "owner": "thygas8477",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e62f5bc8-d8ea-42cc-82b2-8fddace513db"
+    }
   }
 }
