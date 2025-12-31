@@ -19,6 +19,7 @@ import ScheduleManagementScreen from './components/ScheduleManagementScreen';
 import PostoManagementScreen from './components/PostoManagementScreen';
 import CustomerManagementScreen from './components/CustomerManagementScreen';
 import ExpenseManagementScreen from './components/ExpenseManagementScreen';
+import OwnerDashboard from './components/OwnerDashboard';
 import { StrategicDashboard } from './components/ai/StrategicDashboard';
 import LoginScreen from './components/LoginScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -28,7 +29,7 @@ import { Toaster } from 'sonner';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard'>('dashboard');
 
 
   if (loading) {
@@ -120,6 +121,9 @@ const AppContent: React.FC = () => {
           )}
           {currentView === 'expenses' && (
             <ExpenseManagementScreen />
+          )}
+          {currentView === 'owner_dashboard' && (
+            <OwnerDashboard />
           )}
         </main>
       </div>

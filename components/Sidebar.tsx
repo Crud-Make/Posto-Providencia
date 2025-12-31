@@ -16,13 +16,14 @@ import {
   Calendar,
   Target,
   Building2,
-  BrainCircuit
+  BrainCircuit,
+  Crown
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard') => void;
   className?: string;
 }
 
@@ -30,6 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
   const { theme, toggleTheme } = useTheme();
 
   const menuItems = [
+    { id: 'owner_dashboard', label: 'Visão Proprietário', icon: Crown },
     { id: 'ai_strategy', label: 'Estrategista IA', icon: BrainCircuit },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'closing', label: 'Fechamento de Caixa', icon: ShoppingCart },
@@ -44,6 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
     { id: 'solvency', label: 'Painel de Solvência', icon: Target },
     { id: 'schedule', label: 'Escala e Folgas', icon: Calendar },
     { id: 'postos', label: 'Gerenciar Postos', icon: Building2 },
+    { id: 'settings', label: 'Configurações', icon: Settings },
   ] as const;
 
   return (

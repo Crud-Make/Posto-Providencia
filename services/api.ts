@@ -3253,4 +3253,153 @@ export const notaFrentistaService = {
 };
 
 // ============================================
+// RESET DE SISTEMA
+// ============================================
+
+export const resetService = {
+  /**
+   * Reseta TODOS os dados transacionais do sistema.
+   * ATENÇÃO: Esta ação é IRREVERSÍVEL!
+   * 
+   * Mantém apenas:
+   * - Tabelas de configuração (Posto, Combustivel, Bomba, Bico, Turno, FormaPagamento, etc)
+   * 
+   * Remove:
+   * - Leituras
+   * - Fechamentos
+   * - Notas de frentista
+   * - Compras
+   * - Despesas
+   * - Dívidas
+   * - Empréstimos e Parcelas
+   * - Histórico de tanques
+   * - Reseta estoque para zero
+   */
+  async resetAllData(postoId?: number): Promise<{
+    success: boolean;
+    message: string;
+    deletedCounts: Record<string, number>;
+  }> {
+    try {
+      const deletedCounts: Record<string, number> = {};
+
+      // Helper para deletar com filtro opcional de posto
+      const deleteTable = async (tableName: string, postoFilter: boolean = true) => {
+        let query = (supabase as any).from(tableName).delete();
+
+        if (postoFilter && postoId) {
+          query = query.eq('posto_id', postoId);
+        } else if (!postoFilter) {
+          // Deleta tudo se não filtrar por posto
+          query = query.neq('id', 0); // Trick para deletar tudo
+        }
+
+        const { data, error, count } = await query.select();
+        if (error) throw error;
+        deletedCounts[tableName] = data?.length || 0;
+      };
+
+      // 1. Deletar Leituras (vendas registradas)
+      await deleteTable('Leitura');
+
+      // 2. Deletar Recebimentos (relacionados a fechamentos)
+      await deleteTable('Recebimento');
+
+      // 3. Deletar FechamentoFrentista
+      await deleteTable('FechamentoFrentista');
+
+      // 4. Deletar Fechamentos
+      await deleteTable('Fechamento');
+
+      // 5. Deletar Notas de Frentista
+      await deleteTable('NotaFrentista');
+
+      // 6. Deletar Parcelas de Empréstimos
+      await deleteTable('Parcela');
+
+      // 7. Deletar Empréstimos
+      await deleteTable('Emprestimo');
+
+      // 8. Deletar Dívidas
+      await deleteTable('Divida');
+
+      // 9. Deletar Despesas
+      await deleteTable('Despesa');
+
+      // 10. Deletar Compras
+      await deleteTable('Compra');
+
+      // 11. Deletar Histórico de Tanques
+      let queryHist = (supabase as any).from('HistoricoTanque').delete();
+      if (postoId) {
+        // Buscar tanques do posto
+        const { data: tanques } = await supabase
+          .from('Tanque')
+          .select('id')
+          .eq('posto_id', postoId);
+
+        if (tanques && tanques.length > 0) {
+          const tanqueIds = tanques.map(t => t.id);
+          queryHist = queryHist.in('tanque_id', tanqueIds);
+        }
+      } else {
+        queryHist = queryHist.neq('id', 0);
+      }
+      const { data: histData, error: histError } = await queryHist.select();
+      if (histError) throw histError;
+      deletedCounts['HistoricoTanque'] = histData?.length || 0;
+
+      // 12. Resetar Estoque para zero
+      let queryEstoque = (supabase as any)
+        .from('Estoque')
+        .update({
+          quantidade_atual: 0,
+          custo_medio: 0
+        });
+
+      if (postoId) {
+        queryEstoque = queryEstoque.eq('posto_id', postoId);
+      } else {
+        queryEstoque = queryEstoque.neq('id', 0);
+      }
+
+      const { data: estoqueData, error: estoqueError } = await queryEstoque.select();
+      if (estoqueError) throw estoqueError;
+      deletedCounts['Estoque (resetado)'] = estoqueData?.length || 0;
+
+      // 13. Resetar saldo devedor dos clientes
+      let queryClientes = (supabase as any)
+        .from('Cliente')
+        .update({ saldo_devedor: 0 });
+
+      if (postoId) {
+        queryClientes = queryClientes.eq('posto_id', postoId);
+      } else {
+        queryClientes = queryClientes.neq('id', 0);
+      }
+
+      const { data: clientesData, error: clientesError } = await queryClientes.select();
+      if (clientesError) throw clientesError;
+      deletedCounts['Cliente (saldo zerado)'] = clientesData?.length || 0;
+
+      return {
+        success: true,
+        message: postoId
+          ? `Sistema resetado com sucesso para o posto ${postoId}!`
+          : 'Sistema resetado completamente com sucesso!',
+        deletedCounts
+      };
+
+    } catch (error: any) {
+      console.error('Erro ao resetar sistema:', error);
+      return {
+        success: false,
+        message: `Erro ao resetar sistema: ${error.message}`,
+        deletedCounts: {}
+      };
+    }
+  }
+};
+
+// ============================================
 

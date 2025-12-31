@@ -22,4 +22,6 @@ export {
     fornecedorService,
     turnoService,
     dashboardService,
+    resetService,
 } from './api';
+
