@@ -21,6 +21,7 @@ import {
 import { usePosto } from '../contexts/PostoContext';
 import { clienteService, notaFrentistaService } from '../services/api';
 import { Cliente, NotaFrentista } from '../services/database.types';
+import { toast } from 'sonner';
 
 // Componente para Badges de Status
 const StatusBadge = ({ status }: { status: string }) => {
@@ -145,9 +146,10 @@ const CustomerManagementScreen: React.FC = () => {
             setShowAddModal(false);
             setNewCliente({ nome: '', documento: '', telefone: '', email: '', limite_credito: '', endereco: '' });
             loadClientes();
+            toast.success('Cliente salvo com sucesso!');
         } catch (error) {
             console.error('Erro ao salvar cliente:', error);
-            alert('Erro ao salvar cliente');
+            toast.error('Erro ao salvar cliente');
         }
     };
 
@@ -164,10 +166,11 @@ const CustomerManagementScreen: React.FC = () => {
 
                 // Atualizar lista principal para refletir novo saldo
                 loadClientes();
+                toast.success('Pagamento registrado com sucesso!');
             }
         } catch (error) {
             console.error('Erro ao registrar pagamento:', error);
-            alert('Erro ao registrar pagamento');
+            toast.error('Erro ao registrar pagamento');
         }
     };
 
@@ -178,12 +181,12 @@ const CustomerManagementScreen: React.FC = () => {
 
         try {
             await clienteService.update(selectedCliente.id, { ativo: !selectedCliente.ativo });
-            alert(`Cliente ${isBlocked ? 'desbloqueado' : 'bloqueado'} com sucesso!`);
+            toast.success(`Cliente ${isBlocked ? 'desbloqueado' : 'bloqueado'} com sucesso!`);
             setSelectedCliente(null);
             loadClientes();
         } catch (error) {
             console.error('Erro ao bloquear/desbloquear cliente:', error);
-            alert('Erro ao atualizar cliente.');
+            toast.error('Erro ao atualizar cliente.');
         }
     };
 
@@ -197,7 +200,7 @@ const CustomerManagementScreen: React.FC = () => {
         console.log('3. saldo_devedor:', selectedCliente.saldo_devedor);
         if (selectedCliente.saldo_devedor > 0) {
             console.log('4. Cliente tem saldo devedor, não pode apagar');
-            alert('Não é possível apagar um cliente com saldo devedor.');
+            toast.error('Não é possível apagar um cliente com saldo devedor.');
             return;
         }
 
@@ -206,12 +209,12 @@ const CustomerManagementScreen: React.FC = () => {
             console.log('6. Chamando clienteService.delete');
             await clienteService.delete(selectedCliente.id);
             console.log('7. Cliente apagado com sucesso!');
-            alert('Cliente apagado com sucesso!');
+            toast.success('Cliente apagado com sucesso!');
             setSelectedCliente(null);
             loadClientes();
         } catch (error) {
             console.error('ERRO ao apagar cliente:', error);
-            alert('Erro ao apagar cliente.');
+            toast.error('Erro ao apagar cliente.');
         }
     };
 

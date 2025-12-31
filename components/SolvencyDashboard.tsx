@@ -23,6 +23,7 @@ import {
     Check,
     Building2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
     LineChart,
     Line,
@@ -98,14 +99,16 @@ const SolvencyDashboard: React.FC = () => {
         try {
             if (editingDivida) {
                 await dividaService.update(editingDivida.id, formState);
+                toast.success("Dívida atualizada!");
             } else {
                 await dividaService.create(formState);
+                toast.success("Dívida cadastrada!");
             }
             setShowModal(false);
             loadData();
         } catch (error) {
             console.error("Failed to save debt", error);
-            alert("Erro ao salvar dívida.");
+            toast.error("Erro ao salvar dívida.");
         } finally {
             setSaving(false);
         }
@@ -116,10 +119,28 @@ const SolvencyDashboard: React.FC = () => {
 
         try {
             await dividaService.delete(id);
+            toast.success("Dívida excluída!");
             loadData();
         } catch (error) {
             console.error("Failed to delete debt", error);
-            alert("Erro ao excluir dívida.");
+            toast.error("Erro ao excluir dívida.");
+        }
+    };
+
+    const handleResolveDeficit = async (dividaId: string) => {
+        toast.info("Analisando opções para resolver déficit...", {
+            description: "Sugestões: Renegociação de prazo, aporte de capital ou antecipação de recebíveis de cartão (Pix já está incluso)."
+        });
+
+        // Let's offer a quick action: mark as paid if they manually paid it
+        if (confirm("Deseja marcar esta dívida como PAGA para remover o alerta de déficit?")) {
+            try {
+                await dividaService.update(dividaId, { status: 'pago' });
+                toast.success("Dívida marcada como paga. Recalculando projeção...");
+                loadData();
+            } catch (error) {
+                toast.error("Erro ao atualizar status da dívida.");
+            }
         }
     };
 
@@ -231,7 +252,7 @@ const SolvencyDashboard: React.FC = () => {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl">
@@ -272,7 +293,66 @@ const SolvencyDashboard: React.FC = () => {
                         <span>{projection?.proximasParcelas.length || 0} pagamentos pendentes</span>
                     </div>
                 </div>
+
+                {/* Card de Meta de Vendas */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-6 rounded-2xl border border-green-200 dark:border-green-800/30 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2.5 bg-green-100 dark:bg-green-800/30 text-green-600 dark:text-green-400 rounded-xl">
+                            <Activity size={24} />
+                        </div>
+                        <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-widest">Meta de Vendas</p>
+                    </div>
+
+                    {projection?.metaVendas ? (
+                        <>
+                            <div className="mb-3">
+                                <h3 className="text-2xl font-black text-gray-900 dark:text-white">
+                                    {(projection.metaVendas.litrosNecessarios - projection.metaVendas.litrosVendidosMes).toLocaleString('pt-BR')} L
+                                </h3>
+                                <p className="text-xs text-green-600 dark:text-green-400 font-bold">para quitar compromissos</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs font-medium">
+                                    <span className="text-gray-500 dark:text-gray-400">Progresso do mês</span>
+                                    <span className="text-green-600 dark:text-green-400 font-bold">{Math.round(projection.metaVendas.progressoPorcentagem)}%</span>
+                                </div>
+                                <div className="w-full bg-green-100 dark:bg-green-800/30 rounded-full h-2.5 overflow-hidden">
+                                    <div
+                                        className="bg-green-500 h-full rounded-full transition-all duration-1000"
+                                        style={{ width: `${projection.metaVendas.progressoPorcentagem}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between text-[10px] text-gray-400">
+                                    <span>{projection.metaVendas.litrosVendidosMes.toLocaleString('pt-BR')} L vendidos</span>
+                                    <span>Meta: {projection.metaVendas.litrosNecessarios.toLocaleString('pt-BR')} L</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800/30">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Lucro gerado</span>
+                                    <span className="text-sm font-black text-green-600">
+                                        R$ {projection.metaVendas.lucroGeradoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center mt-1">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Falta quitar</span>
+                                    <span className="text-sm font-black text-orange-600">
+                                        R$ {projection.metaVendas.valorRestante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center py-4">
+                            <Loader2 size={24} className="animate-spin mx-auto text-green-500 mb-2" />
+                            <p className="text-xs text-gray-500">Calculando meta...</p>
+                        </div>
+                    )}
+                </div>
             </div>
+
 
             {/* Timeline de Drenagem */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm mb-10 overflow-hidden">
@@ -384,7 +464,10 @@ const SolvencyDashboard: React.FC = () => {
                             </div>
 
                             {p.status === 'vermelho' && (
-                                <button className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95">
+                                <button
+                                    onClick={() => handleResolveDeficit(p.dividaId!)}
+                                    className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95"
+                                >
                                     Resolver Déficit
                                 </button>
                             )}
