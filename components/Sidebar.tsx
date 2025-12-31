@@ -15,13 +15,14 @@ import {
   Moon,
   Calendar,
   Target,
-  Building2
+  Building2,
+  BrainCircuit
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy') => void;
   className?: string;
 }
 
@@ -29,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
   const { theme, toggleTheme } = useTheme();
 
   const menuItems = [
+    { id: 'ai_strategy', label: 'Estrategista IA', icon: BrainCircuit },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'closing', label: 'Fechamento de Caixa', icon: ShoppingCart },
     { id: 'daily_report', label: 'Relatório Diário', icon: ClipboardList },

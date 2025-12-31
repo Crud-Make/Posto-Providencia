@@ -19,6 +19,7 @@ import ScheduleManagementScreen from './components/ScheduleManagementScreen';
 import PostoManagementScreen from './components/PostoManagementScreen';
 import CustomerManagementScreen from './components/CustomerManagementScreen';
 import ExpenseManagementScreen from './components/ExpenseManagementScreen';
+import { StrategicDashboard } from './components/ai/StrategicDashboard';
 import LoginScreen from './components/LoginScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
@@ -27,7 +28,7 @@ import { Toaster } from 'sonner';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy'>('dashboard');
 
 
   if (loading) {
@@ -65,6 +66,9 @@ const AppContent: React.FC = () => {
         <main className="flex-1 overflow-y-auto">
           {currentView === 'dashboard' && (
             <DashboardScreen onNewClosing={() => setCurrentView('closing')} />
+          )}
+          {currentView === 'ai_strategy' && (
+            <StrategicDashboard />
           )}
           {currentView === 'sales_dashboard' && (
             <SalesDashboardScreen />
