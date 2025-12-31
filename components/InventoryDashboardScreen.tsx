@@ -1,525 +1,310 @@
-
-import React, { useState, useEffect, Suspense, lazy, useMemo, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Fuel,
-  Leaf,
-  Truck,
-  RefreshCw,
-  Plus,
-  Calendar,
+  Droplet,
   AlertTriangle,
-  AlertOctagon,
+  TrendingDown,
   TrendingUp,
-  ArrowRight,
-  ArrowDown,
-  ArrowUp,
-  FileText,
-  ShoppingCart,
-  Loader2,
-  ChevronDown
+  Ruler,
+  History,
+  Info
 } from 'lucide-react';
-import { fetchInventoryData } from '../services/api';
-import { InventoryItem, InventoryAlert, InventoryTransaction } from '../types';
 import { usePosto } from '../contexts/PostoContext';
-import InventoryFinancialCharts from './InventoryFinancialCharts';
-import FuelTank from './FuelTank';
+import { tanqueService, Tanque } from '../services/tanqueService';
+import { InventoryHistoryChart } from './InventoryHistoryChart';
 
-// Lazy load StockManagementScreen para melhor performance
-const StockManagementScreen = lazy(() => import('./StockManagementScreen'));
+// Componente Visual do Tanque (Copo)
+const FuelTank = ({
+  name,
+  productName,
+  productColor,
+  capacity,
+  currentVolume,
+  status = 'ok'
+}: {
+  name: string;
+  productName: string;
+  productColor?: string;
+  capacity: number;
+  currentVolume: number;
+  status?: 'ok' | 'warning' | 'critical';
+}) => {
+  const percentage = capacity > 0 ? Math.min(Math.max((currentVolume / capacity) * 100, 0), 100) : 0;
 
-interface InventoryDashboardProps {
-  onRegisterPurchase: () => void;
-  initialTab?: 'fuels' | 'stock';
-}
+  // Cores baseadas no produto ou status
+  const getColor = () => {
+    // Mapeamento simples de cores se vierem nomes
+    if (productColor) return productColor;
+    const lowerName = productName.toLowerCase();
+    if (lowerName.includes('gasolina') && lowerName.includes('aditivada')) return '#EF4444'; // Red (Aditivada)
+    if (lowerName.includes('gasolina')) return '#F87171'; // Lighter Red (Comum)
+    if (lowerName.includes('etanol')) return '#10B981'; // Green
+    if (lowerName.includes('diesel') && lowerName.includes('s-10')) return '#F59E0B'; // Amber (S10)
+    if (lowerName.includes('diesel')) return '#D97706'; // Darker Amber (S500)
+    return '#3B82F6'; // Blue default
+  };
 
-const InventoryDashboardScreen: React.FC<InventoryDashboardProps> = ({ onRegisterPurchase, initialTab = 'fuels' }) => {
-  const { postoAtivoId, postos, postoAtivo, setPostoAtivoById } = usePosto();
-  const [activeTab, setActiveTab] = useState<'fuels' | 'stock'>(initialTab);
+  const color = getColor();
+
+  // Define status colors for borders/text based on fill level
+  const isLow = percentage < 15;
+  const statusColor = isLow ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white';
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col items-center relative overflow-hidden transition-all hover:shadow-lg">
+      <div className="w-full flex justify-between items-start mb-4">
+        <div className="text-left">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate max-w-[180px]" title={name}>{name}</h3>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+            {productName}
+          </span>
+        </div>
+        {isLow && (
+          <div className="animate-pulse text-red-500" title="Nível Crítico">
+            <AlertTriangle size={20} />
+          </div>
+        )}
+      </div>
+
+      {/* Visualização do Tanque */}
+      <div className="relative w-32 h-44 bg-gray-50 dark:bg-gray-900/50 rounded-lg border-2 border-gray-200 dark:border-gray-600 overflow-hidden mb-4 shadow-inner">
+        {/* Líquido */}
+        <div
+          className="absolute bottom-0 left-0 right-0 transition-all duration-1000 ease-out flex items-end justify-center backdrop-blur-sm"
+          style={{
+            height: `${percentage}%`,
+            backgroundColor: color,
+            opacity: 0.85
+          }}
+        >
+          <div className="w-full h-1 bg-white/30 absolute top-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+        </div>
+
+        {/* Marcações de Régua */}
+        <div className="absolute inset-0 flex flex-col justify-between py-2 px-1 pointer-events-none">
+          {[100, 75, 50, 25, 0].map(mark => (
+            <div key={mark} className="flex items-center w-full opacity-50">
+              <span className="text-[9px] text-gray-400 w-6 text-right pr-1 font-mono">{mark}%</span>
+              <div className="h-[1px] bg-gray-400 w-2"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Overlay Texto */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className={`text-xl font-bold font-mono drop-shadow-md ${percentage > 50 ? 'text-white' : 'text-gray-500'}`}>
+            {percentage.toFixed(0)}%
+          </span>
+        </div>
+      </div>
+
+      <div className="text-center w-full">
+        <div className={`text-2xl font-bold font-mono ${statusColor}`}>
+          {currentVolume.toLocaleString('pt-BR')} L
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 pb-4 border-b border-gray-100 dark:border-gray-700">
+          Capacidade: {capacity.toLocaleString('pt-BR')} L
+        </div>
+      </div>
+
+      {/* Indicador de Espaço Vazio */}
+      <div className="mt-4 w-full flex justify-between text-xs">
+        <span className="text-gray-500 flex items-center gap-1">
+          <TrendingUp size={12} className="text-green-500" />
+          Espaço Livre:
+        </span>
+        <span className="font-bold text-green-600 dark:text-green-400 font-mono">
+          {(capacity - currentVolume).toLocaleString('pt-BR')} L
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const InventoryDashboardScreen: React.FC = () => {
+  const { postoAtivoId } = usePosto();
+  const [tanques, setTanques] = useState<Tanque[]>([]);
+  const [histories, setHistories] = useState<Record<number, any[]>>({});
   const [loading, setLoading] = useState(true);
-  const [postoDropdownOpen, setPostoDropdownOpen] = useState(false);
-  const [items, setItems] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>({ totalCost: 0, totalSell: 0, projectedProfit: 0 });
-  const [measurements, setMeasurements] = useState<Record<string, string>>({});
 
-  // Carrega os dados do inventário
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchInventoryData(postoAtivoId);
-        setItems(data.items);
-        setAlerts(data.alerts);
-        setTransactions(data.transactions);
-        setChartData(data.chartData);
-        setSummary(data.summary);
-      } catch (error) {
-        console.error('Erro ao carregar dados do inventário:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    if (postoAtivoId) {
+      loadData();
+    }
   }, [postoAtivoId]);
 
-  const handleMeasurementChange = useCallback((id: string, value: string) => {
-    // Permite apenas numeros e virgula/ponto
-    const formatted = value.replace(/[^0-9,.]/g, '');
-    setMeasurements(prev => ({ ...prev, [id]: formatted }));
-  }, []);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await tanqueService.getAll(postoAtivoId);
+      setTanques(data);
 
-  const parseMeasure = useCallback((val: string) => {
-    if (!val) return 0;
-    return parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
-  }, []);
+      // Fetch histories
+      const histMap: Record<number, any[]> = {};
+      await Promise.all(data.map(async (t) => {
+        try {
+          const hist = await tanqueService.getHistory(t.id, 30);
+          histMap[t.id] = hist || [];
+        } catch (e) {
+          console.error(`Erro ao buscar histórico tanque ${t.id}`, e);
+          histMap[t.id] = [];
+        }
+      }));
+      setHistories(histMap);
 
-  // Memoiza os items ajustados para os gráficos
-  const chartItems = useMemo(() => {
-    return items.map(i => {
-      const measureVal = measurements[i.id];
-      const volume = measureVal ? parseMeasure(measureVal) : i.volume;
-      return { ...i, volume };
-    });
-  }, [items, measurements, parseMeasure]);
-
-  // Recalcula totais baseado no físico (se houver) ou lógico
-  const currentSummary = useMemo(() => {
-    if (items.length === 0) return summary;
-
-    let totalCost = 0;
-    let totalSell = 0;
-
-    items.forEach(item => {
-      const measureVal = measurements[item.id];
-      const volume = measureVal ? parseMeasure(measureVal) : item.volume;
-      totalCost += volume * (item.costPrice || 0);
-      totalSell += volume * (item.sellPrice || 0);
-    });
-
-    return { totalCost, totalSell, projectedProfit: totalSell - totalCost };
-  }, [items, measurements, summary, parseMeasure]);
+    } catch (error) {
+      console.error("Erro ao carregar tanques", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] w-full text-blue-600">
-        <Loader2 size={48} className="animate-spin mb-4" />
-        <p className="text-gray-500 dark:text-gray-400 font-medium">Sincronizando estoque...</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p className="text-gray-500">Carregando tanques...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans animate-in fade-in duration-500">
-
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#13ec6d]/10 text-[#0eb553] border border-[#13ec6d]/20">Tempo Real</span>
-            <span className="text-xs text-gray-400">Atualizado agora</span>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 dark:text-white">Dashboard de Estoque</h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-2xl">Gerencie combustíveis, lubrificantes e outros produtos do posto em um só lugar.</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <Droplet className="text-blue-600" />
+            Tanques de Combustível
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Monitoramento em tempo real dos estoques físicos e conciliação.</p>
         </div>
-        <div className="flex gap-3 items-center">
-          {/* Posto Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setPostoDropdownOpen(!postoDropdownOpen)}
-              className="flex items-center gap-2 px-4 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
-            >
-              <Fuel size={18} className="text-blue-500" />
-              <span className="max-w-[150px] truncate">{postoAtivo?.nome || 'Selecione o Posto'}</span>
-              <ChevronDown size={16} className={`text-gray-400 transition-transform ${postoDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
 
-            {postoDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 min-w-[220px] z-50 overflow-hidden">
-                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-                  <span className="text-[10px] font-bold uppercase text-gray-400">Selecione o Posto</span>
-                </div>
-                {postos.map(posto => (
-                  <button
-                    key={posto.id}
-                    onClick={() => {
-                      setPostoAtivoById(posto.id);
-                      setPostoDropdownOpen(false);
-                    }}
-                    className={`w-full px-4 py-3 text-left text-sm font-semibold transition-colors flex items-center gap-2 ${posto.id === postoAtivoId
-                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                  >
-                    <Fuel size={16} className={posto.id === postoAtivoId ? 'text-blue-500' : 'text-gray-400'} />
-                    {posto.nome}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <button className="flex items-center gap-2 px-4 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
-            <RefreshCw size={18} />
-            <span>Atualizar</span>
-          </button>
+        <div className="flex gap-3">
           <button
-            onClick={onRegisterPurchase}
-            className="flex items-center gap-2 px-4 h-10 rounded-lg bg-[#13ec6d] text-[#0d1b13] text-sm font-bold hover:bg-[#13ec6d]/90 transition-colors shadow-sm shadow-[#13ec6d]/20"
+            onClick={loadData}
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-50 transition-colors"
           >
-            <Plus size={18} />
-            <span>Registrar Compra</span>
+            <History size={16} /> Atualizar
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+            <Ruler size={16} /> Nova Medição (Régua)
           </button>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-          <button
-            onClick={() => setActiveTab('fuels')}
-            className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm
-              ${activeTab === 'fuels'
-                ? 'border-[#13ec6d] text-[#0d1b13] dark:text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
-              }
-            `}
-          >
-            Combustíveis (Tanques)
-          </button>
-          <button
-            onClick={() => setActiveTab('stock')}
-            className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-bold text-sm
-              ${activeTab === 'stock'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
-              }
-            `}
-          >
-            Lubrificantes e Produtos
-          </button>
-        </nav>
-      </div>
-
-      {activeTab === 'stock' ? (
-        <Suspense fallback={
-          <div className="flex flex-col items-center justify-center min-h-[400px] w-full">
-            <Loader2 size={40} className="animate-spin text-blue-600 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Carregando gestão de estoque...</p>
+      {tanques.length === 0 ? (
+        <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 shadow-sm">
+          <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-8 w-8 text-yellow-600 dark:text-yellow-500" />
           </div>
-        }>
-          <StockManagementScreen />
-        </Suspense>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Nenhum tanque configurado</h3>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
+            Para começar a controlar o estoque corretamente, você precisa cadastrar os tanques físicos do seu posto e suas capacidades.
+          </p>
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg inline-block text-sm">
+            Vá em <strong>Configurações &gt; Gestão de Tanques</strong> para cadastrar.
+          </div>
+        </div>
       ) : (
         <>
-          {/* Fuel Status Cards (Grid) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-            {items.map((item) => {
-              // Atualiza volume visual se houver medição manual
-              const measureVal = measurements[item.id];
-              const hasMeasure = measureVal && measureVal !== '';
-              const displayVol = hasMeasure ? parseMeasure(measureVal) : item.volume;
-              const percent = Math.min(100, Math.round((displayVol / item.capacity) * 100));
 
-              return (
-                <FuelTank
-                  key={item.id}
-                  productName={item.name}
-                  code={item.code}
-                  currentVolume={displayVol}
-                  capacity={item.capacity}
-                  color={item.color as any}
-                  status={percent < 10 ? 'CRÍTICO' : percent < 20 ? 'BAIXO' : 'OK'}
-                  daysRemaining={item.daysRemaining}
-                />
-              );
-            })}
-          </div>
-
-          {/* Middle Section: Alerts & Chart */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            {/* Alerts Panel */}
-            <div className="lg:col-span-1 flex flex-col gap-4">
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">Ações Recomendadas</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${alerts.some(a => a.type === 'critical')
-                    ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 animate-pulse-subtle'
-                    : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
-                    }`}>
-                    {alerts.length} {alerts.length === 1 ? 'Alerta' : 'Alertas'}
-                  </span>
-                </div>
-
-                <div className="space-y-4 flex-1">
-                  {alerts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
-                        <TrendingUp size={24} className="text-green-600 dark:text-green-400" />
-                      </div>
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Tudo em ordem!</p>
-                      <p className="text-xs text-gray-400 mt-1">Nenhum alerta pendente no momento.</p>
-                    </div>
-                  ) : alerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className={`p-4 rounded-lg border transition-all duration-300 ${alert.type === 'critical'
-                        ? 'bg-red-50 border-red-200 animate-pulse-subtle'
-                        : 'bg-yellow-50 border-yellow-100'
-                        }`}
-                    >
-                      <div className="flex gap-3 items-start">
-                        <div className={`mt-0.5 flex-shrink-0 ${alert.type === 'critical' ? 'text-red-500' : 'text-yellow-500'}`}>
-                          {alert.type === 'critical'
-                            ? <AlertOctagon size={24} fill="currentColor" className="text-red-500" />
-                            : <AlertTriangle size={24} fill="currentColor" className="text-yellow-500" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-gray-900">{alert.title}</p>
-                          <p className="text-xs text-gray-500 mt-1 leading-relaxed">{alert.message}</p>
-                          <div className="flex gap-2 mt-3">
-                            {alert.actionSecondary && (
-                              <button className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">
-                                {alert.actionSecondary}
-                              </button>
-                            )}
-                            <button
-                              onClick={onRegisterPurchase}
-                              className={`flex-1 px-3 py-1.5 rounded text-xs font-bold transition-colors shadow-sm ${alert.type === 'critical'
-                                ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
-                                : 'bg-yellow-500 text-white hover:bg-yellow-600 shadow-yellow-500/20'
-                                }`}
-                            >
-                              {alert.actionPrimary}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {alerts.length > 0 && (
-                  <button className="w-full mt-4 text-xs font-bold text-[#13ec6d] hover:text-[#0eb553] transition-colors flex items-center justify-center gap-1">
-                    Ver todos os alertas
-                    <ArrowRight size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Chart Section */}
-            <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 h-full flex flex-col">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Movimentação dos Últimos 7 Dias</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Comparativo de Vendas vs. Entradas de Combustível</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="size-3 rounded-full bg-[#13ec6d]"></span>
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Vendas (L)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="size-3 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Entradas (L)</span>
-                    </div>
-                    <select className="text-xs border-none bg-gray-100 dark:bg-gray-700 rounded-lg py-1.5 pl-3 pr-8 font-medium text-gray-700 dark:text-gray-300 focus:ring-0 cursor-pointer ml-2">
-                      <option>Últimos 7 dias</option>
-                      <option>Este Mês</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Visual Chart Representation */}
-                <div className="flex-1 flex items-end justify-between gap-2 sm:gap-4 h-64 w-full pt-4">
-                  {chartData.map((data, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-2 flex-1 group cursor-pointer h-full justify-end">
-                      <div className="w-full flex gap-1 h-full items-end justify-center relative">
-                        {/* Sales Bar */}
-                        <div
-                          className="w-3 sm:w-6 bg-[#13ec6d] rounded-t-sm group-hover:bg-[#13ec6d]/90 transition-all relative"
-                          style={{ height: `${data.salesPerc || 0}%` }}
-                        >
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                            Venda: {data.sales.toLocaleString()} L
-                          </div>
-                        </div>
-                        {/* Entry Bar */}
-                        <div
-                          className="w-3 sm:w-6 bg-gray-300 dark:bg-gray-600 rounded-t-sm relative group-hover:bg-gray-400 dark:group-hover:bg-gray-500 transition-all"
-                          style={{ height: `${data.entryPerc || 0}%` }}
-                        >
-                          <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                            Entrada: {data.entry.toLocaleString()} L
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-500 font-medium">{data.day}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Financial Charts Section */}
-          <InventoryFinancialCharts items={chartItems} />
-
-          {/* Financial Reconciliation & Stock Analysis */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/50">
+          {/* Financial Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-lg text-gray-900 dark:text-white">Conciliação e Financeiro</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Análise financeira do estoque atual e projeção de lucro</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Valor Bruto em Estoque</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                  {tanques.reduce((acc, t) => acc + (t.estoque_atual * (t.combustivel?.preco_custo || 0)), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </h3>
               </div>
-              <div className="flex gap-2">
-                <div className="px-3 py-1 rounded bg-[#e7f3ec] border border-[#13ec6d]/20 text-[#0d1b13] text-xs font-bold flex flex-col items-end">
-                  <span className="text-[10px] text-[#4c9a6c] uppercase">Estoque (Custo)</span>
-                  R$ {currentSummary.totalCost.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                </div>
-                <div className="px-3 py-1 rounded bg-blue-50 border border-blue-100 text-[#0d1b13] text-xs font-bold flex flex-col items-end">
-                  <span className="text-[10px] text-blue-500 uppercase">Estoque (Venda)</span>
-                  R$ {currentSummary.totalSell.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                </div>
-                <div className="px-3 py-1 rounded bg-[#13ec6d] text-[#0d1b13] text-xs font-bold flex flex-col items-end shadow-sm">
-                  <span className="text-[10px] text-[#0d1b13]/60 uppercase">Lucro Projetado</span>
-                  R$ {currentSummary.projectedProfit.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                </div>
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                <TrendingUp size={24} />
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold text-center">
-                    <th className="px-4 py-3 text-left">Produto</th>
-                    <th className="px-4 py-3 bg-gray-100/50 dark:bg-gray-600/50">Anterior</th>
-                    <th className="px-4 py-3 bg-gray-100/50 dark:bg-gray-600/50">+ Cmpr</th>
-                    <th className="px-4 py-3 bg-gray-100/50 dark:bg-gray-600/50">- Vnd</th>
-                    <th className="px-4 py-3 bg-blue-50/30 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Lógico</th>
-                    <th className="px-4 py-3 bg-yellow-50/30 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 w-32">Físico</th>
-                    <th className="px-4 py-3 bg-red-50/30 dark:bg-red-900/20 text-red-700 dark:text-red-400">P/S</th>
-                    <th className="px-4 py-3 text-right">Custo Médio</th>
-                    <th className="px-4 py-3 text-right">Valor Estoque</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {items.map((item) => {
-                    const measureVal = measurements[item.id];
-                    const physicalVol = measureVal ? parseMeasure(measureVal) : item.volume;
-                    const diff = measureVal ? physicalVol - item.volume : 0;
-
-                    const stockValue = physicalVol * item.costPrice;
-
-                    return (
-                      <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors text-center">
-                        <td className="px-4 py-4 text-left font-bold text-gray-900 dark:text-white border-l-4" style={{ borderColor: item.color === 'green' ? '#13ec6d' : item.color }}>
-                          {item.name}
-                        </td>
-                        <td className="px-4 py-4 text-gray-500 dark:text-gray-400">{item.previousStock?.toLocaleString() || 0} L</td>
-                        <td className="px-4 py-4 text-green-600 font-medium">{item.totalPurchases > 0 ? `+ ${item.totalPurchases.toLocaleString()}` : '-'}</td>
-                        <td className="px-4 py-4 text-red-500 font-medium">{item.totalSales > 0 ? `- ${item.totalSales.toLocaleString()}` : '-'}</td>
-                        <td className="px-4 py-4 bg-blue-50/20 dark:bg-blue-900/10 font-bold text-blue-700 dark:text-blue-400">{item.volume.toLocaleString()} L</td>
-                        <td className="px-4 py-4 bg-yellow-50/20 dark:bg-yellow-900/10">
-                          <input
-                            type="text"
-                            value={measurements[item.id] || ''}
-                            onChange={(e) => handleMeasurementChange(item.id, e.target.value)}
-                            placeholder={item.volume.toLocaleString('pt-BR')}
-                            className="w-full text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm font-bold shadow-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 outline-none dark:text-white"
-                          />
-                        </td>
-                        <td className={`px-4 py-4 font-bold ${diff < 0 ? 'text-red-500' : diff > 0 ? 'text-green-500' : 'text-gray-400'}`}>
-                          {measureVal ? (diff > 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString()) : '-'}
-                        </td>
-                        <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400 font-medium">R$ {item.costPrice.toFixed(2)}</td>
-                        <td className="px-4 py-4 text-right font-bold text-gray-900 dark:text-white">R$ {stockValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Lucro Previsto Estimado</p>
+                <h3 className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                  {tanques.reduce((acc, t) => acc + (t.estoque_atual * ((t.combustivel?.preco_venda || 0) - (t.combustivel?.preco_custo || 0))), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </h3>
+              </div>
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-600 dark:text-green-400">
+                <TrendingUp size={24} />
+              </div>
             </div>
           </div>
 
-          {/* Recent Activity Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-20">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Últimos Registros</h3>
-              <button className="text-sm font-bold text-[#13ec6d] hover:text-[#0eb553] transition-colors">Ver Histórico</button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {tanques.map(tanque => (
+              <FuelTank
+                key={tanque.id}
+                name={tanque.nome}
+                productName={tanque.combustivel?.nome || 'Produto Indefinido'}
+                capacity={tanque.capacidade}
+                currentVolume={tanque.estoque_atual}
+              />
+            ))}
+          </div>
+
+          {/* Resumo Consolidado (opcional, só para manter paridade com o que ele vê no financeiro) */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 dark:text-white">Resumo Detalhado</h3>
+              <button className="text-blue-600 text-sm hover:underline">Ver Relatório Completo</button>
             </div>
-            <div className="overflow-x-auto">
-              {transactions.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-sm italic">Nenhum registro encontrado.</div>
-              ) : (
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 dark:bg-gray-700 text-gray-400 uppercase text-xs font-bold">
-                    <tr>
-                      <th className="px-6 py-3">Data/Hora</th>
-                      <th className="px-6 py-3">Tipo</th>
-                      <th className="px-6 py-3">Combustível</th>
-                      <th className="px-6 py-3 text-right">Quantidade</th>
-                      <th className="px-6 py-3">Responsável</th>
-                      <th className="px-6 py-3 text-center">Status</th>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 font-medium">
+                <tr>
+                  <th className="px-6 py-3">Tanque</th>
+                  <th className="px-6 py-3">Produto</th>
+                  <th className="px-6 py-3 text-right">Capacidade</th>
+                  <th className="px-6 py-3 text-right">Estoque Atual</th>
+                  <th className="px-6 py-3 text-right">Valor Estoque</th>
+                  <th className="px-6 py-3 text-right">Lucro Previsto</th>
+                  <th className="px-6 py-3 text-right">Disponível (%)</th>
+                  <th className="px-6 py-3 text-right">Para Encher</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {tanques.map(t => {
+                  const percent = t.capacidade > 0 ? (t.estoque_atual / t.capacidade) * 100 : 0;
+                  return (
+                    <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{t.nome}</td>
+                      <td className="px-6 py-3">{t.combustivel?.nome}</td>
+                      <td className="px-6 py-3 text-right font-mono">{t.capacidade.toLocaleString()} L</td>
+                      <td className="px-6 py-3 text-right font-mono font-bold">{t.estoque_atual.toLocaleString()} L</td>
+                      <td className="px-6 py-3 text-right font-mono text-gray-600 dark:text-gray-300">
+                        {(t.estoque_atual * (t.combustivel?.preco_custo || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
+                      <td className="px-6 py-3 text-right font-mono text-green-600 font-bold">
+                        {(t.estoque_atual * ((t.combustivel?.preco_venda || 0) - (t.combustivel?.preco_custo || 0))).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${percent < 15 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                          {percent.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-right font-mono text-gray-500">
+                        {(t.capacidade - t.estoque_atual).toLocaleString()} L
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                        <td className="px-6 py-4 text-gray-900 dark:text-white">{tx.date}</td>
-                        <td className="px-6 py-4">
-                          <span className="flex items-center gap-1.5 text-gray-900 dark:text-white font-medium">
-                            {tx.type === 'Venda' ? <ArrowDown size={16} className="text-green-500" /> : <ArrowUp size={16} className="text-blue-500" />}
-                            {tx.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{tx.product}</td>
-                        <td className="px-6 py-4 text-right font-medium text-gray-900 dark:text-white">
-                          {tx.quantity > 0 ? `+ ${tx.quantity.toLocaleString('pt-BR')} L` : `${tx.quantity.toLocaleString('pt-BR')} L`}
-                        </td>
-                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{tx.responsible}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.status === 'Concluído' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'}`}>
-                            {tx.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
 
+          <div className="mt-8">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Evolução do Estoque (30 dias)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {tanques.map(t => (
+                <InventoryHistoryChart key={t.id} tankName={t.nome} data={histories[t.id]} />
+              ))}
+            </div>
+          </div>
         </>
       )}
-
-      {/* Sticky Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center gap-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-            Último backup do sistema: Hoje às 03:00 AM • Versão 2.4.1
-          </p>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-              <FileText size={20} />
-              Relatório Completo
-            </button>
-            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-[#0d1b13] text-white text-sm font-bold hover:bg-black transition-colors shadow-lg">
-              <ShoppingCart size={20} />
-              Nova Cotação
-            </button>
-          </div>
-        </div>
-      </div>
-
     </div>
   );
 };

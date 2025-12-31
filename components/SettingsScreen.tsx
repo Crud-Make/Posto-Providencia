@@ -28,6 +28,7 @@ import {
   ShiftConfig,
   PaymentMethodConfig,
 } from "../types";
+import { TankManagement } from "./TankManagement";
 
 const SettingsScreen: React.FC = () => {
   const { postoAtivoId } = usePosto();
@@ -43,7 +44,7 @@ const SettingsScreen: React.FC = () => {
   const [tolerance, setTolerance] = useState("50.00");
 
   // Configurações financeiras
-  const [despesaOperacional, setDespesaOperacional] = useState("0.45");
+
   const [diasEstoqueCritico, setDiasEstoqueCritico] = useState("3");
   const [diasEstoqueBaixo, setDiasEstoqueBaixo] = useState("7");
   const [configsModified, setConfigsModified] = useState(false);
@@ -146,11 +147,7 @@ const SettingsScreen: React.FC = () => {
     setSaving(true);
     try {
       await Promise.all([
-        configuracaoService.update(
-          "despesa_operacional_litro",
-          despesaOperacional,
-          postoAtivoId
-        ),
+
         configuracaoService.update("tolerancia_divergencia", tolerance, postoAtivoId),
         configuracaoService.update("dias_estoque_critico", diasEstoqueCritico, postoAtivoId),
         configuracaoService.update("dias_estoque_baixo", diasEstoqueBaixo, postoAtivoId),
@@ -204,16 +201,13 @@ const SettingsScreen: React.FC = () => {
         setPaymentMethods(data.paymentMethods || []);
 
         // Carregar configurações do banco
-        const despOp = configs.find(
-          (c) => c.chave === "despesa_operacional_litro",
-        );
+
         const tol = configs.find((c) => c.chave === "tolerancia_divergencia");
         const diasCrit = configs.find(
           (c) => c.chave === "dias_estoque_critico",
         );
         const diasBaixo = configs.find((c) => c.chave === "dias_estoque_baixo");
 
-        if (despOp) setDespesaOperacional(despOp.valor);
         if (tol) setTolerance(tol.valor);
         if (diasCrit) setDiasEstoqueCritico(diasCrit.valor);
         if (diasBaixo) setDiasEstoqueBaixo(diasBaixo.valor);
@@ -285,6 +279,9 @@ const SettingsScreen: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Tank Management Section */}
+      <TankManagement />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Column (Products & Nozzles) */}
@@ -696,31 +693,7 @@ const SettingsScreen: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
-                Despesa Operacional por Litro (R$)
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Custo operacional aplicado sobre cada litro vendido (energia,
-                mão de obra, etc).
-              </p>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">
-                  R$
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={despesaOperacional}
-                  onChange={(e) => {
-                    setDespesaOperacional(e.target.value);
-                    setConfigsModified(true);
-                  }}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-mono font-bold focus:ring-2 focus:ring-green-500 outline-none"
-                />
-              </div>
-            </div>
+
           </div>
         </div>
 
