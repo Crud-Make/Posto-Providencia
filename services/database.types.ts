@@ -102,6 +102,7 @@ export type Database = {
           cor: string | null
           id: number
           nome: string
+          preco_custo: number
           preco_venda: number
           posto_id: number
         }
@@ -111,6 +112,7 @@ export type Database = {
           cor?: string | null
           id?: number
           nome: string
+          preco_custo?: number
           preco_venda?: number
           posto_id: number
         }
@@ -120,6 +122,7 @@ export type Database = {
           cor?: string | null
           id?: number
           nome?: string
+          preco_custo?: number
           preco_venda?: number
           posto_id?: number
         }

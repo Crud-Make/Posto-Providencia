@@ -4,8 +4,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import PostoSelector from './PostoSelector';
 
 interface HeaderProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
@@ -59,6 +59,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
           {[
             { id: 'dashboard', label: 'Dashboard' },
             { id: 'closing', label: 'Vendas' },
+            { id: 'daily_report', label: 'Relatório Diário' },
             { id: 'purchase', label: 'Compras' },
             { id: 'attendants', label: 'Frentistas' },
             { id: 'clients', label: 'Clientes / Fiado' },
