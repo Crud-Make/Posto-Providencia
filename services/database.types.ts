@@ -22,6 +22,7 @@ export type Database = {
           id: number
           numero: number
           posto_id: number
+          tanque_id: number | null
         }
         Insert: {
           ativo?: boolean
@@ -30,6 +31,7 @@ export type Database = {
           id?: number
           numero: number
           posto_id: number
+          tanque_id?: number | null
         }
         Update: {
           ativo?: boolean
@@ -38,6 +40,7 @@ export type Database = {
           id?: number
           numero?: number
           posto_id?: number
+          tanque_id?: number | null
         }
         Relationships: [
           {
@@ -61,8 +64,50 @@ export type Database = {
             referencedRelation: "Posto"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "Bico_tanque_id_fkey"
+            columns: ["tanque_id"]
+            isOneToOne: false
+            referencedRelation: "Tanque"
+            referencedColumns: ["id"]
+          },
         ]
       }
+      HistoricoTanque: {
+        Row: {
+          id: number
+          tanque_id: number
+          data: string
+          volume_livro: number | null
+          volume_fisico: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          tanque_id: number
+          data: string
+          volume_livro?: number | null
+          volume_fisico?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          tanque_id?: number
+          data?: string
+          volume_livro?: number | null
+          volume_fisico?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "HistoricoTanque_tanque_id_fkey"
+            columns: ["tanque_id"]
+            isOneToOne: false
+            referencedRelation: "Tanque"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
       Bomba: {
         Row: {
           ativo: boolean
@@ -189,6 +234,7 @@ export type Database = {
           }
         ]
       }
+
       NotaFrentista: {
         Row: {
           id: number
@@ -1183,6 +1229,54 @@ export type Database = {
           }
         ]
       }
+      Tanque: {
+        Row: {
+          ativo: boolean
+          capacidade: number
+          combustivel_id: number
+          created_at: string
+          estoque_atual: number
+          id: number
+          nome: string
+          posto_id: number
+        }
+        Insert: {
+          ativo?: boolean
+          capacidade?: number
+          combustivel_id: number
+          created_at?: string
+          estoque_atual?: number
+          id?: number
+          nome: string
+          posto_id: number
+        }
+        Update: {
+          ativo?: boolean
+          capacidade?: number
+          combustivel_id?: number
+          created_at?: string
+          estoque_atual?: number
+          id?: number
+          nome?: string
+          posto_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Tanque_combustivel_id_fkey"
+            columns: ["combustivel_id"]
+            isOneToOne: false
+            referencedRelation: "Combustivel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Tanque_posto_id_fkey"
+            columns: ["posto_id"]
+            isOneToOne: false
+            referencedRelation: "Posto"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
       Posto: {
         Row: {
           id: number
