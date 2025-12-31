@@ -520,7 +520,7 @@ export const leituraService = {
       .from('Leitura')
       .select('*')
       .eq('bico_id', bicoId)
-      .order('data', { ascending: false })
+      .order('id', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) throw error;
@@ -961,21 +961,35 @@ export const fechamentoFrentistaService = {
   },
 
   async getByDate(dataStr: string, postoId?: number) {
-    let query = (supabase as any)
+    // Primeiro, buscar os IDs dos fechamentos para esta data e posto
+    let fechamentoQuery = supabase
+      .from('Fechamento')
+      .select('id')
+      .gte('data', `${dataStr}T00:00:00`)
+      .lte('data', `${dataStr}T23:59:59`);
+
+    if (postoId) {
+      fechamentoQuery = fechamentoQuery.eq('posto_id', postoId);
+    }
+
+    const { data: fechamentos, error: fechError } = await fechamentoQuery;
+    if (fechError) throw fechError;
+
+    if (!fechamentos || fechamentos.length === 0) {
+      return [];
+    }
+
+    const fechamentoIds = fechamentos.map(f => f.id);
+
+    // Agora buscar os FechamentoFrentista com esses IDs
+    const { data, error } = await supabase
       .from('FechamentoFrentista')
       .select(`
         *,
         frentista:Frentista(*),
-        fechamento:Fechamento!inner(data, turno_id, turno:Turno(*), posto_id)
+        fechamento:Fechamento(data, turno_id, turno:Turno(*), posto_id)
       `)
-      .gte('fechamento.data', `${dataStr}T00:00:00`)
-      .lte('fechamento.data', `${dataStr}T23:59:59`);
-
-    if (postoId) {
-      query = query.eq('fechamento.posto_id', postoId);
-    }
-
-    const { data, error } = await query;
+      .in('fechamento_id', fechamentoIds);
 
     if (error) throw error;
     return data || [];
