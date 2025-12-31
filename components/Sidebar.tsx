@@ -20,8 +20,8 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report') => void;
   className?: string;
 }
 
@@ -30,7 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'closing', label: 'Vendas', icon: ShoppingCart },
+    { id: 'closing', label: 'Fechamento de Caixa', icon: ShoppingCart },
+    { id: 'daily_report', label: 'Relatório Diário', icon: ClipboardList },
     { id: 'purchase', label: 'Compras', icon: ShoppingBag },
     { id: 'attendants', label: 'Frentistas', icon: Users },
     { id: 'clients', label: 'Clientes / Fiado', icon: Users },

@@ -3,6 +3,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DashboardScreen from './components/DashboardScreen';
 import DailyClosingScreen from './components/DailyClosingScreen';
+import DailyReportScreen from './components/DailyReportScreen';
 import PurchaseRegistrationScreen from './components/PurchaseRegistrationScreen';
 import InventoryDashboardScreen from './components/InventoryDashboardScreen';
 import CostAnalysisScreen from './components/CostAnalysisScreen';
@@ -23,7 +24,7 @@ import { Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report'>('dashboard');
 
 
   if (loading) {
@@ -106,6 +107,9 @@ const AppContent: React.FC = () => {
           )}
           {currentView === 'clients' && (
             <CustomerManagementScreen />
+          )}
+          {currentView === 'daily_report' && (
+            <DailyReportScreen />
           )}
         </main>
       </div>
