@@ -31,7 +31,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-barcode-scanner"
     ],
     "extra": {
       "router": {},
@@ -40,9 +41,7 @@
       }
     },
     "owner": "thygas8477",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/e62f5bc8-d8ea-42cc-82b2-8fddace513db"
     }

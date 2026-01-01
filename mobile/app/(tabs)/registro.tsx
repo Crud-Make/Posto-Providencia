@@ -1,5 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import {
     CreditCard,
@@ -20,7 +21,9 @@ import {
     Sun,
     Moon,
     Sunset,
-    ShoppingBag
+    ShoppingBag,
+    QrCode,
+    ArrowRight
 } from 'lucide-react-native';
 import { registerForPushNotificationsAsync, savePushToken } from '../../lib/notifications';
 
@@ -84,7 +87,9 @@ const ESCALA_MOCK: FrentistaEscala[] = [
 export default function RegistroScreen() {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [userName, setUserName] = useState('Frentista');
+    const [userName, setUserName] = useState('');
+    const router = useRouter();
+
     const [turnoSelecionado, setTurnoSelecionado] = useState<Turno>(TURNOS[0]);
     const [showTurnoModal, setShowTurnoModal] = useState(false);
     const [showEscalaModal, setShowEscalaModal] = useState(false);
@@ -494,6 +499,23 @@ export default function RegistroScreen() {
                     {renderInputField(FORMAS_PAGAMENTO[2], registro.valorPix, 'valorPix')}
                     {renderInputField(FORMAS_PAGAMENTO[3], registro.valorDinheiro, 'valorDinheiro')}
                     {renderInputField(FORMAS_PAGAMENTO[4], registro.valorBaratao, 'valorBaratao')}
+
+                    {/* Atalho para Voucher Baratência */}
+                    <TouchableOpacity
+                        className="bg-purple-100 border-2 border-purple-200 rounded-2xl p-4 flex-row items-center justify-between mb-4"
+                        onPress={() => router.push('/voucher')}
+                    >
+                        <View className="flex-row items-center gap-3">
+                            <View className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center">
+                                <QrCode size={20} color="white" />
+                            </View>
+                            <View>
+                                <Text className="text-purple-900 font-bold">Validar Voucher Baratência</Text>
+                                <Text className="text-purple-600 text-xs text-wrap max-w-[200px]">Use para tokens de combustível e promoções</Text>
+                            </View>
+                        </View>
+                        <ArrowRight size={20} color="#7c3aed" />
+                    </TouchableOpacity>
                 </View>
 
                 {/* Seção de Falta de Caixa */}
