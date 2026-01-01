@@ -3299,35 +3299,82 @@ export const resetService = {
         deletedCounts[tableName] = data?.length || 0;
       };
 
-      // 1. Deletar Leituras (vendas registradas)
+      // 1. Deletar Vendas de Produtos (refere-se a FechamentoFrentista)
+      await deleteTable('VendaProduto', false); // Tabela sem posto_id direto em algumas versões? Verificar schema. 
+      // Olhando o schema anterior, VendaProduto NÃO tem posto_id. Vou deletar filtrando por fechamento_frentista se necessário, ou tudo.
+
+      // Deletar VendaProduto (sem posto_id na tabela)
+      if (postoId) {
+        // Precisamos buscar as frentistas do posto para deletar as vendas
+        const { data: frentistas } = await supabase.from('Frentista').select('id').eq('posto_id', postoId);
+        if (frentistas && frentistas.length > 0) {
+          await (supabase as any).from('VendaProduto').delete().in('frentista_id', frentistas.map(f => f.id));
+        }
+      } else {
+        await (supabase as any).from('VendaProduto').delete().neq('id', 0);
+      }
+
+      // 2. Deletar Leituras
       await deleteTable('Leitura');
 
-      // 2. Deletar Recebimentos (relacionados a fechamentos)
-      await deleteTable('Recebimento');
+      // 3. Deletar Recebimentos (refere-se a Fechamento)
+      await deleteTable('Recebimento', false); // Recebimento não tem posto_id direto
+      if (postoId) {
+        const { data: fechamentos } = await supabase.from('Fechamento').select('id').eq('posto_id', postoId);
+        if (fechamentos && fechamentos.length > 0) {
+          await (supabase as any).from('Recebimento').delete().in('fechamento_id', fechamentos.map(f => f.id));
+        }
+      } else {
+        await (supabase as any).from('Recebimento').delete().neq('id', 0);
+      }
 
-      // 3. Deletar FechamentoFrentista
+      // 4. Deletar Notificações
+      await deleteTable('Notificacao');
+
+      // 5. Deletar FechamentoFrentista (refere-se a Fechamento)
       await deleteTable('FechamentoFrentista');
 
-      // 4. Deletar Fechamentos
+      // 6. Deletar Fechamentos
       await deleteTable('Fechamento');
 
-      // 5. Deletar Notas de Frentista
+      // 7. Deletar Notas de Frentista
       await deleteTable('NotaFrentista');
 
-      // 6. Deletar Parcelas de Empréstimos
-      await deleteTable('Parcela');
+      // 8. Deletar Parcelas de Empréstimos
+      await deleteTable('Parcela', false);
+      if (postoId) {
+        const { data: emp } = await supabase.from('Emprestimo').select('id').eq('posto_id', postoId);
+        if (emp && emp.length > 0) {
+          await (supabase as any).from('Parcela').delete().in('emprestimo_id', emp.map(e => e.id));
+        }
+      } else {
+        await (supabase as any).from('Parcela').delete().neq('id', 0);
+      }
 
-      // 7. Deletar Empréstimos
+      // 9. Deletar Empréstimos
       await deleteTable('Emprestimo');
 
-      // 8. Deletar Dívidas
+      // 10. Deletar Dívidas
       await deleteTable('Divida');
 
-      // 9. Deletar Despesas
+      // 11. Deletar Despesas
       await deleteTable('Despesa');
 
-      // 10. Deletar Compras
+      // 12. Deletar Compras
       await deleteTable('Compra');
+
+      // 13. Deletar Movimentação de Estoque
+      await deleteTable('MovimentacaoEstoque');
+
+      // 14. Deletar Escala
+      if (postoId) {
+        const { data: fren } = await supabase.from('Frentista').select('id').eq('posto_id', postoId);
+        if (fren && fren.length > 0) {
+          await (supabase as any).from('Escala').delete().in('frentista_id', fren.map(f => f.id));
+        }
+      } else {
+        await (supabase as any).from('Escala').delete().neq('id', 0);
+      }
 
       // 11. Deletar Histórico de Tanques
       let queryHist = (supabase as any).from('HistoricoTanque').delete();

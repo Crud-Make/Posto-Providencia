@@ -3,22 +3,37 @@ import { useAuth } from '../contexts/AuthContext';
 import { Loader2, Lock, Mail } from 'lucide-react';
 
 const LoginScreen: React.FC = () => {
-    const { signIn } = useAuth();
+    const { signIn, signUp } = useAuth();
+    const [mode, setMode] = useState<'login' | 'register'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [fullName, setFullName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setSuccess(null);
 
-        const { error: signInError } = await signIn(email, password);
-
-        if (signInError) {
-            setError(signInError.message || 'Falha ao fazer login');
-            setLoading(false);
+        if (mode === 'login') {
+            const { error: signInError } = await signIn(email, password);
+            if (signInError) {
+                setError(signInError.message || 'Falha ao fazer login');
+                setLoading(false);
+            }
+        } else {
+            const { error: signUpError } = await signUp(email, password, fullName);
+            if (signUpError) {
+                setError(signUpError.message || 'Falha ao criar conta');
+                setLoading(false);
+            } else {
+                setSuccess('Conta criada com sucesso! Você já pode entrar.');
+                setMode('login');
+                setLoading(false);
+            }
         }
     };
 
@@ -58,6 +73,35 @@ const LoginScreen: React.FC = () => {
                         <div className="mb-4 p-3 bg-red-500/90 text-white rounded-lg font-bold text-sm shadow-lg backdrop-blur-sm">
                             {error}
                         </div>
+                    )}
+
+                    {success && (
+                        <div className="mb-4 p-3 bg-green-500/90 text-white rounded-lg font-bold text-sm shadow-lg backdrop-blur-sm">
+                            {success}
+                        </div>
+                    )}
+
+                    {mode === 'register' && (
+                        <>
+                            <label className="block text-left text-[0.85rem] font-bold mb-[8px] tracking-[0.5px] uppercase" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}>
+                                Nome Completo
+                            </label>
+                            <div className="bg-white rounded-[8px] flex items-center px-[15px] py-[5px] mb-[20px]" style={{ boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>
+                                <div className="text-[#999] w-[20px] h-[20px] mr-[12px] flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    className="flex-grow bg-transparent border-none outline-none py-[12px] text-[1rem] text-[#333] placeholder-[#aaa]"
+                                    placeholder="Seu nome completo"
+                                    required
+                                />
+                            </div>
+                        </>
                     )}
 
                     {/* Campo Email */}
@@ -105,16 +149,29 @@ const LoginScreen: React.FC = () => {
                         {loading ? (
                             <>
                                 <Loader2 size={22} className="animate-spin mr-2" />
-                                <span>Acessando...</span>
+                                <span>{mode === 'login' ? 'Acessando...' : 'Criando conta...'}</span>
                             </>
                         ) : (
                             <>
-                                <span>ACESSAR SISTEMA</span>
+                                <span>{mode === 'login' ? 'ACESSAR SISTEMA' : 'CRIAR CONTA AGORA'}</span>
                                 <svg className="ml-[10px] w-[20px] h-[20px] fill-current" viewBox="0 0 24 24">
                                     <path d="M16.01 11H4v2h12.01v3L20 12l-3.99-4z" />
                                 </svg>
                             </>
                         )}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setMode(mode === 'login' ? 'register' : 'login');
+                            setError(null);
+                            setSuccess(null);
+                        }}
+                        className="mt-6 text-white text-[0.95rem] font-medium hover:underline focus:outline-none"
+                        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}
+                    >
+                        {mode === 'login' ? 'Não tem uma conta? Clique aqui para criar' : 'Já tem uma conta? Voltar ao login'}
                     </button>
                 </form>
 

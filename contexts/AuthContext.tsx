@@ -8,6 +8,7 @@ interface AuthContextType {
     user: Usuario | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: any }>;
+    signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
     signOut: () => Promise<void>;
 }
 
@@ -87,6 +88,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
     };
 
+    const signUp = async (email: string, password: string, fullName: string) => {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+        });
+
+        if (signUpError) return { error: signUpError };
+
+        // Inserir no perfil público (tabela Usuario)
+        const { error: profileError } = await supabase
+            .from('Usuario')
+            .insert([
+                {
+                    email,
+                    nome: fullName,
+                    senha: password,
+                    ativo: true,
+                    role: 'ADMIN'
+                }
+            ]);
+
+        return { error: profileError };
+    };
+
     const signOut = async () => {
         await supabase.auth.signOut();
         setUser(null);
@@ -94,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ session, user, loading, signIn, signOut }}>
+        <AuthContext.Provider value={{ session, user, loading, signIn, signUp, signOut }}>
             {children}
         </AuthContext.Provider>
     );
