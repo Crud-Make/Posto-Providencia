@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { ClipboardList, History, User, Home } from 'lucide-react-native';
+import { ClipboardList, History, User, QrCode } from 'lucide-react-native';
 import { View } from 'react-native';
 
 export default function TabsLayout() {
@@ -41,6 +41,19 @@ export default function TabsLayout() {
                             <ClipboardList size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
                         </View>
                     ),
+                }}
+            />
+            <Tabs.Screen
+                name="voucher"
+                options={{
+                    title: 'Voucher Baratência',
+                    tabBarLabel: 'Voucher',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View className={`p-2 rounded-xl ${focused ? 'bg-purple-50' : ''}`}>
+                            <QrCode size={24} color={focused ? '#7c3aed' : color} strokeWidth={focused ? 2.5 : 2} />
+                        </View>
+                    ),
+                    tabBarActiveTintColor: '#7c3aed',
                 }}
             />
             <Tabs.Screen
