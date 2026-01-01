@@ -7,9 +7,11 @@ import {
     salesAnalysisService,
     frentistaService,
     fechamentoFrentistaService,
-    clienteService
+    clienteService,
+    baratenciaService
 } from '../../services/api';
-import { Loader2, TrendingUp, TrendingDown, Minus, AlertTriangle, Lightbulb, Target, Users, DollarSign, Fuel, BarChart3, Calendar, Brain, Sparkles, Send, Settings, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { Loader2, TrendingUp, TrendingDown, Minus, AlertTriangle, Lightbulb, Target, Users, DollarSign, Fuel, BarChart3, Calendar, Brain, Sparkles, Send, Settings, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 // Types
 interface DashboardMetrics {
@@ -111,6 +113,7 @@ export const StrategicDashboard: React.FC = () => {
     const [aiPromotion, setAiPromotion] = useState<AIPromotion | null>(null);
     const [salesByDay, setSalesByDay] = useState<SalesByDayOfWeek[]>([]);
     const [selectedPromoProduct, setSelectedPromoProduct] = useState<string>('');
+    const [submitting, setSubmitting] = useState(false);
     const [promoDiscount, setPromoDiscount] = useState<number>(15);
     const [chatInput, setChatInput] = useState('');
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'ai', content: string }[]>([
@@ -459,6 +462,36 @@ export const StrategicDashboard: React.FC = () => {
 
             setChatMessages(prev => [...prev, { role: 'ai', content: response }]);
         }, 800);
+    };
+
+    const handleApplyPromotion = async () => {
+        if (!aiPromotion || !postoAtivoId) return;
+
+        setSubmitting(true);
+        try {
+            // Find the selected template's info or use the first one
+            const template = aiPromotion.templates[0];
+
+            await baratenciaService.createPromocao({
+                titulo: template.name,
+                descricao: `${template.description}. Alvo: ${aiPromotion.targetDay}. Produto: ${selectedPromoProduct}. Desconto: R$ ${(promoDiscount / 100).toFixed(2)}`,
+                tipo: 'PRECO_TRAVADO', // Or mapping based on template
+                valor_minimo: 0,
+                bonus_porcentagem: 0,
+                combustivel_codigo: selectedPromoProduct,
+                data_inicio: new Date().toISOString(),
+                data_fim: null, // Open ended
+                ativo: true,
+                posto_id: postoAtivoId
+            });
+
+            toast.success(`Promoção "${template.name}" agendada com sucesso para ${aiPromotion.targetDay}!`);
+        } catch (error: any) {
+            console.error('Error applying promotion:', error);
+            toast.error('Erro ao agendar promoção: ' + error.message);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     // Calculate max volume for chart scaling
@@ -883,8 +916,12 @@ export const StrategicDashboard: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        <button className="w-full mt-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2">
-                                            <Calendar className="w-4 h-4" />
+                                        <button
+                                            onClick={handleApplyPromotion}
+                                            disabled={submitting}
+                                            className="w-full mt-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                                        >
+                                            {submitting ? <Loader2 className="animate-spin w-4 h-4" /> : <Calendar className="w-4 h-4" />}
                                             Agendar Promoção para {aiPromotion.targetDay}
                                         </button>
                                     </div>
