@@ -17,13 +17,14 @@ import {
   Target,
   Building2,
   BrainCircuit,
-  Crown
+  Crown,
+  Wallet
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia') => void;
   className?: string;
 }
 
@@ -39,6 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
     { id: 'purchase', label: 'Compras', icon: ShoppingBag },
     { id: 'attendants', label: 'Frentistas', icon: Users },
     { id: 'clients', label: 'Clientes / Fiado', icon: Users },
+    { id: 'baratencia', label: 'Baratência', icon: Wallet },
     { id: 'inventory', label: 'Tanques (Combustível)', icon: Fuel },
     { id: 'products', label: 'Produtos e Estoque', icon: Package },
     { id: 'finance', label: 'Empréstimos', icon: Banknote },
