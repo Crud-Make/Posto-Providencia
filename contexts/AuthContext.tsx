@@ -96,18 +96,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (signUpError) return { error: signUpError };
 
-        // Inserir no perfil público (tabela Usuario)
+        // Inserir ou atualizar no perfil público (tabela Usuario)
+        // Usamos upsert porque o trigger handle_new_user do Supabase pode já ter criado o registro
         const { error: profileError } = await supabase
             .from('Usuario')
-            .insert([
+            .upsert([
                 {
                     email,
                     nome: fullName,
                     senha: password,
                     ativo: true,
-                    role: 'ADMIN'
+                    role: 'ADMIN' // Por padrão, usuários criados via dashboard são ADMIN
                 }
-            ]);
+            ], { onConflict: 'email' });
 
         return { error: profileError };
     };
