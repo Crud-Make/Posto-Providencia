@@ -60,7 +60,23 @@ CREATE TABLE IF NOT EXISTS "TokenAbastecimento" (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. Adicionar campo específico no FechamentoFrentista para Baratência
+-- 5. Tabela de Promoções
+CREATE TABLE IF NOT EXISTS "PromocaoBaratencia" (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    titulo VARCHAR(255) NOT NULL,
+    descricao TEXT,
+    tipo VARCHAR(50) NOT NULL, -- BONUS_DEPOSITO, BONUS_CONVERSAO, PRECO_TRAVADO
+    valor_minimo DECIMAL(15, 2) DEFAULT 0,
+    bonus_porcentagem DECIMAL(5, 2) DEFAULT 0,
+    combustivel_codigo VARCHAR(10),
+    data_inicio TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    data_fim TIMESTAMP WITH TIME ZONE,
+    ativo BOOLEAN DEFAULT TRUE,
+    posto_id INTEGER REFERENCES "Posto"(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6. Adicionar campo específico no FechamentoFrentista para Baratência
 DO $$ 
 BEGIN 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='FechamentoFrentista' AND column_name='baratencia') THEN
