@@ -15,8 +15,10 @@ import {
     TrendingUp,
     AlertTriangle,
     Check,
-    Award
+    Award,
+    RefreshCw
 } from 'lucide-react-native';
+import * as Updates from 'expo-updates';
 
 interface UserStats {
     totalRegistros: number;
@@ -30,6 +32,45 @@ export default function PerfilScreen() {
     const [userEmail, setUserEmail] = useState('');
     const [turno, setTurno] = useState('Manhã');
     const [loading, setLoading] = useState(false);
+    const [checkingUpdate, setCheckingUpdate] = useState(false);
+    const [updateMsg, setUpdateMsg] = useState('Toque para verificar');
+
+    const handleCheckUpdate = async () => {
+        if (checkingUpdate) return;
+
+        try {
+            setCheckingUpdate(true);
+            setUpdateMsg('Verificando...');
+
+            const update = await Updates.checkForUpdateAsync();
+
+            if (update.isAvailable) {
+                setUpdateMsg('Baixando atualização...');
+                await Updates.fetchUpdateAsync();
+
+                Alert.alert(
+                    'Atualização Pronta',
+                    'O aplicativo será reiniciado para aplicar a atualização.',
+                    [{
+                        text: 'OK',
+                        onPress: async () => {
+                            await Updates.reloadAsync();
+                        }
+                    }]
+                );
+                setUpdateMsg('Atualização aplicada!');
+            } else {
+                setUpdateMsg('App atualizado');
+                Alert.alert('Tudo certo', 'Você já está usando a versão mais recente.');
+            }
+        } catch (error) {
+            console.log(error);
+            setUpdateMsg('Erro ao verificar');
+            Alert.alert('Erro', 'Não foi possível verificar atualizações.');
+        } finally {
+            setCheckingUpdate(false);
+        }
+    };
 
     // Estatísticas mock
     const [stats] = useState<UserStats>({
@@ -203,6 +244,15 @@ export default function PerfilScreen() {
                     className="bg-white rounded-2xl overflow-hidden border border-gray-100"
                     style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
                 >
+                    <MenuItem
+                        icon={RefreshCw}
+                        label="Verificar Atualizações"
+                        subtitle={updateMsg}
+                        onPress={handleCheckUpdate}
+                        iconColor="#2563eb"
+                        iconBg="#eff6ff"
+                    />
+                    <View className="h-px bg-gray-100 ml-16" />
                     <MenuItem
                         icon={Bell}
                         label="Notificações"
