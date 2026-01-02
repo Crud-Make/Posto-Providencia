@@ -38,15 +38,29 @@ export default function PerfilScreen() {
     const handleCheckUpdate = async () => {
         if (checkingUpdate) return;
 
+        // Verificar se OTA está habilitado
+        if (!Updates.isEnabled) {
+            Alert.alert('Aviso', 'Atualizações OTA não estão habilitadas neste build. Use o APK mais recente.');
+            return;
+        }
+
         try {
             setCheckingUpdate(true);
             setUpdateMsg('Verificando...');
 
+            console.log('🔍 Verificando atualizações...');
+            console.log('Runtime Version:', Updates.runtimeVersion);
+            console.log('Update ID:', Updates.updateId);
+
             const update = await Updates.checkForUpdateAsync();
+            console.log('📦 Resultado:', update);
 
             if (update.isAvailable) {
+                console.log('✅ Atualização disponível!');
                 setUpdateMsg('Baixando atualização...');
+                
                 await Updates.fetchUpdateAsync();
+                console.log('⬇️ Download concluído!');
 
                 Alert.alert(
                     'Atualização Pronta',
@@ -54,19 +68,21 @@ export default function PerfilScreen() {
                     [{
                         text: 'OK',
                         onPress: async () => {
+                            console.log('🔄 Reiniciando...');
                             await Updates.reloadAsync();
                         }
                     }]
                 );
                 setUpdateMsg('Atualização aplicada!');
             } else {
+                console.log('ℹ️ Nenhuma atualização disponível');
                 setUpdateMsg('App atualizado');
-                Alert.alert('Tudo certo', 'Você já está usando a versão mais recente.');
+                Alert.alert('Tudo certo', `Você já está usando a versão mais recente.\n\nRuntime: ${Updates.runtimeVersion}`);
             }
-        } catch (error) {
-            console.log(error);
+        } catch (error: any) {
+            console.error('❌ Erro:', error);
             setUpdateMsg('Erro ao verificar');
-            Alert.alert('Erro', 'Não foi possível verificar atualizações.');
+            Alert.alert('Erro', `Não foi possível verificar atualizações.\n\n${error.message || 'Verifique sua conexão.'}`);
         } finally {
             setCheckingUpdate(false);
         }
