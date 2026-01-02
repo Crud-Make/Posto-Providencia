@@ -31,8 +31,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
-      "expo-barcode-scanner"
+      "expo-secure-store"
     ],
     "extra": {
       "router": {},
