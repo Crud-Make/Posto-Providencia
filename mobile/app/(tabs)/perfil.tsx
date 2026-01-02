@@ -321,7 +321,7 @@ export default function PerfilScreen() {
 
             {/* Versão */}
             <Text className="text-center text-gray-400 text-xs mt-8">
-                Versão 1.0.0 • Posto Providência
+                Versão 1.0.1 • Posto Providência
             </Text>
         </ScrollView>
     );
