@@ -1,8 +1,13 @@
 import { Tabs } from 'expo-router';
 import { ClipboardList, History, User, QrCode } from 'lucide-react-native';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
+    const insets = useSafeAreaInsets();
+    // Add extra padding on Android with edge-to-edge to avoid overlap with navigation buttons
+    const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 24) : insets.bottom;
+
     return (
         <Tabs
             screenOptions={{
@@ -21,8 +26,8 @@ export default function TabsLayout() {
                     borderTopWidth: 1,
                     borderTopColor: '#f3f4f6',
                     paddingTop: 8,
-                    paddingBottom: 8,
-                    height: 70,
+                    paddingBottom: bottomPadding + 8,
+                    height: 70 + bottomPadding,
                 },
                 tabBarLabelStyle: {
                     fontSize: 11,
