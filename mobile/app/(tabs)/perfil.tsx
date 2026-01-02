@@ -58,7 +58,7 @@ export default function PerfilScreen() {
             if (update.isAvailable) {
                 console.log('✅ Atualização disponível!');
                 setUpdateMsg('Baixando atualização...');
-                
+
                 await Updates.fetchUpdateAsync();
                 console.log('⬇️ Download concluído!');
 
@@ -82,7 +82,22 @@ export default function PerfilScreen() {
         } catch (error: any) {
             console.error('❌ Erro:', error);
             setUpdateMsg('Erro ao verificar');
-            Alert.alert('Erro', `Não foi possível verificar atualizações.\n\n${error.message || 'Verifique sua conexão.'}`);
+
+            let errorMessage = error.message || 'Erro desconhecido';
+            let suggestion = '';
+
+            // Check for common error scenarios
+            if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                suggestion = '\n\n💡 Sugestão: Verifique sua conexão com a internet.';
+            } else if (errorMessage.includes('runtime') || errorMessage.includes('version')) {
+                suggestion = '\n\n💡 Sugestão: Este APK pode não ser compatível com as atualizações OTA. Instale a versão mais recente do APK.';
+            } else if (errorMessage.includes('not enabled') || errorMessage.includes('development')) {
+                suggestion = '\n\n💡 Sugestão: Este build não suporta atualizações OTA. Instale um build de produção.';
+            } else {
+                suggestion = `\n\n💡 Runtime: ${Updates.runtimeVersion || 'N/A'}\n💡 Sugestão: Tente reinstalar o APK mais recente da loja.`;
+            }
+
+            Alert.alert('Erro', `Não foi possível verificar atualizações.\n\n${errorMessage}${suggestion}`);
         } finally {
             setCheckingUpdate(false);
         }
