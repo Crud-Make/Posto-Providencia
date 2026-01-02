@@ -7,8 +7,13 @@ O **PostoGestão Pro** é uma solução completa e moderna para a gestão automa
 ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
 ![Supabase](https://img.shields.io/badge/Supabase-3EC988?style=for-the-badge&logo=supabase&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Mobile App](https://img.shields.io/badge/Mobile-Repo-blue?style=for-the-badge&logo=github)
+![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)
 
-## 🚀 Funcionalidades Principais
+## 🏗️ Arquitetura do Sistema
+Este ecossistema é composto por dois repositórios independentes:
+1.  **Dashboard (Este Repo):** Gestão administrativa e financeira (Vite/React).
+2.  **Mobile App:** Operação de pista para frentistas e clientes (Expo/React Native). [Acessar Repositório](https://github.com/Thyago-vibe/posto-mobile).
 
 ### 📊 Dashboard do Proprietário (Owner View)
 *   **Visão Consolidada:** Acompanhe múltiplos postos em uma única tela.
@@ -31,6 +36,11 @@ O **PostoGestão Pro** é uma solução completa e moderna para a gestão automa
 
 ### 🤖 Estrategista IA (Opcional)
 *   **Análise Preditiva:** Integração com OpenAI/Gemini para sugestões de promoções baseadas no volume de vendas e desempenho por dia da semana.
+
+## 📱 Aplicativo Mobile (Frentistas)
+A operação de pista (fechamento, vendas de bico, vouchers) é realizada através de um aplicativo dedicado para Android/iOS.
+*   **Repositório:** [posto-mobile](https://github.com/Thyago-vibe/posto-mobile)
+*   **Tecnologia:** React Native + Expo.
 
 ## 🛠️ Tecnologias Utilizadas
 
