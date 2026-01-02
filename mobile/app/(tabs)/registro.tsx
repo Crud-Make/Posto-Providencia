@@ -106,33 +106,35 @@ export default function RegistroScreen() {
         observacoes: '',
     });
 
-    // Formatar valor para exibição (aceita vírgula e ponto)
+    // Formatar valor para exibição no padrão brasileiro (1.234,56)
     const formatInputValue = (value: string): string => {
-        // Remove tudo que não for número, vírgula ou ponto
-        let cleanValue = value.replace(/[^0-9.,]/g, '');
+        // Remove tudo que não for número
+        let onlyNumbers = value.replace(/\D/g, '');
 
-        // Substitui ponto por vírgula para padronizar
-        cleanValue = cleanValue.replace('.', ',');
+        // Se não tiver números, retorna vazio
+        if (!onlyNumbers) return '';
 
-        // Garante apenas uma vírgula
-        const parts = cleanValue.split(',');
-        if (parts.length > 2) {
-            cleanValue = parts[0] + ',' + parts.slice(1).join('');
-        }
+        // Remove zeros à esquerda (exceto se for só zeros)
+        onlyNumbers = onlyNumbers.replace(/^0+(?=\d)/, '');
 
-        // Limita a 2 casas decimais
-        if (parts.length === 2 && parts[1].length > 2) {
-            cleanValue = parts[0] + ',' + parts[1].substring(0, 2);
-        }
+        // Converte para número e formata para centavos
+        const numericValue = parseInt(onlyNumbers, 10);
 
-        return cleanValue;
+        // Formata como valor monetário (divide por 100 para ter centavos)
+        const formatted = (numericValue / 100).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+
+        return formatted;
     };
 
-    // Calcular totais
+    // Calcular totais - converter formato brasileiro (1.234,56) para número
     const parseValue = (value: string): number => {
         if (!value) return 0;
-        // Substitui vírgula por ponto para calcular
-        const parsed = parseFloat(value.replace(',', '.'));
+        // Remove pontos de milhar e substitui vírgula decimal por ponto
+        const normalized = value.replace(/\./g, '').replace(',', '.');
+        const parsed = parseFloat(normalized);
         return isNaN(parsed) ? 0 : parsed;
     };
 
