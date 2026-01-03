@@ -88,18 +88,19 @@ interface FrentistaSession {
 }
 
 // Fuel colors (mantendo para visualização)
+// Fuel colors (Mapped to user request: GC=Yellow, GA=Blue, ET=Green, S10=Red/Amber)
 const FUEL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
    'GC': { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
-   'GA': { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
-   'ET': { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-300' },
-   'S10': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' },
+   'GA': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
+   'ET': { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
+   'S10': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' }, // Maintaining Red for distinction
    'DIESEL': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
 };
 
 const FUEL_CHART_COLORS: Record<string, string> = {
    'GC': '#EAB308', // yellow-500
-   'GA': '#22C55E', // green-500
-   'ET': '#06B6D4', // cyan-500
+   'GA': '#3B82F6', // blue-500
+   'ET': '#22C55E', // green-500
    'S10': '#EF4444', // red-500
    'DIESEL': '#F59E0B', // amber-500
 };
