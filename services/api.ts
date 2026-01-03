@@ -924,6 +924,16 @@ export const fechamentoFrentistaService = {
       .insert(fechamentoFrentista)
       .select()
       .single();
+    return data;
+  },
+
+  async update(id: number, updates: UpdateTables<'FechamentoFrentista'>): Promise<FechamentoFrentista> {
+    const { data, error } = await supabase
+      .from('FechamentoFrentista')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
     if (error) throw error;
     return data;
   },
@@ -2333,6 +2343,7 @@ export async function fetchDashboardData(
         (turnoId ? 'Aguardando' : 'Pendente'),
       totalSales: totalSales,
       status: status,
+      sessionStatus: (fechamento?.observacoes?.includes('[CONFERIDO]') ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
     };
   });
 
@@ -2368,7 +2379,8 @@ export async function fetchDashboardData(
         value: `R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         subValue: `Vendas: R$ ${c.totalSales.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`,
         type: (c.totalSales > 0 ? 'ticket' : 'volume') as 'ticket' | 'volume' | 'divergence',
-        rawProfit: profit
+        rawProfit: profit,
+        sessionStatus: (c as any).sessionStatus
       };
     })
     .sort((a, b) => b.rawProfit - a.rawProfit)
@@ -2380,7 +2392,8 @@ export async function fetchDashboardData(
       metric: item.metric,
       value: item.value,
       subValue: item.subValue,
-      type: item.type
+      type: item.type,
+      status: (item as any).sessionStatus
     }));
 
   return {

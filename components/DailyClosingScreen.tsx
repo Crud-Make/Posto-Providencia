@@ -473,6 +473,10 @@ const DailyClosingScreen: React.FC = () => {
                   const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
                   const totalProdutos = produtos.reduce((acc, p) => acc + Number(p.valor_total), 0);
 
+                  const obs = s.observacoes || '';
+                  const isConferido = obs.includes('[CONFERIDO]');
+                  const cleanObs = obs.replace('[CONFERIDO]', '').trim();
+
                   return {
                      tempId: s.id.toString(),
                      frentistaId: s.frentista_id,
@@ -483,7 +487,8 @@ const DailyClosingScreen: React.FC = () => {
                      valor_baratao: s.baratao ? formatSimpleValue(s.baratao.toString().replace('.', ',')) : '',
                      valor_encerrante: s.encerrante ? formatSimpleValue(s.encerrante.toString().replace('.', ',')) : '',
                      valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
-                     observacoes: s.observacoes || '',
+                     observacoes: cleanObs,
+                     status: (isConferido ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
                      valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00',
                      data_hora_envio: (s as any).data_hora_envio || null
                   };
@@ -515,6 +520,10 @@ const DailyClosingScreen: React.FC = () => {
                const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
                const totalProdutos = produtos.reduce((acc, p) => acc + Number(p.valor_total), 0);
 
+               const obs = s.observacoes || '';
+               const isConferido = obs.includes('[CONFERIDO]');
+               const cleanObs = obs.replace('[CONFERIDO]', '').trim();
+
                return {
                   tempId: s.id.toString(),
                   frentistaId: s.frentista_id,
@@ -525,7 +534,8 @@ const DailyClosingScreen: React.FC = () => {
                   valor_baratao: s.baratao ? formatSimpleValue(s.baratao.toString().replace('.', ',')) : '',
                   valor_encerrante: s.encerrante ? formatSimpleValue(s.encerrante.toString().replace('.', ',')) : '',
                   valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
-                  observacoes: s.observacoes || '',
+                  observacoes: cleanObs,
+                  status: (isConferido ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
                   valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00',
                   data_hora_envio: (s as any).data_hora_envio || null
                };
@@ -838,10 +848,30 @@ const DailyClosingScreen: React.FC = () => {
    };
 
    // Update a frentista session field
-   const updateFrentistaSession = (tempId: string, updates: Partial<FrentistaSession>) => {
+   const updateFrentistaSession = async (tempId: string, updates: Partial<FrentistaSession>) => {
       setFrentistaSessions(prev => prev.map(fs =>
          fs.tempId === tempId ? { ...fs, ...updates } : fs
       ));
+
+      // Persist status change explicitly
+      if (updates.status === 'conferido') {
+         try {
+            const session = frentistaSessions.find(s => s.tempId === tempId);
+            if (session) {
+               const currentObs = session.observacoes || '';
+               const newObs = currentObs.includes('[CONFERIDO]')
+                  ? currentObs
+                  : `[CONFERIDO] ${currentObs}`.trim();
+
+               // Persist via observations tag since column might not exist
+               await fechamentoFrentistaService.update(Number(tempId), {
+                  observacoes: newObs
+               } as any);
+            }
+         } catch (err) {
+            console.error('Error persisting status:', err);
+         }
+      }
    };
 
    // Remove a frentista row
@@ -950,7 +980,9 @@ const DailyClosingScreen: React.FC = () => {
                      encerrante: totalVendido,
                      diferenca_calculada: diferencaFinal,
                      valor_conferido: valorConferido,
-                     observacoes: fs.observacoes,
+                     observacoes: (fs.status === 'conferido' && !(fs.observacoes || '').includes('[CONFERIDO]'))
+                        ? `[CONFERIDO] ${fs.observacoes || ''}`.trim()
+                        : (fs.observacoes || ''),
                      posto_id: postoAtivoId
                   };
                });
@@ -1883,7 +1915,10 @@ const DailyClosingScreen: React.FC = () => {
                         // Para substituir as linhas 1879-2080 em DailyClosingScreen.tsx
 
                         return (
-                           <div key={session.tempId} className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg relative group hover:border-blue-300 hover:shadow-xl transition-all">
+                           <div key={session.tempId} className={`bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 border-2 rounded-2xl shadow-lg relative group transition-all ${session.status === 'conferido'
+                              ? 'border-green-200 dark:border-green-800 shadow-green-100 dark:shadow-green-900/20'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-xl'
+                              }`}>
                               <button
                                  onClick={() => handleRemoveFrentista(session.tempId)}
                                  className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 z-10"
@@ -1893,7 +1928,10 @@ const DailyClosingScreen: React.FC = () => {
                               </button>
 
                               {/* HEADER: Nome + Comparação Visual */}
-                              <div className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 px-6 py-5 rounded-t-2xl">
+                              <div className={`px-6 py-5 rounded-t-2xl bg-gradient-to-r ${session.status === 'conferido'
+                                 ? 'from-green-600 to-green-700 dark:from-green-700 dark:to-green-800'
+                                 : 'from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800'
+                                 }`}>
                                  <div className="flex items-center justify-between gap-4">
                                     {/* Identificação */}
                                     <div className="flex items-center gap-4">
@@ -2143,24 +2181,13 @@ const DailyClosingScreen: React.FC = () => {
                                  {/* Botão Salvar Caixa */}
                                  <div className="pt-4 flex justify-end">
                                     <button
-                                       onClick={() => {
-                                          // Marcar caixa como conferido/salvo
-                                          updateFrentistaSession(session.tempId, { status: 'conferido' } as any);
-                                          // Mostrar feedback visual
-                                          const btn = document.getElementById(`btn-save-${session.tempId}`);
-                                          if (btn) {
-                                             btn.classList.add('bg-green-600');
-                                             btn.innerHTML = '✓ Caixa Salvo!';
-                                             setTimeout(() => {
-                                                btn.classList.remove('bg-green-600');
-                                                btn.innerHTML = '💾 Salvar Caixa';
-                                             }, 2000);
-                                          }
-                                       }}
-                                       id={`btn-save-${session.tempId}`}
-                                       className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                                       onClick={() => updateFrentistaSession(session.tempId, { status: 'conferido' } as any)}
+                                       className={`px-6 py-3 font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 ${session.status === 'conferido'
+                                          ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200 ring-2 ring-green-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-800'
+                                          : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl'
+                                          }`}
                                     >
-                                       💾 Salvar Caixa
+                                       {session.status === 'conferido' ? '✓ Caixa Salvo!' : '💾 Salvar Caixa'}
                                     </button>
                                  </div>
                               </div>

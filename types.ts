@@ -30,6 +30,7 @@ export interface AttendantPerformance {
   value: string;
   subValue: string;
   type: 'ticket' | 'volume' | 'divergence';
+  status?: 'pendente' | 'conferido'; // Campo adicionado
 }
 
 export interface FuelSummary {

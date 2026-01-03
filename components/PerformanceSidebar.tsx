@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, AlertCircle, Trophy, Medal } from 'lucide-react';
+import { Star, AlertCircle, Trophy, Medal, CheckCircle2 } from 'lucide-react';
 import { AttendantPerformance } from '../types';
 
 interface PerformanceSidebarProps {
@@ -58,7 +58,14 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900 dark:text-white text-sm">{item.name}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="font-bold text-gray-900 dark:text-white text-sm">{item.name}</p>
+                    {item.status === 'conferido' && (
+                      <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-0.5" title="Caixa Conferido">
+                        <CheckCircle2 size={12} className="text-green-600 dark:text-green-400" />
+                      </div>
+                    )}
+                  </div>
                   <p className={`text-xs ${item.type === 'divergence' ? 'text-red-500 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>{item.metric}</p>
                 </div>
               </div>
