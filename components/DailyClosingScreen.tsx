@@ -33,7 +33,12 @@ import {
    Cell,
    ResponsiveContainer,
    Tooltip,
-   Legend
+   Legend,
+   BarChart,
+   Bar,
+   XAxis,
+   YAxis,
+   CartesianGrid
 } from 'recharts';
 import {
    bicoService,
@@ -1434,33 +1439,34 @@ const DailyClosingScreen: React.FC = () => {
                </h3>
                <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                     <PieChart>
-                        <Pie
-                           data={summaryData.filter(item => item.litros > 0)}
-                           cx="50%"
-                           cy="50%"
-                           innerRadius={50}
-                           outerRadius={80}
-                           paddingAngle={5}
-                           dataKey="litros"
-                           nameKey="nome"
-                        >
-                           {summaryData.filter(item => item.litros > 0).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
-                           ))}
-                        </Pie>
+                     <BarChart
+                        data={summaryData.filter(item => item.litros > 0)}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                     >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                        <XAxis
+                           dataKey="codigo"
+                           axisLine={false}
+                           tickLine={false}
+                           tick={{ fill: '#64748B', fontSize: 12, fontWeight: 700 }}
+                           dy={10}
+                        />
+                        <YAxis
+                           axisLine={false}
+                           tickLine={false}
+                           tick={{ fill: '#64748B', fontSize: 11 }}
+                        />
                         <Tooltip
+                           cursor={{ fill: '#F1F5F9', opacity: 0.5 }}
                            formatter={(value: number) => [`${value.toFixed(3)} L`, 'Volume']}
                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         />
-                        <Legend
-                           verticalAlign="bottom"
-                           align="center"
-                           iconType="circle"
-                           layout="horizontal"
-                           wrapperStyle={{ paddingTop: '20px' }}
-                        />
-                     </PieChart>
+                        <Bar dataKey="litros" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                           {summaryData.filter(item => item.litros > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
+                           ))}
+                        </Bar>
+                     </BarChart>
                   </ResponsiveContainer>
                </div>
             </div>
@@ -1473,33 +1479,35 @@ const DailyClosingScreen: React.FC = () => {
                </h3>
                <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                     <PieChart>
-                        <Pie
-                           data={summaryData.filter(item => item.valor > 0)}
-                           cx="50%"
-                           cy="50%"
-                           innerRadius={50}
-                           outerRadius={80}
-                           paddingAngle={5}
-                           dataKey="valor"
-                           nameKey="nome"
-                        >
-                           {summaryData.filter(item => item.valor > 0).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
-                           ))}
-                        </Pie>
+                     <BarChart
+                        data={summaryData.filter(item => item.valor > 0)}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                     >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                        <XAxis
+                           dataKey="codigo"
+                           axisLine={false}
+                           tickLine={false}
+                           tick={{ fill: '#64748B', fontSize: 12, fontWeight: 700 }}
+                           dy={10}
+                        />
+                        <YAxis
+                           axisLine={false}
+                           tickLine={false}
+                           tick={{ fill: '#64748B', fontSize: 11 }}
+                           tickFormatter={(value) => `R$${value / 1000}k`}
+                        />
                         <Tooltip
+                           cursor={{ fill: '#F1F5F9', opacity: 0.5 }}
                            formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Valor']}
                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         />
-                        <Legend
-                           verticalAlign="bottom"
-                           align="center"
-                           iconType="circle"
-                           layout="horizontal"
-                           wrapperStyle={{ paddingTop: '20px' }}
-                        />
-                     </PieChart>
+                        <Bar dataKey="valor" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                           {summaryData.filter(item => item.valor > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
+                           ))}
+                        </Bar>
+                     </BarChart>
                   </ResponsiveContainer>
                </div>
             </div>
