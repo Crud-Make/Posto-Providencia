@@ -46,3 +46,27 @@ Este documento registra as alterações solicitadas pelo proprietário do estabe
 - **Botão Pagar:** Adicionado botão verde "Pagar" ao lado de "Nova Despesa" no cabeçalho.
 - **Layout:** Ajustado o grid de indicadores para 2 colunas, melhorando a visualização do Total Pendente e Total Pago.
 - **Localização:** Tela de Gestão de Despesas.
+
+## 03/01/2026
+
+### 1. Sistema Web: Layout Simplificado do Controle de Frentistas (Opção 3)
+**Solicitação:** Refatorar a visualização dos cartões de frentistas para reduzir a complexidade visual e destacar as informações principais.
+
+**Implementação:**
+- **Cabeçalho Azul Vibrante:** Nome do frentista em destaque com comparação visual imediata entre total vendido (Encerrante) e total informado (Pagamentos).
+- **Indicadores de Sobra/Falta:** Feedback visual imediato no cabeçalho (Verde para sobra, Vermelho para falta).
+- **Grid 2x2 de Pagamentos:** Cartão, PIX, Dinheiro e Baratão agora em uma grade compacta, facilitando o preenchimento.
+- **Seção Colapsável:** Detalhes secundários (Produtos, Encerrante, Nota/Vale e Observações) movidos para um menu "📋 Outros Valores" que pode ser expandido quando necessário.
+- **Rodapé de Conferência:** Campo de "Valor Conferido" em destaque para fechamento final do caixa.
+
+### 2. App Mobile: Registro de Turno Modernizado e Simplificado
+**Solicitação:** Melhorar a experiência do frentista no aplicativo, tornando o preenchimento mais rápido e intuitivo.
+
+**Implementação:**
+- **Header Premium para Encerrante:** O campo de leitura da bomba foi movido para um card azul escuro no topo, destacando que é a informação principal de saída.
+- **Grid 2x2 para Recebimentos:** Organização idêntica ao Web (Débito, Crédito, PIX, Dinheiro) em cartões individuais coloridos, facilitando o toque em telas menores.
+- **Card Exclusivo para Baratão:** Destaque em tom de rosa para o voucher promocional.
+- **Lista de Notas Visual:** Novo design para a lista de notas faturadas, com totalizador em destaque no rodapé do card.
+- **Identidade Visual Unificada:** Uso das mesmas cores e padrões de design entre Web e Mobile para consistência da marca.
+- **Padronização de Cores de Combustíveis:** GC (Vermelho), GA (Azul), ET (Verde), S10 (Amarelo) aplicados em todos os indicadores do sistema.
+
