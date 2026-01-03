@@ -15,7 +15,6 @@ Este documento registra as alterações solicitadas pelo proprietário do estabe
   3. **Meios de Pagamento**: Mostra a distribuição de como o dinheiro entrou (Cartão, PIX, Dinheiro, etc) com base no fechamento financeiro.
 - **Localização:** Logo abaixo da tabela de "Resumo por Combustível" na tela de Fechamento de Caixa.
 
----
 
 ### 2. Mudança no App Mobile (Aguardando Detalhes)
 **Solicitação:** [Pendente]
