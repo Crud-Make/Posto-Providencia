@@ -19,3 +19,15 @@ Este documento registra as alterações solicitadas pelo proprietário do estabe
 ### 2. Mudança no App Mobile (Aguardando Detalhes)
 **Solicitação:** [Pendente]
 **Implementação:** [Aguardando]
+
+### 3. Dashboard Web: Refatoração da Tela de Fechamento (Abas e Dashboards Financeiros)
+**Solicitação:** Melhorar a organização da tela de fechamento diário, reduzindo a poluição visual e incluindo indicadores financeiros mais detalhados para análise rápida do proprietário.
+
+**Implementação Técnica:**
+- **Sistema de Abas Internas:** Implementação de navegação interna (`activeTab` state) alternando entre visualização de "Leituras de Bomba" e "Fechamento Financeiro".
+- **Timeline de Turnos (Novo):** Visualização linear no topo da aba financeira que exibe todos os turnos do dia, com indicação de status por cor (Verde=Fechado, Amarelo=Aberto/Rascunho, Cinza=Pendente) e valores totais para turnos fechados.
+- **Gráfico de Distribuição da Receita (Novo):** Gráfico de pizza (`recharts`) na aba financeira detalhando a porcentagem de cada método de pagamento no total do turno.
+- **Análise de Liquidez (Novo):** Barras de progresso comparativas:
+  - *Receita Líquida:* Soma de Dinheiro + Pix (Disponibilidade Imediata).
+  - *Recebíveis:* Soma de Cartões + Vales (Crédito Futuro).
+- **Otimização de Layout:** Ocultamento condicional das seções "Controle de Frentistas", "Observações" e "Comparativo" quando a aba financeira está ativa, focando a atenção apenas nos números monetários.
