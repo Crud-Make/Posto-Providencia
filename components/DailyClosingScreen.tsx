@@ -213,6 +213,7 @@ const DailyClosingScreen: React.FC = () => {
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
    const [dayClosures, setDayClosures] = useState<any[]>([]);
+   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('leituras');
 
    // Estado para edição de preço inline
    const [editingPrice, setEditingPrice] = useState<number | null>(null); // combustivel_id sendo editado
@@ -1225,417 +1226,443 @@ const DailyClosingScreen: React.FC = () => {
             </div>
          </div>
 
-         {/* Main Table - Venda Concentrador (EXATO como planilha) */}
-         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-6 py-4 border-b bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-900/20 dark:to-green-900/20 border-gray-200 dark:border-gray-700">
-               <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                  <Fuel size={20} className="text-blue-600" />
-                  Venda Concentrador
-               </h2>
+         {/* Tab Navigation */}
+         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-1.5 print:hidden">
+            <div className="flex gap-1">
+               <button
+                  onClick={() => setActiveTab('leituras')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-bold text-sm transition-all ${activeTab === 'leituras' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+               >
+                  <Fuel size={18} />
+                  Leituras de Bomba
+               </button>
+               <button
+                  onClick={() => setActiveTab('financeiro')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-bold text-sm transition-all ${activeTab === 'financeiro' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+               >
+                  <CreditCard size={18} />
+                  Fechamento Financeiro
+               </button>
             </div>
+         </div>
 
-            <div className="overflow-x-auto">
-               <table className="w-full text-sm">
-                  <thead>
-                     <tr className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs uppercase font-bold text-gray-600 dark:text-gray-300">
-                        <th className="px-4 py-3 text-left">Produtos</th>
-                        <th className="px-4 py-3 text-right">Inicial</th>
-                        <th className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/20">Fechamento</th>
-                        <th className="px-4 py-3 text-right">Litros (L)</th>
-                        <th className="px-4 py-3 text-right">Valor LT $</th>
-                        <th className="px-4 py-3 text-right">Venda bico R$</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                     {bicos.map((bico) => {
-                        const colors = FUEL_COLORS[bico.combustivel.codigo] || FUEL_COLORS['GC'];
-                        const inicial = leituras[bico.id]?.inicial || '';
-                        const fechamento = leituras[bico.id]?.fechamento || '';
-                        const litrosData = calcLitros(bico.id);
-                        const vendaData = calcVenda(bico.id);
-                        const isValid = isReadingValid(bico.id);
+         {/* Aba Leituras */}
+         <div className={activeTab === 'leituras' ? 'contents' : 'hidden'}>
+            {/* Main Table - Venda Concentrador (EXATO como planilha) */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+               <div className="px-6 py-4 border-b bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-900/20 dark:to-green-900/20 border-gray-200 dark:border-gray-700">
+                  <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                     <Fuel size={20} className="text-blue-600" />
+                     Venda Concentrador
+                  </h2>
+               </div>
 
-                        return (
-                           <tr key={bico.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${colors.bg} dark:bg-opacity-20`}>
-                              {/* Produtos - Combustivel + Bico */}
-                              <td className={`px-4 py-3 font-bold ${colors.text}`}>
-                                 {bico.combustivel.codigo}, Bico {bico.numero.toString().padStart(2, '0')}
-                              </td>
+               <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                     <thead>
+                        <tr className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs uppercase font-bold text-gray-600 dark:text-gray-300">
+                           <th className="px-4 py-3 text-left">Produtos</th>
+                           <th className="px-4 py-3 text-right">Inicial</th>
+                           <th className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/20">Fechamento</th>
+                           <th className="px-4 py-3 text-right">Litros (L)</th>
+                           <th className="px-4 py-3 text-right">Valor LT $</th>
+                           <th className="px-4 py-3 text-right">Venda bico R$</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {bicos.map((bico) => {
+                           const colors = FUEL_COLORS[bico.combustivel.codigo] || FUEL_COLORS['GC'];
+                           const inicial = leituras[bico.id]?.inicial || '';
+                           const fechamento = leituras[bico.id]?.fechamento || '';
+                           const litrosData = calcLitros(bico.id);
+                           const vendaData = calcVenda(bico.id);
+                           const isValid = isReadingValid(bico.id);
 
-                              {/* Inicial (INPUT) */}
-                              <td className="px-4 py-3">
-                                 <input
-                                    type="text"
-                                    value={inicial}
-                                    onChange={(e) => handleInicialChange(bico.id, e.target.value)}
-                                    className="w-full text-right font-mono py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
-                                    placeholder="0,000"
-                                 />
-                              </td>
+                           return (
+                              <tr key={bico.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${colors.bg} dark:bg-opacity-20`}>
+                                 {/* Produtos - Combustivel + Bico */}
+                                 <td className={`px-4 py-3 font-bold ${colors.text}`}>
+                                    {bico.combustivel.codigo}, Bico {bico.numero.toString().padStart(2, '0')}
+                                 </td>
 
-                              {/* Fechamento (INPUT) */}
-                              <td className="px-4 py-3 bg-yellow-50/50 dark:bg-yellow-900/10">
-                                 <input
-                                    type="text"
-                                    value={fechamento}
-                                    onChange={(e) => handleFechamentoChange(bico.id, e.target.value)}
-                                    className={`w-full text-right font-mono py-2 px-3 rounded-lg border outline-none
+                                 {/* Inicial (INPUT) */}
+                                 <td className="px-4 py-3">
+                                    <input
+                                       type="text"
+                                       value={inicial}
+                                       onChange={(e) => handleInicialChange(bico.id, e.target.value)}
+                                       className="w-full text-right font-mono py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
+                                       placeholder="0,000"
+                                    />
+                                 </td>
+
+                                 {/* Fechamento (INPUT) */}
+                                 <td className="px-4 py-3 bg-yellow-50/50 dark:bg-yellow-900/10">
+                                    <input
+                                       type="text"
+                                       value={fechamento}
+                                       onChange={(e) => handleFechamentoChange(bico.id, e.target.value)}
+                                       className={`w-full text-right font-mono py-2 px-3 rounded-lg border outline-none
                                     ${fechamento && !isValid
-                                          ? 'border-red-300 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100'}
+                                             ? 'border-red-300 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                             : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100'}
                                     `}
-                                    placeholder="0,000"
-                                 />
-                              </td>
+                                       placeholder="0,000"
+                                    />
+                                 </td>
 
-                              {/* Litros (CALCULADO - exibe "-" quando inválido) */}
-                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 dark:text-gray-300">
-                                 {litrosData.display !== '-' ? `${litrosData.display} L` : '-'}
-                              </td>
+                                 {/* Litros (CALCULADO - exibe "-" quando inválido) */}
+                                 <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 dark:text-gray-300">
+                                    {litrosData.display !== '-' ? `${litrosData.display} L` : '-'}
+                                 </td>
 
-                              {/* Valor LT $ (EDITÁVEL - clique no lápis para alterar) */}
-                              <td className="px-4 py-3 text-right font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">
-                                 {editingPrice === bico.combustivel.id ? (
-                                    <div className="flex items-center justify-end gap-1">
-                                       <span className="text-xs text-gray-400">R$</span>
-                                       <input
-                                          type="text"
-                                          value={tempPrice}
-                                          onChange={(e) => setTempPrice(e.target.value.replace(/[^0-9,]/g, ''))}
-                                          onKeyDown={(e) => {
-                                             if (e.key === 'Enter') handleSavePrice(bico.combustivel.id);
-                                             if (e.key === 'Escape') setEditingPrice(null);
-                                          }}
-                                          className="w-16 text-right py-1 px-2 border border-blue-300 rounded text-sm font-mono bg-white dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-blue-200 outline-none"
-                                          autoFocus
-                                       />
-                                       <button
-                                          onClick={() => handleSavePrice(bico.combustivel.id)}
-                                          className="p-1 text-green-600 hover:bg-green-50 rounded"
-                                          title="Salvar"
-                                       >
-                                          <Check size={14} />
-                                       </button>
-                                       <button
-                                          onClick={() => setEditingPrice(null)}
-                                          className="p-1 text-gray-400 hover:bg-gray-100 rounded"
-                                          title="Cancelar"
-                                       >
-                                          <X size={14} />
-                                       </button>
-                                    </div>
-                                 ) : (
-                                    <div className="flex items-center justify-end gap-1 group">
-                                       <span>R$ {bico.combustivel.preco_venda.toFixed(2).replace('.', ',')}</span>
-                                       <button
-                                          onClick={() => handleEditPrice(bico.combustivel.id, bico.combustivel.preco_venda)}
-                                          className="p-1 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                          title="Editar preço"
-                                       >
-                                          <Pencil size={12} />
-                                       </button>
-                                    </div>
-                                 )}
-                              </td>
+                                 {/* Valor LT $ (EDITÁVEL - clique no lápis para alterar) */}
+                                 <td className="px-4 py-3 text-right font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">
+                                    {editingPrice === bico.combustivel.id ? (
+                                       <div className="flex items-center justify-end gap-1">
+                                          <span className="text-xs text-gray-400">R$</span>
+                                          <input
+                                             type="text"
+                                             value={tempPrice}
+                                             onChange={(e) => setTempPrice(e.target.value.replace(/[^0-9,]/g, ''))}
+                                             onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSavePrice(bico.combustivel.id);
+                                                if (e.key === 'Escape') setEditingPrice(null);
+                                             }}
+                                             className="w-16 text-right py-1 px-2 border border-blue-300 rounded text-sm font-mono bg-white dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-blue-200 outline-none"
+                                             autoFocus
+                                          />
+                                          <button
+                                             onClick={() => handleSavePrice(bico.combustivel.id)}
+                                             className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                             title="Salvar"
+                                          >
+                                             <Check size={14} />
+                                          </button>
+                                          <button
+                                             onClick={() => setEditingPrice(null)}
+                                             className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                             title="Cancelar"
+                                          >
+                                             <X size={14} />
+                                          </button>
+                                       </div>
+                                    ) : (
+                                       <div className="flex items-center justify-end gap-1 group">
+                                          <span>R$ {bico.combustivel.preco_venda.toFixed(2).replace('.', ',')}</span>
+                                          <button
+                                             onClick={() => handleEditPrice(bico.combustivel.id, bico.combustivel.preco_venda)}
+                                             className="p-1 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                             title="Editar preço"
+                                          >
+                                             <Pencil size={12} />
+                                          </button>
+                                       </div>
+                                    )}
+                                 </td>
 
-                              {/* Venda bico R$ (CALCULADO - exibe "-" quando litros = "-") */}
-                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 dark:text-gray-300">
-                                 {vendaData.display}
-                              </td>
-                           </tr>
-                        );
-                     })}
-                  </tbody>
+                                 {/* Venda bico R$ (CALCULADO - exibe "-" quando litros = "-") */}
+                                 <td className="px-4 py-3 text-right font-mono font-bold text-gray-700 dark:text-gray-300">
+                                    {vendaData.display}
+                                 </td>
+                              </tr>
+                           );
+                        })}
+                     </tbody>
 
-                  {/* TOTAL Row (EXATO como planilha - "RES X,XX") */}
-                  <tfoot>
-                     <tr className="bg-gray-200 dark:bg-gray-700 font-black text-gray-900 dark:text-white border-t-2 border-gray-300 dark:border-gray-600">
-                        <td className="px-4 py-4">Total.</td>
-                        <td className="px-4 py-4 text-right">-</td>
-                        <td className="px-4 py-4 text-right">-</td>
-                        <td className="px-4 py-4 text-right">-</td>
-                        <td className="px-4 py-4 text-right">-</td>
-                        <td className="px-4 py-4 text-right font-mono text-green-700 dark:text-green-400 text-lg">
-                           RES {totals.valorDisplay}
-                        </td>
-                     </tr>
-                  </tfoot>
-               </table>
-            </div>
-         </div>
-
-         {/* Summary by Fuel Type */}
-         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-               <h2 className="text-lg font-bold text-gray-900 dark:text-white">Resumo por Combustível</h2>
-            </div>
-
-            <div className="overflow-x-auto">
-               <table className="w-full text-sm">
-                  <thead>
-                     <tr className="bg-blue-100 text-blue-900 uppercase font-bold text-xs border-b border-blue-200">
-                        <th className="px-4 py-3 text-left bg-blue-200/50">Combustível</th>
-                        <th className="px-4 py-3 text-right bg-blue-200/50">Litros (L)</th>
-                        <th className="px-4 py-3 text-right bg-blue-200/50">Valor R$</th>
-                        <th className="px-4 py-3 text-right bg-blue-200/50">%</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                     {summaryData.map((item) => {
-                        const colors = FUEL_COLORS[item.codigo] || FUEL_COLORS['GC'];
-                        const percentage = calcPercentage(item.litros);
-
-                        return (
-                           <tr key={item.codigo} className={`${colors.bg} dark:bg-opacity-20`}>
-                              <td className="px-4 py-3">
-                                 <span className={`inline-block px-3 py-1 rounded border font-bold text-sm shadow-sm ${colors.bg} ${colors.border} ${colors.text}`}>
-                                    {item.nome}
-                                 </span>
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                 <span className="bg-blue-900 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
-                                    {formatToBR(item.litros, 3)} L
-                                 </span>
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                 <span className="bg-blue-600 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
-                                    {item.valor.toLocaleString('pt-BR', {
-                                       style: 'currency',
-                                       currency: 'BRL'
-                                    })}
-                                 </span>
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                 <span className="bg-blue-500 text-white px-2 py-1 rounded font-bold text-sm shadow-sm">
-                                    {percentage.toFixed(1)}%
-                                 </span>
-                              </td>
-                           </tr>
-                        );
-                     })}
-                  </tbody>
-                  <tfoot>
-                     <tr className="bg-gray-100 dark:bg-gray-800 font-black text-gray-700 dark:text-gray-300 border-t-4 border-gray-200 dark:border-gray-700">
-                        <td className="px-4 py-4 text-gray-500 uppercase tracking-wider">TOTAL</td>
-                        <td className="px-4 py-4 text-right font-mono text-blue-700 dark:text-blue-400 text-xl">
-                           {totals.litrosDisplay} L
-                        </td>
-                        <td className="px-4 py-4 text-right font-mono text-green-600 dark:text-green-400 text-xl">
-                           {totals.valorDisplay}
-                        </td>
-                        <td className="px-4 py-4 text-right text-gray-800 dark:text-white text-lg">100%</td>
-                     </tr>
-                  </tfoot>
-               </table>
-            </div>
-         </div>
-
-         {/* Charts Section - Requested by Owner */}
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Chart 1: Volume por Combustível */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
-               <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <TrendingUp size={16} className="text-blue-500" />
-                  Volume por Combustível (L)
-               </h3>
-               <div className="flex-1 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart
-                        data={summaryData.filter(item => item.litros > 0)}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                     >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                        <XAxis
-                           dataKey="codigo"
-                           axisLine={false}
-                           tickLine={false}
-                           tick={{ fill: '#64748B', fontSize: 12, fontWeight: 700 }}
-                           dy={10}
-                        />
-                        <YAxis
-                           axisLine={false}
-                           tickLine={false}
-                           tick={{ fill: '#64748B', fontSize: 11 }}
-                        />
-                        <Tooltip
-                           cursor={{ fill: '#F1F5F9', opacity: 0.5 }}
-                           formatter={(value: number) => [`${value.toFixed(3)} L`, 'Volume']}
-                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Bar dataKey="litros" radius={[6, 6, 0, 0]} maxBarSize={60}>
-                           {summaryData.filter(item => item.litros > 0).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
-                           ))}
-                        </Bar>
-                     </BarChart>
-                  </ResponsiveContainer>
+                     {/* TOTAL Row (EXATO como planilha - "RES X,XX") */}
+                     <tfoot>
+                        <tr className="bg-gray-200 dark:bg-gray-700 font-black text-gray-900 dark:text-white border-t-2 border-gray-300 dark:border-gray-600">
+                           <td className="px-4 py-4">Total.</td>
+                           <td className="px-4 py-4 text-right">-</td>
+                           <td className="px-4 py-4 text-right">-</td>
+                           <td className="px-4 py-4 text-right">-</td>
+                           <td className="px-4 py-4 text-right">-</td>
+                           <td className="px-4 py-4 text-right font-mono text-green-700 dark:text-green-400 text-lg">
+                              RES {totals.valorDisplay}
+                           </td>
+                        </tr>
+                     </tfoot>
+                  </table>
                </div>
             </div>
 
-            {/* Chart 2: Receita por Combustível */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
-               <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Banknote size={16} className="text-green-500" />
-                  Faturamento por Combustível (R$)
-               </h3>
-               <div className="flex-1 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <BarChart
-                        data={summaryData.filter(item => item.valor > 0)}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                     >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                        <XAxis
-                           dataKey="codigo"
-                           axisLine={false}
-                           tickLine={false}
-                           tick={{ fill: '#64748B', fontSize: 12, fontWeight: 700 }}
-                           dy={10}
-                        />
-                        <YAxis
-                           axisLine={false}
-                           tickLine={false}
-                           tick={{ fill: '#64748B', fontSize: 11 }}
-                           tickFormatter={(value) => `R$${value / 1000}k`}
-                        />
-                        <Tooltip
-                           cursor={{ fill: '#F1F5F9', opacity: 0.5 }}
-                           formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Valor']}
-                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Bar dataKey="valor" radius={[6, 6, 0, 0]} maxBarSize={60}>
-                           {summaryData.filter(item => item.valor > 0).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
-                           ))}
-                        </Bar>
-                     </BarChart>
-                  </ResponsiveContainer>
+            {/* Summary by Fuel Type */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Resumo por Combustível</h2>
+               </div>
+
+               <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                     <thead>
+                        <tr className="bg-blue-100 text-blue-900 uppercase font-bold text-xs border-b border-blue-200">
+                           <th className="px-4 py-3 text-left bg-blue-200/50">Combustível</th>
+                           <th className="px-4 py-3 text-right bg-blue-200/50">Litros (L)</th>
+                           <th className="px-4 py-3 text-right bg-blue-200/50">Valor R$</th>
+                           <th className="px-4 py-3 text-right bg-blue-200/50">%</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {summaryData.map((item) => {
+                           const colors = FUEL_COLORS[item.codigo] || FUEL_COLORS['GC'];
+                           const percentage = calcPercentage(item.litros);
+
+                           return (
+                              <tr key={item.codigo} className={`${colors.bg} dark:bg-opacity-20`}>
+                                 <td className="px-4 py-3">
+                                    <span className={`inline-block px-3 py-1 rounded border font-bold text-sm shadow-sm ${colors.bg} ${colors.border} ${colors.text}`}>
+                                       {item.nome}
+                                    </span>
+                                 </td>
+                                 <td className="px-4 py-3 text-right">
+                                    <span className="bg-blue-900 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
+                                       {formatToBR(item.litros, 3)} L
+                                    </span>
+                                 </td>
+                                 <td className="px-4 py-3 text-right">
+                                    <span className="bg-blue-600 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
+                                       {item.valor.toLocaleString('pt-BR', {
+                                          style: 'currency',
+                                          currency: 'BRL'
+                                       })}
+                                    </span>
+                                 </td>
+                                 <td className="px-4 py-3 text-right">
+                                    <span className="bg-blue-500 text-white px-2 py-1 rounded font-bold text-sm shadow-sm">
+                                       {percentage.toFixed(1)}%
+                                    </span>
+                                 </td>
+                              </tr>
+                           );
+                        })}
+                     </tbody>
+                     <tfoot>
+                        <tr className="bg-gray-100 dark:bg-gray-800 font-black text-gray-700 dark:text-gray-300 border-t-4 border-gray-200 dark:border-gray-700">
+                           <td className="px-4 py-4 text-gray-500 uppercase tracking-wider">TOTAL</td>
+                           <td className="px-4 py-4 text-right font-mono text-blue-700 dark:text-blue-400 text-xl">
+                              {totals.litrosDisplay} L
+                           </td>
+                           <td className="px-4 py-4 text-right font-mono text-green-600 dark:text-green-400 text-xl">
+                              {totals.valorDisplay}
+                           </td>
+                           <td className="px-4 py-4 text-right text-gray-800 dark:text-white text-lg">100%</td>
+                        </tr>
+                     </tfoot>
+                  </table>
                </div>
             </div>
 
-            {/* Chart 3: Formas de Pagamento */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
-               <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <CreditCard size={16} className="text-purple-500" />
-                  Distribuição de Pagamentos
-               </h3>
-               <div className="flex-1 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                     <PieChart>
-                        <Pie
-                           data={payments.filter(p => parseValue(p.valor) > 0).map(p => ({ name: p.nome, value: parseValue(p.valor) }))}
-                           cx="50%"
-                           cy="50%"
-                           innerRadius={50}
-                           outerRadius={80}
-                           paddingAngle={5}
-                           dataKey="value"
-                           nameKey="name"
+            {/* Charts Section - Requested by Owner */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               {/* Chart 1: Volume por Combustível */}
+               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <TrendingUp size={16} className="text-blue-500" />
+                     Volume por Combustível (L)
+                  </h3>
+                  <div className="flex-1 w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                           data={summaryData.filter(item => item.litros > 0)}
+                           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                         >
-                           {payments.filter(p => parseValue(p.valor) > 0).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={PAYMENT_CHART_COLORS[index % PAYMENT_CHART_COLORS.length]} />
-                           ))}
-                        </Pie>
-                        <Tooltip
-                           formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Montante']}
-                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Legend
-                           verticalAlign="bottom"
-                           align="center"
-                           iconType="circle"
-                           layout="horizontal"
-                           wrapperStyle={{ paddingTop: '20px' }}
-                        />
-                     </PieChart>
-                  </ResponsiveContainer>
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                           <XAxis
+                              dataKey="codigo"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: '#64748B', fontSize: 12, fontWeight: 700 }}
+                              dy={10}
+                           />
+                           <YAxis
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: '#64748B', fontSize: 11 }}
+                           />
+                           <Tooltip
+                              cursor={{ fill: '#F1F5F9', opacity: 0.5 }}
+                              formatter={(value: number) => [`${value.toFixed(3)} L`, 'Volume']}
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                           />
+                           <Bar dataKey="litros" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                              {summaryData.filter(item => item.litros > 0).map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
+                              ))}
+                           </Bar>
+                        </BarChart>
+                     </ResponsiveContainer>
+                  </div>
+               </div>
+
+               {/* Chart 2: Receita por Combustível */}
+               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <Banknote size={16} className="text-green-500" />
+                     Faturamento por Combustível (R$)
+                  </h3>
+                  <div className="flex-1 w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                           data={summaryData.filter(item => item.valor > 0)}
+                           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                           <XAxis
+                              dataKey="codigo"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: '#64748B', fontSize: 12, fontWeight: 700 }}
+                              dy={10}
+                           />
+                           <YAxis
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: '#64748B', fontSize: 11 }}
+                              tickFormatter={(value) => `R$${value / 1000}k`}
+                           />
+                           <Tooltip
+                              cursor={{ fill: '#F1F5F9', opacity: 0.5 }}
+                              formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Valor']}
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                           />
+                           <Bar dataKey="valor" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                              {summaryData.filter(item => item.valor > 0).map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
+                              ))}
+                           </Bar>
+                        </BarChart>
+                     </ResponsiveContainer>
+                  </div>
+               </div>
+
+               {/* Chart 3: Formas de Pagamento */}
+               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <CreditCard size={16} className="text-purple-500" />
+                     Distribuição de Pagamentos
+                  </h3>
+                  <div className="flex-1 w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                           <Pie
+                              data={payments.filter(p => parseValue(p.valor) > 0).map(p => ({ name: p.nome, value: parseValue(p.valor) }))}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                              nameKey="name"
+                           >
+                              {payments.filter(p => parseValue(p.valor) > 0).map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={PAYMENT_CHART_COLORS[index % PAYMENT_CHART_COLORS.length]} />
+                              ))}
+                           </Pie>
+                           <Tooltip
+                              formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Montante']}
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                           />
+                           <Legend
+                              verticalAlign="bottom"
+                              align="center"
+                              iconType="circle"
+                              layout="horizontal"
+                              wrapperStyle={{ paddingTop: '20px' }}
+                           />
+                        </PieChart>
+                     </ResponsiveContainer>
+                  </div>
                </div>
             </div>
          </div>
 
-         {/* Global Payment Recording (Stage 2) */}
-         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
-               <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <CreditCard size={20} className="text-gray-600 dark:text-gray-400" />
-                  Fechamento Financeiro (Totais do Turno)
-               </h2>
-               <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-end">
-                     <span className="text-[10px] font-black text-gray-400 uppercase">Diferença Global</span>
-                     <span className={`text-sm font-black ${Math.abs(diferenca) < 0.01 ? 'text-gray-400' : (diferenca >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}`}>
-                        {diferenca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                     </span>
+         {/* Aba Financeiro */}
+         <div className={activeTab === 'financeiro' ? 'contents' : 'hidden'}>
+            {/* Global Payment Recording (Stage 2) */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                     <CreditCard size={20} className="text-gray-600 dark:text-gray-400" />
+                     Fechamento Financeiro (Totais do Turno)
+                  </h2>
+                  <div className="flex items-center gap-4">
+                     <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-black text-gray-400 uppercase">Diferença Global</span>
+                        <span className={`text-sm font-black ${Math.abs(diferenca) < 0.01 ? 'text-gray-400' : (diferenca >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}`}>
+                           {diferenca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                     </div>
                   </div>
                </div>
-            </div>
 
-            <div className="p-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {payments.map((payment, index) => (
-                     <div key={payment.id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 hover:border-blue-100 dark:hover:border-blue-800 transition-all">
-                        <div className="flex items-center gap-3 mb-3">
-                           <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                              {getPaymentIcon(payment.tipo)}
+               <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                     {payments.map((payment, index) => (
+                        <div key={payment.id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 hover:border-blue-100 dark:hover:border-blue-800 transition-all">
+                           <div className="flex items-center gap-3 mb-3">
+                              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                                 {getPaymentIcon(payment.tipo)}
+                              </div>
+                              <div>
+                                 <p className="text-xs font-black text-gray-400 uppercase leading-none">{getPaymentLabel(payment.tipo)}</p>
+                                 <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mt-1">{payment.nome}</p>
+                              </div>
                            </div>
-                           <div>
-                              <p className="text-xs font-black text-gray-400 uppercase leading-none">{getPaymentLabel(payment.tipo)}</p>
-                              <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mt-1">{payment.nome}</p>
+                           <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
+                              <input
+                                 type="text"
+                                 value={payment.valor}
+                                 onChange={(e) => handlePaymentChange(index, e.target.value)}
+                                 placeholder="0,00"
+                                 className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-base font-black text-gray-900 dark:text-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/50 outline-none transition-all"
+                              />
                            </div>
+                           {payment.taxa > 0 && (
+                              <div className="mt-2 flex justify-between items-center text-[10px]">
+                                 <span className="text-gray-400 font-bold uppercase tracking-tighter">Taxa: {payment.taxa}%</span>
+                                 <span className="text-gray-500 dark:text-gray-400 font-mono">
+                                    - {(parseValue(payment.valor) * (payment.taxa / 100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                 </span>
+                              </div>
+                           )}
                         </div>
-                        <div className="relative">
-                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">R$</span>
-                           <input
-                              type="text"
-                              value={payment.valor}
-                              onChange={(e) => handlePaymentChange(index, e.target.value)}
-                              placeholder="0,00"
-                              className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-base font-black text-gray-900 dark:text-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/50 outline-none transition-all"
-                           />
-                        </div>
-                        {payment.taxa > 0 && (
-                           <div className="mt-2 flex justify-between items-center text-[10px]">
-                              <span className="text-gray-400 font-bold uppercase tracking-tighter">Taxa: {payment.taxa}%</span>
-                              <span className="text-gray-500 dark:text-gray-400 font-mono">
-                                 - {(parseValue(payment.valor) * (payment.taxa / 100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </span>
-                           </div>
-                        )}
-                     </div>
-                  ))}
-               </div>
+                     ))}
+                  </div>
 
-               {/* Payment Summary Footer */}
-               <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-8">
-                  {/* Indicador de valores dos frentistas (mobile) */}
-                  {frentistaSessions.length > 0 && (
+                  {/* Payment Summary Footer */}
+                  <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-8">
+                     {/* Indicador de valores dos frentistas (mobile) */}
+                     {frentistaSessions.length > 0 && (
+                        <div className="flex flex-col">
+                           <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                              <Smartphone size={10} />
+                              Total Frentistas (App)
+                           </span>
+                           <span className="text-xl font-black text-blue-600 dark:text-blue-400">
+                              {frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           </span>
+                        </div>
+                     )}
                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
-                           <Smartphone size={10} />
-                           Total Frentistas (App)
-                        </span>
-                        <span className="text-xl font-black text-blue-600 dark:text-blue-400">
-                           {frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bruto Informado</span>
+                        <span className="text-xl font-black text-gray-900 dark:text-white">
+                           {totalPayments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                      </div>
-                  )}
-                  <div className="flex flex-col">
-                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bruto Informado</span>
-                     <span className="text-xl font-black text-gray-900 dark:text-white">
-                        {totalPayments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                     </span>
-                  </div>
-                  <div className="flex flex-col">
-                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total de Taxas</span>
-                     <span className="text-xl font-black text-amber-600 dark:text-amber-400">
-                        - {totalTaxas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                     </span>
-                  </div>
-                  <div className="flex flex-col">
-                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Líquido Estimado</span>
-                     <span className="text-xl font-black text-green-600 dark:text-green-400">
-                        {totalLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                     </span>
+                     <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total de Taxas</span>
+                        <span className="text-xl font-black text-amber-600 dark:text-amber-400">
+                           - {totalTaxas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                     </div>
+                     <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Líquido Estimado</span>
+                        <span className="text-xl font-black text-green-600 dark:text-green-400">
+                           {totalLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                     </div>
                   </div>
                </div>
             </div>
