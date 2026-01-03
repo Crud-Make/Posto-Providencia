@@ -902,8 +902,11 @@ const DailyClosingScreen: React.FC = () => {
 
    // Handle save
    const handleSave = async () => {
+      console.log('🚀 [SAVE] Iniciando salvamento do fechamento...');
+
       if (!user) {
          setError('Usuário não autenticado. Por favor, faça login novamente.');
+         console.error('❌ [SAVE] Usuário não autenticado');
          return;
       }
 
@@ -912,34 +915,58 @@ const DailyClosingScreen: React.FC = () => {
          setError(null);
          setSuccess(null);
 
+         console.log('📋 [SAVE] Dados iniciais:', {
+            selectedDate,
+            selectedTurno,
+            postoAtivoId,
+            userId: user.id,
+            totalBicos: bicos.length
+         });
+
          // 1. Get or Create Daily Closing (Fechamento) per shift
          if (!selectedTurno) {
             setError('Por favor, selecione o turno antes de salvar.');
             setSaving(false);
+            console.error('❌ [SAVE] Turno não selecionado');
             return;
          }
 
+         console.log('🔍 [SAVE] Buscando fechamento existente...');
          let fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno, postoAtivoId);
 
          if (!fechamento) {
-            console.log("Criando novo fechamento para data:", selectedDate, "turno:", selectedTurno);
-            fechamento = await fechamentoService.create({
-               data: selectedDate,
-               usuario_id: user.id,
-               turno_id: selectedTurno,
-               status: 'RASCUNHO',
-               posto_id: postoAtivoId
-            });
+            console.log("✨ [SAVE] Criando novo fechamento para data:", selectedDate, "turno:", selectedTurno);
+            try {
+               fechamento = await fechamentoService.create({
+                  data: selectedDate,
+                  usuario_id: user.id,
+                  turno_id: selectedTurno,
+                  status: 'RASCUNHO',
+                  posto_id: postoAtivoId
+               });
+               console.log('✅ [SAVE] Fechamento criado com sucesso:', fechamento.id);
+            } catch (createError: any) {
+               console.error('❌ [SAVE] Erro ao criar fechamento:', createError);
+               throw new Error(`Erro ao criar fechamento: ${createError.message}`);
+            }
          } else {
+            console.log('♻️ [SAVE] Fechamento existente encontrado, limpando dados anteriores...', fechamento.id);
             // Limpa dados anteriores para evitar duplicação ao re-salvar
-            await Promise.all([
-               leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId),
-               fechamentoFrentistaService.deleteByFechamento(fechamento.id),
-               recebimentoService.deleteByFechamento(fechamento.id)
-            ]);
+            try {
+               await Promise.all([
+                  leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId),
+                  fechamentoFrentistaService.deleteByFechamento(fechamento.id),
+                  recebimentoService.deleteByFechamento(fechamento.id)
+               ]);
+               console.log('✅ [SAVE] Dados anteriores limpos com sucesso');
+            } catch (deleteError: any) {
+               console.error('⚠️ [SAVE] Erro ao limpar dados anteriores:', deleteError);
+               // Continue mesmo com erro na limpeza
+            }
          }
 
          // 2. Save Readings (Leituras)
+         console.log('📊 [SAVE] Preparando leituras para salvar...');
          const leiturasToCreate = bicos
             .filter(bico => isReadingValid(bico.id))
             .map(bico => ({
@@ -954,16 +981,27 @@ const DailyClosingScreen: React.FC = () => {
                posto_id: postoAtivoId
             }));
 
+         console.log(`📝 [SAVE] ${leiturasToCreate.length} leituras válidas para salvar`);
+
          if (leiturasToCreate.length === 0) {
             setError('Nenhuma leitura válida para salvar. O fechamento deve ser maior que o inicial.');
             setSaving(false);
+            console.error('❌ [SAVE] Nenhuma leitura válida');
             return;
          }
 
-         await leituraService.bulkCreate(leiturasToCreate);
+         try {
+            console.log('💾 [SAVE] Salvando leituras no banco...');
+            await leituraService.bulkCreate(leiturasToCreate);
+            console.log('✅ [SAVE] Leituras salvas com sucesso');
+         } catch (leituraError: any) {
+            console.error('❌ [SAVE] Erro ao salvar leituras:', leituraError);
+            throw new Error(`Erro ao salvar leituras: ${leituraError.message}`);
+         }
 
          // 3. Save Attendant Closings (FechamentoFrentista)
          if (frentistaSessions.length > 0) {
+            console.log(`👥 [SAVE] Processando ${frentistaSessions.length} sessões de frentistas...`);
             const frentistasToCreate = frentistaSessions
                .filter(fs => fs.frentistaId !== null)
                .map(fs => {
@@ -999,43 +1037,53 @@ const DailyClosingScreen: React.FC = () => {
                   };
                });
 
+            console.log(`💼 [SAVE] ${frentistasToCreate.length} fechamentos de frentistas válidos para salvar`);
+
             if (frentistasToCreate.length > 0) {
-               const createdFechamentos = await fechamentoFrentistaService.bulkCreate(frentistasToCreate);
+               try {
+                  const createdFechamentos = await fechamentoFrentistaService.bulkCreate(frentistasToCreate);
+                  console.log('✅ [SAVE] Fechamentos de frentistas salvos com sucesso');
 
-               if (createdFechamentos) {
-                  // Atualiza os IDs temporários para IDs reais do banco
-                  setFrentistaSessions(prev => prev.map(fs => {
-                     const match = createdFechamentos.find(cf => cf.frentista_id === fs.frentistaId);
-                     return match ? { ...fs, tempId: match.id.toString() } : fs;
-                  }));
-               }
+                  if (createdFechamentos) {
+                     // Atualiza os IDs temporários para IDs reais do banco
+                     setFrentistaSessions(prev => prev.map(fs => {
+                        const match = createdFechamentos.find(cf => cf.frentista_id === fs.frentistaId);
+                        return match ? { ...fs, tempId: match.id.toString() } : fs;
+                     }));
+                  }
 
-               // Enviar notificações para frentistas com diferença negativa (falta de caixa)
-               for (const frenData of frentistasToCreate) {
-                  // ... rest of notification logic ...
-                  if (frenData.diferenca_calculada > 0) {
-                     try {
-                        // Buscar o fechamento criado para obter o ID
-                        const createdRecord = createdFechamentos?.find(
-                           (f: any) => f.frentista_id === frenData.frentista_id
-                        );
-
-                        if (createdRecord) {
-                           await notificationService.sendFaltaCaixaNotification(
-                              frenData.frentista_id,
-                              createdRecord.id,
-                              frenData.diferenca_calculada
+                  // Enviar notificações para frentistas com diferença negativa (falta de caixa)
+                  for (const frenData of frentistasToCreate) {
+                     // ... rest of notification logic ...
+                     if (frenData.diferenca_calculada > 0) {
+                        try {
+                           // Buscar o fechamento criado para obter o ID
+                           const createdRecord = createdFechamentos?.find(
+                              (f: any) => f.frentista_id === frenData.frentista_id
                            );
+
+                           if (createdRecord) {
+                              await notificationService.sendFaltaCaixaNotification(
+                                 frenData.frentista_id,
+                                 createdRecord.id,
+                                 frenData.diferenca_calculada
+                              );
+                              console.log('📧 [SAVE] Notificação enviada para frentista:', frenData.frentista_id);
+                           }
+                        } catch (notifError) {
+                           console.error('⚠️ [SAVE] Erro ao enviar notificação:', notifError);
                         }
-                     } catch (notifError) {
-                        console.error('Erro ao enviar notificação:', notifError);
                      }
                   }
+               } catch (frentistaError: any) {
+                  console.error('❌ [SAVE] Erro ao salvar fechamentos de frentistas:', frentistaError);
+                  throw new Error(`Erro ao salvar fechamentos de frentistas: ${frentistaError.message}`);
                }
             }
          }
 
          // 4. Save Detailed Receipts (Recebimento)
+         console.log('💰 [SAVE] Processando recebimentos...');
          const recebimentosToCreate = payments
             .filter(p => parseValue(p.valor) > 0)
             .map(p => ({
@@ -1045,19 +1093,35 @@ const DailyClosingScreen: React.FC = () => {
                observacoes: 'Fechamento Geral'
             }));
 
+         console.log(`💵 [SAVE] ${recebimentosToCreate.length} recebimentos para salvar`);
+
          if (recebimentosToCreate.length > 0) {
-            await recebimentoService.bulkCreate(recebimentosToCreate);
+            try {
+               await recebimentoService.bulkCreate(recebimentosToCreate);
+               console.log('✅ [SAVE] Recebimentos salvos com sucesso');
+            } catch (recebimentoError: any) {
+               console.error('❌ [SAVE] Erro ao salvar recebimentos:', recebimentoError);
+               throw new Error(`Erro ao salvar recebimentos: ${recebimentoError.message}`);
+            }
          }
 
          // 5. Update Fechamento status and totals
-         await fechamentoService.update(fechamento.id, {
-            status: 'FECHADO',
-            total_vendas: totals.valor + totalProdutos,
-            total_recebido: totalPayments,
-            diferenca: diferenca,
-            observacoes: observacoes
-         });
+         console.log('🔄 [SAVE] Atualizando status do fechamento...');
+         try {
+            await fechamentoService.update(fechamento.id, {
+               status: 'FECHADO',
+               total_vendas: totals.valor + totalProdutos,
+               total_recebido: totalPayments,
+               diferenca: diferenca,
+               observacoes: observacoes
+            });
+            console.log('✅ [SAVE] Status do fechamento atualizado com sucesso');
+         } catch (updateError: any) {
+            console.error('❌ [SAVE] Erro ao atualizar status do fechamento:', updateError);
+            throw new Error(`Erro ao atualizar fechamento: ${updateError.message}`);
+         }
 
+         console.log('🎉 [SAVE] Salvamento concluído com sucesso!');
          setSuccess(`${leiturasToCreate.length} leituras e fechamento financeiro salvos com sucesso!`);
 
          // Reset fechamento values
@@ -1080,11 +1144,19 @@ const DailyClosingScreen: React.FC = () => {
          await loadDayClosures();
 
       } catch (err: any) {
-         console.error('Full error object:', err);
-         console.error('Error saving readings:', err?.message || err);
-         setError(`Erro ao salvar: ${err?.message || 'Erro desconhecido'}`);
+         console.error('❌❌❌ [SAVE] ERRO CRÍTICO:', err);
+         console.error('❌ [SAVE] Mensagem:', err?.message);
+         console.error('❌ [SAVE] Stack:', err?.stack);
+         if (err.details) {
+            console.error('❌ [SAVE] Detalhes:', err.details);
+         }
+         setError(`Erro ao salvar: ${err?.message || 'Erro desconhecido. Verifique o console para mais detalhes.'}`);
+         // Mantém saving=true por 1 segundo para garantir que o usuário veja a mensagem de erro
+         setTimeout(() => setSaving(false), 1000);
       } finally {
-         setSaving(false);
+         if (saving) {
+            setTimeout(() => setSaving(false), 100);
+         }
       }
    };
 
