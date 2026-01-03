@@ -15,7 +15,8 @@ import {
     Download,
     Loader2,
     X,
-    AlertTriangle
+    AlertTriangle,
+    CreditCard
 } from 'lucide-react';
 import { despesaService } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
@@ -200,6 +201,16 @@ const ExpenseManagementScreen: React.FC = () => {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => {
+                            // Implementação futura: Pagar despesas selecionadas ou abrir modal de pagamento em massa
+                            toast.info('Selecione as despesas que deseja pagar (Funcionalidade em desenvolvimento)');
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-green-500/20 transition-all active:scale-95"
+                    >
+                        <CreditCard size={20} />
+                        Pagar
+                    </button>
+                    <button
+                        onClick={() => {
                             setEditingExpense(null);
                             setFormData({
                                 descricao: '',
@@ -221,7 +232,7 @@ const ExpenseManagementScreen: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <KPICard
                     title="Total Pendente"
                     value={fmtMoney(totalPending)}
@@ -240,15 +251,6 @@ const ExpenseManagementScreen: React.FC = () => {
                     Icon={CheckCircle2}
                     iconBgColor="bg-green-50 dark:bg-green-900/20"
                     iconColor="text-green-600 dark:text-green-400"
-                />
-                <KPICard
-                    title="Próxima Compra"
-                    value="R$ 12.450,00"
-                    trendValue="15/05"
-                    trendLabel="data prevista"
-                    Icon={Calendar}
-                    iconBgColor="bg-blue-50 dark:bg-blue-900/20"
-                    iconColor="text-blue-600 dark:text-blue-400"
                 />
             </div>
 
