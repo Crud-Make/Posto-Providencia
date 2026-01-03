@@ -632,7 +632,7 @@ export const leituraService = {
     const { error } = await supabase
       .from('Leitura')
       .delete()
-      .eq('data', data)
+      .ilike('data', `${data}%`)
       .eq('turno_id', turnoId)
       .eq('posto_id', postoId);
     if (error) throw error;
@@ -760,8 +760,7 @@ export const fechamentoService = {
     let query = (supabase as any)
       .from('Fechamento')
       .select('*')
-      .gte('data', `${data}T00:00:00`)
-      .lte('data', `${data}T23:59:59`)
+      .ilike('data', `${data}%`)
       .eq('turno_id', turnoId);
 
     if (postoId) {
@@ -781,8 +780,7 @@ export const fechamentoService = {
         turno:Turno(*),
         usuario:Usuario(id, nome)
       `)
-      .gte('data', `${data}T00:00:00`)
-      .lte('data', `${data}T23:59:59`);
+      .ilike('data', `${data}%`);
 
     if (postoId) {
       query = query.eq('posto_id', postoId);
