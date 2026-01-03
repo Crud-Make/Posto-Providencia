@@ -28,6 +28,14 @@ import {
    Building2
 } from 'lucide-react';
 import {
+   PieChart,
+   Pie,
+   Cell,
+   ResponsiveContainer,
+   Tooltip,
+   Legend
+} from 'recharts';
+import {
    bicoService,
    leituraService,
    frentistaService,
@@ -82,6 +90,24 @@ const FUEL_COLORS: Record<string, { bg: string; text: string; border: string }> 
    'S10': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' },
    'DIESEL': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
 };
+
+const FUEL_CHART_COLORS: Record<string, string> = {
+   'GC': '#EAB308', // yellow-500
+   'GA': '#22C55E', // green-500
+   'ET': '#06B6D4', // cyan-500
+   'S10': '#EF4444', // red-500
+   'DIESEL': '#F59E0B', // amber-500
+};
+
+const PAYMENT_CHART_COLORS = [
+   '#3B82F6', // blue-500
+   '#8B5CF6', // violet-500
+   '#EC4899', // pink-500
+   '#F97316', // orange-500
+   '#10B981', // emerald-500
+   '#6366F1', // indigo-500
+   '#14B8A6', // teal-500
+];
 
 // Turn options
 const DEFAULT_TURNOS = [
@@ -1389,6 +1415,111 @@ const DailyClosingScreen: React.FC = () => {
                      </tr>
                   </tfoot>
                </table>
+            </div>
+         </div>
+
+         {/* Charts Section - Requested by Owner */}
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Chart 1: Volume por Combustível */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
+               <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <TrendingUp size={16} className="text-blue-500" />
+                  Volume por Combustível (L)
+               </h3>
+               <div className="h-[250px] w-full mt-auto">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                        <Pie
+                           data={summaryData.filter(item => item.litros > 0)}
+                           cx="50%"
+                           cy="50%"
+                           innerRadius={60}
+                           outerRadius={80}
+                           paddingAngle={5}
+                           dataKey="litros"
+                           nameKey="nome"
+                           label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                        >
+                           {summaryData.filter(item => item.litros > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
+                           ))}
+                        </Pie>
+                        <Tooltip
+                           formatter={(value: number) => [`${value.toFixed(3)} L`, 'Volume']}
+                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} />
+                     </PieChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
+
+            {/* Chart 2: Receita por Combustível */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
+               <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Banknote size={16} className="text-green-500" />
+                  Faturamento por Combustível (R$)
+               </h3>
+               <div className="h-[250px] w-full mt-auto">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                        <Pie
+                           data={summaryData.filter(item => item.valor > 0)}
+                           cx="50%"
+                           cy="50%"
+                           innerRadius={60}
+                           outerRadius={80}
+                           paddingAngle={5}
+                           dataKey="valor"
+                           nameKey="nome"
+                           label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                        >
+                           {summaryData.filter(item => item.valor > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
+                           ))}
+                        </Pie>
+                        <Tooltip
+                           formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Valor']}
+                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} />
+                     </PieChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
+
+            {/* Chart 3: Formas de Pagamento */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
+               <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <CreditCard size={16} className="text-purple-500" />
+                  Distribuição de Pagamentos
+               </h3>
+               <div className="h-[250px] w-full mt-auto">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                        <Pie
+                           data={payments.filter(p => parseValue(p.valor) > 0).map(p => ({ name: p.nome, value: parseValue(p.valor) }))}
+                           cx="50%"
+                           cy="50%"
+                           innerRadius={60}
+                           outerRadius={80}
+                           paddingAngle={5}
+                           dataKey="value"
+                           nameKey="name"
+                           label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                        >
+                           {payments.filter(p => parseValue(p.valor) > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={PAYMENT_CHART_COLORS[index % PAYMENT_CHART_COLORS.length]} />
+                           ))}
+                        </Pie>
+                        <Tooltip
+                           formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Montante']}
+                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} />
+                     </PieChart>
+                  </ResponsiveContainer>
+               </div>
             </div>
          </div>
 
