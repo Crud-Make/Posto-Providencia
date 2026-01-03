@@ -1668,8 +1668,8 @@ const DailyClosingScreen: React.FC = () => {
             </div>
          </div>{/* End Aba Financeiro */}
 
-         {/* Frentistas Section (Based on Spreadsheet Logic) */}
-         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden print:break-inside-avoid">
+         {/* Frentistas Section (Based on Spreadsheet Logic) - Only visible in Leituras tab */}
+         <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden print:break-inside-avoid ${activeTab === 'financeiro' ? 'hidden' : ''}`}>
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-700/50 dark:to-blue-900/20 flex justify-between items-center">
                <div className="flex items-center gap-4">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
