@@ -628,6 +628,16 @@ export const leituraService = {
     return data || [];
   },
 
+  async deleteByShift(data: string, turnoId: number, postoId: number): Promise<void> {
+    const { error } = await supabase
+      .from('Leitura')
+      .delete()
+      .eq('data', data)
+      .eq('turno_id', turnoId)
+      .eq('posto_id', postoId);
+    if (error) throw error;
+  },
+
   // Resumo de vendas por data
   async getSalesSummaryByDate(data: string, postoId?: number): Promise<SalesSummary> {
     const leituras = await this.getByDate(data, postoId);
