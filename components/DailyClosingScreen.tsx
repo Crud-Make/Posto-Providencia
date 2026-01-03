@@ -383,10 +383,8 @@ const DailyClosingScreen: React.FC = () => {
             { event: '*', schema: 'public', table: 'FechamentoFrentista' },
             (payload) => {
                console.log('🔔 Realtime: FechamentoFrentista alterado', payload);
-               if (selectedDate) {
-                  console.log('Recarregando frentistas...');
-                  loadFrentistaSessions();
-               }
+               // Realtime e Polling desativados para evitar sobrescrita de dados durante edição
+               // O usuário deve atualizar manualmente se necessário
             }
          )
          .on(
@@ -394,28 +392,18 @@ const DailyClosingScreen: React.FC = () => {
             { event: '*', schema: 'public', table: 'Fechamento' },
             (payload) => {
                console.log('🔔 Realtime: Fechamento alterado', payload);
-               if (selectedDate) loadDayClosures();
-               if (selectedDate) loadFrentistaSessions();
+               // Realtime e Polling desativados para evitar sobrescrita de dados durante edição
+               // O usuário deve atualizar manualmente se necessário
             }
          )
          .subscribe((status) => {
             console.log('Status da subscription realtime:', status);
          });
 
-      // Polling de segurança: Verifica a cada 5 segundos se chegou algo novo
-      // Isso garante que o frentista apareça mesmo se o Realtime falhar
-      const intervalId = setInterval(() => {
-         if (selectedDate) {
-            // Silencioso para não poluir o log, ou com log se preferir debug
-            loadFrentistaSessions();
-         }
-      }, 5000);
-
       return () => {
          supabase.removeChannel(channel);
-         clearInterval(intervalId);
       };
-   }, [selectedDate, selectedTurno]);
+   }, [selectedDate, postoAtivoId]);
 
    // Helper function para atualizar os pagamentos com base nos totais dos frentistas
    const updatePaymentsFromFrentistas = (sessions: any[]) => {
