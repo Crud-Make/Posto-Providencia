@@ -2390,10 +2390,16 @@ export async function fetchDashboardData(
         subValue: `Vendas: R$ ${c.totalSales.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`,
         type: (c.totalSales > 0 ? 'ticket' : 'volume') as 'ticket' | 'volume' | 'divergence',
         rawProfit: profit,
-        sessionStatus: (c as any).sessionStatus
+        rawSales: c.totalSales,
+        sessionStatus: (c as any).sessionStatus,
+        status: (c as any).sessionStatus // Ensure status is passed for the UI checkmark
       };
     })
-    .sort((a, b) => b.rawProfit - a.rawProfit)
+    .sort((a, b) => {
+      const profitDiff = b.rawProfit - a.rawProfit;
+      if (Math.abs(profitDiff) > 0.01) return profitDiff;
+      return b.rawSales - a.rawSales;
+    })
     .slice(0, 5)
     .map(item => ({
       id: item.id,
