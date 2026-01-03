@@ -1367,11 +1367,11 @@ const DailyClosingScreen: React.FC = () => {
             <div className="overflow-x-auto">
                <table className="w-full text-sm">
                   <thead>
-                     <tr className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs uppercase font-bold text-gray-600 dark:text-gray-300">
-                        <th className="px-4 py-3 text-left">Combustível</th>
-                        <th className="px-4 py-3 text-right">Litros (L)</th>
-                        <th className="px-4 py-3 text-right">Valor R$</th>
-                        <th className="px-4 py-3 text-right">%</th>
+                     <tr className="bg-blue-100 text-blue-900 uppercase font-bold text-xs border-b border-blue-200">
+                        <th className="px-4 py-3 text-left bg-blue-200/50">Combustível</th>
+                        <th className="px-4 py-3 text-right bg-blue-200/50">Litros (L)</th>
+                        <th className="px-4 py-3 text-right bg-blue-200/50">Valor R$</th>
+                        <th className="px-4 py-3 text-right bg-blue-200/50">%</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -1381,37 +1381,43 @@ const DailyClosingScreen: React.FC = () => {
 
                         return (
                            <tr key={item.codigo} className={`${colors.bg} dark:bg-opacity-20`}>
-                              <td className={`px-4 py-3 font-bold ${colors.text}`}>
-                                 <span className={`inline-block px-2 py-1 rounded ${colors.bg} ${colors.border} border`}>
+                              <td className="px-4 py-3">
+                                 <span className={`inline-block px-3 py-1 rounded border font-bold text-sm shadow-sm ${colors.bg} ${colors.border} ${colors.text}`}>
                                     {item.nome}
                                  </span>
                               </td>
-                              <td className="px-4 py-3 text-right font-mono font-bold text-gray-900 dark:text-white">
-                                 {formatToBR(item.litros, 3)} L
+                              <td className="px-4 py-3 text-right">
+                                 <span className="bg-blue-900 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
+                                    {formatToBR(item.litros, 3)} L
+                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-right font-mono font-bold text-green-700 dark:text-green-400">
-                                 {item.valor.toLocaleString('pt-BR', {
-                                    style: 'currency',
-                                    currency: 'BRL'
-                                 })}
+                              <td className="px-4 py-3 text-right">
+                                 <span className="bg-blue-600 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
+                                    {item.valor.toLocaleString('pt-BR', {
+                                       style: 'currency',
+                                       currency: 'BRL'
+                                    })}
+                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300">
-                                 {percentage.toFixed(1)}%
+                              <td className="px-4 py-3 text-right">
+                                 <span className="bg-blue-500 text-white px-2 py-1 rounded font-bold text-sm shadow-sm">
+                                    {percentage.toFixed(1)}%
+                                 </span>
                               </td>
                            </tr>
                         );
                      })}
                   </tbody>
                   <tfoot>
-                     <tr className="bg-gray-200 dark:bg-gray-700 font-black text-gray-900 dark:text-white border-t-2 border-gray-300 dark:border-gray-600">
-                        <td className="px-4 py-4">TOTAL</td>
-                        <td className="px-4 py-4 text-right font-mono text-blue-700 dark:text-blue-400 text-lg">
+                     <tr className="bg-gray-100 dark:bg-gray-800 font-black text-gray-700 dark:text-gray-300 border-t-4 border-gray-200 dark:border-gray-700">
+                        <td className="px-4 py-4 text-gray-500 uppercase tracking-wider">TOTAL</td>
+                        <td className="px-4 py-4 text-right font-mono text-blue-700 dark:text-blue-400 text-xl">
                            {totals.litrosDisplay} L
                         </td>
-                        <td className="px-4 py-4 text-right font-mono text-green-700 dark:text-green-400 text-lg">
+                        <td className="px-4 py-4 text-right font-mono text-green-600 dark:text-green-400 text-xl">
                            {totals.valorDisplay}
                         </td>
-                        <td className="px-4 py-4 text-right">100%</td>
+                        <td className="px-4 py-4 text-right text-gray-800 dark:text-white text-lg">100%</td>
                      </tr>
                   </tfoot>
                </table>
