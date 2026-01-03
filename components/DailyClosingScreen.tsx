@@ -479,8 +479,8 @@ const DailyClosingScreen: React.FC = () => {
                }));
                setFrentistaSessions(mappedSessions);
 
-               // Atualizar os pagamentos com os totais dos frentistas
-               updatePaymentsFromFrentistas(sessions);
+               // Atualização manual de pagamentos - removida atualização automática para evitar sobrescrita
+               // updatePaymentsFromFrentistas(sessions);
                return;
             }
          }
@@ -525,7 +525,7 @@ const DailyClosingScreen: React.FC = () => {
                };
             }));
             setFrentistaSessions(mappedSessions);
-            updatePaymentsFromFrentistas(shiftSessions);
+            // updatePaymentsFromFrentistas(shiftSessions);
          } else {
             setFrentistaSessions([]);
          }
@@ -556,13 +556,41 @@ const DailyClosingScreen: React.FC = () => {
             });
             setLeituras(leiturasMap);
          } else {
-            // MODO CRIAÇÃO: Data não tem leituras salvas
+            // MODO CRIAÇÃO: Data não tem leituras salvas no banco
+
+            // VERIFICAÇÃO DE RASCUNHO MAIS INTELIGENTE:
+            // 1. Verifica se temos dados na tela
+            const hasLocalLeituras = Object.keys(leituras).length > 0 && Object.values(leituras).some(l => l.inicial !== '' || l.fechamento !== '');
+
+            // 2. Verifica se esses dados correspondem ao rascunho da MESMA data
+            let isDraftMatchingDate = false;
+            try {
+               const draft = localStorage.getItem(AUTOSAVE_KEY);
+               if (draft) {
+                  const parsed = JSON.parse(draft);
+                  // Se a data do rascunho bate com a data atual, então os dados na tela são pertinentes (vieram do restore)
+                  if (parsed.selectedDate === selectedDate) {
+                     isDraftMatchingDate = true;
+                  }
+               }
+            } catch (e) {
+               console.error('Erro ao verificar rascunho:', e);
+            }
+
+            // Só preserva os dados se eles forem relevantes para a DATA ATUAL (ou seja, batem com o rascunho)
+            if (hasLocalLeituras && isDraftMatchingDate) {
+               console.log('Rascunho válido detectado para esta data. Mantendo dados locais.');
+               return;
+            }
+
+            console.log('Iniciando leituras para nova data (sem rascunho válido)...');
+
             // Buscar a última leitura final de cada bico (do turno/dia anterior) e usar como inicial
             // Fechamento fica ZERADO para o usuário preencher
             const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
             await Promise.all(
                bicos.map(async (bico) => {
-                  // Busca a última leitura final salva para este bico (independente da data)
+                  // Busca a última leitura final registrada para uso como inicial
                   const lastReading = await leituraService.getLastReadingByBico(bico.id);
 
                   leiturasMap[bico.id] = {
@@ -575,8 +603,8 @@ const DailyClosingScreen: React.FC = () => {
             );
             setLeituras(leiturasMap);
 
-            // Limpa também o autosave para esta nova data
-            localStorage.removeItem(AUTOSAVE_KEY);
+            // NÃO remover o rascunho aqui. Deixar o usuário salvar ou limpar manualmente.
+            // localStorage.removeItem(AUTOSAVE_KEY);
          }
       } catch (err) {
          console.error('Error loading leituras:', err);
@@ -1668,50 +1696,14 @@ const DailyClosingScreen: React.FC = () => {
          {/* Aba Financeiro */}
          <div className={activeTab === 'financeiro' ? 'contents' : 'hidden'}>
 
-            {/* 1. Timeline de Status dos Turnos */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6 print:hidden">
-               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Clock size={14} />
-                  Status dos Turnos ({selectedDate ? new Date(selectedDate).toLocaleDateString('pt-BR') : '-'})
-               </h3>
-               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
-                  {turnos.map((t) => {
-                     const closure = dayClosures.find(c => c.turno_id === t.id);
-                     const isCurrent = t.id === selectedTurno;
-                     const status = closure ? closure.status : 'PENDENTE';
-                     const statusColor = status === 'FECHADO' ? 'bg-green-100 text-green-700 border-green-200' :
-                        status === 'RASCUNHO' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                           'bg-gray-100 text-gray-400 border-gray-200';
-
-                     return (
-                        <div
-                           key={t.id}
-                           className={`flex-1 min-w-[140px] p-3 rounded-lg border ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''} ${status === 'FECHADO' ? 'bg-green-50 border-green-200' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'} transition-all`}
-                        >
-                           <div className="flex justify-between items-start mb-1">
-                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t.nome}</span>
-                              {status === 'FECHADO' && <CheckCircle2 size={14} className="text-green-600" />}
-                           </div>
-                           <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block mb-1 ${statusColor}`}>
-                              {status === 'FECHADO' ? 'FECHADO' : status === 'RASCUNHO' ? 'EM ABERTO' : 'PENDENTE'}
-                           </div>
-                           {closure && (
-                              <div className="mt-1 text-xs font-bold text-gray-900 dark:text-gray-100">
-                                 {(closure.valor_total_liquido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </div>
-                           )}
-                        </div>
-                     );
-                  })}
-               </div>
-            </div>
+            {/* Status dos Turnos removido - Único por dia */}
 
             {/* Global Payment Recording (Stage 2) */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                      <CreditCard size={20} className="text-gray-600 dark:text-gray-400" />
-                     Fechamento Financeiro (Totais do Turno)
+                     Fechamento Financeiro Diário
                   </h2>
                   <div className="flex items-center gap-4">
                      <div className="flex flex-col items-end">
