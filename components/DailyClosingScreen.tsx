@@ -216,7 +216,7 @@ const DailyClosingScreen: React.FC = () => {
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
    const [dayClosures, setDayClosures] = useState<any[]>([]);
-   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('leituras');
+   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('financeiro');
 
    // Estado para edição de preço inline
    const [editingPrice, setEditingPrice] = useState<number | null>(null); // combustivel_id sendo editado
