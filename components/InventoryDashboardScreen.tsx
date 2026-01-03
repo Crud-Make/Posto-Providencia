@@ -127,6 +127,13 @@ const InventoryDashboardScreen: React.FC = () => {
   const [histories, setHistories] = useState<Record<number, any[]>>({});
   const [loading, setLoading] = useState(true);
 
+  // Estado para o modal de medição
+  const [showMedicaoModal, setShowMedicaoModal] = useState(false);
+  const [selectedTanque, setSelectedTanque] = useState<Tanque | null>(null);
+  const [medicaoValue, setMedicaoValue] = useState('');
+  const [medicaoObservacao, setMedicaoObservacao] = useState('');
+  const [savingMedicao, setSavingMedicao] = useState(false);
+
   useEffect(() => {
     if (postoAtivoId) {
       loadData();
@@ -159,6 +166,70 @@ const InventoryDashboardScreen: React.FC = () => {
     }
   };
 
+  // Handler para salvar nova medição
+  const handleSaveMedicao = async () => {
+    if (!selectedTanque || !medicaoValue) return;
+
+    try {
+      setSavingMedicao(true);
+      const novoValor = parseFloat(medicaoValue.replace(',', '.'));
+
+      if (isNaN(novoValor) || novoValor < 0) {
+        alert('Valor de medição inválido');
+        return;
+      }
+
+      if (novoValor > selectedTanque.capacidade) {
+        alert(`O valor não pode exceder a capacidade do tanque (${selectedTanque.capacidade.toLocaleString()} L)`);
+        return;
+      }
+
+      // Atualiza o estoque do tanque
+      await tanqueService.update(selectedTanque.id, {
+        estoque_atual: novoValor
+      });
+
+      // Registra no histórico (se o serviço suportar)
+      try {
+        await tanqueService.saveHistory({
+          tanque_id: selectedTanque.id,
+          data: new Date().toISOString().split('T')[0],
+          volume_fisico: novoValor
+        });
+      } catch (e) {
+        console.log('Histórico não registrado (funcionalidade opcional)');
+      }
+
+      // Limpa os campos e fecha o modal
+      setMedicaoValue('');
+      setMedicaoObservacao('');
+      setSelectedTanque(null);
+      setShowMedicaoModal(false);
+
+      // Recarrega os dados
+      await loadData();
+
+    } catch (error) {
+      console.error('Erro ao salvar medição:', error);
+      alert('Erro ao salvar medição. Tente novamente.');
+    } finally {
+      setSavingMedicao(false);
+    }
+  };
+
+  // Handler para abrir o modal de medição
+  const openMedicaoModal = (tanque?: Tanque) => {
+    if (tanque) {
+      setSelectedTanque(tanque);
+      setMedicaoValue(tanque.estoque_atual.toString().replace('.', ','));
+    } else {
+      setSelectedTanque(null);
+      setMedicaoValue('');
+    }
+    setMedicaoObservacao('');
+    setShowMedicaoModal(true);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -186,7 +257,10 @@ const InventoryDashboardScreen: React.FC = () => {
           >
             <History size={16} /> Atualizar
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+          <button
+            onClick={() => openMedicaoModal()}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+          >
             <Ruler size={16} /> Nova Medição (Régua)
           </button>
         </div>
@@ -304,6 +378,116 @@ const InventoryDashboardScreen: React.FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Modal de Nova Medição */}
+      {showMedicaoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Ruler className="text-blue-600" size={24} />
+                Nova Medição (Régua)
+              </h2>
+              <button
+                onClick={() => setShowMedicaoModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Seleção do Tanque */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Selecione o Tanque
+              </label>
+              <select
+                value={selectedTanque?.id || ''}
+                onChange={(e) => {
+                  const tanque = tanques.find(t => t.id === Number(e.target.value));
+                  if (tanque) {
+                    setSelectedTanque(tanque);
+                    setMedicaoValue(tanque.estoque_atual.toString().replace('.', ','));
+                  }
+                }}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Escolha um tanque...</option>
+                {tanques.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} - {t.combustivel?.nome} (Atual: {t.estoque_atual.toLocaleString()} L)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Valor da Medição */}
+            {selectedTanque && (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Volume Medido (Litros)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={medicaoValue}
+                      onChange={(e) => setMedicaoValue(e.target.value)}
+                      placeholder="Ex: 15000"
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-mono"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">L</span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Capacidade: {selectedTanque.capacidade.toLocaleString()} L |
+                    Estoque atual: {selectedTanque.estoque_atual.toLocaleString()} L
+                  </p>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Observação (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={medicaoObservacao}
+                    onChange={(e) => setMedicaoObservacao(e.target.value)}
+                    placeholder="Ex: Medição após recebimento"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Botões */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowMedicaoModal(false)}
+                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveMedicao}
+                disabled={!selectedTanque || !medicaoValue || savingMedicao}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {savingMedicao ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Ruler size={16} />
+                    Salvar Medição
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
