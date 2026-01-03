@@ -1123,7 +1123,7 @@ const DailyClosingScreen: React.FC = () => {
                      <option value="">Selecionar turno...</option>
                      {turnos.map(turno => (
                         <option key={turno.id} value={turno.id}>
-                           {turno.nome} ({turno.horario_inicio} - {turno.horario_fim})
+                           {turno.nome}
                         </option>
                      ))}
                   </select>
@@ -1609,7 +1609,6 @@ const DailyClosingScreen: React.FC = () => {
                               <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t.nome}</span>
                               {status === 'FECHADO' && <CheckCircle2 size={14} className="text-green-600" />}
                            </div>
-                           <div className="text-[10px] text-gray-500 mb-2">{t.horario_inicio} - {t.horario_fim}</div>
                            <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block mb-1 ${statusColor}`}>
                               {status === 'FECHADO' ? 'FECHADO' : status === 'RASCUNHO' ? 'EM ABERTO' : 'PENDENTE'}
                            </div>
