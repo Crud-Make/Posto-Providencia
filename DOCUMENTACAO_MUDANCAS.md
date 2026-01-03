@@ -37,3 +37,12 @@ Este documento registra as alterações solicitadas pelo proprietário do estabe
   - *Receita Líquida:* Soma de Dinheiro + Pix (Disponibilidade Imediata).
   - *Recebíveis:* Soma de Cartões + Vales (Crédito Futuro).
 - **Otimização de Layout:** Ocultamento condicional das seções "Controle de Frentistas", "Observações" e "Comparativo" quando a aba financeira está ativa, focando a atenção apenas nos números monetários.
+
+### 4. Dashboard Web: Gestão de Despesas
+**Solicitação:** Melhorar a tela de despesas, removendo o card de 'Próxima Compra' e adicionando um botão de 'Pagar' no topo.
+
+**Implementação:**
+- **Remoção de Card:** O card informativo de "Próxima Compra" foi removido para simplificar o dashboard.
+- **Botão Pagar:** Adicionado botão verde "Pagar" ao lado de "Nova Despesa" no cabeçalho.
+- **Layout:** Ajustado o grid de indicadores para 2 colunas, melhorando a visualização do Total Pendente e Total Pago.
+- **Localização:** Tela de Gestão de Despesas.
