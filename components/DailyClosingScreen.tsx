@@ -533,6 +533,7 @@ const DailyClosingScreen: React.FC = () => {
    };
 
    // Nova função para carregar as leituras dos bicos com migração automática
+   // Lógica: Quando a data muda, se não houver leituras salvas, usa a última leitura final como inicial e zera fechamento
    const loadLeituras = async () => {
       // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
       if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
@@ -553,28 +554,27 @@ const DailyClosingScreen: React.FC = () => {
             });
             setLeituras(leiturasMap);
          } else {
-            // MODO CRIAÇÃO: Só preenche se não tiver dados já digitados pelo usuário
-            // Verifica se já existe algum "fechamento" preenchido (indica que o usuário já digitou algo)
-            const hasUserInput = Object.values(leituras).some(l => l.fechamento && l.fechamento.trim() !== '');
+            // MODO CRIAÇÃO: Data não tem leituras salvas
+            // Buscar a última leitura final de cada bico (do turno/dia anterior) e usar como inicial
+            // Fechamento fica ZERADO para o usuário preencher
+            const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
+            await Promise.all(
+               bicos.map(async (bico) => {
+                  // Busca a última leitura final salva para este bico (independente da data)
+                  const lastReading = await leituraService.getLastReadingByBico(bico.id);
 
-            if (!hasUserInput) {
-               // Nenhum dado digitado ainda - popula com as últimas leituras
-               const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
-               await Promise.all(
-                  bicos.map(async (bico) => {
-                     const lastReading = await leituraService.getLastReadingByBico(bico.id);
-                     // Preserva o inicial do autosave se existir, senão usa do banco
-                     const existingInicial = leituras[bico.id]?.inicial;
-                     const existingFechamento = leituras[bico.id]?.fechamento;
+                  leiturasMap[bico.id] = {
+                     // Inicial = última leitura final registrada (do turno anterior)
+                     inicial: lastReading?.leitura_final?.toFixed(3).replace('.', ',') || '0,000',
+                     // Fechamento = vazio (zerado) para o usuário preencher
+                     fechamento: ''
+                  };
+               })
+            );
+            setLeituras(leiturasMap);
 
-                     leiturasMap[bico.id] = {
-                        inicial: existingInicial || lastReading?.leitura_final?.toFixed(3).replace('.', ',') || '0,000',
-                        fechamento: existingFechamento || ''
-                     };
-                  })
-               );
-               setLeituras(leiturasMap);
-            }
+            // Limpa também o autosave para esta nova data
+            localStorage.removeItem(AUTOSAVE_KEY);
          }
       } catch (err) {
          console.error('Error loading leituras:', err);
