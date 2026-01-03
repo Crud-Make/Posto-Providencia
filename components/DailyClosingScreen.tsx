@@ -2164,8 +2164,8 @@ const DailyClosingScreen: React.FC = () => {
 
          {/* Summary Sections (Recebimentos por Forma remain if needed for global count) */}
 
-         {/* Day Shifts Comparison - Hidden in Financeiro tab */}
-         <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:break-inside-avoid ${activeTab === 'financeiro' ? 'hidden' : ''}`}>
+         {/* Day Shifts Comparison - Only visible in Financeiro tab */}
+         <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:break-inside-avoid ${activeTab === 'leituras' ? 'hidden' : ''}`}>
             <div className="px-6 py-4 border-b border-gray-200 bg-blue-50/50">
                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <TrendingUp size={20} className="text-blue-600" />
