@@ -25,7 +25,10 @@ import {
    Check,
    ShoppingBag,
    Calculator,
-   Building2
+   Building2,
+   Activity,
+   PieChart as PieChartIcon,
+   BarChart3
 } from 'lucide-react';
 import {
    PieChart,
@@ -1579,6 +1582,46 @@ const DailyClosingScreen: React.FC = () => {
 
          {/* Aba Financeiro */}
          <div className={activeTab === 'financeiro' ? 'contents' : 'hidden'}>
+
+            {/* 1. Timeline de Status dos Turnos */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6 print:hidden">
+               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Clock size={14} />
+                  Status dos Turnos ({selectedDate ? new Date(selectedDate).toLocaleDateString('pt-BR') : '-'})
+               </h3>
+               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
+                  {turnos.map((t) => {
+                     const closure = dayClosures.find(c => c.turno_id === t.id);
+                     const isCurrent = t.id === selectedTurno;
+                     const status = closure ? closure.status : 'PENDENTE';
+                     const statusColor = status === 'FECHADO' ? 'bg-green-100 text-green-700 border-green-200' :
+                        status === 'RASCUNHO' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                           'bg-gray-100 text-gray-400 border-gray-200';
+
+                     return (
+                        <div
+                           key={t.id}
+                           className={`flex-1 min-w-[140px] p-3 rounded-lg border ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''} ${status === 'FECHADO' ? 'bg-green-50 border-green-200' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'} transition-all`}
+                        >
+                           <div className="flex justify-between items-start mb-1">
+                              <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t.nome}</span>
+                              {status === 'FECHADO' && <CheckCircle2 size={14} className="text-green-600" />}
+                           </div>
+                           <div className="text-[10px] text-gray-500 mb-2">{t.horario_inicio} - {t.horario_fim}</div>
+                           <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block mb-1 ${statusColor}`}>
+                              {status === 'FECHADO' ? 'FECHADO' : status === 'RASCUNHO' ? 'EM ABERTO' : 'PENDENTE'}
+                           </div>
+                           {closure && (
+                              <div className="mt-1 text-xs font-bold text-gray-900 dark:text-gray-100">
+                                 {(closure.valor_total_liquido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </div>
+                           )}
+                        </div>
+                     );
+                  })}
+               </div>
+            </div>
+
             {/* Global Payment Recording (Stage 2) */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
@@ -1667,6 +1710,119 @@ const DailyClosingScreen: React.FC = () => {
                </div>
             </div>
          </div>{/* End Aba Financeiro */}
+
+         {/* Gráfico de Distribuição Financeira */}
+         <div className={activeTab === 'financeiro' ? 'contents' : 'hidden'}>
+            {(() => {
+               const totais = {
+                  dinheiro: 0,
+                  cartaoCredito: 0,
+                  cartaoDebito: 0,
+                  pix: 0,
+                  notaPrazo: 0,
+                  outros: 0
+               };
+
+               payments?.forEach(p => {
+                  const val = parseValue(p.valor);
+                  if (p.tipo === 'dinheiro') totais.dinheiro += val;
+                  else if (p.tipo === 'cartao_credito') totais.cartaoCredito += val;
+                  else if (p.tipo === 'cartao_debito') totais.cartaoDebito += val;
+                  else if (p.tipo === 'pix') totais.pix += val;
+                  else if (p.tipo === 'nota_prazo' || p.tipo === 'nota_vale') totais.notaPrazo += val;
+                  else totais.outros += val;
+               });
+
+               const totalGeral = Object.values(totais).reduce((prev, curr) => prev + curr, 0) || 0.01;
+
+               return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-6 print:break-inside-avoid">
+                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                           <PieChartIcon size={16} className="text-blue-500" />
+                           Distribuição da Receita
+                        </h3>
+                        <div className="h-64">
+                           <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                 <Pie
+                                    data={[
+                                       { name: 'Dinheiro', value: totais.dinheiro },
+                                       { name: 'Cartão C.', value: totais.cartaoCredito },
+                                       { name: 'Cartão D.', value: totais.cartaoDebito },
+                                       { name: 'Pix', value: totais.pix },
+                                       { name: 'Nota/Vale', value: totais.notaPrazo },
+                                       { name: 'Outros', value: totais.outros }
+                                    ].filter(d => d.value > 0)}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                 >
+                                    <Cell fill="#22c55e" />
+                                    <Cell fill="#3b82f6" />
+                                    <Cell fill="#60a5fa" />
+                                    <Cell fill="#a855f7" />
+                                    <Cell fill="#f97316" />
+                                    <Cell fill="#64748b" />
+                                 </Pie>
+                                 <Tooltip
+                                    formatter={(value: any) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                 />
+                                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                              </PieChart>
+                           </ResponsiveContainer>
+                        </div>
+                     </div>
+
+                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col justify-center">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                           <Activity size={16} className="text-green-500" />
+                           Análise de Liquidez
+                        </h3>
+
+                        <div className="space-y-4">
+                           <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+                              <div className="flex justify-between mb-1">
+                                 <span className="text-sm font-medium text-green-800 dark:text-green-300">Receita Líquida (Dinheiro + Pix)</span>
+                                 <span className="text-sm font-bold text-green-900 dark:text-green-100">
+                                    {(totais.dinheiro + totais.pix).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                 </span>
+                              </div>
+                              <div className="w-full bg-green-200 dark:bg-green-800 rounded-full h-2">
+                                 <div
+                                    className="bg-green-500 h-2 rounded-full"
+                                    style={{ width: `${((totais.dinheiro + totais.pix) / totalGeral * 100).toFixed(0)}%` }}
+                                 ></div>
+                              </div>
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-2">Disponibilidade imediata de caixa</p>
+                           </div>
+
+                           <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+                              <div className="flex justify-between mb-1">
+                                 <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Recebíveis (Cartões + Vale)</span>
+                                 <span className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                                    {(totais.cartaoCredito + totais.cartaoDebito + totais.notaPrazo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                 </span>
+                              </div>
+                              <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                                 <div
+                                    className="bg-blue-500 h-2 rounded-full"
+                                    style={{ width: `${((totais.cartaoCredito + totais.cartaoDebito + totais.notaPrazo) / totalGeral * 100).toFixed(0)}%` }}
+                                 ></div>
+                              </div>
+                              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">Crédito futuro e prazos</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               );
+            })()}
+         </div>
+
 
          {/* Frentistas Section (Based on Spreadsheet Logic) - Only visible in Leituras tab */}
          <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden print:break-inside-avoid ${activeTab === 'financeiro' ? 'hidden' : ''}`}>
