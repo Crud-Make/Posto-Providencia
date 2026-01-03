@@ -20,9 +20,8 @@ const ClosingsTable: React.FC<ClosingsTableProps> = ({ data }) => {
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
               <th className="px-6 py-4 font-semibold">Frentista</th>
-              <th className="px-6 py-4 font-semibold">Turno</th>
-              <th className="px-6 py-4 font-semibold">Venda Total</th>
               <th className="px-6 py-4 font-semibold text-center">Status</th>
+              <th className="px-6 py-4 font-semibold">Venda Total</th>
               <th className="px-6 py-4 font-semibold text-right">Ação</th>
             </tr>
           </thead>
@@ -42,10 +41,6 @@ const ClosingsTable: React.FC<ClosingsTableProps> = ({ data }) => {
                       <span className="font-medium text-gray-900 dark:text-white">{closing.name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-300 text-sm">{closing.shift}</td>
-                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">
-                    R$ {closing.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </td>
                   <td className="px-6 py-4 text-center">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                         ${closing.status === 'OK' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : ''}
@@ -59,6 +54,9 @@ const ClosingsTable: React.FC<ClosingsTableProps> = ({ data }) => {
                         `}></span>
                       {closing.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">
+                    R$ {closing.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 text-right">
                     {closing.status === 'Aberto' ? (

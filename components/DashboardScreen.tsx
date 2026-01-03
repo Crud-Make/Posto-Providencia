@@ -10,7 +10,6 @@ import {
   ChevronDown,
   Loader2,
   User,
-  Clock,
   Droplet,
   TrendingUp,
 } from 'lucide-react';
@@ -19,7 +18,7 @@ import FuelVolumeChart from './FuelVolumeChart';
 
 import ClosingsTable from './ClosingsTable';
 import PerformanceSidebar from './PerformanceSidebar';
-import { fetchDashboardData, frentistaService, turnoService } from '../services/api';
+import { fetchDashboardData, frentistaService } from '../services/api';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../types';
 import { usePosto } from '../contexts/PostoContext';
 
@@ -28,11 +27,6 @@ interface DashboardScreenProps {
 }
 
 interface Frentista {
-  id: number;
-  nome: string;
-}
-
-interface Turno {
   id: number;
   nome: string;
 }
@@ -57,32 +51,24 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
   // Filters state
   const [selectedDate, setSelectedDate] = useState<string>('hoje');
   const [selectedFrentista, setSelectedFrentista] = useState<number | null>(null);
-  const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
 
   // Dropdown visibility
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showFrentistaDropdown, setShowFrentistaDropdown] = useState(false);
-  const [showTurnoDropdown, setShowTurnoDropdown] = useState(false);
 
   // Options lists
   const [frentistas, setFrentistas] = useState<Frentista[]>([]);
-  const [turnos, setTurnos] = useState<Turno[]>([]);
 
   // Refs for click outside
   const dateRef = useRef<HTMLDivElement>(null);
   const frentistaRef = useRef<HTMLDivElement>(null);
-  const turnoRef = useRef<HTMLDivElement>(null);
 
   // Load filter options
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [frentistasData, turnosData] = await Promise.all([
-          frentistaService.getAll(postoAtivoId),
-          turnoService.getAll(postoAtivoId)
-        ]);
+        const frentistasData = await frentistaService.getAll(postoAtivoId);
         setFrentistas(frentistasData);
-        setTurnos(turnosData);
       } catch (error) {
         console.error("Failed to load filter options", error);
       }
@@ -99,9 +85,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
       if (frentistaRef.current && !frentistaRef.current.contains(event.target as Node)) {
         setShowFrentistaDropdown(false);
       }
-      if (turnoRef.current && !turnoRef.current.contains(event.target as Node)) {
-        setShowTurnoDropdown(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -112,7 +95,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const dashboardData = await fetchDashboardData(selectedDate, selectedFrentista, selectedTurno, postoAtivoId);
+        // Turno removido - passa null para manter compatibilidade com API
+        const dashboardData = await fetchDashboardData(selectedDate, selectedFrentista, null, postoAtivoId);
         setData(dashboardData);
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
@@ -122,12 +106,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
     };
 
     loadData();
-  }, [selectedDate, selectedFrentista, selectedTurno, postoAtivoId]);
+  }, [selectedDate, selectedFrentista, postoAtivoId]);
 
   const clearFilters = () => {
     setSelectedDate('hoje');
     setSelectedFrentista(null);
-    setSelectedTurno(null);
   };
 
   const getDateLabel = () => {
@@ -144,12 +127,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
     if (!selectedFrentista) return 'Todos';
     const f = frentistas.find(fr => fr.id === selectedFrentista);
     return f?.nome || 'Todos';
-  };
-
-  const getTurnoLabel = () => {
-    if (!selectedTurno) return 'Todos';
-    const t = turnos.find(tu => tu.id === selectedTurno);
-    return t?.nome || 'Todos';
   };
 
   if (loading && !data) {
@@ -246,38 +223,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
                   className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedFrentista === f.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
                 >
                   {f.nome}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Turno Filter */}
-        <div className="relative" ref={turnoRef}>
-          <div
-            onClick={() => setShowTurnoDropdown(!showTurnoDropdown)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 shadow-sm cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-          >
-            <Clock size={16} className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Turno:</span>
-            <span className="font-semibold text-gray-900 dark:text-white">{getTurnoLabel()}</span>
-            <ChevronDown size={14} className={`text-gray-400 ml-2 transition-transform ${showTurnoDropdown ? 'rotate-180' : ''}`} />
-          </div>
-          {showTurnoDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-              <button
-                onClick={() => { setSelectedTurno(null); setShowTurnoDropdown(false); }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedTurno === null ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
-              >
-                Todos
-              </button>
-              {turnos.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => { setSelectedTurno(t.id); setShowTurnoDropdown(false); }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedTurno === t.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
-                >
-                  {t.nome}
                 </button>
               ))}
             </div>
