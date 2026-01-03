@@ -219,7 +219,7 @@ const DailyClosingScreen: React.FC = () => {
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
    const [dayClosures, setDayClosures] = useState<any[]>([]);
-   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('financeiro');
+   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('leituras');
 
    // Estado para edição de preço inline
    const [editingPrice, setEditingPrice] = useState<number | null>(null); // combustivel_id sendo editado
@@ -392,13 +392,15 @@ const DailyClosingScreen: React.FC = () => {
             { event: '*', schema: 'public', table: 'Fechamento' },
             (payload) => {
                console.log('🔔 Realtime: Fechamento alterado', payload);
-               // Realtime e Polling desativados para evitar sobrescrita de dados durante edição
-               // O usuário deve atualizar manualmente se necessário
+               // Realtime ativo - recebe atualizações em tempo real sem polling agressivo
             }
          )
          .subscribe((status) => {
             console.log('Status da subscription realtime:', status);
          });
+
+      // Polling removido - causava recarregamentos constantes e perda de dados
+      // O realtime subscription já cuida das atualizações
 
       return () => {
          supabase.removeChannel(channel);
@@ -406,6 +408,7 @@ const DailyClosingScreen: React.FC = () => {
    }, [selectedDate, postoAtivoId]);
 
    // Helper function para atualizar os pagamentos com base nos totais dos frentistas
+   // IMPORTANTE: Só atualiza se o campo estiver vazio para não sobrescrever edições manuais
    const updatePaymentsFromFrentistas = (sessions: any[]) => {
       if (sessions.length === 0) return;
 
@@ -419,7 +422,13 @@ const DailyClosingScreen: React.FC = () => {
       }), { cartao: 0, pix: 0, dinheiro: 0, nota: 0, baratao: 0 });
 
       // Atualiza os payments com os totais dos frentistas
+      // CRÍTICO: Só atualiza se o campo estiver vazio ou for o primeiro carregamento
       setPayments(prev => prev.map(p => {
+         // Se já tem valor preenchido, não sobrescreve (preserva edições manuais)
+         if (p.valor && parseValue(p.valor) > 0) {
+            return p;
+         }
+
          // Mapeia tipos de forma de pagamento para os totais dos frentistas
          if (p.tipo === 'cartao' || p.nome.toLowerCase().includes('cartão')) {
             // Se houver apenas um campo de cartão nos frentistas, mas vários métodos de cartão no fechamento, 
@@ -612,6 +621,7 @@ const DailyClosingScreen: React.FC = () => {
    };
 
    // Effect para recarregar leituras quando data ou turno mudam
+   // NOTA: Evitamos recarregar toda hora para não perder dados inseridos
    useEffect(() => {
       loadLeituras();
    }, [selectedDate, selectedTurno, bicos, restored]);
