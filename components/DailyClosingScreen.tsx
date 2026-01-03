@@ -1427,24 +1427,23 @@ const DailyClosingScreen: React.FC = () => {
          {/* Charts Section - Requested by Owner */}
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Chart 1: Volume por Combustível */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <TrendingUp size={16} className="text-blue-500" />
                   Volume por Combustível (L)
                </h3>
-               <div className="h-[250px] w-full mt-auto">
+               <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                      <PieChart>
                         <Pie
                            data={summaryData.filter(item => item.litros > 0)}
                            cx="50%"
                            cy="50%"
-                           innerRadius={60}
+                           innerRadius={50}
                            outerRadius={80}
                            paddingAngle={5}
                            dataKey="litros"
                            nameKey="nome"
-                           label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                         >
                            {summaryData.filter(item => item.litros > 0).map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
@@ -1452,33 +1451,38 @@ const DailyClosingScreen: React.FC = () => {
                         </Pie>
                         <Tooltip
                            formatter={(value: number) => [`${value.toFixed(3)} L`, 'Volume']}
-                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         />
-                        <Legend verticalAlign="bottom" height={36} />
+                        <Legend
+                           verticalAlign="bottom"
+                           align="center"
+                           iconType="circle"
+                           layout="horizontal"
+                           wrapperStyle={{ paddingTop: '20px' }}
+                        />
                      </PieChart>
                   </ResponsiveContainer>
                </div>
             </div>
 
             {/* Chart 2: Receita por Combustível */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Banknote size={16} className="text-green-500" />
                   Faturamento por Combustível (R$)
                </h3>
-               <div className="h-[250px] w-full mt-auto">
+               <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                      <PieChart>
                         <Pie
                            data={summaryData.filter(item => item.valor > 0)}
                            cx="50%"
                            cy="50%"
-                           innerRadius={60}
+                           innerRadius={50}
                            outerRadius={80}
                            paddingAngle={5}
                            dataKey="valor"
                            nameKey="nome"
-                           label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                         >
                            {summaryData.filter(item => item.valor > 0).map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={FUEL_CHART_COLORS[entry.codigo] || '#CBD5E1'} />
@@ -1486,33 +1490,38 @@ const DailyClosingScreen: React.FC = () => {
                         </Pie>
                         <Tooltip
                            formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Valor']}
-                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         />
-                        <Legend verticalAlign="bottom" height={36} />
+                        <Legend
+                           verticalAlign="bottom"
+                           align="center"
+                           iconType="circle"
+                           layout="horizontal"
+                           wrapperStyle={{ paddingTop: '20px' }}
+                        />
                      </PieChart>
                   </ResponsiveContainer>
                </div>
             </div>
 
             {/* Chart 3: Formas de Pagamento */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <CreditCard size={16} className="text-purple-500" />
                   Distribuição de Pagamentos
                </h3>
-               <div className="h-[250px] w-full mt-auto">
+               <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                      <PieChart>
                         <Pie
                            data={payments.filter(p => parseValue(p.valor) > 0).map(p => ({ name: p.nome, value: parseValue(p.valor) }))}
                            cx="50%"
                            cy="50%"
-                           innerRadius={60}
+                           innerRadius={50}
                            outerRadius={80}
                            paddingAngle={5}
                            dataKey="value"
                            nameKey="name"
-                           label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                         >
                            {payments.filter(p => parseValue(p.valor) > 0).map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={PAYMENT_CHART_COLORS[index % PAYMENT_CHART_COLORS.length]} />
@@ -1520,9 +1529,15 @@ const DailyClosingScreen: React.FC = () => {
                         </Pie>
                         <Tooltip
                            formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Montante']}
-                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         />
-                        <Legend verticalAlign="bottom" height={36} />
+                        <Legend
+                           verticalAlign="bottom"
+                           align="center"
+                           iconType="circle"
+                           layout="horizontal"
+                           wrapperStyle={{ paddingTop: '20px' }}
+                        />
                      </PieChart>
                   </ResponsiveContainer>
                </div>
