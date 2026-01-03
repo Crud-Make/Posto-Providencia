@@ -88,6 +88,8 @@ interface FrentistaSession {
    valor_conferido: string;
    observacoes: string;
    valor_produtos: string; // New field
+   status?: 'pendente' | 'conferido'; // Status do fechamento
+   data_hora_envio?: string; // Data e hora do envio pelo app
 }
 
 // Fuel colors (mantendo para visualização)
@@ -1971,13 +1973,16 @@ const DailyClosingScreen: React.FC = () => {
                                              </div>
                                              <label className="text-xs font-black text-blue-700 dark:text-blue-400 uppercase">Cartões</label>
                                           </div>
-                                          <input
-                                             type="text"
-                                             value={session.valor_cartao}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao: formatSimpleValue(e.target.value) })}
-                                             className="w-full bg-white/80 dark:bg-gray-800/50 px-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-blue-500 outline-none placeholder-gray-400 transition-all"
-                                             placeholder="R$ 0,00"
-                                          />
+                                          <div className="relative">
+                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm">R$</span>
+                                             <input
+                                                type="text"
+                                                value={session.valor_cartao}
+                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao: formatSimpleValue(e.target.value) })}
+                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-blue-500 outline-none placeholder-gray-400 transition-all"
+                                                placeholder="0,00"
+                                             />
+                                          </div>
                                        </div>
 
                                        {/* PIX */}
@@ -1988,13 +1993,16 @@ const DailyClosingScreen: React.FC = () => {
                                              </div>
                                              <label className="text-xs font-black text-cyan-700 dark:text-cyan-400 uppercase">PIX</label>
                                           </div>
-                                          <input
-                                             type="text"
-                                             value={session.valor_pix}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
-                                             className="w-full bg-white/80 dark:bg-gray-800/50 px-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-cyan-500 outline-none placeholder-gray-400 transition-all"
-                                             placeholder="R$ 0,00"
-                                          />
+                                          <div className="relative">
+                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-600 font-bold text-sm">R$</span>
+                                             <input
+                                                type="text"
+                                                value={session.valor_pix}
+                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
+                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-cyan-500 outline-none placeholder-gray-400 transition-all"
+                                                placeholder="0,00"
+                                             />
+                                          </div>
                                        </div>
 
                                        {/* Dinheiro */}
@@ -2005,13 +2013,16 @@ const DailyClosingScreen: React.FC = () => {
                                              </div>
                                              <label className="text-xs font-black text-green-700 dark:text-green-400 uppercase">Dinheiro</label>
                                           </div>
-                                          <input
-                                             type="text"
-                                             value={session.valor_dinheiro}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
-                                             className="w-full bg-white/80 dark:bg-gray-800/50 px-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-green-500 outline-none placeholder-gray-400 transition-all"
-                                             placeholder="R$ 0,00"
-                                          />
+                                          <div className="relative">
+                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold text-sm">R$</span>
+                                             <input
+                                                type="text"
+                                                value={session.valor_dinheiro}
+                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
+                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-green-500 outline-none placeholder-gray-400 transition-all"
+                                                placeholder="0,00"
+                                             />
+                                          </div>
                                        </div>
 
                                        {/* Baratão */}
@@ -2022,13 +2033,16 @@ const DailyClosingScreen: React.FC = () => {
                                              </div>
                                              <label className="text-xs font-black text-rose-700 dark:text-rose-400 uppercase">Baratão</label>
                                           </div>
-                                          <input
-                                             type="text"
-                                             value={session.valor_baratao}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatSimpleValue(e.target.value) })}
-                                             className="w-full bg-white/80 dark:bg-gray-800/50 px-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-rose-500 outline-none placeholder-gray-400 transition-all"
-                                             placeholder="R$ 0,00"
-                                          />
+                                          <div className="relative">
+                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm">R$</span>
+                                             <input
+                                                type="text"
+                                                value={session.valor_baratao}
+                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatSimpleValue(e.target.value) })}
+                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-rose-500 outline-none placeholder-gray-400 transition-all"
+                                                placeholder="0,00"
+                                             />
+                                          </div>
                                        </div>
                                     </div>
                                  </div>
@@ -2124,6 +2138,30 @@ const DailyClosingScreen: React.FC = () => {
                                           />
                                        </div>
                                     </div>
+                                 </div>
+
+                                 {/* Botão Salvar Caixa */}
+                                 <div className="pt-4 flex justify-end">
+                                    <button
+                                       onClick={() => {
+                                          // Marcar caixa como conferido/salvo
+                                          updateFrentistaSession(session.tempId, { status: 'conferido' } as any);
+                                          // Mostrar feedback visual
+                                          const btn = document.getElementById(`btn-save-${session.tempId}`);
+                                          if (btn) {
+                                             btn.classList.add('bg-green-600');
+                                             btn.innerHTML = '✓ Caixa Salvo!';
+                                             setTimeout(() => {
+                                                btn.classList.remove('bg-green-600');
+                                                btn.innerHTML = '💾 Salvar Caixa';
+                                             }, 2000);
+                                          }
+                                       }}
+                                       id={`btn-save-${session.tempId}`}
+                                       className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                                    >
+                                       💾 Salvar Caixa
+                                    </button>
                                  </div>
                               </div>
                            </div>
