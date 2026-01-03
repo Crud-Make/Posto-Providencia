@@ -2164,24 +2164,6 @@ const DailyClosingScreen: React.FC = () => {
 
          {/* Summary Sections (Recebimentos por Forma remain if needed for global count) */}
 
-         {/* Observations Section - Hidden in Financeiro tab */}
-         <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:break-inside-avoid ${activeTab === 'financeiro' ? 'hidden' : ''}`}>
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <FileText size={20} className="text-gray-600" />
-                  Observações e Notas
-               </h2>
-            </div>
-            <div className="p-6">
-               <textarea
-                  value={observacoes}
-                  onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Digite observações sobre o fechamento, ocorrências, problemas com equipamentos, etc..."
-                  className="w-full h-32 px-4 py-3 rounded-lg border-2 border-gray-200 outline-none transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none"
-               />
-            </div>
-         </div>
-
          {/* Day Shifts Comparison - Hidden in Financeiro tab */}
          <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:break-inside-avoid ${activeTab === 'financeiro' ? 'hidden' : ''}`}>
             <div className="px-6 py-4 border-b border-gray-200 bg-blue-50/50">
