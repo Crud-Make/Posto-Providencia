@@ -26,7 +26,7 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
           <div className="w-1 h-6 bg-purple-600 rounded-full"></div>
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Performance Frentistas</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Ranking do turno atual</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Ranking do dia atual</p>
           </div>
         </div>
       </div>

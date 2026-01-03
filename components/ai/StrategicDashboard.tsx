@@ -54,7 +54,7 @@ interface AttendantPerformance {
     nome: string;
     vendaMedia: number;
     diferencaAcumulada: number;
-    turnos: number;
+    dias: number;
 }
 
 interface SalesByDayOfWeek {
@@ -307,7 +307,7 @@ export const StrategicDashboard: React.FC = () => {
                     nome: f.nome,
                     vendaMedia,
                     diferencaAcumulada,
-                    turnos: historico.length
+                    dias: historico.length
                 });
             }
             setTopPerformers(performanceData.sort((a, b) => b.vendaMedia - a.vendaMedia));
@@ -456,7 +456,7 @@ export const StrategicDashboard: React.FC = () => {
                     : 'Carregando dados de margem...';
             } else if (lowerMsg.includes('frentista') || lowerMsg.includes('funcionário') || lowerMsg.includes('equipe')) {
                 response = topPerformers.length > 0
-                    ? `O frentista com melhor desempenho é ${topPerformers[0].nome} com média de ${formatCurrency(topPerformers[0].vendaMedia)}/turno.`
+                    ? `O frentista com melhor desempenho é ${topPerformers[0].nome} com média de ${formatCurrency(topPerformers[0].vendaMedia)}/dia.`
                     : 'Carregando dados de funcionários...';
             }
 
@@ -976,7 +976,7 @@ export const StrategicDashboard: React.FC = () => {
                                             </div>
                                             <div>
                                                 <p className="font-medium text-slate-800 dark:text-white text-sm">{perf.nome}</p>
-                                                <p className="text-xs text-slate-500">{perf.turnos} turnos no mês</p>
+                                                <p className="text-xs text-slate-500">{perf.dias} dias no mês</p>
                                             </div>
                                         </div>
                                         <div className="text-right">

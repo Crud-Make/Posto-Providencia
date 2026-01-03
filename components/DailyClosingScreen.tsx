@@ -47,7 +47,6 @@ import {
    bicoService,
    leituraService,
    frentistaService,
-   turnoService,
    formaPagamentoService,
    fechamentoService,
    fechamentoFrentistaService,
@@ -58,7 +57,7 @@ import {
    api
 } from '../services/api';
 import { supabase } from '../services/supabase';
-import type { Bico, Bomba, Combustivel, Leitura, Frentista, Turno, FormaPagamento } from '../services/database.types';
+import type { Bico, Bomba, Combustivel, Leitura, Frentista, FormaPagamento } from '../services/database.types';
 import { useAuth } from '../contexts/AuthContext';
 import { usePosto } from '../contexts/PostoContext';
 import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
@@ -121,11 +120,7 @@ const PAYMENT_CHART_COLORS = [
 ];
 
 // Turn options
-const DEFAULT_TURNOS = [
-   { id: 1, nome: 'Manhã', horario_inicio: '06:00', horario_fim: '14:00' },
-   { id: 2, nome: 'Tarde', horario_inicio: '14:00', horario_fim: '22:00' },
-   { id: 3, nome: 'Noite', horario_inicio: '22:00', horario_fim: '06:00' },
-];
+
 
 
 // --- Utility Functions (moved outside to avoid hoisting issues and pure logic) ---
@@ -212,13 +207,11 @@ const DailyClosingScreen: React.FC = () => {
 
    // Additional states
    const [frentistas, setFrentistas] = useState<Frentista[]>([]);
-   const [turnos, setTurnos] = useState<Turno[]>([]);
-   // Turno fixo = 1 (fechamento único por dia, sem seleção de turno)
-   const selectedTurno = 1;
+
    const [frentistaSessions, setFrentistaSessions] = useState<FrentistaSession[]>([]);
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
-   const [dayClosures, setDayClosures] = useState<any[]>([]);
+
    const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('leituras');
 
    // Estado para edição de preço inline
@@ -246,7 +239,7 @@ const DailyClosingScreen: React.FC = () => {
                   setLeituras(prev => ({ ...prev, ...parsed.leituras }));
                }
                if (parsed.selectedDate) setSelectedDate(parsed.selectedDate);
-               // Turno fixo - não restaurar do rascunho
+               // Daily system - do not restore individual shifts
                if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
                   setFrentistaSessions(parsed.frentistaSessions);
                }
@@ -266,12 +259,12 @@ const DailyClosingScreen: React.FC = () => {
          const draft = {
             leituras,
             selectedDate,
-            selectedTurno,
+            selectedTurno: 1,
             frentistaSessions
          };
          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
       }
-   }, [leituras, selectedDate, selectedTurno, frentistaSessions, loading, saving, restored, AUTOSAVE_KEY]);
+   }, [leituras, selectedDate, frentistaSessions, loading, saving, restored, AUTOSAVE_KEY]);
    // ----------------------
 
    // Payment entries (dynamic) - REMAINING FOR GLOBAL AUDIT
@@ -326,9 +319,6 @@ const DailyClosingScreen: React.FC = () => {
          console.log('Frentistas carregados:', frentistasData);
          setFrentistas(frentistasData);
 
-         // Fetch turnos
-         const turnosData = await turnoService.getAll(postoAtivoId);
-         setTurnos(turnosData.length > 0 ? turnosData : DEFAULT_TURNOS as Turno[]);
 
          // Fetch Payment Methods
          const paymentMethodsData = await formaPagamentoService.getAll(postoAtivoId);
@@ -353,18 +343,10 @@ const DailyClosingScreen: React.FC = () => {
       }
    };
 
-   const loadDayClosures = async () => {
-      try {
-         const closures = await fechamentoService.getByDate(selectedDate, postoAtivoId);
-         setDayClosures(closures);
-      } catch (err) {
-         console.error('Error loading day closures:', err);
-      }
-   };
+
 
    useEffect(() => {
       if (selectedDate) {
-         loadDayClosures();
          loadFrentistaSessions();
       } else {
          setFrentistaSessions([]);
@@ -373,7 +355,7 @@ const DailyClosingScreen: React.FC = () => {
 
    // Realtime Subscription para atualizações automáticas do Sistema
    useEffect(() => {
-      console.log('Iniciando subscriptions realtime...', { selectedDate, selectedTurno });
+      console.log('Iniciando subscriptions realtime...', { selectedDate, selectedTurno: 1 });
 
       // Canal unificado para monitorar mudanças
       const channel = supabase
@@ -456,8 +438,8 @@ const DailyClosingScreen: React.FC = () => {
 
    const loadFrentistaSessions = async () => {
       try {
-         // Buscamos se já existe um fechamento para este dia/turno
-         const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!, postoAtivoId);
+         // Buscamos se já existe um fechamento para este dia
+         const fechamento = await fechamentoService.getByDateUnique(selectedDate, postoAtivoId);
 
          if (fechamento) {
             const sessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
@@ -494,7 +476,7 @@ const DailyClosingScreen: React.FC = () => {
             }
          }
 
-         // Se não encontrou no fechamento consolidado, tenta buscar registros soltos de frentistas para este dia/turno (feitos via mobile)
+         // Se não encontrou no fechamento consolidado, tenta buscar registros soltos de frentistas para este dia (feitos via mobile)
          const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate, postoAtivoId);
 
          // Log para debug
@@ -503,10 +485,10 @@ const DailyClosingScreen: React.FC = () => {
          const shiftSessions = mobileSessions.filter(s => {
             // O turno vem do fechamento pai
             const sessionTurno = s.fechamento?.turno_id;
-            return Number(sessionTurno) === Number(selectedTurno);
+            return Number(sessionTurno) === 1;
          });
 
-         console.log('Frentistas após filtro de turno:', shiftSessions.length);
+         console.log('Frentistas encontrados para o dia:', shiftSessions.length);
 
          if (shiftSessions.length > 0) {
             const mappedSessions = await Promise.all(shiftSessions.map(async s => {
@@ -546,13 +528,13 @@ const DailyClosingScreen: React.FC = () => {
    // Nova função para carregar as leituras dos bicos com migração automática
    // Lógica: Quando a data muda, se não houver leituras salvas, usa a última leitura final como inicial e zera fechamento
    const loadLeituras = async () => {
-      // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
-      if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
+      // Só executa se tiver data, bicos carregados E depois que o autosave foi processado
+      if (!selectedDate || bicos.length === 0 || !restored) return;
 
       try {
-         // Verifica se temos leituras salvas para este turno específico (Modo Edição)
+         // Verifica se temos leituras salvas para este dia (Modo Edição)
          const dayReadings = await leituraService.getByDate(selectedDate, postoAtivoId);
-         const shiftReadings = dayReadings.filter(l => l.turno_id === selectedTurno);
+         const shiftReadings = dayReadings.filter(l => l.turno_id === 1);
 
          // Se temos leituras SALVAS no banco, usamos elas (Modo Edição)
          if (shiftReadings.length > 0) {
@@ -594,7 +576,7 @@ const DailyClosingScreen: React.FC = () => {
 
             console.log('Iniciando leituras para nova data (sem rascunho válido)...');
 
-            // Buscar a última leitura final de cada bico (do turno/dia anterior) e usar como inicial
+            // Buscar a última leitura final de cada bico (do dia anterior) e usar como inicial
             // Fechamento fica ZERADO para o usuário preencher
             const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
             await Promise.all(
@@ -603,7 +585,7 @@ const DailyClosingScreen: React.FC = () => {
                   const lastReading = await leituraService.getLastReadingByBico(bico.id);
 
                   leiturasMap[bico.id] = {
-                     // Inicial = última leitura final registrada (do turno anterior)
+                     // Inicial = última leitura final registrada
                      inicial: lastReading?.leitura_final?.toFixed(3).replace('.', ',') || '0,000',
                      // Fechamento = vazio (zerado) para o usuário preencher
                      fechamento: ''
@@ -620,11 +602,11 @@ const DailyClosingScreen: React.FC = () => {
       }
    };
 
-   // Effect para recarregar leituras quando data ou turno mudam
+   // Effect para recarregar leituras quando a data muda
    // NOTA: Evitamos recarregar toda hora para não perder dados inseridos
    useEffect(() => {
       loadLeituras();
-   }, [selectedDate, selectedTurno, bicos, restored]);
+   }, [selectedDate, bicos, restored]);
 
    // Handle inicial input change
    const handleInicialChange = (bicoId: number, value: string) => {
@@ -911,7 +893,7 @@ const DailyClosingScreen: React.FC = () => {
       setLeituras({});
       setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
       setFrentistaSessions([]);
-      // Turno fixo - não resetar
+      // Reset logic for single daily closing
       setSuccess(null);
       setError(null);
       loadData();
@@ -939,25 +921,25 @@ const DailyClosingScreen: React.FC = () => {
 
          console.log('📋 [SAVE] Dados iniciais:', {
             selectedDate,
-            selectedTurno,
+            selectedTurno: 1,
             postoAtivoId,
             userId: user.id,
             totalBicos: bicos.length
          });
 
          // 1. Get or Create Daily Closing (Fechamento) - fechamento único por dia
-         // Turno fixo = 1 (sem necessidade de validação)
+         // Fechamento único por dia
 
          console.log('🔍 [SAVE] Buscando fechamento existente...');
-         let fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno, postoAtivoId);
+         let fechamento = await fechamentoService.getByDateUnique(selectedDate, postoAtivoId);
 
          if (!fechamento) {
-            console.log("✨ [SAVE] Criando novo fechamento para data:", selectedDate, "turno:", selectedTurno);
+            console.log("✨ [SAVE] Criando novo fechamento para data:", selectedDate);
             try {
                fechamento = await fechamentoService.create({
                   data: selectedDate,
                   usuario_id: user.id,
-                  turno_id: selectedTurno,
+                  turno_id: 1,
                   status: 'RASCUNHO',
                   posto_id: postoAtivoId
                });
@@ -971,7 +953,7 @@ const DailyClosingScreen: React.FC = () => {
             // Limpa dados anteriores para evitar duplicação ao re-salvar
             try {
                await Promise.all([
-                  leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId),
+                  leituraService.deleteByDate(selectedDate, postoAtivoId),
                   fechamentoFrentistaService.deleteByFechamento(fechamento.id),
                   recebimentoService.deleteByFechamento(fechamento.id)
                ]);
@@ -994,7 +976,7 @@ const DailyClosingScreen: React.FC = () => {
                combustivel_id: bico.combustivel.id,
                preco_litro: bico.combustivel.preco_venda,
                usuario_id: user.id,
-               turno_id: selectedTurno,
+               turno_id: 1,
                posto_id: postoAtivoId
             }));
 
@@ -1158,7 +1140,6 @@ const DailyClosingScreen: React.FC = () => {
 
          // Reload data
          await loadData();
-         await loadDayClosures();
 
       } catch (err: any) {
          console.error('❌❌❌ [SAVE] ERRO CRÍTICO:', err);
@@ -1258,7 +1239,6 @@ const DailyClosingScreen: React.FC = () => {
                   <button
                      onClick={() => {
                         loadData();
-                        if (selectedDate) loadDayClosures();
                         if (selectedDate) loadFrentistaSessions();
                      }}
                      className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -2280,50 +2260,6 @@ const DailyClosingScreen: React.FC = () => {
 
          {/* Summary Sections (Recebimentos por Forma remain if needed for global count) */}
 
-         {/* Day Shifts Comparison - Only visible in Financeiro tab */}
-         <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:break-inside-avoid ${activeTab === 'leituras' ? 'hidden' : ''}`}>
-            <div className="px-6 py-4 border-b border-gray-200 bg-blue-50/50">
-               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <TrendingUp size={20} className="text-blue-600" />
-                  Comparativo de Turnos do Dia
-               </h2>
-            </div>
-            <div className="p-6">
-               {dayClosures.length === 0 ? (
-                  <div className="text-center py-6 text-gray-400 italic text-sm">
-                     Nenhum turno fechado para esta data ainda.
-                  </div>
-               ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                     {dayClosures.map((c) => (
-                        <div key={c.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50 flex flex-col gap-2">
-                           <div className="flex justify-between items-center text-xs font-bold text-gray-500 uppercase">
-                              <div className="flex items-center gap-1">
-                                 <Clock size={12} />
-                                 {c.turno?.nome || 'Turno'}
-                              </div>
-                              <span className={`px-2 py-0.5 rounded text-[10px] ${c.status === 'FECHADO' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                 {c.status}
-                              </span>
-                           </div>
-                           <div className="flex flex-col mt-1">
-                              <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">Venda Bruta</span>
-                              <span className="text-lg font-black text-gray-900">
-                                 {c.total_vendas?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
-                              </span>
-                           </div>
-                           <div className="flex justify-between items-center pt-2 border-t border-gray-200/50">
-                              <span className="text-[10px] text-gray-400 font-bold uppercase">Diferença:</span>
-                              <span className={`text-xs font-bold ${(c.diferenca || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                 {c.diferenca?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00'}
-                              </span>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-               )}
-            </div>
-         </div>
 
          {/* Fixed Footer */}
          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40 print:hidden">

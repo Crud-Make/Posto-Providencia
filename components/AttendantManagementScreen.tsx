@@ -14,12 +14,11 @@ import {
    ChevronRight,
    User,
    Loader2,
-   Mail,
-   Clock // Added Clock icon
+   Mail
 } from 'lucide-react';
-import { fetchAttendantsData, frentistaService, turnoService } from '../services/api'; // Added turnoService
+import { fetchAttendantsData, frentistaService } from '../services/api';
 import { supabase } from '../services/supabase';
-import { AttendantProfile, AttendantHistoryEntry } from '../types'; // Assuming Turno type is not explicitly defined, using any for now
+import { AttendantProfile, AttendantHistoryEntry } from '../types';
 import { usePosto } from '../contexts/PostoContext';
 
 const AttendantManagementScreen: React.FC = () => {
@@ -28,7 +27,6 @@ const AttendantManagementScreen: React.FC = () => {
    const [saving, setSaving] = useState(false);
    const [attendantsList, setAttendantsList] = useState<AttendantProfile[]>([]);
    const [attendantHistory, setAttendantHistory] = useState<AttendantHistoryEntry[]>([]);
-   const [turnos, setTurnos] = useState<any[]>([]); // State for turnos
 
    const [selectedAttendantId, setSelectedAttendantId] = useState<string | null>(null);
    const [searchTerm, setSearchTerm] = useState('');
@@ -36,32 +34,25 @@ const AttendantManagementScreen: React.FC = () => {
 
    // Modal state
    const [showModal, setShowModal] = useState(false);
-   const [editingFrentista, setEditingFrentista] = useState<AttendantProfile | null>(null); // Changed type to AttendantProfile | null
+   const [editingFrentista, setEditingFrentista] = useState<AttendantProfile | null>(null);
    const [formData, setFormData] = useState({
       nome: '',
       cpf: '',
       telefone: '',
       data_admissao: new Date().toISOString().split('T')[0],
-      ativo: true,
-      turno_id: '' as string | number // Added turno_id to formData
+      ativo: true
    });
 
    const loadData = async () => {
       setLoading(true);
       try {
          if (postoAtivoId) {
-            // Load attendants and shifts in parallel
-            const [attendantsResult, turnosData] = await Promise.all([
-               fetchAttendantsData(postoAtivoId),
-               turnoService.getAll(postoAtivoId) // Fetch turnos
-            ]);
-            setAttendantsList(attendantsResult.list); // Assuming fetchAttendantsData still returns { list, history }
-            setAttendantHistory(attendantsResult.history); // Keep history as well
-            setTurnos(turnosData); // Set turnos
+            const attendantsResult = await fetchAttendantsData(postoAtivoId);
+            setAttendantsList(attendantsResult.list);
+            setAttendantHistory(attendantsResult.history);
          } else {
             setAttendantsList([]);
             setAttendantHistory([]);
-            setTurnos([]); // Clear turnos
          }
       } catch (error) {
          console.error('Erro ao carregar frentistas:', error);
@@ -106,22 +97,13 @@ const AttendantManagementScreen: React.FC = () => {
 
    const handleOpenModal = (attendant?: AttendantProfile) => {
       if (attendant) {
-         // Find the turno_id associated with this attendant name/shift name if possible
-         // Ideally, fetchAttendantsData should return turno_id. I added that logic previously.
-         // Let's assume AttendantProfile has been updated or we infer it.
-
-         // NOTE: fetchAttendantsData in api.ts calculates 'shift' name but doesn't return turno_id explicitly in the interface yet,
-         // EXCEPT the query does `select('*')` so if I update the Interface, I can access it.
-         // For now, I'll rely on what fetchAttendantsData returns. But I need to update the interface to hold turno_id.
-
          setEditingFrentista(attendant);
          setFormData({
             nome: attendant.name,
             cpf: attendant.cpf.replace(/\D/g, ''),
             telefone: attendant.phone.replace(/\D/g, ''),
             data_admissao: attendant.admissionDate !== 'N/A' ? attendant.admissionDate : new Date().toISOString().split('T')[0],
-            ativo: attendant.status === 'Ativo',
-            turno_id: (attendant as any).turno_id || '' // Assuming we patch the interface/api return
+            ativo: attendant.status === 'Ativo'
          });
       } else {
          setEditingFrentista(null);
@@ -130,8 +112,7 @@ const AttendantManagementScreen: React.FC = () => {
             cpf: '',
             telefone: '',
             data_admissao: new Date().toISOString().split('T')[0],
-            ativo: true,
-            turno_id: ''
+            ativo: true
          });
       }
       setShowModal(true);
@@ -154,8 +135,7 @@ const AttendantManagementScreen: React.FC = () => {
       try {
          const dataToSave = {
             ...formData,
-            posto_id: postoAtivoId,
-            turno_id: formData.turno_id ? Number(formData.turno_id) : null // Convert to number or null
+            posto_id: postoAtivoId
          };
 
          if (editingFrentista) {
@@ -506,37 +486,18 @@ const AttendantManagementScreen: React.FC = () => {
                            />
                         </div>
 
-                        {/* Data Admissão e Turno */}
-                        <div className="grid grid-cols-2 gap-4">
-                           <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                 Data de Admissão
-                              </label>
-                              <input
-                                 type="date"
-                                 required
-                                 value={formData.data_admissao}
-                                 onChange={e => setFormData(prev => ({ ...prev, data_admissao: e.target.value }))}
-                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                              />
-                           </div>
-                           <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                 Turno
-                              </label>
-                              <select
-                                 value={formData.turno_id}
-                                 onChange={e => setFormData(prev => ({ ...prev, turno_id: e.target.value }))}
-                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                              >
-                                 <option value="">Selecione um turno</option>
-                                 {turnos.map(turno => (
-                                    <option key={turno.id} value={turno.id}>
-                                       {turno.nome}
-                                    </option>
-                                 ))}
-                              </select>
-                           </div>
+                        {/* Data Admissão */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Data de Admissão
+                           </label>
+                           <input
+                              type="date"
+                              required
+                              value={formData.data_admissao}
+                              onChange={e => setFormData(prev => ({ ...prev, data_admissao: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                           />
                         </div>
 
                         {/* Status */}
