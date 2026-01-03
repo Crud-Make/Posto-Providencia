@@ -16,9 +16,15 @@ Este documento registra as alterações solicitadas pelo proprietário do estabe
 - **Localização:** Logo abaixo da tabela de "Resumo por Combustível" na tela de Fechamento de Caixa.
 
 
-### 2. Mudança no App Mobile (Aguardando Detalhes)
-**Solicitação:** [Pendente]
-**Implementação:** [Aguardando]
+### 2. App Mobile: Modo Dispositivo Compartilhado (Shared Device Mode)
+**Solicitação:** Ao invés de cada frentista ter o app instalado no próprio celular, um único dispositivo será compartilhado por todos os 7 frentistas ativos na pista.
+
+**Implementação:**
+- **User Switcher no Header:** O campo "Olá, [Nome]" foi transformado em um seletor clicável.
+- **Modal de Seleção:** Ao tocar no header, abre um modal deslizante (bottom sheet) com a lista de todos os frentistas ativos do posto.
+- **Reset de Formulário:** Ao trocar de frentista, todos os campos de valores são automaticamente limpos para evitar envio de dados errados.
+- **Zero Login:** A troca entre frentistas é instantânea (2 cliques), sem necessidade de email/senha.
+- **Localização:** Tela "Registro de Turno" no app mobile.
 
 ### 3. Dashboard Web: Refatoração da Tela de Fechamento (Abas e Dashboards Financeiros)
 **Solicitação:** Melhorar a organização da tela de fechamento diário, reduzindo a poluição visual e incluindo indicadores financeiros mais detalhados para análise rápida do proprietário.
