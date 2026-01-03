@@ -61,8 +61,9 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
                   <div className="flex items-center gap-1">
                     <p className="font-bold text-gray-900 dark:text-white text-sm">{item.name}</p>
                     {item.status === 'conferido' && (
-                      <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-0.5" title="Caixa Conferido">
-                        <CheckCircle2 size={12} className="text-green-600 dark:text-green-400" />
+                      <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 rounded-md border border-green-200 dark:border-green-800 shadow-sm" title="Caixa Conferido">
+                        <CheckCircle2 size={14} className="text-green-600 dark:text-green-400" />
+                        <span className="text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-tight">OK</span>
                       </div>
                     )}
                   </div>

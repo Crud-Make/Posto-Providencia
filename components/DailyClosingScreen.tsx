@@ -858,6 +858,11 @@ const DailyClosingScreen: React.FC = () => {
          try {
             const session = frentistaSessions.find(s => s.tempId === tempId);
             if (session) {
+               if (tempId.includes('temp-')) {
+                  console.warn('Registro temporário. Salvando no rascunho local.');
+                  return;
+               }
+
                const currentObs = session.observacoes || '';
                const newObs = currentObs.includes('[CONFERIDO]')
                   ? currentObs
@@ -925,6 +930,13 @@ const DailyClosingScreen: React.FC = () => {
                status: 'RASCUNHO',
                posto_id: postoAtivoId
             });
+         } else {
+            // Limpa dados anteriores para evitar duplicação ao re-salvar
+            await Promise.all([
+               leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId),
+               fechamentoFrentistaService.deleteByFechamento(fechamento.id),
+               recebimentoService.deleteByFechamento(fechamento.id)
+            ]);
          }
 
          // 2. Save Readings (Leituras)
@@ -990,9 +1002,17 @@ const DailyClosingScreen: React.FC = () => {
             if (frentistasToCreate.length > 0) {
                const createdFechamentos = await fechamentoFrentistaService.bulkCreate(frentistasToCreate);
 
+               if (createdFechamentos) {
+                  // Atualiza os IDs temporários para IDs reais do banco
+                  setFrentistaSessions(prev => prev.map(fs => {
+                     const match = createdFechamentos.find(cf => cf.frentista_id === fs.frentistaId);
+                     return match ? { ...fs, tempId: match.id.toString() } : fs;
+                  }));
+               }
+
                // Enviar notificações para frentistas com diferença negativa (falta de caixa)
                for (const frenData of frentistasToCreate) {
-                  // Se diferença é positiva (total vendido > total informado = falta)
+                  // ... rest of notification logic ...
                   if (frenData.diferenca_calculada > 0) {
                      try {
                         // Buscar o fechamento criado para obter o ID
@@ -1006,11 +1026,9 @@ const DailyClosingScreen: React.FC = () => {
                               createdRecord.id,
                               frenData.diferenca_calculada
                            );
-                           console.log(`Notificação enviada para frentista ${frenData.frentista_id}: Falta de R$ ${frenData.diferenca_calculada.toFixed(2)}`);
                         }
                      } catch (notifError) {
                         console.error('Erro ao enviar notificação:', notifError);
-                        // Não bloqueia o salvamento se a notificação falhar
                      }
                   }
                }
