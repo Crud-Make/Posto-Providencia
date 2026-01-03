@@ -1,6 +1,7 @@
 # Status Atual do Projeto - Posto Providência
 
 **Data:** 03/01/2026
+**Versão Atual:** `v2.6.0-test-fechamento` (Em Testes)
 **Status Geral:** 🟢 SISTEMA OPERACIONAL E RODANDO
 
 O sistema de gestão do Posto Providência atingiu um marco de estabilidade e funcionalidade completa nas suas principais rotinas diárias. Abaixo detalhamos o que está pronto e o que será validado nos próximos passos.
