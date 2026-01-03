@@ -21,10 +21,9 @@ const MOCK_ADMIN_USER: Usuario = {
     email: 'admin@postoprovidencia.com.br',
     role: 'ADMIN',
     ativo: true,
-    senha: '',
-    posto_id: 1,
-    id_posto: 1,
-    criado_em: new Date().toISOString()
+    senha: '', // Required by schema but never exposed
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -68,11 +67,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .eq('email', email)
                 .single();
 
-            if (!error && data) {
+            if (error) {
+                console.error('Error fetching user profile:', error);
+                // Keep mock user on error
+                setUser(MOCK_ADMIN_USER);
+                return;
+            }
+
+            if (data) {
                 setUser(data);
+            } else {
+                console.warn('User not found in database');
+                setUser(MOCK_ADMIN_USER);
             }
         } catch (err) {
             console.error('Unexpected error fetching user:', err);
+            setUser(MOCK_ADMIN_USER);
         } finally {
             setLoading(false);
         }
@@ -94,13 +104,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (signUpError) return { error: signUpError };
 
+        // Note: Password is managed by Supabase Auth, not stored in Usuario table
+        // The 'senha' field in Usuario table should be removed from the schema
         const { error: profileError } = await supabase
             .from('Usuario')
             .upsert([
                 {
                     email,
                     nome: fullName,
-                    senha: password,
+                    senha: '', // Empty string as placeholder - should be removed from schema
                     ativo: true,
                     role: 'ADMIN'
                 }
