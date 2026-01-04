@@ -595,7 +595,31 @@ const TelaFechamentoDiario: React.FC = () => {
             await Promise.all(bicos.map(async (bico) => {
                try {
                   const lastReading = await leituraService.getLastReadingByBico(bico.id);
-                  const inicialValue = lastReading ? lastReading.leitura_final : 0;
+                  let inicialValue = 0;
+
+                  if (lastReading) {
+                     // Verifica se a leitura é do dia imediatamente anterior ou do mesmo dia
+                     // Se houver um "buraco" (ex: dia 1 -> dia 3), deve vir zerado para forçar conferência
+                     const current = new Date(selectedDate);
+                     const last = new Date(lastReading.data);
+
+                     // Força UTC para comparação precisa de datas (ignora horas)
+                     const currentUTC = Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate());
+                     const lastUTC = Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate());
+
+                     // Como selectedDate e lastReading.data são strings YYYY-MM-DD, a conversão direta funciona
+                     // Mas precisamos garantir que estamos comparando apenas as datas
+
+                     // Diferença em milissegundos
+                     const diffMs = Math.abs(current.getTime() - last.getTime());
+                     // Diferença em dias (arredondada)
+                     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+                     // Aceita se for do mesmo dia (0) ou do dia anterior (1)
+                     if (diffDays <= 1) {
+                        inicialValue = lastReading.leitura_final;
+                     }
+                  }
 
                   leiturasMap[bico.id] = {
                      inicial: formatToBR(inicialValue, 3),
