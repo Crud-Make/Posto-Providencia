@@ -7,6 +7,9 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Não Lançado]
 
+### Adicionado
+- **Modo de Lançamento Flexível**: Permite salvar fechamentos diários com diferenças de caixa sem a obrigatoriedade de justificativa, facilitando o lançamento de dados históricos. Cor do alerta alterada para âmbar para indicar modo informativo.
+
 ### Corrigido
 - **Perda de dados ao trocar aba do navegador**: Desativado polling agressivo e adicionada proteção em `loadLeituras` para preservar dados digitados ([#93ac0c4](../../commit/93ac0c4))
 - **Cálculo incorreto de encerrantes**: Função `formatOnBlur` agora aceita qualquer formato numérico e assume últimos 3 dígitos como decimais ([#93ac0c4](../../commit/93ac0c4))

@@ -2478,6 +2478,7 @@ const TelaFechamentoDiario: React.FC = () => {
                <DifferenceAlert
                   difference={totalPayments - totals.valor}
                   threshold={100}
+                  requireJustification={false}
                   className="animate-fade-in-up"
                />
 

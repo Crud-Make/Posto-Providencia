@@ -54,6 +54,10 @@ const severityStyles: Record<AlertSeverity, {
     }
 };
 
+/**
+ * Componente genérico para exibição de alertas de validação e informativos.
+ * Suporta diferentes severidades (crítico, aviso, info, dica).
+ */
 const ValidationAlert: React.FC<ValidationAlertProps> = ({
     severity,
     title,
@@ -112,12 +116,21 @@ const ValidationAlert: React.FC<ValidationAlertProps> = ({
 interface DifferenceAlertProps {
     difference: number;
     threshold?: number;
+    requireJustification?: boolean;
     className?: string;
 }
 
+/**
+ * Alerta específico para exibição de diferenças de caixa (sobra ou falta).
+ * 
+ * @param difference - Valor da diferença (pode ser positivo ou negativo)
+ * @param threshold - Limite a partir do qual a diferença é considerada significativa (padrão R$ 100)
+ * @param requireJustification - Se true, exibe o aviso de justificativa obrigatória (padrão true)
+ */
 export const DifferenceAlert: React.FC<DifferenceAlertProps> = ({
     difference,
     threshold = 100,
+    requireJustification = true,
     className = ''
 }) => {
     const absDifference = Math.abs(difference);
@@ -133,7 +146,9 @@ export const DifferenceAlert: React.FC<DifferenceAlertProps> = ({
         ${isSignificant
                     ? isPositive
                         ? 'bg-green-50 border-green-200'
-                        : 'bg-red-50 border-red-300 animate-pulse-subtle'
+                        : requireJustification
+                            ? 'bg-red-50 border-red-300 animate-pulse-subtle'
+                            : 'bg-amber-50 border-amber-200'
                     : 'bg-gray-50 border-gray-200'
                 }
         ${className}
@@ -142,20 +157,24 @@ export const DifferenceAlert: React.FC<DifferenceAlertProps> = ({
             <div className={`
         p-2 rounded-lg
         ${isSignificant
-                    ? isPositive ? 'bg-green-100' : 'bg-red-100'
+                    ? isPositive
+                        ? 'bg-green-100'
+                        : requireJustification ? 'bg-red-100' : 'bg-amber-100'
                     : 'bg-gray-100'
                 }
       `}>
                 {isPositive
                     ? <TrendingUp size={20} className={isSignificant ? 'text-green-600' : 'text-gray-500'} />
-                    : <TrendingDown size={20} className={isSignificant ? 'text-red-600' : 'text-gray-500'} />
+                    : <TrendingDown size={20} className={isSignificant ? (requireJustification ? 'text-red-600' : 'text-amber-600') : 'text-gray-500'} />
                 }
             </div>
 
             <div className="flex-1">
                 <p className={`font-bold text-sm ${isSignificant
-                        ? isPositive ? 'text-green-800' : 'text-red-800'
-                        : 'text-gray-700'
+                    ? isPositive
+                        ? 'text-green-800'
+                        : requireJustification ? 'text-red-800' : 'text-amber-800'
+                    : 'text-gray-700'
                     }`}>
                     {isPositive ? 'Sobra de Caixa' : 'Falta de Caixa'}
                 </p>
@@ -163,7 +182,9 @@ export const DifferenceAlert: React.FC<DifferenceAlertProps> = ({
                     {isSignificant
                         ? isPositive
                             ? 'Valor acima do esperado. Verifique se houve troco incorreto.'
-                            : 'Diferença significativa! Verifique com urgência.'
+                            : requireJustification
+                                ? 'Diferença significativa! Verifique com urgência.'
+                                : 'Diferença de caixa identificada (Lançamento Flexível).'
                         : 'Diferença dentro da tolerância aceitável.'
                     }
                 </p>
@@ -171,12 +192,14 @@ export const DifferenceAlert: React.FC<DifferenceAlertProps> = ({
 
             <div className="text-right">
                 <p className={`text-xl font-black ${isSignificant
-                        ? isPositive ? 'text-green-600' : 'text-red-600'
-                        : 'text-gray-600'
+                    ? isPositive
+                        ? 'text-green-600'
+                        : requireJustification ? 'text-red-600' : 'text-amber-600'
+                    : 'text-gray-600'
                     }`}>
                     {isPositive ? '+' : ''}{difference.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
-                {isSignificant && !isPositive && (
+                {isSignificant && !isPositive && requireJustification && (
                     <p className="text-[10px] font-bold text-red-500 uppercase mt-1 animate-pulse">
                         Justificativa obrigatória
                     </p>
@@ -197,6 +220,9 @@ interface StockAlertProps {
     className?: string;
 }
 
+/**
+ * Alerta específico para níveis de estoque baixos em bicos ou tanques.
+ */
 export const StockAlert: React.FC<StockAlertProps> = ({
     productName,
     currentLevel,
@@ -283,6 +309,9 @@ interface ProgressIndicatorProps {
     className?: string;
 }
 
+/**
+ * Indicador de progresso (barra) para formulários e etapas.
+ */
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     current,
     total,
