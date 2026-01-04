@@ -21,7 +21,7 @@ import { fetchProfitabilityData } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
 
 
-const CostAnalysisScreen: React.FC = () => {
+const TelaAnaliseCustos: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [loading, setLoading] = useState(true);
 
@@ -434,4 +434,4 @@ const CostAnalysisScreen: React.FC = () => {
     );
 };
 
-export default CostAnalysisScreen;
+export default TelaAnaliseCustos;

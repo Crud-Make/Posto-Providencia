@@ -66,7 +66,7 @@ interface Alert {
  * Originalmente projetado para múltiplos postos, agora simplificado para
  * exibição de uma única unidade de negócio.
  */
-const OwnerDashboard: React.FC = () => {
+const TelaDashboardProprietario: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [data, setData] = useState<ConsolidatedData | null>(null);
@@ -596,4 +596,4 @@ const OwnerDashboard: React.FC = () => {
     );
 };
 
-export default OwnerDashboard;
+export default TelaDashboardProprietario;

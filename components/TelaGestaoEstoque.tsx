@@ -22,7 +22,7 @@ import { stockService } from '../services/stockService';
 import { Produto, MovimentacaoEstoque } from '../services/database.types';
 import { usePosto } from '../contexts/PostoContext';
 
-const StockManagementScreen: React.FC = () => {
+const TelaGestaoEstoque: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [loading, setLoading] = useState(true);
     const [products, setProducts] = useState<Produto[]>([]);
@@ -525,4 +525,4 @@ const StockManagementScreen: React.FC = () => {
     );
 };
 
-export default StockManagementScreen;
+export default TelaGestaoEstoque;

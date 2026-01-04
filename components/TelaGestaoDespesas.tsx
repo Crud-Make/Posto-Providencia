@@ -40,7 +40,7 @@ const categories = [
     'Outros'
 ];
 
-const ExpenseManagementScreen: React.FC = () => {
+const TelaGestaoDespesas: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [expenses, setExpenses] = useState<Despesa[]>([]);
     const [loading, setLoading] = useState(true);
@@ -495,4 +495,4 @@ const ExpenseManagementScreen: React.FC = () => {
     );
 };
 
-export default ExpenseManagementScreen;
+export default TelaGestaoDespesas;

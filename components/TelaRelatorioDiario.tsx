@@ -56,7 +56,7 @@ interface DailyTotals {
     projetadoMensal: number;
 }
 
-const DailyReportScreen: React.FC = () => {
+const TelaRelatorioDiario: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
@@ -471,4 +471,4 @@ const DailyReportScreen: React.FC = () => {
     );
 };
 
-export default DailyReportScreen;
+export default TelaRelatorioDiario;

@@ -35,7 +35,7 @@ const FUEL_COLORS: Record<string, string> = {
   'DIESEL': 'bg-amber-100 text-amber-700',
 };
 
-const DailyReadingsScreen: React.FC = () => {
+const TelaLeiturasDiarias: React.FC = () => {
   // Posto Context
   const { postoAtivoId } = usePosto();
 
@@ -515,4 +515,4 @@ const DailyReadingsScreen: React.FC = () => {
   );
 };
 
-export default DailyReadingsScreen;
+export default TelaLeiturasDiarias;

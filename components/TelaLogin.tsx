@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2, Lock, Mail } from 'lucide-react';
 
-const LoginScreen: React.FC = () => {
+const TelaLogin: React.FC = () => {
     const { signIn, signUp } = useAuth();
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [email, setEmail] = useState('');
@@ -184,4 +184,4 @@ const LoginScreen: React.FC = () => {
     );
 };
 
-export default LoginScreen;
+export default TelaLogin;

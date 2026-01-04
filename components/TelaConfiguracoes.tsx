@@ -28,7 +28,7 @@ import {
 } from "../types";
 import { TankManagement } from "./TankManagement";
 
-const SettingsScreen: React.FC = () => {
+const TelaConfiguracoes: React.FC = () => {
   const { postoAtivoId } = usePosto();
   const [loading, setLoading] = useState(true);
 
@@ -979,4 +979,4 @@ const SettingsScreen: React.FC = () => {
   );
 };
 
-export default SettingsScreen;
+export default TelaConfiguracoes;

@@ -40,7 +40,7 @@ import { solvencyService, dividaService } from '../services/api';
 import { SolvencyProjection, SolvencyStatus, Divida } from '../types';
 import { usePosto } from '../contexts/PostoContext';
 
-const SolvencyDashboard: React.FC = () => {
+const TelaDashboardSolvencia: React.FC = () => {
     const { postoAtivoId } = usePosto();
 
     const [projection, setProjection] = useState<SolvencyProjection | null>(null);
@@ -665,4 +665,4 @@ const SolvencyDashboard: React.FC = () => {
     );
 };
 
-export default SolvencyDashboard;
+export default TelaDashboardSolvencia;

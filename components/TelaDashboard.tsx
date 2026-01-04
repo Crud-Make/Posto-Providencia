@@ -23,7 +23,7 @@ import { fetchDashboardData, frentistaService } from '../services/api';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../types';
 import { usePosto } from '../contexts/PostoContext';
 
-interface DashboardScreenProps {
+interface TelaDashboardProps {
   onNewClosing: () => void;
 }
 
@@ -32,7 +32,7 @@ interface Frentista {
   nome: string;
 }
 
-const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
+const TelaDashboard: React.FC<TelaDashboardProps> = ({ onNewClosing }) => {
   const { postoAtivoId } = usePosto();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
@@ -304,4 +304,4 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNewClosing }) => {
   );
 };
 
-export default DashboardScreen;
+export default TelaDashboard;

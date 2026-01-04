@@ -54,7 +54,7 @@ const FUEL_COLORS: Record<string, string> = {
    'DIESEL': 'bg-amber-500',
 };
 
-const SalesDashboardScreen: React.FC = () => {
+const TelaDashboardVendas: React.FC = () => {
    const { postoAtivoId } = usePosto();
    // State
 
@@ -507,4 +507,4 @@ const SalesDashboardScreen: React.FC = () => {
    );
 };
 
-export default SalesDashboardScreen;
+export default TelaDashboardVendas;

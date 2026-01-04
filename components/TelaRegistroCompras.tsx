@@ -29,7 +29,7 @@ const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-med
 
 
 
-const PurchaseRegistrationScreen: React.FC = () => {
+const TelaRegistroCompras: React.FC = () => {
    const { postoAtivoId, postos, postoAtivo, setPostoAtivoById } = usePosto();
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState(false);
@@ -805,4 +805,4 @@ const PurchaseRegistrationScreen: React.FC = () => {
    );
 };
 
-export default PurchaseRegistrationScreen;
+export default TelaRegistroCompras;

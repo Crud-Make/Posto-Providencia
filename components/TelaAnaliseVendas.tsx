@@ -57,7 +57,7 @@ interface Totals {
    avgProfitPerLiter: number;
 }
 
-const SalesAnalysisScreen: React.FC = () => {
+const TelaAnaliseVendas: React.FC = () => {
    const { postoAtivoId } = usePosto();
    const [loading, setLoading] = useState(true);
 
@@ -537,4 +537,4 @@ const SalesAnalysisScreen: React.FC = () => {
    );
 };
 
-export default SalesAnalysisScreen;
+export default TelaAnaliseVendas;

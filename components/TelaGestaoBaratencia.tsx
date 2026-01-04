@@ -44,7 +44,7 @@ const FUEL_LABELS: Record<string, string> = {
     diesel: 'Diesel'
 };
 
-const BaratenciaManagementScreen: React.FC = () => {
+const TelaGestaoBaratencia: React.FC = () => {
     const { postoAtivoId } = usePosto();
 
     // Estados
@@ -748,4 +748,4 @@ const BaratenciaManagementScreen: React.FC = () => {
     );
 };
 
-export default BaratenciaManagementScreen;
+export default TelaGestaoBaratencia;

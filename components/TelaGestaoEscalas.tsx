@@ -54,7 +54,7 @@ interface ObservacaoModal {
  * - Exportação formatada para PDF
  */
 
-const ScheduleManagementScreen: React.FC = () => {
+const TelaGestaoEscalas: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [currentDate, setCurrentDate] = useState(new Date());
     const printRef = useRef<HTMLDivElement>(null);
@@ -611,4 +611,4 @@ const ScheduleManagementScreen: React.FC = () => {
     );
 };
 
-export default ScheduleManagementScreen;
+export default TelaGestaoEscalas;

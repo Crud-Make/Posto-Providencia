@@ -121,7 +121,7 @@ const FuelTank = ({
   );
 };
 
-const InventoryDashboardScreen: React.FC = () => {
+const TelaDashboardEstoque: React.FC = () => {
   const { postoAtivoId } = usePosto();
   const [tanques, setTanques] = useState<Tanque[]>([]);
   const [histories, setHistories] = useState<Record<number, any[]>>({});
@@ -512,4 +512,4 @@ const InventoryDashboardScreen: React.FC = () => {
   );
 };
 
-export default InventoryDashboardScreen;
+export default TelaDashboardEstoque;
