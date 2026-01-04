@@ -1,5 +1,5 @@
 ---
-description: Valida, faz merge para a main e envia para o GitHub (Push) automaticamente.
+description: Validação, Merge e Deploy automático para o Posto Providência (Uso: /entregar)
 ---
 
 // turbo-all
