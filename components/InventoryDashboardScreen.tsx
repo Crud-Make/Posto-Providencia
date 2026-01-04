@@ -239,6 +239,17 @@ const InventoryDashboardScreen: React.FC = () => {
     );
   }
 
+  // Helper para obter cor do produto
+  const getProductColor = (productName: string): string => {
+    const lowerName = productName.toLowerCase();
+    if (lowerName.includes('gasolina') && lowerName.includes('aditivada')) return '#3B82F6'; // Blue
+    if (lowerName.includes('gasolina')) return '#F87171'; // Red
+    if (lowerName.includes('etanol')) return '#10B981'; // Green
+    if (lowerName.includes('diesel') && lowerName.includes('s-10')) return '#F59E0B'; // Amber
+    if (lowerName.includes('diesel')) return '#D97706'; // Dark Amber
+    return '#6B7280'; // Gray
+  };
+
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -342,10 +353,18 @@ const InventoryDashboardScreen: React.FC = () => {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {tanques.map(t => {
                   const percent = t.capacidade > 0 ? (t.estoque_atual / t.capacidade) * 100 : 0;
+                  const productColor = getProductColor(t.combustivel?.nome || '');
                   return (
                     <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                       <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{t.nome}</td>
-                      <td className="px-6 py-3">{t.combustivel?.nome}</td>
+                      <td className="px-6 py-3">
+                        <span
+                          className="font-semibold px-2 py-1 rounded"
+                          style={{ color: productColor }}
+                        >
+                          {t.combustivel?.nome}
+                        </span>
+                      </td>
                       <td className="px-6 py-3 text-right font-mono">{t.capacidade.toLocaleString()} L</td>
                       <td className="px-6 py-3 text-right font-mono font-bold">{t.estoque_atual.toLocaleString()} L</td>
                       <td className="px-6 py-3 text-right font-mono text-gray-600 dark:text-gray-300">
