@@ -42,7 +42,7 @@ echo "📝 Verificando últimos 5 commits..."
 COMMITS=$(git log -5 --pretty=format:"%s")
 
 while IFS= read -r commit; do
-    if [[ $commit =~ ^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+ ]]; then
+    if [[ $commit =~ ^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+ ]] || [[ $commit =~ ^(merge|Merge):.+ ]]; then
         echo -e "${GREEN}✅${NC} $commit"
     else
         echo -e "${RED}❌${NC} $commit"
