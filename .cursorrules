@@ -22,6 +22,7 @@ Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. 
   - Nenhuma alteração de código pode ser feita sem estar em uma branch dedicada.
 - **Segurança:** Bloqueio total de `git push --force`. 
 - **Mensagens:** Devem descrever exatamente o que foi feito.
+- **Histórico de Mudanças (Changelog):** SEMPRE que um bug for corrigido ou uma nova funcionalidade for finalizada, o arquivo `CHANGELOG.md` DEVE ser atualizado na seção `[Não Lançado]`, descrevendo a mudança de forma clara e citando o hash do commit correspondente.
 - **Validação do Usuário (REGRA DE OURO):** NUNCA realize o merge para a `main` ou o `push` para o repositório remoto sem que o usuário tenha testado e dado aprovação explícita. O fluxo OBRIGATÓRIO é: 
   1. Criar Branch específica.
   2. Implementar as mudanças.
@@ -76,5 +77,6 @@ function calcularTotalVendas(vendas: Venda[]): number {
 - **Padronização de Versão:** Sempre que uma funcionalidade for concluída, testada e aprovada pelo usuário em produção, deve-se criar um ponto de restauração.
 - **Nomenclatura:** Use o padrão `versao-testada-funcionando-[nome-da-feature]` ou tags Git para marcar estados estáveis do projeto.
 - **Backup de Segurança:** Antes de grandes refatorações, garanta que a última versão estável esteja tagueada ou em uma branch de backup protegida.
+- **Registro de Versões:** O `CHANGELOG.md` deve ser mantido como o guia oficial e centralizado para saber exatamente o que foi corrigido e o que há de novo em cada versão ou ponto de restauração do sistema.
 - **Sufoco Zero:** O objetivo desta regra é evitar que o projeto fique "quebrado" por longos períodos, garantindo que sempre possamos voltar para a última `versao-testada-funcionando`.
 
