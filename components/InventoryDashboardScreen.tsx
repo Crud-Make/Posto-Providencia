@@ -35,12 +35,12 @@ const FuelTank = ({
     // Mapeamento simples de cores se vierem nomes
     if (productColor) return productColor;
     const lowerName = productName.toLowerCase();
-    if (lowerName.includes('gasolina') && lowerName.includes('aditivada')) return '#EF4444'; // Red (Aditivada)
+    if (lowerName.includes('gasolina') && lowerName.includes('aditivada')) return '#3B82F6'; // Blue (Aditivada Premium)
     if (lowerName.includes('gasolina')) return '#F87171'; // Lighter Red (Comum)
     if (lowerName.includes('etanol')) return '#10B981'; // Green
     if (lowerName.includes('diesel') && lowerName.includes('s-10')) return '#F59E0B'; // Amber (S10)
     if (lowerName.includes('diesel')) return '#D97706'; // Darker Amber (S500)
-    return '#3B82F6'; // Blue default
+    return '#6B7280'; // Gray default
   };
 
   const color = getColor();
