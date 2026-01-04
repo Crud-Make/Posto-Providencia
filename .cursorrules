@@ -72,6 +72,9 @@ function calcularTotalVendas(vendas: Venda[]): number {
 
 **Nenhum código pode ser commitado sem documentação adequada.**
 
-### 2. **Limpeza de Branches**
-Após o merge bem sucedido para a `main`, as branches temporárias de feature/fix devem ser deletadas local e remotamente para manter o repositório limpo.
+## 🏁 Versões Estáveis e Pontos de Restauração
+- **Padronização de Versão:** Sempre que uma funcionalidade for concluída, testada e aprovada pelo usuário em produção, deve-se criar um ponto de restauração.
+- **Nomenclatura:** Use o padrão `versao-testada-funcionando-[nome-da-feature]` ou tags Git para marcar estados estáveis do projeto.
+- **Backup de Segurança:** Antes de grandes refatorações, garanta que a última versão estável esteja tagueada ou em uma branch de backup protegida.
+- **Sufoco Zero:** O objetivo desta regra é evitar que o projeto fique "quebrado" por longos períodos, garantindo que sempre possamos voltar para a última `versao-testada-funcionando`.
 
