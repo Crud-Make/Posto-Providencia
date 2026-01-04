@@ -1,5 +1,4 @@
-
-import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryItem, InventoryAlert, InventoryTransaction, ProfitabilityItem, ClosingAttendant, ReadingPump, SalesAnalysisProduct, SalesProfitability, SalesEvolutionData, ProductMixData, AttendantProfile, AttendantHistoryEntry, ProductConfig, NozzleConfig, ShiftConfig, MobileNotification } from './types';
+import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryItem, InventoryAlert, InventoryTransaction, ProfitabilityItem, ClosingAttendant, ReadingPump, SalesAnalysisProduct, SalesProfitability, SalesEvolutionData, ProductMixData, AttendantProfile, AttendantHistoryEntry, ProductConfig, NozzleConfig, MobileNotification } from './types';
 
 export const FUEL_DATA: FuelData[] = [];
 
@@ -46,6 +45,6 @@ export const PRODUCTS_CONFIG_DATA: ProductConfig[] = [];
 
 export const NOZZLES_CONFIG_DATA: NozzleConfig[] = [];
 
-export const SHIFTS_CONFIG_DATA: ShiftConfig[] = [];
+
 
 export const MOBILE_NOTIFICATIONS_DATA: MobileNotification[] = [];

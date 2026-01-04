@@ -20,7 +20,7 @@ export {
     estoqueService,
     compraService,
     fornecedorService,
-    turnoService,
+
     dashboardService,
     resetService,
 } from './api';

@@ -204,7 +204,7 @@ export interface AttendantProfile {
   name: string;
   initials: string;
   phone: string;
-  shift: 'Manhã' | 'Tarde' | 'Noite';
+  shift: string; // Simplificado: 'Dia', 'Aberto', etc.
   status: 'Ativo' | 'Inativo';
   admissionDate: string;
   sinceDate: string; // e.g., "Jan 2022"
@@ -240,13 +240,7 @@ export interface NozzleConfig {
   tankSource: string;
 }
 
-export interface ShiftConfig {
-  id: string;
-  name: string;
-  start: string;
-  end: string;
-  iconType: 'sun' | 'sunset' | 'moon';
-}
+
 
 export interface PaymentMethodConfig {
   id: string;
