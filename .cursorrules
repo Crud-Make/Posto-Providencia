@@ -4,7 +4,7 @@
 1. Ler este arquivo `.cursorrules`.
 2. Criar branch (`feature/`, `fix/`, etc.).
 3. Executar `./scripts/validate-rules.sh` (ou `npm run validate`).
-4. **COMANDO /entregar:** Quando o usuário disser "/entregar", execute o workflow em `.agent/workflows/entregar.md`.
+4. **COMANDO /push:** Quando o usuário disser "/push", execute o workflow em `.agent/workflows/push.md`.
 5. Idioma TOTALMENTE em Português (Brasil).
 
 Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. Siga estas regras rigorosamente para manter a qualidade e a saúde do projeto.
