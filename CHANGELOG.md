@@ -11,9 +11,11 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Modo de Lançamento Flexível**: Permite salvar fechamentos diários com diferenças de caixa sem a obrigatoriedade de justificativa, facilitando o lançamento de dados históricos. Cor do alerta alterada para âmbar para indicar modo informativo.
 
 ### Corrigido
-- **Perda de dados ao trocar aba do navegador**: Desativado polling agressivo e adicionada proteção em `loadLeituras` para preservar dados digitados ([#93ac0c4](../../commit/93ac0c4))
-- **Cálculo incorreto de encerrantes**: Função `formatOnBlur` agora aceita qualquer formato numérico e assume últimos 3 dígitos como decimais ([#93ac0c4](../../commit/93ac0c4))
+- **Perda de dados ao trocar aba do navegador**: Desativado polling agressivo e adicionada proteção para preservar dados digitados.
+- **Cálculo incorreto de encerrantes**: Função `formatOnBlur` agora aceita qualquer formato numérico e assume últimos 3 dígitos como decimais.
 - **Erro de integridade ao re-salvar fechamento**: Adicionada desvinculação robusta de notificações para evitar violação de chave estrangeira em `FechamentoFrentista`.
+- **Automatização de Leituras Iniciais**: Reativado o carregamento automático do último encerrante conhecido como leitura inicial para facilitar o lançamento histórico.
+- **Correção de Persistência entre Datas**: Corrigido bug onde dados digitados em uma data "grudavam" ao mudar o calendário.
 
 ## [1.0.0] - 2026-01-04
 
