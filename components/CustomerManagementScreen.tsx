@@ -480,7 +480,7 @@ const CustomerManagementScreen: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 relative z-10">
                                     <button
                                         onClick={() => setShowNovaNotaModal(true)}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white border border-transparent rounded-md text-sm font-medium transition-colors shadow-sm"
@@ -488,7 +488,7 @@ const CustomerManagementScreen: React.FC = () => {
                                         <Plus size={16} /> Nova Nota
                                     </button>
                                     <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                        <Edit size={16} /> Editar Dados
+                                        <Edit size={16} /> Editar Cadastro
                                     </button>
                                     <button
                                         onClick={handleBloquearCliente}
