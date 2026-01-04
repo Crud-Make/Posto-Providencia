@@ -557,8 +557,16 @@ const TelaFechamentoDiario: React.FC = () => {
       }
    };
 
-   // Nova função para carregar as leituras dos bicos com migração automática
-   // Lógica: Quando a data muda, se não houver leituras salvas, usa a última leitura final como inicial e zera fechamento
+   /**
+    * Carrega as leituras dos bicos para a data e turno selecionados.
+    * 
+    * Comportamento:
+    * 1. Se houver leituras salvas para o turno, carrega os dados do banco (Modo Edição).
+    * 2. Se for uma nova data/turno (Modo Criação), define as leituras iniciais como '0,000'.
+    * 
+    * Nota: A automação que buscava a última leitura final do bico foi removida a pedido do usuário
+    * para garantir que o preenchimento seja totalmente manual e conferido.
+    */
    const loadLeituras = async () => {
       // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
       if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
@@ -580,22 +588,15 @@ const TelaFechamentoDiario: React.FC = () => {
             setLeituras(leiturasMap);
          } else {
             // MODO CRIAÇÃO: Data não tem leituras salvas
-            // Buscar a última leitura final de cada bico (do turno/dia anterior) e usar como inicial
-            // Fechamento fica ZERADO para o usuário preencher
+            // A pedido do usuário: os valores iniciais devem vir zerados para preenchimento manual
+            // Removida a automação que buscava a última leitura final
             const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
-            await Promise.all(
-               bicos.map(async (bico) => {
-                  // Busca a última leitura final salva para este bico (independente da data)
-                  const lastReading = await leituraService.getLastReadingByBico(bico.id);
-
-                  leiturasMap[bico.id] = {
-                     // Inicial = última leitura final registrada (do turno anterior)
-                     inicial: lastReading?.leitura_final?.toFixed(3).replace('.', ',') || '0,000',
-                     // Fechamento = vazio (zerado) para o usuário preencher
-                     fechamento: ''
-                  };
-               })
-            );
+            bicos.forEach((bico) => {
+               leiturasMap[bico.id] = {
+                  inicial: '0,000',
+                  fechamento: ''
+               };
+            });
             setLeituras(leiturasMap);
 
             // Limpa também o autosave para esta nova data
@@ -939,8 +940,16 @@ const TelaFechamentoDiario: React.FC = () => {
             });
          } else {
             // Limpa dados anteriores para evitar duplicação ao re-salvar
+            // Esta etapa é crucial para garantir que, ao re-salvar um fechamento existente,
+            // os registros dependentes (leituras, fechamentos de frentista, recebimentos)
+            // sejam removidos e recriados com os dados mais recentes, evitando duplicações
+            // e mantendo a integridade dos dados.
             await Promise.all([
                leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId),
+               // Exclui todos os fechamentos de frentista vinculados a este fechamento principal.
+               // Importante: Antes da exclusão, o método remove notificações vinculadas e
+               // desvincula notas de frentista e vendas de produtos para evitar violações de integridade
+               // (Foreign Key Constraints) e permitir que os registros originais sejam preservados sem o vínculo.
                fechamentoFrentistaService.deleteByFechamento(fechamento.id),
                recebimentoService.deleteByFechamento(fechamento.id)
             ]);
