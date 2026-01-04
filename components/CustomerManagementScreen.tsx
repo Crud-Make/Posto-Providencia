@@ -316,13 +316,13 @@ const CustomerManagementScreen: React.FC = () => {
     const handleBloquearCliente = async () => {
         console.log('handleBloquearCliente chamado', selectedCliente);
         if (!selectedCliente) return;
-        const isBlocked = selectedCliente.ativo === false;
+        const isBlocked = selectedCliente.bloqueado;
 
         try {
-            await clienteService.update(selectedCliente.id, { ativo: !selectedCliente.ativo });
+            await clienteService.update(selectedCliente.id, { bloqueado: !isBlocked });
             toast.success(`Cliente ${isBlocked ? 'desbloqueado' : 'bloqueado'} com sucesso!`);
             // Atualiza o cliente selecionado localmente para refletir o novo estado sem fechar a tela
-            setSelectedCliente({ ...selectedCliente, ativo: !selectedCliente.ativo });
+            setSelectedCliente({ ...selectedCliente, bloqueado: !isBlocked });
             loadClientes();
         } catch (error) {
             console.error('Erro ao bloquear/desbloquear cliente:', error);
@@ -450,7 +450,7 @@ const CustomerManagementScreen: React.FC = () => {
                                     onClick={() => handleClienteClick(cliente)}
                                     className={`p-3 rounded-lg cursor-pointer transition-all border relative ${selectedCliente?.id === cliente.id
                                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                                        : cliente.ativo === false
+                                        : cliente.bloqueado
                                             ? 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-90'
                                             : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
                                         }`}
@@ -461,7 +461,7 @@ const CustomerManagementScreen: React.FC = () => {
                                                 <h3 className={`font-semibold line-clamp-1 ${selectedCliente?.id === cliente.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
                                                     {cliente.nome}
                                                 </h3>
-                                                {cliente.ativo === false && (
+                                                {cliente.bloqueado && (
                                                     <Ban size={14} className="text-red-500 flex-shrink-0" />
                                                 )}
                                             </div>
@@ -475,7 +475,7 @@ const CustomerManagementScreen: React.FC = () => {
                                             </span>
                                         )}
                                     </div>
-                                    {cliente.ativo === false && (
+                                    {cliente.bloqueado && (
                                         <div className="text-[10px] font-bold text-red-600 bg-red-50 inline-block px-1.5 py-0.5 rounded mt-1 border border-red-100">BLOQUEADO</div>
                                     )}
                                 </div>
@@ -491,7 +491,7 @@ const CustomerManagementScreen: React.FC = () => {
                             {/* Header do Cliente */}
                             <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                                 {/* Alerta de Bloqueio */}
-                                {selectedCliente.ativo === false && (
+                                {selectedCliente.bloqueado && (
                                     <div className="mb-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center justify-between text-red-800 dark:text-red-200">
                                         <div className="flex items-center gap-2">
                                             <Ban size={20} />
@@ -517,7 +517,7 @@ const CustomerManagementScreen: React.FC = () => {
                                         <div>
                                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                                                 {selectedCliente.nome}
-                                                {selectedCliente.ativo === false && (
+                                                {selectedCliente.bloqueado && (
                                                     <span className="text-xs font-bold text-white bg-red-600 px-2 py-1 rounded shadow-sm flex items-center gap-1">
                                                         <Ban size={12} /> BLOQUEADO
                                                     </span>
@@ -565,12 +565,12 @@ const CustomerManagementScreen: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={handleBloquearCliente}
-                                        className={`flex items-center gap-2 px-3 py-1.5 border rounded-md text-sm font-medium transition-colors ${selectedCliente.ativo === false
+                                        className={`flex items-center gap-2 px-3 py-1.5 border rounded-md text-sm font-medium transition-colors ${selectedCliente.bloqueado
                                             ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
                                             : 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
                                             }`}
                                     >
-                                        <Ban size={16} /> {selectedCliente.ativo === false ? 'Desbloquear' : 'Bloquear'}
+                                        <Ban size={16} /> {selectedCliente.bloqueado ? 'Desbloquear' : 'Bloquear'}
                                     </button>
                                     <button
                                         onClick={handleApagarCliente}
