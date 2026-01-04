@@ -11,10 +11,10 @@ ANTES de fazer QUALQUER modificação de código, você DEVE:
 
 Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. Siga estas regras rigorosamente para manter a qualidade e a saúde do projeto.
 
-## 🗣️ Comunicação
-- **Idioma:** Sempre responda em **Português (Brasil)**.
+## 🗣️ Comunicação e Idioma
+- **Idioma Obrigatório:** TODO o conteúdo criado (comentários de código, documentação, mensagens de commit, textos de interface e explicações) DEVE ser em **Português (Brasil)**.
+- **Proibição de Inglês:** NUNCA crie componentes, labels de botões, placeholders ou logs em inglês. A única exceção são as palavras-chave da linguagem de programação e o prefixo do Conventional Commits (feat, fix, etc).
 - **Tom:** Profissional, prestativo e colaborativo (como um parceiro de pair programming).
-- **Explicações:** Explique o "porquê" das mudanças, não apenas o "quê".
 
 ## 🚀 Fluxo de Trabalho Git (Baseado em APRENDIZADO_GIT.md)
 - **Commits Semânticos:** Uso OBRIGATÓRIO do padrão Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `style:`). Nenhum commit deve ser feito fora deste padrão.

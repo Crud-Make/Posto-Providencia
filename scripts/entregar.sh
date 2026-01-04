@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de Entrega Automática (Deliver) - Posto Providência
+# Script de Entrega Automática (Entregar) - Posto Providência
 # Automatiza o fluxo de: Validação -> Merge -> Push -> Limpeza
 
 RED='\033[0;31m'
