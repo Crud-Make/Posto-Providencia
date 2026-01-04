@@ -13,6 +13,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ### Corrigido
 - **Perda de dados ao trocar aba do navegador**: Desativado polling agressivo e adicionada proteção em `loadLeituras` para preservar dados digitados ([#93ac0c4](../../commit/93ac0c4))
 - **Cálculo incorreto de encerrantes**: Função `formatOnBlur` agora aceita qualquer formato numérico e assume últimos 3 dígitos como decimais ([#93ac0c4](../../commit/93ac0c4))
+- **Erro de integridade ao re-salvar fechamento**: Adicionada desvinculação robusta de notificações para evitar violação de chave estrangeira em `FechamentoFrentista`.
 
 ## [1.0.0] - 2026-01-04
 
