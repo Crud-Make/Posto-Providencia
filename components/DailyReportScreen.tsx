@@ -34,9 +34,9 @@ import {
 } from '../services/api';
 
 
-// Interfaces for component state
+// Interfaces for component state (modo diário - turnos processados internamente)
 interface ShiftData {
-    turnoName: string;
+    turnoName: string; // Mantido para compatibilidade com banco
     turnoId: number;
     status: 'Aberto' | 'Fechado';
     vendas: number;
@@ -174,7 +174,7 @@ const DailyReportScreen: React.FC = () => {
                         Relatório Diário
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
-                        Visão consolidada de vendas, lucro e fechamentos por turno.
+                        Visão consolidada de vendas, lucro e fechamentos do dia.
                     </p>
                 </div>
 
@@ -266,28 +266,7 @@ const DailyReportScreen: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Status Geral */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
-                            <CheckCircle2 size={20} />
-                        </div>
-                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Status</span>
-                    </div>
-                    <div className="space-y-2 mt-2">
-                        {shiftsData.map(shift => (
-                            <div key={shift.turnoId} className="flex justify-between items-center text-sm">
-                                <span className="text-gray-600 dark:text-gray-300">{shift.turnoName}</span>
-                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${shift.status === 'Fechado'
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                                    }`}>
-                                    {shift.status}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                {/* Status Geral oculto no modo simplificado */}
             </div>
 
             {/* Main Content Grid */}
@@ -299,7 +278,7 @@ const DailyReportScreen: React.FC = () => {
                         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                 <BarChart2 size={20} className="text-blue-600" />
-                                Detalhamento por Turno
+                                Detalhamento do Dia
                             </h3>
                         </div>
                         <div className="overflow-x-auto">
@@ -362,7 +341,7 @@ const DailyReportScreen: React.FC = () => {
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm h-[400px]">
                         <h3 className="text-lg font-black text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2 uppercase tracking-tight">
                             <TrendingUp size={20} className="text-green-600" />
-                            Lucratividade vs Quebras por Turno
+                            Lucratividade vs Quebras
                         </h3>
                         <ResponsiveContainer width="100%" height="85%">
                             <BarChart data={shiftsData}>
