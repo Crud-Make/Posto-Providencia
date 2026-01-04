@@ -639,6 +639,17 @@ export const leituraService = {
     if (error) throw error;
   },
 
+  async deleteByShift(data: string, turnoId: number, postoId: number): Promise<void> {
+    const { error } = await supabase
+      .from('Leitura')
+      .delete()
+      .gte('data', `${data}T00:00:00`)
+      .lte('data', `${data}T23:59:59`)
+      .eq('turno_id', turnoId)
+      .eq('posto_id', postoId);
+    if (error) throw error;
+  },
+
   // Resumo de vendas por data
   async getSalesSummaryByDate(data: string, postoId?: number): Promise<SalesSummary> {
     const leituras = await this.getByDate(data, postoId);
@@ -764,6 +775,23 @@ export const fechamentoService = {
       .gte('data', `${data}T00:00:00`)
       .lte('data', `${data}T23:59:59`)
       .eq('turno_id', 1);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data: fechamentos, error } = await query.order('id', { ascending: false }).limit(1);
+    if (error) throw error;
+    return fechamentos && fechamentos.length > 0 ? fechamentos[0] : null;
+  },
+
+  async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<Fechamento | null> {
+    let query = (supabase as any)
+      .from('Fechamento')
+      .select('*')
+      .gte('data', `${data}T00:00:00`)
+      .lte('data', `${data}T23:59:59`)
+      .eq('turno_id', turnoId);
 
     if (postoId) {
       query = query.eq('posto_id', postoId);
