@@ -16,7 +16,7 @@ git commit -m "chore: salvando alterações antes da entrega"
 
 2. **Executar a entrega automatizada via script.**
 ```bash
-npm run deliver
+npm run entregar
 ```
 
 3. **Verificar status final.**

@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "validate": "./scripts/validate-rules.sh",
-    "deliver": "./scripts/deliver.sh"
+    "deliver": "./scripts/entregar.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
