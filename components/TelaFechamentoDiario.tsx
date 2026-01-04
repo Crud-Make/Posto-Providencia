@@ -262,6 +262,7 @@ const TelaFechamentoDiario: React.FC = () => {
    const [showHelp, setShowHelp] = useState(false);
    const [dayClosures, setDayClosures] = useState<any[]>([]);
    const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('leituras');
+   const lastLoadedContext = React.useRef<{ date: string; turno: number | null }>({ date: '', turno: null });
 
    // Estado para edição de preço inline
    const [editingPrice, setEditingPrice] = useState<number | null>(null); // combustivel_id sendo editado
@@ -625,35 +626,41 @@ const TelaFechamentoDiario: React.FC = () => {
          console.error('Error loading frentista sessions:', err);
       }
    };
-
    /**
     * Carrega as leituras dos bicos para a data e turno selecionados.
     * 
     * Comportamento:
     * 1. Se houver leituras salvas para o turno, carrega os dados do banco (Modo Edição).
-    * 2. Se for uma nova data/turno (Modo Criação), define as leituras iniciais como '0,000'.
+    * 2. Se for uma nova data/turno (Modo Criação), busca a última leitura final do bico 
+    *    gravada no sistema para usar como leitura inicial automática.
     * 
-    * Nota: A automação que buscava a última leitura final do bico foi removida a pedido do usuário
-    * para garantir que o preenchimento seja totalmente manual e conferido.
+    * Nota: A automação agiliza o lançamento diário e histórico, evitando redigitação.
     */
    const loadLeituras = async () => {
       // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
       if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
 
-      // IMPORTANTE: Se já existem leituras no state com dados digitados (fechamento != ''), 
-      // não sobrescreve para preservar o trabalho do usuário recuperado do autosave
-      const hasLocalData = Object.values(leituras).some(l => l.fechamento && l.fechamento.length > 0);
-      if (hasLocalData) {
-         console.log('📝 Leituras locais encontradas, preservando dados digitados');
-         return;
+      // Verifica se mudou a data ou o turno desde o último carregamento para evitar o bug de dados "grudados"
+      const contextChanged = lastLoadedContext.current.date !== selectedDate ||
+         lastLoadedContext.current.turno !== selectedTurno;
+
+      if (!contextChanged) {
+         // Se estamos na mesma data/turno, preservamos o que o usuário já digitou
+         const hasLocalData = Object.values(leituras).some(l => l.fechamento && l.fechamento.length > 0);
+         if (hasLocalData) {
+            console.log('📝 Preservando dados locais digitados');
+            return;
+         }
       }
 
+      // Atualiza o contexto carregado
+      lastLoadedContext.current = { date: selectedDate, turno: selectedTurno };
+
       try {
-         // Verifica se temos leituras salvas para este turno específico (Modo Edição)
+         // 1. Verifica se temos leituras salvas para este turno específico (Modo Edição)
          const dayReadings = await leituraService.getByDate(selectedDate, postoAtivoId);
          const shiftReadings = dayReadings.filter(l => l.turno_id === selectedTurno);
 
-         // Se temos leituras SALVAS no banco, usamos elas (Modo Edição)
          if (shiftReadings.length > 0) {
             const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
             shiftReadings.forEach(reading => {
@@ -664,9 +671,7 @@ const TelaFechamentoDiario: React.FC = () => {
             });
             setLeituras(leiturasMap);
          } else {
-            // MODO CRIAÇÃO: Data não tem leituras salvas
-            // MODO CRIAÇÃO: Data não tem leituras salvas
-            // Busca a última leitura de cada bico para usar como inicial
+            // 2. MODO CRIAÇÃO: Busca a última leitura de cada bico para usar como inicial
             const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
 
             await Promise.all(bicos.map(async (bico) => {
@@ -675,27 +680,8 @@ const TelaFechamentoDiario: React.FC = () => {
                   let inicialValue = 0;
 
                   if (lastReading) {
-                     // Verifica se a leitura é do dia imediatamente anterior ou do mesmo dia
-                     // Se houver um "buraco" (ex: dia 1 -> dia 3), deve vir zerado para forçar conferência
-                     const current = new Date(selectedDate);
-                     const last = new Date(lastReading.data);
-
-                     // Força UTC para comparação precisa de datas (ignora horas)
-                     const currentUTC = Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate());
-                     const lastUTC = Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), last.getUTCDate());
-
-                     // Como selectedDate e lastReading.data são strings YYYY-MM-DD, a conversão direta funciona
-                     // Mas precisamos garantir que estamos comparando apenas as datas
-
-                     // Diferença em milissegundos
-                     const diffMs = Math.abs(current.getTime() - last.getTime());
-                     // Diferença em dias (arredondada)
-                     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-                     // Aceita se for do mesmo dia (0) ou do dia anterior (1)
-                     if (diffDays <= 1) {
-                        inicialValue = lastReading.leitura_final;
-                     }
+                     // Recupera o último valor de fechamento conhecido no sistema
+                     inicialValue = lastReading.leitura_final;
                   }
 
                   leiturasMap[bico.id] = {
@@ -704,17 +690,16 @@ const TelaFechamentoDiario: React.FC = () => {
                   };
                } catch (err) {
                   console.error(`Erro ao buscar última leitura bico ${bico.id}:`, err);
-                  leiturasMap[bico.id] = {
-                     inicial: '0,000',
-                     fechamento: ''
-                  };
+                  leiturasMap[bico.id] = { inicial: '0,000', fechamento: '' };
                }
             }));
 
             setLeituras(leiturasMap);
 
-            // Limpa também o autosave para esta nova data
-            localStorage.removeItem(AUTOSAVE_KEY);
+            // Se mudou de data, limpa o autosave para não confundir rascunhos de dias diferentes
+            if (contextChanged) {
+               localStorage.removeItem(AUTOSAVE_KEY);
+            }
          }
       } catch (err) {
          console.error('Error loading leituras:', err);
@@ -2473,7 +2458,7 @@ const TelaFechamentoDiario: React.FC = () => {
          </div>
 
          {/* Cash Difference Alert - Show when there's a significant difference */}
-          {false && (frentistasTotals.total > 0 || totalPayments > 0) && totals.valor > 0 && (
+         {false && (frentistasTotals.total > 0 || totalPayments > 0) && totals.valor > 0 && (
             <div className="space-y-4">
                <DifferenceAlert
                   difference={totalPayments - totals.valor}
