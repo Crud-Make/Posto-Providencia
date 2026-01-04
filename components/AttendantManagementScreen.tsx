@@ -39,7 +39,6 @@ const AttendantManagementScreen: React.FC = () => {
    const [formData, setFormData] = useState({
       nome: '',
       cpf: '',
-      telefone: '',
       data_admissao: new Date().toISOString().split('T')[0],
       ativo: true
    });
@@ -103,7 +102,6 @@ const AttendantManagementScreen: React.FC = () => {
          setFormData({
             nome: attendant.name,
             cpf: attendant.cpf.replace(/\D/g, ''),
-            telefone: attendant.phone.replace(/\D/g, ''),
             data_admissao: attendant.admissionDate !== 'N/A' ? attendant.admissionDate : new Date().toISOString().split('T')[0],
             ativo: attendant.status === 'Ativo'
          });
@@ -112,7 +110,6 @@ const AttendantManagementScreen: React.FC = () => {
          setFormData({
             nome: '',
             cpf: '',
-            telefone: '',
             data_admissao: new Date().toISOString().split('T')[0],
             ativo: true
          });
@@ -165,25 +162,11 @@ const AttendantManagementScreen: React.FC = () => {
          .slice(0, 14);
    };
 
-   const formatPhone = (value: string) => {
-      const numbers = value.replace(/\D/g, '');
-      if (numbers.length <= 10) {
-         return numbers
-            .replace(/^(\d{2})(\d)/, '($1) $2')
-            .replace(/(\d{4})(\d)/, '$1-$2');
-      }
-      return numbers
-         .replace(/^(\d{2})(\d)/, '($1) $2')
-         .replace(/(\d{5})(\d)/, '$1-$2')
-         .slice(0, 15);
-   };
-
    const selectedAttendant = attendantsList.find(a => a.id === selectedAttendantId);
 
    // Filter logic
    const filteredList = attendantsList.filter(a => {
-      const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         a.phone.includes(searchTerm);
+      const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'Todos' || a.status === statusFilter;
       return matchesSearch && matchesStatus;
    });
@@ -223,7 +206,7 @@ const AttendantManagementScreen: React.FC = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                      type="text"
-                     placeholder="Buscar por nome ou telefone..."
+                     placeholder="Buscar por nome..."
                      value={searchTerm}
                      onChange={(e) => setSearchTerm(e.target.value)}
                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -251,8 +234,7 @@ const AttendantManagementScreen: React.FC = () => {
                <div className={`flex-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden flex flex-col ${selectedAttendantId ? 'hidden lg:flex' : ''}`}>
                   {/* Table Header */}
                   <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                     <div className="col-span-5 sm:col-span-4">Frentista</div>
-                     <div className="col-span-3 hidden sm:block">Contato</div>
+                     <div className="col-span-8 sm:col-span-7">Frentista</div>
                      <div className="col-span-4 sm:col-span-5">Status</div>
                   </div>
 
@@ -269,7 +251,7 @@ const AttendantManagementScreen: React.FC = () => {
                         ${selectedAttendantId === attendant.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}
                         `}
                            >
-                              <div className="col-span-5 sm:col-span-4 flex items-center gap-3">
+                              <div className="col-span-8 sm:col-span-7 flex items-center gap-3">
                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${attendant.avatarColorClass}`}>
                                     {attendant.initials}
                                  </div>
@@ -277,15 +259,6 @@ const AttendantManagementScreen: React.FC = () => {
                                     <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{attendant.name}</p>
                                     <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Desde {attendant.sinceDate}</p>
                                  </div>
-                              </div>
-
-                              <div className="col-span-3 hidden sm:flex flex-col text-sm text-gray-600 dark:text-gray-300">
-                                 <span>{attendant.phone}</span>
-                                 <span className="text-xs text-gray-400">Celular</span>
-                              </div>
-
-                              <div className="col-span-3 sm:col-span-2 hidden">
-                                 {/* Turno oculto */}
                               </div>
 
                               <div className="col-span-4 sm:col-span-5">
@@ -464,19 +437,7 @@ const AttendantManagementScreen: React.FC = () => {
                            />
                         </div>
 
-                        {/* Telefone */}
-                        <div>
-                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Telefone
-                           </label>
-                           <input
-                              type="text"
-                              value={formData.telefone}
-                              onChange={e => setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }))}
-                              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="(00) 00000-0000"
-                           />
-                        </div>
+
 
                         {/* Data Admissão e Turno */}
                         <div className="grid grid-cols-1 gap-4">
