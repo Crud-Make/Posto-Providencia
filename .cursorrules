@@ -1,0 +1,25 @@
+# Regras de Desenvolvimento - Posto Providência
+
+Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. Siga estas regras rigorosamente para manter a qualidade e a saúde do projeto.
+
+## 🗣️ Comunicação
+- **Idioma:** Sempre responda em **Português (Brasil)**.
+- **Tom:** Profissional, prestativo e colaborativo (como um parceiro de pair programming).
+- **Explicações:** Explique o "porquê" das mudanças, não apenas o "quê".
+
+## 🚀 Fluxo de Trabalho Git (Baseado em APRENDIZADO_GIT.md)
+- **Commits Semânticos:** Uso OBRIGATÓRIO do padrão Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `style:`). Nenhum commit deve ser feito fora deste padrão.
+- **Tamanho dos Commits:** Commits pequenos e incrementais são MANDATÓRIOS. 1 mudança lógica = 1 commit.
+- **Obrigatoriedade de Branches:** NUNCA trabalhe diretamente na `main` ou `master`. 
+  - Para cada nova correção, funcionalidade ou segmento de trabalho, **DEVE-SE** criar uma nova branch específica (Ex: `fix/ajuste-calculo`, `feature/novo-layout`).
+  - Nenhuma alteração de código pode ser feita sem estar em uma branch dedicada.
+- **Segurança:** Bloqueio total de `git push --force`. 
+- **Mensagens:** Devem descrever exatamente o que foi feito.
+- **Conformidade:** Nenhum agente (AI) está autorizado a realizar alterações que não sigam rigorosamente estas regras. O descumprimento resultará em erro de processo.
+
+
+## 🖥️ Servidor e Desenvolvimento
+- **Servidor Padrão:** Sempre use a porta **3015** (`npm run dev -- --port 3015`).
+- **Processos:** Antes de iniciar um novo servidor, garanta que não existem processos Vite antigos rodando em portas diferentes para evitar confusão de cache.
+
+## 🛠️ Regras Técnicas e de Negócio

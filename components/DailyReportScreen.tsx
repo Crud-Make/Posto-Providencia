@@ -90,46 +90,51 @@ const DailyReportScreen: React.FC = () => {
             const totalDespesas = dayExpenses.reduce((sum, d) => sum + Number(d.valor), 0);
 
             // 2. Process Shifts
-            const processedShifts: ShiftData[] = turnos.map(turno => {
-                const fechamento = fechamentos.find(f => f.turno_id === turno.id);
-                const leiturasTurno = leituras.filter(l => l.turno_id === turno.id);
+            const processedShifts: ShiftData[] = turnos
+                .filter(turno => {
+                    const hasFechamento = fechamentos.some(f => f.turno_id === turno.id);
+                    const hasLeituras = leituras.some(l => l.turno_id === turno.id);
+                    const isDiario = turno.nome.toLowerCase().includes('diário') || turno.nome.toLowerCase().includes('diario');
 
-                // Calculate Fuel Sales & Profit from Readings
-                let litrosTurno = 0;
-                let lucroTurno = 0;
-                let vendasCalculadas = 0;
+                    // Mostra o turno se for o 'Diário' (padrão) OU se tiver dados (histórico/uso)
+                    return isDiario || hasFechamento || hasLeituras;
+                })
+                .map(turno => {
+                    const fechamento = fechamentos.find(f => f.turno_id === turno.id);
+                    const leiturasTurno = leituras.filter(l => l.turno_id === turno.id);
 
-                leiturasTurno.forEach(l => {
-                    const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
-                    if (volume > 0) {
-                        // Preços baseados no cadastro atual do combustível
-                        // Nota: Idealmente usaríamos histórico de preços se disponível
-                        const precoVenda = Number(l.bico?.combustivel?.preco_venda || 0);
-                        const precoCusto = Number(l.bico?.combustivel?.preco_custo || 0);
-                        const lucroUnitario = precoVenda - precoCusto;
+                    // Calculate Fuel Sales & Profit from Readings
+                    let litrosTurno = 0;
+                    let lucroTurno = 0;
+                    let vendasCalculadas = 0;
 
-                        vendasCalculadas += volume * precoVenda;
-                        lucroTurno += volume * lucroUnitario;
-                    }
+                    leiturasTurno.forEach(l => {
+                        const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
+                        if (volume > 0) {
+                            litrosTurno += volume;
+                            const precoVenda = Number(l.bico?.combustivel?.preco_venda || 0);
+                            const precoCusto = Number(l.bico?.combustivel?.preco_custo || 0);
+                            const lucroUnitario = precoVenda - precoCusto;
+
+                            vendasCalculadas += volume * precoVenda;
+                            lucroTurno += volume * lucroUnitario;
+                        }
+                    });
+
+                    // Use total_vendas from Fechamento if available (includes products), otherwise calculated from fuel
+                    const totalVendas = fechamento ? Number(fechamento.total_vendas) : vendasCalculadas;
+
+                    return {
+                        turnoName: turno.nome,
+                        turnoId: turno.id,
+                        status: fechamento ? 'Fechado' : 'Aberto',
+                        vendas: totalVendas,
+                        litros: litrosTurno,
+                        lucro: lucroTurno,
+                        diferenca: fechamento ? Number(fechamento.diferenca) : 0,
+                        frentistas: fechamento?.usuario ? [fechamento.usuario.nome] : []
+                    };
                 });
-
-                // Use total_vendas from Fechamento if available (includes products), otherwise calculated from fuel
-                const totalVendas = fechamento ? Number(fechamento.total_vendas) : vendasCalculadas;
-
-                // If Fechamento includes products, we should ideally add product profit too
-                // For now, we stick to fuel profit as the main indicator or approximate
-
-                return {
-                    turnoName: turno.nome,
-                    turnoId: turno.id,
-                    status: fechamento ? 'Fechado' : 'Aberto',
-                    vendas: totalVendas,
-                    litros: litrosTurno,
-                    lucro: lucroTurno, // This is fuel profit primarily
-                    diferenca: fechamento ? Number(fechamento.diferenca) : 0,
-                    frentistas: fechamento?.usuario ? [fechamento.usuario.nome] : [] // Simplification
-                };
-            });
 
             setShiftsData(processedShifts);
 
