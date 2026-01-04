@@ -996,40 +996,78 @@ export const fechamentoFrentistaService = {
    * (Foreign Key Constraints) e permitir que os registros originais sejam preservados sem o vínculo.
    */
   async deleteByFechamento(fechamentoId: number): Promise<void> {
+    console.log('[deleteByFechamento] Iniciando exclusão para fechamento:', fechamentoId);
+
     // Buscar todos os IDs de FechamentoFrentista deste Fechamento
-    const { data: frentistasData } = await supabase
+    const { data: frentistasData, error: fetchError } = await supabase
       .from('FechamentoFrentista')
       .select('id')
       .eq('fechamento_id', fechamentoId);
 
+    if (fetchError) {
+      console.error('[deleteByFechamento] Erro ao buscar FechamentoFrentista:', fetchError);
+      throw fetchError;
+    }
+
     if (frentistasData && frentistasData.length > 0) {
       const frentistaIds = frentistasData.map(f => f.id);
+      console.log('[deleteByFechamento] FechamentoFrentista IDs encontrados:', frentistaIds);
 
-      // Remover Notificações vinculadas (evita violação de FK)
-      await supabase
+      // 1. Remover Notificações vinculadas (evita violação de FK)
+      console.log('[deleteByFechamento] Removendo notificações vinculadas...');
+      const { error: notifError } = await supabase
         .from('Notificacao')
         .delete()
         .in('fechamento_frentista_id', frentistaIds);
 
-      // Desvincular Notas de Frentista (para que permaneçam no histórico, mas sem o vínculo do fechamento excluído)
-      await supabase
+      if (notifError) {
+        console.error('[deleteByFechamento] Erro ao remover notificações:', notifError);
+        throw notifError;
+      }
+      console.log('[deleteByFechamento] Notificações removidas com sucesso');
+
+      // 2. Desvincular Notas de Frentista (para que permaneçam no histórico, mas sem o vínculo do fechamento excluído)
+      console.log('[deleteByFechamento] Desvinculando NotaFrentista...');
+      const { error: notaError } = await supabase
         .from('NotaFrentista')
         .update({ fechamento_frentista_id: null })
         .in('fechamento_frentista_id', frentistaIds);
 
-      // Desvincular Venda de Produtos
-      await supabase
+      if (notaError) {
+        console.error('[deleteByFechamento] Erro ao desvincular NotaFrentista:', notaError);
+        throw notaError;
+      }
+      console.log('[deleteByFechamento] NotaFrentista desvinculadas com sucesso');
+
+      // 3. Desvincular Venda de Produtos
+      console.log('[deleteByFechamento] Desvinculando VendaProduto...');
+      const { error: vendaError } = await supabase
         .from('VendaProduto')
         .update({ fechamento_frentista_id: null })
         .in('fechamento_frentista_id', frentistaIds);
+
+      if (vendaError) {
+        console.error('[deleteByFechamento] Erro ao desvincular VendaProduto:', vendaError);
+        throw vendaError;
+      }
+      console.log('[deleteByFechamento] VendaProduto desvinculadas com sucesso');
+    } else {
+      console.log('[deleteByFechamento] Nenhum FechamentoFrentista encontrado para este fechamento');
     }
 
-    // Agora sim, deletar os fechamentos de frentista
-    const { error } = await supabase
+    // 4. Agora sim, deletar os fechamentos de frentista
+    console.log('[deleteByFechamento] Deletando FechamentoFrentista...');
+    const { error: deleteError } = await supabase
       .from('FechamentoFrentista')
       .delete()
       .eq('fechamento_id', fechamentoId);
-    if (error) throw error;
+
+    if (deleteError) {
+      console.error('[deleteByFechamento] Erro ao deletar FechamentoFrentista:', deleteError);
+      throw deleteError;
+    }
+
+    console.log('[deleteByFechamento] FechamentoFrentista deletados com sucesso');
   },
 
   // Histórico de diferenças do frentista
