@@ -2473,7 +2473,7 @@ const TelaFechamentoDiario: React.FC = () => {
          </div>
 
          {/* Cash Difference Alert - Show when there's a significant difference */}
-         {(frentistasTotals.total > 0 || totalPayments > 0) && totals.valor > 0 && (
+          {false && (frentistasTotals.total > 0 || totalPayments > 0) && totals.valor > 0 && (
             <div className="space-y-4">
                <DifferenceAlert
                   difference={totalPayments - totals.valor}
