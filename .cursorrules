@@ -39,6 +39,38 @@ Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. 
 - **Processos:** Antes de iniciar um novo servidor, garanta que não existem processos Vite antigos rodando em portas diferentes para evitar confusão de cache.
 
 ## 🛠️ Regras Técnicas e de Negócio
-1. **Documentação Obrigatória:** Todo código gerado ou modificado DEVE conter comentários explicativos (JSDoc ou comentários de linha) sobre a lógica introduzida.
-2. **Limpeza de Branches:** Após o merge bem sucedido para a `main`, as branches temporárias de feature/fix devem ser deletadas local e remotamente para manter o repositório limpo.
+
+### 1. **Documentação Obrigatória - Código Rastreável**
+**TODA** função, componente, lógica complexa ou alteração DEVE conter comentários explicativos detalhados:
+
+- **Propósito:** Explicar O QUE o código faz e POR QUÊ existe
+- **Formato:** Use JSDoc para funções/componentes e comentários inline para lógica complexa
+- **Rastreabilidade:** Comentários devem facilitar:
+  - Entender a intenção original do código
+  - Identificar rapidamente onde bugs podem estar
+  - Onboarding de novos desenvolvedores
+  - Manutenção futura sem precisar decifrar código
+
+**Exemplo Obrigatório:**
+```typescript
+/**
+ * Calcula o total de vendas do dia considerando todas as formas de pagamento.
+ * 
+ * @param vendas - Array de vendas do dia
+ * @returns Total em reais (R$)
+ * 
+ * Nota: Inclui cartão, PIX, dinheiro e nota/vale.
+ * Usado no fechamento diário para validação de caixa.
+ */
+function calcularTotalVendas(vendas: Venda[]): number {
+  // Soma todas as formas de pagamento
+  // Importante: nota/vale também conta como receita esperada
+  return vendas.reduce((total, v) => total + v.valor, 0);
+}
+```
+
+**Nenhum código pode ser commitado sem documentação adequada.**
+
+### 2. **Limpeza de Branches**
+Após o merge bem sucedido para a `main`, as branches temporárias de feature/fix devem ser deletadas local e remotamente para manter o repositório limpo.
 
