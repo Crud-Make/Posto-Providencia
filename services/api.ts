@@ -628,12 +628,13 @@ export const leituraService = {
     return data || [];
   },
 
-  async deleteByShift(data: string, turnoId: number, postoId: number): Promise<void> {
+  async deleteByDate(data: string, postoId: number): Promise<void> {
     const { error } = await supabase
       .from('Leitura')
       .delete()
-      .eq('data', data)
-      .eq('turno_id', turnoId)
+      .gte('data', `${data}T00:00:00`)
+      .lte('data', `${data}T23:59:59`)
+      .eq('turno_id', 1)
       .eq('posto_id', postoId);
     if (error) throw error;
   },
@@ -756,13 +757,13 @@ export const maquininhaService = {
 // ============================================
 
 export const fechamentoService = {
-  async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<Fechamento | null> {
+  async getByDateUnique(data: string, postoId?: number): Promise<Fechamento | null> {
     let query = (supabase as any)
       .from('Fechamento')
       .select('*')
       .gte('data', `${data}T00:00:00`)
       .lte('data', `${data}T23:59:59`)
-      .eq('turno_id', turnoId);
+      .eq('turno_id', 1);
 
     if (postoId) {
       query = query.eq('posto_id', postoId);
@@ -2172,10 +2173,9 @@ export default api;
 // esperado pelos componentes existentes
 
 export async function fetchSettingsData(postoId?: number) {
-  const [combustiveis, bicos, turnos, formasPagamento] = await Promise.all([
+  const [combustiveis, bicos, formasPagamento] = await Promise.all([
     combustivelService.getAll(postoId),
     bicoService.getWithDetails(postoId),
-    turnoService.getAll(postoId),
     formaPagamentoService.getAll(postoId),
   ]);
 
@@ -2192,14 +2192,7 @@ export async function fetchSettingsData(postoId?: number) {
       productName: b.combustivel?.nome || 'N/A',
       tankSource: b.bomba?.nome || 'N/A',
     })),
-    shifts: turnos.map(t => ({
-      id: String(t.id),
-      name: t.nome,
-      start: t.horario_inicio || '06:00',
-      end: t.horario_fim || '14:00',
-      iconType: (t.nome.toLowerCase().includes('manhã') ? 'sun' :
-        t.nome.toLowerCase().includes('tarde') ? 'sunset' : 'moon') as 'sun' | 'sunset' | 'moon',
-    })),
+    shifts: [], // Turnos removidos do sistema
     paymentMethods: formasPagamento.map(fp => ({
       id: String(fp.id),
       name: fp.nome,
@@ -2213,7 +2206,7 @@ export async function fetchSettingsData(postoId?: number) {
 export async function fetchDashboardData(
   dateFilter: string = 'hoje',
   frentistaId: number | null = null,
-  turnoId: number | null = null,
+  _turnoId: number | null = null, // Deprecated: turno removido do sistema
   postoId?: number
 ) {
   const [estoque, frentistas, formasPagamento] = await Promise.all([
@@ -2312,13 +2305,10 @@ export async function fetchDashboardData(
   }));
 
   // ClosingsData - Lista consolidada de status dos frentistas
-  // Mapeia os fechamentos por frentista, filtrando pelo turno se necessário
+  // Mapeia os fechamentos por frentista (sem filtro de turno - sistema simplificado)
   const fechamentosMap = new Map();
   fechamentosFrentistaHoje.forEach((ff) => {
-    const matchesTurno = !turnoId || (ff.fechamento as any)?.turno_id === turnoId;
-    if (matchesTurno) {
-      fechamentosMap.set(ff.frentista_id, ff);
-    }
+    fechamentosMap.set(ff.frentista_id, ff);
   });
 
   // Filtra frentistas se houver filtro específico
@@ -2348,9 +2338,7 @@ export async function fetchDashboardData(
       id: String(f.id),
       name: f.nome,
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(f.nome)}&background=random&size=128`,
-      shift:
-        (fechamento?.fechamento as any)?.turno?.nome ||
-        (turnoId ? 'Aguardando' : 'Pendente'),
+      shift: 'Dia', // Sistema simplificado sem turnos
       totalSales: totalSales,
       status: status,
       sessionStatus: (fechamento?.observacoes?.includes('[CONFERIDO]') ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
@@ -2545,8 +2533,6 @@ export async function fetchAttendantsData(postoId?: number) {
 
   const frentistas = (frentistasData || []).map((f: any) => ({ ...f, email: null }));
 
-  const turnos = await turnoService.getAll(postoId);
-
   // Buscar histórico de fechamentos por frentista
   const fechamentos = await Promise.all(
     frentistas.map(f => fechamentoFrentistaService.getHistoricoDiferencas(f.id, 30))
@@ -2561,21 +2547,19 @@ export async function fetchAttendantsData(postoId?: number) {
     'bg-red-100 text-red-700',
   ];
 
-  // Buscar caixas abertos hoje (Prioridade 1)
+  // Buscar caixas abertos hoje
   const hojeStr = new Date().toISOString().split('T')[0];
   const { data: caixasAbertos } = await supabase
     .from('FechamentoFrentista')
-    .select('frentista_id, fechamento:Fechamento!inner(status, data, turno_id)')
+    .select('frentista_id, fechamento:Fechamento!inner(status, data)')
     .eq('fechamento.status', 'ABERTO')
     .gte('fechamento.data', `${hojeStr}T00:00:00`)
     .lte('fechamento.data', `${hojeStr}T23:59:59`);
 
-  const mapCaixaAberto = new Map();
+  const mapCaixaAberto = new Set();
   if (caixasAbertos) {
     caixasAbertos.forEach((c: any) => {
-      const turnoId = c.fechamento.turno_id;
-      const turnoNome = turnos.find(t => t.id === turnoId)?.nome;
-      if (turnoNome) mapCaixaAberto.set(c.frentista_id, turnoNome);
+      mapCaixaAberto.add(c.frentista_id);
     });
   }
 
@@ -2592,14 +2576,9 @@ export async function fetchAttendantsData(postoId?: number) {
     }).length / hist.length) * 100) : 0;
 
     // Pega iniciais do nome
-    // Identifica o turno
-    const turnoAtualId = (f as any).turno_id;
-    const turnoAtualNome = turnoAtualId ? turnos.find(t => t.id === turnoAtualId)?.nome : null;
-    const turnoHistorico = (hist[0]?.fechamento as any)?.turno?.nome;
-
-    // Prioridade: 1. Aberto Agora, 2. Fixo no Cadastro, 3. Histórico
-    const turnoAberto = mapCaixaAberto.get(f.id);
-    const displayShift = turnoAberto || turnoAtualNome || turnoHistorico || 'Indefinido';
+    // Identifica o status do caixa (Sistema simplificado sem turnos múltiplos)
+    const isAberto = mapCaixaAberto.has(f.id);
+    const displayShift = isAberto ? 'Aberto' : 'Dia';
 
     // Pega iniciais do nome
     const nameParts = f.nome.trim().split(/\s+/);
