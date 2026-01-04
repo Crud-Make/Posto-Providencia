@@ -5,7 +5,7 @@ import DashboardScreen from './components/DashboardScreen';
 import DailyClosingScreen from './components/DailyClosingScreen';
 import DailyReportScreen from './components/DailyReportScreen';
 import PurchaseRegistrationScreen from './components/PurchaseRegistrationScreen';
-import InventoryDashboardScreen from './components/InventoryDashboardScreen'; // Mantido caso queira reverter futuramente
+import InventoryDashboardScreen from './components/InventoryDashboardScreen';
 import StockManagementScreen from './components/StockManagementScreen';
 import CostAnalysisScreen from './components/CostAnalysisScreen';
 import DailyReadingsScreen from './components/DailyReadingsScreen';
@@ -32,7 +32,6 @@ const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia'>('dashboard');
 
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center text-blue-600">
@@ -41,6 +40,8 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // even without user, we show the app now (mocked auth)
+  // but if we really want to block when someone logs out explicitly to a real account that doesn't exist
   if (!user) {
     return <LoginScreen />;
   }

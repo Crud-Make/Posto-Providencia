@@ -47,9 +47,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
           >
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
-          <div className="w-8 h-8 rounded-full bg-[#E0D0B8] border-2 border-white dark:border-gray-600 overflow-hidden">
-            <img src="https://ui-avatars.com/api/?name=Admin+Gerente&background=E0D0B8&color=fff" alt="Admin" className="w-full h-full object-cover" />
-          </div>
+          {/* No user avatar needed anymore */}
         </div>
       </div>
 

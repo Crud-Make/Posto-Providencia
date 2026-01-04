@@ -4,9 +4,6 @@ import {
   Plus,
   Edit2,
   Trash2,
-  Sun,
-  Sunset,
-  Moon,
   History,
   Save,
   Sliders,
@@ -21,14 +18,12 @@ import {
   fetchSettingsData,
   formaPagamentoService,
   configuracaoService,
-  turnoService,
   resetService,
 } from "../services/api";
 import { usePosto } from "../contexts/PostoContext";
 import {
   ProductConfig,
   NozzleConfig,
-  ShiftConfig,
   PaymentMethodConfig,
 } from "../types";
 import { TankManagement } from "./TankManagement";
@@ -40,7 +35,6 @@ const SettingsScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<ProductConfig[]>([]);
   const [nozzles, setNozzles] = useState<NozzleConfig[]>([]);
-  const [shifts, setShifts] = useState<ShiftConfig[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>(
     [],
   );
@@ -51,7 +45,6 @@ const SettingsScreen: React.FC = () => {
   const [diasEstoqueCritico, setDiasEstoqueCritico] = useState("3");
   const [diasEstoqueBaixo, setDiasEstoqueBaixo] = useState("7");
   const [configsModified, setConfigsModified] = useState(false);
-  const [shiftsModified, setShiftsModified] = useState(false);
 
   // Estado para modal de pagamento
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -172,29 +165,6 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  // Função para salvar turnos
-  const handleSaveShifts = async () => {
-    setSaving(true);
-    try {
-      await Promise.all(
-        shifts.map((shift) =>
-          turnoService.update(Number(shift.id), {
-            nome: shift.name,
-            horario_inicio: shift.start,
-            horario_fim: shift.end,
-          }),
-        ),
-      );
-      setShiftsModified(false);
-      alert("Turnos atualizados com sucesso!");
-    } catch (error) {
-      console.error("Erro ao salvar turnos", error);
-      alert("Erro ao salvar turnos. Tente novamente!");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // Função para resetar o sistema
   const handleResetSystem = async () => {
     // Validação de segurança
@@ -243,10 +213,8 @@ const SettingsScreen: React.FC = () => {
           configuracaoService.getAll(postoAtivoId).catch(() => []),
         ]);
 
-
         setProducts(data.products);
         setNozzles(data.nozzles);
-        setShifts(data.shifts);
         setPaymentMethods(data.paymentMethods || []);
 
         // Carregar configurações do banco
@@ -280,19 +248,6 @@ const SettingsScreen: React.FC = () => {
         return "bg-gray-100 text-gray-700";
       default:
         return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  const getShiftIcon = (type: string) => {
-    switch (type) {
-      case "sun":
-        return <Sun size={18} className="text-yellow-500" />;
-      case "sunset":
-        return <Sunset size={18} className="text-orange-500" />;
-      case "moon":
-        return <Moon size={18} className="text-blue-500" />;
-      default:
-        return <Sun size={18} />;
     }
   };
 
