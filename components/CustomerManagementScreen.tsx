@@ -321,7 +321,8 @@ const CustomerManagementScreen: React.FC = () => {
         try {
             await clienteService.update(selectedCliente.id, { ativo: !selectedCliente.ativo });
             toast.success(`Cliente ${isBlocked ? 'desbloqueado' : 'bloqueado'} com sucesso!`);
-            setSelectedCliente(null);
+            // Atualiza o cliente selecionado localmente para refletir o novo estado sem fechar a tela
+            setSelectedCliente({ ...selectedCliente, ativo: !selectedCliente.ativo });
             loadClientes();
         } catch (error) {
             console.error('Erro ao bloquear/desbloquear cliente:', error);
@@ -447,26 +448,36 @@ const CustomerManagementScreen: React.FC = () => {
                                 <div
                                     key={cliente.id}
                                     onClick={() => handleClienteClick(cliente)}
-                                    className={`p-3 rounded-lg cursor-pointer transition-all border ${selectedCliente?.id === cliente.id
+                                    className={`p-3 rounded-lg cursor-pointer transition-all border relative ${selectedCliente?.id === cliente.id
                                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                                        : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                                        : cliente.ativo === false
+                                            ? 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-90'
+                                            : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
                                         }`}
                                 >
                                     <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className={`font-semibold ${selectedCliente?.id === cliente.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
-                                                {cliente.nome}
-                                            </h3>
+                                        <div className="flex-1 pr-2">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className={`font-semibold line-clamp-1 ${selectedCliente?.id === cliente.id ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                                                    {cliente.nome}
+                                                </h3>
+                                                {cliente.ativo === false && (
+                                                    <Ban size={14} className="text-red-500 flex-shrink-0" />
+                                                )}
+                                            </div>
                                             {cliente.documento && (
-                                                <p className="text-xs text-gray-500 mt-0.5">{cliente.documento}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5 truncate">{cliente.documento}</p>
                                             )}
                                         </div>
                                         {cliente.saldo_devedor > 0 && (
-                                            <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">
+                                            <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap">
                                                 {cliente.saldo_devedor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                             </span>
                                         )}
                                     </div>
+                                    {cliente.ativo === false && (
+                                        <div className="text-[10px] font-bold text-red-600 bg-red-50 inline-block px-1.5 py-0.5 rounded mt-1 border border-red-100">BLOQUEADO</div>
+                                    )}
                                 </div>
                             ))
                         )}
@@ -504,7 +515,14 @@ const CustomerManagementScreen: React.FC = () => {
                                             <User size={32} />
                                         </div>
                                         <div>
-                                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedCliente.nome}</h2>
+                                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                                                {selectedCliente.nome}
+                                                {selectedCliente.ativo === false && (
+                                                    <span className="text-xs font-bold text-white bg-red-600 px-2 py-1 rounded shadow-sm flex items-center gap-1">
+                                                        <Ban size={12} /> BLOQUEADO
+                                                    </span>
+                                                )}
+                                            </h2>
                                             <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
                                                 {selectedCliente.documento && (
                                                     <span className="flex items-center gap-1">
