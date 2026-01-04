@@ -302,10 +302,10 @@ const OwnerDashboard: React.FC = () => {
                         <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl text-white">
                             <Building2 className="w-6 h-6" />
                         </div>
-                        Visão do Proprietário
+                        Visão do Proprietário - {data.postosSummary[0]?.posto.nome || 'Posto'}
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
-                        Consolidado de {data.postosSummary.length} postos • Atualizado às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        Resumo de performance • Atualizado às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                 </div>
 
@@ -347,7 +347,7 @@ const OwnerDashboard: React.FC = () => {
                     </div>
                     <p className="text-2xl font-bold">{formatCurrency(data.totalVendasHoje)}</p>
                     <p className="text-blue-200 text-sm mt-1">
-                        {data.postosSummary.length} postos ativos
+                        Performance de hoje
                     </p>
                 </div>
 
@@ -361,7 +361,7 @@ const OwnerDashboard: React.FC = () => {
                     </div>
                     <p className="text-2xl font-bold">{formatCurrency(data.totalLucroHoje)}</p>
                     <p className="text-green-200 text-sm mt-1">
-                        Margem média da rede
+                        Margem média atual
                     </p>
                 </div>
 
@@ -453,112 +453,7 @@ const OwnerDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Ranking de Postos */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5 text-blue-600" />
-                        Performance por Posto
-                    </h2>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 dark:bg-gray-700/50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Posto
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Vendas Hoje
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Vendas Mês
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Margem
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Lucro Est. Mês
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Dívidas
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Equipe
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {data.postosSummary.map((summary, index) => (
-                                <tr
-                                    key={summary.posto.id}
-                                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                                >
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm ${index === 0 ? 'bg-amber-500' :
-                                                index === 1 ? 'bg-gray-400' :
-                                                    index === 2 ? 'bg-amber-700' : 'bg-gray-300'
-                                                }`}>
-                                                {index + 1}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900 dark:text-white">
-                                                    {summary.posto.nome}
-                                                </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                    {summary.posto.cidade && `${summary.posto.cidade}${summary.posto.estado ? `, ${summary.posto.estado}` : ''}`}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="font-medium text-gray-900 dark:text-white">
-                                            {formatCurrency(summary.vendasHoje)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="font-bold text-gray-900 dark:text-white">
-                                            {formatCurrency(summary.vendasMes)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${summary.margemMedia >= 12 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                            summary.margemMedia >= 8 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                            }`}>
-                                            {summary.margemMedia.toFixed(1)}%
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                            {formatCurrency(summary.lucroEstimadoMes)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        {summary.dividasTotal > 0 ? (
-                                            <span className="font-medium text-red-600 dark:text-red-400">
-                                                {formatCurrency(summary.dividasTotal)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-green-600 dark:text-green-400 text-sm">
-                                                Livre ✓
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                            <Users className="w-4 h-4" />
-                                            {summary.frentistasAtivos}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
             {/* Alertas */}
             {alerts.length > 0 && (
