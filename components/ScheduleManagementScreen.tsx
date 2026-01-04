@@ -365,6 +365,15 @@ const ScheduleManagementScreen: React.FC = () => {
                     >
                         <ChevronRight size={20} />
                     </button>
+                    <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
+                    <button
+                        onClick={handleExportPDF}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                        title="Exportar para PDF"
+                    >
+                        <Download size={18} />
+                        <span className="hidden sm:inline">Exportar PDF</span>
+                    </button>
                 </div>
             </div>
 
@@ -397,22 +406,46 @@ const ScheduleManagementScreen: React.FC = () => {
                                         const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
                                         const escala = escalas.find(e => e.frentista_id === frentista.id && e.data === dateStr);
                                         const isFolga = escala?.tipo === 'FOLGA';
+                                        const hasObservacao = escala?.observacao && escala.observacao.trim() !== '';
 
                                         return (
                                             <td
                                                 key={day}
                                                 onClick={() => handleCellClick(frentista.id, day)}
+                                                onContextMenu={(e) => {
+                                                    e.preventDefault();
+                                                    handleOpenObservacao(frentista.id, frentista.nome, day);
+                                                }}
                                                 className={`p-1 border-l border-gray-100 dark:border-gray-700 cursor-pointer text-center relative group ${isWeekend(day) ? 'bg-gray-50/50' : ''}`}
+                                                title={hasObservacao ? `Observação: ${escala.observacao}` : 'Clique para marcar folga | Clique direito para adicionar observação'}
                                             >
-                                                <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isFolga
+                                                <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center transition-all relative ${isFolga
                                                     ? 'bg-red-100 text-red-600 font-bold border-2 border-red-200'
                                                     : 'hover:bg-blue-50 text-transparent hover:text-blue-300'
                                                     }`}>
                                                     {isFolga ? 'F' : '•'}
+                                                    {hasObservacao && (
+                                                        <FileText
+                                                            size={10}
+                                                            className="absolute -top-1 -right-1 text-blue-600 bg-white rounded-full p-0.5"
+                                                        />
+                                                    )}
                                                 </div>
+                                                {/* Botão de editar observação visível no hover */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenObservacao(frentista.id, frentista.nome, day);
+                                                    }}
+                                                    className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 p-1 bg-gray-700 text-white rounded-bl transition-opacity"
+                                                    title="Adicionar/Editar Observação"
+                                                >
+                                                    <Edit2 size={10} />
+                                                </button>
                                             </td>
                                         );
                                     })}
+
                                 </tr>
                             ))
                         )}
@@ -429,7 +462,67 @@ const ScheduleManagementScreen: React.FC = () => {
                     <div className="w-6 h-6 rounded border border-gray-200 flex items-center justify-center text-gray-300 text-xs">•</div>
                     <span>Trabalho (Padrão)</span>
                 </div>
+                <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-blue-600" />
+                    <span>Com Observação</span>
+                </div>
             </div>
+
+            {/* Modal de Observações */}
+            {observacaoModal.isOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                    Observação do Dia
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    {observacaoModal.frentistaName} - Dia {observacaoModal.day}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setObservacaoModal({ ...observacaoModal, isOpen: false })}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-4">
+                            <textarea
+                                id="observacao-textarea"
+                                defaultValue={observacaoModal.currentObservacao}
+                                placeholder="Digite aqui qualquer observação sobre este dia (ex: médico, falta justificada, troca de turno, etc.)"
+                                className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
+                            <button
+                                onClick={() => setObservacaoModal({ ...observacaoModal, isOpen: false })}
+                                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const textarea = document.getElementById('observacao-textarea') as HTMLTextAreaElement;
+                                    handleSaveObservacao(textarea.value);
+                                }}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                <Save size={18} />
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
