@@ -88,9 +88,11 @@ const CustomerManagementScreen: React.FC = () => {
     const loadFrentistas = async () => {
         if (!postoAtivo?.id) return;
         try {
-            const data = await frentistaService.getWithEmail(postoAtivo.id);
-            // Filtrar apenas ativos
-            setFrentistas(data.filter((f: any) => f.ativo));
+            console.log('Carregando frentistas para o posto:', postoAtivo.id);
+            // Alterado para usar getAll, que busca direto da tabela e já filtra por ativo=true
+            const data = await frentistaService.getAll(postoAtivo.id);
+            console.log('Frentistas carregados:', data);
+            setFrentistas(data);
         } catch (error) {
             console.error('Erro ao carregar frentistas:', error);
         }
