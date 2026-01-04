@@ -15,6 +15,11 @@ Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. 
   - Nenhuma alteração de código pode ser feita sem estar em uma branch dedicada.
 - **Segurança:** Bloqueio total de `git push --force`. 
 - **Mensagens:** Devem descrever exatamente o que foi feito.
+- **Validação do Usuário (REGRA DE OURO):** NUNCA realize o merge para a `main` ou o `push` para o repositório remoto sem que o usuário tenha testado e dado aprovação explícita. O fluxo OBRIGATÓRIO é: 
+  1. Criar Branch específica.
+  2. Implementar as mudanças.
+  3. **Solicitar que o usuário realize o teste.**
+  4. Somente após o "OK" do usuário, realizar o Merge e o Push.
 - **Conformidade:** Nenhum agente (AI) está autorizado a realizar alterações que não sigam rigorosamente estas regras. O descumprimento resultará em erro de processo.
 
 
