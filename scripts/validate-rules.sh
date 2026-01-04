@@ -90,6 +90,16 @@ else
     echo "   Nenhum arquivo TS/TSX modificado"
 fi
 
+# 5. Verificar regra da porta 3015 no package.json
+echo "🌐 Verificando configuração de porta do servidor..."
+if grep -q "vite --port 3015" package.json; then
+    echo -e "${GREEN}✅ Porta 3015 configurada corretamente${NC}"
+else
+    echo -e "${YELLOW}⚠️  Aviso: Porta 3015 não encontrada no script 'dev' do package.json${NC}"
+    echo "   Regra violada: Sempre use a porta 3015"
+    ((WARNINGS++))
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
