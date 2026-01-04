@@ -19,7 +19,7 @@ import {
     Ban
 } from 'lucide-react';
 import { usePosto } from '../contexts/PostoContext';
-import { clienteService, notaFrentistaService } from '../services/api';
+import { clienteService, notaFrentistaService, frentistaService } from '../services/api';
 import { Cliente, NotaFrentista } from '../services/database.types';
 import { toast } from 'sonner';
 
@@ -69,6 +69,68 @@ const CustomerManagementScreen: React.FC = () => {
         limite_credito: '',
         endereco: ''
     });
+
+    // Nova Nota State
+    const [showNovaNotaModal, setShowNovaNotaModal] = useState(false);
+    const [salvandoNota, setSalvandoNota] = useState(false);
+    const [frentistas, setFrentistas] = useState<any[]>([]);
+    const [novaNota, setNovaNota] = useState({
+        valor: '',
+        descricao: '',
+        data: new Date().toISOString().split('T')[0],
+        frentista_id: ''
+    });
+
+    useEffect(() => {
+        loadFrentistas();
+    }, [postoAtivo]);
+
+    const loadFrentistas = async () => {
+        if (!postoAtivo?.id) return;
+        try {
+            const data = await frentistaService.getWithEmail(postoAtivo.id);
+            // Filtrar apenas ativos
+            setFrentistas(data.filter((f: any) => f.ativo));
+        } catch (error) {
+            console.error('Erro ao carregar frentistas:', error);
+        }
+    };
+
+    const handleSaveNovaNota = async () => {
+        if (!novaNota.valor || !novaNota.frentista_id || !selectedCliente || !postoAtivo?.id) return;
+
+        setSalvandoNota(true);
+        try {
+            await notaFrentistaService.create({
+                posto_id: postoAtivo.id,
+                cliente_id: selectedCliente.id,
+                frentista_id: Number(novaNota.frentista_id),
+                valor: parseFloat(novaNota.valor),
+                descricao: novaNota.descricao || undefined,
+                data: novaNota.data,
+            });
+
+            toast.success('Nota lançada com sucesso!');
+            setShowNovaNotaModal(false);
+            setNovaNota({
+                valor: '',
+                descricao: '',
+                data: new Date().toISOString().split('T')[0],
+                frentista_id: ''
+            });
+
+            // Recarregar notas e saldo do cliente
+            const notas = await notaFrentistaService.getByCliente(selectedCliente.id);
+            setClienteNotas(notas);
+            loadClientes();
+
+        } catch (error) {
+            console.error('Erro ao salvar nota:', error);
+            toast.error('Erro ao lançar nota.');
+        } finally {
+            setSalvandoNota(false);
+        }
+    };
 
     useEffect(() => {
         if (postoAtivo) {
@@ -375,6 +437,12 @@ const CustomerManagementScreen: React.FC = () => {
                                 </div>
 
                                 <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowNovaNotaModal(true)}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white border border-transparent rounded-md text-sm font-medium transition-colors shadow-sm"
+                                    >
+                                        <Plus size={16} /> Nova Nota
+                                    </button>
                                     <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                                         <Edit size={16} /> Editar Dados
                                     </button>
@@ -546,6 +614,96 @@ const CustomerManagementScreen: React.FC = () => {
                                 disabled={!newCliente.nome}
                             >
                                 Salvar Cliente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Nova Nota Assinada */}
+            {showNovaNotaModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Receipt className="text-blue-600" size={20} />
+                                Nova Nota pendente
+                            </h3>
+                            <button
+                                onClick={() => setShowNovaNotaModal(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor (R$) *</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={novaNota.valor}
+                                        onChange={e => setNovaNota({ ...novaNota, valor: e.target.value })}
+                                        className="w-full pl-10 pr-4 py-3 text-lg font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="0,00"
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descrição</label>
+                                <input
+                                    type="text"
+                                    value={novaNota.descricao}
+                                    onChange={e => setNovaNota({ ...novaNota, descricao: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                    placeholder="Ex: Gasolina S10 - Placa ABC-1234"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data</label>
+                                    <input
+                                        type="date"
+                                        value={novaNota.data}
+                                        onChange={e => setNovaNota({ ...novaNota, data: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frentista</label>
+                                    <select
+                                        value={novaNota.frentista_id}
+                                        onChange={e => setNovaNota({ ...novaNota, frentista_id: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {frentistas.map(f => (
+                                            <option key={f.id} value={f.id}>{f.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowNovaNotaModal(false)}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSaveNovaNota}
+                                disabled={!novaNota.valor || !novaNota.frentista_id || salvandoNota}
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-bold shadow-md transition-colors flex items-center gap-2"
+                            >
+                                {salvandoNota ? 'Salvando...' : 'Lançar Nota'}
                             </button>
                         </div>
                     </div>
