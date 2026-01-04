@@ -28,6 +28,15 @@ interface SidebarProps {
   className?: string;
 }
 
+/**
+ * Componente de Menu Lateral (Sidebar) do Dashboard.
+ * 
+ * @param currentView - A visualização/tela atualmente selecionada.
+ * @param onNavigate - Função de callback disparada ao clicar em um item de menu para mudar a tela.
+ * @param className - Classes CSS opcionais adicionais.
+ * 
+ * Responsável pela navegação principal entre os módulos do sistema (Vendas, Estoque, Frentistas, etc).
+ */
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = '' }) => {
   const { theme, toggleTheme } = useTheme();
 

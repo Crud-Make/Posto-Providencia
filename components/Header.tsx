@@ -8,6 +8,14 @@ interface HeaderProps {
   onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia') => void;
 }
 
+/**
+ * Componente de Cabeçalho (Header) do Dashboard.
+ * 
+ * @param currentView - A visualização/tela atualmente selecionada.
+ * @param onNavigate - Função de callback disparada ao clicar em itens de navegação (principalmente no menu mobile).
+ * 
+ * Contém a identificação do posto ativo, troca de tema e menu hambúrguer para dispositivos móveis.
+ */
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
