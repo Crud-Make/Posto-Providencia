@@ -27,6 +27,11 @@ import { PostoProvider } from './contexts/PostoContext';
 import { Loader2 } from 'lucide-react';
 import { Toaster } from 'sonner';
 
+/**
+ * Componente principal de conteúdo da aplicação.
+ * Gerencia o estado da visualização atual (currentView) e o layout principal (Sidebar + Header + Conteúdo).
+ * Também lida com a verificação de autenticação e estados de carregamento iniciais.
+ */
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia'>('dashboard');
@@ -134,6 +139,10 @@ const AppContent: React.FC = () => {
 
 import { ThemeProvider } from './contexts/ThemeContext';
 
+/**
+ * Componente raiz da aplicação (Entry Point).
+ * Provê os contextos globais (Auth, Posto, Theme) e o componente de notificações Toaster.
+ */
 const App: React.FC = () => {
   return (
     <AuthProvider>
