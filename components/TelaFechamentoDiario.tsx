@@ -1325,15 +1325,23 @@ const TelaFechamentoDiario: React.FC = () => {
          <div className={activeTab === 'leituras' ? 'contents' : 'hidden'}>
             {/* Main Table - Venda Concentrador (EXATO como planilha) */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-               <div className="px-6 py-4 border-b bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-900/20 dark:to-green-900/20 border-gray-200 dark:border-gray-700">
+               <div className="px-6 py-4 border-b bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-900/20 dark:to-green-900/20 border-gray-200 dark:border-gray-700 flex justify-between items-center">
                   <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
                      <Fuel size={20} className="text-blue-600" />
                      Venda Concentrador
                   </h2>
+                  <span className="lg:hidden text-xs text-blue-600 dark:text-blue-400 font-medium animate-pulse flex items-center gap-1">
+                     <div className="flex gap-0.5">
+                        <span className="w-1 h-1 bg-blue-600 rounded-full opacity-40"></span>
+                        <span className="w-1 h-1 bg-blue-600 rounded-full opacity-70"></span>
+                        <span className="w-1 h-1 bg-blue-600 rounded-full"></span>
+                     </div>
+                     Deslize
+                  </span>
                </div>
 
                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[900px]">
                      <thead>
                         <tr className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs uppercase font-bold text-gray-600 dark:text-gray-300">
                            <th className="px-4 py-3 text-left">Produtos</th>
