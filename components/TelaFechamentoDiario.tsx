@@ -80,6 +80,8 @@ interface FrentistaSession {
    tempId: string;
    frentistaId: number | null;
    valor_cartao: string;
+   valor_cartao_debito: string; // New field
+   valor_cartao_credito: string; // New field
    valor_nota: string;
    valor_pix: string;
    valor_dinheiro: string;
@@ -435,22 +437,27 @@ const TelaFechamentoDiario: React.FC = () => {
       // Soma os valores de todas as sessões de frentistas
       const totais = sessions.reduce((acc, s) => ({
          cartao: acc.cartao + (Number(s.valor_cartao) || Number(s.cartao) || 0),
+         cartao_debito: acc.cartao_debito + (Number(s.valor_cartao_debito) || 0),
+         cartao_credito: acc.cartao_credito + (Number(s.valor_cartao_credito) || 0),
          pix: acc.pix + (Number(s.valor_pix) || Number(s.pix) || 0),
          dinheiro: acc.dinheiro + (Number(s.valor_dinheiro) || Number(s.dinheiro) || 0),
          nota: acc.nota + (Number(s.valor_nota) || Number(s.nota) || 0),
          baratao: acc.baratao + (Number(s.valor_baratao) || Number(s.baratao) || 0),
-      }), { cartao: 0, pix: 0, dinheiro: 0, nota: 0, baratao: 0 });
+      }), { cartao: 0, cartao_debito: 0, cartao_credito: 0, pix: 0, dinheiro: 0, nota: 0, baratao: 0 });
 
       // Atualiza os payments com os totais dos frentistas
+
       setPayments(prev => prev.map(p => {
          // Mapeia tipos de forma de pagamento para os totais dos frentistas
          if (p.tipo === 'cartao' || p.nome.toLowerCase().includes('cartão')) {
-            // Se houver apenas um campo de cartão nos frentistas, mas vários métodos de cartão no fechamento, 
-            // colocamos o total no primeiro que encontrarmos (geralmente crédito)
-            if (p.nome.includes('Crédito')) {
-               return { ...p, valor: totais.cartao > 0 ? formatSimpleValue(totais.cartao.toString().replace('.', ',')) : '' };
+            if (p.nome.toLowerCase().includes('crédito')) {
+               return { ...p, valor: totais.cartao_credito > 0 ? formatSimpleValue(totais.cartao_credito.toString().replace('.', ',')) : '' };
             }
-            return p;
+            if (p.nome.toLowerCase().includes('débito')) {
+               return { ...p, valor: totais.cartao_debito > 0 ? formatSimpleValue(totais.cartao_debito.toString().replace('.', ',')) : '' };
+            }
+            // Fallback para genérico se não tiver específico
+            return { ...p, valor: totais.cartao > 0 ? formatSimpleValue(totais.cartao.toString().replace('.', ',')) : '' };
          }
          if (p.tipo === 'digital' || p.nome.toLowerCase().includes('pix')) {
             return { ...p, valor: totais.pix > 0 ? formatSimpleValue(totais.pix.toString().replace('.', ',')) : '' };
@@ -528,6 +535,8 @@ const TelaFechamentoDiario: React.FC = () => {
                   tempId: s.id.toString(),
                   frentistaId: s.frentista_id,
                   valor_cartao: s.valor_cartao ? formatSimpleValue(s.valor_cartao.toString().replace('.', ',')) : '',
+                  valor_cartao_debito: s.valor_cartao_debito ? formatSimpleValue(s.valor_cartao_debito.toString().replace('.', ',')) : '',
+                  valor_cartao_credito: s.valor_cartao_credito ? formatSimpleValue(s.valor_cartao_credito.toString().replace('.', ',')) : '',
                   valor_nota: s.valor_nota ? formatSimpleValue(s.valor_nota.toString().replace('.', ',')) : '',
                   valor_pix: s.valor_pix ? formatSimpleValue(s.valor_pix.toString().replace('.', ',')) : '',
                   valor_dinheiro: s.valor_dinheiro ? formatSimpleValue(s.valor_dinheiro.toString().replace('.', ',')) : '',
@@ -545,6 +554,8 @@ const TelaFechamentoDiario: React.FC = () => {
                   tempId: `new-${frentista.id}`,
                   frentistaId: frentista.id,
                   valor_cartao: '',
+                  valor_cartao_debito: '',
+                  valor_cartao_credito: '',
                   valor_nota: '',
                   valor_pix: '',
                   valor_dinheiro: '',
@@ -1036,7 +1047,8 @@ const TelaFechamentoDiario: React.FC = () => {
                .filter(fs => fs.frentistaId !== null)
                .map(fs => {
                   const totalInformado =
-                     parseValue(fs.valor_cartao) +
+                     parseValue(fs.valor_cartao_debito) +
+                     parseValue(fs.valor_cartao_credito) +
                      parseValue(fs.valor_nota) +
                      parseValue(fs.valor_pix) +
                      parseValue(fs.valor_dinheiro) +
@@ -1052,7 +1064,9 @@ const TelaFechamentoDiario: React.FC = () => {
                   return {
                      fechamento_id: fechamento!.id,
                      frentista_id: fs.frentistaId!,
-                     valor_cartao: parseValue(fs.valor_cartao),
+                     valor_cartao: parseValue(fs.valor_cartao_debito) + parseValue(fs.valor_cartao_credito), // Mantém retrocompatibilidade
+                     valor_cartao_debito: parseValue(fs.valor_cartao_debito),
+                     valor_cartao_credito: parseValue(fs.valor_cartao_credito),
                      valor_dinheiro: parseValue(fs.valor_dinheiro),
                      valor_pix: parseValue(fs.valor_pix),
                      valor_nota: parseValue(fs.valor_nota),
@@ -2055,27 +2069,51 @@ const TelaFechamentoDiario: React.FC = () => {
                         </td>
                      </tr>
 
-                     {/* Cartão */}
+                     {/* Cartão Débito */}
                      <tr>
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            <div className="flex items-center">
                               <CreditCard className="text-blue-500 text-sm mr-2" size={16} />
-                              Cartão
+                              Cartão Débito
                            </div>
                         </td>
                         {frentistaSessions.map(session => (
                            <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
                               <input
                                  type="text"
-                                 value={session.valor_cartao}
-                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao: formatSimpleValue(e.target.value) })}
+                                 value={session.valor_cartao_debito}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao_debito: formatSimpleValue(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
                            </td>
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_cartao), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_cartao_debito), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                     </tr>
+
+                     {/* Cartão Crédito */}
+                     <tr>
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           <div className="flex items-center">
+                              <CreditCard className="text-purple-500 text-sm mr-2" size={16} />
+                              Cartão Crédito
+                           </div>
+                        </td>
+                        {frentistaSessions.map(session => (
+                           <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                              <input
+                                 type="text"
+                                 value={session.valor_cartao_credito}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao_credito: formatSimpleValue(e.target.value) })}
+                                 className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
+                                 placeholder="R$ 0,00"
+                              />
+                           </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_cartao_credito), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -2157,7 +2195,8 @@ const TelaFechamentoDiario: React.FC = () => {
                            Total Venda Frentista
                         </td>
                         {frentistaSessions.map(session => {
-                           const total = parseValue(session.valor_cartao) +
+                           const total = parseValue(session.valor_cartao_debito) +
+                              parseValue(session.valor_cartao_credito) +
                               parseValue(session.valor_pix) +
                               parseValue(session.valor_nota) +
                               parseValue(session.valor_dinheiro) +
@@ -2230,7 +2269,8 @@ const TelaFechamentoDiario: React.FC = () => {
                            Diferença (Falta)
                         </td>
                         {frentistaSessions.map(session => {
-                           const totalInf = parseValue(session.valor_cartao) +
+                           const totalInf = parseValue(session.valor_cartao_debito) +
+                              parseValue(session.valor_cartao_credito) +
                               parseValue(session.valor_pix) +
                               parseValue(session.valor_nota) +
                               parseValue(session.valor_dinheiro) +
@@ -2249,7 +2289,7 @@ const TelaFechamentoDiario: React.FC = () => {
                         <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-bold text-red-600 border-l border-red-100 dark:border-gray-700 bg-red-100/30 dark:bg-red-900/30">
                            {(() => {
                               const totalFalta = frentistaSessions.reduce((acc, s) => {
-                                 const totalInf = parseValue(s.valor_cartao) + parseValue(s.valor_pix) + parseValue(s.valor_nota) + parseValue(s.valor_dinheiro) + parseValue(s.valor_baratao);
+                                 const totalInf = parseValue(s.valor_cartao_debito) + parseValue(s.valor_cartao_credito) + parseValue(s.valor_pix) + parseValue(s.valor_nota) + parseValue(s.valor_dinheiro) + parseValue(s.valor_baratao);
                                  const totalVendido = parseValue(s.valor_encerrante);
                                  const diff = totalVendido - totalInf;
                                  return acc + (diff > 0 ? diff : 0);
@@ -2265,7 +2305,8 @@ const TelaFechamentoDiario: React.FC = () => {
                            Participação %
                         </td>
                         {frentistaSessions.map(session => {
-                           const totalInf = parseValue(session.valor_cartao) +
+                           const totalInf = parseValue(session.valor_cartao_debito) +
+                              parseValue(session.valor_cartao_credito) +
                               parseValue(session.valor_pix) +
                               parseValue(session.valor_nota) +
                               parseValue(session.valor_dinheiro) +
