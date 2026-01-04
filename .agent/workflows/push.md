@@ -6,21 +6,51 @@ description: Validação, Merge e Deploy automático para o Posto Providência (
 
 Este workflow garante que todas as regras do Posto Providência sejam seguidas antes de enviar qualquer código para produção.
 
-### Passos de Execução:
+## 🚀 Workflow de Push (Merge + Deploy)
 
-1. **Garantir que as mudanças estão commitadas na branch de feature.**
-```bash
-git add .
-git commit -m "chore: salvando alterações antes da entrega"
-```
+### ⚠️ PRÉ-REQUISITOS OBRIGATÓRIOS
 
-2. **Executar a entrega automatizada via script.**
-```bash
-npm run push
-```
+Antes de executar `/push`, CONFIRME que:
 
-3. **Verificar status final.**
+- ✅ Código testado localmente em `http://localhost:3015`
+- ✅ Usuário testou e deu **OK EXPLÍCITO**
+- ✅ 0 erros de TypeScript (`npm run build`)
+- ✅ Todas as mudanças commitadas na branch de feature
+
+### 📋 Passos de Execução
+
+#### 1️⃣ Validação Inicial
 ```bash
 git status
-git log -1
+npm run build
 ```
+
+#### 2️⃣ Merge e Push
+```bash
+# Salvar branch atual
+FEATURE_BRANCH=$(git branch --show-current)
+
+# Merge na main
+git checkout main
+git merge $FEATURE_BRANCH --no-ff -m "merge: $FEATURE_BRANCH (estável)"
+git push origin main
+```
+
+#### 3️⃣ 🏆 MARCO DE VERSÃO ESTÁVEL (OBRIGATÓRIO)
+Após o merge com sucesso, crie o ponto de restauração:
+
+```bash
+# Padronização sugerida pelo usuário:
+git branch "versao-testada-funcionando-$(date +%d-%m-%Y)"
+```
+
+#### 4️⃣ Limpeza
+```bash
+git branch -d $FEATURE_BRANCH
+```
+
+---
+
+## 📝 Notas Importantes
+- O nome deve ser **sempre** prefixado com `versao-testada-funcionando-`.
+- Isso garante o "Sufoco Zero" em caso de bugs futuros.
