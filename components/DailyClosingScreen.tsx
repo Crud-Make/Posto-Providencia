@@ -325,9 +325,16 @@ const DailyClosingScreen: React.FC = () => {
          console.log('Frentistas carregados:', frentistasData);
          setFrentistas(frentistasData);
 
-         // Fetch turnos
+         // Fetch turnos e seleciona automaticamente o primeiro (modo diário simplificado)
          const turnosData = await turnoService.getAll(postoAtivoId);
-         setTurnos(turnosData.length > 0 ? turnosData : DEFAULT_TURNOS as Turno[]);
+         const availableTurnos = turnosData.length > 0 ? turnosData : DEFAULT_TURNOS as Turno[];
+         setTurnos(availableTurnos);
+
+         // Seleção automática: prioriza 'Diário', senão pega o primeiro
+         if (availableTurnos.length > 0) {
+            const diario = availableTurnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
+            setSelectedTurno(diario ? diario.id : availableTurnos[0].id);
+         }
 
          // Fetch Payment Methods
          const paymentMethodsData = await formaPagamentoService.getAll(postoAtivoId);
@@ -1161,7 +1168,8 @@ const DailyClosingScreen: React.FC = () => {
                   </div>
                </div>
 
-               {/* Turno Selector */}
+               {/* Turno Selector - OCULTO (seleção automática em background) */}
+               {/* 
                <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                      <Clock size={12} />
@@ -1180,6 +1188,7 @@ const DailyClosingScreen: React.FC = () => {
                      ))}
                   </select>
                </div>
+               */}
 
                {/* Refresh Button */}
                <div className="flex flex-col gap-1">
@@ -1274,9 +1283,7 @@ const DailyClosingScreen: React.FC = () => {
             <div className="text-center border-b-2 border-gray-800 pb-4 mb-4">
                <h1 className="text-2xl font-black">FECHAMENTO DE CAIXA</h1>
                <p className="text-lg mt-2">Data: {new Date(selectedDate).toLocaleDateString('pt-BR')}</p>
-               {selectedTurno && (
-                  <p>Turno: {turnos.find(t => t.id === selectedTurno)?.nome || '-'}</p>
-               )}
+               {/* Turno removido - modo diário simplificado */}
                {frentistaSessions.length > 0 && (
                   <p>Frentistas: {frentistaSessions.map(fs => frentistas.find(f => f.id === fs.frentistaId)?.nome).filter(Boolean).join(', ')}</p>
                )}
@@ -1637,7 +1644,8 @@ const DailyClosingScreen: React.FC = () => {
          {/* Aba Financeiro */}
          <div className={activeTab === 'financeiro' ? 'contents' : 'hidden'}>
 
-            {/* 1. Timeline de Status dos Turnos */}
+            {/* Timeline de Status dos Turnos - OCULTO (modo diário simplificado) */}
+            {/* 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6 print:hidden">
                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Clock size={14} />
@@ -1674,13 +1682,14 @@ const DailyClosingScreen: React.FC = () => {
                   })}
                </div>
             </div>
+            */}
 
             {/* Global Payment Recording (Stage 2) */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                      <CreditCard size={20} className="text-gray-600 dark:text-gray-400" />
-                     Fechamento Financeiro (Totais do Turno)
+                     Fechamento Financeiro (Totais do Dia)
                   </h2>
                   <div className="flex items-center gap-4">
                      <div className="flex flex-col items-end">
