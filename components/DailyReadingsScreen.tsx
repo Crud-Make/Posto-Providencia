@@ -12,8 +12,8 @@ import {
   TrendingUp,
   Info
 } from 'lucide-react';
-import { bicoService, leituraService, turnoService, combustivelService } from '../services/api';
-import type { Bico, Bomba, Combustivel, Turno, Leitura } from '../services/database.types';
+import { bicoService, leituraService } from '../services/api';
+import type { Bico, Bomba, Combustivel, Leitura } from '../services/database.types';
 import { ProgressIndicator } from './ValidationAlert';
 import { usePosto } from '../contexts/PostoContext';
 
@@ -41,11 +41,10 @@ const DailyReadingsScreen: React.FC = () => {
 
   // State
   const [bicos, setBicos] = useState<BicoWithDetails[]>([]);
-  const [turnos, setTurnos] = useState<Turno[]>([]);
+
   const [lastReadings, setLastReadings] = useState<Record<number, Leitura | null>>({});
   const [readings, setReadings] = useState<Record<number, string>>({});
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,18 +62,9 @@ const DailyReadingsScreen: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch bicos with details and turnos in parallel
-      const [bicosData, turnosData] = await Promise.all([
-        bicoService.getWithDetails(postoAtivoId),
-        turnoService.getAll(postoAtivoId),
-      ]);
-
+      // Fetch bicos with details
+      const bicosData = await bicoService.getWithDetails(postoAtivoId);
       setBicos(bicosData);
-      setTurnos(turnosData);
-
-      if (turnosData.length > 0) {
-        setSelectedTurno(turnosData[0].id);
-      }
 
       // Fetch last reading for each bico
       const lastReadingsMap: Record<number, Leitura | null> = {};
@@ -227,7 +217,7 @@ const DailyReadingsScreen: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-gray-900">Registro de Leituras Diárias</h1>
-          <p className="text-gray-500 mt-2">Preencha os dados dos encerrantes de cada bico para fechar o turno.</p>
+          <p className="text-gray-500 mt-2">Preencha os dados dos encerrantes de cada bico para o fechamento diário.</p>
         </div>
 
         <div className="flex gap-4">
@@ -245,24 +235,7 @@ const DailyReadingsScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Turno Selector */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Turno</span>
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2.5 shadow-sm">
-              <Clock size={18} className="text-gray-400" />
-              <select
-                value={selectedTurno || ''}
-                onChange={(e) => setSelectedTurno(Number(e.target.value))}
-                className="text-sm font-semibold text-gray-900 outline-none border-none bg-transparent cursor-pointer"
-              >
-                {turnos.map(turno => (
-                  <option key={turno.id} value={turno.id}>
-                    {turno.nome} ({turno.horario_inicio} - {turno.horario_fim})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          {/* Turno Selector - oculto */}
 
           {/* Refresh Button */}
           <div className="flex flex-col gap-1">
