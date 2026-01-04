@@ -10,16 +10,20 @@ Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. 
 ## 🚀 Fluxo de Trabalho Git (Baseado em APRENDIZADO_GIT.md)
 - **Commits Semânticos:** Uso OBRIGATÓRIO do padrão Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `style:`). Nenhum commit deve ser feito fora deste padrão.
 - **Tamanho dos Commits:** Commits pequenos e incrementais são MANDATÓRIOS. 1 mudança lógica = 1 commit.
-- **Obrigatoriedade de Branches:** NUNCA trabalhe diretamente na `main` ou `master`. 
-  - Para cada nova correção, funcionalidade ou segmento de trabalho, **DEVE-SE** criar uma nova branch específica (Ex: `fix/ajuste-calculo`, `feature/novo-layout`).
+- **Obrigatoriedade de Branches:** NUNCA trabalhe diretamente na branch `main` ou `master`. Crie sempre branches específicas para suas tarefas (`fix/...`, `feature/...`, `refactor/...`, `docs/...`, `style/...`).
+- **Reutilização Inteligente de Branches:** NÃO crie uma nova branch para cada micro-correção. Se a nova tarefa/bug estiver relacionada ao contexto ou objetivo da branch atual, continue nela. Crie novas branches apenas para objetivos distintos ou problemas isolados não relacionados.
   - Nenhuma alteração de código pode ser feita sem estar em uma branch dedicada.
 - **Segurança:** Bloqueio total de `git push --force`. 
 - **Mensagens:** Devem descrever exatamente o que foi feito.
 - **Validação do Usuário (REGRA DE OURO):** NUNCA realize o merge para a `main` ou o `push` para o repositório remoto sem que o usuário tenha testado e dado aprovação explícita. O fluxo OBRIGATÓRIO é: 
   1. Criar Branch específica.
   2. Implementar as mudanças.
-  3. **Solicitar que o usuário realize o teste.**
-  4. Somente após o "OK" do usuário, realizar o Merge e o Push.
+   3. **Solicitar validação em LOCALHOST:**
+      - Garanta que o servidor esteja rodando (`npm run dev -- --port 3015`).
+      - Peça para o usuário testar em `http://localhost:3015`.
+   4. **Merge e Deploy:**
+      - Somente após o "OK" do usuário, faça o Merge para a `main` e o Push.
+      - Isso disparará o deploy de produção na Vercel automaticamente.
 - **Conformidade:** Nenhum agente (AI) está autorizado a realizar alterações que não sigam rigorosamente estas regras. O descumprimento resultará em erro de processo.
 
 
