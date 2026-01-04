@@ -37,7 +37,7 @@ interface SidebarProps {
  * 
  * Responsável pela navegação principal entre os módulos do sistema (Vendas, Estoque, Frentistas, etc).
  */
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = '' }) => {
+const BarraLateral: React.FC<SidebarProps> = ({ currentView, onNavigate, className = '' }) => {
   const { theme, toggleTheme } = useTheme();
 
   const menuItems = [
@@ -108,4 +108,4 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, className = 
   );
 };
 
-export default Sidebar;
+export default BarraLateral;

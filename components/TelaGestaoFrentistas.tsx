@@ -22,7 +22,7 @@ import { supabase } from '../services/supabase';
 import { AttendantProfile, AttendantHistoryEntry } from '../types'; // Assuming Turno type is not explicitly defined, using any for now
 import { usePosto } from '../contexts/PostoContext';
 
-const AttendantManagementScreen: React.FC = () => {
+const TelaGestaoFrentistas: React.FC = () => {
    const { postoAtivoId } = usePosto();
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState(false);
@@ -500,4 +500,4 @@ const AttendantManagementScreen: React.FC = () => {
    );
 };
 
-export default AttendantManagementScreen;
+export default TelaGestaoFrentistas;

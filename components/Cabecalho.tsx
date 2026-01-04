@@ -16,7 +16,7 @@ interface HeaderProps {
  * 
  * Contém a identificação do posto ativo, troca de tema e menu hambúrguer para dispositivos móveis.
  */
-const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
+const Cabecalho: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
@@ -99,4 +99,4 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
   );
 };
 
-export default Header;
+export default Cabecalho;

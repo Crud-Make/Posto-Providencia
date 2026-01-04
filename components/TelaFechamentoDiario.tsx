@@ -197,7 +197,7 @@ const getPaymentLabel = (tipo: string) => {
    }
 };
 
-const DailyClosingScreen: React.FC = () => {
+const TelaFechamentoDiario: React.FC = () => {
    const { user } = useAuth();
    const { postoAtivoId, postos, setPostoAtivoById, postoAtivo } = usePosto();
 
@@ -1941,7 +1941,7 @@ const DailyClosingScreen: React.FC = () => {
                         const hasDiff = (totalVendido > 0 || parseValue(session.valor_conferido) > 0) && Math.abs(diff) > 0.01;
 
                         // Componente Simplificado do Card de Frentista
-                        // Para substituir as linhas 1879-2080 em DailyClosingScreen.tsx
+                        // Para substituir as linhas 1879-2080 em TelaFechamentoDiario.tsx
 
                         return (
                            <div key={session.tempId} className={`bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 border-2 rounded-2xl shadow-lg relative group transition-all ${session.status === 'conferido'
@@ -2372,4 +2372,4 @@ const DailyClosingScreen: React.FC = () => {
    );
 };
 
-export default DailyClosingScreen;
+export default TelaFechamentoDiario;

@@ -29,7 +29,7 @@ import { Loan, LoanInstallment } from '../types';
 import KPICard from './KPICard';
 import { toast } from 'sonner';
 
-const FinanceManagementScreen: React.FC = () => {
+const TelaGestaoFinanceira: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [loans, setLoans] = useState<Loan[]>([]);
     const [loading, setLoading] = useState(true);
@@ -601,4 +601,4 @@ const FinanceManagementScreen: React.FC = () => {
     );
 };
 
-export default FinanceManagementScreen;
+export default TelaGestaoFinanceira;

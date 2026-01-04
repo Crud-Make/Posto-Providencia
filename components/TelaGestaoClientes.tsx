@@ -44,7 +44,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     );
 };
 
-const CustomerManagementScreen: React.FC = () => {
+const TelaGestaoClientes: React.FC = () => {
     const { postoAtivo } = usePosto();
     const [clientes, setClientes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -953,4 +953,4 @@ const CustomerManagementScreen: React.FC = () => {
     );
 };
 
-export default CustomerManagementScreen;
+export default TelaGestaoClientes;

@@ -1,27 +1,27 @@
 import React, { useState } from 'react';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import DashboardScreen from './components/DashboardScreen';
-import DailyClosingScreen from './components/DailyClosingScreen';
-import DailyReportScreen from './components/DailyReportScreen';
-import PurchaseRegistrationScreen from './components/PurchaseRegistrationScreen';
-import InventoryDashboardScreen from './components/InventoryDashboardScreen';
-import StockManagementScreen from './components/StockManagementScreen';
-import CostAnalysisScreen from './components/CostAnalysisScreen';
-import DailyReadingsScreen from './components/DailyReadingsScreen';
-import SalesAnalysisScreen from './components/SalesAnalysisScreen';
-import SalesDashboardScreen from './components/SalesDashboardScreen';
-import AttendantManagementScreen from './components/AttendantManagementScreen';
-import FinanceManagementScreen from './components/FinanceManagementScreen';
-import SolvencyDashboard from './components/SolvencyDashboard';
-import SettingsScreen from './components/SettingsScreen';
-import ScheduleManagementScreen from './components/ScheduleManagementScreen';
-import CustomerManagementScreen from './components/CustomerManagementScreen';
-import ExpenseManagementScreen from './components/ExpenseManagementScreen';
-import OwnerDashboard from './components/OwnerDashboard';
-import BaratenciaManagementScreen from './components/BaratenciaManagementScreen';
+import Cabecalho from './components/Cabecalho';
+import BarraLateral from './components/BarraLateral';
+import TelaDashboard from './components/TelaDashboard';
+import TelaFechamentoDiario from './components/TelaFechamentoDiario';
+import TelaRelatorioDiario from './components/TelaRelatorioDiario';
+import TelaRegistroCompras from './components/TelaRegistroCompras';
+import TelaDashboardEstoque from './components/TelaDashboardEstoque';
+import TelaGestaoEstoque from './components/TelaGestaoEstoque';
+import TelaAnaliseCustos from './components/TelaAnaliseCustos';
+import TelaLeiturasDiarias from './components/TelaLeiturasDiarias';
+import TelaAnaliseVendas from './components/TelaAnaliseVendas';
+import TelaDashboardVendas from './components/TelaDashboardVendas';
+import TelaGestaoFrentistas from './components/TelaGestaoFrentistas';
+import TelaGestaoFinanceira from './components/TelaGestaoFinanceira';
+import TelaDashboardSolvencia from './components/TelaDashboardSolvencia';
+import TelaConfiguracoes from './components/TelaConfiguracoes';
+import TelaGestaoEscalas from './components/TelaGestaoEscalas';
+import TelaGestaoClientes from './components/TelaGestaoClientes';
+import TelaGestaoDespesas from './components/TelaGestaoDespesas';
+import TelaDashboardProprietario from './components/TelaDashboardProprietario';
+import TelaGestaoBaratencia from './components/TelaGestaoBaratencia';
 import { StrategicDashboard } from './components/ai/StrategicDashboard';
-import LoginScreen from './components/LoginScreen';
+import TelaLogin from './components/TelaLogin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
 import { Loader2 } from 'lucide-react';
@@ -30,7 +30,7 @@ import UpdateNotifier from './components/UpdateNotifier';
 
 /**
  * Componente principal de conteúdo da aplicação.
- * Gerencia o estado da visualização atual (currentView) e o layout principal (Sidebar + Header + Conteúdo).
+ * Gerencia o estado da visualização atual (currentView) e o layout principal (BarraLateral + Cabecalho + Conteúdo).
  * Também lida com a verificação de autenticação e estados de carregamento iniciais.
  */
 const AppContent: React.FC = () => {
@@ -45,92 +45,92 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // even without user, we show the app now (mocked auth)
-  // but if we really want to block when someone logs out explicitly to a real account that doesn't exist
+  // Mesmo sem usuário, mostramos o app agora (auth mockada)
+  // Mas se realmente quisermos bloquear quando alguém faz logout explícito para uma conta que não existe
   if (!user) {
-    return <LoginScreen />;
+    return <TelaLogin />;
   }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
 
-      {/* Sidebar for Desktop */}
-      <Sidebar
+      {/* Barra Lateral para Desktop */}
+      <BarraLateral
         currentView={currentView}
         onNavigate={setCurrentView}
         className="hidden lg:flex"
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Header for Mobile */}
+        {/* Cabeçalho para Mobile */}
         <div className="lg:hidden">
-          <Header
+          <Cabecalho
             currentView={currentView}
             onNavigate={setCurrentView}
           />
         </div>
 
-        {/* Main Content */}
+        {/* Conteúdo Principal */}
         <main className="flex-1 overflow-y-auto">
           {currentView === 'dashboard' && (
-            <DashboardScreen onNewClosing={() => setCurrentView('closing')} />
+            <TelaDashboard onNewClosing={() => setCurrentView('closing')} />
           )}
           {currentView === 'ai_strategy' && (
             <StrategicDashboard />
           )}
           {currentView === 'sales_dashboard' && (
-            <SalesDashboardScreen />
+            <TelaDashboardVendas />
           )}
           {currentView === 'attendants' && (
-            <AttendantManagementScreen />
+            <TelaGestaoFrentistas />
           )}
           {currentView === 'settings' && (
-            <SettingsScreen />
+            <TelaConfiguracoes />
           )}
           {currentView === 'closing' && (
-            <DailyClosingScreen />
+            <TelaFechamentoDiario />
           )}
           {currentView === 'readings' && (
-            <DailyReadingsScreen />
+            <TelaLeiturasDiarias />
           )}
           {currentView === 'inventory' && (
-            <InventoryDashboardScreen />
+            <TelaDashboardEstoque />
           )}
           {currentView === 'products' && (
-            <StockManagementScreen />
+            <TelaGestaoEstoque />
           )}
           {currentView === 'purchase' && (
-            <PurchaseRegistrationScreen />
+            <TelaRegistroCompras />
           )}
           {currentView === 'finance' && (
-            <FinanceManagementScreen />
+            <TelaGestaoFinanceira />
           )}
           {currentView === 'solvency' && (
-            <SolvencyDashboard />
+            <TelaDashboardSolvencia />
           )}
           {currentView === 'analysis' && (
-            <CostAnalysisScreen />
+            <TelaAnaliseCustos />
           )}
           {currentView === 'reports' && (
-            <SalesAnalysisScreen />
+            <TelaAnaliseVendas />
           )}
           {currentView === 'schedule' && (
-            <ScheduleManagementScreen />
+            <TelaGestaoEscalas />
           )}
           {currentView === 'clients' && (
-            <CustomerManagementScreen />
+            <TelaGestaoClientes />
           )}
           {currentView === 'daily_report' && (
-            <DailyReportScreen />
+            <TelaRelatorioDiario />
           )}
           {currentView === 'expenses' && (
-            <ExpenseManagementScreen />
+            <TelaGestaoDespesas />
           )}
           {currentView === 'owner_dashboard' && (
-            <OwnerDashboard />
+            <TelaDashboardProprietario />
           )}
           {currentView === 'baratencia' && (
-            <BaratenciaManagementScreen />
+            <TelaGestaoBaratencia />
           )}
         </main>
       </div>
@@ -141,7 +141,7 @@ const AppContent: React.FC = () => {
 import { ThemeProvider } from './contexts/ThemeContext';
 
 /**
- * Componente raiz da aplicação (Entry Point).
+ * Componente raiz da aplicação (Ponto de Entrada).
  * Provê os contextos globais (Auth, Posto, Theme) e o componente de notificações Toaster.
  */
 const App: React.FC = () => {
