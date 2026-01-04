@@ -135,8 +135,49 @@ const DEFAULT_TURNOS = [
 // Parse value from string (BR format: 1.234,567)
 const parseValue = (value: string): number => {
    if (!value) return 0;
-   const cleaned = value.toString().replace(/\./g, '').replace(',', '.');
-   return parseFloat(cleaned) || 0;
+
+   // Remove espaços
+   let cleaned = value.toString().trim();
+
+   // Se tem vírgula, é formato BR tradicional (1.234.567,890)
+   // A vírgula é o separador decimal
+   if (cleaned.includes(',')) {
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      return parseFloat(cleaned) || 0;
+   }
+
+   // Se não tem vírgula mas tem pontos:
+   // Para encerrantes de bomba, assumimos que os últimos 3 dígitos são SEMPRE decimais
+   // Exemplo: 1.718.359.423 = 1.718.359,423 = 1718359.423
+   if (cleaned.includes('.')) {
+      // Remove todos os pontos
+      const numStr = cleaned.replace(/\./g, '');
+
+      // Se tem mais de 3 dígitos, os últimos 3 são decimais
+      if (numStr.length > 3) {
+         const inteiro = numStr.slice(0, -3);
+         const decimal = numStr.slice(-3);
+         return parseFloat(`${inteiro}.${decimal}`) || 0;
+      }
+
+      // Se tem 3 ou menos dígitos, é um valor decimal pequeno (0.xxx)
+      return parseFloat(`0.${numStr.padStart(3, '0')}`) || 0;
+   }
+
+   // Se não tem nem vírgula nem ponto:
+   // Também assumimos últimos 3 dígitos como decimais
+   if (cleaned.length > 3) {
+      const inteiro = cleaned.slice(0, -3);
+      const decimal = cleaned.slice(-3);
+      return parseFloat(`${inteiro}.${decimal}`) || 0;
+   }
+
+   // Número muito pequeno - é decimal
+   if (cleaned.length > 0) {
+      return parseFloat(`0.${cleaned.padStart(3, '0')}`) || 0;
+   }
+
+   return 0;
 };
 
 // Format value to BR format with 3 decimals
@@ -693,32 +734,124 @@ const TelaFechamentoDiario: React.FC = () => {
       }));
    };
 
-   // Formata entrada de encerrante: adiciona pontos de milhar e vírgula decimal automaticamente
-   // Ex: "1481883453" -> "1.481.883,453"
-   const formatEncerranteInput = (value: string): string => {
+   // Formata valor com vírgula quando o campo perde o foco
+   // Converte "1.718.359.423" para "1.718.359,423" (últimos 3 dígitos são decimais)
+   const formatOnBlur = (value: string): string => {
+      if (!value) return '';
+
       // Remove tudo exceto números e vírgula
-      let cleaned = value.replace(/[^\d,]/g, '');
+      let cleaned = value.replace(/[^0-9,]/g, '');
+      if (cleaned.length === 0) return '';
 
-      // Se já tem vírgula, separa parte inteira e decimal
-      const parts = cleaned.split(',');
-      let inteiro = parts[0] || '';
-      let decimal = parts[1] || '';
+      // Se já tem vírgula, apenas reorganiza
+      if (cleaned.includes(',')) {
+         const parts = cleaned.split(',');
+         let inteiro = parts[0] || '0';
+         let decimal = parts.slice(1).join('');
 
-      // Remove zeros à esquerda desnecessários (exceto se for só "0")
-      inteiro = inteiro.replace(/^0+/, '') || '';
+         // Remove zeros à esquerda
+         if (inteiro.length > 1) {
+            inteiro = inteiro.replace(/^0+/, '') || '0';
+         }
 
-      // Limita decimal a 3 casas
-      decimal = decimal.slice(0, 3);
+         // Formata com pontos de milhar
+         if (inteiro.length > 3) {
+            inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+         }
 
-      // Adiciona pontos de milhar na parte inteira
+         // Garante 3 casas decimais
+         decimal = decimal.padEnd(3, '0').slice(0, 3);
+
+         return `${inteiro},${decimal}`;
+      }
+
+      // Sem vírgula: assume últimos 3 dígitos como decimais
+      if (cleaned.length <= 3) {
+         return `0,${cleaned.padStart(3, '0')}`;
+      }
+
+      let inteiro = cleaned.slice(0, -3);
+      const decimal = cleaned.slice(-3);
+
+      // Remove zeros à esquerda
+      inteiro = inteiro.replace(/^0+/, '') || '0';
+
+      // Formata com pontos de milhar
       if (inteiro.length > 3) {
          inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       }
 
-      // Reconstrói o número
-      if (parts.length > 1) {
+      return `${inteiro},${decimal}`;
+   };
+
+   // Handler para quando o campo INICIAL perde o foco
+   const handleInicialBlur = (bicoId: number) => {
+      const currentValue = leituras[bicoId]?.inicial || '';
+      const formatted = formatOnBlur(currentValue);
+      if (formatted !== currentValue) {
+         setLeituras(prev => ({
+            ...prev,
+            [bicoId]: { ...prev[bicoId], inicial: formatted }
+         }));
+      }
+   };
+
+   // Handler para quando o campo FECHAMENTO perde o foco
+   const handleFechamentoBlur = (bicoId: number) => {
+      const currentValue = leituras[bicoId]?.fechamento || '';
+      const formatted = formatOnBlur(currentValue);
+      if (formatted !== currentValue) {
+         setLeituras(prev => ({
+            ...prev,
+            [bicoId]: { ...prev[bicoId], fechamento: formatted }
+         }));
+      }
+   };
+
+   // Formata entrada de encerrante: adiciona pontos de milhar na parte inteira
+   // Vírgula deve ser digitada manualmente pelo usuário para separar decimais
+   // Ex: "1718359" -> "1.718.359" (apenas milhar)
+   // Ex: "1718359,423" -> "1.718.359,423" (mantém vírgula do usuário)
+   const formatEncerranteInput = (value: string): string => {
+      if (!value) return '';
+
+      // Remove tudo exceto números e vírgula
+      let cleaned = value.replace(/[^0-9,]/g, '');
+      if (cleaned.length === 0) return '';
+
+      // Se tem vírgula, separa parte inteira e decimal
+      if (cleaned.includes(',')) {
+         const parts = cleaned.split(',');
+         let inteiro = parts[0] || '';
+         let decimal = parts.slice(1).join(''); // Pega tudo após a primeira vírgula
+
+         // Remove zeros à esquerda desnecessários na parte inteira (exceto se for só "0")
+         if (inteiro.length > 1) {
+            inteiro = inteiro.replace(/^0+/, '') || '0';
+         }
+         if (inteiro === '') inteiro = '0';
+
+         // Adiciona pontos de milhar na parte inteira
+         if (inteiro.length > 3) {
+            inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+         }
+
          return `${inteiro},${decimal}`;
       }
+
+      // Sem vírgula: apenas formata parte inteira com pontos de milhar
+      let inteiro = cleaned;
+
+      // Remove zeros à esquerda desnecessários (exceto se for só "0")
+      if (inteiro.length > 1) {
+         inteiro = inteiro.replace(/^0+/, '') || '0';
+      }
+
+      // Adiciona pontos de milhar
+      if (inteiro.length > 3) {
+         inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      }
+
       return inteiro;
    };
 
@@ -906,6 +1039,8 @@ const TelaFechamentoDiario: React.FC = () => {
          tempId: Math.random().toString(36).substr(2, 9),
          frentistaId: null,
          valor_cartao: '',
+         valor_cartao_debito: '',
+         valor_cartao_credito: '',
          valor_nota: '',
          valor_pix: '',
          valor_dinheiro: '',
@@ -1440,6 +1575,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                        type="text"
                                        value={inicial}
                                        onChange={(e) => handleInicialChange(bico.id, e.target.value)}
+                                       onBlur={() => handleInicialBlur(bico.id)}
                                        className="w-full text-right font-mono py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
                                        placeholder="0,000"
                                     />
@@ -1451,6 +1587,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                        type="text"
                                        value={fechamento}
                                        onChange={(e) => handleFechamentoChange(bico.id, e.target.value)}
+                                       onBlur={() => handleFechamentoBlur(bico.id)}
                                        className={`w-full text-right font-mono py-2 px-3 rounded-lg border outline-none
                                     ${fechamento && !isValid
                                              ? 'border-red-300 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
