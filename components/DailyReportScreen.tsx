@@ -38,7 +38,7 @@ import {
 interface ShiftData {
     turnoName: string; // Mantido para compatibilidade com banco
     turnoId: number;
-    status: 'Aberto' | 'Fechado';
+    status: 'Aberto' | 'Fechado' | 'Pendente';
     vendas: number;
     litros: number;
     lucro: number;
@@ -100,13 +100,18 @@ const DailyReportScreen: React.FC = () => {
                     return isDiario || hasFechamento || hasLeituras;
                 })
                 .map(turno => {
-                    const fechamento = fechamentos.find(f => f.turno_id === turno.id);
+                    // Agrega todos os fechamentos do turno (caso haja múltiplos fragmentados)
+                    const fechamentosTurno = fechamentos.filter(f => f.turno_id === turno.id);
+
+                    const totalVendasFechamento = fechamentosTurno.reduce((acc, f) => acc + Number(f.total_vendas || 0), 0);
+                    const totalDiferencaFechamento = fechamentosTurno.reduce((acc, f) => acc + Number(f.diferenca || 0), 0);
+
                     const leiturasTurno = leituras.filter(l => l.turno_id === turno.id);
 
                     // Calculate Fuel Sales & Profit from Readings
                     let litrosTurno = 0;
                     let lucroTurno = 0;
-                    let vendasCalculadas = 0;
+                    let vendasLeituras = 0;
 
                     leiturasTurno.forEach(l => {
                         const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
@@ -116,23 +121,44 @@ const DailyReportScreen: React.FC = () => {
                             const precoCusto = Number(l.bico?.combustivel?.preco_custo || 0);
                             const lucroUnitario = precoVenda - precoCusto;
 
-                            vendasCalculadas += volume * precoVenda;
+                            vendasLeituras += volume * precoVenda;
                             lucroTurno += volume * lucroUnitario;
                         }
                     });
 
-                    // Use total_vendas from Fechamento if available (includes products), otherwise calculated from fuel
-                    const totalVendas = fechamento ? Number(fechamento.total_vendas) : vendasCalculadas;
+                    // Prioriza vendas do fechamento se existir, senão usa das leituras
+                    const totalVendas = fechamentosTurno.length > 0 ? totalVendasFechamento : vendasLeituras;
+
+                    // Lógica de proteção visual para Diferenca de Caixa
+                    // Se a diferença for negativa e quase igual às vendas, provavel que não lançou pagamentos
+                    let diferencaFinal = totalDiferencaFechamento;
+
+
+                    // Se tiver vendas significativas e a diferença for exatamente o negativo das vendas (margem de R$ 5)
+                    // Isso indica que o total pago foi 0, ou seja, provavelmente não lançaram os pagamentos ainda.
+                    let statusLabel: 'Aberto' | 'Fechado' | 'Pendente' = fechamentosTurno.length > 0 ? 'Fechado' : 'Aberto';
+
+                    if (totalVendas > 100 && Math.abs(diferencaFinal + totalVendas) < 5) {
+                        diferencaFinal = 0; // Assume erro de lançamento/pendência para não mostrar quebra gigante
+                        statusLabel = 'Pendente'; // Muda status visualmente
+                    }
+
+                    const frentistasNomes = fechamentosTurno
+                        .map(f => f.usuario?.nome)
+                        .filter(Boolean); // Remove nulos
+
+                    // Remove duplicatas de nomes
+                    const frentistasUnicos = [...new Set(frentistasNomes)];
 
                     return {
                         turnoName: turno.nome,
                         turnoId: turno.id,
-                        status: fechamento ? 'Fechado' : 'Aberto',
+                        status: statusLabel,
                         vendas: totalVendas,
                         litros: litrosTurno,
                         lucro: lucroTurno,
-                        diferenca: fechamento ? Number(fechamento.diferenca) : 0,
-                        frentistas: fechamento?.usuario ? [fechamento.usuario.nome] : []
+                        diferenca: diferencaFinal,
+                        frentistas: frentistasUnicos
                     };
                 });
 
@@ -306,8 +332,10 @@ const DailyReportScreen: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase ${shift.status === 'Fechado'
-                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                                        : shift.status === 'Pendente'
+                                                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border border-orange-200'
+                                                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
                                                     }`}>
                                                     {shift.status}
                                                 </span>
