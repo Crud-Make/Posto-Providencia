@@ -102,25 +102,37 @@ const ScheduleManagementScreen: React.FC = () => {
     };
 
     /**
+     * Auxiliar para formatar data como YYYY-MM-DD localmente
+     */
+    const formatDate = (year: number, month: number, day: number) => {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    };
+
+    /**
      * Manipula clique em uma célula da escala
      * Toggle entre FOLGA e TRABALHO (padrão)
      * 
      * @param frentistaId - ID do frentista
      * @param day - Dia do mês clicado
-     * 
-     * Comportamento:
-     * - Se já existe escala FOLGA: remove (volta ao padrão TRABALHO)
-     * - Se não existe: cria nova escala como FOLGA
      */
     const handleCellClick = async (frentistaId: number, day: number) => {
-        const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
+        const dateStr = formatDate(currentDate.getFullYear(), currentDate.getMonth(), day);
         const existing = escalas.find(e => e.frentista_id === frentistaId && e.data === dateStr);
 
         try {
             if (existing) {
-                // Remove escala existente (volta ao padrão TRABALHO)
-                await escalaService.delete(existing.id);
-                setEscalas(prev => prev.filter(e => e.id !== existing.id));
+                // Se for folga, remove o registro (volta ao padrão Trabalho)
+                // Se for trabalho com observação, apenas remove o tipo Folga se houver
+                if (existing.tipo === 'FOLGA') {
+                    await escalaService.delete(existing.id);
+                    setEscalas(prev => prev.filter(e => e.id !== existing.id));
+                } else {
+                    // Se era só um registro de trabalho com observação, muda para Folga
+                    await escalaService.update(existing.id, { tipo: 'FOLGA' });
+                    setEscalas(prev => prev.map(e =>
+                        e.id === existing.id ? { ...e, tipo: 'FOLGA' } : e
+                    ));
+                }
             } else {
                 // Cria nova escala marcada como FOLGA
                 const newEscala = await escalaService.create({
@@ -177,7 +189,7 @@ const ScheduleManagementScreen: React.FC = () => {
      */
 
     const handleOpenObservacao = (frentistaId: number, frentistaName: string, day: number) => {
-        const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
+        const dateStr = formatDate(currentDate.getFullYear(), currentDate.getMonth(), day);
         const escala = escalas.find(e => e.frentista_id === frentistaId && e.data === dateStr);
 
         setObservacaoModal({
@@ -193,7 +205,7 @@ const ScheduleManagementScreen: React.FC = () => {
     const handleSaveObservacao = async (observacao: string) => {
         if (!observacaoModal.frentistaId) return;
 
-        const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), observacaoModal.day).toISOString().split('T')[0];
+        const dateStr = formatDate(currentDate.getFullYear(), currentDate.getMonth(), observacaoModal.day);
 
         try {
             if (observacaoModal.escalaId) {
@@ -357,7 +369,7 @@ const ScheduleManagementScreen: React.FC = () => {
             html += `<tr><td class="frentista-col">${frentista.nome}</td>`;
 
             days.forEach(day => {
-                const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
+                const dateStr = formatDate(currentDate.getFullYear(), currentDate.getMonth(), day);
                 const escala = escalas.find(e => e.frentista_id === frentista.id && e.data === dateStr);
                 const isFolga = escala?.tipo === 'FOLGA';
                 const hasObs = escala?.observacao && escala.observacao.trim() !== '';
@@ -475,7 +487,7 @@ const ScheduleManagementScreen: React.FC = () => {
                                         {frentista.nome}
                                     </td>
                                     {days.map(day => {
-                                        const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
+                                        const dateStr = formatDate(currentDate.getFullYear(), currentDate.getMonth(), day);
                                         const escala = escalas.find(e => e.frentista_id === frentista.id && e.data === dateStr);
                                         const isFolga = escala?.tipo === 'FOLGA';
                                         const hasObservacao = escala?.observacao && escala.observacao.trim() !== '';
