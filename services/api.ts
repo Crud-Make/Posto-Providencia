@@ -3187,12 +3187,13 @@ export const notaFrentistaService = {
     return data;
   },
 
-  async registrarPagamento(id: number, formaPagamento: string, observacoes?: string): Promise<any> {
+  async registrarPagamento(id: number, formaPagamento: string, observacoes?: string, dataPagamento?: string): Promise<any> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .update({
         status: 'pago',
-        data_pagamento: new Date().toISOString().split('T')[0],
+        // Usa a data fornecida ou a data atual como fallback
+        data_pagamento: dataPagamento || new Date().toISOString().split('T')[0],
         forma_pagamento: formaPagamento,
         observacoes
       })
