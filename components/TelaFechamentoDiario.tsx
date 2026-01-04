@@ -454,8 +454,9 @@ const TelaFechamentoDiario: React.FC = () => {
             console.log('Status da subscription realtime:', status);
          });
 
-      // Polling de segurança: Verifica a cada 5 segundos se chegou algo novo
-      // Isso garante que o frentista apareça mesmo se o Realtime falhar
+      // DESATIVADO: Polling estava apagando dados digitados pelo usuário
+      // O realtime do Supabase é suficiente para receber atualizações do mobile
+      /*
       const intervalId = setInterval(() => {
          if (selectedDate && selectedTurno) {
             // Silencioso para não poluir o log, ou com log se preferir debug
@@ -464,10 +465,11 @@ const TelaFechamentoDiario: React.FC = () => {
             loadFrentistaSessions();
          }
       }, 5000);
+      */
 
       return () => {
          supabase.removeChannel(channel);
-         clearInterval(intervalId);
+         // clearInterval(intervalId);
       };
    }, [selectedDate, selectedTurno]);
 
@@ -637,6 +639,14 @@ const TelaFechamentoDiario: React.FC = () => {
    const loadLeituras = async () => {
       // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
       if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
+
+      // IMPORTANTE: Se já existem leituras no state com dados digitados (fechamento != ''), 
+      // não sobrescreve para preservar o trabalho do usuário recuperado do autosave
+      const hasLocalData = Object.values(leituras).some(l => l.fechamento && l.fechamento.length > 0);
+      if (hasLocalData) {
+         console.log('📝 Leituras locais encontradas, preservando dados digitados');
+         return;
+      }
 
       try {
          // Verifica se temos leituras salvas para este turno específico (Modo Edição)
