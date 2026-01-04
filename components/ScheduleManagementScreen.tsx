@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, User, Save, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, ChevronLeft, ChevronRight, User, Save, RefreshCw, Download, FileText, X, Edit2 } from 'lucide-react';
 import { frentistaService, escalaService } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
 
@@ -17,14 +17,33 @@ interface Escala {
     observacao?: string;
 }
 
+interface ObservacaoModal {
+    isOpen: boolean;
+    frentistaId: number | null;
+    frentistaName: string;
+    day: number;
+    currentObservacao: string;
+    escalaId: number | null;
+}
+
 const ScheduleManagementScreen: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [currentDate, setCurrentDate] = useState(new Date());
+    const printRef = useRef<HTMLDivElement>(null);
 
     const [frentistas, setFrentistas] = useState<Frentista[]>([]);
     const [escalas, setEscalas] = useState<Escala[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    const [observacaoModal, setObservacaoModal] = useState<ObservacaoModal>({
+        isOpen: false,
+        frentistaId: null,
+        frentistaName: '',
+        day: 0,
+        currentObservacao: '',
+        escalaId: null
+    });
 
     useEffect(() => {
         loadData();
@@ -96,6 +115,228 @@ const ScheduleManagementScreen: React.FC = () => {
         const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).getDay();
         return d === 0 || d === 6;
     };
+
+    const handleOpenObservacao = (frentistaId: number, frentistaName: string, day: number) => {
+        const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
+        const escala = escalas.find(e => e.frentista_id === frentistaId && e.data === dateStr);
+
+        setObservacaoModal({
+            isOpen: true,
+            frentistaId,
+            frentistaName,
+            day,
+            currentObservacao: escala?.observacao || '',
+            escalaId: escala?.id || null
+        });
+    };
+
+    const handleSaveObservacao = async (observacao: string) => {
+        if (!observacaoModal.frentistaId) return;
+
+        const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), observacaoModal.day).toISOString().split('T')[0];
+
+        try {
+            if (observacaoModal.escalaId) {
+                // Atualizar escala existente
+                await escalaService.update(observacaoModal.escalaId, { observacao });
+                setEscalas(prev => prev.map(e =>
+                    e.id === observacaoModal.escalaId ? { ...e, observacao } : e
+                ));
+            } else {
+                // Criar nova escala com observação
+                const newEscala = await escalaService.create({
+                    frentista_id: observacaoModal.frentistaId,
+                    data: dateStr,
+                    tipo: 'TRABALHO',
+                    observacao,
+                    posto_id: postoAtivoId || 1
+                });
+                setEscalas(prev => [...prev, newEscala]);
+            }
+
+            setObservacaoModal({ ...observacaoModal, isOpen: false });
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao salvar observação');
+        }
+    };
+
+    const handleExportPDF = () => {
+        // Criar uma nova janela para impressão
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Por favor, permita pop-ups para exportar o PDF');
+            return;
+        }
+
+        const monthName = currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+        // Construir HTML para impressão
+        let html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Escala - ${monthName}</title>
+                <style>
+                    @page { size: landscape; margin: 1cm; }
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        font-size: 10px;
+                        margin: 0;
+                        padding: 20px;
+                    }
+                    h1 { 
+                        text-align: center; 
+                        font-size: 18px;
+                        margin-bottom: 10px;
+                        text-transform: capitalize;
+                    }
+                    .subtitle {
+                        text-align: center;
+                        color: #666;
+                        margin-bottom: 20px;
+                        font-size: 11px;
+                    }
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-top: 10px;
+                    }
+                    th, td { 
+                        border: 1px solid #ddd; 
+                        padding: 6px; 
+                        text-align: center;
+                    }
+                    th { 
+                        background-color: #f5f5f5; 
+                        font-weight: bold;
+                        font-size: 9px;
+                    }
+                    .frentista-col {
+                        text-align: left;
+                        font-weight: bold;
+                        background-color: #fafafa;
+                        min-width: 120px;
+                    }
+                    .folga { 
+                        background-color: #fee; 
+                        color: #c00;
+                        font-weight: bold;
+                    }
+                    .weekend { 
+                        background-color: #f9f9f9; 
+                    }
+                    .obs-icon {
+                        color: #0066cc;
+                        font-size: 8px;
+                    }
+                    .footer {
+                        margin-top: 20px;
+                        text-align: center;
+                        font-size: 9px;
+                        color: #666;
+                    }
+                    .legend {
+                        margin-top: 15px;
+                        display: flex;
+                        justify-content: center;
+                        gap: 20px;
+                        font-size: 9px;
+                    }
+                    .legend-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 5px;
+                    }
+                    .legend-box {
+                        width: 15px;
+                        height: 15px;
+                        border: 1px solid #ddd;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>Escala de Trabalho - ${monthName}</h1>
+                <div class="subtitle">Posto Providência</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="frentista-col">Frentista</th>
+        `;
+
+        // Cabeçalho com dias
+        const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+        days.forEach(day => {
+            const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+            const dayLabel = weekDays[d.getDay()];
+            const isWknd = isWeekend(day);
+            html += `<th class="${isWknd ? 'weekend' : ''}">${day}<br/><small>${dayLabel}</small></th>`;
+        });
+
+        html += `
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        // Linhas de frentistas
+        frentistas.forEach(frentista => {
+            html += `<tr><td class="frentista-col">${frentista.nome}</td>`;
+
+            days.forEach(day => {
+                const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
+                const escala = escalas.find(e => e.frentista_id === frentista.id && e.data === dateStr);
+                const isFolga = escala?.tipo === 'FOLGA';
+                const hasObs = escala?.observacao && escala.observacao.trim() !== '';
+                const isWknd = isWeekend(day);
+
+                let cellClass = isWknd ? 'weekend' : '';
+                if (isFolga) cellClass += ' folga';
+
+                let cellContent = isFolga ? 'F' : '-';
+                if (hasObs) cellContent += ' <span class="obs-icon">📝</span>';
+
+                html += `<td class="${cellClass}">${cellContent}</td>`;
+            });
+
+            html += `</tr>`;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-box folga"></div>
+                        <span>Folga</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box weekend"></div>
+                        <span>Final de Semana</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="obs-icon">📝</span>
+                        <span>Com Observação</span>
+                    </div>
+                </div>
+                <div class="footer">
+                    Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
+                </div>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
+
+        // Aguardar carregamento e imprimir
+        printWindow.onload = () => {
+            printWindow.focus();
+            printWindow.print();
+        };
+    };
+
 
     return (
         <div className="p-6 max-w-[1600px] mx-auto">

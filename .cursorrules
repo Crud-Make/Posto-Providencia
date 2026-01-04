@@ -1,5 +1,12 @@
 # Regras de Desenvolvimento - Posto Providência
 
+⚠️ **REGRA ZERO - LEITURA OBRIGATÓRIA:**
+ANTES de fazer QUALQUER modificação de código, você DEVE:
+1. Ler completamente este arquivo `.cursorrules`
+2. Criar uma branch específica seguindo o padrão (feature/, fix/, refactor/, etc.)
+3. Fazer commits pequenos e incrementais seguindo Conventional Commits
+4. NUNCA modificar código antes de criar a branch apropriada
+
 Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. Siga estas regras rigorosamente para manter a qualidade e a saúde do projeto.
 
 ## 🗣️ Comunicação
