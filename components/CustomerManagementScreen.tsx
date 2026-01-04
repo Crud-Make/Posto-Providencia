@@ -78,7 +78,10 @@ const CustomerManagementScreen: React.FC = () => {
         valor: '',
         descricao: '',
         data: new Date().toISOString().split('T')[0],
-        frentista_id: ''
+        frentista_id: '',
+        jaPaga: false,
+        dataPagamento: new Date().toISOString().split('T')[0],
+        formaPagamento: 'DINHEIRO'
     });
 
     // Pagamento Modal State
@@ -112,7 +115,8 @@ const CustomerManagementScreen: React.FC = () => {
 
         setSalvandoNota(true);
         try {
-            await notaFrentistaService.create({
+            // 1. Criar a nota
+            const notaCriada = await notaFrentistaService.create({
                 posto_id: postoAtivo.id,
                 cliente_id: selectedCliente.id,
                 frentista_id: Number(novaNota.frentista_id),
@@ -121,13 +125,26 @@ const CustomerManagementScreen: React.FC = () => {
                 data: novaNota.data,
             });
 
+            // 2. Se marcada como já paga, registrar o pagamento imediatamente
+            if (novaNota.jaPaga && notaCriada?.id) {
+                await notaFrentistaService.registrarPagamento(
+                    notaCriada.id,
+                    novaNota.formaPagamento,
+                    'Pagamento registrado na criação da nota',
+                    novaNota.dataPagamento
+                );
+            }
+
             toast.success('Nota lançada com sucesso!');
             setShowNovaNotaModal(false);
             setNovaNota({
                 valor: '',
                 descricao: '',
                 data: new Date().toISOString().split('T')[0],
-                frentista_id: ''
+                frentista_id: '',
+                jaPaga: false,
+                dataPagamento: new Date().toISOString().split('T')[0],
+                formaPagamento: 'DINHEIRO'
             });
 
             // Recarregar notas e saldo do cliente
@@ -716,6 +733,46 @@ const CustomerManagementScreen: React.FC = () => {
                                         ))}
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                                <label className="flex items-center gap-2 cursor-pointer mb-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={novaNota.jaPaga}
+                                        onChange={e => setNovaNota({ ...novaNota, jaPaga: e.target.checked })}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Marcar como já paga</span>
+                                </label>
+
+                                {novaNota.jaPaga && (
+                                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data Pagamento</label>
+                                            <input
+                                                type="date"
+                                                value={novaNota.dataPagamento}
+                                                onChange={e => setNovaNota({ ...novaNota, dataPagamento: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Forma Pagamento</label>
+                                            <select
+                                                value={novaNota.formaPagamento}
+                                                onChange={e => setNovaNota({ ...novaNota, formaPagamento: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                            >
+                                                <option value="DINHEIRO">Dinheiro</option>
+                                                <option value="PIX">PIX</option>
+                                                <option value="CARTAO_DEBITO">Cartão Débito</option>
+                                                <option value="CARTAO_CREDITO">Cartão Crédito</option>
+                                                <option value="TRANSFERENCIA">Transferência</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
