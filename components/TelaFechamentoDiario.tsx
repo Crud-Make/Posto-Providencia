@@ -588,15 +588,28 @@ const TelaFechamentoDiario: React.FC = () => {
             setLeituras(leiturasMap);
          } else {
             // MODO CRIAÇÃO: Data não tem leituras salvas
-            // A pedido do usuário: os valores iniciais devem vir zerados para preenchimento manual
-            // Removida a automação que buscava a última leitura final
+            // MODO CRIAÇÃO: Data não tem leituras salvas
+            // Busca a última leitura de cada bico para usar como inicial
             const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
-            bicos.forEach((bico) => {
-               leiturasMap[bico.id] = {
-                  inicial: '0,000',
-                  fechamento: ''
-               };
-            });
+
+            await Promise.all(bicos.map(async (bico) => {
+               try {
+                  const lastReading = await leituraService.getLastReadingByBico(bico.id);
+                  const inicialValue = lastReading ? lastReading.leitura_final : 0;
+
+                  leiturasMap[bico.id] = {
+                     inicial: formatToBR(inicialValue, 3),
+                     fechamento: ''
+                  };
+               } catch (err) {
+                  console.error(`Erro ao buscar última leitura bico ${bico.id}:`, err);
+                  leiturasMap[bico.id] = {
+                     inicial: '0,000',
+                     fechamento: ''
+                  };
+               }
+            }));
+
             setLeituras(leiturasMap);
 
             // Limpa também o autosave para esta nova data
