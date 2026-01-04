@@ -4,7 +4,7 @@ import { RefreshCw } from 'lucide-react';
 
 /**
  * Componente que verifica periodicamente se há uma nova versão do sistema disponível.
- * Se houver, mostra um alerta (toast) convidando o usuário a atualizar.
+ * Se houver, mostra um alerta visual chamativo convidando o usuário a atualizar.
  */
 const UpdateNotifier: React.FC = () => {
     const [currentVersion, setCurrentVersion] = useState<string | null>(null);
@@ -44,14 +44,20 @@ const UpdateNotifier: React.FC = () => {
 
             // Se já temos uma versão carregada e a nova for diferente, avisa o usuário
             if (currentVersion && latestVersion && latestVersion !== currentVersion) {
-                toast.info('Nova atualização disponível!', {
-                    description: 'Clique no botão abaixo para aplicar as melhorias agora.',
-                    duration: Infinity, // Fica visível até o usuário agir
+                // Exibe um alerta visual forte e persistente
+                toast.error('🚀 ATUALIZAÇÃO PENDENTE!', {
+                    description: 'Novas melhorias foram publicadas. Clique para atualizar seu sistema agora.',
+                    duration: Infinity, // Não desaparece até o usuário clicar
+                    style: {
+                        background: '#1e40af', // Blue 800
+                        color: '#ffffff',
+                        border: '2px solid #3b82f6', // Blue 500
+                    },
                     action: {
-                        label: 'Atualizar Agora',
+                        label: 'ATUALIZAR SISTEMA',
                         onClick: () => window.location.reload()
                     },
-                    icon: <RefreshCw className="h-4 w-4 animate-spin" />
+                    icon: <RefreshCw className="h-5 w-5 animate-spin text-white" />
                 });
 
                 // Uma vez que o toast foi mostrado, paramos de checar para não encher a tela
@@ -59,7 +65,7 @@ const UpdateNotifier: React.FC = () => {
                     clearInterval(checkInterval.current);
                 }
             }
-        }, 120000); // 120000ms = 2 minutos
+        }, 120000); // 120000ms = 2 minutos (Ideal para produção)
 
         return () => {
             if (checkInterval.current) {
