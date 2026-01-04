@@ -284,7 +284,7 @@ const TelaFechamentoDiario: React.FC = () => {
             nota: acc.nota + parseValue(fs.valor_nota),
             pix: acc.pix + parseValue(fs.valor_pix),
             dinheiro: acc.dinheiro + parseValue(fs.valor_dinheiro),
-            total: acc.total + parseValue(fs.valor_cartao) + parseValue(fs.valor_nota) + parseValue(fs.valor_pix) + parseValue(fs.valor_dinheiro)
+            total: acc.total + parseValue(fs.valor_cartao) + parseValue(fs.valor_nota) + parseValue(fs.valor_pix) + parseValue(fs.valor_dinheiro) + parseValue(fs.valor_baratao)
          };
       }, { cartao: 0, nota: 0, pix: 0, dinheiro: 0, total: 0 });
    }, [frentistaSessions]);
@@ -470,60 +470,53 @@ const TelaFechamentoDiario: React.FC = () => {
 
    const loadFrentistaSessions = async () => {
       try {
-         // Buscamos se já existe um fechamento para este dia/turno
+         // 1. Buscar TODOS os frentistas ativos do posto para garantir que todos apareçam nas colunas
+         const allFrentistas = await frentistaService.getAll(postoAtivoId);
+         const activeFrentistas = allFrentistas.filter(f => f.ativo);
+
+         // Atualiza o estado de frentistas também
+         setFrentistas(allFrentistas);
+
+         let foundSessions: any[] = [];
+
+         // 2. Buscar sessões existentes (fechamentos já salvos ou pendentes do mobile)
          const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!, postoAtivoId);
 
          if (fechamento) {
-            const sessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
-            if (sessions && sessions.length > 0) {
-               const mappedSessions = await Promise.all(sessions.map(async s => {
-                  const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
-                  const totalProdutos = produtos.reduce((acc, p) => acc + Number(p.valor_total), 0);
+            // Se já tem fechamento salvo, busca os itens dele
+            foundSessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
+         } else {
+            // Se não tem, busca registros soltos enviados pelo mobile para esta data
+            const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate, postoAtivoId);
 
-                  const obs = s.observacoes || '';
-                  const isConferido = obs.includes('[CONFERIDO]');
-                  const cleanObs = obs.replace('[CONFERIDO]', '').trim();
-
-                  return {
-                     tempId: s.id.toString(),
-                     frentistaId: s.frentista_id,
-                     valor_cartao: s.valor_cartao ? formatSimpleValue(s.valor_cartao.toString().replace('.', ',')) : '',
-                     valor_nota: s.valor_nota ? formatSimpleValue(s.valor_nota.toString().replace('.', ',')) : '',
-                     valor_pix: s.valor_pix ? formatSimpleValue(s.valor_pix.toString().replace('.', ',')) : '',
-                     valor_dinheiro: s.valor_dinheiro ? formatSimpleValue(s.valor_dinheiro.toString().replace('.', ',')) : '',
-                     valor_baratao: s.baratao ? formatSimpleValue(s.baratao.toString().replace('.', ',')) : '',
-                     valor_encerrante: s.encerrante ? formatSimpleValue(s.encerrante.toString().replace('.', ',')) : '',
-                     valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
-                     observacoes: cleanObs,
-                     status: (isConferido ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
-                     valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00',
-                     data_hora_envio: (s as any).data_hora_envio || null
-                  };
-               }));
-               setFrentistaSessions(mappedSessions);
-
-               // Atualizar os pagamentos com os totais dos frentistas
-               updatePaymentsFromFrentistas(sessions);
-               return;
-            }
+            // Filtra pelo turno selecionado
+            foundSessions = mobileSessions.filter(s => {
+               const sessionTurno = s.fechamento?.turno_id;
+               return Number(sessionTurno) === Number(selectedTurno);
+            });
          }
 
-         // Se não encontrou no fechamento consolidado, tenta buscar registros soltos de frentistas para este dia/turno (feitos via mobile)
-         const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate, postoAtivoId);
+         // 3. Criar mapa para acesso rápido às sessões existentes pro ID do frentista
+         const sessionMap = new Map();
+         foundSessions.forEach(s => sessionMap.set(s.frentista_id, s));
 
-         // Log para debug
-         console.log('Frentistas brutos do banco:', mobileSessions.length);
+         // 4. Construir lista final: Frentistas Ativos + Frentistas Inativos que tenham sessão (caso histórico)
+         // A prioridade são os ativos para preencher a tabela
+         const frentistasToShow = activeFrentistas;
 
-         const shiftSessions = mobileSessions.filter(s => {
-            // O turno vem do fechamento pai
-            const sessionTurno = s.fechamento?.turno_id;
-            return Number(sessionTurno) === Number(selectedTurno);
+         // Adiciona também frentistas inativos que porventura tenham sessão (ex: demitido mas trabalhou no dia)
+         foundSessions.forEach(s => {
+            if (!frentistasToShow.find(f => f.id === s.frentista_id)) {
+               const frentistaObj = allFrentistas.find(f => f.id === s.frentista_id);
+               if (frentistaObj) frentistasToShow.push(frentistaObj);
+            }
          });
 
-         console.log('Frentistas após filtro de turno:', shiftSessions.length);
+         const mergedSessions = await Promise.all(frentistasToShow.map(async (frentista) => {
+            const s = sessionMap.get(frentista.id);
 
-         if (shiftSessions.length > 0) {
-            const mappedSessions = await Promise.all(shiftSessions.map(async s => {
+            if (s) {
+               // Mapeia sessão existente (Lógica original)
                const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
                const totalProdutos = produtos.reduce((acc, p) => acc + Number(p.valor_total), 0);
 
@@ -546,12 +539,34 @@ const TelaFechamentoDiario: React.FC = () => {
                   valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00',
                   data_hora_envio: (s as any).data_hora_envio || null
                };
-            }));
-            setFrentistaSessions(mappedSessions);
-            updatePaymentsFromFrentistas(shiftSessions);
-         } else {
-            setFrentistaSessions([]);
+            } else {
+               // Cria sessão vazia para frentista ativo sem dados ainda
+               return {
+                  tempId: `new-${frentista.id}`,
+                  frentistaId: frentista.id,
+                  valor_cartao: '',
+                  valor_nota: '',
+                  valor_pix: '',
+                  valor_dinheiro: '',
+                  valor_baratao: '',
+                  valor_encerrante: '',
+                  valor_conferido: '',
+                  observacoes: '',
+                  status: 'pendente',
+                  valor_produtos: '0,00',
+                  data_hora_envio: null
+               } as FrentistaSession;
+            }
+         }));
+
+         setFrentistaSessions(mergedSessions);
+
+         // Atualiza pagamentos globais apenas com base no que realmente veio do banco para não zerar tudo incorretamente
+         // Se foundSessions for vazio, updatePaymentsFromFrentistas não faz nada, mantendo o estado anterior se houver
+         if (foundSessions.length > 0) {
+            updatePaymentsFromFrentistas(foundSessions);
          }
+
       } catch (err) {
          console.error('Error loading frentista sessions:', err);
       }
@@ -1943,342 +1958,350 @@ const TelaFechamentoDiario: React.FC = () => {
 
 
          {/* Frentistas Section (Based on Spreadsheet Logic) - Only visible in Leituras tab */}
+         {/* Frentistas Section (Table Layout based on Spreadsheet) */}
          <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden print:break-inside-avoid ${activeTab === 'financeiro' ? 'hidden' : ''}`}>
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-700/50 dark:to-blue-900/20 flex justify-between items-center">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-between items-center">
                <div className="flex items-center gap-4">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                      <User size={20} className="text-blue-600" />
-                     Controle de Frentistas
+                     Detalhamento por Frentista
                   </h2>
+                  <div className="flex gap-2">
+                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        {frentistaSessions.length} Ativos
+                     </span>
+                  </div>
+               </div>
+               <div className="flex gap-2">
                   <button
                      onClick={() => {
                         loadData();
                         loadFrentistaSessions();
                      }}
                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 rounded-full transition-all shadow-sm border border-transparent hover:border-blue-100 dark:hover:border-blue-800"
-                     title="Atualizar dados (sincronizar com App)"
+                     title="Atualizar dados"
                   >
                      <RefreshCw size={18} />
                   </button>
+
                </div>
-               <button
-                  onClick={handleAddFrentista}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
-               >
-                  <Plus size={18} />
-                  Adicionar Frentista
-               </button>
             </div>
 
-            <div className="p-6">
-               {frentistaSessions.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                     <User size={48} className="mx-auto text-gray-300 mb-4" />
-                     <p className="text-gray-500 font-medium">Nenhum frentista registrado para este fechamento.</p>
-                     <p className="text-xs text-gray-400 mt-2 italic">Os registros devem ser feitos através do aplicativo mobile pelos frentistas.</p>
-                  </div>
-               ) : (
-                  <div className="grid grid-cols-1 gap-6">
-                     {frentistaSessions.map((session) => {
-                        const totalInf =
-                           parseValue(session.valor_cartao) +
-                           parseValue(session.valor_nota) +
-                           parseValue(session.valor_pix) +
-                           parseValue(session.valor_dinheiro) +
-                           parseValue(session.valor_baratao);
 
-                        const totalVendido = parseValue(session.valor_encerrante);
-
-                        const frentista = frentistas.find(f => f.id === session.frentistaId);
-                        const confReference = totalVendido > 0 ? totalVendido : parseValue(session.valor_conferido);
-                        const diff = totalInf - confReference;
-                        const hasDiff = (totalVendido > 0 || parseValue(session.valor_conferido) > 0) && Math.abs(diff) > 0.01;
-
-                        // Componente Simplificado do Card de Frentista
-                        // Para substituir as linhas 1879-2080 em TelaFechamentoDiario.tsx
-
-                        return (
-                           <div key={session.tempId} className={`bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 border-2 rounded-2xl shadow-lg relative group transition-all ${session.status === 'conferido'
-                              ? 'border-green-200 dark:border-green-800 shadow-green-100 dark:shadow-green-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:shadow-xl'
-                              }`}>
-                              <button
-                                 onClick={() => handleRemoveFrentista(session.tempId)}
-                                 className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 z-10"
-                                 title="Remover"
-                              >
-                                 <X size={18} />
-                              </button>
-
-                              {/* HEADER: Nome + Comparação Visual */}
-                              <div className={`px-6 py-5 rounded-t-2xl bg-gradient-to-r ${session.status === 'conferido'
-                                 ? 'from-green-600 to-green-700 dark:from-green-700 dark:to-green-800'
-                                 : 'from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800'
-                                 }`}>
-                                 <div className="flex items-center justify-between gap-4">
-                                    {/* Identificação */}
-                                    <div className="flex items-center gap-4">
-                                       <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-black text-xl border-2 border-white/30 shadow-lg">
-                                          {frentista?.nome?.substring(0, 2).toUpperCase() || 'FN'}
-                                       </div>
-                                       <div>
-                                          {frentista ? (
-                                             <>
-                                                <h3 className="text-xl font-black text-white drop-shadow-sm">{frentista.nome}</h3>
-                                                {(session as any).data_hora_envio && (
-                                                   <p className="text-[10px] text-blue-100 font-medium mt-0.5">
-                                                      📅 {new Date((session as any).data_hora_envio).toLocaleString('pt-BR', {
-                                                         day: '2-digit',
-                                                         month: '2-digit',
-                                                         year: 'numeric',
-                                                         hour: '2-digit',
-                                                         minute: '2-digit'
-                                                      })}
-                                                   </p>
-                                                )}
-                                             </>
-                                          ) : (
-                                             <select
-                                                value={session.frentistaId || ''}
-                                                onChange={(e) => updateFrentistaSession(session.tempId, { frentistaId: Number(e.target.value) })}
-                                                className="px-3 py-2 bg-white/90 backdrop-blur-sm border-2 border-white/50 rounded-lg text-base font-bold text-gray-800 outline-none focus:border-white shadow-lg"
-                                             >
-                                                <option value="">Selecionar Frentista...</option>
-                                                {frentistas.map(f => (
-                                                   <option key={f.id} value={f.id}>{f.nome}</option>
-                                                ))}
-                                             </select>
-                                          )}
-                                          <p className="text-xs text-blue-100 font-semibold mt-1">Fechamento Individual</p>
-                                       </div>
-                                    </div>
-
-                                    {/* Comparação Visual */}
-                                    <div className="flex items-center gap-6">
-                                       <div className="text-right">
-                                          <p className="text-[10px] font-black text-blue-200 uppercase tracking-wide">Encerrante</p>
-                                          <p className="text-2xl font-black text-white drop-shadow-md">
-                                             {totalVendido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                          </p>
-                                       </div>
-                                       <div className="text-4xl text-white/40 font-light">→</div>
-                                       <div className="text-right">
-                                          <p className="text-[10px] font-black text-blue-200 uppercase tracking-wide">Informado</p>
-                                          <p className={`text-3xl font-black drop-shadow-md ${hasDiff
-                                             ? (diff >= 0 ? 'text-green-300' : 'text-red-300')
-                                             : 'text-white'
-                                             }`}>
-                                             {totalInf.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                          </p>
-                                          {hasDiff && (
-                                             <p className={`text-xs font-bold mt-1 ${diff >= 0 ? 'text-green-200' : 'text-red-200'
-                                                }`}>
-                                                {diff >= 0 ? '↑ Sobra' : '↓ Falta'} {Math.abs(diff).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                             </p>
-                                          )}
-                                       </div>
-                                    </div>
-                                 </div>
-                              </div>
-
-                              <div className="p-6 space-y-6">
-                                 {/* GRID 2x2: Principais Formas de Pagamento */}
-                                 <div>
-                                    <h4 className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">💰 Valores Recebidos</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       {/* Cartão */}
-                                       <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700 hover:border-blue-400 transition-all group/card">
-                                          <div className="flex items-center gap-3 mb-2">
-                                             <div className="p-2 bg-blue-600 rounded-lg text-white shadow-md group-hover/card:scale-110 transition-transform">
-                                                <CreditCard size={20} />
-                                             </div>
-                                             <label className="text-xs font-black text-blue-700 dark:text-blue-400 uppercase">Cartões</label>
-                                          </div>
-                                          <div className="relative">
-                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm">R$</span>
-                                             <input
-                                                type="text"
-                                                value={session.valor_cartao}
-                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao: formatSimpleValue(e.target.value) })}
-                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-blue-500 outline-none placeholder-gray-400 transition-all"
-                                                placeholder="0,00"
-                                             />
-                                          </div>
-                                       </div>
-
-                                       {/* PIX */}
-                                       <div className="bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-900/20 dark:to-cyan-800/10 p-4 rounded-xl border-2 border-cyan-200 dark:border-cyan-700 hover:border-cyan-400 transition-all group/card">
-                                          <div className="flex items-center gap-3 mb-2">
-                                             <div className="p-2 bg-cyan-600 rounded-lg text-white shadow-md group-hover/card:scale-110 transition-transform">
-                                                <Smartphone size={20} />
-                                             </div>
-                                             <label className="text-xs font-black text-cyan-700 dark:text-cyan-400 uppercase">PIX</label>
-                                          </div>
-                                          <div className="relative">
-                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-600 font-bold text-sm">R$</span>
-                                             <input
-                                                type="text"
-                                                value={session.valor_pix}
-                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
-                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-cyan-500 outline-none placeholder-gray-400 transition-all"
-                                                placeholder="0,00"
-                                             />
-                                          </div>
-                                       </div>
-
-                                       {/* Dinheiro */}
-                                       <div className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10 p-4 rounded-xl border-2 border-green-200 dark:border-green-700 hover:border-green-400 transition-all group/card">
-                                          <div className="flex items-center gap-3 mb-2">
-                                             <div className="p-2 bg-green-600 rounded-lg text-white shadow-md group-hover/card:scale-110 transition-transform">
-                                                <Banknote size={20} />
-                                             </div>
-                                             <label className="text-xs font-black text-green-700 dark:text-green-400 uppercase">Dinheiro</label>
-                                          </div>
-                                          <div className="relative">
-                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold text-sm">R$</span>
-                                             <input
-                                                type="text"
-                                                value={session.valor_dinheiro}
-                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
-                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-green-500 outline-none placeholder-gray-400 transition-all"
-                                                placeholder="0,00"
-                                             />
-                                          </div>
-                                       </div>
-
-                                       {/* Baratão */}
-                                       <div className="bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-900/20 dark:to-rose-800/10 p-4 rounded-xl border-2 border-rose-200 dark:border-rose-700 hover:border-rose-400 transition-all group/card">
-                                          <div className="flex items-center gap-3 mb-2">
-                                             <div className="p-2 bg-rose-600 rounded-lg text-white shadow-md group-hover/card:scale-110 transition-transform">
-                                                <ShoppingBag size={20} />
-                                             </div>
-                                             <label className="text-xs font-black text-rose-700 dark:text-rose-400 uppercase">Baratão</label>
-                                          </div>
-                                          <div className="relative">
-                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm">R$</span>
-                                             <input
-                                                type="text"
-                                                value={session.valor_baratao}
-                                                onChange={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatSimpleValue(e.target.value) })}
-                                                className="w-full bg-white/80 dark:bg-gray-800/50 pl-10 pr-3 py-2.5 rounded-lg font-bold text-lg text-gray-900 dark:text-white border-2 border-transparent focus:border-rose-500 outline-none placeholder-gray-400 transition-all"
-                                                placeholder="0,00"
-                                             />
-                                          </div>
-                                       </div>
-                                    </div>
-                                 </div>
-
-                                 {/* SEÇÃO SECUNDÁRIA: Outros Valores */}
-                                 <details className="group/details">
-                                    <summary className="cursor-pointer list-none flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700/50 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all">
-                                       <span className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wide">📋 Outros Valores e Observações</span>
-                                       <span className="text-gray-400 group-open/details:rotate-180 transition-transform">▼</span>
-                                    </summary>
-
-                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                       {/* Produtos (Read Only) */}
-                                       <div className="bg-purple-50/50 dark:bg-purple-900/10 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
-                                          <div className="flex items-center gap-2 mb-2">
-                                             <ShoppingBag size={16} className="text-purple-600" />
-                                             <label className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase">Produtos</label>
-                                          </div>
-                                          <div className="font-bold text-purple-900 dark:text-purple-300">
-                                             {session.valor_produtos ? `R$ ${session.valor_produtos}` : 'R$ 0,00'}
-                                          </div>
-                                       </div>
-
-                                       {/* Encerrante */}
-                                       <div className="bg-amber-50/50 dark:bg-amber-900/10 p-4 rounded-lg border border-amber-200 dark:border-amber-700">
-                                          <div className="flex items-center gap-2 mb-2">
-                                             <Calculator size={16} className="text-amber-600" />
-                                             <label className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase">Vendido (Encerrante)</label>
-                                          </div>
-                                          <input
-                                             type="text"
-                                             value={session.valor_encerrante}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_encerrante: formatSimpleValue(e.target.value) })}
-                                             className="w-full bg-white dark:bg-gray-800 px-3 py-2 rounded-md font-bold text-gray-900 dark:text-white border border-amber-300 dark:border-amber-600 focus:border-amber-500 outline-none"
-                                             placeholder="R$ 0,00"
-                                          />
-                                       </div>
-
-                                       {/* Nota/Vale */}
-                                       <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                                          <div className="flex items-center gap-2 mb-2">
-                                             <FileText size={16} className="text-gray-600" />
-                                             <label className="text-[10px] font-black text-gray-600 dark:text-gray-400 uppercase">Nota (Vale)</label>
-                                          </div>
-                                          <input
-                                             type="text"
-                                             value={session.valor_nota}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatSimpleValue(e.target.value) })}
-                                             className="w-full bg-white dark:bg-gray-800 px-3 py-2 rounded-md font-bold text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 focus:border-gray-500 outline-none"
-                                             placeholder="R$ 0,00"
-                                          />
-                                       </div>
-                                    </div>
-
-                                    {/* Observações */}
-                                    <div className="mt-4">
-                                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-wide mb-2 block">💬 Observações</label>
-                                       <input
-                                          type="text"
-                                          value={session.observacoes}
-                                          onChange={(e) => updateFrentistaSession(session.tempId, { observacoes: e.target.value })}
-                                          placeholder="Adicionar observações do caixa..."
-                                          className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none transition-all"
-                                       />
-                                    </div>
-                                 </details>
-
-                                 {/* RODAPÉ: Valor Conferido */}
-                                 <div className="pt-4 border-t-2 border-gray-200 dark:border-gray-700">
-                                    <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700">
-                                       <div className="flex items-center justify-between mb-3">
-                                          <label className="text-xs font-black text-gray-600 dark:text-gray-300 uppercase tracking-wide">✅ Valor Conferido</label>
-                                          {hasDiff && (
-                                             <span className={`text-xs font-bold px-3 py-1 rounded-full ${diff >= 0
-                                                ? 'bg-green-100 text-green-700 border border-green-300'
-                                                : 'bg-red-100 text-red-700 border border-red-300'
-                                                }`}>
-                                                {diff >= 0 ? '↑ Sobra' : '↓ Falta'} {Math.abs(diff).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                             </span>
-                                          )}
-                                       </div>
-                                       <div className="relative">
-                                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm font-bold">R$</span>
-                                          <input
-                                             type="text"
-                                             value={session.valor_conferido}
-                                             onChange={(e) => updateFrentistaSession(session.tempId, { valor_conferido: formatSimpleValue(e.target.value) })}
-                                             className={`w-full pl-12 pr-4 py-3 border-2 rounded-lg font-bold text-xl text-gray-900 dark:text-white outline-none transition-all ${hasDiff
-                                                ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 focus:border-amber-500'
-                                                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500'
-                                                }`}
-                                             placeholder="0,00"
-                                          />
-                                       </div>
-                                    </div>
-                                 </div>
-
-                                 {/* Botão Salvar Caixa */}
-                                 <div className="pt-4 flex justify-end">
+            <div className="overflow-x-auto custom-scrollbar flex-grow">
+               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                     <tr>
+                        <th scope="col" className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-48 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           Meio de Pagamento
+                        </th>
+                        {frentistaSessions.map((session, idx) => {
+                           const frentista = frentistas.find(f => f.id === session.frentistaId);
+                           return (
+                              <th key={session.tempId} scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px]">
+                                 <div className="flex items-center justify-end gap-2 group">
+                                    {frentista ? (
+                                       <span>{frentista.nome.split(' ')[0]}</span>
+                                    ) : (
+                                       <select
+                                          value={session.frentistaId || ''}
+                                          onChange={(e) => updateFrentistaSession(session.tempId, { frentistaId: Number(e.target.value) })}
+                                          className="text-xs p-1 border rounded bg-white dark:bg-gray-700 dark:text-white"
+                                       >
+                                          <option value="">Selecione...</option>
+                                          {frentistas.map(f => (
+                                             <option key={f.id} value={f.id}>{f.nome.split(' ')[0]}</option>
+                                          ))}
+                                       </select>
+                                    )}
                                     <button
-                                       onClick={() => updateFrentistaSession(session.tempId, { status: 'conferido' } as any)}
-                                       className={`px-6 py-3 font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 ${session.status === 'conferido'
-                                          ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200 ring-2 ring-green-400 ring-offset-2 ring-offset-white dark:ring-offset-gray-800'
-                                          : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl'
-                                          }`}
+                                       onClick={() => handleRemoveFrentista(session.tempId)}
+                                       className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                       title="Remover coluna"
                                     >
-                                       {session.status === 'conferido' ? '✓ Caixa Salvo!' : '💾 Salvar Caixa'}
+                                       <X size={14} />
                                     </button>
                                  </div>
-                              </div>
+                              </th>
+                           );
+                        })}
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+                           Total Caixa
+                        </th>
+                     </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                     {/* PIX */}
+                     <tr>
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           <div className="flex items-center">
+                              <Smartphone className="text-cyan-500 text-sm mr-2" size={16} />
+                              Pix
                            </div>
-                        );
-                     })}
-                  </div>
-               )}
+                        </td>
+                        {frentistaSessions.map(session => (
+                           <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                              <input
+                                 type="text"
+                                 value={session.valor_pix}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
+                                 className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
+                                 placeholder="R$ 0,00"
+                              />
+                           </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_pix), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                     </tr>
+
+                     {/* Cartão */}
+                     <tr>
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           <div className="flex items-center">
+                              <CreditCard className="text-blue-500 text-sm mr-2" size={16} />
+                              Cartão
+                           </div>
+                        </td>
+                        {frentistaSessions.map(session => (
+                           <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                              <input
+                                 type="text"
+                                 value={session.valor_cartao}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao: formatSimpleValue(e.target.value) })}
+                                 className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
+                                 placeholder="R$ 0,00"
+                              />
+                           </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_cartao), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                     </tr>
+
+                     {/* Notas a Prazo */}
+                     <tr>
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           <div className="flex items-center">
+                              <FileText className="text-yellow-500 text-sm mr-2" size={16} />
+                              Notas a Prazo
+                           </div>
+                        </td>
+                        {frentistaSessions.map(session => (
+                           <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                              <input
+                                 type="text"
+                                 value={session.valor_nota}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatSimpleValue(e.target.value) })}
+                                 className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
+                                 placeholder="R$ 0,00"
+                              />
+                           </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_nota), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                     </tr>
+
+                     {/* Dinheiro */}
+                     <tr>
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           <div className="flex items-center">
+                              <Banknote className="text-green-600 text-sm mr-2" size={16} />
+                              Dinheiro
+                           </div>
+                        </td>
+                        {frentistaSessions.map(session => (
+                           <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                              <input
+                                 type="text"
+                                 value={session.valor_dinheiro}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
+                                 className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
+                                 placeholder="R$ 0,00"
+                              />
+                           </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_dinheiro), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                     </tr>
+
+                     {/* Baratão (Optional/Others) */}
+                     <tr>
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           <div className="flex items-center">
+                              <ShoppingBag className="text-rose-500 text-sm mr-2" size={16} />
+                              Baratão/Outros
+                           </div>
+                        </td>
+                        {frentistaSessions.map(session => (
+                           <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                              <input
+                                 type="text"
+                                 value={session.valor_baratao}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatSimpleValue(e.target.value) })}
+                                 className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
+                                 placeholder="R$ 0,00"
+                              />
+                           </td>
+                        ))}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_baratao), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                     </tr>
+
+                     {/* Total Venda Frentista (Sum Row) */}
+                     <tr className="bg-blue-50 dark:bg-blue-900/20 font-semibold">
+                        <td className="sticky left-0 z-10 bg-blue-50 dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-blue-100 border-r border-blue-100 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           Total Venda Frentista
+                        </td>
+                        {frentistaSessions.map(session => {
+                           const total = parseValue(session.valor_cartao) +
+                              parseValue(session.valor_pix) +
+                              parseValue(session.valor_nota) +
+                              parseValue(session.valor_dinheiro) +
+                              parseValue(session.valor_baratao);
+                           return (
+                              <td key={session.tempId} className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                                 {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </td>
+                           );
+                        })}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-700 dark:text-blue-300 border-l border-blue-100 dark:border-gray-700 bg-blue-100/50 dark:bg-blue-900/40">
+                           {frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                     </tr>
+
+                     {/* Venda Concentrador (Input Row) */}
+                     <tr className="bg-white dark:bg-gray-800 border-t-2 border-primary">
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600 dark:text-blue-400 border-r border-gray-200 dark:border-gray-700 flex flex-col justify-center min-h-[80px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           <span className="block mb-2">Venda Concentrador</span>
+                           <div className="mt-1">
+                              <label htmlFor="encerrante-total" className="block text-xs font-normal text-gray-500 dark:text-gray-400 mb-1">Encerrante Final</label>
+                              <div className="text-xs text-gray-400 italic">Soma Automática</div>
+                           </div>
+                        </td>
+                        {frentistaSessions.map(session => {
+                           const totalVendido = parseValue(session.valor_encerrante);
+                           return (
+                              <td key={session.tempId} className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-700 dark:text-gray-200 align-top">
+                                 <div className="flex flex-col items-end gap-2">
+                                    <span className="font-bold text-gray-900 dark:text-white">
+                                       {totalVendido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </span>
+                                    <div className="w-28">
+                                       <input
+                                          type="text"
+                                          value={session.valor_encerrante}
+                                          onChange={(e) => updateFrentistaSession(session.tempId, { valor_encerrante: formatSimpleValue(e.target.value) })}
+                                          className="block w-full px-2 py-1 text-xs border border-gray-200 dark:border-gray-600 dark:bg-gray-800 rounded focus:ring-blue-500 focus:border-blue-500 text-right"
+                                          placeholder="Encerrante (R$)"
+                                       />
+                                    </div>
+                                 </div>
+                              </td>
+                           );
+                        })}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-600 dark:text-blue-400 border-l border-gray-200 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-900/10 align-top">
+                           <div className="mt-2 text-lg">
+                              {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_encerrante), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           </div>
+                           {Math.abs(frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_encerrante), 0) - totals.valor) > 0.01 ? (
+                              <div className="flex flex-col items-end mt-1">
+                                 <div className="flex items-center gap-1 text-xs text-amber-600 font-bold" title="Divergência com Total de Leituras">
+                                    <AlertTriangle size={12} />
+                                    <span>Dif: {(frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_encerrante), 0) - totals.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                 </div>
+                                 <span className="text-[10px] text-gray-400">Total Leituras: {totals.valorDisplay}</span>
+                              </div>
+                           ) : (
+                              <div className="flex items-center justify-end gap-1 mt-1 text-green-600 text-xs font-bold">
+                                 <CheckCircle2 size={12} />
+                                 <span>Confere</span>
+                              </div>
+                           )}
+                        </td>
+                     </tr>
+
+                     {/* Falta/Diferença */}
+                     <tr className="bg-red-50 dark:bg-red-900/10">
+                        <td className="sticky left-0 z-10 bg-red-50 dark:bg-gray-800 px-6 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400 border-r border-red-100 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           Diferença (Falta)
+                        </td>
+                        {frentistaSessions.map(session => {
+                           const totalInf = parseValue(session.valor_cartao) +
+                              parseValue(session.valor_pix) +
+                              parseValue(session.valor_nota) +
+                              parseValue(session.valor_dinheiro) +
+                              parseValue(session.valor_baratao);
+                           const totalVendido = parseValue(session.valor_encerrante);
+                           const diff = totalVendido - totalInf;
+
+                           return (
+                              <td key={session.tempId} className="px-6 py-3 whitespace-nowrap text-sm text-right font-bold">
+                                 <span className={`${diff > 0.01 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'}`}>
+                                    {diff > 0.01 ? diff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                                 </span>
+                              </td>
+                           );
+                        })}
+                        <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-bold text-red-600 border-l border-red-100 dark:border-gray-700 bg-red-100/30 dark:bg-red-900/30">
+                           {(() => {
+                              const totalFalta = frentistaSessions.reduce((acc, s) => {
+                                 const totalInf = parseValue(s.valor_cartao) + parseValue(s.valor_pix) + parseValue(s.valor_nota) + parseValue(s.valor_dinheiro) + parseValue(s.valor_baratao);
+                                 const totalVendido = parseValue(s.valor_encerrante);
+                                 const diff = totalVendido - totalInf;
+                                 return acc + (diff > 0 ? diff : 0);
+                              }, 0);
+                              return totalFalta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                           })()}
+                        </td>
+                     </tr>
+
+                     {/* Percentual */}
+                     <tr>
+                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-3 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                           Participação %
+                        </td>
+                        {frentistaSessions.map(session => {
+                           const totalInf = parseValue(session.valor_cartao) +
+                              parseValue(session.valor_pix) +
+                              parseValue(session.valor_nota) +
+                              parseValue(session.valor_dinheiro) +
+                              parseValue(session.valor_baratao);
+                           const globalTotal = frentistasTotals.total || 1;
+                           const percent = (totalInf / globalTotal) * 100;
+
+                           return (
+                              <td key={session.tempId} className="px-6 py-3 whitespace-nowrap text-xs text-right text-gray-500 dark:text-gray-400">
+                                 {percent.toFixed(2)}%
+                              </td>
+                           );
+                        })}
+                        <td className="px-6 py-3 whitespace-nowrap text-xs text-right font-semibold text-gray-600 dark:text-gray-300 border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                           100%
+                        </td>
+                     </tr>
+                  </tbody>
+               </table>
+            </div>
+
+
+            <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 sm:px-6">
+               <div className="text-xs text-gray-500 dark:text-gray-400 text-center sm:text-left flex justify-between items-center">
+                  <span>* Valores de Venda Concentrador devem ser preenchidos com o total vendido registrado na bomba (Encerrante).</span>
+                  {frentistaSessions.length > 0 && (
+                     <button
+                        onClick={() => {
+                           handleSave();
+                        }}
+                        className="text-blue-600 hover:text-blue-800 font-bold"
+                     >
+                        Salvar Alterações
+                     </button>
+                  )}
+               </div>
             </div>
          </div>
 
