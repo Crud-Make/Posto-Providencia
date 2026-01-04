@@ -986,7 +986,45 @@ export const fechamentoFrentistaService = {
     return data || [];
   },
 
+  /**
+   * Exclui todos os fechamentos de frentista vinculados a um fechamento principal.
+   * 
+   * @param fechamentoId - ID do fechamento pai (consolidado)
+   * 
+   * Importante: Antes da exclusão, o método remove notificações vinculadas e 
+   * desvincula notas de frentista e vendas de produtos para evitar violações de integridade
+   * (Foreign Key Constraints) e permitir que os registros originais sejam preservados sem o vínculo.
+   */
   async deleteByFechamento(fechamentoId: number): Promise<void> {
+    // Buscar todos os IDs de FechamentoFrentista deste Fechamento
+    const { data: frentistasData } = await supabase
+      .from('FechamentoFrentista')
+      .select('id')
+      .eq('fechamento_id', fechamentoId);
+
+    if (frentistasData && frentistasData.length > 0) {
+      const frentistaIds = frentistasData.map(f => f.id);
+
+      // Remover Notificações vinculadas (evita violação de FK)
+      await supabase
+        .from('Notificacao')
+        .delete()
+        .in('fechamento_frentista_id', frentistaIds);
+
+      // Desvincular Notas de Frentista (para que permaneçam no histórico, mas sem o vínculo do fechamento excluído)
+      await supabase
+        .from('NotaFrentista')
+        .update({ fechamento_frentista_id: null })
+        .in('fechamento_frentista_id', frentistaIds);
+
+      // Desvincular Venda de Produtos
+      await supabase
+        .from('VendaProduto')
+        .update({ fechamento_frentista_id: null })
+        .in('fechamento_frentista_id', frentistaIds);
+    }
+
+    // Agora sim, deletar os fechamentos de frentista
     const { error } = await supabase
       .from('FechamentoFrentista')
       .delete()
