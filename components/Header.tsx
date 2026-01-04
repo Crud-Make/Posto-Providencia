@@ -4,8 +4,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import PostoSelector from './PostoSelector';
 
 interface HeaderProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'postos' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
