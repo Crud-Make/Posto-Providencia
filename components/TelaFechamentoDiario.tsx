@@ -735,48 +735,27 @@ const TelaFechamentoDiario: React.FC = () => {
    };
 
    // Formata valor com vírgula quando o campo perde o foco
-   // Converte "1.718.359.423" para "1.718.359,423" (últimos 3 dígitos são decimais)
+   // Converte qualquer formato para "1.718.359,423" (últimos 3 dígitos são SEMPRE decimais)
    const formatOnBlur = (value: string): string => {
       if (!value) return '';
 
-      // Remove tudo exceto números e vírgula
-      let cleaned = value.replace(/[^0-9,]/g, '');
+      // Remove TUDO exceto números (remove pontos e vírgulas)
+      let cleaned = value.replace(/[^0-9]/g, '');
       if (cleaned.length === 0) return '';
 
-      // Se já tem vírgula, apenas reorganiza
-      if (cleaned.includes(',')) {
-         const parts = cleaned.split(',');
-         let inteiro = parts[0] || '0';
-         let decimal = parts.slice(1).join('');
-
-         // Remove zeros à esquerda
-         if (inteiro.length > 1) {
-            inteiro = inteiro.replace(/^0+/, '') || '0';
-         }
-
-         // Formata com pontos de milhar
-         if (inteiro.length > 3) {
-            inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-         }
-
-         // Garante 3 casas decimais
-         decimal = decimal.padEnd(3, '0').slice(0, 3);
-
-         return `${inteiro},${decimal}`;
-      }
-
-      // Sem vírgula: assume últimos 3 dígitos como decimais
+      // Números muito pequenos (até 3 dígitos): são decimais puros (0,00X)
       if (cleaned.length <= 3) {
          return `0,${cleaned.padStart(3, '0')}`;
       }
 
+      // Separa: últimos 3 dígitos são SEMPRE decimais, resto é inteiro
       let inteiro = cleaned.slice(0, -3);
       const decimal = cleaned.slice(-3);
 
-      // Remove zeros à esquerda
+      // Remove zeros à esquerda da parte inteira
       inteiro = inteiro.replace(/^0+/, '') || '0';
 
-      // Formata com pontos de milhar
+      // Adiciona pontos de milhar
       if (inteiro.length > 3) {
          inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
       }
