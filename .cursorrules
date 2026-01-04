@@ -50,6 +50,7 @@ Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. 
   - Identificar rapidamente onde bugs podem estar
   - Onboarding de novos desenvolvedores
   - Manutenção futura sem precisar decifrar código
+- **Comentários de Alteração:** SEMPRE que alterar um bloco de código existente, deixe um comentário breve explicando O QUE foi alterado e POR QUÊ, para que o desenvolvedor humano entenda a modificação imediatamente.
 
 **Exemplo Obrigatório:**
 ```typescript
