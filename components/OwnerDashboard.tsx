@@ -408,64 +408,157 @@ const OwnerDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Vendas do Mês */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center justify-between mb-6">
+            {/* Resultado Financeiro Detalhado - Redesign para melhor visualização do fluxo */}
+            {/* Alteração: Mudança de layout para 3 colunas (Entrada - Saída = Resultado) para clareza imediata do proprietário */}
+            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Resultado do Mês</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Acumulado até hoje</p>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span className="bg-blue-100 dark:bg-blue-900/30 p-1.5 rounded-lg">
+                                <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            </span>
+                            Resultado Financeiro Mensal
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 ml-10">
+                            Fluxo de caixa estimado (Lucro Bruto - Despesas Operacionais)
+                        </p>
                     </div>
-                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg">
-                        <ArrowUpRight className="w-4 h-4" />
-                        <span className="font-medium text-sm">Lucro: {formatCurrency(data.totalLucroMes)}</span>
+
+                    {/* Badge de Status Financeiro */}
+                    <div className={`px-4 py-2 rounded-full text-sm font-bold border flex items-center gap-2 ${data.totalLucroMes - data.totalDespesasPendentes >= 0
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400'
+                            : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                        }`}>
+                        {data.totalLucroMes - data.totalDespesasPendentes >= 0 ? (
+                            <>
+                                <TrendingUp className="w-4 h-4" />
+                                Operação Lucrativa
+                            </>
+                        ) : (
+                            <>
+                                <AlertTriangle className="w-4 h-4" />
+                                Atenção: Prejuízo Operacional
+                            </>
+                        )}
                     </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                                    <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Vendas Totais</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(data.totalVendasMes)}</p>
-                                </div>
-                            </div>
+                <div className="grid md:grid-cols-3 gap-6 relative">
+                    {/* Símbolos matemáticos visuais para telas grandes */}
+                    <div className="hidden md:block absolute top-1/2 left-[33%] -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center font-bold text-gray-400 shadow-sm border border-gray-200 dark:border-gray-600">
+                            -
                         </div>
+                    </div>
+                    <div className="hidden md:block absolute top-1/2 left-[66%] -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center font-bold text-gray-400 shadow-sm border border-gray-200 dark:border-gray-600">
+                            =
+                        </div>
+                    </div>
 
-                        <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
-                                    <PiggyBank className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    {/* 1. Entradas (Lucro Bruto) */}
+                    <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl p-6 border border-blue-100 dark:border-blue-800/30 relative overflow-hidden group hover:border-blue-300 transition-colors">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <DollarSign className="w-24 h-24 text-blue-600" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">
+                                Geração de Caixa (Margem)
+                            </p>
+                            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                                {formatCurrency(data.totalLucroMes)}
+                            </p>
+
+                            <div className="mt-4 pt-4 border-t border-blue-200/50 dark:border-blue-800/30">
+                                <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                                    <span>Vendas Brutas:</span>
+                                    <span className="font-medium">{formatCurrency(data.totalVendasMes)}</span>
                                 </div>
-                                <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Despesas Pendentes</p>
-                                    <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(data.totalDespesasPendentes)}</p>
+                                <div className="flex items-center justify-between text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">
+                                    <span>Margem Média:</span>
+                                    <span>~{(data.totalLucroMes / data.totalVendasMes * 100).toFixed(1)}%</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-center">
-                        <div className="text-center">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Lucro Líquido Estimado</p>
-                            <p className={`text-4xl font-bold ${data.totalLucroMes - data.totalDespesasPendentes >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {/* 2. Saídas (Despesas) */}
+                    <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl p-6 border border-amber-100 dark:border-amber-800/30 relative overflow-hidden group hover:border-amber-300 transition-colors">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <PiggyBank className="w-24 h-24 text-amber-600" />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-sm font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">
+                                Despesas Operacionais
+                            </p>
+                            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                                {formatCurrency(data.totalDespesasPendentes)}
+                            </p>
+
+                            <div className="mt-4 pt-4 border-t border-amber-200/50 dark:border-amber-800/30">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                    Total de gastos registrados e pendentes de pagamento no período.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. Resultado Final */}
+                    <div className={`rounded-2xl p-6 border relative overflow-hidden group transition-all ${data.totalLucroMes - data.totalDespesasPendentes >= 0
+                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30 hover:border-emerald-300'
+                            : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-800/30 hover:border-red-300 ring-4 ring-red-50 dark:ring-red-900/10'
+                        }`}>
+                        <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity`}>
+                            {data.totalLucroMes - data.totalDespesasPendentes >= 0
+                                ? <TrendingUp className="w-24 h-24 text-emerald-600" />
+                                : <TrendingDown className="w-24 h-24 text-red-600" />
+                            }
+                        </div>
+                        <div className="relative z-10">
+                            <p className={`text-sm font-medium uppercase tracking-wider mb-2 ${data.totalLucroMes - data.totalDespesasPendentes >= 0
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                Resultado Líquido
+                            </p>
+                            <p className={`text-3xl font-bold ${data.totalLucroMes - data.totalDespesasPendentes >= 0
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : 'text-red-700 dark:text-red-300'
+                                }`}>
                                 {formatCurrency(data.totalLucroMes - data.totalDespesasPendentes)}
                             </p>
-                            <p className="text-sm text-gray-400 mt-2">
-                                (Lucro Bruto - Despesas)
-                            </p>
-                            {data.totalLucroMes - data.totalDespesasPendentes < 0 && (
-                                <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl max-w-xs mx-auto animate-in fade-in slide-in-from-top-2 duration-500">
-                                    <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed font-medium">
-                                        ⚠️ O resultado está negativo porque as despesas acumuladas (<b>{formatCurrency(data.totalDespesasPendentes)}</b>) superam o lucro gerado pelas vendas (<b>{formatCurrency(data.totalLucroMes)}</b>) neste período.
-                                    </p>
-                                </div>
-                            )}
+
+                            <div className={`mt-4 pt-4 border-t ${data.totalLucroMes - data.totalDespesasPendentes >= 0
+                                    ? 'border-emerald-200/50 dark:border-emerald-800/30'
+                                    : 'border-red-200/50 dark:border-red-800/30'
+                                }`}>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Valor final estimado após dedução das despesas.
+                                </p>
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Área de Explicação e Insights Inteligentes */}
+                {/* Alteração: Explicação detalhada movida para um container full-width abaixo dos cards para maior destaque e legibilidade */}
+                <div className="mt-8 space-y-4">
+                    {data.totalLucroMes - data.totalDespesasPendentes < 0 && (
+                        <div className="flex items-start gap-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl">
+                            <div className="p-2 bg-red-100 dark:bg-red-900/40 rounded-lg flex-shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-red-900 dark:text-red-200">Entendendo o Resultado Negativo</h3>
+                                <p className="text-sm text-red-700 dark:text-red-300 mt-1 leading-relaxed">
+                                    O posto está operando no vermelho neste mês porque o valor total das <b>despesas ({formatCurrency(data.totalDespesasPendentes)})</b> é superior ao <b>lucro gerado pelas vendas ({formatCurrency(data.totalLucroMes)})</b>.
+                                </p>
+                                <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-2 font-medium">
+                                    💡 Sugestão: Revise as despesas lançadas ou busque estratégias para aumentar o volume de vendas dos combustíveis com maior margem.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
