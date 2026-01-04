@@ -37,7 +37,7 @@ interface SidebarProps {
  * 
  * Responsável pela navegação principal entre os módulos do sistema (Vendas, Estoque, Frentistas, etc).
  */
-const BarraLateral: React.FC<SidebarProps> = ({ currentView, onNavigate, className = '' }) => {
+const BarraLateral: React.FC<SidebarProps & { onClose?: () => void }> = ({ currentView, onNavigate, onClose, className = '' }) => {
   const { theme, toggleTheme } = useTheme();
 
   const menuItems = [
@@ -60,51 +60,67 @@ const BarraLateral: React.FC<SidebarProps> = ({ currentView, onNavigate, classNa
   ] as const;
 
   return (
-    <aside className={`w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col h-screen sticky top-0 z-40 transition-colors duration-200 ${className}`}>
-      {/* Logo */}
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-          <Fuel size={24} />
+    <>
+      <aside className={`w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col h-screen overflow-y-auto sticky top-0 z-40 transition-transform duration-200 ${className}`}>
+        {/* Logo & Close Button */}
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+              <Fuel size={24} />
+            </div>
+            <div>
+              <h1 className="font-bold text-gray-900 dark:text-white leading-tight">Posto Providência</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Gestão Integrada</p>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            >
+              <Users size={24} className="sr-only" /> {/* Using Users as placeholder or X import needed */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          )}
         </div>
-        <div>
-          <h1 className="font-bold text-gray-900 dark:text-white leading-tight">Posto Providência</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Gestão Integrada</p>
-        </div>
-      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1">
-        {menuItems.map((item) => (
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-1">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                onNavigate(item.id);
+                if (onClose) onClose();
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group
+                ${currentView === item.id
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                }
+              `}
+            >
+              <item.icon
+                size={20}
+                className={currentView === item.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}
+              />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Bottom Actions */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 mt-auto">
           <button
-            key={item.id}
-            onClick={() => onNavigate(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group
-              ${currentView === item.id
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-              }
-            `}
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            <item.icon
-              size={20}
-              className={currentView === item.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}
-            />
-            {item.label}
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            <span>Modo {theme === 'light' ? 'Escuro' : 'Claro'}</span>
           </button>
-        ))}
-      </nav>
-
-      {/* Bottom Actions */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        <button
-          onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        >
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          <span>Modo {theme === 'light' ? 'Escuro' : 'Claro'}</span>
-        </button>
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 };
 
