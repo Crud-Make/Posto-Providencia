@@ -1132,7 +1132,8 @@ const DailyClosingScreen: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap gap-4">
-               {/* Posto Selector */}
+               {/* Posto Selector - OCULTO (modo posto único) */}
+               {/*
                <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                      <Building2 size={12} />
@@ -1150,6 +1151,7 @@ const DailyClosingScreen: React.FC = () => {
                      ))}
                   </select>
                </div>
+               */}
 
                {/* Date Picker */}
                <div className="flex flex-col gap-1">
