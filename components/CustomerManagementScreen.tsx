@@ -223,20 +223,53 @@ const CustomerManagementScreen: React.FC = () => {
         }
     };
 
+    const [editingClienteId, setEditingClienteId] = useState<number | null>(null);
+
+    const handleEditCliente = () => {
+        if (!selectedCliente) return;
+        setNewCliente({
+            nome: selectedCliente.nome,
+            documento: selectedCliente.documento || '',
+            telefone: selectedCliente.telefone || '',
+            email: selectedCliente.email || '',
+            endereco: selectedCliente.endereco || '',
+            limite_credito: selectedCliente.limite_credito ? String(selectedCliente.limite_credito) : ''
+        });
+        setEditingClienteId(selectedCliente.id);
+        setShowAddModal(true);
+    };
+
     const handleSaveCliente = async () => {
         if (!newCliente.nome || !postoAtivo?.id) return;
 
         try {
-            await clienteService.create({
-                ...newCliente,
-                limite_credito: newCliente.limite_credito ? parseFloat(newCliente.limite_credito) : 0,
-                posto_id: postoAtivo.id
-            });
+            if (editingClienteId) {
+                // Modo Edição
+                await clienteService.update(editingClienteId, {
+                    ...newCliente,
+                    limite_credito: newCliente.limite_credito ? parseFloat(newCliente.limite_credito) : 0,
+                });
+                toast.success('Cliente atualizado com sucesso!');
+
+                // Se o cliente editado for o selecionado, atualizar os dados dele
+                if (selectedCliente && selectedCliente.id === editingClienteId) {
+                    // Apenas recarrega tudo para garantir consistência
+                    setSelectedCliente(prev => prev ? ({ ...prev, ...newCliente, limite_credito: newCliente.limite_credito ? parseFloat(newCliente.limite_credito) : 0 }) : null);
+                }
+            } else {
+                // Modo Criação
+                await clienteService.create({
+                    ...newCliente,
+                    limite_credito: newCliente.limite_credito ? parseFloat(newCliente.limite_credito) : 0,
+                    posto_id: postoAtivo.id
+                });
+                toast.success('Cliente salvo com sucesso!');
+            }
 
             setShowAddModal(false);
             setNewCliente({ nome: '', documento: '', telefone: '', email: '', limite_credito: '', endereco: '' });
+            setEditingClienteId(null);
             loadClientes();
-            toast.success('Cliente salvo com sucesso!');
         } catch (error) {
             console.error('Erro ao salvar cliente:', error);
             toast.error('Erro ao salvar cliente');
@@ -446,6 +479,25 @@ const CustomerManagementScreen: React.FC = () => {
                         <>
                             {/* Header do Cliente */}
                             <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                                {/* Alerta de Bloqueio */}
+                                {selectedCliente.ativo === false && (
+                                    <div className="mb-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center justify-between text-red-800 dark:text-red-200">
+                                        <div className="flex items-center gap-2">
+                                            <Ban size={20} />
+                                            <div>
+                                                <p className="font-bold text-sm">Cliente Bloqueado</p>
+                                                <p className="text-xs opacity-90">Este cliente não pode realizar novas compras a prazo.</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={handleBloquearCliente}
+                                            className="text-xs bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors font-medium"
+                                        >
+                                            Desbloquear
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-4">
                                         <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
@@ -487,7 +539,10 @@ const CustomerManagementScreen: React.FC = () => {
                                     >
                                         <Plus size={16} /> Nova Nota
                                     </button>
-                                    <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                                    <button
+                                        onClick={() => handleEditCliente()}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                    >
                                         <Edit size={16} /> Editar Cadastro
                                     </button>
                                     <button
@@ -580,9 +635,15 @@ const CustomerManagementScreen: React.FC = () => {
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden">
                         <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Novo Cliente</h3>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                {editingClienteId ? 'Editar Cliente' : 'Novo Cliente'}
+                            </h3>
                             <button
-                                onClick={() => setShowAddModal(false)}
+                                onClick={() => {
+                                    setShowAddModal(false);
+                                    setEditingClienteId(null);
+                                    setNewCliente({ nome: '', documento: '', telefone: '', email: '', limite_credito: '', endereco: '' });
+                                }}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"
                             >
                                 <XCircle size={24} />
@@ -647,7 +708,11 @@ const CustomerManagementScreen: React.FC = () => {
 
                         <div className="p-6 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
                             <button
-                                onClick={() => setShowAddModal(false)}
+                                onClick={() => {
+                                    setShowAddModal(false);
+                                    setEditingClienteId(null);
+                                    setNewCliente({ nome: '', documento: '', telefone: '', email: '', limite_credito: '', endereco: '' });
+                                }}
                                 className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
                             >
                                 Cancelar
