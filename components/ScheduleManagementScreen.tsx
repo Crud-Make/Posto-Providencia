@@ -3,28 +3,56 @@ import { Calendar, ChevronLeft, ChevronRight, User, Save, RefreshCw, Download, F
 import { frentistaService, escalaService } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
 
-
+/**
+ * Interface para dados básicos de um frentista
+ */
 interface Frentista {
     id: number;
     nome: string;
 }
 
+/**
+ * Interface para registro de escala (trabalho/folga) de um frentista
+ * Armazena informações sobre o tipo de dia e observações opcionais
+ */
 interface Escala {
     id: number;
     frentista_id: number;
-    data: string;
+    data: string; // Formato: YYYY-MM-DD
     tipo: 'FOLGA' | 'TRABALHO';
-    observacao?: string;
+    observacao?: string; // Observações sobre o dia (ex: médico, troca de turno)
 }
 
+/**
+ * Interface para controle do modal de observações
+ * Gerencia o estado de abertura e dados do modal
+ */
 interface ObservacaoModal {
     isOpen: boolean;
     frentistaId: number | null;
     frentistaName: string;
-    day: number;
+    day: number; // Dia do mês (1-31)
     currentObservacao: string;
-    escalaId: number | null;
+    escalaId: number | null; // ID da escala existente, se houver
 }
+
+/**
+ * Componente de Gestão de Escala e Folgas
+ * 
+ * Permite ao dono do posto:
+ * - Visualizar escala mensal de todos os frentistas
+ * - Marcar folgas clicando nas células
+ * - Adicionar observações em qualquer dia (clique direito ou botão de edição)
+ * - Exportar escala para PDF/impressão
+ * 
+ * Funcionalidades:
+ * - Navegação entre meses
+ * - Indicadores visuais de folgas (F vermelho)
+ * - Indicadores de observações (ícone de documento)
+ * - Destaque de finais de semana
+ * - Modal para edição de observações
+ * - Exportação formatada para PDF
+ */
 
 const ScheduleManagementScreen: React.FC = () => {
     const { postoAtivoId } = usePosto();
@@ -49,7 +77,12 @@ const ScheduleManagementScreen: React.FC = () => {
         loadData();
     }, [currentDate, postoAtivoId]);
 
-
+    /**
+     * Carrega dados de frentistas e escalas do mês atual
+     * Executa sempre que o mês ou posto ativo mudar
+     * 
+     * Filtra apenas frentistas ativos para exibição
+     */
     const loadData = async () => {
         try {
             setLoading(true);
@@ -68,21 +101,28 @@ const ScheduleManagementScreen: React.FC = () => {
         }
     };
 
+    /**
+     * Manipula clique em uma célula da escala
+     * Toggle entre FOLGA e TRABALHO (padrão)
+     * 
+     * @param frentistaId - ID do frentista
+     * @param day - Dia do mês clicado
+     * 
+     * Comportamento:
+     * - Se já existe escala FOLGA: remove (volta ao padrão TRABALHO)
+     * - Se não existe: cria nova escala como FOLGA
+     */
     const handleCellClick = async (frentistaId: number, day: number) => {
-        // Toggle Folga
-        // Check if exists
         const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
         const existing = escalas.find(e => e.frentista_id === frentistaId && e.data === dateStr);
 
         try {
             if (existing) {
-                // Remove (back to Trabalho default) if it was Folga?
-                // Or toggle between types. Assuming default is Work.
-                // If exists (Folga), delete it.
+                // Remove escala existente (volta ao padrão TRABALHO)
                 await escalaService.delete(existing.id);
                 setEscalas(prev => prev.filter(e => e.id !== existing.id));
             } else {
-                // Create Folga
+                // Cria nova escala marcada como FOLGA
                 const newEscala = await escalaService.create({
                     frentista_id: frentistaId,
                     data: dateStr,
@@ -98,6 +138,9 @@ const ScheduleManagementScreen: React.FC = () => {
         }
     };
 
+    /**
+     * Retorna o número de dias no mês atual
+     */
     const getDaysInMonth = (date: Date) => {
         return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
     };
@@ -106,15 +149,32 @@ const ScheduleManagementScreen: React.FC = () => {
 
     const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
+    /**
+     * Retorna a letra do dia da semana (D, S, T, Q, Q, S, S)
+     */
     const getDayLabel = (day: number) => {
         const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
         return weekDays[d.getDay()];
     };
 
+    /**
+     * Verifica se o dia é final de semana (sábado ou domingo)
+     * Usado para aplicar estilo diferenciado nas células
+     */
     const isWeekend = (day: number) => {
         const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).getDay();
         return d === 0 || d === 6;
     };
+
+    /**
+     * Abre o modal para adicionar/editar observação de um dia específico
+     * 
+     * @param frentistaId - ID do frentista
+     * @param frentistaName - Nome do frentista (para exibição)
+     * @param day - Dia do mês
+     * 
+     * Carrega observação existente se houver escala para este dia
+     */
 
     const handleOpenObservacao = (frentistaId: number, frentistaName: string, day: number) => {
         const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
@@ -161,8 +221,19 @@ const ScheduleManagementScreen: React.FC = () => {
         }
     };
 
+    /**
+     * Exporta a escala do mês atual para PDF/impressão
+     * 
+     * Funcionalidade:
+     * - Abre nova janela com HTML formatado para impressão
+     * - Layout em paisagem (landscape) para caber todos os dias do mês
+     * - Inclui cabeçalho, tabela completa, legenda e rodapé
+     * - Indicadores: F (folga), 📝 (observação), destaque de finais de semana
+     * 
+     * O usuário pode imprimir ou salvar como PDF pelo navegador
+     */
     const handleExportPDF = () => {
-        // Criar uma nova janela para impressão
+        // Abre nova janela em branco para renderizar o HTML de impressão
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
             alert('Por favor, permita pop-ups para exportar o PDF');
@@ -171,7 +242,8 @@ const ScheduleManagementScreen: React.FC = () => {
 
         const monthName = currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
 
-        // Construir HTML para impressão
+        // Constrói HTML completo com estilos CSS inline para impressão
+        // Importante: Estilos devem ser inline pois a janela não tem acesso ao CSS externo
         let html = `
             <!DOCTYPE html>
             <html>
