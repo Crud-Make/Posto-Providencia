@@ -2884,14 +2884,18 @@ export const vendaProdutoService = {
 // ============================================
 
 export const escalaService = {
-  async getAll(_postoId?: number): Promise<any[]> {
-    // Nota: A tabela Escala não possui campo posto_id
-    // Futuramente, filtrar pelo posto_id dos frentistas relacionados
+  async getAll(postoId?: number): Promise<any[]> {
     try {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('Escala')
         .select('*, Frentista(nome)')
         .order('data', { ascending: true });
+
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.warn('Erro ao buscar escalas (tabela pode não existir):', error);
@@ -2904,18 +2908,23 @@ export const escalaService = {
     }
   },
 
-  async getByMonth(month: number, year: number, _postoId?: number): Promise<any[]> {
-    // Nota: A tabela Escala não possui campo posto_id
+  async getByMonth(month: number, year: number, postoId?: number): Promise<any[]> {
     const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
     try {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('Escala')
         .select('*, Frentista(nome)')
         .gte('data', startDate)
         .lte('data', endDate)
         .order('data', { ascending: true });
+
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.warn('Erro ao buscar escalas por mês (tabela pode não existir):', error);
