@@ -57,6 +57,15 @@ interface Alert {
 // COMPONENT
 // ============================================
 
+/**
+ * Componente de Painel do Proprietário (Owner Dashboard).
+ * 
+ * Este painel fornece uma visão consolidada da performance financeira,
+ * vendas, margens e alertas para o posto ativo.
+ * 
+ * Originalmente projetado para múltiplos postos, agora simplificado para
+ * exibição de uma única unidade de negócio.
+ */
 const OwnerDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
