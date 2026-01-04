@@ -26,6 +26,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
 import { Loader2 } from 'lucide-react';
 import { Toaster } from 'sonner';
+import UpdateNotifier from './components/UpdateNotifier';
 
 /**
  * Componente principal de conteúdo da aplicação.
@@ -149,6 +150,7 @@ const App: React.FC = () => {
       <PostoProvider>
         <ThemeProvider>
           <Toaster position="top-right" richColors closeButton />
+          <UpdateNotifier />
           <AppContent />
         </ThemeProvider>
       </PostoProvider>

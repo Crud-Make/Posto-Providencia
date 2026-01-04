@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3015",
-    "build": "vite build",
+    "build": "node -e \"const fs = require('fs'); fs.writeFileSync('./public/version.json', JSON.stringify({version: Date.now().toString()}))\" && vite build",
     "preview": "vite preview",
     "validate": "./scripts/validate-rules.sh",
     "push": "./scripts/push.sh"
