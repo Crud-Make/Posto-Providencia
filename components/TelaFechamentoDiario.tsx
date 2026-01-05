@@ -193,21 +193,21 @@ const formatToBR = (num: number, decimals: number = 3): string => {
 
 // Ensure comma formatting and thousands dots for input
 /**
- * Formata valor para padrão monetário BR com SEMPRE 2 casas decimais.
+ * Formata valor para padrão monetário BR com SEMPRE 2 casas decimais e prefixo R$.
  * 
  * Exemplos:
- * - "52" → "52,00"
- * - "514,3" → "514,30"
- * - "1562,01" → "1.562,01"
- * - "1939,5" → "1.939,50"
+ * - "52" → "R$ 52,00"
+ * - "514,3" → "R$ 514,30"
+ * - "1562,01" → "R$ 1.562,01"
+ * - "1939,5" → "R$ 1.939,50"
  * 
  * @param value - Valor a ser formatado
- * @returns Valor formatado no padrão BR (1.234,56)
+ * @returns Valor formatado no padrão BR com R$ (R$ 1.234,56)
  */
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
 
-   // Remove tudo exceto números e vírgula
+   // Remove tudo exceto números e vírgula (incluindo possível R$ anterior)
    let cleaned = value.replace(/[^\d,]/g, '');
 
    // Se houver múltiplas vírgulas, mantém apenas a primeira
@@ -226,8 +226,8 @@ const formatSimpleValue = (value: string) => {
    // GARANTE que sempre terá 2 casas decimais (padrão monetário BR)
    decimal = decimal.padEnd(2, '0');
 
-   // Reconstrói o número no padrão BR: 1.234,56
-   return `${inteiro},${decimal}`;
+   // Reconstrói o número no padrão BR com prefixo R$: R$ 1.234,56
+   return `R$ ${inteiro},${decimal}`;
 };
 
 // Get payment icon
