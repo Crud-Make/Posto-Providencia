@@ -535,7 +535,10 @@ const TelaFechamentoDiario: React.FC = () => {
       try {
          // 1. Buscar TODOS os frentistas ativos do posto para garantir que todos apareçam nas colunas
          const allFrentistas = await frentistaService.getAll(postoAtivoId);
-         const activeFrentistas = allFrentistas.filter(f => f.ativo);
+         // Filtra frentistas ativos E remove o frentista "GERAL" (se existir)
+         const activeFrentistas = allFrentistas.filter(f =>
+            f.ativo && f.nome.toUpperCase() !== 'GERAL'
+         );
 
          // Atualiza o estado de frentistas também
          setFrentistas(allFrentistas);
