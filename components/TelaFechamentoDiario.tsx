@@ -2160,7 +2160,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      <tr>
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            <div className="flex items-center">
-                              <Smartphone className="text-cyan-500 text-sm mr-2" size={16} />
+                              <Smartphone className="text-gray-600 dark:text-gray-400 text-sm mr-2" size={16} />
                               Pix
                            </div>
                         </td>
@@ -2184,7 +2184,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      <tr>
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            <div className="flex items-center">
-                              <CreditCard className="text-blue-500 text-sm mr-2" size={16} />
+                              <CreditCard className="text-gray-600 dark:text-gray-400 text-sm mr-2" size={16} />
                               Cartão Débito
                            </div>
                         </td>
@@ -2208,7 +2208,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      <tr>
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            <div className="flex items-center">
-                              <CreditCard className="text-purple-500 text-sm mr-2" size={16} />
+                              <CreditCard className="text-gray-600 dark:text-gray-400 text-sm mr-2" size={16} />
                               Cartão Crédito
                            </div>
                         </td>
@@ -2232,7 +2232,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      <tr>
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            <div className="flex items-center">
-                              <FileText className="text-yellow-500 text-sm mr-2" size={16} />
+                              <FileText className="text-gray-600 dark:text-gray-400 text-sm mr-2" size={16} />
                               Notas a Prazo
                            </div>
                         </td>
@@ -2256,7 +2256,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      <tr>
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            <div className="flex items-center">
-                              <Banknote className="text-green-600 text-sm mr-2" size={16} />
+                              <Banknote className="text-gray-600 dark:text-gray-400 text-sm mr-2" size={16} />
                               Dinheiro
                            </div>
                         </td>
@@ -2280,7 +2280,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      <tr>
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            <div className="flex items-center">
-                              <ShoppingBag className="text-rose-500 text-sm mr-2" size={16} />
+                              <ShoppingBag className="text-gray-600 dark:text-gray-400 text-sm mr-2" size={16} />
                               Baratão/Outros
                            </div>
                         </td>
