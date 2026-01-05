@@ -136,8 +136,8 @@ const DEFAULT_TURNOS = [
 const parseValue = (value: string): number => {
    if (!value) return 0;
 
-   // Remove espaços
-   let cleaned = value.toString().trim();
+   // Remove espaços e o prefixo "R$" se existir
+   let cleaned = value.toString().trim().replace(/^R\$\s*/, '');
 
    // Se tem vírgula, é formato BR tradicional (1.234.567,890)
    // A vírgula é o separador decimal
