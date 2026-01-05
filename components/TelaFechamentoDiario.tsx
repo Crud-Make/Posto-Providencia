@@ -2335,57 +2335,6 @@ const TelaFechamentoDiario: React.FC = () => {
                         </td>
                      </tr>
 
-                     {/* Venda Concentrador (Input Row) */}
-                     <tr className="bg-white dark:bg-gray-800 border-t-2 border-primary">
-                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600 dark:text-blue-400 border-r border-gray-200 dark:border-gray-700 flex flex-col justify-center min-h-[80px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                           <span className="block mb-2">Venda Concentrador</span>
-                           <div className="mt-1">
-                              <label htmlFor="encerrante-total" className="block text-xs font-normal text-gray-500 dark:text-gray-400 mb-1">Encerrante Final</label>
-                              <div className="text-xs text-gray-400 italic">Soma Automática</div>
-                           </div>
-                        </td>
-                        {frentistaSessions.map(session => {
-                           const totalVendido = parseValue(session.valor_encerrante);
-                           return (
-                              <td key={session.tempId} className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-700 dark:text-gray-200 align-top">
-                                 <div className="flex flex-col items-end gap-2">
-                                    <span className="font-bold text-gray-900 dark:text-white">
-                                       {totalVendido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    </span>
-                                    <div className="w-28">
-                                       <input
-                                          type="text"
-                                          value={session.valor_encerrante}
-                                          onChange={(e) => updateFrentistaSession(session.tempId, { valor_encerrante: formatSimpleValue(e.target.value) })}
-                                          className="block w-full px-2 py-1 text-xs border border-gray-200 dark:border-gray-600 dark:bg-gray-800 rounded focus:ring-blue-500 focus:border-blue-500 text-right"
-                                          placeholder="Encerrante (R$)"
-                                       />
-                                    </div>
-                                 </div>
-                              </td>
-                           );
-                        })}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-600 dark:text-blue-400 border-l border-gray-200 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-900/10 align-top">
-                           <div className="mt-2 text-lg">
-                              {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_encerrante), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                           </div>
-                           {Math.abs(frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_encerrante), 0) - totals.valor) > 0.01 ? (
-                              <div className="flex flex-col items-end mt-1">
-                                 <div className="flex items-center gap-1 text-xs text-amber-600 font-bold" title="Divergência com Total de Leituras">
-                                    <AlertTriangle size={12} />
-                                    <span>Dif: {(frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_encerrante), 0) - totals.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                 </div>
-                                 <span className="text-[10px] text-gray-400">Total Leituras: {totals.valorDisplay}</span>
-                              </div>
-                           ) : (
-                              <div className="flex items-center justify-end gap-1 mt-1 text-green-600 text-xs font-bold">
-                                 <CheckCircle2 size={12} />
-                                 <span>Confere</span>
-                              </div>
-                           )}
-                        </td>
-                     </tr>
-
                      {/* Falta/Diferença */}
                      <tr className="bg-red-50 dark:bg-red-900/10">
                         <td className="sticky left-0 z-10 bg-red-50 dark:bg-gray-800 px-6 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400 border-r border-red-100 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
