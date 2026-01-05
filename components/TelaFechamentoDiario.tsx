@@ -1552,7 +1552,7 @@ const TelaFechamentoDiario: React.FC = () => {
                            const isValid = isReadingValid(bico.id);
 
                            return (
-                              <tr key={bico.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${colors.bg} dark:bg-opacity-20`}>
+                              <tr key={bico.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                  {/* Produtos - Combustivel + Bico */}
                                  <td className={`px-4 py-3 font-bold ${colors.text}`}>
                                     {bico.combustivel.codigo}, Bico {bico.numero.toString().padStart(2, '0')}
