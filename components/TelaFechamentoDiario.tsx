@@ -300,7 +300,8 @@ const TelaFechamentoDiario: React.FC = () => {
                if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
                   setLeituras(prev => ({ ...prev, ...parsed.leituras }));
                }
-               if (parsed.selectedDate) setSelectedDate(parsed.selectedDate);
+               // NOTA: selectedDate NÃO é restaurado do rascunho
+               // O dashboard sempre abre com a data atual para evitar confusão
                if (parsed.selectedTurno) setSelectedTurno(parsed.selectedTurno);
                if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
                   setFrentistaSessions(parsed.frentistaSessions);
@@ -1314,10 +1315,6 @@ const TelaFechamentoDiario: React.FC = () => {
          {/* Header */}
          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 print:hidden">
             <div>
-               <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-wider mb-2 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full w-fit">
-                  <Fuel size={14} />
-                  Venda Concentrador
-               </div>
                <div className="flex items-center gap-3">
                   <h1 className="text-3xl font-black text-gray-900 dark:text-white">Fechamento de Caixa</h1>
                   <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700">
