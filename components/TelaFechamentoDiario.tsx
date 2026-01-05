@@ -1656,11 +1656,11 @@ const TelaFechamentoDiario: React.FC = () => {
                <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                      <thead>
-                        <tr className="bg-blue-100 text-blue-900 uppercase font-bold text-xs border-b border-blue-200">
-                           <th className="px-4 py-3 text-left bg-blue-200/50">Combustível</th>
-                           <th className="px-4 py-3 text-right bg-blue-200/50">Litros (L)</th>
-                           <th className="px-4 py-3 text-right bg-blue-200/50">Valor R$</th>
-                           <th className="px-4 py-3 text-right bg-blue-200/50">%</th>
+                        <tr className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white uppercase font-bold text-xs border-b border-gray-200 dark:border-gray-600">
+                           <th className="px-4 py-3 text-left bg-gray-50 dark:bg-gray-800">Combustível</th>
+                           <th className="px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">Litros (L)</th>
+                           <th className="px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">Valor R$</th>
+                           <th className="px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">%</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -1669,9 +1669,9 @@ const TelaFechamentoDiario: React.FC = () => {
                            const percentage = calcPercentage(item.litros);
 
                            return (
-                              <tr key={item.codigo} className={`${colors.bg} dark:bg-opacity-20`}>
+                              <tr key={item.codigo} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                  <td className="px-4 py-3">
-                                    <span className={`inline-block px-3 py-1 rounded border font-bold text-sm shadow-sm ${colors.bg} ${colors.border} ${colors.text}`}>
+                                    <span className={`inline-block px-3 py-1 rounded border font-bold text-sm shadow-sm bg-white dark:bg-gray-800 ${colors.border} ${colors.text}`}>
                                        {item.nome}
                                     </span>
                                  </td>
