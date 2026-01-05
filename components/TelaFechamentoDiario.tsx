@@ -1686,17 +1686,17 @@ const TelaFechamentoDiario: React.FC = () => {
                            return (
                               <tr key={item.codigo} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                  <td className="px-4 py-3">
-                                    <span className={`inline-block px-3 py-1 rounded border font-bold text-sm shadow-sm bg-white dark:bg-gray-800 ${colors.border} ${colors.text}`}>
+                                    <span className="inline-block px-3 py-1 rounded border border-gray-300 dark:border-gray-600 font-bold text-sm shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                                        {item.nome}
                                     </span>
                                  </td>
                                  <td className="px-4 py-3 text-right">
-                                    <span className="bg-blue-900 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
+                                    <span className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1 rounded font-mono font-bold text-sm border border-gray-300 dark:border-gray-600">
                                        {formatToBR(item.litros, 3)} L
                                     </span>
                                  </td>
                                  <td className="px-4 py-3 text-right">
-                                    <span className="bg-blue-600 text-white px-2 py-1 rounded font-mono font-bold text-sm shadow-sm">
+                                    <span className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1 rounded font-mono font-bold text-sm border border-gray-300 dark:border-gray-600">
                                        {item.valor.toLocaleString('pt-BR', {
                                           style: 'currency',
                                           currency: 'BRL'
@@ -1704,7 +1704,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                     </span>
                                  </td>
                                  <td className="px-4 py-3 text-right">
-                                    <span className="bg-blue-500 text-white px-2 py-1 rounded font-bold text-sm shadow-sm">
+                                    <span className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1 rounded font-bold text-sm border border-gray-300 dark:border-gray-600">
                                        {percentage.toFixed(1)}%
                                     </span>
                                  </td>
