@@ -146,7 +146,7 @@ const TelaGestaoFrentistas: React.FC = () => {
          handleCloseModal();
       } catch (error: any) {
          console.error('Erro ao salvar frentista:', error);
-         alert('Erro ao salvar frentista. Verifique os dados e tente novamente.');
+         alert(`Erro técnico: ${error.message || JSON.stringify(error)}`);
       } finally {
          setSaving(false);
       }
