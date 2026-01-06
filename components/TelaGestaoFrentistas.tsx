@@ -134,8 +134,7 @@ const TelaGestaoFrentistas: React.FC = () => {
       try {
          const dataToSave = {
             ...formData,
-            posto_id: postoAtivoId,
-            turno_id: null // Modo diário: sem turno associado
+            posto_id: postoAtivoId
          };
 
          if (editingFrentista) {
