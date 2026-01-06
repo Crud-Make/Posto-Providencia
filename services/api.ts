@@ -520,7 +520,8 @@ export const leituraService = {
       .from('Leitura')
       .select('*')
       .eq('bico_id', bicoId)
-      .order('id', { ascending: false })
+      .order('data', { ascending: false })
+      .order('turno_id', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) throw error;
