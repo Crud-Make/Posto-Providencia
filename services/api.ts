@@ -1128,6 +1128,42 @@ export const fechamentoFrentistaService = {
     if (error) throw error;
     return data || [];
   },
+
+  async getByDateAndTurno(dataStr: string, turnoId: number, postoId?: number) {
+    // Busca fechamento específico da data e turno
+    let fechamentoQuery = supabase
+      .from('Fechamento')
+      .select('id')
+      .gte('data', `${dataStr}T00:00:00`)
+      .lte('data', `${dataStr}T23:59:59`)
+      .eq('turno_id', turnoId);
+
+    if (postoId) {
+      fechamentoQuery = fechamentoQuery.eq('posto_id', postoId);
+    }
+
+    const { data: fechamentos, error: fechError } = await fechamentoQuery;
+    if (fechError) throw fechError;
+
+    if (!fechamentos || fechamentos.length === 0) {
+      return [];
+    }
+
+    const fechamentoId = fechamentos[0].id;
+
+    // Busca os FechamentoFrentista deste fechamento
+    const { data, error } = await supabase
+      .from('FechamentoFrentista')
+      .select(`
+        *,
+        frentista:Frentista(*),
+        fechamento:Fechamento(data, turno_id, turno:Turno(*), posto_id)
+      `)
+      .eq('fechamento_id', fechamentoId);
+
+    if (error) throw error;
+    return data || [];
+  },
 };
 
 // ============================================

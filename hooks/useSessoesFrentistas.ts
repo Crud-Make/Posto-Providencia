@@ -15,12 +15,23 @@ import { fechamentoFrentistaService } from '../services/api';
 import { analisarValor, paraReais } from '../utils/formatters';
 
 /**
+ * Interface para totais detalhados dos frentistas
+ */
+export interface TotaisFrentistas {
+  cartao: number;
+  nota: number;
+  pix: number;
+  dinheiro: number;
+  total: number;
+}
+
+/**
  * Retorno do hook useSessoesFrentistas
  */
 interface RetornoSessoesFrentistas {
   sessoes: SessaoFrentista[];
   carregando: boolean;
-  totalFrentistas: number;
+  totais: TotaisFrentistas;
   carregarSessoes: (data: string, turno: number) => Promise<void>;
   adicionarFrentista: () => void;
   removerFrentista: (tempId: string) => void;
@@ -28,6 +39,8 @@ interface RetornoSessoesFrentistas {
   alterarCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
   aoSairCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
 }
+
+// ... (interfaces mantidas)
 
 /**
  * Cria uma sessão vazia para novo frentista
@@ -81,13 +94,13 @@ export const useSessoesFrentistas = (
     setCarregando(true);
     try {
       const dados = await fechamentoFrentistaService.getByDateAndTurno(
-        postoId,
         data,
-        turno
+        turno,
+        postoId
       );
 
       if (dados.length > 0) {
-        const mapeadas: SessaoFrentista[] = dados.map(fs => ({
+        const mapeadas: SessaoFrentista[] = (dados as any[]).map(fs => ({
           tempId: `existing-${fs.id}`,
           frentistaId: fs.frentista_id,
           valor_cartao: paraReais(fs.valor_cartao),
@@ -206,21 +219,30 @@ export const useSessoesFrentistas = (
   );
 
   /**
-   * Calcula total de todos os frentistas
-   *
-   * @remarks
-   * Soma o campo valor_conferido de todas as sessões
+   * Calcula totais detalhados de todos os frentistas
    */
-  const totalFrentistas = useMemo(() => {
+  const totais = useMemo((): TotaisFrentistas => {
     return sessoes.reduce((acc, fs) => {
-      return acc + analisarValor(fs.valor_conferido);
-    }, 0);
+      const cartao = analisarValor(fs.valor_cartao);
+      const nota = analisarValor(fs.valor_nota);
+      const pix = analisarValor(fs.valor_pix);
+      const dinheiro = analisarValor(fs.valor_dinheiro);
+      const baratao = analisarValor(fs.valor_baratao);
+
+      return {
+        cartao: acc.cartao + cartao,
+        nota: acc.nota + nota,
+        pix: acc.pix + pix,
+        dinheiro: acc.dinheiro + dinheiro,
+        total: acc.total + cartao + nota + pix + dinheiro + baratao
+      };
+    }, { cartao: 0, nota: 0, pix: 0, dinheiro: 0, total: 0 });
   }, [sessoes]);
 
   return {
     sessoes,
     carregando,
-    totalFrentistas,
+    totais,
     carregarSessoes,
     adicionarFrentista,
     removerFrentista,
