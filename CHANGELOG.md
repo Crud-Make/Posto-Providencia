@@ -69,13 +69,25 @@
   - ✅ `components/fechamento/index.ts` (commit 042c255)
     - Barrel export para facilitar importações
 
-#### Fase 4: Integração no Componente Principal (INICIADA) ⏳
+#### Fase 4: Integração no Componente Principal (EM ANDAMENTO) 🔄
   - ✅ `components/TelaFechamentoDiario.tsx` (commit f23f294)
     - Primeira integração: utils e types
     - Remove funções parseValue e formatToBR duplicadas
     - Importa analisarValor, formatarParaBR, constantes de cores
     - **Redução: 2611 → 2541 linhas (86 linhas removidas)**
-    - Build ✅ HMR ✅ Funcionalidade 100% mantida
+  - ✅ `components/TelaFechamentoDiario.tsx` (commit 01505c8)
+    - Integração do hook useSessoesFrentistas
+    - Remove estado frentistaSessions manual (~60 linhas)
+    - Usa adicionarFrentista, removerFrentista, atualizarSessao do hook
+  - ✅ `components/TelaFechamentoDiario.tsx` (em andamento)
+    - **Integração do hook useAutoSave**
+      - Substitui ~50 linhas de lógica manual de localStorage
+      - Centraliza save/restore de rascunhos no hook
+    - **Integração do hook useFechamento**
+      - Substitui ~25 linhas de useMemo manuais (totalProdutos, diferenca, etc)
+      - Cálculos consolidados agora vêm do hook
+    - **Total removido nesta sessão: ~75 linhas**
+    - Build ✅ Funcionalidade mantida
 
 #### Documentação da Refatoração
   - 📄 `docs/REFATORACAO_FECHAMENTO.md`
