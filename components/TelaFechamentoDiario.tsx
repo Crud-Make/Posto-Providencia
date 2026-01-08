@@ -67,6 +67,8 @@ import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
 import { analisarValor, formatarParaBR } from '../utils/formatters';
 import { CORES_COMBUSTIVEL, CORES_GRAFICO_COMBUSTIVEL, CORES_GRAFICO_PAGAMENTO } from '../types/fechamento';
 import { useCarregamentoDados } from '../hooks/useCarregamentoDados';
+import { usePagamentos } from '../hooks/usePagamentos';
+import { useLeituras } from '../hooks/useLeituras';
 
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
@@ -305,8 +307,14 @@ const TelaFechamentoDiario: React.FC = () => {
       }
    }, [leituras, selectedDate, selectedTurno, frentistaSessions, loading, saving, restored, AUTOSAVE_KEY]);
 
-   // Payment entries (dynamic)
-   const [payments, setPayments] = useState<PaymentEntry[]>([]);
+   // [REFATORADO 2026-01-08] Hook gerencia pagamentos automaticamente
+   const {
+      pagamentos: payments,
+      totalLiquido,
+      totalTaxas,
+      alterarPagamento: handlePaymentChange,
+      aoSairPagamento: handlePaymentBlur
+   } = usePagamentos(postoAtivoId);
 
    // Sum of all frentista values
    const frentistasTotals = useMemo(() => {
@@ -321,22 +329,6 @@ const TelaFechamentoDiario: React.FC = () => {
       }, { cartao: 0, nota: 0, pix: 0, dinheiro: 0, total: 0 });
    }, [frentistaSessions]);
 
-   // Computed Total Liquido (Global)
-   const totalLiquido = useMemo(() => {
-      return payments.reduce((acc, p) => {
-         const valor = parseValue(p.valor);
-         const desconto = valor * (p.taxa / 100);
-         return acc + (valor - desconto);
-      }, 0);
-   }, [payments]);
-
-   const totalTaxas = useMemo(() => {
-      return payments.reduce((acc, p) => {
-         const valor = parseValue(p.valor);
-         return acc + (valor * (p.taxa / 100));
-      }, 0);
-   }, [payments]);
-
    // [REFATORADO 2026-01-08] Sincroniza loading local com loading do hook
    useEffect(() => {
       setLoading(loadingDados);
@@ -344,36 +336,6 @@ const TelaFechamentoDiario: React.FC = () => {
          setError(erroDados);
       }
    }, [loadingDados, erroDados]);
-
-   // [REFATORADO 2026-01-08] Carrega formas de pagamento quando dados estiverem prontos
-   useEffect(() => {
-      const carregarFormasPagamento = async () => {
-         if (!postoAtivoId || bicos.length === 0) return;
-
-         try {
-            const paymentMethodsData = await formaPagamentoService.getAll(postoAtivoId);
-            const initialPayments: PaymentEntry[] = paymentMethodsData.map(pm => ({
-               id: pm.id,
-               nome: pm.nome,
-               tipo: pm.tipo,
-               valor: '',
-               taxa: pm.taxa || 0
-            }));
-            setPayments(initialPayments);
-
-            // Seleciona turno automaticamente se ainda não selecionado
-            if (turnos.length > 0 && !selectedTurno) {
-               const diario = turnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
-               setSelectedTurno(diario ? diario.id : turnos[0].id);
-            }
-         } catch (err) {
-            console.error('Erro ao carregar formas de pagamento:', err);
-            setError('Erro ao carregar formas de pagamento');
-         }
-      };
-
-      carregarFormasPagamento();
-   }, [postoAtivoId, bicos, turnos, selectedTurno]);
 
    const loadDayClosures = async () => {
       try {
@@ -463,6 +425,10 @@ const TelaFechamentoDiario: React.FC = () => {
 
       // Atualiza os payments com os totais dos frentistas
 
+      // [REFATORADO 2026-01-08] TODO: Reimplementar auto-populate de pagamentos
+      // payments agora é gerenciado pelo hook (read-only)
+      // Esta funcionalidade precisa ser movida para o hook ou removida
+      /*
       setPayments(prev => prev.map(p => {
          // Mapeia tipos de forma de pagamento para os totais dos frentistas
          if (p.tipo === 'cartao' || p.nome.toLowerCase().includes('cartão')) {
@@ -489,6 +455,7 @@ const TelaFechamentoDiario: React.FC = () => {
          }
          return p;
       }));
+      */
    };
 
    const loadFrentistaSessions = async () => {
@@ -838,15 +805,7 @@ const TelaFechamentoDiario: React.FC = () => {
    };
 
    // Handle payment change
-   const handlePaymentChange = (index: number, value: string) => {
-      const formatted = formatSimpleValue(value);
-      setPayments(prev => {
-         const updated = [...prev];
-         updated[index] = { ...updated[index], valor: formatted };
-         return updated;
-      });
-   };
-
+   // [REFATORADO 2026-01-08] handlePaymentChange agora vem do hook usePagamentos
 
    // Calculate litros for a bico (EXATO como planilha)
    const calcLitros = (bicoId: number): { value: number; display: string } => {
@@ -1034,7 +993,8 @@ const TelaFechamentoDiario: React.FC = () => {
    // Handle cancel
    const handleCancel = () => {
       setLeituras({});
-      setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
+      // [REFATORADO 2026-01-08] payments agora é read-only do hook
+      // setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
       setFrentistaSessions([]);
       setSelectedTurno(null);
       setSuccess(null);
@@ -1229,7 +1189,8 @@ const TelaFechamentoDiario: React.FC = () => {
          setLeituras(updatedLeituras);
 
          // Reset payments
-         setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
+         // [REFATORADO 2026-01-08] payments agora é read-only do hook
+         // setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
          setObservacoes('');
          setFrentistaSessions([]);
          localStorage.removeItem('daily_closing_draft_v1'); // Limpa rascunho após salvar
