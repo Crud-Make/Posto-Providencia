@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { BicoComDetalhes } from '../types/fechamento';
 import { leituraService } from '../services/api';
 import { formatarParaBR } from '../utils/formatters';
@@ -20,6 +20,43 @@ import { formatarParaBR } from '../utils/formatters';
 interface Leitura {
   inicial: string;
   fechamento: string;
+}
+
+/**
+ * Resultado de cálculo de litros
+ */
+interface ResultadoLitros {
+  value: number;
+  display: string;
+}
+
+/**
+ * Resultado de cálculo de venda
+ */
+interface ResultadoVenda {
+  value: number;
+  display: string;
+}
+
+/**
+ * Totais calculados
+ */
+interface Totais {
+  litros: number;
+  valor: number;
+  litrosDisplay: string;
+  valorDisplay: string;
+}
+
+/**
+ * Resumo por combustível
+ */
+interface ResumoCombustivel {
+  nome: string;
+  codigo: string;
+  litros: number;
+  valor: number;
+  preco: number;
 }
 
 /**
@@ -34,6 +71,10 @@ interface RetornoLeituras {
   alterarFechamento: (bicoId: number, valor: string) => void;
   aoSairInicial: (bicoId: number) => void;
   aoSairFechamento: (bicoId: number) => void;
+  calcLitros: (bicoId: number) => ResultadoLitros;
+  calcVenda: (bicoId: number) => ResultadoVenda;
+  totals: Totais;
+  getSummaryByCombustivel: () => ResumoCombustivel[];
 }
 
 /**
@@ -278,6 +319,106 @@ export const useLeituras = (
     }
   }, [leituras]);
 
+  /**
+   * Calcula litros vendidos para um bico
+   */
+  const calcLitros = useCallback((bicoId: number): ResultadoLitros => {
+    const leitura = leituras[bicoId];
+    if (!leitura) return { value: 0, display: '-' };
+
+    const inicial = parseFloat(leitura.inicial.replace(/\./g, '').replace(',', '.')) || 0;
+    const fechamento = parseFloat(leitura.fechamento.replace(/\./g, '').replace(',', '.')) || 0;
+
+    if (fechamento <= inicial || fechamento === 0) {
+      return { value: 0, display: '-' };
+    }
+
+    const litros = fechamento - inicial;
+    return { value: litros, display: formatarParaBR(litros, 3) };
+  }, [leituras]);
+
+  /**
+   * Calcula valor de venda para um bico
+   */
+  const calcVenda = useCallback((bicoId: number): ResultadoVenda => {
+    const bico = bicos.find(b => b.id === bicoId);
+    if (!bico) return { value: 0, display: '-' };
+
+    const litrosData = calcLitros(bicoId);
+    if (litrosData.display === '-') {
+      return { value: 0, display: '-' };
+    }
+
+    const venda = litrosData.value * bico.combustivel.preco_venda;
+    return {
+      value: venda,
+      display: venda.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+    };
+  }, [bicos, calcLitros]);
+
+  /**
+   * Calcula totais gerais
+   */
+  const totals = React.useMemo((): Totais => {
+    let totalLitros = 0;
+    let totalValor = 0;
+
+    bicos.forEach(bico => {
+      const litrosData = calcLitros(bico.id);
+      const vendaData = calcVenda(bico.id);
+
+      if (litrosData.display !== '-') {
+        totalLitros += litrosData.value;
+        totalValor += vendaData.value;
+      }
+    });
+
+    return {
+      litros: totalLitros,
+      valor: totalValor,
+      litrosDisplay: formatarParaBR(totalLitros, 3),
+      valorDisplay: totalValor.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      })
+    };
+  }, [bicos, calcLitros, calcVenda]);
+
+  /**
+   * Agrupa dados por combustível para resumo
+   */
+  const getSummaryByCombustivel = useCallback((): ResumoCombustivel[] => {
+    const summary: Record<string, ResumoCombustivel> = {};
+
+    bicos.forEach(bico => {
+      const codigo = bico.combustivel.codigo;
+      if (!summary[codigo]) {
+        summary[codigo] = {
+          nome: bico.combustivel.nome,
+          codigo: codigo,
+          litros: 0,
+          valor: 0,
+          preco: bico.combustivel.preco_venda
+        };
+      }
+
+      const litrosData = calcLitros(bico.id);
+      const vendaData = calcVenda(bico.id);
+
+      if (litrosData.display !== '-') {
+        summary[codigo].litros += litrosData.value;
+        summary[codigo].valor += vendaData.value;
+      }
+    });
+
+    return Object.values(summary);
+  }, [bicos, calcLitros, calcVenda]);
+
   return {
     leituras,
     carregando,
@@ -286,6 +427,10 @@ export const useLeituras = (
     alterarInicial,
     alterarFechamento,
     aoSairInicial,
-    aoSairFechamento
+    aoSairFechamento,
+    calcLitros,
+    calcVenda,
+    totals,
+    getSummaryByCombustivel
   };
 };
