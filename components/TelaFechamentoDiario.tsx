@@ -190,44 +190,57 @@ const formatToBR = (num: number, decimals: number = 3): string => {
 
    return `${integer},${decimal}`;
 };
-
-// Ensure comma formatting and thousands dots for input
 /**
- * Formata valor para padrão monetário BR com SEMPRE 2 casas decimais e prefixo R$.
+ * Formata valor monetário estilo calculadora/PDV.
+ * Os dígitos digitados entram como centavos e empurram para a esquerda.
+ * 
+ * [ALTERADO 2026-01-08] Máscara monetária estilo caixa eletrônico
  * 
  * Exemplos:
- * - "52" → "R$ 52,00"
- * - "514,3" → "R$ 514,30"
- * - "1562,01" → "R$ 1.562,01"
- * - "1939,5" → "R$ 1.939,50"
+ * - Digita 1 → R$ 0,01
+ * - Digita 0 → R$ 0,10
+ * - Digita 0 → R$ 1,00
+ * - Digita 0 → R$ 10,00
  * 
- * @param value - Valor a ser formatado
- * @returns Valor formatado no padrão BR com R$ (R$ 1.234,56)
+ * @param value - Valor digitado
+ * @returns Valor formatado como R$ X.XXX,XX
  */
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
 
-   // Remove tudo exceto números e vírgula (incluindo possível R$ anterior)
-   let cleaned = value.replace(/[^\d,]/g, '');
+   // Remove tudo que não é número (R$, espaços, pontos, vírgulas)
+   let digits = value.replace(/[^\d]/g, '');
 
-   // Se houver múltiplas vírgulas, mantém apenas a primeira
-   const parts = cleaned.split(',');
-   let inteiro = parts[0] || '';
-   let decimal = parts.slice(1).join('').slice(0, 2); // Mantém apenas 2 casas decimais
+   // Se não tem dígitos, retorna vazio
+   if (!digits) return '';
 
-   // Remove zeros à esquerda desnecessários
-   inteiro = inteiro.replace(/^0+(?!$)/, '') || (parts[0] === '0' ? '0' : '');
+   // Remove zeros à esquerda (mas mantém pelo menos 1 se for só zeros)
+   digits = digits.replace(/^0+/, '') || '0';
 
-   // Adiciona pontos de milhar na parte inteira
-   if (inteiro.length > 3) {
-      inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+   // Garante pelo menos 3 dígitos (para ter 2 casas decimais)
+   // Ex: "1" -> "001" -> "0,01"
+   while (digits.length < 3) {
+      digits = '0' + digits;
    }
 
-   // GARANTE que sempre terá 2 casas decimais (padrão monetário BR)
-   decimal = decimal.padEnd(2, '0');
+   // Separa parte inteira e decimal (últimos 2 dígitos são centavos)
+   const len = digits.length;
+   const inteiro = digits.slice(0, len - 2);
+   const decimal = digits.slice(len - 2);
 
-   // Reconstrói o número no padrão BR com prefixo R$: R$ 1.234,56
-   return `R$ ${inteiro},${decimal}`;
+   // Formata parte inteira com pontos de milhar
+   let inteiroFormatado = inteiro.replace(/^0+/, '') || '0'; // Remove zeros à esquerda
+   if (inteiroFormatado.length > 3) {
+      inteiroFormatado = inteiroFormatado.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+   }
+
+   return `R$ ${inteiroFormatado},${decimal}`;
+};
+
+// formatValueOnBlur não é mais necessário - mantido por compatibilidade
+const formatValueOnBlur = (value: string) => {
+   if (!value) return '';
+   return value;
 };
 
 // Get payment icon
@@ -2189,6 +2202,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                  type="text"
                                  value={session.valor_pix}
                                  onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
@@ -2213,6 +2227,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                  type="text"
                                  value={session.valor_cartao_debito}
                                  onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao_debito: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_cartao_debito: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
@@ -2237,6 +2252,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                  type="text"
                                  value={session.valor_cartao_credito}
                                  onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao_credito: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_cartao_credito: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
@@ -2261,6 +2277,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                  type="text"
                                  value={session.valor_nota}
                                  onChange={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
@@ -2285,6 +2302,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                  type="text"
                                  value={session.valor_dinheiro}
                                  onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
@@ -2309,6 +2327,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                  type="text"
                                  value={session.valor_baratao}
                                  onChange={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
