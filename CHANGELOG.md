@@ -10,7 +10,14 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ### Adicionado
 - **Modo de Lançamento Flexível**: Permite salvar fechamentos diários com diferenças de caixa sem a obrigatoriedade de justificativa, facilitando o lançamento de dados históricos. Cor do alerta alterada para âmbar para indicar modo informativo.
 
+### Alterado
+- 🚀 Migração para branch de correção específica seguindo as regras do `.cursorrules`.
+- 📝 Atualização do guia de backup e restauração (`docs/BACKUP_E_RESTAURACAO.md`).
+
 ### Corrigido
+- ✨ Restauração completa de ambiente após formatação (arquivos `.env` e `.env.local`).
+- 🛠️ Correção de política de segurança (INSERT) para frentistas na branch `fix/frentista-insert-policy`.
+- 🔍 Depuração de erro 401 na criação de frentistas (ajuste de autenticação pós-restauração).
 - **Perda de dados ao trocar aba do navegador**: Desativado polling agressivo e adicionada proteção para preservar dados digitados.
 - **Cálculo incorreto de encerrantes**: Função `formatOnBlur` agora aceita qualquer formato numérico e assume últimos 3 dígitos como decimais.
 - **Correção de Permissão (RLS)**: Corrigido erro 403 ao tentar cadastrar novos frentistas através da criação de política de INSERT no Supabase.
