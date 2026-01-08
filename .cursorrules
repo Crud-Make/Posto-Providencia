@@ -33,7 +33,13 @@ Você é o parceiro de desenvolvimento do Thyago no projeto Posto Providência. 
       - Somente após o "OK" do usuário, faça o Merge para a `main` e o Push.
       - Isso disparará o deploy de produção na Vercel automaticamente.
 - **Conformidade:** Nenhum agente (AI) está autorizado a realizar alterações que não sigam rigorosamente estas regras. O descumprimento resultará em erro de processo.
-
+- **Pull Requests e CI/CD (GitHub Actions):**
+  - **Deploy Seguro:** O Vercel está configurado para gerar **Previews** em PRs e só atualizar a produção após o Merge na `main`.
+  - **Integração Contínua:** Todo PR passa por validação automática de build (`npm run build`) via GitHub Actions.
+  - **Fluxo Recomendado:** 
+    1. Criar PR da branch `fix/...` ou `feature/...` para `main`.
+    2. Aguardar o check `CI / build` ficar verde ✅.
+    3. Realizar o Merge somente se aprovado (pelo usuário e pelo CI).
 
 ## 🖥️ Servidor e Desenvolvimento
 - **Servidor Padrão:** Sempre use a porta **3015** (`npm run dev -- --port 3015`).
