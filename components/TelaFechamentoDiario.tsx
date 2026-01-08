@@ -70,18 +70,12 @@ import { useCarregamentoDados } from '../hooks/useCarregamentoDados';
 import { usePagamentos } from '../hooks/usePagamentos';
 import { useLeituras } from '../hooks/useLeituras';
 import { useSessoesFrentistas } from '../hooks/useSessoesFrentistas';
+import { useAutoSave } from '../hooks/useAutoSave';
+import { useFechamento } from '../hooks/useFechamento';
+import type { BicoComDetalhes, EntradaPagamento } from '../types/fechamento';
 
-// Type for bico with related data
-type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
-
-// Payment entry type linked to database configuration
-interface PaymentEntry {
-   id: number; // ID from database
-   nome: string;
-   tipo: string;
-   valor: string;
-   taxa: number; // Taxa percentual
-}
+// [REFATORADO 2026-01-08] Tipos movidos para types/fechamento.ts
+// Usando BicoComDetalhes e EntradaPagamento importados acima
 
 // Local state for each frentista's closing session
 // Interface FrentistaSession removida (substituída por SessaoFrentista do hook)
@@ -278,58 +272,27 @@ const TelaFechamentoDiario: React.FC = () => {
    const [tempPrice, setTempPrice] = useState<string>('');
 
    // --- AUTOSAVE LOGIC ---
-   const [restored, setRestored] = useState(false);
-   const AUTOSAVE_KEY = useMemo(() => `daily_closing_draft_v1_${postoAtivoId}`, [postoAtivoId]);
+   // [REFATORADO 2026-01-08] Lógica de autosave extraída para hook useAutoSave
+   const {
+      restaurado,
+      limparAutoSave,
+      rascunhoRestaurado
+   } = useAutoSave({
+      postoId: postoAtivoId,
+      dataSelecionada: selectedDate,
+      turnoSelecionado: selectedTurno,
+      leituras,
+      sessoesFrentistas,
+      carregando: loading,
+      salvando: saving
+   });
 
-   // Reset restored state when posto changes
+   // Restaura turno do rascunho quando disponível
    useEffect(() => {
-      setRestored(false);
-   }, [postoAtivoId]);
-
-   // Restore from localStorage when data loading finishes
-   useEffect(() => {
-      if (!loading && !restored) {
-         try {
-            const draft = localStorage.getItem(AUTOSAVE_KEY);
-            if (draft) {
-               const parsed = JSON.parse(draft);
-
-               // Validação de Segurança: Só restaura se o rascunho for da mesma data
-               if (parsed.selectedDate === selectedDate) {
-                  if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
-                     // [REFATORADO 2026-01-08] Hook useLeituras gerencia estado
-                     // setLeituras(prev => ({ ...prev, ...parsed.leituras }));
-                  }
-                  if (parsed.selectedTurno) setSelectedTurno(parsed.selectedTurno);
-                  // if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
-                  //    // Restaurar via hook se necessário futuramente
-                  // }
-                  console.log('✅ Rascunho restaurado com sucesso para:', selectedDate);
-               } else {
-                  console.warn('🧹 Rascunho descartado pois pertence a outra data:', parsed.selectedDate);
-                  localStorage.removeItem(AUTOSAVE_KEY);
-               }
-            }
-         } catch (e) {
-            console.error('Erro ao restaurar rascunho:', e);
-         } finally {
-            setRestored(true);
-         }
+      if (rascunhoRestaurado?.turnoSelecionado && !selectedTurno) {
+         setSelectedTurno(rascunhoRestaurado.turnoSelecionado);
       }
-   }, [loading, restored, AUTOSAVE_KEY, selectedDate]);
-
-   // Save to localStorage on changes
-   useEffect(() => {
-      if (!loading && !saving && restored) {
-         const draft = {
-            leituras,
-            selectedDate,
-            selectedTurno,
-            // frentistaSessions removido do autosave manual (integrar no hook futuramente)
-         };
-         localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
-      }
-   }, [leituras, selectedDate, selectedTurno, loading, saving, restored, AUTOSAVE_KEY]);
+   }, [rascunhoRestaurado, selectedTurno]);
 
    // [REFATORADO 2026-01-08] Hook gerencia pagamentos automaticamente
    const {
@@ -555,36 +518,27 @@ const TelaFechamentoDiario: React.FC = () => {
       }
    };
 
-   // Handle payment change
-   // [REFATORADO 2026-01-08] handlePaymentChange agora vem do hook usePagamentos
+   // [REFATORADO 2026-01-08] Cálculos consolidados extraídos para hook useFechamento
+   // O hook centraliza: totalProdutos, totalPagamentos, diferença, validações, etc.
+   const {
+      totalProdutos,
+      totalPagamentos,
+      diferenca,
+      diferencaPercentual,
+      temLeiturasInvalidas,
+      podeFechar,
+      exibicao
+   } = useFechamento(
+      bicos as BicoComDetalhes[],
+      leituras,
+      sessoesFrentistas,
+      payments as EntradaPagamento[]
+   );
 
-   // Calculate litros for a bico (EXATO como planilha)
-   // [REFATORADO 2026-01-08] Funções de cálculo removidas, usando as do hook useLeituras (calcLitrosHook, calcVendaHook)
+   // Alias para compatibilidade com código antigo
+   const totalPayments = totalPagamentos;
 
-   // Group data by combustivel for summary
-   // [REFATORADO 2026-01-08] getSummaryByCombustivel substituído pela versão do hook
-
-   // [REFATORADO 2026-01-08] Totais agora vêm do hook useLeituras (variável 'totals')
-   // Cálculo manual removido
-   // Calculate total products
-   const totalProdutos = useMemo(() => {
-      // Usar sessoesFrentistas do hook
-      return sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_produtos || '0'), 0);
-   }, [sessoesFrentistas]);
-
-   // Calculate total payments
-   const totalPayments = useMemo(() => {
-      return payments.reduce((acc, p) => acc + parseValue(p.valor), 0);
-   }, [payments]);
-
-   // Calculate difference
-   const diferenca = useMemo(() => {
-      // Diferença = (Total Pago) - (Venda Combustível + Venda Produtos)
-      const expectedTotal = totals.valor + totalProdutos;
-      return totalPayments - expectedTotal;
-   }, [totalPayments, totals.valor, totalProdutos]);
-
-   // Calculate percentage
+   // Calculate percentage (mantido para uso em gráficos)
    const calcPercentage = (litros: number): number => {
       if (totals.litros === 0) return 0;
       return (litros / totals.litros) * 100;
