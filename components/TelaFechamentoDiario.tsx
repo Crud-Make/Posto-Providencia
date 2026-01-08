@@ -194,14 +194,15 @@ const formatToBR = (num: number, decimals: number = 3): string => {
 /**
  * Formata valor para edição com casas decimais flexíveis no padrão BR.
  * 
- * [ALTERADO 2026-01-08] Edição totalmente livre (sem auto-complete de ,00)
- * Motivo: Permitir apagar com backspace sem travar na vírgula e editar qualquer precisão
+ * [ALTERADO 2026-01-08] Adiciona ,00 automaticamente em valores inteiros
+ * Motivo: Manter padrão monetário, mas permitir edição livre quando usuário digita vírgula
  * 
  * Exemplos:
  * - "" → "" (campo vazio)
- * - "10" → "R$ 10" (usuário digita a vírgula se quiser)
- * - "10," → "R$ 10,"
- * - "10,5" → "R$ 10,5"
+ * - "10" → "R$ 10,00" (auto-completa centavos)
+ * - "10," → "R$ 10," (usuário digitou vírgula, permite editar)
+ * - "10,5" → "R$ 10,5" (edição livre)
+ * - "10,567" → "R$ 10,567" (aceita qualquer precisão)
  * 
  * @param value - Valor a ser formatado
  * @returns Valor formatado com R$
@@ -215,14 +216,14 @@ const formatSimpleValue = (value: string) => {
    // Remove pontos de milhar antigos para não atrapalhar
    cleaned = cleaned.replace(/\./g, '');
 
-   // Se vazio ou só vírgula isolada que sobrou de limpeza incorreta
+   // Se vazio ou só vírgula isolada
    if (!cleaned || cleaned === ',') return '';
 
    const parts = cleaned.split(',');
    // Garante apenas números na parte inteira
    let inteiro = parts[0].replace(/[^\d]/g, '');
 
-   // Se não sobrou nada na parte inteira (ex: usuário digitou letras), ignora, a menos que tenha vírgula (ex: ",50")
+   // Se não sobrou nada na parte inteira
    if (!inteiro && parts.length === 1) return '';
    if (!inteiro) inteiro = '0';
 
@@ -234,15 +235,15 @@ const formatSimpleValue = (value: string) => {
       inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
    }
 
-   // Se tem vírgula (mesmo que seja só "10,")
+   // Se tem vírgula digitada pelo usuário (permite edição livre)
    if (parts.length > 1) {
       // Pega a parte decimal (pode ser vazia se for "10,")
       let decimal = parts.slice(1).join('').replace(/[^\d]/g, '');
       return `R$ ${inteiro},${decimal}`;
    }
 
-   // Se não tem vírgula, retorna só o inteiro (NÃO FORÇA ,00)
-   return `R$ ${inteiro}`;
+   // Se não tem vírgula, adiciona ,00 automaticamente (padrão monetário)
+   return `R$ ${inteiro},00`;
 };
 
 // Get payment icon
