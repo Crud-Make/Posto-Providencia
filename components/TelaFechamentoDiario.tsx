@@ -63,6 +63,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePosto } from '../contexts/PostoContext';
 import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
 
+// Imports da refatoração (#7)
+import { analisarValor, formatarParaBR } from '../utils/formatters';
+import { CORES_COMBUSTIVEL, CORES_GRAFICO_COMBUSTIVEL, CORES_GRAFICO_PAGAMENTO } from '../types/fechamento';
+
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
 
@@ -94,35 +98,14 @@ interface FrentistaSession {
    data_hora_envio?: string; // Data e hora do envio pelo app
 }
 
-// Fuel colors (mantendo para visualização)
-// Fuel colors (Mapped to user request: GC=Red, GA=Blue, ET=Green, S10=Yellow)
-const FUEL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-   'GC': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' },
-   'GA': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
-   'ET': { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
-   'S10': { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
-   'DIESEL': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
-};
+// [REFATORADO 2026-01-08] Cores movidas para types/fechamento.ts
+// Usando imports acima: CORES_COMBUSTIVEL, CORES_GRAFICO_COMBUSTIVEL, CORES_GRAFICO_PAGAMENTO
+const FUEL_COLORS = CORES_COMBUSTIVEL;
+const FUEL_CHART_COLORS = CORES_GRAFICO_COMBUSTIVEL;
+const PAYMENT_CHART_COLORS = CORES_GRAFICO_PAGAMENTO;
 
-const FUEL_CHART_COLORS: Record<string, string> = {
-   'GC': '#EF4444', // red-500
-   'GA': '#3B82F6', // blue-500
-   'ET': '#22C55E', // green-500
-   'S10': '#EAB308', // yellow-500
-   'DIESEL': '#F59E0B', // amber-500
-};
-
-const PAYMENT_CHART_COLORS = [
-   '#3B82F6', // blue-500
-   '#8B5CF6', // violet-500
-   '#EC4899', // pink-500
-   '#F97316', // orange-500
-   '#10B981', // emerald-500
-   '#6366F1', // indigo-500
-   '#14B8A6', // teal-500
-];
-
-// Turn options
+// [REFATORADO 2026-01-08] Turnos agora são carregados do banco de dados
+// Mantendo DEFAULT_TURNOS como fallback local
 const DEFAULT_TURNOS = [
    { id: 1, nome: 'Manhã', horario_inicio: '06:00', horario_fim: '14:00' },
    { id: 2, nome: 'Tarde', horario_inicio: '14:00', horario_fim: '22:00' },
@@ -131,65 +114,12 @@ const DEFAULT_TURNOS = [
 
 
 // --- Utility Functions (moved outside to avoid hoisting issues and pure logic) ---
+// [REFATORADO 2026-01-08] Funções parseValue e formatToBR movidas para utils/formatters.ts
+// Agora usamos analisarValor e formatarParaBR importados acima
 
-// Parse value from string (BR format: 1.234,567)
-const parseValue = (value: string): number => {
-   if (!value) return 0;
-
-   // Remove espaços e o prefixo "R$" se existir
-   let cleaned = value.toString().trim().replace(/^R\$\s*/, '');
-
-   // Se tem vírgula, é formato BR tradicional (1.234.567,890)
-   // A vírgula é o separador decimal
-   if (cleaned.includes(',')) {
-      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-      return parseFloat(cleaned) || 0;
-   }
-
-   // Se não tem vírgula mas tem pontos:
-   // Para encerrantes de bomba, assumimos que os últimos 3 dígitos são SEMPRE decimais
-   // Exemplo: 1.718.359.423 = 1.718.359,423 = 1718359.423
-   if (cleaned.includes('.')) {
-      // Remove todos os pontos
-      const numStr = cleaned.replace(/\./g, '');
-
-      // Se tem mais de 3 dígitos, os últimos 3 são decimais
-      if (numStr.length > 3) {
-         const inteiro = numStr.slice(0, -3);
-         const decimal = numStr.slice(-3);
-         return parseFloat(`${inteiro}.${decimal}`) || 0;
-      }
-
-      // Se tem 3 ou menos dígitos, é um valor decimal pequeno (0.xxx)
-      return parseFloat(`0.${numStr.padStart(3, '0')}`) || 0;
-   }
-
-   // Se não tem nem vírgula nem ponto:
-   // Também assumimos últimos 3 dígitos como decimais
-   if (cleaned.length > 3) {
-      const inteiro = cleaned.slice(0, -3);
-      const decimal = cleaned.slice(-3);
-      return parseFloat(`${inteiro}.${decimal}`) || 0;
-   }
-
-   // Número muito pequeno - é decimal
-   if (cleaned.length > 0) {
-      return parseFloat(`0.${cleaned.padStart(3, '0')}`) || 0;
-   }
-
-   return 0;
-};
-
-// Format value to BR format with 3 decimals
-const formatToBR = (num: number, decimals: number = 3): string => {
-   if (num === 0) return '0,' + '0'.repeat(decimals);
-
-   const parts = num.toFixed(decimals).split('.');
-   const integer = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-   const decimal = parts[1] || '0'.repeat(decimals);
-
-   return `${integer},${decimal}`;
-};
+// Aliases para manter compatibilidade
+const parseValue = analisarValor;
+const formatToBR = formatarParaBR;
 /**
  * Formata valor monetário durante a digitação.
  * Permite digitação natural: "10" fica "R$ 10" e o usuário adiciona vírgula e centavos.
