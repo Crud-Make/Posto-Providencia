@@ -191,11 +191,10 @@ const formatToBR = (num: number, decimals: number = 3): string => {
    return `${integer},${decimal}`;
 };
 
-// Ensure comma formatting and thousands dots for input
 /**
  * Formata valor para edição com casas decimais flexíveis no padrão BR.
  * 
- * [ALTERADO 2026-01-08] Removida limitação de 2 casas decimais
+ * [ALTERADO 2026-01-08] Corrigido problema de formatação ao digitar valores
  * Motivo: Permitir que proprietário edite valores do mobile com precisão completa
  * 
  * Exemplos:
@@ -211,17 +210,22 @@ const formatToBR = (num: number, decimals: number = 3): string => {
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
 
-   // Remove tudo exceto números e vírgula (incluindo possível R$ anterior)
-   let cleaned = value.replace(/[^\d,]/g, '');
+   // Remove o prefixo R$ e espaços
+   let cleaned = value.replace(/^R\$\s*/, '').trim();
 
-   // Se após limpar não sobrou nada, retorna vazio
+   // Remove pontos de milhar (separadores de milhar BR)
+   cleaned = cleaned.replace(/\./g, '');
+
+   // Se após limpar não sobrou nada ou só vírgula, retorna vazio
    if (!cleaned || cleaned === ',') return '';
+
+   // Agora cleaned tem apenas números e possivelmente uma vírgula decimal
+   // Exemplo: "1234,56" ou "10" ou "100,5"
 
    // Se houver múltiplas vírgulas, mantém apenas a primeira
    const parts = cleaned.split(',');
-   let inteiro = parts[0] || '0';
-   // [ALTERADO] Removida limitação .slice(0, 2) para aceitar qualquer quantidade de decimais
-   let decimal = parts.slice(1).join('');
+   let inteiro = parts[0].replace(/[^\d]/g, '') || '0'; // Apenas dígitos na parte inteira
+   let decimal = parts.length > 1 ? parts.slice(1).join('').replace(/[^\d]/g, '') : null;
 
    // Remove zeros à esquerda desnecessários, mas mantém pelo menos um zero
    inteiro = inteiro.replace(/^0+(?=\d)/, '') || '0';
@@ -231,13 +235,13 @@ const formatSimpleValue = (value: string) => {
       inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
    }
 
-   // Se há vírgula digitada pelo usuário
+   // Se há vírgula no valor original
    if (parts.length > 1) {
-      // Se digitou vírgula mas sem decimais (ex: "123,"), mantém a vírgula para continuar digitando
+      // Se digitou vírgula mas sem decimais (ex: "123,"), mantém a vírgula
       if (decimal === '') {
          return `R$ ${inteiro},`;
       }
-      // Se tem decimais, mantém como está
+      // Se tem decimais, mantém como está (sem limitar casas decimais)
       return `R$ ${inteiro},${decimal}`;
    }
 
