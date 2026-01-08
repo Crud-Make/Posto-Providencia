@@ -193,16 +193,20 @@ const formatToBR = (num: number, decimals: number = 3): string => {
 
 // Ensure comma formatting and thousands dots for input
 /**
- * Formata valor para padrão monetário BR com SEMPRE 2 casas decimais e prefixo R$.
+ * Formata valor para edição com casas decimais flexíveis no padrão BR.
+ * 
+ * [ALTERADO 2026-01-08] Removida limitação de 2 casas decimais
+ * Motivo: Permitir que proprietário edite valores do mobile com precisão completa
  * 
  * Exemplos:
- * - "52" → "R$ 52,00"
- * - "514,3" → "R$ 514,30"
+ * - "" → "" (campo vazio)
+ * - "10" → "R$ 10,00"
+ * - "514,3" → "R$ 514,3"
  * - "1562,01" → "R$ 1.562,01"
  * - "1939,567" → "R$ 1.939,567"
  * 
  * @param value - Valor a ser formatado
- * @returns Valor formatado no padrão BR com R$ (ex: R$ 1.234,567)
+ * @returns Valor formatado no padrão BR com R$ (ex: R$ 1.234,567) ou string vazia
  */
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
@@ -210,25 +214,31 @@ const formatSimpleValue = (value: string) => {
    // Remove tudo exceto números e vírgula (incluindo possível R$ anterior)
    let cleaned = value.replace(/[^\d,]/g, '');
 
+   // Se após limpar não sobrou nada, retorna vazio
+   if (!cleaned || cleaned === ',') return '';
+
    // Se houver múltiplas vírgulas, mantém apenas a primeira
    const parts = cleaned.split(',');
-   let inteiro = parts[0] || '';
+   let inteiro = parts[0] || '0';
    // [ALTERADO] Removida limitação .slice(0, 2) para aceitar qualquer quantidade de decimais
    let decimal = parts.slice(1).join('');
 
-   // Remove zeros à esquerda desnecessários
-   inteiro = inteiro.replace(/^0+(?!$)/, '') || (parts[0] === '0' ? '0' : '');
+   // Remove zeros à esquerda desnecessários, mas mantém pelo menos um zero
+   inteiro = inteiro.replace(/^0+(?=\d)/, '') || '0';
 
    // Adiciona pontos de milhar na parte inteira
    if (inteiro.length > 3) {
       inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
    }
 
-   // Se há parte decimal digitada, mantém como está (sem forçar 2 casas)
+   // Se há vírgula digitada pelo usuário
    if (parts.length > 1) {
-      // Se a parte decimal está vazia (ex: "123,"), adiciona "00" para manter o padrão monetário mínimo
-      // Caso contrário, mantém a parte decimal como digitada
-      return `R$ ${inteiro},${decimal || '00'}`;
+      // Se digitou vírgula mas sem decimais (ex: "123,"), mantém a vírgula para continuar digitando
+      if (decimal === '') {
+         return `R$ ${inteiro},`;
+      }
+      // Se tem decimais, mantém como está
+      return `R$ ${inteiro},${decimal}`;
    }
 
    // Se não tem vírgula, adiciona ,00 por padrão
