@@ -194,18 +194,17 @@ const formatToBR = (num: number, decimals: number = 3): string => {
 /**
  * Formata valor para edição com casas decimais flexíveis no padrão BR.
  * 
- * [ALTERADO 2026-01-08] Corrigido problema de formatação ao digitar valores
- * Motivo: Permitir que proprietário edite valores do mobile com precisão completa
+ * [ALTERADO 2026-01-08] Edição totalmente livre (sem auto-complete de ,00)
+ * Motivo: Permitir apagar com backspace sem travar na vírgula e editar qualquer precisão
  * 
  * Exemplos:
  * - "" → "" (campo vazio)
- * - "10" → "R$ 10,00"
- * - "514,3" → "R$ 514,3"
- * - "1562,01" → "R$ 1.562,01"
- * - "1939,567" → "R$ 1.939,567"
+ * - "10" → "R$ 10" (usuário digita a vírgula se quiser)
+ * - "10," → "R$ 10,"
+ * - "10,5" → "R$ 10,5"
  * 
  * @param value - Valor a ser formatado
- * @returns Valor formatado no padrão BR com R$ (ex: R$ 1.234,567) ou string vazia
+ * @returns Valor formatado com R$
  */
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
@@ -213,40 +212,37 @@ const formatSimpleValue = (value: string) => {
    // Remove o prefixo R$ e espaços
    let cleaned = value.replace(/^R\$\s*/, '').trim();
 
-   // Remove pontos de milhar (separadores de milhar BR)
+   // Remove pontos de milhar antigos para não atrapalhar
    cleaned = cleaned.replace(/\./g, '');
 
-   // Se após limpar não sobrou nada ou só vírgula, retorna vazio
+   // Se vazio ou só vírgula isolada que sobrou de limpeza incorreta
    if (!cleaned || cleaned === ',') return '';
 
-   // Agora cleaned tem apenas números e possivelmente uma vírgula decimal
-   // Exemplo: "1234,56" ou "10" ou "100,5"
-
-   // Se houver múltiplas vírgulas, mantém apenas a primeira
    const parts = cleaned.split(',');
-   let inteiro = parts[0].replace(/[^\d]/g, '') || '0'; // Apenas dígitos na parte inteira
-   let decimal = parts.length > 1 ? parts.slice(1).join('').replace(/[^\d]/g, '') : null;
+   // Garante apenas números na parte inteira
+   let inteiro = parts[0].replace(/[^\d]/g, '');
 
-   // Remove zeros à esquerda desnecessários, mas mantém pelo menos um zero
-   inteiro = inteiro.replace(/^0+(?=\d)/, '') || '0';
+   // Se não sobrou nada na parte inteira (ex: usuário digitou letras), ignora, a menos que tenha vírgula (ex: ",50")
+   if (!inteiro && parts.length === 1) return '';
+   if (!inteiro) inteiro = '0';
+
+   // Remove zeros à esquerda (ex: 010 -> 10), mas mantém '0' se for só zero
+   inteiro = inteiro.replace(/^0+(?=\d)/, '');
 
    // Adiciona pontos de milhar na parte inteira
    if (inteiro.length > 3) {
       inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
    }
 
-   // Se há vírgula no valor original
+   // Se tem vírgula (mesmo que seja só "10,")
    if (parts.length > 1) {
-      // Se digitou vírgula mas sem decimais (ex: "123,"), mantém a vírgula
-      if (decimal === '') {
-         return `R$ ${inteiro},`;
-      }
-      // Se tem decimais, mantém como está (sem limitar casas decimais)
+      // Pega a parte decimal (pode ser vazia se for "10,")
+      let decimal = parts.slice(1).join('').replace(/[^\d]/g, '');
       return `R$ ${inteiro},${decimal}`;
    }
 
-   // Se não tem vírgula, adiciona ,00 por padrão
-   return `R$ ${inteiro},00`;
+   // Se não tem vírgula, retorna só o inteiro (NÃO FORÇA ,00)
+   return `R$ ${inteiro}`;
 };
 
 // Get payment icon
