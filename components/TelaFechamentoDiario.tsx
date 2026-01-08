@@ -66,6 +66,7 @@ import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
 // Imports da refatoração (#7)
 import { analisarValor, formatarParaBR } from '../utils/formatters';
 import { CORES_COMBUSTIVEL, CORES_GRAFICO_COMBUSTIVEL, CORES_GRAFICO_PAGAMENTO } from '../types/fechamento';
+import { useCarregamentoDados } from '../hooks/useCarregamentoDados';
 
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
@@ -219,8 +220,18 @@ const TelaFechamentoDiario: React.FC = () => {
    const { user } = useAuth();
    const { postoAtivoId, postos, setPostoAtivoById, postoAtivo } = usePosto();
 
+   // [REFATORADO 2026-01-08] Usa hook customizado para carregamento de dados
+   // Substitui estados manuais de bicos, frentistas, turnos e função loadData()
+   const {
+      bicos,
+      frentistas,
+      turnos,
+      carregando: loadingDados,
+      erro: erroDados,
+      carregarDados
+   } = useCarregamentoDados(postoAtivoId);
+
    // State
-   const [bicos, setBicos] = useState<BicoWithDetails[]>([]);
    const [leituras, setLeituras] = useState<Record<number, { inicial: string; fechamento: string }>>({});
    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
    const [loading, setLoading] = useState(true);
@@ -229,8 +240,6 @@ const TelaFechamentoDiario: React.FC = () => {
    const [success, setSuccess] = useState<string | null>(null);
 
    // Additional states
-   const [frentistas, setFrentistas] = useState<Frentista[]>([]);
-   const [turnos, setTurnos] = useState<Turno[]>([]);
    const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
    const [frentistaSessions, setFrentistaSessions] = useState<FrentistaSession[]>([]);
    const [observacoes, setObservacoes] = useState<string>('');
@@ -243,7 +252,6 @@ const TelaFechamentoDiario: React.FC = () => {
    const [editingPrice, setEditingPrice] = useState<number | null>(null); // combustivel_id sendo editado
    const [tempPrice, setTempPrice] = useState<string>('');
 
-   // --- AUTOSAVE LOGIC ---
    // --- AUTOSAVE LOGIC ---
    const [restored, setRestored] = useState(false);
    const AUTOSAVE_KEY = useMemo(() => `daily_closing_draft_v1_${postoAtivoId}`, [postoAtivoId]);
@@ -262,7 +270,6 @@ const TelaFechamentoDiario: React.FC = () => {
                const parsed = JSON.parse(draft);
 
                // Validação de Segurança: Só restaura se o rascunho for da mesma data
-               // Isso corrige o bug onde leituras de ontem sobrescreviam o formulário de hoje
                if (parsed.selectedDate === selectedDate) {
                   if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
                      setLeituras(prev => ({ ...prev, ...parsed.leituras }));
@@ -275,7 +282,6 @@ const TelaFechamentoDiario: React.FC = () => {
                } else {
                   console.warn('🧹 Rascunho descartado pois pertence a outra data:', parsed.selectedDate);
                   localStorage.removeItem(AUTOSAVE_KEY);
-                  // Não restaura nada, forçando o loadLeituras a buscar do banco
                }
             }
          } catch (e) {
@@ -298,9 +304,8 @@ const TelaFechamentoDiario: React.FC = () => {
          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
       }
    }, [leituras, selectedDate, selectedTurno, frentistaSessions, loading, saving, restored, AUTOSAVE_KEY]);
-   // ----------------------
 
-   // Payment entries (dynamic) - REMAINING FOR GLOBAL AUDIT
+   // Payment entries (dynamic)
    const [payments, setPayments] = useState<PaymentEntry[]>([]);
 
    // Sum of all frentista values
@@ -318,7 +323,6 @@ const TelaFechamentoDiario: React.FC = () => {
 
    // Computed Total Liquido (Global)
    const totalLiquido = useMemo(() => {
-      // ... (rest of logic)
       return payments.reduce((acc, p) => {
          const valor = parseValue(p.valor);
          const desconto = valor * (p.taxa / 100);
@@ -333,58 +337,43 @@ const TelaFechamentoDiario: React.FC = () => {
       }, 0);
    }, [payments]);
 
-   // Load data on mount
+   // [REFATORADO 2026-01-08] Sincroniza loading local com loading do hook
    useEffect(() => {
-      loadData();
-   }, [postoAtivoId]);
-
-   const loadData = async () => {
-      try {
-         setLoading(true);
-         setError(null);
-
-         // Fetch bicos with details
-         const bicosData = await bicoService.getWithDetails(postoAtivoId);
-         setBicos(bicosData);
-
-         // Fetch frentistas
-         const frentistasData = await frentistaService.getAll(postoAtivoId);
-         console.log('Frentistas carregados:', frentistasData);
-         setFrentistas(frentistasData);
-
-         // Fetch turnos e seleciona automaticamente o primeiro (modo diário simplificado)
-         const turnosData = await turnoService.getAll(postoAtivoId);
-         const availableTurnos = turnosData.length > 0 ? turnosData : DEFAULT_TURNOS as Turno[];
-         setTurnos(availableTurnos);
-
-         // Seleção automática: prioriza 'Diário', senão pega o primeiro
-         if (availableTurnos.length > 0) {
-            const diario = availableTurnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
-            setSelectedTurno(diario ? diario.id : availableTurnos[0].id);
-         }
-
-         // Fetch Payment Methods
-         const paymentMethodsData = await formaPagamentoService.getAll(postoAtivoId);
-         const initialPayments: PaymentEntry[] = paymentMethodsData.map(pm => ({
-            id: pm.id,
-            nome: pm.nome,
-            tipo: pm.tipo,
-            valor: '',
-            taxa: pm.taxa || 0
-         }));
-         setPayments(initialPayments);
-
-         // Auto-populate logic moved to loadLeituras controlled by useEffect
-         // keeping the setLeituras cleared or empty initially
-         // setLeituras(leiturasMap);
-
-      } catch (err) {
-         console.error('Error loading data:', err);
-         setError('Erro ao carregar dados. Verifique sua conexão.');
-      } finally {
-         setLoading(false);
+      setLoading(loadingDados);
+      if (erroDados) {
+         setError(erroDados);
       }
-   };
+   }, [loadingDados, erroDados]);
+
+   // [REFATORADO 2026-01-08] Carrega formas de pagamento quando dados estiverem prontos
+   useEffect(() => {
+      const carregarFormasPagamento = async () => {
+         if (!postoAtivoId || bicos.length === 0) return;
+
+         try {
+            const paymentMethodsData = await formaPagamentoService.getAll(postoAtivoId);
+            const initialPayments: PaymentEntry[] = paymentMethodsData.map(pm => ({
+               id: pm.id,
+               nome: pm.nome,
+               tipo: pm.tipo,
+               valor: '',
+               taxa: pm.taxa || 0
+            }));
+            setPayments(initialPayments);
+
+            // Seleciona turno automaticamente se ainda não selecionado
+            if (turnos.length > 0 && !selectedTurno) {
+               const diario = turnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
+               setSelectedTurno(diario ? diario.id : turnos[0].id);
+            }
+         } catch (err) {
+            console.error('Erro ao carregar formas de pagamento:', err);
+            setError('Erro ao carregar formas de pagamento');
+         }
+      };
+
+      carregarFormasPagamento();
+   }, [postoAtivoId, bicos, turnos, selectedTurno]);
 
    const loadDayClosures = async () => {
       try {
@@ -511,8 +500,7 @@ const TelaFechamentoDiario: React.FC = () => {
             f.ativo && f.nome.toUpperCase() !== 'GERAL'
          );
 
-         // Atualiza o estado de frentistas também
-         setFrentistas(allFrentistas);
+         // [REFATORADO 2026-01-08] Hook gerencia estado de frentistas automaticamente
 
          let foundSessions: any[] = [];
 
@@ -833,16 +821,9 @@ const TelaFechamentoDiario: React.FC = () => {
          // Atualiza no banco
          await combustivelService.update(combustivelId, { preco_venda: newPrice });
 
-         // Atualiza estado local dos bicos
-         setBicos(prev => prev.map(bico => {
-            if (bico.combustivel.id === combustivelId) {
-               return {
-                  ...bico,
-                  combustivel: { ...bico.combustivel, preco_venda: newPrice }
-               };
-            }
-            return bico;
-         }));
+         // [REFATORADO 2026-01-08] Hook gerencia estado de bicos (read-only)
+         // Recarrega dados para refletir mudança
+         await carregarDados();
 
          setEditingPrice(null);
          setTempPrice('');
@@ -1058,7 +1039,8 @@ const TelaFechamentoDiario: React.FC = () => {
       setSelectedTurno(null);
       setSuccess(null);
       setError(null);
-      loadData();
+      // [REFATORADO 2026-01-08] Hook gerencia carregamento automaticamente
+      window.location.reload();
    };
 
    // Handle print
@@ -1252,8 +1234,7 @@ const TelaFechamentoDiario: React.FC = () => {
          setFrentistaSessions([]);
          localStorage.removeItem('daily_closing_draft_v1'); // Limpa rascunho após salvar
 
-         // Reload data
-         await loadData();
+         // [REFATORADO 2026-01-08] Hook recarrega dados automaticamente
          await loadDayClosures();
 
       } catch (err: any) {
@@ -1363,7 +1344,7 @@ const TelaFechamentoDiario: React.FC = () => {
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">&nbsp;</span>
                   <button
                      onClick={() => {
-                        loadData();
+                        carregarDados();
                         if (selectedDate) loadDayClosures();
                         if (selectedDate && selectedTurno) loadFrentistaSessions();
                      }}
@@ -2082,7 +2063,7 @@ const TelaFechamentoDiario: React.FC = () => {
                <div className="flex gap-2">
                   <button
                      onClick={() => {
-                        loadData();
+                        carregarDados();
                         loadFrentistaSessions();
                      }}
                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 rounded-full transition-all shadow-sm border border-transparent hover:border-blue-100 dark:hover:border-blue-800"
