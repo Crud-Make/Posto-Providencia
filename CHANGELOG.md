@@ -11,6 +11,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Modo de Lançamento Flexível**: Permite salvar fechamentos diários com diferenças de caixa sem a obrigatoriedade de justificativa, facilitando o lançamento de dados históricos. Cor do alerta alterada para âmbar para indicar modo informativo.
 
 ### Alterado
+- 🏗️ **Refatoração da Tela de Fechamento de Caixa** (#7): Reestruturação completa do componente `TelaFechamentoDiario` em uma arquitetura modular (`components/fechamento/`). Extração de tabelas, gráficos e lógica financeira para sub-componentes independentes, melhorando a manutenibilidade e legibilidade.
 - 🚀 Migração para branch de correção específica seguindo as regras do `.cursorrules`.
 - 📝 Atualização do guia de backup e restauração (`docs/BACKUP_E_RESTAURACAO.md`).
 
