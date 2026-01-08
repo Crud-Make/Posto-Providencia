@@ -69,6 +69,14 @@
   - ✅ `components/fechamento/index.ts` (commit 042c255)
     - Barrel export para facilitar importações
 
+#### Fase 4: Integração no Componente Principal (INICIADA) ⏳
+  - ✅ `components/TelaFechamentoDiario.tsx` (commit f23f294)
+    - Primeira integração: utils e types
+    - Remove funções parseValue e formatToBR duplicadas
+    - Importa analisarValor, formatarParaBR, constantes de cores
+    - **Redução: 2611 → 2541 linhas (86 linhas removidas)**
+    - Build ✅ HMR ✅ Funcionalidade 100% mantida
+
 #### Documentação da Refatoração
   - 📄 `docs/REFATORACAO_FECHAMENTO.md`
     - Explicação completa da estrutura
@@ -76,7 +84,7 @@
     - Guia de uso de cada hook e componente
     - Estratégia de integração incremental
 
-  - 🔄 **Próxima fase:** Integração incremental no componente principal com testes
+  - 🔄 **Próximas integrações:** Substituir seções UI por componentes modulares
 
 ### Objetivo da Refatoração
 - Reduzir TelaFechamentoDiario.tsx de 2667 para ~400 linhas (85% de redução)
