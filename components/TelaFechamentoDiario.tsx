@@ -63,14 +63,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePosto } from '../contexts/PostoContext';
 import { DifferenceAlert, ProgressIndicator } from './ValidationAlert';
 
-// Imports da refatoração (#7)
-import { analisarValor, formatarParaBR } from '../utils/formatters';
-import { CORES_COMBUSTIVEL, CORES_GRAFICO_COMBUSTIVEL, CORES_GRAFICO_PAGAMENTO } from '../types/fechamento';
-import { useCarregamentoDados } from '../hooks/useCarregamentoDados';
-import { usePagamentos } from '../hooks/usePagamentos';
-import { useLeituras } from '../hooks/useLeituras';
-import { useSessoesFrentistas } from '../hooks/useSessoesFrentistas';
-
 // Type for bico with related data
 type BicoWithDetails = Bico & { bomba: Bomba; combustivel: Combustivel };
 
@@ -84,16 +76,53 @@ interface PaymentEntry {
 }
 
 // Local state for each frentista's closing session
-// Interface FrentistaSession removida (substituída por SessaoFrentista do hook)
+interface FrentistaSession {
+   tempId: string;
+   frentistaId: number | null;
+   valor_cartao: string;
+   valor_cartao_debito: string; // New field
+   valor_cartao_credito: string; // New field
+   valor_nota: string;
+   valor_pix: string;
+   valor_dinheiro: string;
+   valor_baratao: string;
+   valor_encerrante: string;
+   valor_conferido: string;
+   observacoes: string;
+   valor_produtos: string; // New field
+   status?: 'pendente' | 'conferido'; // Status do fechamento
+   data_hora_envio?: string; // Data e hora do envio pelo app
+}
 
-// [REFATORADO 2026-01-08] Cores movidas para types/fechamento.ts
-// Usando imports acima: CORES_COMBUSTIVEL, CORES_GRAFICO_COMBUSTIVEL, CORES_GRAFICO_PAGAMENTO
-const FUEL_COLORS = CORES_COMBUSTIVEL;
-const FUEL_CHART_COLORS = CORES_GRAFICO_COMBUSTIVEL;
-const PAYMENT_CHART_COLORS = CORES_GRAFICO_PAGAMENTO;
+// Fuel colors (mantendo para visualização)
+// Fuel colors (Mapped to user request: GC=Red, GA=Blue, ET=Green, S10=Yellow)
+const FUEL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+   'GC': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' },
+   'GA': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
+   'ET': { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
+   'S10': { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
+   'DIESEL': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
+};
 
-// [REFATORADO 2026-01-08] Turnos agora são carregados do banco de dados
-// Mantendo DEFAULT_TURNOS como fallback local
+const FUEL_CHART_COLORS: Record<string, string> = {
+   'GC': '#EF4444', // red-500
+   'GA': '#3B82F6', // blue-500
+   'ET': '#22C55E', // green-500
+   'S10': '#EAB308', // yellow-500
+   'DIESEL': '#F59E0B', // amber-500
+};
+
+const PAYMENT_CHART_COLORS = [
+   '#3B82F6', // blue-500
+   '#8B5CF6', // violet-500
+   '#EC4899', // pink-500
+   '#F97316', // orange-500
+   '#10B981', // emerald-500
+   '#6366F1', // indigo-500
+   '#14B8A6', // teal-500
+];
+
+// Turn options
 const DEFAULT_TURNOS = [
    { id: 1, nome: 'Manhã', horario_inicio: '06:00', horario_fim: '14:00' },
    { id: 2, nome: 'Tarde', horario_inicio: '14:00', horario_fim: '22:00' },
@@ -102,83 +131,116 @@ const DEFAULT_TURNOS = [
 
 
 // --- Utility Functions (moved outside to avoid hoisting issues and pure logic) ---
-// [REFATORADO 2026-01-08] Funções parseValue e formatToBR movidas para utils/formatters.ts
-// Agora usamos analisarValor e formatarParaBR importados acima
 
-// Aliases para manter compatibilidade
-const parseValue = analisarValor;
-const formatToBR = formatarParaBR;
+// Parse value from string (BR format: 1.234,567)
+const parseValue = (value: string): number => {
+   if (!value) return 0;
+
+   // Remove espaços e o prefixo "R$" se existir
+   let cleaned = value.toString().trim().replace(/^R\$\s*/, '');
+
+   // Se tem vírgula, é formato BR tradicional (1.234.567,890)
+   // A vírgula é o separador decimal
+   if (cleaned.includes(',')) {
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+      return parseFloat(cleaned) || 0;
+   }
+
+   // Se não tem vírgula mas tem pontos:
+   // Para encerrantes de bomba, assumimos que os últimos 3 dígitos são SEMPRE decimais
+   // Exemplo: 1.718.359.423 = 1.718.359,423 = 1718359.423
+   if (cleaned.includes('.')) {
+      // Remove todos os pontos
+      const numStr = cleaned.replace(/\./g, '');
+
+      // Se tem mais de 3 dígitos, os últimos 3 são decimais
+      if (numStr.length > 3) {
+         const inteiro = numStr.slice(0, -3);
+         const decimal = numStr.slice(-3);
+         return parseFloat(`${inteiro}.${decimal}`) || 0;
+      }
+
+      // Se tem 3 ou menos dígitos, é um valor decimal pequeno (0.xxx)
+      return parseFloat(`0.${numStr.padStart(3, '0')}`) || 0;
+   }
+
+   // Se não tem nem vírgula nem ponto:
+   // Também assumimos últimos 3 dígitos como decimais
+   if (cleaned.length > 3) {
+      const inteiro = cleaned.slice(0, -3);
+      const decimal = cleaned.slice(-3);
+      return parseFloat(`${inteiro}.${decimal}`) || 0;
+   }
+
+   // Número muito pequeno - é decimal
+   if (cleaned.length > 0) {
+      return parseFloat(`0.${cleaned.padStart(3, '0')}`) || 0;
+   }
+
+   return 0;
+};
+
+// Format value to BR format with 3 decimals
+const formatToBR = (num: number, decimals: number = 3): string => {
+   if (num === 0) return '0,' + '0'.repeat(decimals);
+
+   const parts = num.toFixed(decimals).split('.');
+   const integer = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+   const decimal = parts[1] || '0'.repeat(decimals);
+
+   return `${integer},${decimal}`;
+};
 /**
- * Formata valor monetário durante a digitação.
- * Permite digitação natural: "10" fica "R$ 10" e o usuário adiciona vírgula e centavos.
- *
- * [RESTAURADO 2026-01-08] Comportamento original (antes da máscara calculadora)
- * Issue #3: Máscara estava obrigando digitar "1,0" para obter "10,00"
- *
+ * Formata valor monetário estilo calculadora/PDV.
+ * Os dígitos digitados entram como centavos e empurram para a esquerda.
+ * 
+ * [ALTERADO 2026-01-08] Máscara monetária estilo caixa eletrônico
+ * 
  * Exemplos:
- * - Digita "10" → R$ 10
- * - Digita "10," → R$ 10,
- * - Digita "10,5" → R$ 10,5
- * - Digita "10,50" → R$ 10,50
- * - Ao sair do campo (onBlur): "R$ 10" → "R$ 10,00"
- *
+ * - Digita 1 → R$ 0,01
+ * - Digita 0 → R$ 0,10
+ * - Digita 0 → R$ 1,00
+ * - Digita 0 → R$ 10,00
+ * 
  * @param value - Valor digitado
- * @returns Valor formatado como R$ X.XXX ou R$ X.XXX,XX
+ * @returns Valor formatado como R$ X.XXX,XX
  */
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
 
-   // Remove o prefixo R$ e espaços
-   let cleaned = value.replace(/^R\$\s*/, '').trim();
+   // Remove tudo que não é número (R$, espaços, pontos, vírgulas)
+   let digits = value.replace(/[^\d]/g, '');
 
-   // Remove pontos de milhar antigos para processar corretamente
-   cleaned = cleaned.replace(/\./g, '');
+   // Se não tem dígitos, retorna vazio
+   if (!digits) return '';
 
-   // Se vazio ou só vírgula isolada
-   if (!cleaned || cleaned === ',') return '';
+   // Remove zeros à esquerda (mas mantém pelo menos 1 se for só zeros)
+   digits = digits.replace(/^0+/, '') || '0';
 
-   const parts = cleaned.split(',');
-   // Garante apenas números na parte inteira
-   let inteiro = parts[0].replace(/[^\d]/g, '');
-
-   // Se não sobrou nada na parte inteira
-   if (!inteiro && parts.length === 1) return '';
-   if (!inteiro) inteiro = '0';
-
-   // Remove zeros à esquerda (ex: 010 -> 10), mas mantém '0' se for só zero
-   inteiro = inteiro.replace(/^0+(?=\d)/, '');
-
-   // Adiciona pontos de milhar na parte inteira
-   if (inteiro.length > 3) {
-      inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+   // Garante pelo menos 3 dígitos (para ter 2 casas decimais)
+   // Ex: "1" -> "001" -> "0,01"
+   while (digits.length < 3) {
+      digits = '0' + digits;
    }
 
-   // Se tem vírgula no valor, mantém a parte decimal como está
-   if (parts.length > 1) {
-      let decimal = parts.slice(1).join('').replace(/[^\d]/g, '');
-      return `R$ ${inteiro},${decimal}`;
+   // Separa parte inteira e decimal (últimos 2 dígitos são centavos)
+   const len = digits.length;
+   const inteiro = digits.slice(0, len - 2);
+   const decimal = digits.slice(len - 2);
+
+   // Formata parte inteira com pontos de milhar
+   let inteiroFormatado = inteiro.replace(/^0+/, '') || '0'; // Remove zeros à esquerda
+   if (inteiroFormatado.length > 3) {
+      inteiroFormatado = inteiroFormatado.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
    }
 
-   // Se NÃO tem vírgula, retorna SÓ o inteiro (sem ,00)
-   // O ,00 será adicionado apenas no onBlur
-   return `R$ ${inteiro}`;
+   return `R$ ${inteiroFormatado},${decimal}`;
 };
 
-/**
- * Formata valor ao sair do campo (onBlur).
- * Adiciona os centavos ",00" se o usuário não digitou.
- *
- * @param value - Valor atual do campo
- * @returns Valor com 2 casas decimais garantidas
- */
+// formatValueOnBlur não é mais necessário - mantido por compatibilidade
 const formatValueOnBlur = (value: string) => {
    if (!value) return '';
-
-   // Se já tem vírgula, mantém como está
-   if (value.includes(',')) return value;
-
-   // Se não tem vírgula, adiciona ,00
-   return `${value},00`;
+   return value;
 };
 
 // Get payment icon
@@ -207,66 +269,20 @@ const TelaFechamentoDiario: React.FC = () => {
    const { user } = useAuth();
    const { postoAtivoId, postos, setPostoAtivoById, postoAtivo } = usePosto();
 
-   // [REFATORADO 2026-01-08] Usa hook customizado para carregamento de dados
-   // Substitui estados manuais de bicos, frentistas, turnos e função loadData()
-   const {
-      bicos,
-      frentistas,
-      turnos,
-      carregando: loadingDados,
-      erro: erroDados,
-      carregarDados
-   } = useCarregamentoDados(postoAtivoId);
-
    // State
-   // State
+   const [bicos, setBicos] = useState<BicoWithDetails[]>([]);
+   const [leituras, setLeituras] = useState<Record<number, { inicial: string; fechamento: string }>>({});
    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-   // Additional states
-   const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
-
-   // [REFATORADO 2026-01-08] Hook useLeituras (precisa vir depois de selectedDate e selectedTurno)
-   const {
-      leituras,
-      carregando: loadingLeituras,
-      erro: erroLeituras,
-      carregarLeituras,
-      alterarInicial,
-      alterarFechamento,
-      aoSairInicial,
-      aoSairFechamento,
-      calcLitros: calcLitrosHook,
-      calcVenda: calcVendaHook,
-      totals,
-      getSummaryByCombustivel: getSummaryByCombustivelHook
-   } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
-
-   // [REFATORADO 2026-01-08] Hook useSessoesFrentistas
-   const {
-      sessoes: sessoesFrentistas,
-      carregando: carregandoFrentistas,
-      totais: totaisFrentistas,
-      carregarSessoes: carregarSessoesFrentistas,
-      adicionarFrentista,
-      removerFrentista,
-      atualizarSessao,
-      alterarCampoFrentista,
-      aoSairCampoFrentista
-   } = useSessoesFrentistas(postoAtivoId);
-
-   // Carrega sessões quando data/turno mudam
-   useEffect(() => {
-      if (selectedDate && selectedTurno) {
-         carregarSessoesFrentistas(selectedDate, selectedTurno);
-      }
-   }, [selectedDate, selectedTurno, carregarSessoesFrentistas]);
-
-   // [RESTORED] Estados de UI essenciais
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState(false);
    const [error, setError] = useState<string | null>(null);
    const [success, setSuccess] = useState<string | null>(null);
 
-   // frentistaSessions removido (gerenciado pelo hook)
+   // Additional states
+   const [frentistas, setFrentistas] = useState<Frentista[]>([]);
+   const [turnos, setTurnos] = useState<Turno[]>([]);
+   const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
+   const [frentistaSessions, setFrentistaSessions] = useState<FrentistaSession[]>([]);
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
    const [dayClosures, setDayClosures] = useState<any[]>([]);
@@ -277,6 +293,7 @@ const TelaFechamentoDiario: React.FC = () => {
    const [editingPrice, setEditingPrice] = useState<number | null>(null); // combustivel_id sendo editado
    const [tempPrice, setTempPrice] = useState<string>('');
 
+   // --- AUTOSAVE LOGIC ---
    // --- AUTOSAVE LOGIC ---
    const [restored, setRestored] = useState(false);
    const AUTOSAVE_KEY = useMemo(() => `daily_closing_draft_v1_${postoAtivoId}`, [postoAtivoId]);
@@ -295,19 +312,20 @@ const TelaFechamentoDiario: React.FC = () => {
                const parsed = JSON.parse(draft);
 
                // Validação de Segurança: Só restaura se o rascunho for da mesma data
+               // Isso corrige o bug onde leituras de ontem sobrescreviam o formulário de hoje
                if (parsed.selectedDate === selectedDate) {
                   if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
-                     // [REFATORADO 2026-01-08] Hook useLeituras gerencia estado
-                     // setLeituras(prev => ({ ...prev, ...parsed.leituras }));
+                     setLeituras(prev => ({ ...prev, ...parsed.leituras }));
                   }
                   if (parsed.selectedTurno) setSelectedTurno(parsed.selectedTurno);
-                  // if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
-                  //    // Restaurar via hook se necessário futuramente
-                  // }
+                  if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
+                     setFrentistaSessions(parsed.frentistaSessions);
+                  }
                   console.log('✅ Rascunho restaurado com sucesso para:', selectedDate);
                } else {
                   console.warn('🧹 Rascunho descartado pois pertence a outra data:', parsed.selectedDate);
                   localStorage.removeItem(AUTOSAVE_KEY);
+                  // Não restaura nada, forçando o loadLeituras a buscar do banco
                }
             }
          } catch (e) {
@@ -325,30 +343,98 @@ const TelaFechamentoDiario: React.FC = () => {
             leituras,
             selectedDate,
             selectedTurno,
-            // frentistaSessions removido do autosave manual (integrar no hook futuramente)
+            frentistaSessions
          };
          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
       }
-   }, [leituras, selectedDate, selectedTurno, loading, saving, restored, AUTOSAVE_KEY]);
+   }, [leituras, selectedDate, selectedTurno, frentistaSessions, loading, saving, restored, AUTOSAVE_KEY]);
+   // ----------------------
 
-   // [REFATORADO 2026-01-08] Hook gerencia pagamentos automaticamente
-   const {
-      pagamentos: payments,
-      totalLiquido,
-      totalTaxas,
-      alterarPagamento: handlePaymentChange,
-      aoSairPagamento: handlePaymentBlur
-   } = usePagamentos(postoAtivoId);
+   // Payment entries (dynamic) - REMAINING FOR GLOBAL AUDIT
+   const [payments, setPayments] = useState<PaymentEntry[]>([]);
 
-   // [REFATORADO 2026-01-08] frentistasTotals substituído por totaisFrentistas do hook
+   // Sum of all frentista values
+   const frentistasTotals = useMemo(() => {
+      return frentistaSessions.reduce((acc, fs) => {
+         return {
+            cartao: acc.cartao + parseValue(fs.valor_cartao),
+            nota: acc.nota + parseValue(fs.valor_nota),
+            pix: acc.pix + parseValue(fs.valor_pix),
+            dinheiro: acc.dinheiro + parseValue(fs.valor_dinheiro),
+            total: acc.total + parseValue(fs.valor_cartao) + parseValue(fs.valor_nota) + parseValue(fs.valor_pix) + parseValue(fs.valor_dinheiro) + parseValue(fs.valor_baratao)
+         };
+      }, { cartao: 0, nota: 0, pix: 0, dinheiro: 0, total: 0 });
+   }, [frentistaSessions]);
 
-   // [REFATORADO 2026-01-08] Sincroniza loading local com loading do hook
+   // Computed Total Liquido (Global)
+   const totalLiquido = useMemo(() => {
+      // ... (rest of logic)
+      return payments.reduce((acc, p) => {
+         const valor = parseValue(p.valor);
+         const desconto = valor * (p.taxa / 100);
+         return acc + (valor - desconto);
+      }, 0);
+   }, [payments]);
+
+   const totalTaxas = useMemo(() => {
+      return payments.reduce((acc, p) => {
+         const valor = parseValue(p.valor);
+         return acc + (valor * (p.taxa / 100));
+      }, 0);
+   }, [payments]);
+
+   // Load data on mount
    useEffect(() => {
-      setLoading(loadingDados);
-      if (erroDados) {
-         setError(erroDados);
+      loadData();
+   }, [postoAtivoId]);
+
+   const loadData = async () => {
+      try {
+         setLoading(true);
+         setError(null);
+
+         // Fetch bicos with details
+         const bicosData = await bicoService.getWithDetails(postoAtivoId);
+         setBicos(bicosData);
+
+         // Fetch frentistas
+         const frentistasData = await frentistaService.getAll(postoAtivoId);
+         console.log('Frentistas carregados:', frentistasData);
+         setFrentistas(frentistasData);
+
+         // Fetch turnos e seleciona automaticamente o primeiro (modo diário simplificado)
+         const turnosData = await turnoService.getAll(postoAtivoId);
+         const availableTurnos = turnosData.length > 0 ? turnosData : DEFAULT_TURNOS as Turno[];
+         setTurnos(availableTurnos);
+
+         // Seleção automática: prioriza 'Diário', senão pega o primeiro
+         if (availableTurnos.length > 0) {
+            const diario = availableTurnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
+            setSelectedTurno(diario ? diario.id : availableTurnos[0].id);
+         }
+
+         // Fetch Payment Methods
+         const paymentMethodsData = await formaPagamentoService.getAll(postoAtivoId);
+         const initialPayments: PaymentEntry[] = paymentMethodsData.map(pm => ({
+            id: pm.id,
+            nome: pm.nome,
+            tipo: pm.tipo,
+            valor: '',
+            taxa: pm.taxa || 0
+         }));
+         setPayments(initialPayments);
+
+         // Auto-populate logic moved to loadLeituras controlled by useEffect
+         // keeping the setLeituras cleared or empty initially
+         // setLeituras(leiturasMap);
+
+      } catch (err) {
+         console.error('Error loading data:', err);
+         setError('Erro ao carregar dados. Verifique sua conexão.');
+      } finally {
+         setLoading(false);
       }
-   }, [loadingDados, erroDados]);
+   };
 
    const loadDayClosures = async () => {
       try {
@@ -365,9 +451,9 @@ const TelaFechamentoDiario: React.FC = () => {
       }
 
       if (selectedDate && selectedTurno) {
-         // loadFrentistaSessions removido (feito via useEffect do hook)
+         loadFrentistaSessions();
       } else {
-         // setFrentistaSessions([]); gerenciado pelo hook
+         setFrentistaSessions([]);
       }
    }, [selectedDate, selectedTurno, postoAtivoId]);
 
@@ -385,7 +471,7 @@ const TelaFechamentoDiario: React.FC = () => {
                console.log('🔔 Realtime: FechamentoFrentista alterado', payload);
                if (selectedDate && selectedTurno) {
                   console.log('Recarregando frentistas...');
-                  carregarSessoesFrentistas(selectedDate, selectedTurno);
+                  loadFrentistaSessions();
                }
             }
          )
@@ -395,7 +481,7 @@ const TelaFechamentoDiario: React.FC = () => {
             (payload) => {
                console.log('🔔 Realtime: Fechamento alterado', payload);
                if (selectedDate) loadDayClosures();
-               if (selectedDate && selectedTurno) carregarSessoesFrentistas(selectedDate, selectedTurno);
+               if (selectedDate && selectedTurno) loadFrentistaSessions();
             }
          )
          .subscribe((status) => {
@@ -421,8 +507,161 @@ const TelaFechamentoDiario: React.FC = () => {
       };
    }, [selectedDate, selectedTurno]);
 
-   // [REFATORADO 2026-01-08] loadFrentistaSessions removido
-   // [REFATORADO 2026-01-08] updatePaymentsFromFrentistas removido
+   // Helper function para atualizar os pagamentos com base nos totais dos frentistas
+   const updatePaymentsFromFrentistas = (sessions: any[]) => {
+      if (sessions.length === 0) return;
+
+      // Soma os valores de todas as sessões de frentistas
+      const totais = sessions.reduce((acc, s) => ({
+         cartao: acc.cartao + (Number(s.valor_cartao) || Number(s.cartao) || 0),
+         cartao_debito: acc.cartao_debito + (Number(s.valor_cartao_debito) || 0),
+         cartao_credito: acc.cartao_credito + (Number(s.valor_cartao_credito) || 0),
+         pix: acc.pix + (Number(s.valor_pix) || Number(s.pix) || 0),
+         dinheiro: acc.dinheiro + (Number(s.valor_dinheiro) || Number(s.dinheiro) || 0),
+         nota: acc.nota + (Number(s.valor_nota) || Number(s.nota) || 0),
+         baratao: acc.baratao + (Number(s.valor_baratao) || Number(s.baratao) || 0),
+      }), { cartao: 0, cartao_debito: 0, cartao_credito: 0, pix: 0, dinheiro: 0, nota: 0, baratao: 0 });
+
+      // Atualiza os payments com os totais dos frentistas
+
+      setPayments(prev => prev.map(p => {
+         // Mapeia tipos de forma de pagamento para os totais dos frentistas
+         if (p.tipo === 'cartao' || p.nome.toLowerCase().includes('cartão')) {
+            if (p.nome.toLowerCase().includes('crédito')) {
+               return { ...p, valor: totais.cartao_credito > 0 ? formatSimpleValue(totais.cartao_credito.toString().replace('.', ',')) : '' };
+            }
+            if (p.nome.toLowerCase().includes('débito')) {
+               return { ...p, valor: totais.cartao_debito > 0 ? formatSimpleValue(totais.cartao_debito.toString().replace('.', ',')) : '' };
+            }
+            // Fallback para genérico se não tiver específico
+            return { ...p, valor: totais.cartao > 0 ? formatSimpleValue(totais.cartao.toString().replace('.', ',')) : '' };
+         }
+         if (p.tipo === 'digital' || p.nome.toLowerCase().includes('pix')) {
+            return { ...p, valor: totais.pix > 0 ? formatSimpleValue(totais.pix.toString().replace('.', ',')) : '' };
+         }
+         if (p.tipo === 'fisico' || p.nome.toLowerCase().includes('dinheiro')) {
+            return { ...p, valor: totais.dinheiro > 0 ? formatSimpleValue(totais.dinheiro.toString().replace('.', ',')) : '' };
+         }
+         if (p.nome.toLowerCase().includes('baratão')) {
+            return { ...p, valor: totais.baratao > 0 ? formatSimpleValue(totais.baratao.toString().replace('.', ',')) : '' };
+         }
+         if (p.nome.toLowerCase().includes('nota') || p.nome.toLowerCase().includes('vale')) {
+            return { ...p, valor: totais.nota > 0 ? formatSimpleValue(totais.nota.toString().replace('.', ',')) : '' };
+         }
+         return p;
+      }));
+   };
+
+   const loadFrentistaSessions = async () => {
+      try {
+         // 1. Buscar TODOS os frentistas ativos do posto para garantir que todos apareçam nas colunas
+         const allFrentistas = await frentistaService.getAll(postoAtivoId);
+         // Filtra frentistas ativos E remove o frentista "GERAL" (se existir)
+         const activeFrentistas = allFrentistas.filter(f =>
+            f.ativo && f.nome.toUpperCase() !== 'GERAL'
+         );
+
+         // Atualiza o estado de frentistas também
+         setFrentistas(allFrentistas);
+
+         let foundSessions: any[] = [];
+
+         // 2. Buscar sessões existentes (fechamentos já salvos ou pendentes do mobile)
+         const fechamento = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno!, postoAtivoId);
+
+         if (fechamento) {
+            // Se já tem fechamento salvo, busca os itens dele
+            foundSessions = await fechamentoFrentistaService.getByFechamento(fechamento.id);
+         } else {
+            // Se não tem, busca registros soltos enviados pelo mobile para esta data
+            const mobileSessions = await fechamentoFrentistaService.getByDate(selectedDate, postoAtivoId);
+
+            // Filtra pelo turno selecionado
+            foundSessions = mobileSessions.filter(s => {
+               const sessionTurno = s.fechamento?.turno_id;
+               return Number(sessionTurno) === Number(selectedTurno);
+            });
+         }
+
+         // 3. Criar mapa para acesso rápido às sessões existentes pro ID do frentista
+         const sessionMap = new Map();
+         foundSessions.forEach(s => sessionMap.set(s.frentista_id, s));
+
+         // 4. Construir lista final: Frentistas Ativos + Frentistas Inativos que tenham sessão (caso histórico)
+         // A prioridade são os ativos para preencher a tabela
+         const frentistasToShow = activeFrentistas;
+
+         // Adiciona também frentistas inativos que porventura tenham sessão (ex: demitido mas trabalhou no dia)
+         foundSessions.forEach(s => {
+            if (!frentistasToShow.find(f => f.id === s.frentista_id)) {
+               const frentistaObj = allFrentistas.find(f => f.id === s.frentista_id);
+               if (frentistaObj) frentistasToShow.push(frentistaObj);
+            }
+         });
+
+         const mergedSessions = await Promise.all(frentistasToShow.map(async (frentista) => {
+            const s = sessionMap.get(frentista.id);
+
+            if (s) {
+               // Mapeia sessão existente (Lógica original)
+               const produtos = await vendaProdutoService.getByFrentistaAndDate(s.frentista_id, selectedDate);
+               const totalProdutos = produtos.reduce((acc, p) => acc + Number(p.valor_total), 0);
+
+               const obs = s.observacoes || '';
+               const isConferido = obs.includes('[CONFERIDO]');
+               const cleanObs = obs.replace('[CONFERIDO]', '').trim();
+
+               return {
+                  tempId: s.id.toString(),
+                  frentistaId: s.frentista_id,
+                  valor_cartao: s.valor_cartao ? formatSimpleValue(s.valor_cartao.toString().replace('.', ',')) : '',
+                  valor_cartao_debito: s.valor_cartao_debito ? formatSimpleValue(s.valor_cartao_debito.toString().replace('.', ',')) : '',
+                  valor_cartao_credito: s.valor_cartao_credito ? formatSimpleValue(s.valor_cartao_credito.toString().replace('.', ',')) : '',
+                  valor_nota: s.valor_nota ? formatSimpleValue(s.valor_nota.toString().replace('.', ',')) : '',
+                  valor_pix: s.valor_pix ? formatSimpleValue(s.valor_pix.toString().replace('.', ',')) : '',
+                  valor_dinheiro: s.valor_dinheiro ? formatSimpleValue(s.valor_dinheiro.toString().replace('.', ',')) : '',
+                  valor_baratao: s.baratao ? formatSimpleValue(s.baratao.toString().replace('.', ',')) : '',
+                  valor_encerrante: s.encerrante ? formatSimpleValue(s.encerrante.toString().replace('.', ',')) : '',
+                  valor_conferido: s.valor_conferido ? formatSimpleValue(s.valor_conferido.toString().replace('.', ',')) : '',
+                  observacoes: cleanObs,
+                  status: (isConferido ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
+                  valor_produtos: totalProdutos > 0 ? formatToBR(totalProdutos, 2) : '0,00',
+                  data_hora_envio: (s as any).data_hora_envio || null
+               };
+            } else {
+               // Cria sessão vazia para frentista ativo sem dados ainda
+               return {
+                  tempId: `new-${frentista.id}`,
+                  frentistaId: frentista.id,
+                  valor_cartao: '',
+                  valor_cartao_debito: '',
+                  valor_cartao_credito: '',
+                  valor_nota: '',
+                  valor_pix: '',
+                  valor_dinheiro: '',
+                  valor_baratao: '',
+                  valor_encerrante: '',
+                  valor_conferido: '',
+                  observacoes: '',
+                  status: 'pendente',
+                  valor_produtos: '0,00',
+                  data_hora_envio: null
+               } as FrentistaSession;
+            }
+         }));
+
+         setFrentistaSessions(mergedSessions);
+
+         // Atualiza pagamentos globais apenas com base no que realmente veio do banco para não zerar tudo incorretamente
+         // Se foundSessions for vazio, updatePaymentsFromFrentistas não faz nada, mantendo o estado anterior se houver
+         if (foundSessions.length > 0) {
+            updatePaymentsFromFrentistas(foundSessions);
+         }
+
+      } catch (err) {
+         console.error('Error loading frentista sessions:', err);
+      }
+   };
    /**
     * Carrega as leituras dos bicos para a data e turno selecionados.
     * 
@@ -433,13 +672,98 @@ const TelaFechamentoDiario: React.FC = () => {
     * 
     * Nota: A automação agiliza o lançamento diário e histórico, evitando redigitação.
     */
-   // [REFATORADO 2026-01-08] loadLeituras removido, hook gerencia carregamento automaticamente
-   // useEffect de carregamento removido
+   const loadLeituras = async () => {
+      // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
+      if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
+
+      // Verifica se mudou a data ou o turno desde o último carregamento para evitar o bug de dados "grudados"
+      const contextChanged = lastLoadedContext.current.date !== selectedDate ||
+         lastLoadedContext.current.turno !== selectedTurno;
+
+      if (!contextChanged) {
+         // Se estamos na mesma data/turno, preservamos o que o usuário já digitou
+         const hasLocalData = Object.values(leituras).some(l => l.fechamento && l.fechamento.length > 0);
+         if (hasLocalData) {
+            console.log('📝 Preservando dados locais digitados');
+            return;
+         }
+      }
+
+      // Atualiza o contexto carregado
+      lastLoadedContext.current = { date: selectedDate, turno: selectedTurno };
+
+      try {
+         // 1. Verifica se temos leituras salvas para este turno específico (Modo Edição)
+         const dayReadings = await leituraService.getByDate(selectedDate, postoAtivoId);
+         const shiftReadings = dayReadings.filter(l => l.turno_id === selectedTurno);
+
+         if (shiftReadings.length > 0) {
+            const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
+            shiftReadings.forEach(reading => {
+               leiturasMap[reading.bico_id] = {
+                  inicial: reading.leitura_inicial.toFixed(3).replace('.', ','),
+                  fechamento: reading.leitura_final.toFixed(3).replace('.', ',')
+               };
+            });
+            setLeituras(leiturasMap);
+         } else {
+            // 2. MODO CRIAÇÃO: Busca a última leitura de cada bico para usar como inicial
+            const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
+
+            await Promise.all(bicos.map(async (bico) => {
+               try {
+                  const lastReading = await leituraService.getLastReadingByBico(bico.id);
+                  let inicialValue = 0;
+
+                  if (lastReading) {
+                     // Recupera o último valor de fechamento conhecido no sistema
+                     inicialValue = lastReading.leitura_final;
+                  }
+
+                  leiturasMap[bico.id] = {
+                     inicial: formatToBR(inicialValue, 3),
+                     fechamento: ''
+                  };
+               } catch (err) {
+                  console.error(`Erro ao buscar última leitura bico ${bico.id}:`, err);
+                  leiturasMap[bico.id] = { inicial: '0,000', fechamento: '' };
+               }
+            }));
+
+            setLeituras(leiturasMap);
+
+            // Se mudou de data, limpa o autosave para não confundir rascunhos de dias diferentes
+            if (contextChanged) {
+               localStorage.removeItem(AUTOSAVE_KEY);
+            }
+         }
+      } catch (err) {
+         console.error('Error loading leituras:', err);
+      }
+   };
+
    // Effect para recarregar leituras quando data ou turno mudam
+   useEffect(() => {
+      loadLeituras();
+   }, [selectedDate, selectedTurno, bicos, restored]);
 
+   // Handle inicial input change
+   const handleInicialChange = (bicoId: number, value: string) => {
+      const formatted = formatEncerranteInput(value);
+      setLeituras(prev => ({
+         ...prev,
+         [bicoId]: { ...prev[bicoId], inicial: formatted }
+      }));
+   };
 
-   // [REFATORADO 2026-01-08] Handlers substituídos pelos do hook (handleInicialChange -> alterarInicial, etc)
-   // Lógica de handlers manuais removida
+   // Handle fechamento input change
+   const handleFechamentoChange = (bicoId: number, value: string) => {
+      const formatted = formatEncerranteInput(value);
+      setLeituras(prev => ({
+         ...prev,
+         [bicoId]: { ...prev[bicoId], fechamento: formatted }
+      }));
+   };
 
    // Formata valor com vírgula quando o campo perde o foco
    // Converte qualquer formato para "1.718.359,423" (últimos 3 dígitos são SEMPRE decimais)
@@ -471,8 +795,28 @@ const TelaFechamentoDiario: React.FC = () => {
    };
 
    // Handler para quando o campo INICIAL perde o foco
-   // [REFATORADO 2026-01-08] Handlers de blur substituídos pelo hook
-   // Lógica manual removida
+   const handleInicialBlur = (bicoId: number) => {
+      const currentValue = leituras[bicoId]?.inicial || '';
+      const formatted = formatOnBlur(currentValue);
+      if (formatted !== currentValue) {
+         setLeituras(prev => ({
+            ...prev,
+            [bicoId]: { ...prev[bicoId], inicial: formatted }
+         }));
+      }
+   };
+
+   // Handler para quando o campo FECHAMENTO perde o foco
+   const handleFechamentoBlur = (bicoId: number) => {
+      const currentValue = leituras[bicoId]?.fechamento || '';
+      const formatted = formatOnBlur(currentValue);
+      if (formatted !== currentValue) {
+         setLeituras(prev => ({
+            ...prev,
+            [bicoId]: { ...prev[bicoId], fechamento: formatted }
+         }));
+      }
+   };
 
    // Formata entrada de encerrante: adiciona pontos de milhar na parte inteira
    // Vírgula deve ser digitada manualmente pelo usuário para separar decimais
@@ -539,9 +883,16 @@ const TelaFechamentoDiario: React.FC = () => {
          // Atualiza no banco
          await combustivelService.update(combustivelId, { preco_venda: newPrice });
 
-         // [REFATORADO 2026-01-08] Hook gerencia estado de bicos (read-only)
-         // Recarrega dados para refletir mudança
-         await carregarDados();
+         // Atualiza estado local dos bicos
+         setBicos(prev => prev.map(bico => {
+            if (bico.combustivel.id === combustivelId) {
+               return {
+                  ...bico,
+                  combustivel: { ...bico.combustivel, preco_venda: newPrice }
+               };
+            }
+            return bico;
+         }));
 
          setEditingPrice(null);
          setTempPrice('');
@@ -556,21 +907,119 @@ const TelaFechamentoDiario: React.FC = () => {
    };
 
    // Handle payment change
-   // [REFATORADO 2026-01-08] handlePaymentChange agora vem do hook usePagamentos
+   const handlePaymentChange = (index: number, value: string) => {
+      const formatted = formatSimpleValue(value);
+      setPayments(prev => {
+         const updated = [...prev];
+         updated[index] = { ...updated[index], valor: formatted };
+         return updated;
+      });
+   };
+
 
    // Calculate litros for a bico (EXATO como planilha)
-   // [REFATORADO 2026-01-08] Funções de cálculo removidas, usando as do hook useLeituras (calcLitrosHook, calcVendaHook)
+   const calcLitros = (bicoId: number): { value: number; display: string } => {
+      const inicial = parseValue(leituras[bicoId]?.inicial || '');
+      const fechamento = parseValue(leituras[bicoId]?.fechamento || '');
+
+      // REGRA DA PLANILHA: Se fechamento ≤ inicial → mostra "-"
+      if (fechamento <= inicial || fechamento === 0) {
+         return { value: 0, display: '-' };
+      }
+
+      const litros = fechamento - inicial;
+      return { value: litros, display: formatToBR(litros, 3) };
+   };
+
+   // Calculate venda for a bico (EXATO como planilha)
+   const calcVenda = (bicoId: number): { value: number; display: string } => {
+      const bico = bicos.find(b => b.id === bicoId);
+      if (!bico) return { value: 0, display: '-' };
+
+      const litros = calcLitros(bicoId);
+
+      // REGRA DA PLANILHA: Se litros = "-" → venda = "-"
+      if (litros.display === '-') {
+         return { value: 0, display: '-' };
+      }
+
+      const venda = litros.value * bico.combustivel.preco_venda;
+      return {
+         value: venda,
+         display: venda.toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+         })
+      };
+   };
+
+   // Check if reading is valid for calculation
+   const isReadingValid = (bicoId: number): boolean => {
+      const fechamento = parseValue(leituras[bicoId]?.fechamento || '');
+      const inicial = parseValue(leituras[bicoId]?.inicial || '');
+      return fechamento > inicial;
+   };
 
    // Group data by combustivel for summary
-   // [REFATORADO 2026-01-08] getSummaryByCombustivel substituído pela versão do hook
+   const getSummaryByCombustivel = () => {
+      const summary: Record<string, { nome: string; codigo: string; litros: number; valor: number; preco: number }> = {};
 
-   // [REFATORADO 2026-01-08] Totais agora vêm do hook useLeituras (variável 'totals')
-   // Cálculo manual removido
+      bicos.forEach(bico => {
+         const codigo = bico.combustivel.codigo;
+         if (!summary[codigo]) {
+            summary[codigo] = {
+               nome: bico.combustivel.nome,
+               codigo: codigo,
+               litros: 0,
+               valor: 0,
+               preco: bico.combustivel.preco_venda
+            };
+         }
+
+         const litrosData = calcLitros(bico.id);
+         const vendaData = calcVenda(bico.id);
+
+         if (litrosData.display !== '-') {
+            summary[codigo].litros += litrosData.value;
+            summary[codigo].valor += vendaData.value;
+         }
+      });
+
+      return Object.values(summary);
+   };
+
+   // Calculate totals (usando useMemo para performance)
+   const totals = useMemo(() => {
+      let totalLitros = 0;
+      let totalValor = 0;
+
+      bicos.forEach(bico => {
+         const litrosData = calcLitros(bico.id);
+         const vendaData = calcVenda(bico.id);
+
+         if (litrosData.display !== '-') {
+            totalLitros += litrosData.value;
+            totalValor += vendaData.value;
+         }
+      });
+
+      return {
+         litros: totalLitros,
+         valor: totalValor,
+         litrosDisplay: formatToBR(totalLitros, 3),
+         valorDisplay: totalValor.toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+         })
+      };
+   }, [bicos, leituras]);
+
    // Calculate total products
    const totalProdutos = useMemo(() => {
-      // Usar sessoesFrentistas do hook
-      return sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_produtos || '0'), 0);
-   }, [sessoesFrentistas]);
+      return frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_produtos || '0'), 0);
+   }, [frentistaSessions]);
 
    // Calculate total payments
    const totalPayments = useMemo(() => {
@@ -594,21 +1043,72 @@ const TelaFechamentoDiario: React.FC = () => {
    const isDifferenceSignificant = Math.abs(diferenca) > 100;
    const isDifferenceNegative = diferenca < 0;
 
-   // [REFATORADO 2026-01-08] Handlers removidos (handleAddFrentista, updateFrentistaSession, handleRemoveFrentista)
-   // Substituídos pelos handlers do hook useSessoesFrentistas
+   // Add a new frentista row
+   const handleAddFrentista = () => {
+      const newSession: FrentistaSession = {
+         tempId: Math.random().toString(36).substr(2, 9),
+         frentistaId: null,
+         valor_cartao: '',
+         valor_cartao_debito: '',
+         valor_cartao_credito: '',
+         valor_nota: '',
+         valor_pix: '',
+         valor_dinheiro: '',
+         valor_baratao: '',
+         valor_encerrante: '',
+         valor_conferido: '',
+         observacoes: '',
+         valor_produtos: ''
+      };
+      setFrentistaSessions(prev => [...prev, newSession]);
+   };
+
+   // Update a frentista session field
+   const updateFrentistaSession = async (tempId: string, updates: Partial<FrentistaSession>) => {
+      setFrentistaSessions(prev => prev.map(fs =>
+         fs.tempId === tempId ? { ...fs, ...updates } : fs
+      ));
+
+      // Persist status change explicitly
+      if (updates.status === 'conferido') {
+         try {
+            const session = frentistaSessions.find(s => s.tempId === tempId);
+            if (session) {
+               if (tempId.includes('temp-')) {
+                  console.warn('Registro temporário. Salvando no rascunho local.');
+                  return;
+               }
+
+               const currentObs = session.observacoes || '';
+               const newObs = currentObs.includes('[CONFERIDO]')
+                  ? currentObs
+                  : `[CONFERIDO] ${currentObs}`.trim();
+
+               // Persist via observations tag since column might not exist
+               await fechamentoFrentistaService.update(Number(tempId), {
+                  observacoes: newObs
+               } as any);
+            }
+         } catch (err) {
+            console.error('Error persisting status:', err);
+         }
+      }
+   };
+
+   // Remove a frentista row
+   const handleRemoveFrentista = (tempId: string) => {
+      setFrentistaSessions(prev => prev.filter(fs => fs.tempId !== tempId));
+   };
 
    // Handle cancel
    const handleCancel = () => {
-      // [REFATORADO 2026-01-08] Hook gerencia estado
-      // setLeituras({});
-      // [REFATORADO 2026-01-08] payments agora é read-only do hook
-      // setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
-      // setFrentistaSessions([]); // Gerenciado pelo hook
+      setLeituras({});
+      setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
+      setFrentistaSessions([]);
       setSelectedTurno(null);
       setSuccess(null);
       setError(null);
-      // [REFATORADO 2026-01-08] Hook gerencia carregamento automaticamente
-      window.location.reload();
+      loadData();
    };
 
    // Handle print
@@ -665,11 +1165,7 @@ const TelaFechamentoDiario: React.FC = () => {
 
          // 2. Save Readings (Leituras)
          const leiturasToCreate = bicos
-            .filter(bico => {
-               const i = parseValue(leituras[bico.id]?.inicial || '');
-               const f = parseValue(leituras[bico.id]?.fechamento || '');
-               return f > i;
-            })
+            .filter(bico => isReadingValid(bico.id))
             .map(bico => ({
                bico_id: bico.id,
                data: selectedDate,
@@ -691,9 +1187,8 @@ const TelaFechamentoDiario: React.FC = () => {
          await leituraService.bulkCreate(leiturasToCreate);
 
          // 3. Save Attendant Closings (FechamentoFrentista)
-         // 3. Save Attendant Closings (FechamentoFrentista)
-         if (sessoesFrentistas.length > 0) {
-            const frentistasToCreate = sessoesFrentistas
+         if (frentistaSessions.length > 0) {
+            const frentistasToCreate = frentistaSessions
                .filter(fs => fs.frentistaId !== null)
                .map(fs => {
                   const totalInformado =
@@ -735,7 +1230,11 @@ const TelaFechamentoDiario: React.FC = () => {
                const createdFechamentos = await fechamentoFrentistaService.bulkCreate(frentistasToCreate);
 
                if (createdFechamentos) {
-                  // IDs atualizados automaticamente ao recarregar dados
+                  // Atualiza os IDs temporários para IDs reais do banco
+                  setFrentistaSessions(prev => prev.map(fs => {
+                     const match = createdFechamentos.find(cf => cf.frentista_id === fs.frentistaId);
+                     return match ? { ...fs, tempId: match.id.toString() } : fs;
+                  }));
                }
 
                // Enviar notificações para frentistas com diferença negativa (falta de caixa)
@@ -795,18 +1294,16 @@ const TelaFechamentoDiario: React.FC = () => {
                updatedLeituras[bico.id].fechamento = '';
             }
          });
-         // [REFATORADO 2026-01-08] Recarrega leituras do banco
-         await carregarLeituras();
-         // setLeituras(updatedLeituras);
+         setLeituras(updatedLeituras);
 
          // Reset payments
-         // [REFATORADO 2026-01-08] payments agora é read-only do hook
-         // setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
+         setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
          setObservacoes('');
-         // setFrentistaSessions([]) removido - hook recarrega
+         setFrentistaSessions([]);
          localStorage.removeItem('daily_closing_draft_v1'); // Limpa rascunho após salvar
 
-         // [REFATORADO 2026-01-08] Hook recarrega dados automaticamente
+         // Reload data
+         await loadData();
          await loadDayClosures();
 
       } catch (err: any) {
@@ -830,7 +1327,7 @@ const TelaFechamentoDiario: React.FC = () => {
       );
    }
 
-   const summaryData = getSummaryByCombustivelHook();
+   const summaryData = getSummaryByCombustivel();
 
    return (
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-32 print:pb-0 print:max-w-none">
@@ -916,9 +1413,9 @@ const TelaFechamentoDiario: React.FC = () => {
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">&nbsp;</span>
                   <button
                      onClick={() => {
-                        carregarDados();
+                        loadData();
                         if (selectedDate) loadDayClosures();
-                        if (selectedDate && selectedTurno) carregarSessoesFrentistas(selectedDate, selectedTurno);
+                        if (selectedDate && selectedTurno) loadFrentistaSessions();
                      }}
                      className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                      title="Atualizar todos os dados"
@@ -1005,8 +1502,8 @@ const TelaFechamentoDiario: React.FC = () => {
                <h1 className="text-2xl font-black">FECHAMENTO DE CAIXA</h1>
                <p className="text-lg mt-2">Data: {new Date(selectedDate).toLocaleDateString('pt-BR')}</p>
                {/* Turno removido - modo diário simplificado */}
-               {sessoesFrentistas.length > 0 && (
-                  <p>Frentistas: {sessoesFrentistas.map(fs => frentistas.find(f => f.id === fs.frentistaId)?.nome).filter(Boolean).join(', ')}</p>
+               {frentistaSessions.length > 0 && (
+                  <p>Frentistas: {frentistaSessions.map(fs => frentistas.find(f => f.id === fs.frentistaId)?.nome).filter(Boolean).join(', ')}</p>
                )}
             </div>
          </div>
@@ -1067,14 +1564,9 @@ const TelaFechamentoDiario: React.FC = () => {
                            const colors = FUEL_COLORS[bico.combustivel.codigo] || FUEL_COLORS['GC'];
                            const inicial = leituras[bico.id]?.inicial || '';
                            const fechamento = leituras[bico.id]?.fechamento || '';
-                           const litrosData = calcLitrosHook(bico.id);
-                           const vendaData = calcVendaHook(bico.id);
-                           // Validação inline simples: fechamento > inicial
-                           const isValid = (() => {
-                              const i = parseValue(leituras[bico.id]?.inicial || '');
-                              const f = parseValue(leituras[bico.id]?.fechamento || '');
-                              return f > i;
-                           })();
+                           const litrosData = calcLitros(bico.id);
+                           const vendaData = calcVenda(bico.id);
+                           const isValid = isReadingValid(bico.id);
 
                            return (
                               <tr key={bico.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -1087,9 +1579,9 @@ const TelaFechamentoDiario: React.FC = () => {
                                  <td className="px-4 py-3">
                                     <input
                                        type="text"
-                                       value={leituras[bico.id]?.inicial || ''}
-                                       onChange={(e) => alterarInicial(bico.id, e.target.value)}
-                                       onBlur={() => aoSairInicial(bico.id)}
+                                       value={inicial}
+                                       onChange={(e) => handleInicialChange(bico.id, e.target.value)}
+                                       onBlur={() => handleInicialBlur(bico.id)}
                                        className="w-full text-right font-mono py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
                                        placeholder="0,000"
                                     />
@@ -1099,9 +1591,9 @@ const TelaFechamentoDiario: React.FC = () => {
                                  <td className="px-4 py-3 bg-yellow-50/50 dark:bg-yellow-900/10">
                                     <input
                                        type="text"
-                                       value={leituras[bico.id]?.fechamento || ''}
-                                       onChange={(e) => alterarFechamento(bico.id, e.target.value)}
-                                       onBlur={() => aoSairFechamento(bico.id)}
+                                       value={fechamento}
+                                       onChange={(e) => handleFechamentoChange(bico.id, e.target.value)}
+                                       onBlur={() => handleFechamentoBlur(bico.id)}
                                        className={`w-full text-right font-mono py-2 px-3 rounded-lg border outline-none
                                     ${fechamento && !isValid
                                              ? 'border-red-300 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
@@ -1475,14 +1967,14 @@ const TelaFechamentoDiario: React.FC = () => {
                   {/* Payment Summary Footer */}
                   <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-8">
                      {/* Indicador de valores dos frentistas (mobile) */}
-                     {sessoesFrentistas.length > 0 && (
+                     {frentistaSessions.length > 0 && (
                         <div className="flex flex-col">
                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
                               <Smartphone size={10} />
                               Total Frentistas (App)
                            </span>
                            <span className="text-xl font-black text-blue-600 dark:text-blue-400">
-                              {totaisFrentistas.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              {frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                            </span>
                         </div>
                      )}
@@ -1633,22 +2125,21 @@ const TelaFechamentoDiario: React.FC = () => {
                   </h2>
                   <div className="flex gap-2">
                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                        {sessoesFrentistas.length} Ativos
+                        {frentistaSessions.length} Ativos
                      </span>
                   </div>
                </div>
                <div className="flex gap-2">
                   <button
                      onClick={() => {
-                        carregarDados();
-                        carregarSessoesFrentistas(selectedDate, selectedTurno || 0);
+                        loadData();
+                        loadFrentistaSessions();
                      }}
                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 rounded-full transition-all shadow-sm border border-transparent hover:border-blue-100 dark:hover:border-blue-800"
                      title="Atualizar dados"
                   >
                      <RefreshCw size={18} />
                   </button>
-
 
                </div>
             </div>
@@ -1661,7 +2152,7 @@ const TelaFechamentoDiario: React.FC = () => {
                         <th scope="col" className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-800 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-48 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            Meio de Pagamento
                         </th>
-                        {sessoesFrentistas.map((session, idx) => {
+                        {frentistaSessions.map((session, idx) => {
                            const frentista = frentistas.find(f => f.id === session.frentistaId);
                            return (
                               <th key={session.tempId} scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px]">
@@ -1671,7 +2162,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                     ) : (
                                        <select
                                           value={session.frentistaId || ''}
-                                          onChange={(e) => atualizarSessao(session.tempId, { frentistaId: Number(e.target.value) })}
+                                          onChange={(e) => updateFrentistaSession(session.tempId, { frentistaId: Number(e.target.value) })}
                                           className="text-xs p-1 border rounded bg-white dark:bg-gray-700 dark:text-white"
                                        >
                                           <option value="">Selecione...</option>
@@ -1681,7 +2172,7 @@ const TelaFechamentoDiario: React.FC = () => {
                                        </select>
                                     )}
                                     <button
-                                       onClick={() => removerFrentista(session.tempId)}
+                                       onClick={() => handleRemoveFrentista(session.tempId)}
                                        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                        title="Remover coluna"
                                     >
@@ -1705,20 +2196,20 @@ const TelaFechamentoDiario: React.FC = () => {
                               Pix
                            </div>
                         </td>
-                        {sessoesFrentistas.map(session => (
+                        {frentistaSessions.map(session => (
                            <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
                               <input
                                  type="text"
                                  value={session.valor_pix}
-                                 onChange={(e) => alterarCampoFrentista(session.tempId, 'valor_pix', e.target.value)}
-                                 onBlur={(e) => aoSairCampoFrentista(session.tempId, 'valor_pix', e.target.value)}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_pix: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
                            </td>
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                           {sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_pix), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_pix), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -1730,20 +2221,20 @@ const TelaFechamentoDiario: React.FC = () => {
                               Cartão Débito
                            </div>
                         </td>
-                        {sessoesFrentistas.map(session => (
+                        {frentistaSessions.map(session => (
                            <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
                               <input
                                  type="text"
                                  value={session.valor_cartao_debito}
-                                 onChange={(e) => alterarCampoFrentista(session.tempId, 'valor_cartao_debito', e.target.value)}
-                                 onBlur={(e) => aoSairCampoFrentista(session.tempId, 'valor_cartao_debito', e.target.value)}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao_debito: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_cartao_debito: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
                            </td>
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                           {sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_cartao_debito), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_cartao_debito), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -1755,20 +2246,20 @@ const TelaFechamentoDiario: React.FC = () => {
                               Cartão Crédito
                            </div>
                         </td>
-                        {sessoesFrentistas.map(session => (
+                        {frentistaSessions.map(session => (
                            <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
                               <input
                                  type="text"
                                  value={session.valor_cartao_credito}
-                                 onChange={(e) => alterarCampoFrentista(session.tempId, 'valor_cartao_credito', e.target.value)}
-                                 onBlur={(e) => aoSairCampoFrentista(session.tempId, 'valor_cartao_credito', e.target.value)}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_cartao_credito: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_cartao_credito: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
                            </td>
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                           {sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_cartao_credito), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_cartao_credito), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -1780,20 +2271,20 @@ const TelaFechamentoDiario: React.FC = () => {
                               Notas a Prazo
                            </div>
                         </td>
-                        {sessoesFrentistas.map(session => (
+                        {frentistaSessions.map(session => (
                            <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
                               <input
                                  type="text"
                                  value={session.valor_nota}
-                                 onChange={(e) => alterarCampoFrentista(session.tempId, 'valor_nota', e.target.value)}
-                                 onBlur={(e) => aoSairCampoFrentista(session.tempId, 'valor_nota', e.target.value)}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_nota: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
                            </td>
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                           {sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_nota), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_nota), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -1805,20 +2296,20 @@ const TelaFechamentoDiario: React.FC = () => {
                               Dinheiro
                            </div>
                         </td>
-                        {sessoesFrentistas.map(session => (
+                        {frentistaSessions.map(session => (
                            <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
                               <input
                                  type="text"
                                  value={session.valor_dinheiro}
-                                 onChange={(e) => alterarCampoFrentista(session.tempId, 'valor_dinheiro', e.target.value)}
-                                 onBlur={(e) => aoSairCampoFrentista(session.tempId, 'valor_dinheiro', e.target.value)}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_dinheiro: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
                            </td>
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                           {sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_dinheiro), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_dinheiro), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -1830,20 +2321,20 @@ const TelaFechamentoDiario: React.FC = () => {
                               Baratão/Outros
                            </div>
                         </td>
-                        {sessoesFrentistas.map(session => (
+                        {frentistaSessions.map(session => (
                            <td key={session.tempId} className="px-4 py-3 whitespace-nowrap text-sm text-right">
                               <input
                                  type="text"
                                  value={session.valor_baratao}
-                                 onChange={(e) => alterarCampoFrentista(session.tempId, 'valor_baratao', e.target.value)}
-                                 onBlur={(e) => aoSairCampoFrentista(session.tempId, 'valor_baratao', e.target.value)}
+                                 onChange={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatSimpleValue(e.target.value) })}
+                                 onBlur={(e) => updateFrentistaSession(session.tempId, { valor_baratao: formatValueOnBlur(e.target.value) })}
                                  className="w-full text-right bg-transparent border-0 border-b border-transparent hover:border-gray-200 focus:border-blue-500 focus:ring-0 text-gray-600 dark:text-gray-300 outline-none transition-colors px-0 py-1"
                                  placeholder="R$ 0,00"
                               />
                            </td>
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-                           {sessoesFrentistas.reduce((acc, s) => acc + parseValue(s.valor_baratao), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_baratao), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -1852,7 +2343,7 @@ const TelaFechamentoDiario: React.FC = () => {
                         <td className="sticky left-0 z-10 bg-blue-50 dark:bg-gray-800 px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-blue-100 border-r border-blue-100 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            Total Venda Frentista
                         </td>
-                        {sessoesFrentistas.map(session => {
+                        {frentistaSessions.map(session => {
                            const total = parseValue(session.valor_cartao_debito) +
                               parseValue(session.valor_cartao_credito) +
                               parseValue(session.valor_pix) +
@@ -1866,7 +2357,7 @@ const TelaFechamentoDiario: React.FC = () => {
                            );
                         })}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-700 dark:text-blue-300 border-l border-blue-100 dark:border-gray-700 bg-blue-100/50 dark:bg-blue-900/40">
-                           {totaisFrentistas.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
                      </tr>
 
@@ -1875,7 +2366,7 @@ const TelaFechamentoDiario: React.FC = () => {
                         <td className="sticky left-0 z-10 bg-red-50 dark:bg-gray-800 px-6 py-3 whitespace-nowrap text-sm font-medium text-red-600 dark:text-red-400 border-r border-red-100 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            Diferença (Falta)
                         </td>
-                        {sessoesFrentistas.map(session => {
+                        {frentistaSessions.map(session => {
                            const totalInf = parseValue(session.valor_cartao_debito) +
                               parseValue(session.valor_cartao_credito) +
                               parseValue(session.valor_pix) +
@@ -1895,7 +2386,7 @@ const TelaFechamentoDiario: React.FC = () => {
                         })}
                         <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-bold text-red-600 border-l border-red-100 dark:border-gray-700 bg-red-100/30 dark:bg-red-900/30">
                            {(() => {
-                              const totalFalta = sessoesFrentistas.reduce((acc, s) => {
+                              const totalFalta = frentistaSessions.reduce((acc, s) => {
                                  const totalInf = parseValue(s.valor_cartao_debito) + parseValue(s.valor_cartao_credito) + parseValue(s.valor_pix) + parseValue(s.valor_nota) + parseValue(s.valor_dinheiro) + parseValue(s.valor_baratao);
                                  const totalVendido = parseValue(s.valor_encerrante);
                                  const diff = totalVendido - totalInf;
@@ -1911,14 +2402,14 @@ const TelaFechamentoDiario: React.FC = () => {
                         <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-6 py-3 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                            Participação %
                         </td>
-                        {sessoesFrentistas.map(session => {
+                        {frentistaSessions.map(session => {
                            const totalInf = parseValue(session.valor_cartao_debito) +
                               parseValue(session.valor_cartao_credito) +
                               parseValue(session.valor_pix) +
                               parseValue(session.valor_nota) +
                               parseValue(session.valor_dinheiro) +
                               parseValue(session.valor_baratao);
-                           const globalTotal = totaisFrentistas.total || 1;
+                           const globalTotal = frentistasTotals.total || 1;
                            const percent = (totalInf / globalTotal) * 100;
 
                            return (
@@ -1939,7 +2430,7 @@ const TelaFechamentoDiario: React.FC = () => {
             <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 sm:px-6">
                <div className="text-xs text-gray-500 dark:text-gray-400 text-center sm:text-left flex justify-between items-center">
                   <span>* Valores de Venda Concentrador devem ser preenchidos com o total vendido registrado na bomba (Encerrante).</span>
-                  {sessoesFrentistas.length > 0 && (
+                  {frentistaSessions.length > 0 && (
                      <button
                         onClick={() => {
                            handleSave();
@@ -1954,7 +2445,7 @@ const TelaFechamentoDiario: React.FC = () => {
          </div>
 
          {/* Cash Difference Alert - Show when there's a significant difference */}
-         {false && (totaisFrentistas.total > 0 || totalPayments > 0) && totals.valor > 0 && (
+         {false && (frentistasTotals.total > 0 || totalPayments > 0) && totals.valor > 0 && (
             <div className="space-y-4">
                <DifferenceAlert
                   difference={totalPayments - totals.valor}
@@ -1964,7 +2455,7 @@ const TelaFechamentoDiario: React.FC = () => {
                />
 
                {/* New: Discrepancy between Sum of Frentistas and Global Total */}
-               {sessoesFrentistas.length > 0 && Math.abs(totaisFrentistas.total - totalPayments) > 50 && (
+               {frentistaSessions.length > 0 && Math.abs(frentistasTotals.total - totalPayments) > 50 && (
                   <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-4 animate-fade-in-up shadow-sm">
                      <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
                         <AlertTriangle size={24} />
@@ -1972,10 +2463,10 @@ const TelaFechamentoDiario: React.FC = () => {
                      <div className="flex-1">
                         <h4 className="font-bold text-amber-900 text-sm">Divergência entre Frentistas e Caixa Geral</h4>
                         <p className="text-xs text-amber-800 mt-1">
-                           A soma dos envelopes dos frentistas (<strong>{totaisFrentistas.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>)
+                           A soma dos envelopes dos frentistas (<strong>{frentistasTotals.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>)
                            não confere com o total contado pelo gerente (<strong>{totalPayments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>).
                         </p>
-                        <p className="text-[10px] font-bold text-amber-600 uppercase mt-2">Diferença: {(totaisFrentistas.total - totalPayments).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                        <p className="text-[10px] font-bold text-amber-600 uppercase mt-2">Diferença: {(frentistasTotals.total - totalPayments).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                      </div>
                   </div>
                )}
