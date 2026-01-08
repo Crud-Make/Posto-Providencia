@@ -1,7 +1,6 @@
 import React from 'react';
 import { Fuel, Check, X, Pencil } from 'lucide-react';
 import { BicoWithDetails } from './types';
-import { FUEL_COLORS } from './constants';
 
 interface FechamentoLeiturasTableProps {
    bicos: BicoWithDetails[];
@@ -71,7 +70,6 @@ export const FechamentoLeiturasTable: React.FC<FechamentoLeiturasTableProps> = (
                </thead>
                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {bicos.map((bico) => {
-                     const colors = FUEL_COLORS[bico.combustivel.codigo] || FUEL_COLORS['GC'];
                      const inicial = leituras[bico.id]?.inicial || '';
                      const fechamento = leituras[bico.id]?.fechamento || '';
                      const litrosData = calcLitros(bico.id);

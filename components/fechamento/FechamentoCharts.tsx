@@ -12,8 +12,12 @@ interface FechamentoChartsProps {
 }
 
 export const FechamentoCharts: React.FC<FechamentoChartsProps> = ({ summaryData, payments, activeTab }) => {
+    if (activeTab !== 'leituras') {
+        return null;
+    }
+
     return (
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${activeTab === 'leituras' ? 'contents' : 'hidden'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Chart 1: Volume por Combustível */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-[400px]">
                 <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
