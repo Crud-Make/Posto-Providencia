@@ -297,16 +297,23 @@ const TelaFechamentoDiario: React.FC = () => {
             const draft = localStorage.getItem(AUTOSAVE_KEY);
             if (draft) {
                const parsed = JSON.parse(draft);
-               if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
-                  setLeituras(prev => ({ ...prev, ...parsed.leituras }));
+
+               // Validação de Segurança: Só restaura se o rascunho for da mesma data
+               // Isso corrige o bug onde leituras de ontem sobrescreviam o formulário de hoje
+               if (parsed.selectedDate === selectedDate) {
+                  if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
+                     setLeituras(prev => ({ ...prev, ...parsed.leituras }));
+                  }
+                  if (parsed.selectedTurno) setSelectedTurno(parsed.selectedTurno);
+                  if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
+                     setFrentistaSessions(parsed.frentistaSessions);
+                  }
+                  console.log('✅ Rascunho restaurado com sucesso para:', selectedDate);
+               } else {
+                  console.warn('🧹 Rascunho descartado pois pertence a outra data:', parsed.selectedDate);
+                  localStorage.removeItem(AUTOSAVE_KEY);
+                  // Não restaura nada, forçando o loadLeituras a buscar do banco
                }
-               // NOTA: selectedDate NÃO é restaurado do rascunho
-               // O dashboard sempre abre com a data atual para evitar confusão
-               if (parsed.selectedTurno) setSelectedTurno(parsed.selectedTurno);
-               if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
-                  setFrentistaSessions(parsed.frentistaSessions);
-               }
-               console.log('Rascunho restaurado com sucesso para posto:', postoAtivoId);
             }
          } catch (e) {
             console.error('Erro ao restaurar rascunho:', e);
@@ -314,7 +321,7 @@ const TelaFechamentoDiario: React.FC = () => {
             setRestored(true);
          }
       }
-   }, [loading, restored, AUTOSAVE_KEY]);
+   }, [loading, restored, AUTOSAVE_KEY, selectedDate]);
 
    // Save to localStorage on changes
    useEffect(() => {
