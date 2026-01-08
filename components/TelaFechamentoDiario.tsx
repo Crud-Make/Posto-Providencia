@@ -199,10 +199,10 @@ const formatToBR = (num: number, decimals: number = 3): string => {
  * - "52" → "R$ 52,00"
  * - "514,3" → "R$ 514,30"
  * - "1562,01" → "R$ 1.562,01"
- * - "1939,5" → "R$ 1.939,50"
+ * - "1939,567" → "R$ 1.939,567"
  * 
  * @param value - Valor a ser formatado
- * @returns Valor formatado no padrão BR com R$ (R$ 1.234,56)
+ * @returns Valor formatado no padrão BR com R$ (ex: R$ 1.234,567)
  */
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
@@ -213,7 +213,8 @@ const formatSimpleValue = (value: string) => {
    // Se houver múltiplas vírgulas, mantém apenas a primeira
    const parts = cleaned.split(',');
    let inteiro = parts[0] || '';
-   let decimal = parts.slice(1).join('').slice(0, 2); // Mantém apenas 2 casas decimais
+   // [ALTERADO] Removida limitação .slice(0, 2) para aceitar qualquer quantidade de decimais
+   let decimal = parts.slice(1).join('');
 
    // Remove zeros à esquerda desnecessários
    inteiro = inteiro.replace(/^0+(?!$)/, '') || (parts[0] === '0' ? '0' : '');
@@ -223,11 +224,15 @@ const formatSimpleValue = (value: string) => {
       inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
    }
 
-   // GARANTE que sempre terá 2 casas decimais (padrão monetário BR)
-   decimal = decimal.padEnd(2, '0');
+   // Se há parte decimal digitada, mantém como está (sem forçar 2 casas)
+   if (parts.length > 1) {
+      // Se a parte decimal está vazia (ex: "123,"), adiciona "00" para manter o padrão monetário mínimo
+      // Caso contrário, mantém a parte decimal como digitada
+      return `R$ ${inteiro},${decimal || '00'}`;
+   }
 
-   // Reconstrói o número no padrão BR com prefixo R$: R$ 1.234,56
-   return `R$ ${inteiro},${decimal}`;
+   // Se não tem vírgula, adiciona ,00 por padrão
+   return `R$ ${inteiro},00`;
 };
 
 // Get payment icon
