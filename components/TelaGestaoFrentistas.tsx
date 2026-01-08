@@ -28,6 +28,7 @@ const TelaGestaoFrentistas: React.FC = () => {
    const [saving, setSaving] = useState(false);
    const [attendantsList, setAttendantsList] = useState<AttendantProfile[]>([]);
    const [attendantHistory, setAttendantHistory] = useState<AttendantHistoryEntry[]>([]);
+   const [selectedAttendantHistory, setSelectedAttendantHistory] = useState<AttendantHistoryEntry[]>([]);
 
    const [selectedAttendantId, setSelectedAttendantId] = useState<string | null>(null);
    const [searchTerm, setSearchTerm] = useState('');
@@ -165,6 +166,46 @@ const TelaGestaoFrentistas: React.FC = () => {
    };
 
    const selectedAttendant = attendantsList.find(a => a.id === selectedAttendantId);
+
+   // Busca histórico específico do frentista selecionado
+   useEffect(() => {
+      const loadSelectedHistory = async () => {
+         if (!selectedAttendantId) {
+            setSelectedAttendantHistory([]);
+            return;
+         }
+
+         try {
+            const { data, error } = await supabase
+               .from('FechamentoFrentista')
+               .select(`
+                  *,
+                  fechamento:Fechamento(data, turno:Turno(nome))
+               `)
+               .eq('frentista_id', Number(selectedAttendantId))
+               .order('id', { ascending: false })
+               .limit(30);
+
+            if (error) throw error;
+
+            const formattedHistory: AttendantHistoryEntry[] = (data || []).map((h: any) => ({
+               id: String(h.id),
+               date: h.fechamento?.data || 'N/A',
+               shift: h.fechamento?.turno?.nome || 'N/A',
+               value: ((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0),
+               status: ((((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0)) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
+            }));
+
+            setSelectedAttendantHistory(formattedHistory);
+         } catch (error) {
+            console.error('Erro ao buscar histórico do frentista:', error);
+            setSelectedAttendantHistory([]);
+         }
+      };
+
+      loadSelectedHistory();
+   }, [selectedAttendantId]);
+
 
    // Filter logic
    const filteredList = attendantsList.filter(a => {
@@ -350,7 +391,7 @@ const TelaGestaoFrentistas: React.FC = () => {
                               <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700">Ver todos</button>
                            </div>
                            <div className="space-y-3">
-                              {attendantHistory.length === 0 ? <p className="text-gray-400 dark:text-gray-500 text-xs italic">Nenhum histórico disponível.</p> : attendantHistory.map((history) => (
+                              {selectedAttendantHistory.length === 0 ? <p className="text-gray-400 dark:text-gray-500 text-xs italic">Nenhum histórico disponível.</p> : selectedAttendantHistory.map((history) => (
                                  <div key={history.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-600">
                                     <div>
                                        <p className="text-xs font-bold text-gray-900 dark:text-white">{history.date}</p>
