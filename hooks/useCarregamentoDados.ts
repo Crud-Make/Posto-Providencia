@@ -1,0 +1,130 @@
+/**
+ * Hook para gerenciamento de carregamento de dados gerais
+ *
+ * @remarks
+ * Centraliza carregamento de bicos, frentistas, turnos
+ * e configuração de realtime subscriptions do Supabase
+ *
+ * @author Sistema de Gestão - Posto Providência
+ * @version 1.0.0
+ */
+
+import { useState, useCallback, useEffect } from 'react';
+import type { BicoComDetalhes } from '../types/fechamento';
+import type { Frentista, Turno } from '../services/database.types';
+import { bicoService, frentistaService, turnoService } from '../services/api';
+import { supabase } from '../services/supabase';
+import { TURNOS_PADRAO } from '../types/fechamento';
+
+/**
+ * Retorno do hook useCarregamentoDados
+ */
+interface RetornoCarregamentoDados {
+  bicos: BicoComDetalhes[];
+  frentistas: Frentista[];
+  turnos: Turno[];
+  carregando: boolean;
+  erro: string | null;
+  carregarDados: () => Promise<void>;
+}
+
+/**
+ * Hook customizado para carregamento de dados do fechamento
+ *
+ * @param postoId - ID do posto ativo
+ * @returns Dados carregados e funções de controle
+ *
+ * @remarks
+ * - Carrega bicos, frentistas e turnos em paralelo
+ * - Usa turnos padrão como fallback
+ * - Configura realtime subscription para atualizações
+ *
+ * @example
+ * const { bicos, frentistas, carregarDados } = useCarregamentoDados(postoId);
+ */
+export const useCarregamentoDados = (
+  postoId: number | null
+): RetornoCarregamentoDados => {
+  const [bicos, setBicos] = useState<BicoComDetalhes[]>([]);
+  const [frentistas, setFrentistas] = useState<Frentista[]>([]);
+  const [turnos, setTurnos] = useState<Turno[]>(TURNOS_PADRAO);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  /**
+   * Carrega todos os dados necessários do posto
+   */
+  const carregarDados = useCallback(async () => {
+    if (!postoId) return;
+
+    setCarregando(true);
+    setErro(null);
+
+    try {
+      // Carrega em paralelo para melhor performance
+      const [dadosBicos, dadosFrentistas, dadosTurnos] = await Promise.all([
+        bicoService.getAllWithDetails(postoId),
+        frentistaService.getAll(postoId),
+        turnoService.getAll(postoId)
+      ]);
+
+      setBicos(dadosBicos);
+      setFrentistas(dadosFrentistas);
+
+      // Usa turnos do banco ou fallback para padrão
+      if (dadosTurnos.length > 0) {
+        setTurnos(dadosTurnos);
+      }
+
+      console.log('✅ Dados carregados com sucesso');
+    } catch (err) {
+      const mensagemErro = 'Erro ao carregar dados do posto';
+      setErro(mensagemErro);
+      console.error('❌', mensagemErro, err);
+    } finally {
+      setCarregando(false);
+    }
+  }, [postoId]);
+
+  /**
+   * Configura realtime subscription para mudanças no banco
+   *
+   * @remarks
+   * Escuta mudanças na tabela de fechamentos e recarrega
+   * dados automaticamente quando necessário
+   */
+  useEffect(() => {
+    if (!postoId) return;
+
+    const canal = supabase
+      .channel(`fechamento-${postoId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'fechamentos',
+          filter: `posto_id=eq.${postoId}`
+        },
+        () => {
+          console.log('🔄 Detectada mudança no banco, recarregando...');
+          carregarDados();
+        }
+      )
+      .subscribe();
+
+    // Cleanup ao desmontar
+    return () => {
+      canal.unsubscribe();
+    };
+  }, [postoId, carregarDados]);
+
+  return {
+    bicos,
+    frentistas,
+    turnos,
+    carregando,
+    erro,
+    carregarDados
+  };
+};
