@@ -234,15 +234,33 @@ const TelaFechamentoDiario: React.FC = () => {
    } = useCarregamentoDados(postoAtivoId);
 
    // State
-   const [leituras, setLeituras] = useState<Record<number, { inicial: string; fechamento: string }>>({});
+   // State
    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+   // Additional states
+   const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
+
+   // [REFATORADO 2026-01-08] Hook useLeituras (precisa vir depois de selectedDate e selectedTurno)
+   const {
+      leituras,
+      carregando: loadingLeituras,
+      erro: erroLeituras,
+      carregarLeituras,
+      alterarInicial,
+      alterarFechamento,
+      aoSairInicial,
+      aoSairFechamento,
+      calcLitros: calcLitrosHook,
+      calcVenda: calcVendaHook,
+      totals,
+      getSummaryByCombustivel: getSummaryByCombustivelHook
+   } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
+
+   // [RESTORED] Estados de UI essenciais
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState(false);
    const [error, setError] = useState<string | null>(null);
    const [success, setSuccess] = useState<string | null>(null);
 
-   // Additional states
-   const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
    const [frentistaSessions, setFrentistaSessions] = useState<FrentistaSession[]>([]);
    const [observacoes, setObservacoes] = useState<string>('');
    const [showHelp, setShowHelp] = useState(false);
@@ -274,7 +292,8 @@ const TelaFechamentoDiario: React.FC = () => {
                // Validação de Segurança: Só restaura se o rascunho for da mesma data
                if (parsed.selectedDate === selectedDate) {
                   if (parsed.leituras && Object.keys(parsed.leituras).length > 0) {
-                     setLeituras(prev => ({ ...prev, ...parsed.leituras }));
+                     // [REFATORADO 2026-01-08] Hook useLeituras gerencia estado
+                     // setLeituras(prev => ({ ...prev, ...parsed.leituras }));
                   }
                   if (parsed.selectedTurno) setSelectedTurno(parsed.selectedTurno);
                   if (parsed.frentistaSessions && parsed.frentistaSessions.length > 0) {
@@ -577,98 +596,13 @@ const TelaFechamentoDiario: React.FC = () => {
     * 
     * Nota: A automação agiliza o lançamento diário e histórico, evitando redigitação.
     */
-   const loadLeituras = async () => {
-      // Só executa se tiver data, turno, bicos carregados E depois que o autosave foi processado
-      if (!selectedDate || !selectedTurno || bicos.length === 0 || !restored) return;
-
-      // Verifica se mudou a data ou o turno desde o último carregamento para evitar o bug de dados "grudados"
-      const contextChanged = lastLoadedContext.current.date !== selectedDate ||
-         lastLoadedContext.current.turno !== selectedTurno;
-
-      if (!contextChanged) {
-         // Se estamos na mesma data/turno, preservamos o que o usuário já digitou
-         const hasLocalData = Object.values(leituras).some(l => l.fechamento && l.fechamento.length > 0);
-         if (hasLocalData) {
-            console.log('📝 Preservando dados locais digitados');
-            return;
-         }
-      }
-
-      // Atualiza o contexto carregado
-      lastLoadedContext.current = { date: selectedDate, turno: selectedTurno };
-
-      try {
-         // 1. Verifica se temos leituras salvas para este turno específico (Modo Edição)
-         const dayReadings = await leituraService.getByDate(selectedDate, postoAtivoId);
-         const shiftReadings = dayReadings.filter(l => l.turno_id === selectedTurno);
-
-         if (shiftReadings.length > 0) {
-            const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
-            shiftReadings.forEach(reading => {
-               leiturasMap[reading.bico_id] = {
-                  inicial: reading.leitura_inicial.toFixed(3).replace('.', ','),
-                  fechamento: reading.leitura_final.toFixed(3).replace('.', ',')
-               };
-            });
-            setLeituras(leiturasMap);
-         } else {
-            // 2. MODO CRIAÇÃO: Busca a última leitura de cada bico para usar como inicial
-            const leiturasMap: Record<number, { inicial: string; fechamento: string }> = {};
-
-            await Promise.all(bicos.map(async (bico) => {
-               try {
-                  const lastReading = await leituraService.getLastReadingByBico(bico.id);
-                  let inicialValue = 0;
-
-                  if (lastReading) {
-                     // Recupera o último valor de fechamento conhecido no sistema
-                     inicialValue = lastReading.leitura_final;
-                  }
-
-                  leiturasMap[bico.id] = {
-                     inicial: formatToBR(inicialValue, 3),
-                     fechamento: ''
-                  };
-               } catch (err) {
-                  console.error(`Erro ao buscar última leitura bico ${bico.id}:`, err);
-                  leiturasMap[bico.id] = { inicial: '0,000', fechamento: '' };
-               }
-            }));
-
-            setLeituras(leiturasMap);
-
-            // Se mudou de data, limpa o autosave para não confundir rascunhos de dias diferentes
-            if (contextChanged) {
-               localStorage.removeItem(AUTOSAVE_KEY);
-            }
-         }
-      } catch (err) {
-         console.error('Error loading leituras:', err);
-      }
-   };
-
+   // [REFATORADO 2026-01-08] loadLeituras removido, hook gerencia carregamento automaticamente
+   // useEffect de carregamento removido
    // Effect para recarregar leituras quando data ou turno mudam
-   useEffect(() => {
-      loadLeituras();
-   }, [selectedDate, selectedTurno, bicos, restored]);
 
-   // Handle inicial input change
-   const handleInicialChange = (bicoId: number, value: string) => {
-      const formatted = formatEncerranteInput(value);
-      setLeituras(prev => ({
-         ...prev,
-         [bicoId]: { ...prev[bicoId], inicial: formatted }
-      }));
-   };
 
-   // Handle fechamento input change
-   const handleFechamentoChange = (bicoId: number, value: string) => {
-      const formatted = formatEncerranteInput(value);
-      setLeituras(prev => ({
-         ...prev,
-         [bicoId]: { ...prev[bicoId], fechamento: formatted }
-      }));
-   };
+   // [REFATORADO 2026-01-08] Handlers substituídos pelos do hook (handleInicialChange -> alterarInicial, etc)
+   // Lógica de handlers manuais removida
 
    // Formata valor com vírgula quando o campo perde o foco
    // Converte qualquer formato para "1.718.359,423" (últimos 3 dígitos são SEMPRE decimais)
@@ -700,28 +634,8 @@ const TelaFechamentoDiario: React.FC = () => {
    };
 
    // Handler para quando o campo INICIAL perde o foco
-   const handleInicialBlur = (bicoId: number) => {
-      const currentValue = leituras[bicoId]?.inicial || '';
-      const formatted = formatOnBlur(currentValue);
-      if (formatted !== currentValue) {
-         setLeituras(prev => ({
-            ...prev,
-            [bicoId]: { ...prev[bicoId], inicial: formatted }
-         }));
-      }
-   };
-
-   // Handler para quando o campo FECHAMENTO perde o foco
-   const handleFechamentoBlur = (bicoId: number) => {
-      const currentValue = leituras[bicoId]?.fechamento || '';
-      const formatted = formatOnBlur(currentValue);
-      if (formatted !== currentValue) {
-         setLeituras(prev => ({
-            ...prev,
-            [bicoId]: { ...prev[bicoId], fechamento: formatted }
-         }));
-      }
-   };
+   // [REFATORADO 2026-01-08] Handlers de blur substituídos pelo hook
+   // Lógica manual removida
 
    // Formata entrada de encerrante: adiciona pontos de milhar na parte inteira
    // Vírgula deve ser digitada manualmente pelo usuário para separar decimais
@@ -808,104 +722,13 @@ const TelaFechamentoDiario: React.FC = () => {
    // [REFATORADO 2026-01-08] handlePaymentChange agora vem do hook usePagamentos
 
    // Calculate litros for a bico (EXATO como planilha)
-   const calcLitros = (bicoId: number): { value: number; display: string } => {
-      const inicial = parseValue(leituras[bicoId]?.inicial || '');
-      const fechamento = parseValue(leituras[bicoId]?.fechamento || '');
-
-      // REGRA DA PLANILHA: Se fechamento ≤ inicial → mostra "-"
-      if (fechamento <= inicial || fechamento === 0) {
-         return { value: 0, display: '-' };
-      }
-
-      const litros = fechamento - inicial;
-      return { value: litros, display: formatToBR(litros, 3) };
-   };
-
-   // Calculate venda for a bico (EXATO como planilha)
-   const calcVenda = (bicoId: number): { value: number; display: string } => {
-      const bico = bicos.find(b => b.id === bicoId);
-      if (!bico) return { value: 0, display: '-' };
-
-      const litros = calcLitros(bicoId);
-
-      // REGRA DA PLANILHA: Se litros = "-" → venda = "-"
-      if (litros.display === '-') {
-         return { value: 0, display: '-' };
-      }
-
-      const venda = litros.value * bico.combustivel.preco_venda;
-      return {
-         value: venda,
-         display: venda.toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-         })
-      };
-   };
-
-   // Check if reading is valid for calculation
-   const isReadingValid = (bicoId: number): boolean => {
-      const fechamento = parseValue(leituras[bicoId]?.fechamento || '');
-      const inicial = parseValue(leituras[bicoId]?.inicial || '');
-      return fechamento > inicial;
-   };
+   // [REFATORADO 2026-01-08] Funções de cálculo removidas, usando as do hook useLeituras (calcLitrosHook, calcVendaHook)
 
    // Group data by combustivel for summary
-   const getSummaryByCombustivel = () => {
-      const summary: Record<string, { nome: string; codigo: string; litros: number; valor: number; preco: number }> = {};
+   // [REFATORADO 2026-01-08] getSummaryByCombustivel substituído pela versão do hook
 
-      bicos.forEach(bico => {
-         const codigo = bico.combustivel.codigo;
-         if (!summary[codigo]) {
-            summary[codigo] = {
-               nome: bico.combustivel.nome,
-               codigo: codigo,
-               litros: 0,
-               valor: 0,
-               preco: bico.combustivel.preco_venda
-            };
-         }
-
-         const litrosData = calcLitros(bico.id);
-         const vendaData = calcVenda(bico.id);
-
-         if (litrosData.display !== '-') {
-            summary[codigo].litros += litrosData.value;
-            summary[codigo].valor += vendaData.value;
-         }
-      });
-
-      return Object.values(summary);
-   };
-
-   // Calculate totals (usando useMemo para performance)
-   const totals = useMemo(() => {
-      let totalLitros = 0;
-      let totalValor = 0;
-
-      bicos.forEach(bico => {
-         const litrosData = calcLitros(bico.id);
-         const vendaData = calcVenda(bico.id);
-
-         if (litrosData.display !== '-') {
-            totalLitros += litrosData.value;
-            totalValor += vendaData.value;
-         }
-      });
-
-      return {
-         litros: totalLitros,
-         valor: totalValor,
-         litrosDisplay: formatToBR(totalLitros, 3),
-         valorDisplay: totalValor.toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-         })
-      };
-   }, [bicos, leituras]);
-
+   // [REFATORADO 2026-01-08] Totais agora vêm do hook useLeituras (variável 'totals')
+   // Cálculo manual removido
    // Calculate total products
    const totalProdutos = useMemo(() => {
       return frentistaSessions.reduce((acc, s) => acc + parseValue(s.valor_produtos || '0'), 0);
@@ -992,7 +815,8 @@ const TelaFechamentoDiario: React.FC = () => {
 
    // Handle cancel
    const handleCancel = () => {
-      setLeituras({});
+      // [REFATORADO 2026-01-08] Hook gerencia estado
+      // setLeituras({});
       // [REFATORADO 2026-01-08] payments agora é read-only do hook
       // setPayments(prev => prev.map(p => ({ ...p, valor: '' })));
       setFrentistaSessions([]);
@@ -1057,7 +881,11 @@ const TelaFechamentoDiario: React.FC = () => {
 
          // 2. Save Readings (Leituras)
          const leiturasToCreate = bicos
-            .filter(bico => isReadingValid(bico.id))
+            .filter(bico => {
+               const i = parseValue(leituras[bico.id]?.inicial || '');
+               const f = parseValue(leituras[bico.id]?.fechamento || '');
+               return f > i;
+            })
             .map(bico => ({
                bico_id: bico.id,
                data: selectedDate,
@@ -1186,7 +1014,9 @@ const TelaFechamentoDiario: React.FC = () => {
                updatedLeituras[bico.id].fechamento = '';
             }
          });
-         setLeituras(updatedLeituras);
+         // [REFATORADO 2026-01-08] Recarrega leituras do banco
+         await carregarLeituras();
+         // setLeituras(updatedLeituras);
 
          // Reset payments
          // [REFATORADO 2026-01-08] payments agora é read-only do hook
@@ -1219,7 +1049,7 @@ const TelaFechamentoDiario: React.FC = () => {
       );
    }
 
-   const summaryData = getSummaryByCombustivel();
+   const summaryData = getSummaryByCombustivelHook();
 
    return (
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-32 print:pb-0 print:max-w-none">
@@ -1456,9 +1286,14 @@ const TelaFechamentoDiario: React.FC = () => {
                            const colors = FUEL_COLORS[bico.combustivel.codigo] || FUEL_COLORS['GC'];
                            const inicial = leituras[bico.id]?.inicial || '';
                            const fechamento = leituras[bico.id]?.fechamento || '';
-                           const litrosData = calcLitros(bico.id);
-                           const vendaData = calcVenda(bico.id);
-                           const isValid = isReadingValid(bico.id);
+                           const litrosData = calcLitrosHook(bico.id);
+                           const vendaData = calcVendaHook(bico.id);
+                           // Validação inline simples: fechamento > inicial
+                           const isValid = (() => {
+                              const i = parseValue(leituras[bico.id]?.inicial || '');
+                              const f = parseValue(leituras[bico.id]?.fechamento || '');
+                              return f > i;
+                           })();
 
                            return (
                               <tr key={bico.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -1471,9 +1306,9 @@ const TelaFechamentoDiario: React.FC = () => {
                                  <td className="px-4 py-3">
                                     <input
                                        type="text"
-                                       value={inicial}
-                                       onChange={(e) => handleInicialChange(bico.id, e.target.value)}
-                                       onBlur={() => handleInicialBlur(bico.id)}
+                                       value={leituras[bico.id]?.inicial || ''}
+                                       onChange={(e) => alterarInicial(bico.id, e.target.value)}
+                                       onBlur={() => aoSairInicial(bico.id)}
                                        className="w-full text-right font-mono py-2 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
                                        placeholder="0,000"
                                     />
@@ -1483,9 +1318,9 @@ const TelaFechamentoDiario: React.FC = () => {
                                  <td className="px-4 py-3 bg-yellow-50/50 dark:bg-yellow-900/10">
                                     <input
                                        type="text"
-                                       value={fechamento}
-                                       onChange={(e) => handleFechamentoChange(bico.id, e.target.value)}
-                                       onBlur={() => handleFechamentoBlur(bico.id)}
+                                       value={leituras[bico.id]?.fechamento || ''}
+                                       onChange={(e) => alterarFechamento(bico.id, e.target.value)}
+                                       onBlur={() => aoSairFechamento(bico.id)}
                                        className={`w-full text-right font-mono py-2 px-3 rounded-lg border outline-none
                                     ${fechamento && !isValid
                                              ? 'border-red-300 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400'
