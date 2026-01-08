@@ -20,6 +20,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - 🔍 Depuração de erro 401 na criação de frentistas (ajuste de autenticação pós-restauração).
 - **Perda de dados ao trocar aba do navegador**: Desativado polling agressivo e adicionada proteção para preservar dados digitados.
 - **Cálculo incorreto de encerrantes**: Função `formatOnBlur` agora aceita qualquer formato numérico e assume últimos 3 dígitos como decimais.
+- **Precisão Decimal e Máscara Monetária**: Implementada máscara estilo calculadora no detalhamento por frentista para permitir edição precisa de valores do mobile e correção de arredondamentos durante a digitação.
 - **Correção de Permissão (RLS)**: Corrigido erro 403 ao tentar cadastrar novos frentistas através da criação de política de INSERT no Supabase.
 - **Correção Crítica (RLS/Auth)**: Reescreve função `user_has_posto_access` para usar email em vez de ID (erro 22P02) e remove campo `turno_id` inválido do cadastro.
 - **Erro de integridade ao re-salvar fechamento**: Adicionada desvinculação robusta de notificações para evitar violação de chave estrangeira em `FechamentoFrentista`.
