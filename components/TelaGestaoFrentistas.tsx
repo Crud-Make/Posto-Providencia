@@ -145,7 +145,10 @@ const TelaGestaoFrentistas: React.FC = () => {
          await loadData();
          handleCloseModal();
       } catch (error: any) {
-         console.error('Erro ao salvar frentista:', error);
+         console.error('Erro detalhado ao salvar frentista:', error);
+         if (error.code === '401' || error.status === 401) {
+            console.warn('⚠️ Erro de autenticação detectado. Verifique se você está logado.');
+         }
          alert(`Erro técnico: ${error.message || JSON.stringify(error)}`);
       } finally {
          setSaving(false);
