@@ -191,68 +191,56 @@ const formatToBR = (num: number, decimals: number = 3): string => {
    return `${integer},${decimal}`;
 };
 /**
- * Processa entrada de valor durante digitação (onChange).
- * NÃO adiciona ,00 automaticamente para não interferir na digitação.
+ * Formata valor monetário estilo calculadora/PDV.
+ * Os dígitos digitados entram como centavos e empurram para a esquerda.
  * 
- * [ALTERADO 2026-01-08] Separação de lógica de digitação e formatação final
+ * [ALTERADO 2026-01-08] Máscara monetária estilo caixa eletrônico
  * 
- * @param value - Valor digitado pelo usuário
- * @returns Valor limpo com R$ mas sem auto-complete de centavos
+ * Exemplos:
+ * - Digita 1 → R$ 0,01
+ * - Digita 0 → R$ 0,10
+ * - Digita 0 → R$ 1,00
+ * - Digita 0 → R$ 10,00
+ * 
+ * @param value - Valor digitado
+ * @returns Valor formatado como R$ X.XXX,XX
  */
 const formatSimpleValue = (value: string) => {
    if (!value) return '';
 
-   // Remove o prefixo R$ e espaços
-   let cleaned = value.replace(/^R\$\s*/, '').trim();
+   // Remove tudo que não é número (R$, espaços, pontos, vírgulas)
+   let digits = value.replace(/[^\d]/g, '');
 
-   // Remove pontos de milhar antigos para processar corretamente
-   cleaned = cleaned.replace(/\./g, '');
+   // Se não tem dígitos, retorna vazio
+   if (!digits) return '';
 
-   // Se vazio ou só vírgula isolada
-   if (!cleaned || cleaned === ',') return '';
+   // Remove zeros à esquerda (mas mantém pelo menos 1 se for só zeros)
+   digits = digits.replace(/^0+/, '') || '0';
 
-   const parts = cleaned.split(',');
-   // Garante apenas números na parte inteira
-   let inteiro = parts[0].replace(/[^\d]/g, '');
-
-   // Se não sobrou nada na parte inteira
-   if (!inteiro && parts.length === 1) return '';
-   if (!inteiro) inteiro = '0';
-
-   // Remove zeros à esquerda (ex: 010 -> 10), mas mantém '0' se for só zero
-   inteiro = inteiro.replace(/^0+(?=\d)/, '');
-
-   // Adiciona pontos de milhar na parte inteira
-   if (inteiro.length > 3) {
-      inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+   // Garante pelo menos 3 dígitos (para ter 2 casas decimais)
+   // Ex: "1" -> "001" -> "0,01"
+   while (digits.length < 3) {
+      digits = '0' + digits;
    }
 
-   // Se tem vírgula no valor, mantém a parte decimal como está
-   if (parts.length > 1) {
-      let decimal = parts.slice(1).join('').replace(/[^\d]/g, '');
-      return `R$ ${inteiro},${decimal}`;
+   // Separa parte inteira e decimal (últimos 2 dígitos são centavos)
+   const len = digits.length;
+   const inteiro = digits.slice(0, len - 2);
+   const decimal = digits.slice(len - 2);
+
+   // Formata parte inteira com pontos de milhar
+   let inteiroFormatado = inteiro.replace(/^0+/, '') || '0'; // Remove zeros à esquerda
+   if (inteiroFormatado.length > 3) {
+      inteiroFormatado = inteiroFormatado.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
    }
 
-   // Se NÃO tem vírgula, retorna SÓ o inteiro (sem ,00)
-   // O ,00 será adicionado apenas no onBlur
-   return `R$ ${inteiro}`;
+   return `R$ ${inteiroFormatado},${decimal}`;
 };
 
-/**
- * Formata valor ao sair do campo (onBlur).
- * Adiciona ,00 se não houver parte decimal.
- * 
- * @param value - Valor atual do campo
- * @returns Valor formatado com centavos (se necessário)
- */
+// formatValueOnBlur não é mais necessário - mantido por compatibilidade
 const formatValueOnBlur = (value: string) => {
    if (!value) return '';
-
-   // Se já tem vírgula, mantém como está
-   if (value.includes(',')) return value;
-
-   // Se não tem vírgula, adiciona ,00
-   return `${value},00`;
+   return value;
 };
 
 // Get payment icon
