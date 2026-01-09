@@ -63,7 +63,7 @@ export const useCarregamentoDados = (
     try {
       // Carrega em paralelo para melhor performance
       const [dadosBicos, dadosFrentistas, dadosTurnos] = await Promise.all([
-        bicoService.getAllWithDetails(postoId),
+        bicoService.getWithDetails(postoId),
         frentistaService.getAll(postoId),
         turnoService.getAll(postoId)
       ]);

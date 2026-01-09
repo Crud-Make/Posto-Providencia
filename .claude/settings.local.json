@@ -21,7 +21,8 @@
       "Bash(findstr:*)",
       "Bash(taskkill:*)",
       "Bash(gh pr create:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(gh issue view:*)"
     ]
   }
 }

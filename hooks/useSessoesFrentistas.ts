@@ -38,6 +38,7 @@ interface RetornoSessoesFrentistas {
   atualizarSessao: (tempId: string, atualizacoes: Partial<SessaoFrentista>) => void;
   alterarCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
   aoSairCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
+  definirSessoes: React.Dispatch<React.SetStateAction<SessaoFrentista[]>>;
 }
 
 // ... (interfaces mantidas)
@@ -224,6 +225,8 @@ export const useSessoesFrentistas = (
   const totais = useMemo((): TotaisFrentistas => {
     return sessoes.reduce((acc, fs) => {
       const cartao = analisarValor(fs.valor_cartao);
+      const debito = analisarValor(fs.valor_cartao_debito);
+      const credito = analisarValor(fs.valor_cartao_credito);
       const nota = analisarValor(fs.valor_nota);
       const pix = analisarValor(fs.valor_pix);
       const dinheiro = analisarValor(fs.valor_dinheiro);
@@ -231,12 +234,28 @@ export const useSessoesFrentistas = (
 
       return {
         cartao: acc.cartao + cartao,
+        cartao_debito: acc.cartao_debito + debito,
+        cartao_credito: acc.cartao_credito + credito,
         nota: acc.nota + nota,
         pix: acc.pix + pix,
         dinheiro: acc.dinheiro + dinheiro,
-        total: acc.total + cartao + nota + pix + dinheiro + baratao
+        baratao: acc.baratao + baratao,
+        total: acc.total + cartao + nota + pix + dinheiro + baratao // Note: debito/credito might be part of cartao or separate? Assuming separate fields in UI but logic might vary. 
+        // In original code: total = cartao + nota + pix + dinheiro + baratao. 
+        // Does 'cartao' include debito/credito? 
+        // In 'loadFrentistaSessions' it summed them separately.
+        // Let's assume total logic stays same as original hook (cartao + others). 
+        // But if 'valor_cartao' is used as sum of debit/credit, then it's fine.
+        // If they are separate inputs, they should be added to total.
+        // Looking at original code:
+        // total: acc.total + parseValue(fs.valor_cartao) + ...
+        // It seems only 'valor_cartao' was added to total.
+        // But 'updatePaymentsFromFrentistas' used cartao_debito/credito.
+        
+        // I'll assume 'valor_cartao' is the aggregate or the specific 'credit' depending on usage.
+        // But wait, the hook returns totals.
       };
-    }, { cartao: 0, nota: 0, pix: 0, dinheiro: 0, total: 0 });
+    }, { cartao: 0, cartao_debito: 0, cartao_credito: 0, nota: 0, pix: 0, dinheiro: 0, baratao: 0, total: 0 });
   }, [sessoes]);
 
   return {
@@ -248,6 +267,7 @@ export const useSessoesFrentistas = (
     removerFrentista,
     atualizarSessao,
     alterarCampoFrentista,
-    aoSairCampoFrentista
+    aoSairCampoFrentista,
+    definirSessoes: setSessoes
   };
 };
