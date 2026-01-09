@@ -99,11 +99,17 @@ export const useFechamento = (
   }, [bicos, leituras]);
 
   /**
-   * Total recebido pelos frentistas (soma de valor_conferido)
+   * Total recebido pelos frentistas (soma dos valores declarados)
    */
   const totalFrentistas = useMemo(() => {
     return sessoesFrentistas.reduce((acc, fs) => {
-      return acc + analisarValor(fs.valor_conferido);
+      const cartao = analisarValor(fs.valor_cartao);
+      const nota = analisarValor(fs.valor_nota);
+      const pix = analisarValor(fs.valor_pix);
+      const dinheiro = analisarValor(fs.valor_dinheiro);
+      const baratao = analisarValor(fs.valor_baratao);
+      
+      return acc + cartao + nota + pix + dinheiro + baratao;
     }, 0);
   }, [sessoesFrentistas]);
 

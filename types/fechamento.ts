@@ -118,7 +118,7 @@ export const CORES_GRAFICO_PAGAMENTO = [
  * Usado como fallback se o banco não retornar turnos
  */
 export const TURNOS_PADRAO = [
-  { id: 1, nome: 'Manhã', horario_inicio: '06:00', horario_fim: '14:00' },
-  { id: 2, nome: 'Tarde', horario_inicio: '14:00', horario_fim: '22:00' },
-  { id: 3, nome: 'Noite', horario_inicio: '22:00', horario_fim: '06:00' },
+  { id: 1, nome: 'Manhã', horario_inicio: '06:00', horario_fim: '14:00', ativo: true },
+  { id: 2, nome: 'Tarde', horario_inicio: '14:00', horario_fim: '22:00', ativo: true },
+  { id: 3, nome: 'Noite', horario_inicio: '22:00', horario_fim: '06:00', ativo: true },
 ];
