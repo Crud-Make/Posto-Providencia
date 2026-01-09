@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { despesaService } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
-import { Despesa } from '../types';
+import { Despesa } from '../types/index';
 import { toast } from 'sonner';
 import KPICard from './KPICard';
 

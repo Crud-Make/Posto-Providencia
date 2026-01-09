@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
-import { Loan, LoanInstallment } from '../types';
+import { Loan, LoanInstallment } from '../types/index';
 import KPICard from './KPICard';
 import { toast } from 'sonner';
 
