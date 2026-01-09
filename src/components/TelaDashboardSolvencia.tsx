@@ -37,7 +37,7 @@ import {
     ReferenceLine
 } from 'recharts';
 import { solvencyService, dividaService } from '../services/api';
-import { SolvencyProjection, SolvencyStatus, Divida } from '../types';
+import { SolvencyProjection, SolvencyStatus, Divida } from '../types/index';
 import { usePosto } from '../contexts/PostoContext';
 
 const TelaDashboardSolvencia: React.FC = () => {
