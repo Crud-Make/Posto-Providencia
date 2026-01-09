@@ -2,6 +2,13 @@
 
 ## [Não Lançado]
 
+### [Não Lançado] - 09/01/2026
+
+#### Adicionado
+- **Design:** Novo tema "Dark Premium" para a Tela de Fechamento Diário (`TelaFechamentoDiario.tsx`).
+- **UX:** Scrollbars customizadas e inputs modernizados para melhor experiência visual.
+- **Docs:** Documentação visual em `docs/REFATORACAO_FECHAMENTO_VISUAL.md`.
+
 ### Refatoração - Fase 1 e 2 COMPLETAS ✅
 - **Issue #7:** Refatoração do componente TelaFechamentoDiario.tsx
 

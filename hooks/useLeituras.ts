@@ -20,7 +20,7 @@ import { formatarParaBR } from '../utils/formatters';
 /**
  * Estrutura de uma leitura
  */
-interface Leitura {
+export interface Leitura {
   inicial: string;
   fechamento: string;
 }
