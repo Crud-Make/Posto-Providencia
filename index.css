@@ -252,3 +252,52 @@
     );
     border-radius: 50%;
 }
+
+/* ============================================
+   DARK MODE SCROLLBARS & UTILS
+   ============================================ */
+
+/* Scrollbar estilizada para containers com overflow */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5); /* Slate-800 com alfa */
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569; /* Slate-600 */
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b; /* Slate-500 */
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+/* Remove default date picker icon filter for dark mode compatibility */
+::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.6;
+    cursor: pointer;
+}
+::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+/* Selection color override for dark theme */
+::selection {
+    background-color: rgba(59, 130, 246, 0.3); /* Blue-500 @ 30% */
+    color: #e2e8f0; /* Slate-200 */
+}
