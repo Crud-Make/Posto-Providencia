@@ -10,7 +10,7 @@ import {
     ResponsiveContainer,
     Cell
 } from 'recharts';
-import { InventoryItem } from '../types';
+import { InventoryItem } from '../types/index';
 
 interface InventoryFinancialChartsProps {
     items: InventoryItem[];

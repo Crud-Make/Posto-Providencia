@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { fetchAttendantsData, frentistaService } from '../services/api';
 import { supabase } from '../services/supabase';
-import { AttendantProfile, AttendantHistoryEntry } from '../types'; // Assuming Turno type is not explicitly defined, using any for now
+import { AttendantProfile, AttendantHistoryEntry } from '../types/index'; // Assuming Turno type is not explicitly defined, using any for now
 import { usePosto } from '../contexts/PostoContext';
 
 const TelaGestaoFrentistas: React.FC = () => {

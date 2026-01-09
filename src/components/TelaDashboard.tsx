@@ -20,7 +20,7 @@ import FuelVolumeChart from './FuelVolumeChart';
 import ClosingsTable from './ClosingsTable';
 import PerformanceSidebar from './PerformanceSidebar';
 import { fetchDashboardData, frentistaService } from '../services/api';
-import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../types';
+import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../types/index';
 import { usePosto } from '../contexts/PostoContext';
 
 interface TelaDashboardProps {

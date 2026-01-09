@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { FuelData } from '../types';
+import { FuelData } from '../types/index';
 
 interface FuelVolumeChartProps {
   data: FuelData[];

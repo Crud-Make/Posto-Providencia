@@ -1,13 +1,18 @@
+// [09/01 20:02] Ponto de entrada do aplicativo.
+/**
+ * Inicialização do React e montagem do componente App.
+ */
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
+import './index.css';
 import App from './App';
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+const container = document.getElementById('root');
+if (!container) {
+  throw new Error("Não foi possível encontrar o elemento raiz 'root'.");
 }
 
-const root = ReactDOM.createRoot(rootElement);
+const root = createRoot(container);
 root.render(
   <React.StrictMode>
     <App />

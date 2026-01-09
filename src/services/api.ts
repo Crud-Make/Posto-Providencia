@@ -31,7 +31,7 @@ import type {
   Usuario,
   Emprestimo,
   Parcela,
-  Divida as DBDivida,
+  DBDivida,
   Configuracao,
   InsertTables,
   UpdateTables,
@@ -43,7 +43,7 @@ import {
   Divida,
   SolvencyStatus,
   SolvencyProjection
-} from '../types';
+} from '../types/index';
 
 // Tipo para o resumo de vendas por combustível
 interface VendaPorCombustivel {
@@ -559,7 +559,7 @@ export const leituraService = {
     // vamos buscar as últimas leituras de uma data recente para limitar a busca
     // ou usar uma query customizada.
     // Simplificação: buscar últimas 200 leituras e filtrar no JS a mais recente por bico.
-    
+
     let query = (supabase as any)
       .from('Leitura')
       .select('*')
