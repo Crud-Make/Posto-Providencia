@@ -667,7 +667,7 @@ export const leituraService = {
     if (error) throw error;
 
     // Atualiza estoque para todas as leituras
-    const bicosIds = [...new Set(leituras.map(l => l.bico_id))];
+    const bicosIds = Array.from(new Set(leituras.map(l => l.bico_id)));
     const { data: bicosData } = await supabase
       .from('Bico')
       .select('id, combustivel_id')
@@ -3701,7 +3701,7 @@ import type {
   TipoTransacaoBaratencia,
   StatusTokenAbastecimento,
   PromocaoBaratencia
-} from './database.types';
+} from '../types/database';
 
 export const baratenciaService = {
   // --- CLIENTES ---
