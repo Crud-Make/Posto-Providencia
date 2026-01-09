@@ -1,8 +1,9 @@
 import React from 'react';
-import { BicoComDetalhes } from '../../types/fechamento';
-import { paraReais } from '../../utils/formatters';
+// [09/01] Adição de colunas financeiras e totalizador geral - Restauração funcionalidade Tabela Escura
+import { BicoComDetalhes } from '../../../types/fechamento';
+import { paraReais } from '../../../utils/formatters';
 
-interface SecaoLeiturasProps {
+interface TabelaLeiturasProps {
   bicos: BicoComDetalhes[];
   leituras: Record<number, { inicial: string; fechamento: string }>;
   onLeituraInicialChange: (bicoId: number, valor: string) => void;
@@ -13,7 +14,7 @@ interface SecaoLeiturasProps {
   isLoading?: boolean;
 }
 
-export const SecaoLeituras: React.FC<SecaoLeiturasProps> = ({
+export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
   bicos,
   leituras,
   onLeituraInicialChange,

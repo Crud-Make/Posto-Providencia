@@ -37,7 +37,7 @@ import type {
   UpdateTables,
   Posto,
   UsuarioPosto,
-} from './database.types';
+} from '../types/database';
 
 import {
   Divida,
