@@ -12,9 +12,9 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { paraReais, parseValue } from '../../utils/formatters';
-import type { Leitura } from '../../hooks/useLeituras';
-import type { BicoComDetalhes, Frentista, SessaoFrentista } from '../../types/fechamento';
+import { paraReais, parseValue } from '../../../utils/formatters';
+import type { Leitura } from '../../../hooks/useLeituras';
+import type { BicoComDetalhes, Frentista, SessaoFrentista } from '../../../types/fechamento';
 
 interface SecaoResumoProps {
   totalLitros: number;

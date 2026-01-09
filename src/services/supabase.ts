@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from './database.types';
+import type { Database } from '../types/database';
 
 // Configuração do Supabase Client
 // Essas variáveis devem ser definidas no arquivo .env na raiz do projeto

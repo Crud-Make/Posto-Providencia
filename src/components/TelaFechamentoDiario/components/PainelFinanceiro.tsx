@@ -1,6 +1,6 @@
 import React from 'react';
-import { EntradaPagamento } from '../../types/fechamento';
-import { paraReais, obterIconePagamento } from '../../utils/formatters';
+import { EntradaPagamento } from '../../../types/fechamento';
+import { paraReais, obterIconePagamento } from '../../../utils/formatters';
 
 interface SecaoPagamentosProps {
   pagamentos: EntradaPagamento[];

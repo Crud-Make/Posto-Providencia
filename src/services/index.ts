@@ -2,7 +2,7 @@
 export { supabase, type Database } from './supabase';
 
 // Database Types
-export * from './database.types';
+export * from '../types/database';
 
 // API Services
 export {
