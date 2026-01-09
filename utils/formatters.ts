@@ -9,6 +9,9 @@
  * @version 1.0.0
  */
 
+// [09/01 09:50] Adição de alias parseValue
+// Motivo: Compatibilidade com código refatorado que esperava nome em inglês
+
 import React from 'react';
 import { Banknote, CreditCard, Smartphone, FileText } from 'lucide-react';
 
@@ -75,6 +78,9 @@ export const analisarValor = (value: string): number => {
 
   return 0;
 };
+
+// Alias para compatibilidade com código legado/refatorado
+export const parseValue = analisarValor;
 
 /**
  * Formata número para padrão brasileiro com decimais

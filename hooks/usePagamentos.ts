@@ -9,7 +9,10 @@
  * @version 1.0.0
  */
 
-import { useState, useCallback, useMemo } from 'react';
+// [09/01 09:40] Correção de tipagem no mapeamento de pagamentos
+// Motivo: Propriedade 'taxa' estava sendo acessada incorretamente como 'taxa_percentual'
+
+import React, { useState, useCallback, useMemo } from 'react';
 import type { EntradaPagamento } from '../types/fechamento';
 import { formaPagamentoService } from '../services/api';
 import { analisarValor, paraReais } from '../utils/formatters';
@@ -26,6 +29,7 @@ interface RetornoPagamentos {
   carregarPagamentos: () => Promise<void>;
   alterarPagamento: (indice: number, valor: string) => void;
   aoSairPagamento: (indice: number) => void;
+  definirPagamentos: React.Dispatch<React.SetStateAction<EntradaPagamento[]>>;
 }
 
 /**
@@ -60,7 +64,7 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
         nome: fp.nome,
         tipo: fp.tipo,
         valor: '',
-        taxa: fp.taxa_percentual || 0
+        taxa: fp.taxa || 0
       }));
       setPagamentos(inicializados);
       console.log('✅ Formas de pagamento carregadas');
@@ -153,6 +157,7 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
     totalLiquido,
     carregarPagamentos,
     alterarPagamento,
-    aoSairPagamento
+    aoSairPagamento,
+    definirPagamentos: setPagamentos
   };
 };

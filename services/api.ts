@@ -1,3 +1,17 @@
+/**
+ * Camada de Serviços da API
+ *
+ * @remarks
+ * Centraliza todas as chamadas ao Supabase.
+ * Implementa padrão Repository/Service para cada entidade.
+ *
+ * @author Sistema de Gestão - Posto Providência
+ * @version 1.1.0
+ */
+
+// [09/01 09:45] Adição de métodos faltantes em leituraService
+// Motivo: Suporte à inicialização de fechamento com últimas leituras e busca por turno
+
 import { supabase } from './supabase';
 import type {
   Bico,
@@ -513,6 +527,64 @@ export const leituraService = {
     const { data: leituras, error } = await query.order('data', { ascending: true });
     if (error) throw error;
     return leituras || [];
+  },
+
+  async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]> {
+    let query = supabase
+      .from('Leitura')
+      .select(`
+        *,
+        bico:Bico(
+          *,
+          combustivel:Combustivel(*),
+          bomba:Bomba(*)
+        )
+      `)
+      .eq('data', data)
+      .eq('turno_id', turnoId);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data: leituras, error } = await query.order('id');
+    if (error) throw error;
+    // Cast seguro pois sabemos a estrutura do retorno do select com joins
+    return (leituras as unknown) as (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[] || [];
+  },
+
+  async getLastReading(postoId?: number): Promise<Leitura[]> {
+    // Busca a última leitura de cada bico
+    // Como não temos DISTINCT ON fácil via ORM puro para todos os casos,
+    // vamos buscar as últimas leituras de uma data recente para limitar a busca
+    // ou usar uma query customizada.
+    // Simplificação: buscar últimas 200 leituras e filtrar no JS a mais recente por bico.
+    
+    let query = (supabase as any)
+      .from('Leitura')
+      .select('*')
+      .order('data', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(200);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Filtra apenas a última de cada bico
+    const ultimasPorBico = new Map<number, Leitura>();
+    if (data) {
+      data.forEach((l: Leitura) => {
+        if (!ultimasPorBico.has(l.bico_id)) {
+          ultimasPorBico.set(l.bico_id, l);
+        }
+      });
+    }
+
+    return Array.from(ultimasPorBico.values());
   },
 
   async getLastReadingByBico(bicoId: number): Promise<Leitura | null> {

@@ -1,18 +1,5 @@
-/**
- * SecaoResumo - Componente para exibição de totalizadores e diferenças do fechamento
- *
- * @remarks
- * - Exibe total de litros vendidos
- * - Exibe total em reais (sessões de frentistas)
- * - Exibe total de pagamentos recebidos
- * - Calcula e destaca diferenças (sobra/falta de caixa)
- * - Usa cores semânticas (verde para ok, vermelho para diferença)
- *
- * @component
- */
-
 import React from 'react';
-import { toCurrency } from '../../utils/formatters';
+import { paraReais } from '../../utils/formatters';
 
 interface SecaoResumoProps {
   /** Total de litros vendidos (soma das diferenças de leituras) */
@@ -25,18 +12,6 @@ interface SecaoResumoProps {
   isLoading?: boolean;
 }
 
-/**
- * Componente de seção de resumo e totalizadores
- *
- * @example
- * ```tsx
- * <SecaoResumo
- *   totalLitros={5000.50}
- *   totalSessoes={12500.00}
- *   totalPagamentos={12450.00}
- * />
- * ```
- */
 export const SecaoResumo: React.FC<SecaoResumoProps> = ({
   totalLitros,
   totalSessoes,
@@ -44,10 +19,17 @@ export const SecaoResumo: React.FC<SecaoResumoProps> = ({
   isLoading = false
 }) => {
   // Calcula a diferença entre sessões e pagamentos
+  // Na verdade, a diferença real é entre Vendas (Bombas) e Pagamentos (Caixa)
+  // Mas aqui parece comparar Frentistas vs Pagamentos?
+  // O hook useFechamento calcula 'diferenca' = totalFrentistas - totalVendas (Leituras)
+  
+  // Vamos ajustar para exibir o que é passado via props.
+  // Se totalSessoes for "Vendas" e totalPagamentos for "Caixa", ok.
+  // Mas geralmente a diferença é (Recebido - Devido).
+  
   const diferenca = totalSessoes - totalPagamentos;
-  const temDiferenca = Math.abs(diferenca) > 0.01; // Tolerância de 1 centavo
+  const temDiferenca = Math.abs(diferenca) > 0.01;
 
-  // Define cor baseada na diferença
   const corDiferenca = temDiferenca
     ? (diferenca > 0 ? 'text-orange-600' : 'text-red-600')
     : 'text-green-600';
@@ -82,7 +64,7 @@ export const SecaoResumo: React.FC<SecaoResumoProps> = ({
             <div>
               <p className="text-sm text-gray-600 mb-1">Total de Sessões (Frentistas)</p>
               <p className="text-3xl font-bold text-purple-700">
-                {toCurrency(totalSessoes)}
+                {paraReais(totalSessoes)}
               </p>
             </div>
             <span className="text-5xl">👥</span>
@@ -95,14 +77,14 @@ export const SecaoResumo: React.FC<SecaoResumoProps> = ({
             <div>
               <p className="text-sm text-gray-600 mb-1">Total de Pagamentos</p>
               <p className="text-3xl font-bold text-green-700">
-                {toCurrency(totalPagamentos)}
+                {paraReais(totalPagamentos)}
               </p>
             </div>
             <span className="text-5xl">💰</span>
           </div>
         </div>
 
-        {/* Diferença (Sobra/Falta) */}
+        {/* Diferença */}
         <div className={`border-2 rounded-lg p-5 ${
           temDiferenca
             ? (diferenca > 0 ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50')
@@ -112,7 +94,7 @@ export const SecaoResumo: React.FC<SecaoResumoProps> = ({
             <div>
               <p className="text-sm text-gray-600 mb-1">{textoDiferenca}</p>
               <p className={`text-3xl font-bold ${corDiferenca}`}>
-                {toCurrency(Math.abs(diferenca))}
+                {paraReais(Math.abs(diferenca))}
               </p>
             </div>
             <span className="text-5xl">
@@ -122,14 +104,13 @@ export const SecaoResumo: React.FC<SecaoResumoProps> = ({
         </div>
       </div>
 
-      {/* Observações sobre a diferença */}
       {temDiferenca && (
         <div className="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
           <p className="text-sm text-yellow-800">
             <strong>⚠️ Atenção:</strong> {' '}
             {diferenca > 0
-              ? 'Há sobra de caixa. Verifique se todos os pagamentos foram registrados corretamente.'
-              : 'Há falta no caixa. Verifique se todas as sessões foram lançadas corretamente ou se houve erro de digitação.'
+              ? 'Há sobra de caixa (Sessões > Pagamentos).'
+              : 'Há falta no caixa (Pagamentos > Sessões).'
             }
           </p>
         </div>

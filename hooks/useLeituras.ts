@@ -9,6 +9,9 @@
  * @version 1.0.0
  */
 
+// [09/01 09:35] Ajuste na integração com serviço de leituras
+// Motivo: Correção de nomes de métodos e parâmetros para compatibilidade com API
+
 import React, { useState, useCallback, useRef } from 'react';
 import type { BicoComDetalhes } from '../types/fechamento';
 import { leituraService } from '../services/api';
@@ -75,6 +78,7 @@ interface RetornoLeituras {
   calcVenda: (bicoId: number) => ResultadoVenda;
   totals: Totais;
   getSummaryByCombustivel: () => ResumoCombustivel[];
+  definirLeituras: React.Dispatch<React.SetStateAction<Record<number, Leitura>>>;
 }
 
 /**
@@ -225,9 +229,9 @@ export const useLeituras = (
 
     try {
       const dados = await leituraService.getByDateAndTurno(
-        postoId,
         dataSelecionada,
-        turnoSelecionado
+        turnoSelecionado,
+        postoId
       );
 
       if (dados.length > 0) {
@@ -235,7 +239,7 @@ export const useLeituras = (
         const mapeado = dados.reduce((acc, l) => {
           acc[l.bico_id] = {
             inicial: formatarParaBR(l.leitura_inicial, 3),
-            fechamento: formatarParaBR(l.leitura_fechamento, 3)
+            fechamento: formatarParaBR(l.leitura_final, 3)
           };
           return acc;
         }, {} as Record<number, Leitura>);
@@ -247,7 +251,7 @@ export const useLeituras = (
         const mapeado = bicos.reduce((acc, bico) => {
           const ultima = ultimasLeituras.find(l => l.bico_id === bico.id);
           acc[bico.id] = {
-            inicial: ultima ? formatarParaBR(ultima.leitura_fechamento, 3) : '0,000',
+            inicial: ultima ? formatarParaBR(ultima.leitura_final, 3) : '0,000',
             fechamento: '0,000'
           };
           return acc;
@@ -431,6 +435,7 @@ export const useLeituras = (
     calcLitros,
     calcVenda,
     totals,
-    getSummaryByCombustivel
+    getSummaryByCombustivel,
+    definirLeituras: setLeituras
   };
 };

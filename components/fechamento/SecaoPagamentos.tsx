@@ -1,57 +1,15 @@
-/**
- * SecaoPagamentos - Componente para gerenciamento de formas de pagamento
- *
- * @remarks
- * - Exibe todas as formas de pagamento disponíveis
- * - Permite entrada de valores monetários formatados
- * - Formata automaticamente para R$ X,XX no blur
- * - Valida entrada (apenas números e vírgula)
- * - Calcula total de pagamentos automaticamente
- *
- * @component
- */
-
 import React from 'react';
-import { Pagamento } from '../../types/fechamento';
-import { toCurrency } from '../../utils/formatters';
+import { EntradaPagamento } from '../../types/fechamento';
+import { paraReais, obterIconePagamento } from '../../utils/formatters';
 
 interface SecaoPagamentosProps {
-  /** Array de pagamentos com tipo e valor */
-  pagamentos: Pagamento[];
-  /** Callback para alteração de valor durante digitação */
+  pagamentos: EntradaPagamento[];
   onPagamentoChange: (index: number, valor: string) => void;
-  /** Callback para formatação ao sair do campo */
   onPagamentoBlur: (index: number) => void;
-  /** Total calculado de todos os pagamentos */
   totalPagamentos: number;
-  /** Flag indicando se está em modo de carregamento */
   isLoading?: boolean;
 }
 
-/**
- * Mapeamento de ícones para cada tipo de pagamento
- */
-const ICONES_PAGAMENTO: Record<string, string> = {
-  'PIX': '📱',
-  'Dinheiro': '💵',
-  'Cartão Crédito': '💳',
-  'Cartão Débito': '💳',
-  'Nota/Vale': '📝'
-};
-
-/**
- * Componente de seção de formas de pagamento
- *
- * @example
- * ```tsx
- * <SecaoPagamentos
- *   pagamentos={pagamentos}
- *   onPagamentoChange={handleChange}
- *   onPagamentoBlur={handleBlur}
- *   totalPagamentos={1500.50}
- * />
- * ```
- */
 export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
   pagamentos,
   onPagamentoChange,
@@ -61,16 +19,17 @@ export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">
-        💰 Formas de Pagamento
+      <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+        <span>💰</span> Formas de Pagamento
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {pagamentos.map((pagamento, index) => (
-          <div key={index} className="border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow">
-            <label className="block mb-2">
+          <div key={pagamento.id} className="border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <label className="block mb-2 flex items-center gap-2">
+              {obterIconePagamento(pagamento.tipo)}
               <span className="text-lg font-semibold text-gray-700">
-                {ICONES_PAGAMENTO[pagamento.tipo] || '💵'} {pagamento.tipo}
+                {pagamento.nome}
               </span>
             </label>
             <input
@@ -87,14 +46,13 @@ export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
         ))}
       </div>
 
-      {/* Total de Pagamentos */}
       <div className="border-t-2 border-gray-300 pt-4">
         <div className="flex justify-between items-center">
           <span className="text-xl font-bold text-gray-800">
             Total em Pagamentos:
           </span>
           <span className="text-2xl font-bold text-green-600">
-            {toCurrency(totalPagamentos)}
+            {paraReais(totalPagamentos)}
           </span>
         </div>
       </div>
