@@ -6,10 +6,10 @@ import { DashboardMetrics, StockAlert, AttendantPerformance } from '../types';
 import { formatCurrency } from '../utils';
 
 /**
- * Props do componente ConsultorChatIA
- * @interface ConsultorChatIAProps
+ * Props do componente AIChatConsultant
+ * @interface AIChatConsultantProps
  */
-interface ConsultorChatIAProps {
+interface AIChatConsultantProps {
     /** Métricas do dashboard */
     metrics: DashboardMetrics | null;
     /** Alertas de estoque */
@@ -23,10 +23,10 @@ interface ConsultorChatIAProps {
  * Fornece respostas baseadas em métricas, estoque e performance.
  * 
  * @component
- * @param {ConsultorChatIAProps} props - Props do componente
+ * @param {AIChatConsultantProps} props - Props do componente
  * @returns {JSX.Element} Interface de chat com IA
  */
-export const ConsultorChatIA: React.FC<ConsultorChatIAProps> = ({ metrics, stockAlerts, topPerformers }) => {
+export const AIChatConsultant: React.FC<AIChatConsultantProps> = ({ metrics, stockAlerts, topPerformers }) => {
     const [chatInput, setChatInput] = useState('');
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'ai', content: string }[]>([
         { role: 'ai', content: 'Olá! Sou seu Consultor IA. Pergunte sobre vendas, estoque, frentistas ou qualquer aspecto do seu negócio.' }

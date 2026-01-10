@@ -16,9 +16,9 @@ interface FechamentoFrentistaHistoricoItem {
 }
 
 /**
- * Resultado do hook useMelhoresFrentistas
+ * Resultado do hook useTopPerformers
  */
-interface UseMelhoresFrentistasResult {
+interface UseTopPerformersResult {
     /** Lista de performance dos melhores frentistas */
     topPerformers: AttendantPerformance[];
 }
@@ -27,9 +27,9 @@ interface UseMelhoresFrentistasResult {
  * Hook responsável por analisar o desempenho dos frentistas.
  * Calcula a venda média por turno e diferenças de caixa acumuladas.
  * 
- * @returns {UseMelhoresFrentistasResult} Objeto contendo a lista dos top performers
+ * @returns {UseTopPerformersResult} Objeto contendo a lista dos top performers
  */
-export const useMelhoresFrentistas = (): UseMelhoresFrentistasResult => {
+export const useTopPerformers = (): UseTopPerformersResult => {
     const { postoAtivoId } = usePosto();
     const [topPerformers, setTopPerformers] = useState<AttendantPerformance[]>([]);
 

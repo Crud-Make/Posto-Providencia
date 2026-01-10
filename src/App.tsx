@@ -20,7 +20,7 @@ import TelaGestaoClientes from './components/TelaGestaoClientes';
 import TelaGestaoDespesas from './components/TelaGestaoDespesas';
 import TelaDashboardProprietario from './components/TelaDashboardProprietario';
 import TelaGestaoBaratencia from './components/TelaGestaoBaratencia';
-import { DashboardEstrategico } from './components/ai/strategic-dashboard/DashboardEstrategico';
+import { StrategicDashboard } from './components/ai/strategic-dashboard';
 import TelaLogin from './components/TelaLogin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
@@ -95,7 +95,7 @@ const AppContent: React.FC = () => {
               <TelaDashboard onNewClosing={() => setCurrentView('closing')} />
             )}
             {currentView === 'ai_strategy' && (
-              <DashboardEstrategico />
+              <StrategicDashboard />
             )}
             {currentView === 'sales_dashboard' && (
               <TelaDashboardVendas />

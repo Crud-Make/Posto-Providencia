@@ -6,10 +6,10 @@ import { DailyVolumeData } from '../types';
 import { formatCurrency } from '../utils';
 
 /**
- * Props do componente GraficoVolumeSemanal
- * @interface GraficoVolumeSemanalProps
+ * Props do componente WeeklyVolumeChart
+ * @interface WeeklyVolumeChartProps
  */
-interface GraficoVolumeSemanalProps {
+interface WeeklyVolumeChartProps {
     /** Dados de volume diário da semana */
     weeklyVolume: DailyVolumeData[];
     /** Volume máximo para escala do gráfico */
@@ -21,10 +21,10 @@ interface GraficoVolumeSemanalProps {
  * Destaca o dia atual e mostra projeções para dias futuros.
  * 
  * @component
- * @param {GraficoVolumeSemanalProps} props - Props do componente
+ * @param {WeeklyVolumeChartProps} props - Props do componente
  * @returns {JSX.Element} Gráfico de barras semanal
  */
-export const GraficoVolumeSemanal: React.FC<GraficoVolumeSemanalProps> = ({ weeklyVolume, maxVolume }) => {
+export const WeeklyVolumeChart: React.FC<WeeklyVolumeChartProps> = ({ weeklyVolume, maxVolume }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">

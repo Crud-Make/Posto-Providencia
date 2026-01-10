@@ -6,10 +6,10 @@ import { DashboardMetrics } from '../types';
 import { formatCurrency, formatVolume } from '../utils';
 
 /**
- * Props do componente CardsMetricas
- * @interface CardsMetricasProps
+ * Props do componente MetricsCards
+ * @interface MetricsCardsProps
  */
-interface CardsMetricasProps {
+interface MetricsCardsProps {
     /** Métricas do dashboard ou null se ainda não carregadas */
     metrics: DashboardMetrics | null;
 }
@@ -19,15 +19,15 @@ interface CardsMetricasProps {
  * Mostra receita projetada, volume de vendas, margem média e score de eficiência.
  * 
  * @component
- * @param {CardsMetricasProps} props - Props do componente
+ * @param {MetricsCardsProps} props - Props do componente
  * @returns {JSX.Element} Grid com 4 cards de métricas
  * 
  * @example
  * ```tsx
- * <CardsMetricas metrics={dashboardMetrics} />
+ * <MetricsCards metrics={dashboardMetrics} />
  * ```
  */
-export const CardsMetricas: React.FC<CardsMetricasProps> = ({ metrics }) => {
+export const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Receita Projetada */}

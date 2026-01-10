@@ -7,9 +7,9 @@ import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.servic
 import { AIPromotion, SalesByDayOfWeek } from '../types';
 
 /**
- * Resultado do hook usePromocaoIA
+ * Resultado do hook useAIPromotion
  */
-interface UsePromocaoIAResult {
+interface UseAIPromotionResult {
     /** Sugestão de promoção gerada pela IA */
     aiPromotion: AIPromotion | null;
     /** Análise de vendas por dia da semana */
@@ -21,9 +21,9 @@ interface UsePromocaoIAResult {
  * Analisa os dias da semana com pior desempenho e sugere ações para aumentar o volume.
  * 
  * @param {SalesAnalysisData | null} currentAnalysis Análise de vendas atual
- * @returns {UsePromocaoIAResult} Objeto contendo a sugestão de promoção e análise diária
+ * @returns {UseAIPromotionResult} Objeto contendo a sugestão de promoção e análise diária
  */
-export const usePromocaoIA = (currentAnalysis: SalesAnalysisData | null): UsePromocaoIAResult => {
+export const useAIPromotion = (currentAnalysis: SalesAnalysisData | null): UseAIPromotionResult => {
     const { postoAtivoId } = usePosto();
     const [aiPromotion, setAiPromotion] = useState<AIPromotion | null>(null);
     const [salesByDay, setSalesByDay] = useState<SalesByDayOfWeek[]>([]);

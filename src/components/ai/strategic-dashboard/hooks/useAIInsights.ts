@@ -5,9 +5,9 @@ import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.servic
 import { AIInsight, DashboardMetrics, StockAlert } from '../types';
 
 /**
- * Resultado do hook useInsightsIA
+ * Resultado do hook useAIInsights
  */
-interface UseInsightsIAResult {
+interface UseAIInsightsResult {
     /** Lista de insights gerados pela IA */
     insights: AIInsight[];
 }
@@ -19,13 +19,13 @@ interface UseInsightsIAResult {
  * @param {any} currentAnalysis Análise de vendas atual
  * @param {DashboardMetrics | null} metrics Métricas do dashboard
  * @param {StockAlert[]} stockAlerts Alertas de estoque atuais
- * @returns {UseInsightsIAResult} Objeto contendo a lista de insights
+ * @returns {UseAIInsightsResult} Objeto contendo a lista de insights
  */
-export const useInsightsIA = (
+export const useAIInsights = (
     currentAnalysis: SalesAnalysisData | null,
     metrics: DashboardMetrics | null,
     stockAlerts: StockAlert[]
-): UseInsightsIAResult => {
+): UseAIInsightsResult => {
     const [insights, setInsights] = useState<AIInsight[]>([]);
 
     useEffect(() => {

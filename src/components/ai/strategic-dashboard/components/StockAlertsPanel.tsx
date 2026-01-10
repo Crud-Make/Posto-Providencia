@@ -5,10 +5,10 @@ import { AlertTriangle, Droplet } from 'lucide-react';
 import { StockAlert } from '../types';
 
 /**
- * Props do componente PainelAlertasEstoque
- * @interface PainelAlertasEstoqueProps
+ * Props do componente StockAlertsPanel
+ * @interface StockAlertsPanelProps
  */
-interface PainelAlertasEstoqueProps {
+interface StockAlertsPanelProps {
     /** Lista de alertas de estoque de combustível */
     stockAlerts: StockAlert[];
 }
@@ -18,10 +18,10 @@ interface PainelAlertasEstoqueProps {
  * Mostra status visual (OK, BAIXO, CRÍTICO) e dias restantes estimados.
  * 
  * @component
- * @param {PainelAlertasEstoqueProps} props - Props do componente
+ * @param {StockAlertsPanelProps} props - Props do componente
  * @returns {JSX.Element} Painel com alertas de estoque
  */
-export const PainelAlertasEstoque: React.FC<PainelAlertasEstoqueProps> = ({ stockAlerts }) => {
+export const StockAlertsPanel: React.FC<StockAlertsPanelProps> = ({ stockAlerts }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
