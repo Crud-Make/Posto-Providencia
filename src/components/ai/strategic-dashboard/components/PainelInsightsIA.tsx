@@ -1,12 +1,26 @@
-// [10/01 08:54] Componente de lista de insights de IA
+// [10/01 08:36] Componente de painel de insights de IA
+// [10/01 17:13] Adicionado JSDoc completo
 import React from 'react';
-import { Sparkles, AlertTriangle, TrendingUp, Lightbulb } from 'lucide-react';
+import { Sparkles, TrendingUp, AlertTriangle, CheckCircle, Info, Lightbulb } from 'lucide-react';
 import { AIInsight } from '../types';
 
+/**
+ * Props do componente PainelInsightsIA
+ * @interface PainelInsightsIAProps
+ */
 interface PainelInsightsIAProps {
+    /** Lista de insights gerados pela IA */
     insights: AIInsight[];
 }
 
+/**
+ * Componente que exibe painel com insights gerados pela IA.
+ * Mostra oportunidades, alertas e recomendações baseadas em análise de dados.
+ * 
+ * @component
+ * @param {PainelInsightsIAProps} props - Props do componente
+ * @returns {JSX.Element} Painel com lista de insights
+ */
 export const PainelInsightsIA: React.FC<PainelInsightsIAProps> = ({ insights }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">

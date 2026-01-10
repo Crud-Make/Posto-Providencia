@@ -1,13 +1,32 @@
 // [10/01 08:45] Componente de cards de métricas
+// [10/01 17:12] Adicionado JSDoc completo
 import React from 'react';
 import { TrendingUp, TrendingDown, Fuel, BarChart3, Target } from 'lucide-react';
 import { DashboardMetrics } from '../types';
 import { formatCurrency, formatVolume } from '../utils';
 
+/**
+ * Props do componente CardsMetricas
+ * @interface CardsMetricasProps
+ */
 interface CardsMetricasProps {
+    /** Métricas do dashboard ou null se ainda não carregadas */
     metrics: DashboardMetrics | null;
 }
 
+/**
+ * Componente que exibe cards com as principais métricas do dashboard.
+ * Mostra receita projetada, volume de vendas, margem média e score de eficiência.
+ * 
+ * @component
+ * @param {CardsMetricasProps} props - Props do componente
+ * @returns {JSX.Element} Grid com 4 cards de métricas
+ * 
+ * @example
+ * ```tsx
+ * <CardsMetricas metrics={dashboardMetrics} />
+ * ```
+ */
 export const CardsMetricas: React.FC<CardsMetricasProps> = ({ metrics }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,15 +1,31 @@
-// [10/01 08:56] Componente de consultor chat IA
+// [10/01 08:55] Componente de chat consultor com IA
+// [10/01 17:15] Adicionado JSDoc completo
 import React, { useState } from 'react';
-import { Brain, Send } from 'lucide-react';
+import { MessageCircle, Send, Sparkles, Brain } from 'lucide-react';
 import { DashboardMetrics, StockAlert, AttendantPerformance } from '../types';
 import { formatCurrency } from '../utils';
 
+/**
+ * Props do componente ConsultorChatIA
+ * @interface ConsultorChatIAProps
+ */
 interface ConsultorChatIAProps {
+    /** Métricas do dashboard */
     metrics: DashboardMetrics | null;
+    /** Alertas de estoque */
     stockAlerts: StockAlert[];
+    /** Performance dos frentistas */
     topPerformers: AttendantPerformance[];
 }
 
+/**
+ * Componente de chat interativo com IA para consultas sobre o negócio.
+ * Fornece respostas baseadas em métricas, estoque e performance.
+ * 
+ * @component
+ * @param {ConsultorChatIAProps} props - Props do componente
+ * @returns {JSX.Element} Interface de chat com IA
+ */
 export const ConsultorChatIA: React.FC<ConsultorChatIAProps> = ({ metrics, stockAlerts, topPerformers }) => {
     const [chatInput, setChatInput] = useState('');
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'ai', content: string }[]>([

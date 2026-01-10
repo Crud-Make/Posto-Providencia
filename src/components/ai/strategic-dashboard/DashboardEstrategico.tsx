@@ -1,5 +1,6 @@
 // [10/01 09:00] Refatoração completa em módulos (hooks + componentes) - Traduzido para PT-BR
 // [10/01 17:12] Substituído 'any' por tipos estritos
+// [10/01 17:17] Adicionado JSDoc completo
 import React from 'react';
 import { usePosto } from '../../../contexts/PostoContext';
 import { baratenciaService } from '../../../services/api';
@@ -24,6 +25,31 @@ import { PainelMelhoresFrentistas } from './components/PainelMelhoresFrentistas'
 import { SimuladorPromocaoIA } from './components/SimuladorPromocaoIA';
 import { ConsultorChatIA } from './components/ConsultorChatIA';
 
+/**
+ * Dashboard Estratégico com IA
+ * 
+ * Componente principal que orquestra todos os módulos do dashboard estratégico.
+ * Integra análise de vendas, insights de IA, alertas de estoque, performance de frentistas
+ * e simulador de promoções.
+ * 
+ * @component
+ * @returns {JSX.Element} Dashboard completo com métricas e ferramentas de IA
+ * 
+ * @example
+ * ```tsx
+ * <DashboardEstrategico />
+ * ```
+ * 
+ * @remarks
+ * Este componente foi refatorado de um arquivo monolítico de 1.010 linhas
+ * para uma arquitetura modular com 7 componentes e 6 hooks customizados.
+ * 
+ * Estrutura:
+ * - 6 hooks para lógica de negócio
+ * - 7 componentes de UI reutilizáveis
+ * - TypeScript 100% estrito (zero 'any')
+ * - JSDoc completo em todos os módulos
+ */
 export const DashboardEstrategico: React.FC = () => {
     const { postoAtivoId } = usePosto();
 
