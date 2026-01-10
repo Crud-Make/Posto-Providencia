@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import type { Bico, Bomba, Combustivel, Frentista } from './database';
+import type { Bico, Bomba, Combustivel, Frentista } from './database/index';
 
 export type { Frentista };
 

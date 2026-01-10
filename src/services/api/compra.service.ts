@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database';
+import { Database } from '../../types/database/index';
 import { estoqueService } from './estoque.service';
 
 type Compra = Database['public']['Tables']['Compra']['Row'];

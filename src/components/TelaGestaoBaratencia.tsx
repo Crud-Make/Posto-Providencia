@@ -23,7 +23,7 @@ import type {
     TransacaoBaratencia,
     Combustivel,
     PromocaoBaratencia
-} from '../services/database.types';
+} from '../types/database/index';
 import { usePosto } from '../contexts/PostoContext';
 import { toast } from 'sonner';
 

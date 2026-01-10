@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { InsertTables, UpdateTables, Produto, MovimentacaoEstoque } from './database.types';
+import type { InsertTables, UpdateTables, Produto, MovimentacaoEstoque } from '../types/database/index';
 
 export const stockService = {
     // === PRODUTOS ===

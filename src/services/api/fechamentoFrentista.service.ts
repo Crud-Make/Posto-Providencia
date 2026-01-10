@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { FechamentoFrentista, InsertTables, UpdateTables, Frentista, Turno } from '../../types/database';
+import { FechamentoFrentista, InsertTables, UpdateTables, Frentista, Turno } from '../../types/database/index';
 
 export const fechamentoFrentistaService = {
   async getByFechamento(fechamentoId: number): Promise<(FechamentoFrentista & { frentista: Frentista | null })[]> {

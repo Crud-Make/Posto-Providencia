@@ -8,7 +8,7 @@ import { RefreshCw } from 'lucide-react';
  */
 const UpdateNotifier: React.FC = () => {
     const [currentVersion, setCurrentVersion] = useState<string | null>(null);
-    const checkInterval = useRef<NodeJS.Timeout | null>(null);
+    const checkInterval = useRef<number | null>(null);
 
     const fetchVersion = async () => {
         try {

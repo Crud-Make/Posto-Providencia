@@ -6,7 +6,7 @@
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Bico, Bomba, Combustivel, InsertTables, UpdateTables } from '../../types/database';
+import type { Bico, Bomba, Combustivel, InsertTables, UpdateTables } from '../../types/database/index';
 
 export const bicoService = {
   async getAll(postoId?: number): Promise<Bico[]> {

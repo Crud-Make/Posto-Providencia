@@ -15,7 +15,7 @@ import {
     CreditCard
 } from 'lucide-react';
 import { postoService, frentistaService, fechamentoService } from '../services/api';
-import type { Posto } from '../services/database.types';
+import type { Posto } from '../types/database/index';
 import { supabase } from '../services/supabase';
 
 // ============================================

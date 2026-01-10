@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
-import type { Posto } from '../services/database.types';
+import type { Posto } from '../types/database/index';
 
 // ============================================
 // TYPES

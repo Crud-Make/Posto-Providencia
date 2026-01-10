@@ -5,8 +5,9 @@ import type {
   CarteiraBaratencia,
   TransacaoBaratencia,
   TokenAbastecimento,
-  PromocaoBaratencia
-} from '../../types/database';
+  PromocaoBaratencia,
+  Json
+} from '../../types/database/index';
 
 export const baratenciaService = {
   // --- CLIENTES ---
@@ -108,7 +109,7 @@ export const baratenciaService = {
     return data;
   },
 
-  async depositar(clienteId: number, valor: number, metadata?: Record<string, unknown>): Promise<TransacaoBaratencia> {
+  async depositar(clienteId: number, valor: number, metadata?: Json): Promise<TransacaoBaratencia> {
     // 1. Busca carteira
     const carteira = await this.getCarteira(clienteId);
     if (!carteira) throw new Error('Carteira não encontrada');

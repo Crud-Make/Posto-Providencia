@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Database } from './database.types';
+import { Database } from '../types/database/index';
 
 export type Tanque = Database['public']['Tables']['Tanque']['Row'] & {
     combustivel?: {

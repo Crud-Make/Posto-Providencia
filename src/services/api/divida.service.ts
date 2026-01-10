@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database';
+import { Database } from '../../types/database/index';
 
 type DividaRow = Database['public']['Tables']['Divida']['Row'];
 
@@ -8,7 +8,7 @@ export interface Divida {
   descricao: string;
   valor: number;
   data_vencimento: string;
-  status: string;
+  status: 'pendente' | 'pago';
   posto_id: number | null;
 }
 

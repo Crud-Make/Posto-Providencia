@@ -3,7 +3,7 @@ import { Fuel, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 import { tanqueService, Tanque } from '../services/tanqueService';
 import { combustivelService } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
-import { Combustivel } from '../services/database.types';
+import { Combustivel } from '../types/database/index';
 
 export const TankManagement: React.FC = () => {
     const { postoAtivoId } = usePosto();

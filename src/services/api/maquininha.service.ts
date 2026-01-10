@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Maquininha, InsertTables } from '../../types/database';
+import { Maquininha, InsertTables } from '../../types/database/index';
 
 export const maquininhaService = {
   async getAll(postoId?: number): Promise<Maquininha[]> {

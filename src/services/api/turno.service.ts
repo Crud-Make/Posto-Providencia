@@ -6,7 +6,7 @@
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Turno, InsertTables, UpdateTables } from '../../types/database';
+import type { Turno, InsertTables, UpdateTables } from '../../types/database/index';
 
 export const turnoService = {
   async getAll(postoId?: number): Promise<Turno[]> {

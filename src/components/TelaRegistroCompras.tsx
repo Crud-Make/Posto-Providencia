@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { combustivelService, compraService, estoqueService } from '../services/api';
 import { tanqueService } from '../services/tanqueService';
-import type { Combustivel } from '../services/database.types';
+import { Fornecedor, Combustivel } from '../types/database/index';
 import { usePosto } from '../contexts/PostoContext';
 
 type CombustivelHibrido = {

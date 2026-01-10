@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database';
+import { Database } from '../../types/database/index';
 
 type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
 type FornecedorInsert = Database['public']['Tables']['Fornecedor']['Insert'];

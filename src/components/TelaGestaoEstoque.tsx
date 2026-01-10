@@ -19,7 +19,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { stockService } from '../services/stockService';
-import { Produto, MovimentacaoEstoque } from '../services/database.types';
+import { Produto, MovimentacaoEstoque } from '../types/database/index';
 import { usePosto } from '../contexts/PostoContext';
 
 const TelaGestaoEstoque: React.FC = () => {

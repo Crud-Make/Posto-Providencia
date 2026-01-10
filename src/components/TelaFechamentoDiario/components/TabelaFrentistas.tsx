@@ -2,7 +2,7 @@ import React from 'react';
 // [09/01] Adição de totalizadores e coluna de total por linha - Padronização tabelas escuras
 import { Trash2, Plus, User } from 'lucide-react';
 import { SessaoFrentista } from '../../../types/fechamento';
-import { Frentista } from '../../../services/database.types';
+import { Frentista } from '../../../types/database/index';
 import { paraReais, parseValue } from '../../../utils/formatters';
 
 interface SecaoSessoesFrentistasProps {

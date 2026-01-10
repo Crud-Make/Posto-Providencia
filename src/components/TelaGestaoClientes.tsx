@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { usePosto } from '../contexts/PostoContext';
 import { clienteService, notaFrentistaService, frentistaService } from '../services/api';
-import { Cliente, NotaFrentista } from '../services/database.types';
+import { Cliente, NotaFrentista } from '../types/database/index';
 import { toast } from 'sonner';
 
 // Componente para Badges de Status

@@ -13,7 +13,7 @@ import {
   Info
 } from 'lucide-react';
 import { bicoService, leituraService } from '../services/api';
-import type { Bico, Bomba, Combustivel, Leitura } from '../services/database.types';
+import type { Bico, Bomba, Combustivel, Leitura } from '../types/database/index';
 import { ProgressIndicator } from './ValidationAlert';
 import { usePosto } from '../contexts/PostoContext';
 

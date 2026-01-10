@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Recebimento, InsertTables, FormaPagamento, Maquininha } from '../../types/database';
+import { Recebimento, InsertTables, FormaPagamento, Maquininha } from '../../types/database/index';
 
 export const recebimentoService = {
   async getByFechamento(fechamentoId: number): Promise<(Recebimento & { forma_pagamento: FormaPagamento | null; maquininha: Maquininha | null })[]> {

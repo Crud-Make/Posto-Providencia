@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { FormaPagamento, InsertTables, UpdateTables } from '../../types/database';
+import { FormaPagamento, InsertTables, UpdateTables } from '../../types/database/index';
 
 export const formaPagamentoService = {
   async getAll(postoId?: number): Promise<FormaPagamento[]> {
