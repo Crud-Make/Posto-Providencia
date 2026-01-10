@@ -8,9 +8,9 @@ import { DailyVolumeData } from '../types';
 import { getDayOfWeek } from '../utils';
 
 /**
- * Resultado do hook useVolumeSemanal
+ * Resultado do hook useWeeklyVolume
  */
-interface UseVolumeSemanalResult {
+interface UseWeeklyVolumeResult {
     /** Dados de volume diário para a semana atual */
     weeklyVolume: DailyVolumeData[];
     /** Volume máximo encontrado (para escala do gráfico) */
@@ -22,9 +22,9 @@ interface UseVolumeSemanalResult {
  * Projeta volumes futuros com base na média diária se a data for futura.
  * 
  * @param {SalesAnalysisData | null} currentAnalysis Análise de vendas atual contendo totais
- * @returns {UseVolumeSemanalResult} Objeto contendo dados semanais e volume máximo
+ * @returns {UseWeeklyVolumeResult} Objeto contendo dados semanais e volume máximo
  */
-export const useVolumeSemanal = (currentAnalysis: SalesAnalysisData | null): UseVolumeSemanalResult => {
+export const useWeeklyVolume = (currentAnalysis: SalesAnalysisData | null): UseWeeklyVolumeResult => {
     const { postoAtivoId } = usePosto();
     const [weeklyVolume, setWeeklyVolume] = useState<DailyVolumeData[]>([]);
 

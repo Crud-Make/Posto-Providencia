@@ -5,10 +5,10 @@ import { Sparkles, TrendingUp, AlertTriangle, CheckCircle, Info, Lightbulb } fro
 import { AIInsight } from '../types';
 
 /**
- * Props do componente PainelInsightsIA
- * @interface PainelInsightsIAProps
+ * Props do componente AIInsightsPanel
+ * @interface AIInsightsPanelProps
  */
-interface PainelInsightsIAProps {
+interface AIInsightsPanelProps {
     /** Lista de insights gerados pela IA */
     insights: AIInsight[];
 }
@@ -18,10 +18,10 @@ interface PainelInsightsIAProps {
  * Mostra oportunidades, alertas e recomendações baseadas em análise de dados.
  * 
  * @component
- * @param {PainelInsightsIAProps} props - Props do componente
+ * @param {AIInsightsPanelProps} props - Props do componente
  * @returns {JSX.Element} Painel com lista de insights
  */
-export const PainelInsightsIA: React.FC<PainelInsightsIAProps> = ({ insights }) => {
+export const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ insights }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/30 flex justify-between items-center">

@@ -7,9 +7,9 @@ import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.servic
 import { DashboardMetrics } from '../types';
 
 /**
- * Resultado do hook useMetricasDashboard
+ * Resultado do hook useDashboardMetrics
  */
-interface UseMetricasDashboardResult {
+interface UseDashboardMetricsResult {
     /** Métricas calculadas do dashboard */
     metrics: DashboardMetrics | null;
     /** Estado de carregamento */
@@ -24,9 +24,9 @@ interface UseMetricasDashboardResult {
  * Hook responsável por buscar e calcular as métricas principais do dashboard estratégico.
  * Compara o mês atual com o mês anterior para gerar variações de receita, volume e margem.
  * 
- * @returns {UseMetricasDashboardResult} Objeto contendo métricas, estado de loading e função de refresh
+ * @returns {UseDashboardMetricsResult} Objeto contendo métricas, estado de loading e função de refresh
  */
-export const useMetricasDashboard = (): UseMetricasDashboardResult => {
+export const useDashboardMetrics = (): UseDashboardMetricsResult => {
     const { postoAtivoId } = usePosto();
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);

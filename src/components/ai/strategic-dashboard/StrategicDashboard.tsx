@@ -9,21 +9,21 @@ import { Brain, RefreshCw } from 'lucide-react';
 import { TemplatePromocao } from './types';
 
 // Hooks
-import { useMetricasDashboard } from './hooks/useMetricasDashboard';
-import { useVolumeSemanal } from './hooks/useVolumeSemanal';
-import { useInsightsIA } from './hooks/useInsightsIA';
-import { useAlertasEstoque } from './hooks/useAlertasEstoque';
-import { useMelhoresFrentistas } from './hooks/useMelhoresFrentistas';
-import { usePromocaoIA } from './hooks/usePromocaoIA';
+import { useDashboardMetrics } from './hooks/useDashboardMetrics';
+import { useWeeklyVolume } from './hooks/useWeeklyVolume';
+import { useAIInsights } from './hooks/useAIInsights';
+import { useStockAlerts } from './hooks/useStockAlerts';
+import { useTopPerformers } from './hooks/useTopPerformers';
+import { useAIPromotion } from './hooks/useAIPromotion';
 
 // Components
-import { CardsMetricas } from './components/CardsMetricas';
-import { GraficoVolumeSemanal } from './components/GraficoVolumeSemanal';
-import { PainelInsightsIA } from './components/PainelInsightsIA';
-import { PainelAlertasEstoque } from './components/PainelAlertasEstoque';
-import { PainelMelhoresFrentistas } from './components/PainelMelhoresFrentistas';
-import { SimuladorPromocaoIA } from './components/SimuladorPromocaoIA';
-import { ConsultorChatIA } from './components/ConsultorChatIA';
+import { MetricsCards } from './components/MetricsCards';
+import { WeeklyVolumeChart } from './components/WeeklyVolumeChart';
+import { AIInsightsPanel } from './components/AIInsightsPanel';
+import { StockAlertsPanel } from './components/StockAlertsPanel';
+import { TopPerformersPanel } from './components/TopPerformersPanel';
+import { AIPromotionSimulator } from './components/AIPromotionSimulator';
+import { AIChatConsultant } from './components/AIChatConsultant';
 
 /**
  * Dashboard Estratégico com IA
@@ -37,7 +37,7 @@ import { ConsultorChatIA } from './components/ConsultorChatIA';
  * 
  * @example
  * ```tsx
- * <DashboardEstrategico />
+ * <StrategicDashboard />
  * ```
  * 
  * @remarks
@@ -50,16 +50,16 @@ import { ConsultorChatIA } from './components/ConsultorChatIA';
  * - TypeScript 100% estrito (zero 'any')
  * - JSDoc completo em todos os módulos
  */
-export const DashboardEstrategico: React.FC = () => {
+export const StrategicDashboard: React.FC = () => {
     const { postoAtivoId } = usePosto();
 
     // Hooks initialization
-    const { metrics, loading: loadingMetrics, currentAnalysis, refreshMetrics } = useMetricasDashboard();
-    const { weeklyVolume, maxVolume } = useVolumeSemanal(currentAnalysis);
-    const { stockAlerts } = useAlertasEstoque(currentAnalysis);
-    const { topPerformers } = useMelhoresFrentistas();
-    const { aiPromotion, salesByDay } = usePromocaoIA(currentAnalysis);
-    const { insights } = useInsightsIA(currentAnalysis, metrics, stockAlerts);
+    const { metrics, loading: loadingMetrics, currentAnalysis, refreshMetrics } = useDashboardMetrics();
+    const { weeklyVolume, maxVolume } = useWeeklyVolume(currentAnalysis);
+    const { stockAlerts } = useStockAlerts(currentAnalysis);
+    const { topPerformers } = useTopPerformers();
+    const { aiPromotion, salesByDay } = useAIPromotion(currentAnalysis);
+    const { insights } = useAIInsights(currentAnalysis, metrics, stockAlerts);
 
     const handleRefresh = async () => {
         await refreshMetrics();
@@ -141,36 +141,36 @@ export const DashboardEstrategico: React.FC = () => {
 
             <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
                 {/* Metrics Cards */}
-                <CardsMetricas metrics={metrics} />
+                <MetricsCards metrics={metrics} />
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column - Charts and Main Content */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Weekly Volume Chart */}
-                        <GraficoVolumeSemanal weeklyVolume={weeklyVolume} maxVolume={maxVolume} />
+                        <WeeklyVolumeChart weeklyVolume={weeklyVolume} maxVolume={maxVolume} />
 
                         {/* AI Promotion Simulator */}
-                        <SimuladorPromocaoIA
+                        <AIPromotionSimulator
                             aiPromotion={aiPromotion}
                             salesByDay={salesByDay}
                             onApply={handleApplyPromotion}
                         />
 
                         {/* Stock Status */}
-                        <PainelAlertasEstoque stockAlerts={stockAlerts} />
+                        <StockAlertsPanel stockAlerts={stockAlerts} />
 
                         {/* Top Performers */}
-                        <PainelMelhoresFrentistas topPerformers={topPerformers} />
+                        <TopPerformersPanel topPerformers={topPerformers} />
                     </div>
 
                     {/* Right Column - Insights and Chat */}
                     <div className="space-y-6">
                         {/* AI Insights */}
-                        <PainelInsightsIA insights={insights} />
+                        <AIInsightsPanel insights={insights} />
 
                         {/* AI Chat */}
-                        <ConsultorChatIA
+                        <AIChatConsultant
                             metrics={metrics}
                             stockAlerts={stockAlerts}
                             topPerformers={topPerformers}

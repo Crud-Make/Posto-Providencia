@@ -7,10 +7,10 @@ import { AIPromotion, SalesByDayOfWeek, TemplatePromocao } from '../types';
 import { formatCurrency } from '../utils';
 
 /**
- * Props do componente SimuladorPromocaoIA
- * @interface SimuladorPromocaoIAProps
+ * Props do componente AIPromotionSimulator
+ * @interface AIPromotionSimulatorProps
  */
-interface SimuladorPromocaoIAProps {
+interface AIPromotionSimulatorProps {
     /** Promoção sugerida pela IA ou null */
     aiPromotion: AIPromotion | null;
     /** Dados de vendas por dia da semana */
@@ -24,10 +24,10 @@ interface SimuladorPromocaoIAProps {
  * Permite configurar produto, desconto e template de promoção baseado em análise de vendas.
  * 
  * @component
- * @param {SimuladorPromocaoIAProps} props - Props do componente
+ * @param {AIPromotionSimulatorProps} props - Props do componente
  * @returns {JSX.Element | null} Interface de simulação ou null se não houver promoção
  */
-export const SimuladorPromocaoIA: React.FC<SimuladorPromocaoIAProps> = ({ aiPromotion, salesByDay, onApply }) => {
+export const AIPromotionSimulator: React.FC<AIPromotionSimulatorProps> = ({ aiPromotion, salesByDay, onApply }) => {
     const [selectedPromoProduct, setSelectedPromoProduct] = useState<string>('');
     const [promoDiscount, setPromoDiscount] = useState<number>(15);
     const [submitting, setSubmitting] = useState(false);

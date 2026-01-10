@@ -7,9 +7,9 @@ import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.servic
 import { StockAlert } from '../types';
 
 /**
- * Resultado do hook useAlertasEstoque
+ * Resultado do hook useStockAlerts
  */
-interface UseAlertasEstoqueResult {
+interface UseStockAlertsResult {
     /** Lista de alertas de estoque gerados */
     stockAlerts: StockAlert[];
 }
@@ -19,9 +19,9 @@ interface UseAlertasEstoqueResult {
  * Calcula também a previsão de duração do estoque com base no consumo médio.
  * 
  * @param {any} currentAnalysis Análise de vendas atual para cálculo de consumo
- * @returns {UseAlertasEstoqueResult} Objeto contendo a lista de alertas
+ * @returns {UseStockAlertsResult} Objeto contendo a lista de alertas
  */
-export const useAlertasEstoque = (currentAnalysis: SalesAnalysisData | null): UseAlertasEstoqueResult => {
+export const useStockAlerts = (currentAnalysis: SalesAnalysisData | null): UseStockAlertsResult => {
     const { postoAtivoId } = usePosto();
     const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
 

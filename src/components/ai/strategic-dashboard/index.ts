@@ -7,6 +7,6 @@
  * Inclui métricas, insights, alertas e simulador de promoções.
  */
 
-export { DashboardEstrategico } from './DashboardEstrategico';
+export { StrategicDashboard } from './StrategicDashboard';
 export * from './types';
 export * from './utils';

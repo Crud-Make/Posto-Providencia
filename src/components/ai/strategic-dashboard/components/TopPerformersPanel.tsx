@@ -6,10 +6,10 @@ import { AttendantPerformance } from '../types';
 import { formatCurrency } from '../utils';
 
 /**
- * Props do componente PainelMelhoresFrentistas
- * @interface PainelMelhoresFrentistasProps
+ * Props do componente TopPerformersPanel
+ * @interface TopPerformersPanelProps
  */
-interface PainelMelhoresFrentistasProps {
+interface TopPerformersPanelProps {
     /** Lista de frentistas com melhor performance */
     topPerformers: AttendantPerformance[];
 }
@@ -19,10 +19,10 @@ interface PainelMelhoresFrentistasProps {
  * Mostra média de vendas e diferença acumulada (sobra/falta).
  * 
  * @component
- * @param {PainelMelhoresFrentistasProps} props - Props do componente
+ * @param {TopPerformersPanelProps} props - Props do componente
  * @returns {JSX.Element} Painel com ranking de frentistas
  */
-export const PainelMelhoresFrentistas: React.FC<PainelMelhoresFrentistasProps> = ({ topPerformers }) => {
+export const TopPerformersPanel: React.FC<TopPerformersPanelProps> = ({ topPerformers }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
