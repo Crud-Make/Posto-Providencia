@@ -20,7 +20,7 @@ import TelaGestaoClientes from './components/TelaGestaoClientes';
 import TelaGestaoDespesas from './components/TelaGestaoDespesas';
 import TelaDashboardProprietario from './components/TelaDashboardProprietario';
 import TelaGestaoBaratencia from './components/TelaGestaoBaratencia';
-import { StrategicDashboard } from './components/ai/StrategicDashboard';
+import { StrategicDashboard } from './components/ai/strategic-dashboard/StrategicDashboard';
 import TelaLogin from './components/TelaLogin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
