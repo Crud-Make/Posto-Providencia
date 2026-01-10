@@ -1,6 +1,8 @@
-// [10/01 08:36] Hook para gerar insights de IA
+// [10/01 08:35] Hook para gerar insights de IA
+// [10/01 17:10] Substituído 'any' por tipos estritos
 import { useState, useEffect } from 'react';
-import { AIInsight, StockAlert, DashboardMetrics } from '../types';
+import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.service';
+import { AIInsight, DashboardMetrics, StockAlert } from '../types';
 
 /**
  * Resultado do hook useInsightsIA
@@ -20,7 +22,7 @@ interface UseInsightsIAResult {
  * @returns {UseInsightsIAResult} Objeto contendo a lista de insights
  */
 export const useInsightsIA = (
-    currentAnalysis: any | null,
+    currentAnalysis: SalesAnalysisData | null,
     metrics: DashboardMetrics | null,
     stockAlerts: StockAlert[]
 ): UseInsightsIAResult => {
@@ -34,7 +36,7 @@ export const useInsightsIA = (
 
         // Verificar produtos com baixa margem
         if (currentAnalysis.products) {
-            currentAnalysis.products.forEach((p: any) => {
+            currentAnalysis.products.forEach((p) => {
                 if (p.margin < 5 && p.volume > 100) {
                     generatedInsights.push({
                         id: `margin-${p.code}`,

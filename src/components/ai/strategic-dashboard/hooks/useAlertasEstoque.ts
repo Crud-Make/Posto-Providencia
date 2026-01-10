@@ -1,7 +1,9 @@
 // [10/01 08:34] Hook para gerenciar alertas de estoque
+// [10/01 17:11] Substituído 'any' por tipos estritos
 import { useState, useEffect } from 'react';
 import { usePosto } from '../../../../contexts/PostoContext';
 import { estoqueService } from '../../../../services/api';
+import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.service';
 import { StockAlert } from '../types';
 
 /**
@@ -19,7 +21,7 @@ interface UseAlertasEstoqueResult {
  * @param {any} currentAnalysis Análise de vendas atual para cálculo de consumo
  * @returns {UseAlertasEstoqueResult} Objeto contendo a lista de alertas
  */
-export const useAlertasEstoque = (currentAnalysis: any | null): UseAlertasEstoqueResult => {
+export const useAlertasEstoque = (currentAnalysis: SalesAnalysisData | null): UseAlertasEstoqueResult => {
     const { postoAtivoId } = usePosto();
     const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
 
@@ -31,14 +33,14 @@ export const useAlertasEstoque = (currentAnalysis: any | null): UseAlertasEstoqu
                 const estoques = await estoqueService.getAll(postoAtivoId);
                 const today = new Date();
                 const daysPassed = today.getDate();
-                
+
                 // Estimar dias restantes com base no consumo médio diário
                 // Usando volume da análise
                 const avgDailyConsumption = daysPassed > 0 && estoques.length > 0
                     ? currentAnalysis.totals.volume / daysPassed / estoques.length
                     : 0;
 
-                const alerts: StockAlert[] = estoques.map((e: any) => {
+                const alerts: StockAlert[] = estoques.map((e) => {
                     const percentual = e.capacidade_tanque > 0 ? (e.quantidade_atual / e.capacidade_tanque) * 100 : 0;
                     let status: 'OK' | 'BAIXO' | 'CRÍTICO' = 'OK';
                     if (percentual < 10) status = 'CRÍTICO';

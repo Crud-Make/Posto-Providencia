@@ -1,9 +1,11 @@
 // [10/01 09:00] Refatoração completa em módulos (hooks + componentes) - Traduzido para PT-BR
+// [10/01 17:12] Substituído 'any' por tipos estritos
 import React from 'react';
 import { usePosto } from '../../../contexts/PostoContext';
 import { baratenciaService } from '../../../services/api';
 import { toast } from 'sonner';
 import { Brain, RefreshCw } from 'lucide-react';
+import { TemplatePromocao } from './types';
 
 // Hooks
 import { useMetricasDashboard } from './hooks/useMetricasDashboard';
@@ -24,7 +26,7 @@ import { ConsultorChatIA } from './components/ConsultorChatIA';
 
 export const DashboardEstrategico: React.FC = () => {
     const { postoAtivoId } = usePosto();
-    
+
     // Hooks initialization
     const { metrics, loading: loadingMetrics, currentAnalysis, refreshMetrics } = useMetricasDashboard();
     const { weeklyVolume, maxVolume } = useVolumeSemanal(currentAnalysis);
@@ -37,7 +39,7 @@ export const DashboardEstrategico: React.FC = () => {
         await refreshMetrics();
     };
 
-    const handleApplyPromotion = async (product: string, discount: number, template: any) => {
+    const handleApplyPromotion = async (product: string, discount: number, template: TemplatePromocao) => {
         if (!aiPromotion || !postoAtivoId) return;
 
         try {
@@ -55,9 +57,10 @@ export const DashboardEstrategico: React.FC = () => {
             });
 
             toast.success(`Promoção "${template.name}" agendada com sucesso para ${aiPromotion.targetDay}!`);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Erro ao agendar promoção:', error);
-            toast.error('Erro ao agendar promoção: ' + error.message);
+            const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+            toast.error('Erro ao agendar promoção: ' + errorMessage);
             throw error;
         }
     };
@@ -122,10 +125,10 @@ export const DashboardEstrategico: React.FC = () => {
                         <GraficoVolumeSemanal weeklyVolume={weeklyVolume} maxVolume={maxVolume} />
 
                         {/* AI Promotion Simulator */}
-                        <SimuladorPromocaoIA 
-                            aiPromotion={aiPromotion} 
-                            salesByDay={salesByDay} 
-                            onApply={handleApplyPromotion} 
+                        <SimuladorPromocaoIA
+                            aiPromotion={aiPromotion}
+                            salesByDay={salesByDay}
+                            onApply={handleApplyPromotion}
                         />
 
                         {/* Stock Status */}
@@ -141,10 +144,10 @@ export const DashboardEstrategico: React.FC = () => {
                         <PainelInsightsIA insights={insights} />
 
                         {/* AI Chat */}
-                        <ConsultorChatIA 
-                            metrics={metrics} 
-                            stockAlerts={stockAlerts} 
-                            topPerformers={topPerformers} 
+                        <ConsultorChatIA
+                            metrics={metrics}
+                            stockAlerts={stockAlerts}
+                            topPerformers={topPerformers}
                         />
                     </div>
                 </div>

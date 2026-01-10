@@ -1,13 +1,14 @@
 // [10/01 08:50] Componente simulador de promoções com IA
+// [10/01 17:13] Substituído 'any' por 'TemplatePromocao'
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Lightbulb, TrendingUp, Loader2, Calendar, DollarSign, Target } from 'lucide-react';
-import { AIPromotion, SalesByDayOfWeek } from '../types';
+import { AIPromotion, SalesByDayOfWeek, TemplatePromocao } from '../types';
 import { formatCurrency } from '../utils';
 
 interface SimuladorPromocaoIAProps {
     aiPromotion: AIPromotion | null;
-    salesByDay: SalesByDayOfWeek[]; // Added to props as it's used in the component
-    onApply: (product: string, discount: number, template: any) => Promise<void>;
+    salesByDay: SalesByDayOfWeek[];
+    onApply: (product: string, discount: number, template: TemplatePromocao) => Promise<void>;
 }
 
 export const SimuladorPromocaoIA: React.FC<SimuladorPromocaoIAProps> = ({ aiPromotion, salesByDay, onApply }) => {
@@ -17,15 +18,15 @@ export const SimuladorPromocaoIA: React.FC<SimuladorPromocaoIAProps> = ({ aiProm
 
     useEffect(() => {
         if (aiPromotion && !selectedPromoProduct) {
-             // Mapear nome do produto para código se possível, ou usar lógica padrão do original
-             // Lógica original: setSelectedPromoProduct(bestProduct?.code || 'ET');
-             // Como não temos a lista completa de produtos aqui facilmente, podemos depender do que é passado ou padrões.
-             // Mas a UI tem GC, ET, S10 fixos no código.
-             // Podemos usar 'ET' como padrão ou tentar combinar aiPromotion.targetProduct
-             const target = aiPromotion.targetProduct === 'Gasolina' ? 'GC' : 
-                            aiPromotion.targetProduct === 'Etanol' ? 'ET' : 
-                            aiPromotion.targetProduct === 'Diesel S10' ? 'S10' : 'ET';
-             setSelectedPromoProduct(target);
+            // Mapear nome do produto para código se possível, ou usar lógica padrão do original
+            // Lógica original: setSelectedPromoProduct(bestProduct?.code || 'ET');
+            // Como não temos a lista completa de produtos aqui facilmente, podemos depender do que é passado ou padrões.
+            // Mas a UI tem GC, ET, S10 fixos no código.
+            // Podemos usar 'ET' como padrão ou tentar combinar aiPromotion.targetProduct
+            const target = aiPromotion.targetProduct === 'Gasolina' ? 'GC' :
+                aiPromotion.targetProduct === 'Etanol' ? 'ET' :
+                    aiPromotion.targetProduct === 'Diesel S10' ? 'S10' : 'ET';
+            setSelectedPromoProduct(target);
         }
     }, [aiPromotion, selectedPromoProduct]);
 
@@ -40,7 +41,7 @@ export const SimuladorPromocaoIA: React.FC<SimuladorPromocaoIAProps> = ({ aiProm
             // A linha 473 do original usava aiPromotion.templates[0], ignorando a seleção.
             // Manterei simples e usarei o primeiro visualmente e funcionalmente como "selecionado",
             // seguindo o comportamento original.
-            
+
             const template = aiPromotion.templates[0];
             await onApply(selectedPromoProduct, promoDiscount, template);
         } finally {
