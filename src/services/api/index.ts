@@ -38,7 +38,17 @@ export { clienteService } from './cliente.service';
 export { notaFrentistaService } from './notaFrentista.service';
 export { resetService } from './reset.service';
 export { baratenciaService } from './baratencia.service';
-export { legacyService } from './legacy.service';
+export { aggregatorService } from './aggregator.service';
+export { aggregatorService as legacyService } from './aggregator.service';
+
+// Exporta funções de compatibilidade (legacy) para uso direto
+import { aggregatorService } from './aggregator.service';
+export const fetchSettingsData = aggregatorService.fetchSettingsData.bind(aggregatorService);
+export const fetchDashboardData = aggregatorService.fetchDashboardData.bind(aggregatorService);
+export const fetchClosingData = aggregatorService.fetchClosingData.bind(aggregatorService);
+export const fetchAttendantsData = aggregatorService.fetchAttendantsData.bind(aggregatorService);
+export const fetchInventoryData = aggregatorService.fetchInventoryData.bind(aggregatorService);
+export const fetchProfitabilityData = aggregatorService.fetchProfitabilityData.bind(aggregatorService);
 
 // Importa para montar objeto api
 import { postoService } from './posto.service';
@@ -71,7 +81,6 @@ import { clienteService } from './cliente.service';
 import { notaFrentistaService } from './notaFrentista.service';
 import { resetService } from './reset.service';
 import { baratenciaService } from './baratencia.service';
-import { legacyService } from './legacy.service';
 
 // TODO: Importar outros services conforme forem migrados
 
@@ -106,7 +115,8 @@ export const api = {
   notaFrentista: notaFrentistaService,
   reset: resetService,
   baratencia: baratenciaService,
-  legacy: legacyService,
+  legacy: aggregatorService,
+  aggregator: aggregatorService,
 };
 
 export default api;

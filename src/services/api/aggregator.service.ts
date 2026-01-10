@@ -11,13 +11,45 @@ import { despesaService } from './despesa.service';
 import { configuracaoService } from './configuracao.service';
 import type { Combustivel, Frentista } from '../../types/database';
 
-// ============================================
-// FUNÇÕES DE COMPATIBILIDADE COM COMPONENTES LEGADOS
-// ============================================
-// Estas funções adaptam os dados do Supabase para o formato
-// esperado pelos componentes existentes
-
-export const legacyService = {
+/**
+ * Service Aggregator (Padrão Facade)
+ * 
+ * @remarks
+ * Camada de agregação que combina dados de múltiplos services especializados
+ * para fornecer interfaces simplificadas para a UI.
+ * 
+ * ## Propósito
+ * Este é um padrão arquitetural PERMANENTE que:
+ * - Reduz acoplamento entre UI e services de domínio
+ * - Centraliza lógica de transformação e cálculo de dados
+ * - Simplifica consumo de dados complexos nos componentes
+ * - Melhora testabilidade e manutenibilidade
+ * 
+ * ## Padrão de Design
+ * Implementa o padrão **Facade** (Gang of Four) adaptado para services.
+ * 
+ * @pattern Facade Pattern
+ * @see https://refactoring.guru/design-patterns/facade
+ * @see Clean Architecture - Robert C. Martin
+ * 
+ * ## Arquitetura em Camadas
+ * ```
+ * UI Layer (Componentes)
+ *     ↓
+ * Aggregator Layer (Este arquivo) ← Você está aqui
+ *     ↓
+ * Domain Services Layer (combustivelService, frentistaService, etc)
+ *     ↓
+ * Data Layer (Supabase)
+ * ```
+ * 
+ * @example
+ * ```typescript
+ * // Componente usa aggregator em vez de múltiplos services
+ * const data = await aggregatorService.fetchDashboardData('hoje', null, null, postoId);
+ * ```
+ */
+export const aggregatorService = {
   /**
    * Busca dados para a tela de configurações.
    * Agrega combustíveis, bicos e formas de pagamento em um formato consumível pela UI.
