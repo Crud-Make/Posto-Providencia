@@ -1,6 +1,6 @@
 import React from 'react';
 import { Star, AlertCircle, Trophy, Medal, CheckCircle2 } from 'lucide-react';
-import { AttendantPerformance } from '../types/index';
+import { AttendantPerformance } from '../types/ui/dashboard';
 
 interface PerformanceSidebarProps {
   data: AttendantPerformance[];
