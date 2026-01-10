@@ -4,7 +4,21 @@ import { usePosto } from '../../../../contexts/PostoContext';
 import { frentistaService, fechamentoFrentistaService } from '../../../../services/api';
 import { AttendantPerformance } from '../types';
 
-export const useTopPerformers = () => {
+/**
+ * Resultado do hook useMelhoresFrentistas
+ */
+interface UseMelhoresFrentistasResult {
+    /** Lista de performance dos melhores frentistas */
+    topPerformers: AttendantPerformance[];
+}
+
+/**
+ * Hook responsável por analisar o desempenho dos frentistas.
+ * Calcula a venda média por turno e diferenças de caixa acumuladas.
+ * 
+ * @returns {UseMelhoresFrentistasResult} Objeto contendo a lista dos top performers
+ */
+export const useMelhoresFrentistas = (): UseMelhoresFrentistasResult => {
     const { postoAtivoId } = usePosto();
     const [topPerformers, setTopPerformers] = useState<AttendantPerformance[]>([]);
 
@@ -16,15 +30,14 @@ export const useTopPerformers = () => {
                 const frentistas = await frentistaService.getAll(postoAtivoId);
                 const performanceData: AttendantPerformance[] = [];
 
-                // Limit to first 5 or all if less
-                // Note: ideally we should process all then sort, but original code slices first?
-                // Original: for (const f of frentistas.slice(0, 5))
-                // This implies it only checks the first 5 frentistas returned by getAll. 
-                // If getAll returns them alphabetically, this might be biased.
-                // But refactoring shouldn't change logic unless bug.
-                // However, "Top Performers" usually implies sorting ALL then taking top 5.
-                // The original code slices first. I will keep it to avoid breaking changes in behavior, 
-                // but adding a comment that this might be improved later.
+                // Limitar aos primeiros 5 ou todos se houver menos
+                // Nota: idealmente deveríamos processar todos e depois ordenar, mas o código original fatia primeiro.
+                // Isso implica que verifica apenas os primeiros 5 frentistas retornados por getAll.
+                // Se getAll retornar em ordem alfabética, isso pode ser enviesado.
+                // Mas a refatoração não deve mudar a lógica a menos que seja um bug.
+                // No entanto, "Top Performers" geralmente implica ordenar TODOS e pegar os top 5.
+                // O código original fatia primeiro. Manterei assim para evitar breaking changes,
+                // mas adicionando um comentário de que isso pode ser melhorado depois.
                 
                 for (const f of frentistas.slice(0, 5)) {
                     const historico = await fechamentoFrentistaService.getHistoricoDiferencas(f.id, 30);
@@ -41,11 +54,11 @@ export const useTopPerformers = () => {
                     });
                 }
                 
-                // Sort by average sales
+                // Ordenar por média de vendas
                 setTopPerformers(performanceData.sort((a, b) => b.vendaMedia - a.vendaMedia));
 
             } catch (error) {
-                console.error('Error loading top performers:', error);
+                console.error('Erro ao carregar melhores frentistas:', error);
             }
         };
 

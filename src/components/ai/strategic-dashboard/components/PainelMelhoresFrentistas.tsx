@@ -4,11 +4,11 @@ import { Users } from 'lucide-react';
 import { AttendantPerformance } from '../types';
 import { formatCurrency } from '../utils';
 
-interface TopPerformersPanelProps {
+interface PainelMelhoresFrentistasProps {
     topPerformers: AttendantPerformance[];
 }
 
-export const TopPerformersPanel: React.FC<TopPerformersPanelProps> = ({ topPerformers }) => {
+export const PainelMelhoresFrentistas: React.FC<PainelMelhoresFrentistasProps> = ({ topPerformers }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">

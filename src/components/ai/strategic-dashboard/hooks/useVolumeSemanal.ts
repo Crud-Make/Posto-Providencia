@@ -5,7 +5,24 @@ import { fechamentoService } from '../../../../services/api';
 import { DailyVolumeData } from '../types';
 import { getDayOfWeek } from '../utils';
 
-export const useWeeklyVolume = (currentAnalysis: any | null) => {
+/**
+ * Resultado do hook useVolumeSemanal
+ */
+interface UseVolumeSemanalResult {
+    /** Dados de volume diário para a semana atual */
+    weeklyVolume: DailyVolumeData[];
+    /** Volume máximo encontrado (para escala do gráfico) */
+    maxVolume: number;
+}
+
+/**
+ * Hook responsável por buscar e processar os dados de volume de vendas da semana.
+ * Projeta volumes futuros com base na média diária se a data for futura.
+ * 
+ * @param {any} currentAnalysis Análise de vendas atual contendo totais
+ * @returns {UseVolumeSemanalResult} Objeto contendo dados semanais e volume máximo
+ */
+export const useVolumeSemanal = (currentAnalysis: any | null): UseVolumeSemanalResult => {
     const { postoAtivoId } = usePosto();
     const [weeklyVolume, setWeeklyVolume] = useState<DailyVolumeData[]>([]);
 
@@ -18,10 +35,10 @@ export const useWeeklyVolume = (currentAnalysis: any | null) => {
                 const daysPassed = today.getDate();
                 const dailyAverage = daysPassed > 0 ? currentAnalysis.totals.revenue / daysPassed : 0;
 
-                // 5. Fetch daily closings for weekly chart
+                // 5. Buscar fechamentos diários para gráfico semanal
                 const weekData: DailyVolumeData[] = [];
                 const startOfWeek = new Date(today);
-                startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+                startOfWeek.setDate(today.getDate() - today.getDay()); // Domingo
 
                 for (let i = 0; i < 7; i++) {
                     const date = new Date(startOfWeek);
@@ -31,7 +48,7 @@ export const useWeeklyVolume = (currentAnalysis: any | null) => {
                     const isFuture = date > today;
 
                     if (isFuture) {
-                        // Project based on historical average for this day of week
+                        // Projetar com base na média histórica para este dia da semana
                         const projectedVolume = dailyAverage * (1 + (Math.random() * 0.2 - 0.1)); // +/- 10%
                         weekData.push({
                             dia: date.getDate().toString(),
@@ -54,7 +71,7 @@ export const useWeeklyVolume = (currentAnalysis: any | null) => {
                 }
                 setWeeklyVolume(weekData);
             } catch (error) {
-                console.error('Error loading weekly volume:', error);
+                console.error('Erro ao carregar volume semanal:', error);
             }
         };
 

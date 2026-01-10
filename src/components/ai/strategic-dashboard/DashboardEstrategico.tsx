@@ -1,4 +1,4 @@
-// [10/01 09:00] Refatoração completa em módulos (hooks + componentes)
+// [10/01 09:00] Refatoração completa em módulos (hooks + componentes) - Traduzido para PT-BR
 import React from 'react';
 import { usePosto } from '../../../contexts/PostoContext';
 import { baratenciaService } from '../../../services/api';
@@ -6,32 +6,32 @@ import { toast } from 'sonner';
 import { Brain, RefreshCw } from 'lucide-react';
 
 // Hooks
-import { useDashboardMetrics } from './hooks/useDashboardMetrics';
-import { useWeeklyVolume } from './hooks/useWeeklyVolume';
-import { useAIInsights } from './hooks/useAIInsights';
-import { useStockAlerts } from './hooks/useStockAlerts';
-import { useTopPerformers } from './hooks/useTopPerformers';
-import { useAIPromotion } from './hooks/useAIPromotion';
+import { useMetricasDashboard } from './hooks/useMetricasDashboard';
+import { useVolumeSemanal } from './hooks/useVolumeSemanal';
+import { useInsightsIA } from './hooks/useInsightsIA';
+import { useAlertasEstoque } from './hooks/useAlertasEstoque';
+import { useMelhoresFrentistas } from './hooks/useMelhoresFrentistas';
+import { usePromocaoIA } from './hooks/usePromocaoIA';
 
 // Components
-import { MetricsCards } from './components/MetricsCards';
-import { WeeklyVolumeChart } from './components/WeeklyVolumeChart';
-import { AIInsightsPanel } from './components/AIInsightsPanel';
-import { StockAlertsPanel } from './components/StockAlertsPanel';
-import { TopPerformersPanel } from './components/TopPerformersPanel';
-import { AIPromotionSimulator } from './components/AIPromotionSimulator';
-import { AIChatConsultant } from './components/AIChatConsultant';
+import { CardsMetricas } from './components/CardsMetricas';
+import { GraficoVolumeSemanal } from './components/GraficoVolumeSemanal';
+import { PainelInsightsIA } from './components/PainelInsightsIA';
+import { PainelAlertasEstoque } from './components/PainelAlertasEstoque';
+import { PainelMelhoresFrentistas } from './components/PainelMelhoresFrentistas';
+import { SimuladorPromocaoIA } from './components/SimuladorPromocaoIA';
+import { ConsultorChatIA } from './components/ConsultorChatIA';
 
-export const StrategicDashboard: React.FC = () => {
+export const DashboardEstrategico: React.FC = () => {
     const { postoAtivoId } = usePosto();
     
     // Hooks initialization
-    const { metrics, loading: loadingMetrics, currentAnalysis, refreshMetrics } = useDashboardMetrics();
-    const { weeklyVolume, maxVolume } = useWeeklyVolume(currentAnalysis);
-    const { stockAlerts } = useStockAlerts(currentAnalysis);
-    const { topPerformers } = useTopPerformers();
-    const { aiPromotion, salesByDay } = useAIPromotion(currentAnalysis);
-    const { insights } = useAIInsights(currentAnalysis, metrics, stockAlerts);
+    const { metrics, loading: loadingMetrics, currentAnalysis, refreshMetrics } = useMetricasDashboard();
+    const { weeklyVolume, maxVolume } = useVolumeSemanal(currentAnalysis);
+    const { stockAlerts } = useAlertasEstoque(currentAnalysis);
+    const { topPerformers } = useMelhoresFrentistas();
+    const { aiPromotion, salesByDay } = usePromocaoIA(currentAnalysis);
+    const { insights } = useInsightsIA(currentAnalysis, metrics, stockAlerts);
 
     const handleRefresh = async () => {
         await refreshMetrics();
@@ -56,7 +56,7 @@ export const StrategicDashboard: React.FC = () => {
 
             toast.success(`Promoção "${template.name}" agendada com sucesso para ${aiPromotion.targetDay}!`);
         } catch (error: any) {
-            console.error('Error applying promotion:', error);
+            console.error('Erro ao agendar promoção:', error);
             toast.error('Erro ao agendar promoção: ' + error.message);
             throw error;
         }
@@ -112,36 +112,36 @@ export const StrategicDashboard: React.FC = () => {
 
             <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
                 {/* Metrics Cards */}
-                <MetricsCards metrics={metrics} />
+                <CardsMetricas metrics={metrics} />
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column - Charts and Main Content */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Weekly Volume Chart */}
-                        <WeeklyVolumeChart weeklyVolume={weeklyVolume} maxVolume={maxVolume} />
+                        <GraficoVolumeSemanal weeklyVolume={weeklyVolume} maxVolume={maxVolume} />
 
                         {/* AI Promotion Simulator */}
-                        <AIPromotionSimulator 
+                        <SimuladorPromocaoIA 
                             aiPromotion={aiPromotion} 
                             salesByDay={salesByDay} 
                             onApply={handleApplyPromotion} 
                         />
 
                         {/* Stock Status */}
-                        <StockAlertsPanel stockAlerts={stockAlerts} />
+                        <PainelAlertasEstoque stockAlerts={stockAlerts} />
 
                         {/* Top Performers */}
-                        <TopPerformersPanel topPerformers={topPerformers} />
+                        <PainelMelhoresFrentistas topPerformers={topPerformers} />
                     </div>
 
                     {/* Right Column - Insights and Chat */}
                     <div className="space-y-6">
                         {/* AI Insights */}
-                        <AIInsightsPanel insights={insights} />
+                        <PainelInsightsIA insights={insights} />
 
                         {/* AI Chat */}
-                        <AIChatConsultant 
+                        <ConsultorChatIA 
                             metrics={metrics} 
                             stockAlerts={stockAlerts} 
                             topPerformers={topPerformers} 

@@ -4,12 +4,12 @@ import { Calendar } from 'lucide-react';
 import { DailyVolumeData } from '../types';
 import { formatCurrency } from '../utils';
 
-interface WeeklyVolumeChartProps {
+interface GraficoVolumeSemanalProps {
     weeklyVolume: DailyVolumeData[];
     maxVolume: number;
 }
 
-export const WeeklyVolumeChart: React.FC<WeeklyVolumeChartProps> = ({ weeklyVolume, maxVolume }) => {
+export const GraficoVolumeSemanal: React.FC<GraficoVolumeSemanalProps> = ({ weeklyVolume, maxVolume }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">

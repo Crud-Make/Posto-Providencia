@@ -3,11 +3,11 @@ import React from 'react';
 import { Sparkles, AlertTriangle, TrendingUp, Lightbulb } from 'lucide-react';
 import { AIInsight } from '../types';
 
-interface AIInsightsPanelProps {
+interface PainelInsightsIAProps {
     insights: AIInsight[];
 }
 
-export const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ insights }) => {
+export const PainelInsightsIA: React.FC<PainelInsightsIAProps> = ({ insights }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/30 flex justify-between items-center">

@@ -4,11 +4,11 @@ import { TrendingUp, TrendingDown, Fuel, BarChart3, Target } from 'lucide-react'
 import { DashboardMetrics } from '../types';
 import { formatCurrency, formatVolume } from '../utils';
 
-interface MetricsCardsProps {
+interface CardsMetricasProps {
     metrics: DashboardMetrics | null;
 }
 
-export const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics }) => {
+export const CardsMetricas: React.FC<CardsMetricasProps> = ({ metrics }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Receita Projetada */}
