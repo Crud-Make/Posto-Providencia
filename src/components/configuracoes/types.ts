@@ -11,19 +11,19 @@ export type PaymentType = 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix
  * Interface para configuração de produto (combustível).
  * Reutiliza a interface ProductConfig do sistema.
  */
-export interface Produto extends ProductConfig {}
+export interface Produto extends ProductConfig { }
 
 /**
  * Interface para configuração de bico.
  * Reutiliza a interface NozzleConfig do sistema.
  */
-export interface Bico extends NozzleConfig {}
+export interface Bico extends NozzleConfig { }
 
 /**
  * Interface para configuração de forma de pagamento.
  * Reutiliza a interface PaymentMethodConfig do sistema.
  */
-export interface FormaPagamento extends PaymentMethodConfig {}
+export interface FormaPagamento extends PaymentMethodConfig { }
 
 /**
  * Dados carregados para a tela de configurações.
@@ -166,5 +166,5 @@ export interface ModalFormaPagamentoProps {
     /** Callback para salvar */
     onSave: () => void;
     /** Callback para alterar dados do formulário */
-    onChange: (field: keyof PaymentFormState, value: any) => void;
+    onChange: (field: keyof PaymentFormState, value: string | number | boolean) => void;
 }

@@ -11,7 +11,7 @@ import { resetService } from '../../../services/api';
 export const useResetSistema = (postoAtivoId: number) => {
     const [isResetting, setIsResetting] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
-    
+
     /**
      * Executa o reset do sistema após validação.
      * @param {string} confirmText - Texto de confirmação digitado pelo usuário
@@ -39,15 +39,16 @@ export const useResetSistema = (postoAtivoId: number) => {
                 );
 
                 setShowResetConfirm(false);
-                
+
                 // Recarrega a página para atualizar os dados
                 window.location.reload();
             } else {
                 alert(`❌ ${result.message}`);
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error("Erro ao resetar sistema:", error);
-            alert(`Erro ao resetar sistema: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+            alert(`Erro ao resetar sistema: ${errorMessage}`);
         } finally {
             setIsResetting(false);
         }
