@@ -1,14 +1,29 @@
-// [10/01 08:45] Componente de gráfico de volume semanal
+// [10/01 08:33] Componente de gráfico de volume semanal
+// [10/01 17:13] Adicionado JSDoc completo
 import React from 'react';
-import { Calendar } from 'lucide-react';
+import { BarChart3, Calendar } from 'lucide-react';
 import { DailyVolumeData } from '../types';
 import { formatCurrency } from '../utils';
 
+/**
+ * Props do componente GraficoVolumeSemanal
+ * @interface GraficoVolumeSemanalProps
+ */
 interface GraficoVolumeSemanalProps {
+    /** Dados de volume diário da semana */
     weeklyVolume: DailyVolumeData[];
+    /** Volume máximo para escala do gráfico */
     maxVolume: number;
 }
 
+/**
+ * Componente que exibe gráfico de barras com volume de vendas semanal.
+ * Destaca o dia atual e mostra projeções para dias futuros.
+ * 
+ * @component
+ * @param {GraficoVolumeSemanalProps} props - Props do componente
+ * @returns {JSX.Element} Gráfico de barras semanal
+ */
 export const GraficoVolumeSemanal: React.FC<GraficoVolumeSemanalProps> = ({ weeklyVolume, maxVolume }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">

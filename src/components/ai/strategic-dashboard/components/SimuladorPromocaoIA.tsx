@@ -1,16 +1,32 @@
 // [10/01 08:50] Componente simulador de promoções com IA
 // [10/01 17:13] Substituído 'any' por 'TemplatePromocao'
+// [10/01 17:16] Adicionado JSDoc completo
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Lightbulb, TrendingUp, Loader2, Calendar, DollarSign, Target } from 'lucide-react';
 import { AIPromotion, SalesByDayOfWeek, TemplatePromocao } from '../types';
 import { formatCurrency } from '../utils';
 
+/**
+ * Props do componente SimuladorPromocaoIA
+ * @interface SimuladorPromocaoIAProps
+ */
 interface SimuladorPromocaoIAProps {
+    /** Promoção sugerida pela IA ou null */
     aiPromotion: AIPromotion | null;
+    /** Dados de vendas por dia da semana */
     salesByDay: SalesByDayOfWeek[];
+    /** Callback para aplicar a promoção */
     onApply: (product: string, discount: number, template: TemplatePromocao) => Promise<void>;
 }
 
+/**
+ * Componente de simulador de promoções com IA.
+ * Permite configurar produto, desconto e template de promoção baseado em análise de vendas.
+ * 
+ * @component
+ * @param {SimuladorPromocaoIAProps} props - Props do componente
+ * @returns {JSX.Element | null} Interface de simulação ou null se não houver promoção
+ */
 export const SimuladorPromocaoIA: React.FC<SimuladorPromocaoIAProps> = ({ aiPromotion, salesByDay, onApply }) => {
     const [selectedPromoProduct, setSelectedPromoProduct] = useState<string>('');
     const [promoDiscount, setPromoDiscount] = useState<number>(15);

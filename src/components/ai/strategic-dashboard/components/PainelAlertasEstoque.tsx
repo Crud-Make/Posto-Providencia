@@ -1,18 +1,32 @@
-// [10/01 08:52] Componente para exibir alertas de estoque
+// [10/01 08:34] Componente de painel de alertas de estoque
+// [10/01 17:14] Adicionado JSDoc completo
 import React from 'react';
-import { Fuel } from 'lucide-react';
+import { AlertTriangle, Droplet } from 'lucide-react';
 import { StockAlert } from '../types';
 
+/**
+ * Props do componente PainelAlertasEstoque
+ * @interface PainelAlertasEstoqueProps
+ */
 interface PainelAlertasEstoqueProps {
+    /** Lista de alertas de estoque de combustível */
     stockAlerts: StockAlert[];
 }
 
+/**
+ * Componente que exibe alertas de nível de estoque de combustíveis.
+ * Mostra status visual (OK, BAIXO, CRÍTICO) e dias restantes estimados.
+ * 
+ * @component
+ * @param {PainelAlertasEstoqueProps} props - Props do componente
+ * @returns {JSX.Element} Painel com alertas de estoque
+ */
 export const PainelAlertasEstoque: React.FC<PainelAlertasEstoqueProps> = ({ stockAlerts }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">Status do Estoque</h2>
-                <Fuel className="w-5 h-5 text-slate-400" />
+                <AlertTriangle className="w-5 h-5 text-slate-400" />
             </div>
             <div className="space-y-3">
                 {stockAlerts.length > 0 ? stockAlerts.map((stock, idx) => (

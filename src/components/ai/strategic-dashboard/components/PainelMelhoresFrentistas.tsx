@@ -1,19 +1,33 @@
-// [10/01 08:54] Componente de ranking de frentistas
+// [10/01 08:38] Componente de painel de melhores frentistas
+// [10/01 17:15] Adicionado JSDoc completo
 import React from 'react';
-import { Users } from 'lucide-react';
+import { Trophy, TrendingUp } from 'lucide-react';
 import { AttendantPerformance } from '../types';
 import { formatCurrency } from '../utils';
 
+/**
+ * Props do componente PainelMelhoresFrentistas
+ * @interface PainelMelhoresFrentistasProps
+ */
 interface PainelMelhoresFrentistasProps {
+    /** Lista de frentistas com melhor performance */
     topPerformers: AttendantPerformance[];
 }
 
+/**
+ * Componente que exibe ranking dos melhores frentistas.
+ * Mostra média de vendas e diferença acumulada (sobra/falta).
+ * 
+ * @component
+ * @param {PainelMelhoresFrentistasProps} props - Props do componente
+ * @returns {JSX.Element} Painel com ranking de frentistas
+ */
 export const PainelMelhoresFrentistas: React.FC<PainelMelhoresFrentistasProps> = ({ topPerformers }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">Performance da Equipe</h2>
-                <Users className="w-5 h-5 text-slate-400" />
+                <Trophy className="w-5 h-5 text-slate-400" />
             </div>
             <div className="space-y-3">
                 {topPerformers.length > 0 ? topPerformers.map((perf, idx) => (
