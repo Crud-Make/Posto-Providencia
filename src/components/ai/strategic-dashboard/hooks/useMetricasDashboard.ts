@@ -1,7 +1,9 @@
 // [10/01 08:30] Hook para gerenciar métricas do dashboard
+// [10/01 17:06] Substituído 'any' por 'SalesAnalysisData' para TypeScript estrito
 import { useState, useEffect } from 'react';
 import { usePosto } from '../../../../contexts/PostoContext';
 import { salesAnalysisService } from '../../../../services/api';
+import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.service';
 import { DashboardMetrics } from '../types';
 
 /**
@@ -13,7 +15,7 @@ interface UseMetricasDashboardResult {
     /** Estado de carregamento */
     loading: boolean;
     /** Dados brutos da análise atual */
-    currentAnalysis: any | null;
+    currentAnalysis: SalesAnalysisData | null;
     /** Função para recarregar as métricas */
     refreshMetrics: () => Promise<void>;
 }
@@ -28,7 +30,7 @@ export const useMetricasDashboard = (): UseMetricasDashboardResult => {
     const { postoAtivoId } = usePosto();
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
-    const [currentAnalysis, setCurrentAnalysis] = useState<any | null>(null);
+    const [currentAnalysis, setCurrentAnalysis] = useState<SalesAnalysisData | null>(null);
 
     /**
      * Carrega as métricas de vendas do posto ativo
