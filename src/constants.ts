@@ -1,50 +1,123 @@
-import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryItem, InventoryAlert, InventoryTransaction, ProfitabilityItem, ClosingAttendant, ReadingPump, SalesAnalysisProduct, SalesProfitability, SalesEvolutionData, ProductMixData, AttendantProfile, AttendantHistoryEntry, ProductConfig, NozzleConfig, MobileNotification } from './types';
+import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryItem, InventoryAlert, InventoryTransaction, ProfitabilityItem } from './types/ui/dashboard';
+import { ClosingAttendant } from './types/ui/closing';
+import { ReadingPump } from './types/ui/readings';
+import { SalesAnalysisProduct, SalesProfitability, SalesEvolutionData, ProductMixData } from './types/ui/sales';
+import { AttendantProfile, AttendantHistoryEntry } from './types/ui/attendants';
+import { ProductConfig, NozzleConfig } from './types/ui/config';
+import { MobileNotification } from './types/ui/mobile';
 
-export const FUEL_DATA: FuelData[] = [];
+/**
+ * Dados de combustível para gráficos e visualizações.
+ */
+export const DADOS_COMBUSTIVEL: FuelData[] = [];
 
-export const PAYMENT_DATA: PaymentMethod[] = [];
+/**
+ * Dados de formas de pagamento.
+ */
+export const DADOS_PAGAMENTO: PaymentMethod[] = [];
 
-export const CLOSINGS_DATA: AttendantClosing[] = [];
+/**
+ * Dados de fechamentos de frentistas.
+ */
+export const DADOS_FECHAMENTO: AttendantClosing[] = [];
 
-export const PERFORMANCE_DATA: AttendantPerformance[] = [];
+/**
+ * Dados de performance dos frentistas.
+ */
+export const DADOS_PERFORMANCE: AttendantPerformance[] = [];
 
-export const DAILY_SUMMARY_DATA: FuelSummary[] = [];
+/**
+ * Resumo diário de vendas por combustível.
+ */
+export const RESUMO_DIARIO: FuelSummary[] = [];
 
-export const NOZZLE_DATA_DETAILED: NozzleData[] = [];
+/**
+ * Dados detalhados dos bicos de abastecimento.
+ */
+export const DADOS_BICOS_DETALHADO: NozzleData[] = [];
 
-export const NOZZLE_DATA: NozzleData[] = [];
+/**
+ * Dados resumidos dos bicos de abastecimento.
+ */
+export const DADOS_BICOS: NozzleData[] = [];
 
-export const INVENTORY_ITEMS: InventoryItem[] = [];
+/**
+ * Itens do inventário de estoque.
+ */
+export const ITENS_ESTOQUE: InventoryItem[] = [];
 
-export const INVENTORY_ALERTS: InventoryAlert[] = [];
+/**
+ * Alertas de nível de estoque.
+ */
+export const ALERTAS_ESTOQUE: InventoryAlert[] = [];
 
-export const RECENT_TRANSACTIONS: InventoryTransaction[] = [];
+/**
+ * Transações recentes de estoque (entradas/saídas).
+ */
+export const TRANSACOES_RECENTES: InventoryTransaction[] = [];
 
-export const PROFITABILITY_DATA: ProfitabilityItem[] = [];
+/**
+ * Dados de lucratividade por produto.
+ */
+export const DADOS_LUCRATIVIDADE: ProfitabilityItem[] = [];
 
-export const INITIAL_ATTENDANTS_CLOSING: ClosingAttendant[] = [];
+/**
+ * Dados iniciais para fechamento de caixa dos frentistas.
+ */
+export const FECHAMENTO_FRENTISTAS_INICIAL: ClosingAttendant[] = [];
 
-// Alias for legacy support if needed
-export const INITIAL_ATTENDANTS_DATA = INITIAL_ATTENDANTS_CLOSING;
+/**
+ * @deprecated Use FECHAMENTO_FRENTISTAS_INICIAL
+ * Alias para compatibilidade com código legado.
+ */
+export const DADOS_FRENTISTAS_INICIAL = FECHAMENTO_FRENTISTAS_INICIAL;
 
-export const READING_PUMPS_DATA: ReadingPump[] = [];
+/**
+ * Dados de leitura das bombas de combustível.
+ */
+export const DADOS_LEITURA_BOMBAS: ReadingPump[] = [];
 
-export const SALES_ANALYSIS_PRODUCTS: SalesAnalysisProduct[] = [];
+/**
+ * Análise de vendas por produto.
+ */
+export const ANALISE_VENDAS_PRODUTOS: SalesAnalysisProduct[] = [];
 
-export const SALES_PROFITABILITY: SalesProfitability[] = [];
+/**
+ * Lucratividade das vendas.
+ */
+export const LUCRATIVIDADE_VENDAS: SalesProfitability[] = [];
 
-export const SALES_EVOLUTION_DATA: SalesEvolutionData[] = [];
+/**
+ * Dados de evolução das vendas ao longo do tempo.
+ */
+export const EVOLUCAO_VENDAS: SalesEvolutionData[] = [];
 
-export const PRODUCT_MIX_DATA: ProductMixData[] = [];
+/**
+ * Mix de produtos vendidos.
+ */
+export const MIX_PRODUTOS: ProductMixData[] = [];
 
-export const ATTENDANTS_LIST_DATA: AttendantProfile[] = [];
+/**
+ * Lista completa de frentistas.
+ */
+export const LISTA_FRENTISTAS: AttendantProfile[] = [];
 
-export const ATTENDANT_HISTORY_DATA: AttendantHistoryEntry[] = [];
+/**
+ * Histórico de atividades dos frentistas.
+ */
+export const HISTORICO_FRENTISTAS: AttendantHistoryEntry[] = [];
 
-export const PRODUCTS_CONFIG_DATA: ProductConfig[] = [];
+/**
+ * Configurações de produtos.
+ */
+export const CONFIG_PRODUTOS: ProductConfig[] = [];
 
-export const NOZZLES_CONFIG_DATA: NozzleConfig[] = [];
+/**
+ * Configurações de bicos.
+ */
+export const CONFIG_BICOS: NozzleConfig[] = [];
 
-
-
-export const MOBILE_NOTIFICATIONS_DATA: MobileNotification[] = [];
+/**
+ * Notificações para o aplicativo móvel.
+ */
+export const NOTIFICACOES_MOBILE: MobileNotification[] = [];

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Eye, Edit2 } from 'lucide-react';
-import { AttendantClosing } from '../types/index';
+import { AttendantClosing } from '../types/ui/dashboard';
 
 interface ClosingsTableProps {
   data: AttendantClosing[];
