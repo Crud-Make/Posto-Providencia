@@ -6,7 +6,7 @@
  */
 
 import { supabase } from './base';
-import type { Posto, InsertTables, UpdateTables } from '../../types/database';
+import type { Posto, InsertTables, UpdateTables } from '../../types/database/index';
 
 export const postoService = {
   async getAll(): Promise<Posto[]> {

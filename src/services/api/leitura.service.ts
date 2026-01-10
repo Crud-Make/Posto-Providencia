@@ -7,7 +7,7 @@
 
 import { supabase, withPostoFilter } from './base';
 import { estoqueService } from './estoque.service';
-import type { Leitura, Bico, Combustivel, Bomba, InsertTables, UpdateTables } from '../../types/database';
+import type { Leitura, Bico, Combustivel, Bomba, InsertTables, UpdateTables } from '../../types/database/index';
 
 export interface VendaPorCombustivel {
   combustivel: Combustivel;

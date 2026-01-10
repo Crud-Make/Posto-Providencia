@@ -6,7 +6,7 @@
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Combustivel, InsertTables, UpdateTables } from '../../types/database';
+import type { Combustivel, InsertTables, UpdateTables } from '../../types/database/index';
 
 /** Ordem de exibição padrão dos combustíveis */
 const ORDEM_COMBUSTIVEIS = ['GC', 'GA', 'ET', 'S10', 'DIESEL'] as const;

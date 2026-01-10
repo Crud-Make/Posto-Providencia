@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database';
+import { Database } from '../../types/database/index';
 
 type Despesa = Database['public']['Tables']['Despesa']['Row'];
 type DespesaInsert = Database['public']['Tables']['Despesa']['Insert'];

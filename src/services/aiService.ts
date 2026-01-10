@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Database } from './database.types';
+import { Database } from '../types/database/index';
 
 // Helper Types for direct usage
 export type Posto = Database['public']['Tables']['Posto']['Row'];

@@ -6,7 +6,7 @@
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Estoque, Combustivel, UpdateTables } from '../../types/database';
+import type { Estoque, Combustivel, UpdateTables } from '../../types/database/index';
 
 export const estoqueService = {
   async getAll(postoId?: number): Promise<(Estoque & { combustivel: Combustivel })[]> {

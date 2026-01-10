@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database';
+import { Database } from '../../types/database/index';
 import { parcelaService } from './parcela.service';
 
 type Emprestimo = Database['public']['Tables']['Emprestimo']['Row'];

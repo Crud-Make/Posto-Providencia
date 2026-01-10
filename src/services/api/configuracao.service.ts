@@ -6,7 +6,7 @@
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Configuracao } from '../../types/database';
+import type { Configuracao } from '../../types/database/index';
 
 export const configuracaoService = {
   async getAll(postoId?: number): Promise<Configuracao[]> {

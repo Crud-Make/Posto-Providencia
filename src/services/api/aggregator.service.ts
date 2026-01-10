@@ -9,7 +9,7 @@ import { fechamentoFrentistaService } from './fechamentoFrentista.service';
 import { compraService } from './compra.service';
 import { despesaService } from './despesa.service';
 import { configuracaoService } from './configuracao.service';
-import type { Combustivel, Frentista } from '../../types/database';
+import type { Combustivel, Frentista } from '../../types/database/index';
 
 /**
  * Service Aggregator (Padrão Facade)
@@ -49,6 +49,12 @@ import type { Combustivel, Frentista } from '../../types/database';
  * const data = await aggregatorService.fetchDashboardData('hoje', null, null, postoId);
  * ```
  */
+interface VendaCombustivel {
+  combustivel: Combustivel;
+  litros: number;
+  valor: number;
+}
+
 export const aggregatorService = {
   /**
    * Busca dados para a tela de configurações.
@@ -161,13 +167,13 @@ export const aggregatorService = {
       acc[codigo].litros += l.litros_vendidos || 0;
       acc[codigo].valor += l.valor_total || 0;
       return acc;
-    }, {} as Record<string, { combustivel: Combustivel; litros: number; valor: number }>);
+    }, {} as Record<string, VendaCombustivel>);
 
     const vendas = {
       data: dataInicio,
       totalLitros: totalLitrosVendas,
       totalVendas: totalValorVendas,
-      porCombustivel: Object.values(porCombustivelVendas),
+      porCombustivel: Object.values(porCombustivelVendas) as VendaCombustivel[],
       leituras: leiturasData
     };
 

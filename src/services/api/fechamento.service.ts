@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Fechamento, InsertTables, UpdateTables, Recebimento, FormaPagamento, Maquininha, FechamentoFrentista, Frentista, Usuario, Turno } from '../../types/database';
+import { Fechamento, InsertTables, UpdateTables, Recebimento, FormaPagamento, Maquininha, FechamentoFrentista, Frentista, Usuario, Turno } from '../../types/database/index';
 
 export const fechamentoService = {
   /**
@@ -100,14 +100,16 @@ export const fechamentoService = {
   },
 
   async create(fechamento: Omit<InsertTables<'Fechamento'>, 'diferenca' | 'total_recebido' | 'total_vendas'> & Partial<Pick<InsertTables<'Fechamento'>, 'diferenca' | 'total_recebido' | 'total_vendas'>>): Promise<Fechamento> {
+    const payload: InsertTables<'Fechamento'> = {
+      ...fechamento,
+      diferenca: fechamento.diferenca ?? 0,
+      total_recebido: fechamento.total_recebido ?? 0,
+      total_vendas: fechamento.total_vendas ?? 0,
+    } as InsertTables<'Fechamento'>;
+
     const { data, error } = await supabase
       .from('Fechamento')
-      .insert({
-        ...fechamento,
-        diferenca: fechamento.diferenca ?? 0,
-        total_recebido: fechamento.total_recebido ?? 0,
-        total_vendas: fechamento.total_vendas ?? 0,
-      })
+      .insert(payload)
       .select()
       .single();
     if (error) throw error;

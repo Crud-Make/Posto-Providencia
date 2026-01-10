@@ -18,7 +18,7 @@ import {
 import { leituraService, combustivelService, estoqueService } from '../services/api';
 import { usePosto } from '../contexts/PostoContext';
 
-import type { Combustivel, Leitura, Bico, Bomba } from '../services/database.types';
+import type { Combustivel, Leitura, Bico, Bomba } from '../types/database/index';
 
 // Types
 interface SalesSummary {
