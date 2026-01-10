@@ -6,7 +6,7 @@
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Frentista, InsertTables, UpdateTables } from '../../types/database';
+import type { Frentista, InsertTables, UpdateTables } from '@/types/database/index';
 
 export const frentistaService = {
   async getWithEmail(postoId?: number): Promise<(Frentista & { email: string | null })[]> {

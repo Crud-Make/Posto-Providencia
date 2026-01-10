@@ -9,7 +9,7 @@ export * from './ui';
 export * from './fechamento';
 
 // Exportamos tudo de Database
-export * from './database';
+export * from './database/index';
 
 /**
  * Re-exportamos explicitamente os tipos de banco que conflitam, 
