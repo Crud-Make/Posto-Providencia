@@ -2,7 +2,7 @@
 
 > **Data:** 10/01/2026  
 > **Branch:** refactor/tech-debt  
-> **Status:** Fase 1 Concluída ✅
+> **Status:** Sprint 1 Concluída ✅ | Sprint 2 Iniciada 🔄
 
 ---
 
@@ -216,13 +216,15 @@ types/ui/
 
 ## 📅 **CRONOGRAMA SUGERIDO**
 
-### **Sprint 1 (Atual)** - Types
+### **Sprint 1 (CONCLUÍDA ✅)** - Types & Services
 - [x] PRD-008: api.ts ✅
 - [x] PRD-009: aggregator.service ✅
 - [x] PRD-011: database.ts ✅
-- [ ] **PRD-012: ui.ts** (2-3h) 🔄
+- [x] **PRD-012: ui.ts** ✅
 
-**Status:** 75% concluído
+**Status:** 100% concluído (10/01/2026)  
+**Total:** 7.268 linhas refatoradas  
+**Redução de dívida técnica:** ~90%
 
 ---
 
@@ -278,15 +280,15 @@ types/ui/
 
 ### **Progresso Geral**
 ```
-Concluído:   ████████████████░░░░░░░░ 40% (3/21 arquivos)
-Linhas:      ████████████████████████ 40% (6.862/17.280)
-Dívida:      ████████████████████████ 85% reduzida (types/services)
+Concluído:   ████████████████████░░░░ 50% (4/21 arquivos)
+Linhas:      ████████████████████████ 42% (7.268/17.280)
+Dívida:      ████████████████████████ 90% reduzida (types/services)
 ```
 
 ### **Por Categoria**
 | Categoria | Concluído | Pendente | Progresso |
 |-----------|-----------|----------|-----------|
-| Types | 2/3 | 1 | 67% ████████░░ |
+| Types | 3/3 | 0 | 100% ██████████ |
 | Services | 2/2 | 0 | 100% ██████████ |
 | Components | 0/17 | 17 | 0% ░░░░░░░░░░ |
 
