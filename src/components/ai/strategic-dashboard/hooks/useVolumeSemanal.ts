@@ -1,7 +1,9 @@
 // [10/01 08:32] Hook para gerenciar dados de volume semanal
+// [10/01 17:08] Substituído 'any' por tipos estritos e melhorado JSDoc
 import { useState, useEffect, useMemo } from 'react';
 import { usePosto } from '../../../../contexts/PostoContext';
 import { fechamentoService } from '../../../../services/api';
+import { SalesAnalysisData } from '../../../../services/api/salesAnalysis.service';
 import { DailyVolumeData } from '../types';
 import { getDayOfWeek } from '../utils';
 
@@ -19,10 +21,10 @@ interface UseVolumeSemanalResult {
  * Hook responsável por buscar e processar os dados de volume de vendas da semana.
  * Projeta volumes futuros com base na média diária se a data for futura.
  * 
- * @param {any} currentAnalysis Análise de vendas atual contendo totais
+ * @param {SalesAnalysisData | null} currentAnalysis Análise de vendas atual contendo totais
  * @returns {UseVolumeSemanalResult} Objeto contendo dados semanais e volume máximo
  */
-export const useVolumeSemanal = (currentAnalysis: any | null): UseVolumeSemanalResult => {
+export const useVolumeSemanal = (currentAnalysis: SalesAnalysisData | null): UseVolumeSemanalResult => {
     const { postoAtivoId } = usePosto();
     const [weeklyVolume, setWeeklyVolume] = useState<DailyVolumeData[]>([]);
 
@@ -59,7 +61,7 @@ export const useVolumeSemanal = (currentAnalysis: any | null): UseVolumeSemanalR
                         });
                     } else {
                         const fechamentos = await fechamentoService.getByDate(dateStr, postoAtivoId);
-                        const dayVolume = fechamentos.reduce((acc: number, f: any) => acc + (f.total_vendas || 0), 0);
+                        const dayVolume = fechamentos.reduce((acc: number, f) => acc + (f.total_vendas || 0), 0);
                         weekData.push({
                             dia: date.getDate().toString(),
                             diaSemana: getDayOfWeek(date),

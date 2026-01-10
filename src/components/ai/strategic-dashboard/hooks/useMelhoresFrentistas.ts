@@ -1,8 +1,19 @@
-// [10/01 08:38] Hook para buscar os melhores frentistas
+// [10/01 08:37] Hook para buscar melhores frentistas
+// [10/01 17:11] Substituído 'any' por tipos estritos
 import { useState, useEffect } from 'react';
 import { usePosto } from '../../../../contexts/PostoContext';
 import { frentistaService, fechamentoFrentistaService } from '../../../../services/api';
 import { AttendantPerformance } from '../types';
+
+/**
+ * Define a estrutura esperada para os itens do histórico de fechamento de frentista.
+ * Esta interface é inferida a partir do uso das propriedades `valor_conferido` e `diferenca_calculada`.
+ */
+interface FechamentoFrentistaHistoricoItem {
+    valor_conferido?: number | null;
+    diferenca_calculada?: number | null;
+    // Outras propriedades do histórico podem ser adicionadas aqui se necessário
+}
 
 /**
  * Resultado do hook useMelhoresFrentistas
@@ -38,13 +49,13 @@ export const useMelhoresFrentistas = (): UseMelhoresFrentistasResult => {
                 // No entanto, "Top Performers" geralmente implica ordenar TODOS e pegar os top 5.
                 // O código original fatia primeiro. Manterei assim para evitar breaking changes,
                 // mas adicionando um comentário de que isso pode ser melhorado depois.
-                
+
                 for (const f of frentistas.slice(0, 5)) {
                     const historico = await fechamentoFrentistaService.getHistoricoDiferencas(f.id, 30);
-                    const vendaMedia = historico.length > 0 
-                        ? historico.reduce((acc: number, h: any) => acc + (h.valor_conferido || 0), 0) / historico.length
+                    const vendaMedia = historico.length > 0
+                        ? historico.reduce((acc: number, h) => acc + (h.valor_conferido || 0), 0) / historico.length
                         : 0;
-                    const diferencaAcumulada = historico.reduce((acc: number, h: any) => acc + (h.diferenca_calculada || 0), 0);
+                    const diferencaAcumulada = historico.reduce((acc: number, h) => acc + (h.diferenca_calculada || 0), 0);
 
                     performanceData.push({
                         nome: f.nome,
@@ -53,7 +64,7 @@ export const useMelhoresFrentistas = (): UseMelhoresFrentistasResult => {
                         turnos: historico.length
                     });
                 }
-                
+
                 // Ordenar por média de vendas
                 setTopPerformers(performanceData.sort((a, b) => b.vendaMedia - a.vendaMedia));
 
