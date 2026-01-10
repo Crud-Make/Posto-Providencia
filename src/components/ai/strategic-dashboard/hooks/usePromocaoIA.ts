@@ -4,7 +4,24 @@ import { usePosto } from '../../../../contexts/PostoContext';
 import { fechamentoService } from '../../../../services/api';
 import { AIPromotion, SalesByDayOfWeek } from '../types';
 
-export const useAIPromotion = (currentAnalysis: any | null) => {
+/**
+ * Resultado do hook usePromocaoIA
+ */
+interface UsePromocaoIAResult {
+    /** Sugestão de promoção gerada pela IA */
+    aiPromotion: AIPromotion | null;
+    /** Análise de vendas por dia da semana */
+    salesByDay: SalesByDayOfWeek[];
+}
+
+/**
+ * Hook responsável por simular e sugerir promoções baseadas no histórico de vendas.
+ * Analisa os dias da semana com pior desempenho e sugere ações para aumentar o volume.
+ * 
+ * @param {any} currentAnalysis Análise de vendas atual
+ * @returns {UsePromocaoIAResult} Objeto contendo a sugestão de promoção e análise diária
+ */
+export const usePromocaoIA = (currentAnalysis: any | null): UsePromocaoIAResult => {
     const { postoAtivoId } = usePosto();
     const [aiPromotion, setAiPromotion] = useState<AIPromotion | null>(null);
     const [salesByDay, setSalesByDay] = useState<SalesByDayOfWeek[]>([]);
@@ -14,8 +31,8 @@ export const useAIPromotion = (currentAnalysis: any | null) => {
             if (!postoAtivoId || !currentAnalysis) return;
 
             try {
-                // 9. Generate AI Promotion Suggestions based on sales patterns
-                // Analyze last 30 days of closings by day of week
+                // 9. Gerar sugestões de promoção de IA com base nos padrões de vendas
+                // Analisar fechamentos dos últimos 30 dias por dia da semana
                 
                 const salesByDayMap: Record<number, { volumes: number[], revenues: number[] }> = {
                     0: { volumes: [], revenues: [] }, 1: { volumes: [], revenues: [] },
@@ -24,12 +41,12 @@ export const useAIPromotion = (currentAnalysis: any | null) => {
                     6: { volumes: [], revenues: [] }
                 };
 
-                // Fetch last 30 days data
-                // Note: ideally we should do a batch request, but following original logic loop
-                // Optimizing: Use Promise.all if possible, but original code was sequential?
-                // Original code: for (let d = 0; d < 30; d++) { await ... } 
-                // This is slow. I will keep it sequential to match behavior/risk, but it's a candidate for optimization.
-                // Actually, original code has `await` inside loop.
+                // Buscar dados dos últimos 30 dias
+                // Nota: idealmente deveríamos fazer uma requisição em lote, mas seguindo o loop lógico original
+                // Otimização: Usar Promise.all se possível, mas código original era sequencial?
+                // Código original: for (let d = 0; d < 30; d++) { await ... } 
+                // Isso é lento. Manterei sequencial para manter comportamento/risco, mas é candidato a otimização.
+                // Na verdade, o código original tem await dentro do loop.
                 
                 for (let d = 0; d < 30; d++) {
                     const date = new Date();
@@ -42,10 +59,10 @@ export const useAIPromotion = (currentAnalysis: any | null) => {
                         const dayRevenue = fechamentos.reduce((acc: number, f: any) => acc + (f.total_vendas || 0), 0);
                         if (dayRevenue > 0) {
                             salesByDayMap[dayOfWeek].revenues.push(dayRevenue);
-                            salesByDayMap[dayOfWeek].volumes.push(dayRevenue / 5); // Rough estimate
+                            salesByDayMap[dayOfWeek].volumes.push(dayRevenue / 5); // Estimativa aproximada
                         }
                     } catch (e) {
-                        // Skip days with no data
+                        // Pular dias sem dados
                     }
                 }
 
@@ -60,20 +77,20 @@ export const useAIPromotion = (currentAnalysis: any | null) => {
 
                 setSalesByDay(analyzedDays);
 
-                // Find worst and best performing days
+                // Encontrar dias de pior e melhor desempenho
                 const sortedDays = [...analyzedDays].filter(d => d.count > 0).sort((a, b) => a.avgRevenue - b.avgRevenue);
                 const worstDay = sortedDays[0];
                 const bestDay = sortedDays[sortedDays.length - 1];
 
                 if (worstDay && bestDay && worstDay.avgRevenue < bestDay.avgRevenue * 0.7) {
-                    // Worst day is at least 30% below best day - suggest promotion
-                    const potentialGain = (bestDay.avgRevenue - worstDay.avgRevenue) * 0.3; // Conservative estimate
-                    const discountAmount = 0.15; // R$ 0.15/L default
-                    const estimatedExtraVolume = potentialGain / 5; // Rough calculation
+                    // Pior dia está pelo menos 30% abaixo do melhor dia - sugerir promoção
+                    const potentialGain = (bestDay.avgRevenue - worstDay.avgRevenue) * 0.3; // Estimativa conservadora
+                    const discountAmount = 0.15; // R$ 0.15/L padrão
+                    const estimatedExtraVolume = potentialGain / 5; // Cálculo aproximado
                     const roi = potentialGain / (discountAmount * estimatedExtraVolume);
 
-                    // Get best product for promotion
-                    // Need currentAnalysis.products
+                    // Obter melhor produto para promoção
+                    // Necessita currentAnalysis.products
                     const products = currentAnalysis.products || [];
                     const bestProduct = products.length > 0 
                         ? [...products].sort((a: any, b: any) => b.margin - a.margin)[0] 
@@ -118,7 +135,7 @@ export const useAIPromotion = (currentAnalysis: any | null) => {
                 }
 
             } catch (error) {
-                console.error('Error generating AI promotion:', error);
+                console.error('Erro ao gerar promoção de IA:', error);
             }
         };
 

@@ -4,24 +4,24 @@ import { Sparkles, Lightbulb, TrendingUp, Loader2, Calendar, DollarSign, Target 
 import { AIPromotion, SalesByDayOfWeek } from '../types';
 import { formatCurrency } from '../utils';
 
-interface AIPromotionSimulatorProps {
+interface SimuladorPromocaoIAProps {
     aiPromotion: AIPromotion | null;
     salesByDay: SalesByDayOfWeek[]; // Added to props as it's used in the component
     onApply: (product: string, discount: number, template: any) => Promise<void>;
 }
 
-export const AIPromotionSimulator: React.FC<AIPromotionSimulatorProps> = ({ aiPromotion, salesByDay, onApply }) => {
+export const SimuladorPromocaoIA: React.FC<SimuladorPromocaoIAProps> = ({ aiPromotion, salesByDay, onApply }) => {
     const [selectedPromoProduct, setSelectedPromoProduct] = useState<string>('');
     const [promoDiscount, setPromoDiscount] = useState<number>(15);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (aiPromotion && !selectedPromoProduct) {
-             // Map product name to code if possible, or use default logic from original
-             // Original logic: setSelectedPromoProduct(bestProduct?.code || 'ET');
-             // Since we don't have full product list here easily, we might need to rely on what's passed or defaults.
-             // But the UI hardcodes GC, ET, S10.
-             // We can default to 'ET' or try to match aiPromotion.targetProduct
+             // Mapear nome do produto para código se possível, ou usar lógica padrão do original
+             // Lógica original: setSelectedPromoProduct(bestProduct?.code || 'ET');
+             // Como não temos a lista completa de produtos aqui facilmente, podemos depender do que é passado ou padrões.
+             // Mas a UI tem GC, ET, S10 fixos no código.
+             // Podemos usar 'ET' como padrão ou tentar combinar aiPromotion.targetProduct
              const target = aiPromotion.targetProduct === 'Gasolina' ? 'GC' : 
                             aiPromotion.targetProduct === 'Etanol' ? 'ET' : 
                             aiPromotion.targetProduct === 'Diesel S10' ? 'S10' : 'ET';
@@ -34,18 +34,12 @@ export const AIPromotionSimulator: React.FC<AIPromotionSimulatorProps> = ({ aiPr
     const handleApplyPromotion = async () => {
         setSubmitting(true);
         try {
-            // Use first template as default or let user select? 
-            // Original code used first template: const template = aiPromotion.templates[0];
-            // But the UI shows radio buttons for templates.
-            // Wait, the original UI had radio buttons but `handleApplyPromotion` used `aiPromotion.templates[0]`.
-            // Line 473: `const template = aiPromotion.templates[0];`
-            // This seems like a bug or simplification in the original code (it ignored the selection?).
-            // I will implement selection state to fix this potential issue or stick to original behavior.
-            // The original JSX (lines 818-877) renders buttons but doesn't seem to update a `selectedTemplate` state.
-            // It uses `idx === 0` for styling "selected" look (lines 827, 831).
-            // So it seems it was hardcoded to select the first one.
-            // I will keep it simple and use the first one as "selected" visually and functionally, 
-            // but I'll add a todo comment or just follow the original behavior.
+            // Usar o primeiro template como padrão ou deixar o usuário selecionar?
+            // Código original usava o primeiro template: const template = aiPromotion.templates[0];
+            // Mas a UI mostra botões de rádio para templates.
+            // A linha 473 do original usava aiPromotion.templates[0], ignorando a seleção.
+            // Manterei simples e usarei o primeiro visualmente e funcionalmente como "selecionado",
+            // seguindo o comportamento original.
             
             const template = aiPromotion.templates[0];
             await onApply(selectedPromoProduct, promoDiscount, template);

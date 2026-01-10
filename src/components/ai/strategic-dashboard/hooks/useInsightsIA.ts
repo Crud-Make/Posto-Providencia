@@ -2,11 +2,28 @@
 import { useState, useEffect } from 'react';
 import { AIInsight, StockAlert, DashboardMetrics } from '../types';
 
-export const useAIInsights = (
+/**
+ * Resultado do hook useInsightsIA
+ */
+interface UseInsightsIAResult {
+    /** Lista de insights gerados pela IA */
+    insights: AIInsight[];
+}
+
+/**
+ * Hook responsável por gerar insights inteligentes com base nas métricas, estoque e análise de vendas.
+ * Identifica produtos com margem baixa, estoque crítico, oportunidades de venda e tendências de receita.
+ * 
+ * @param {any} currentAnalysis Análise de vendas atual
+ * @param {DashboardMetrics | null} metrics Métricas do dashboard
+ * @param {StockAlert[]} stockAlerts Alertas de estoque atuais
+ * @returns {UseInsightsIAResult} Objeto contendo a lista de insights
+ */
+export const useInsightsIA = (
     currentAnalysis: any | null,
     metrics: DashboardMetrics | null,
     stockAlerts: StockAlert[]
-) => {
+): UseInsightsIAResult => {
     const [insights, setInsights] = useState<AIInsight[]>([]);
 
     useEffect(() => {
@@ -15,7 +32,7 @@ export const useAIInsights = (
         const generatedInsights: AIInsight[] = [];
         const today = new Date();
 
-        // Check for low margin products
+        // Verificar produtos com baixa margem
         if (currentAnalysis.products) {
             currentAnalysis.products.forEach((p: any) => {
                 if (p.margin < 5 && p.volume > 100) {
@@ -32,7 +49,7 @@ export const useAIInsights = (
             });
         }
 
-        // Check for critical stock
+        // Verificar estoque crítico
         stockAlerts.forEach(a => {
             if (a.status === 'CRÍTICO') {
                 generatedInsights.push({
@@ -47,8 +64,8 @@ export const useAIInsights = (
             }
         });
 
-        // Opportunity based on day of week analysis
-        if (today.getDay() >= 4 && today.getDay() <= 6) { // Thu-Sat
+        // Oportunidade baseada na análise do dia da semana
+        if (today.getDay() >= 4 && today.getDay() <= 6) { // Qui-Sab
             generatedInsights.push({
                 id: 'weekend-opportunity',
                 type: 'opportunity',
@@ -59,7 +76,7 @@ export const useAIInsights = (
             });
         }
 
-        // Revenue trending
+        // Tendência de receita
         const { receitaVariacao } = metrics;
         if (receitaVariacao > 10) {
             generatedInsights.push({

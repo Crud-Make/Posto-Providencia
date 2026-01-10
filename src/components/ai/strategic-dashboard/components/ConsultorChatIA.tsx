@@ -4,13 +4,13 @@ import { Brain, Send } from 'lucide-react';
 import { DashboardMetrics, StockAlert, AttendantPerformance } from '../types';
 import { formatCurrency } from '../utils';
 
-interface AIChatConsultantProps {
+interface ConsultorChatIAProps {
     metrics: DashboardMetrics | null;
     stockAlerts: StockAlert[];
     topPerformers: AttendantPerformance[];
 }
 
-export const AIChatConsultant: React.FC<AIChatConsultantProps> = ({ metrics, stockAlerts, topPerformers }) => {
+export const ConsultorChatIA: React.FC<ConsultorChatIAProps> = ({ metrics, stockAlerts, topPerformers }) => {
     const [chatInput, setChatInput] = useState('');
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'ai', content: string }[]>([
         { role: 'ai', content: 'Olá! Sou seu Consultor IA. Pergunte sobre vendas, estoque, frentistas ou qualquer aspecto do seu negócio.' }

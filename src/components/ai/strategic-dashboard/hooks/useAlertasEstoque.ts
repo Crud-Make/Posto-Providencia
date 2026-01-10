@@ -4,7 +4,22 @@ import { usePosto } from '../../../../contexts/PostoContext';
 import { estoqueService } from '../../../../services/api';
 import { StockAlert } from '../types';
 
-export const useStockAlerts = (currentAnalysis: any | null) => {
+/**
+ * Resultado do hook useAlertasEstoque
+ */
+interface UseAlertasEstoqueResult {
+    /** Lista de alertas de estoque gerados */
+    stockAlerts: StockAlert[];
+}
+
+/**
+ * Hook responsável por monitorar o nível dos tanques e gerar alertas de estoque baixo ou crítico.
+ * Calcula também a previsão de duração do estoque com base no consumo médio.
+ * 
+ * @param {any} currentAnalysis Análise de vendas atual para cálculo de consumo
+ * @returns {UseAlertasEstoqueResult} Objeto contendo a lista de alertas
+ */
+export const useAlertasEstoque = (currentAnalysis: any | null): UseAlertasEstoqueResult => {
     const { postoAtivoId } = usePosto();
     const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
 
@@ -17,8 +32,8 @@ export const useStockAlerts = (currentAnalysis: any | null) => {
                 const today = new Date();
                 const daysPassed = today.getDate();
                 
-                // Estimate days remaining based on average daily consumption
-                // Using volume from analysis
+                // Estimar dias restantes com base no consumo médio diário
+                // Usando volume da análise
                 const avgDailyConsumption = daysPassed > 0 && estoques.length > 0
                     ? currentAnalysis.totals.volume / daysPassed / estoques.length
                     : 0;
@@ -40,7 +55,7 @@ export const useStockAlerts = (currentAnalysis: any | null) => {
                 });
                 setStockAlerts(alerts);
             } catch (error) {
-                console.error('Error loading stock alerts:', error);
+                console.error('Erro ao carregar alertas de estoque:', error);
             }
         };
 

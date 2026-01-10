@@ -4,19 +4,35 @@ import { usePosto } from '../../../../contexts/PostoContext';
 import { salesAnalysisService } from '../../../../services/api';
 import { DashboardMetrics } from '../types';
 
-interface UseDashboardMetricsResult {
+/**
+ * Resultado do hook useMetricasDashboard
+ */
+interface UseMetricasDashboardResult {
+    /** Métricas calculadas do dashboard */
     metrics: DashboardMetrics | null;
+    /** Estado de carregamento */
     loading: boolean;
-    currentAnalysis: any | null; // Tipar melhor se possível, mas mantendo compatibilidade
+    /** Dados brutos da análise atual */
+    currentAnalysis: any | null;
+    /** Função para recarregar as métricas */
     refreshMetrics: () => Promise<void>;
 }
 
-export const useDashboardMetrics = (): UseDashboardMetricsResult => {
+/**
+ * Hook responsável por buscar e calcular as métricas principais do dashboard estratégico.
+ * Compara o mês atual com o mês anterior para gerar variações de receita, volume e margem.
+ * 
+ * @returns {UseMetricasDashboardResult} Objeto contendo métricas, estado de loading e função de refresh
+ */
+export const useMetricasDashboard = (): UseMetricasDashboardResult => {
     const { postoAtivoId } = usePosto();
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentAnalysis, setCurrentAnalysis] = useState<any | null>(null);
 
+    /**
+     * Carrega as métricas de vendas do posto ativo
+     */
     const loadMetrics = async () => {
         if (!postoAtivoId) return;
 
@@ -28,21 +44,21 @@ export const useDashboardMetrics = (): UseDashboardMetricsResult => {
             const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
             const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
 
-            // 1. Fetch Current Month Sales Analysis
+            // 1. Buscar Análise de Vendas do Mês Atual
             const analysis = await salesAnalysisService.getMonthlyAnalysis(currentYear, currentMonth, postoAtivoId);
             setCurrentAnalysis(analysis);
 
-            // 2. Fetch Previous Month for comparison
+            // 2. Buscar Mês Anterior para comparação
             const prevAnalysis = await salesAnalysisService.getMonthlyAnalysis(prevYear, prevMonth, postoAtivoId);
 
-            // 3. Calculate projected revenue (based on daily average * remaining days)
+            // 3. Calcular receita projetada (média diária * dias restantes)
             const daysPassed = today.getDate();
             const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
             // Evita divisão por zero se for dia 1 de madrugada e não tiver vendas ainda, ou apenas proteção
             const dailyAverage = daysPassed > 0 ? analysis.totals.revenue / daysPassed : 0;
             const projectedRevenue = dailyAverage * daysInMonth;
 
-            // 4. Calculate metrics
+            // 4. Calcular métricas
             const revenueVariation = prevAnalysis.totals.revenue > 0
                 ? ((projectedRevenue - prevAnalysis.totals.revenue) / prevAnalysis.totals.revenue) * 100
                 : 0;
@@ -67,7 +83,7 @@ export const useDashboardMetrics = (): UseDashboardMetricsResult => {
             });
 
         } catch (error) {
-            console.error('Error loading dashboard metrics:', error);
+            console.error('Erro ao carregar métricas do dashboard:', error);
         } finally {
             setLoading(false);
         }
