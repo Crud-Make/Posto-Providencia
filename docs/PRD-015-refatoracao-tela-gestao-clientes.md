@@ -4,7 +4,7 @@
 **Issue:** #15  
 **Sprint:** Sprint 2 - Componentes Críticos  
 **Prioridade:** 🔴 ALTA  
-**Estimativa:** 6-8 horas
+
 
 ---
 
