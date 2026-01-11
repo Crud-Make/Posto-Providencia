@@ -13,9 +13,9 @@
 // Motivo: Propriedade 'taxa' estava sendo acessada incorretamente como 'taxa_percentual'
 
 import React, { useState, useCallback, useMemo } from 'react';
-import type { EntradaPagamento } from '../types/fechamento';
-import { formaPagamentoService } from '../services/api';
-import { analisarValor, paraReais } from '../utils/formatters';
+import type { EntradaPagamento } from '../../types/fechamento';
+import { formaPagamentoService } from '../../services/api';
+import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../utils/formatters';
 
 /**
  * Retorno do hook usePagamentos
@@ -83,19 +83,10 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
    * Impede múltiplas vírgulas
    */
   const alterarPagamento = useCallback((indice: number, valor: string) => {
-    // Remove caracteres não permitidos (mantém apenas números e vírgula)
-    const valorLimpo = valor.replace(/[^0-9,]/g, '');
-
-    // Impede múltiplas vírgulas
-    const partes = valorLimpo.split(',');
-    if (partes.length > 2) {
-      console.warn('⚠️ Rejeitado: Múltiplas vírgulas');
-      return;
-    }
-
+    const formatado = formatarValorSimples(valor);
     setPagamentos(prev => {
       const atualizado = [...prev];
-      atualizado[indice] = { ...atualizado[indice], valor: valorLimpo };
+      atualizado[indice] = { ...atualizado[indice], valor: formatado };
       return atualizado;
     });
   }, []);
@@ -110,10 +101,7 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
 
       if (!valorString) return prev;
 
-      // Parse e formata como moeda
-      const valorNumerico = analisarValor(valorString);
-      const formatado = paraReais(valorNumerico);
-
+      const formatado = formatarValorAoSair(valorString);
       atualizado[indice] = { ...atualizado[indice], valor: formatado };
       return atualizado;
     });

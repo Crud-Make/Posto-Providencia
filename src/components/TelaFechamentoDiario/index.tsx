@@ -21,12 +21,12 @@ import {
 
 import { useAuth } from '../../contexts/AuthContext';
 import { usePosto } from '../../contexts/PostoContext';
-import { useCarregamentoDados } from '../../hooks/useCarregamentoDados';
-import { useLeituras } from '../../hooks/useLeituras';
-import { useSessoesFrentistas } from '../../hooks/useSessoesFrentistas';
-import { usePagamentos } from '../../hooks/usePagamentos';
-import { useFechamento } from '../../hooks/useFechamento';
-import { useAutoSave } from '../../hooks/useAutoSave';
+import { useCarregamentoDados } from '../../hooks/fechamento/useCarregamentoDados';
+import { useLeituras } from '../../hooks/fechamento/useLeituras';
+import { useSessoesFrentistas } from '../../hooks/fechamento/useSessoesFrentistas';
+import { usePagamentos } from '../../hooks/fechamento/usePagamentos';
+import { useFechamento } from '../../hooks/fechamento/useFechamento';
+import { useAutoSave } from '../../hooks/fechamento/useAutoSave';
 
 import {
    fechamentoService,

@@ -13,9 +13,9 @@
 // Motivo: Correção de nomes de métodos e parâmetros para compatibilidade com API
 
 import React, { useState, useCallback, useRef } from 'react';
-import type { BicoComDetalhes } from '../types/fechamento';
-import { leituraService } from '../services/api';
-import { formatarParaBR } from '../utils/formatters';
+import type { BicoComDetalhes } from '../../types/fechamento';
+import { leituraService } from '../../services/api';
+import { formatarParaBR } from '../../utils/formatters';
 
 /**
  * Estrutura de uma leitura

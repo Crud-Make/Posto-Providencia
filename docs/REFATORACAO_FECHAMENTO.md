@@ -2,7 +2,7 @@
 
 > **Issue:** #7
 > **Branch:** `refactor/#7-fechamento-diario`
-> **Status:** Fase 3 Completa (Componentes UI)
+> **Status:** Concluída ✅
 > **Data:** 08/01/2026
 
 ---
@@ -45,7 +45,7 @@ Refatorar o componente `TelaFechamentoDiario.tsx` (2667 linhas) para melhorar:
 
 ### ✅ Fase 2: Hooks Customizados (Completa)
 
-#### 1. `hooks/useAutoSave.ts`
+#### 1. `hooks/fechamento/useAutoSave.ts`
 **Responsabilidade:** Autosave em localStorage
 
 ```typescript
@@ -62,7 +62,7 @@ const { restaurado, salvarRascunho, limparRascunho } = useAutoSave(
 
 ---
 
-#### 2. `hooks/useCarregamentoDados.ts`
+#### 2. `hooks/fechamento/useCarregamentoDados.ts`
 **Responsabilidade:** Carregamento de dados base
 
 ```typescript
@@ -84,7 +84,7 @@ const {
 
 ---
 
-#### 3. `hooks/useLeituras.ts`
+#### 3. `hooks/fechamento/useLeituras.ts`
 **Responsabilidade:** Gerenciamento de leituras de encerrantes
 
 ```typescript
@@ -108,7 +108,7 @@ const {
 
 ---
 
-#### 4. `hooks/usePagamentos.ts`
+#### 4. `hooks/fechamento/usePagamentos.ts`
 **Responsabilidade:** Gerenciamento de formas de pagamento
 
 ```typescript
@@ -129,7 +129,7 @@ const {
 
 ---
 
-#### 5. `hooks/useSessoesFrentistas.ts`
+#### 5. `hooks/fechamento/useSessoesFrentistas.ts`
 **Responsabilidade:** Gerenciamento de sessões de frentistas
 
 ```typescript
@@ -151,7 +151,7 @@ const {
 
 ---
 
-#### 6. `hooks/useFechamento.ts`
+#### 6. `hooks/fechamento/useFechamento.ts`
 **Responsabilidade:** Cálculos consolidados
 
 ```typescript

@@ -10,7 +10,7 @@
  */
 
 import { useMemo } from 'react';
-import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../types/fechamento';
+import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../../types/fechamento';
 import {
   calcularLitros,
   calcularVenda,
@@ -19,8 +19,8 @@ import {
   calcularPercentual,
   validarLeitura,
   type SumarioCombustivel
-} from '../utils/calculators';
-import { analisarValor } from '../utils/formatters';
+} from '../../utils/calculators';
+import { analisarValor } from '../../utils/formatters';
 
 /**
  * Retorno do hook useFechamento
@@ -108,7 +108,7 @@ export const useFechamento = (
       const pix = analisarValor(fs.valor_pix);
       const dinheiro = analisarValor(fs.valor_dinheiro);
       const baratao = analisarValor(fs.valor_baratao);
-      
+
       return acc + cartao + nota + pix + dinheiro + baratao;
     }, 0);
   }, [sessoesFrentistas]);
