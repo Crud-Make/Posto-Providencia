@@ -99,13 +99,37 @@ export const parseValue = analisarValor;
  * formatarParaBR(0, 3) // "0,000"
  */
 export const formatarParaBR = (num: number, decimais: number = 3): string => {
-  if (num === 0) return '0,' + '0'.repeat(decimais);
+  if (num === undefined || num === null || isNaN(num)) return '0,' + '0'.repeat(decimais);
+  
+  return num.toLocaleString('pt-BR', {
+    minimumFractionDigits: decimais,
+    maximumFractionDigits: decimais,
+  });
+};
 
-  const partes = num.toFixed(decimais).split('.');
-  const inteiro = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  const decimal = partes[1] || '0'.repeat(decimais);
-
-  return `${inteiro},${decimal}`;
+/**
+ * Converte string estritamente no formato BR (1.234,56) para number
+ * 
+ * @param value - Valor string (ex: "1.000", "1.234,56")
+ * @returns Número (ex: 1000, 1234.56)
+ * 
+ * @remarks
+ * Diferente de analisarValor, esta função NÃO assume que números com pontos
+ * e sem vírgula são decimais (ex: "1.000" vira 1000, não 1).
+ * Use esta função para inputs digitados pelo usuário que seguem máscara BR.
+ */
+export const parseBRFloat = (value: string): number => {
+  if (!value) return 0;
+  // Remove espaços e símbolo de moeda
+  const clean = value.toString().trim().replace(/^R\$\s*/, '');
+  
+  // Remove pontos (separadores de milhar)
+  const noDots = clean.replace(/\./g, '');
+  
+  // Substitui vírgula por ponto (decimal)
+  const dotDecimal = noDots.replace(',', '.');
+  
+  return parseFloat(dotDecimal) || 0;
 };
 
 /**
@@ -160,38 +184,34 @@ export const formatarValorSimples = (value: string): string => {
   if (!value) return '';
 
   // Remove o prefixo R$ e espaços
-  let limpo = value.replace(/^R\$\s*/, '').trim();
+  let limpo = value.toString().replace(/^R\$\s*/, '').trim();
 
-  // Remove pontos de milhar antigos para processar corretamente
+  // Remove pontos de milhar antigos
   limpo = limpo.replace(/\./g, '');
 
-  // Se vazio ou só vírgula isolada
   if (!limpo || limpo === ',') return '';
 
   const partes = limpo.split(',');
-  // Garante apenas números na parte inteira
   let inteiro = partes[0].replace(/[^\d]/g, '');
 
-  // Se não sobrou nada na parte inteira
   if (!inteiro && partes.length === 1) return '';
   if (!inteiro) inteiro = '0';
 
-  // Remove zeros à esquerda (ex: 010 -> 10), mas mantém '0' se for só zero
+  // Remove zeros à esquerda (ex: 010 -> 10)
   inteiro = inteiro.replace(/^0+(?=\d)/, '');
 
-  // Adiciona pontos de milhar na parte inteira
+  // Adiciona pontos de milhar
   if (inteiro.length > 3) {
     inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   }
 
-  // Se tem vírgula no valor, mantém a parte decimal como está
+  // Se tem vírgula, limita a 2 casas decimais (ou permite digitação livre se preferir, 
+  // mas monetário costuma ser 2)
   if (partes.length > 1) {
-    let decimal = partes.slice(1).join('').replace(/[^\d]/g, '');
+    let decimal = partes.slice(1).join('').replace(/[^\d]/g, '').substring(0, 2);
     return `R$ ${inteiro},${decimal}`;
   }
 
-  // Se NÃO tem vírgula, retorna SÓ o inteiro (sem ,00)
-  // O ,00 será adicionado apenas no onBlur
   return `R$ ${inteiro}`;
 };
 
@@ -212,12 +232,8 @@ export const formatarValorSimples = (value: string): string => {
  */
 export const formatarValorAoSair = (value: string): string => {
   if (!value) return '';
-
-  // Se já tem vírgula, mantém como está
-  if (value.includes(',')) return value;
-
-  // Se não tem vírgula, adiciona ,00
-  return `${value},00`;
+  const num = analisarValor(value);
+  return paraReais(num);
 };
 
 /**

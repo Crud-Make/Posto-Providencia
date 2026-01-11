@@ -4,6 +4,7 @@
  * @remarks
  * Ponto central de exportação de todos os services.
  * Mantém compatibilidade com imports existentes.
+// [11/01 16:51] Remoção definitiva do baratenciaService conforme solicitado pelo usuário.
  */
 
 // Exporta services individuais
@@ -37,7 +38,6 @@ export { escalaService } from './escala.service';
 export { clienteService } from './cliente.service';
 export { notaFrentistaService } from './notaFrentista.service';
 export { resetService } from './reset.service';
-export { baratenciaService } from './baratencia.service';
 export { aggregatorService } from './aggregator.service';
 export { aggregatorService as legacyService } from './aggregator.service';
 
@@ -80,7 +80,6 @@ import { escalaService } from './escala.service';
 import { clienteService } from './cliente.service';
 import { notaFrentistaService } from './notaFrentista.service';
 import { resetService } from './reset.service';
-import { baratenciaService } from './baratencia.service';
 
 // TODO: Importar outros services conforme forem migrados
 
@@ -114,7 +113,6 @@ export const api = {
   cliente: clienteService,
   notaFrentista: notaFrentistaService,
   reset: resetService,
-  baratencia: baratenciaService,
   legacy: aggregatorService,
   aggregator: aggregatorService,
 };

@@ -10,9 +10,9 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import type { SessaoFrentista } from '../types/fechamento';
-import { fechamentoFrentistaService } from '../services/api';
-import { analisarValor, paraReais } from '../utils/formatters';
+import type { SessaoFrentista } from '../../types/fechamento';
+import { fechamentoFrentistaService } from '../../services/api';
+import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../utils/formatters';
 
 /**
  * Interface para totais detalhados dos frentistas
@@ -191,15 +191,15 @@ export const useSessoesFrentistas = (
    */
   const alterarCampoFrentista = useCallback(
     (tempId: string, campo: keyof SessaoFrentista, valor: string) => {
-      const valorLimpo = valor.replace(/[^0-9,]/g, '');
-      const partes = valorLimpo.split(',');
-
-      if (partes.length > 2) {
-        console.warn('⚠️ Rejeitado: Múltiplas vírgulas');
+      // Campos que não são monetários (como frentistaId ou observações)
+      if (campo === 'frentistaId' || campo === 'observacoes' || campo === 'status') {
+        atualizarSessao(tempId, { [campo]: valor });
         return;
       }
 
-      atualizarSessao(tempId, { [campo]: valorLimpo });
+      // Aplica máscara híbrida para todos os outros (valor_*)
+      const formatado = formatarValorSimples(valor);
+      atualizarSessao(tempId, { [campo]: formatado });
     },
     [atualizarSessao]
   );
@@ -211,9 +211,12 @@ export const useSessoesFrentistas = (
     (tempId: string, campo: keyof SessaoFrentista, valor: string) => {
       if (!valor) return;
 
-      const valorNumerico = analisarValor(valor);
-      const formatado = paraReais(valorNumerico);
+      // Campos não monetários não precisam de processamento onBlur
+      if (campo === 'frentistaId' || campo === 'observacoes' || campo === 'status') {
+        return;
+      }
 
+      const formatado = formatarValorAoSair(valor);
       atualizarSessao(tempId, { [campo]: formatado });
     },
     [atualizarSessao]
@@ -251,7 +254,7 @@ export const useSessoesFrentistas = (
         // total: acc.total + parseValue(fs.valor_cartao) + ...
         // It seems only 'valor_cartao' was added to total.
         // But 'updatePaymentsFromFrentistas' used cartao_debito/credito.
-        
+
         // I'll assume 'valor_cartao' is the aggregate or the specific 'credit' depending on usage.
         // But wait, the hook returns totals.
       };

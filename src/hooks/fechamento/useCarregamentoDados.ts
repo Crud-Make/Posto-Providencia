@@ -10,11 +10,11 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import type { BicoComDetalhes } from '../types/fechamento';
-import type { Frentista, Turno } from '../types/database/index';
-import { bicoService, frentistaService, turnoService } from '../services/api';
-import { supabase } from '../services/supabase';
-import { TURNOS_PADRAO } from '../types/fechamento';
+import type { BicoComDetalhes } from '../../types/fechamento';
+import type { Frentista, Turno } from '../../types/database/index';
+import { bicoService, frentistaService, turnoService } from '../../services/api';
+import { supabase } from '../../services/supabase';
+import { TURNOS_PADRAO } from '../../types/fechamento';
 
 /**
  * Retorno do hook useCarregamentoDados

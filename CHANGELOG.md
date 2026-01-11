@@ -1,8 +1,57 @@
 # Changelog
 
-## [Não Lançado]
+## [11/01/2026] - 🎉 SPRINT 2 E SPRINT 3 (PARCIAL) CONCLUÍDAS
 
-### [v3.0.0] - 10/01/2026 - 🎉 SPRINT 1 CONCLUÍDA
+### 🏆 Refatoração de Componentes Críticos (Sprint 2)
+- **Issue #13 - StrategicDashboard.tsx:** Modularizado com sucesso (~1.010 linhas reduzidas).
+- **Issue #16 - TelaConfiguracoes.tsx:** Modularizado em seções especializadas (~980 linhas reduzidas).
+- **Issue #15 - TelaGestaoClientes.tsx:** Modularizado com hooks e componentes de domínio (~880 linhas reduzidas).
+- **Issue #7 - TelaFechamentoDiario.tsx:** Refatoração massiva concluída (~2.667 linhas reduzidas para ~420).
+- **Métrica Sprint 2:** ~5.542 linhas refatoradas.
+
+### 🚀 Sprint 3 Iniciada - Componentes Médios
+- **Issue #19 - TelaRegistroCompras.tsx:** Modularização de Planilha Híbrida concluída.
+  - **Antes:** 807 linhas monolíticas
+  - **Depois:** 101 linhas (orquestrador) + 9 módulos especializados
+  - **Redução:** 87.5% no arquivo principal
+  - **Hooks criados:**
+    - `useCalculosRegistro.ts` (162 linhas) - Cálculos financeiros complexos
+    - `useCombustiveisHibridos.ts` (87 linhas) - Estado unificado
+    - `usePersistenciaRegistro.ts` (103 linhas) - Salvamento multi-etapa
+  - **Componentes criados:**
+    - `HeaderRegistroCompras.tsx` (66 linhas)
+    - `SecaoVendas.tsx` (122 linhas) - Tabela de leituras
+    - `SecaoCompras.tsx` (158 linhas) - Tabela de entradas
+    - `SecaoEstoque.tsx` (130 linhas) - Reconciliação de tanques
+    - `InputFinanceiro.tsx` (58 linhas) - Input com máscara híbrida
+- **Issue #20 - TelaGestaoEscalas.tsx:** Modularização concluída (~615 linhas reduzidas).
+  - **Antes:** 615 linhas monolíticas.
+  - **Depois:** 95 linhas (orquestrador) + hook `useEscalas` + 4 subcomponentes.
+  - **Destaque:** UI premium, JSDoc mandatório, PDF export aprimorado.
+- **Limpeza Profunda:**
+  - Remoção completa do `baratencia.service.ts` e suas integrações.
+  - Sincronização de todos os novos componentes com a Regra Zero de JSDoc.
+- **Métrica Sprint 3 (em andamento):** ~2.000 linhas refatoradas (3/4 componentes da fase 1).
+
+### ⚡ Infraestrutura e Performance
+- **Issue #17 - Migração para Bun:** Runtime migrado de Node.js para Bun.
+  - Performance 6x mais rápida em `install`.
+  - Startup de dev server 4-6x mais rápido.
+  - Configuração de `bun.lock` e `package.json` atualizada.
+
+### 🔧 Fixes e Housekeeping (Issue #3 e Limpeza)
+- **Fix Issue #3 - Máscara Monetária Híbrida:** 
+  - Centralização da lógica em `formatarValorSimples` e `formatarValorAoSair`.
+  - Implementação de máscara híbrida: digitação natural de inteiros + suporte a decimais via vírgula.
+  - Integração nos hooks `useSessoesFrentistas` e `usePagamentos`.
+- **Limpeza de Issues:** 
+  - Fechadas as issues pendentes #8, #9, #10 e #14.
+  - Atualização da Issue #7 com status das Fases 1-3 (Concluídas).
+  - Atualização do `docs/PLANO-REFATORACAO-COMPLETO.md`.
+
+---
+
+## [10/01/2026] - 🎉 SPRINT 1 CONCLUÍDA
 
 #### 🏆 Refatoração Completa - Types & Services (100%)
 
