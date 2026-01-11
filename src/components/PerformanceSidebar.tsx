@@ -71,7 +71,7 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
                 </div>
               </div>
               <div className="text-right">
-                <p className={`font-bold text-lg ${item.type === 'divergence' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{item.value}</p>
+                <p className={`font-bold text-lg font-finance tabular-nums ${item.type === 'divergence' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{item.value}</p>
                 <div className="flex items-center justify-end gap-1">
                   {getRankIcon(index)}
                   <p className={`text-xs font-medium ${item.type === 'ticket' ? 'text-green-600 dark:text-green-400' : (item.type === 'volume' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400')}`}>{item.subValue}</p>
