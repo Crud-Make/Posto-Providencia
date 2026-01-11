@@ -4,6 +4,16 @@ import { notaFrentistaService, frentistaService } from '../../../services/api';
 import { Frentista } from '../../../types/database/index';
 import { NotaFormData, NotaFrentistaComRelacoes } from '../types';
 
+const INITIAL_FORM_DATA: NotaFormData = {
+    valor: '',
+    descricao: '',
+    data: new Date().toISOString().split('T')[0],
+    frentista_id: '',
+    jaPaga: false,
+    dataPagamento: new Date().toISOString().split('T')[0],
+    formaPagamento: 'DINHEIRO'
+};
+
 /**
  * Hook para gerenciar notas de frentista.
  * Controla criação, listagem e carregamento de notas.
@@ -16,15 +26,7 @@ export function useNotaFrentista(
     const [notas, setNotas] = useState<NotaFrentistaComRelacoes[]>([]);
     const [loadingNotas, setLoadingNotas] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState<NotaFormData>({
-        valor: '',
-        descricao: '',
-        data: new Date().toISOString().split('T')[0],
-        frentista_id: '',
-        jaPaga: false,
-        dataPagamento: new Date().toISOString().split('T')[0],
-        formaPagamento: 'DINHEIRO'
-    });
+    const [formData, setFormData] = useState<NotaFormData>(INITIAL_FORM_DATA);
     const [frentistas, setFrentistas] = useState<Frentista[]>([]);
     const [saving, setSaving] = useState(false);
 
@@ -54,6 +56,7 @@ export function useNotaFrentista(
             setFrentistas(data.filter((f) => f.ativo));
         } catch (error) {
             console.error('Erro ao carregar frentistas:', error);
+            toast.error('Erro ao carregar lista de frentistas');
         }
     }, [postoId]);
 
@@ -67,19 +70,17 @@ export function useNotaFrentista(
         }
     }, [isModalOpen, loadFrentistas]);
 
+    /**
+     * Abre o modal de nova nota e reseta o formulário.
+     */
     const openModal = () => {
-        setFormData({
-            valor: '',
-            descricao: '',
-            data: new Date().toISOString().split('T')[0],
-            frentista_id: '',
-            jaPaga: false,
-            dataPagamento: new Date().toISOString().split('T')[0],
-            formaPagamento: 'DINHEIRO'
-        });
+        setFormData(INITIAL_FORM_DATA);
         setIsModalOpen(true);
     };
 
+    /**
+     * Fecha o modal de nova nota.
+     */
     const closeModal = () => {
         setIsModalOpen(false);
     };
@@ -88,11 +89,14 @@ export function useNotaFrentista(
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    /**
+     * Salva a nova nota de frentista.
+     */
     const handleSave = async () => {
         if (!clienteId || !postoId) return;
 
-        if (!formData.valor || isNaN(Number(formData.valor))) {
-            toast.error('Informe um valor válido');
+        if (!formData.valor || isNaN(Number(formData.valor)) || Number(formData.valor) <= 0) {
+            toast.error('Informe um valor válido e positivo');
             return;
         }
 
