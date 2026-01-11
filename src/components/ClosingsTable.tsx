@@ -55,7 +55,7 @@ const ClosingsTable: React.FC<ClosingsTableProps> = ({ data }) => {
                       {closing.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white font-finance tabular-nums">
                     R$ {closing.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 text-right">

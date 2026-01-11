@@ -1,4 +1,23 @@
 /* [11/01 09:25] Otimização de tipografia integrada com index.html */
+/* [11/01 09:30] Adição de Tabular Figures para dados financeiros e Roboto Mono para técnicos */
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+table,
+.finance-data {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-finance {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.font-technical {
+  font-family: 'Roboto Mono', monospace;
+}
+
 /* Existing animation */
 @keyframes rise {
   0% {
