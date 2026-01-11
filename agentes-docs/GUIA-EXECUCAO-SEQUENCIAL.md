@@ -54,6 +54,7 @@ Iniciar FASE 2 (Sprint 4)
 
 ### Componente #2: TelaDashboardProprietario.tsx
 
+**Status:** ✅ CONCLUÍDO
 **Prioridade:** 🔴 Alta (Dashboard crítico para gestão)
 **Linhas:** 599 → ~100
 **Tempo:** 8-10 horas

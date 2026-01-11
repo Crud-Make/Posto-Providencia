@@ -9,7 +9,13 @@
 - **Issue #7 - TelaFechamentoDiario.tsx:** Refatoração massiva concluída (~2.667 linhas reduzidas para ~420).
 - **Métrica Sprint 2:** ~5.542 linhas refatoradas.
 
-### 🚀 Sprint 3 Iniciada - Componentes Médios
+### 🚀 Sprint 3 COMPLETA - Componentes Médios
+- **Issue #21 - TelaGestaoFinanceira.tsx:** Modularização concluída.
+  - **Antes:** 604 linhas monolíticas
+  - **Depois:** ~114 linhas (orquestrador) + 10 módulos
+  - **Redução:** 81% no arquivo principal
+  - Hooks: useFinanceiro, useFluxoCaixa, useFiltrosFinanceiros
+  - Componentes: 5 componentes UI especializados
 - **Issue #19 - TelaRegistroCompras.tsx:** Modularização de Planilha Híbrida concluída.
   - **Antes:** 807 linhas monolíticas
   - **Depois:** 101 linhas (orquestrador) + 9 módulos especializados
@@ -28,10 +34,15 @@
   - **Antes:** 615 linhas monolíticas.
   - **Depois:** 95 linhas (orquestrador) + hook `useEscalas` + 4 subcomponentes.
   - **Destaque:** UI premium, JSDoc mandatório, PDF export aprimorado.
-- **Limpeza Profunda:**
-  - Remoção completa do `baratencia.service.ts` e suas integrações.
-  - Sincronização de todos os novos componentes com a Regra Zero de JSDoc.
-- **Métrica Sprint 3 (em andamento):** ~2.000 linhas refatoradas (3/4 componentes da fase 1).
+- **Métrica Sprint 3:** 100% COMPLETA 🎉 (3/3 componentes da fase 1).
+
+### 🚀 Sprint 4 INICIADA - Dashboards e Gestão
+- **TelaDashboardProprietario.tsx:** Modularização concluída.
+  - **Antes:** 599 linhas monolíticas
+  - **Depois:** 96 linhas (orquestrador) + 8 módulos
+  - **Redução:** 84% no arquivo principal
+  - **Hooks:** useDashboardProprietario
+  - **Componentes:** ResumoExecutivo, DemonstrativoFinanceiro, AlertasGerenciais, FiltrosDashboard
 
 ### ⚡ Infraestrutura e Performance
 - **Issue #17 - Migração para Bun:** Runtime migrado de Node.js para Bun.

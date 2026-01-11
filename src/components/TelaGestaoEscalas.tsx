@@ -1,6 +1,6 @@
 import React from 'react';
 import { usePosto } from '../contexts/PostoContext';
-import { useEscalas } from '../hooks/escalas/useEscalas';
+import { useEscalas } from './escalas/hooks/useEscalas';
 import { exportarEscalaParaPdf } from './escalas/utils/exportPdf';
 
 // Subcomponentes modularizados

@@ -2,13 +2,14 @@ import React from 'react';
 import { DollarSign } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
 import { CombustivelHibrido } from '../../hooks/registro-compras/useCombustiveisHibridos';
+import { CalculosRegistro } from '../../hooks/registro-compras/useCalculosRegistro';
 import { formatarParaBR, paraReais, analisarValor } from '../../utils/formatters';
 
 interface Props {
    combustiveis: CombustivelHibrido[];
    updateCombustivel: (id: number, field: keyof CombustivelHibrido, value: string) => void;
-   calculos: any;
-   totais: any;
+   calculos: CalculosRegistro;
+   totais: CalculosRegistro['totais'];
 }
 
 const TABLE_INPUT_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white dark:bg-gray-700 dark:text-white hover:border-emerald-300 dark:hover:border-emerald-600";
@@ -22,6 +23,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                <h2 className="text-white font-semibold text-lg">Reconciliação de Tanques</h2>
             </div>
          </div>
+
          <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm text-left">
                <thead className="bg-slate-100 dark:bg-gray-700 text-xs uppercase font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">

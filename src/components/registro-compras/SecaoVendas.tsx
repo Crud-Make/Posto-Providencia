@@ -2,17 +2,29 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
 import { CombustivelHibrido } from '../../hooks/registro-compras/useCombustiveisHibridos';
+import { CalculosRegistro } from '../../hooks/registro-compras/useCalculosRegistro';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 
+/**
+ * Propriedades do componente SecaoVendas.
+ */
 interface Props {
+   /** Lista de combustíveis para exibição */
    combustiveis: CombustivelHibrido[];
+   /** Função para atualizar o estado de um combustível */
    updateCombustivel: (id: number, field: keyof CombustivelHibrido, value: string) => void;
-   calculos: any;
-   totais: any;
+   /** Objeto contendo funções de cálculos financeiros */
+   calculos: CalculosRegistro;
+   /** Totais consolidados para exibição no rodapé */
+   totais: CalculosRegistro['totais'];
 }
 
 const TABLE_INPUT_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm bg-white dark:bg-gray-700 dark:text-white hover:border-emerald-300 dark:hover:border-emerald-600";
 
+/**
+ * Componente que exibe a seção de Vendas (Leituras) na tela de registro de compras.
+ * Permite a entrada de leituras iniciais e finais e exibe cálculos de lucro e margem.
+ */
 export const SecaoVendas: React.FC<Props> = ({ combustiveis, updateCombustivel, calculos, totais }) => {
    return (
       <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
@@ -120,3 +132,4 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, updateCombustivel, 
       </section>
    );
 };
+

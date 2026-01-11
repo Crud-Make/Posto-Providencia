@@ -158,6 +158,9 @@ export const paraReais = (val: number | string): string => {
   });
 };
 
+// Alias para formatação de moeda
+export const formatarMoeda = paraReais;
+
 /**
  * Formata valor monetário durante a digitação
  *

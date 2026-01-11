@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Fuel, Menu, X, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import PostoSelector from './PostoSelector';
+import PostoSelector from './common/PostoSelector';
 
 
 interface HeaderProps {

@@ -2,9 +2,9 @@
 
 > **Issue:** A criar (#21)
 > **Componente:** `TelaGestaoFinanceira.tsx` (604 linhas)
-> **Status:** 📋 Planejamento
+> **Status:** ✅ Concluído
 > **Data:** 11/01/2026
-> **Sprint:** Sprint 3 - Componente 3/3
+> **Sprint:** Sprint 3 - Componente 3/3 (FINALIZADO)
 
 ---
 
