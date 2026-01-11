@@ -1,7 +1,7 @@
 # 📚 Índice da Documentação do Projeto
 
 **Última atualização:** 11/01/2026  
-**Branch:** refactor/tech-debt
+**Branch:** feature/melhoria-tipografia
 
 ---
 
@@ -222,4 +222,4 @@ Este índice deve ser atualizado sempre que:
 
 **📍 Localização:** `docs/README.md`  
 **🔗 Projeto:** Posto Providência - Sistema de Gestão  
-**🌿 Branch:** refactor/tech-debt
+**🌿 Branch:** feature/melhoria-tipografia

@@ -3,6 +3,12 @@ import { toast } from 'sonner';
 import { clienteService } from '../../../services/api';
 import { ClienteComSaldo, ClientesResumoData } from '../types';
 
+const INITIAL_RESUMO: ClientesResumoData = {
+    totalClientes: 0,
+    totalDevedores: 0,
+    valorTotalPendente: 0
+};
+
 /**
  * Hook para gerenciar dados de clientes.
  * Carrega clientes com saldo, calcula resumo e gerencia estado de loading.
@@ -10,14 +16,13 @@ import { ClienteComSaldo, ClientesResumoData } from '../types';
 export function useClientesData(postoId: number | undefined) {
     const [clientes, setClientes] = useState<ClienteComSaldo[]>([]);
     const [loading, setLoading] = useState(true);
-    const [resumo, setResumo] = useState<ClientesResumoData>({
-        totalClientes: 0,
-        totalDevedores: 0,
-        valorTotalPendente: 0
-    });
+    const [resumo, setResumo] = useState<ClientesResumoData>(INITIAL_RESUMO);
 
     const loadClientes = useCallback(async () => {
-        if (!postoId) return;
+        if (!postoId) {
+            setLoading(false);
+            return;
+        }
         
         setLoading(true);
         try {

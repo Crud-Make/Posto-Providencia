@@ -55,7 +55,7 @@ export const ParametrosEstoque: React.FC<ParametrosEstoqueProps> = ({
                         step="1"
                         min="1"
                         value={diasCritico}
-                        onChange={(e) => onChangeCritico(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChangeCritico(e.target.value)}
                         className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-mono font-bold focus:ring-2 focus:ring-amber-500 outline-none"
                     />
                 </div>
@@ -71,7 +71,7 @@ export const ParametrosEstoque: React.FC<ParametrosEstoqueProps> = ({
                         step="1"
                         min="1"
                         value={diasBaixo}
-                        onChange={(e) => onChangeBaixo(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChangeBaixo(e.target.value)}
                         className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-mono font-bold focus:ring-2 focus:ring-amber-500 outline-none"
                     />
                 </div>
