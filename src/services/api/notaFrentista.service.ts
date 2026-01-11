@@ -1,30 +1,10 @@
 import { supabase } from '../supabase';
+import type { NotaFrentista, InsertTables, Frentista, Cliente } from '@/types/database/index';
 
-export interface NotaFrentista {
-  id: number;
-  cliente_id: number;
-  frentista_id: number;
-  fechamento_frentista_id?: number;
-  valor: number;
-  descricao?: string;
-  observacoes?: string;
-  data: string;
-  status: 'pendente' | 'pago' | 'cancelado';
-  data_pagamento?: string;
-  forma_pagamento?: string;
-  posto_id: number;
-  created_at?: string;
-  cliente?: {
-    id: number;
-    nome: string;
-    documento?: string;
-    telefone?: string;
-  };
-  frentista?: {
-    id: number;
-    nome: string;
-  };
-}
+export type NotaFrentistaResponse = NotaFrentista & {
+  cliente?: Partial<Cliente>;
+  frentista?: Partial<Frentista>;
+};
 
 export interface ResumoFiado {
   totalPendente: number;
@@ -34,7 +14,7 @@ export interface ResumoFiado {
 }
 
 export const notaFrentistaService = {
-  async getAll(postoId?: number): Promise<NotaFrentista[]> {
+  async getAll(postoId?: number): Promise<NotaFrentistaResponse[]> {
     let query = supabase
       .from('NotaFrentista')
       .select(`
@@ -49,10 +29,10 @@ export const notaFrentistaService = {
 
     const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
-    return (data as unknown as NotaFrentista[]) || [];
+    return (data as unknown as NotaFrentistaResponse[]) || [];
   },
 
-  async getPendentes(postoId?: number): Promise<NotaFrentista[]> {
+  async getPendentes(postoId?: number): Promise<NotaFrentistaResponse[]> {
     let query = supabase
       .from('NotaFrentista')
       .select(`
@@ -68,10 +48,10 @@ export const notaFrentistaService = {
 
     const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
-    return (data as unknown as NotaFrentista[]) || [];
+    return (data as unknown as NotaFrentistaResponse[]) || [];
   },
 
-  async getByCliente(clienteId: number): Promise<NotaFrentista[]> {
+  async getByCliente(clienteId: number): Promise<NotaFrentistaResponse[]> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .select(`
@@ -82,10 +62,10 @@ export const notaFrentistaService = {
       .order('data', { ascending: false });
 
     if (error) throw error;
-    return (data as unknown as NotaFrentista[]) || [];
+    return (data as unknown as NotaFrentistaResponse[]) || [];
   },
 
-  async getByDateRange(dataInicio: string, dataFim: string, postoId?: number): Promise<NotaFrentista[]> {
+  async getByDateRange(dataInicio: string, dataFim: string, postoId?: number): Promise<NotaFrentistaResponse[]> {
     let query = supabase
       .from('NotaFrentista')
       .select(`
@@ -102,32 +82,24 @@ export const notaFrentistaService = {
 
     const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
-    return (data as unknown as NotaFrentista[]) || [];
+    return (data as unknown as NotaFrentistaResponse[]) || [];
   },
 
-  async create(nota: {
-    cliente_id: number;
-    frentista_id: number;
-    fechamento_frentista_id?: number;
-    valor: number;
-    descricao?: string;
-    data?: string;
-    posto_id: number;
-  }): Promise<NotaFrentista> {
+  async create(nota: InsertTables<'NotaFrentista'>): Promise<NotaFrentistaResponse> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .insert({
         ...nota,
         data: nota.data || new Date().toISOString().split('T')[0],
-        status: 'pendente'
+        status: nota.status || 'pendente'
       })
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentista;
+    return data as unknown as NotaFrentistaResponse;
   },
 
-  async registrarPagamento(id: number, formaPagamento: string, observacoes?: string, dataPagamento?: string): Promise<NotaFrentista> {
+  async registrarPagamento(id: number, formaPagamento: string, observacoes?: string, dataPagamento?: string): Promise<NotaFrentistaResponse> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .update({
@@ -141,10 +113,10 @@ export const notaFrentistaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentista;
+    return data as unknown as NotaFrentistaResponse;
   },
 
-  async cancelar(id: number, observacoes?: string): Promise<NotaFrentista> {
+  async cancelar(id: number, observacoes?: string): Promise<NotaFrentistaResponse> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .update({
@@ -155,14 +127,14 @@ export const notaFrentistaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentista;
+    return data as unknown as NotaFrentistaResponse;
   },
 
   async update(id: number, updates: {
     valor?: number;
     descricao?: string;
     observacoes?: string;
-  }): Promise<NotaFrentista> {
+  }): Promise<NotaFrentistaResponse> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .update(updates)
@@ -170,7 +142,7 @@ export const notaFrentistaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentista;
+    return data as unknown as NotaFrentistaResponse;
   },
 
   async delete(id: number): Promise<void> {
