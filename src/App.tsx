@@ -12,7 +12,7 @@ import TelaLeiturasDiarias from './components/TelaLeiturasDiarias';
 import TelaAnaliseVendas from './components/TelaAnaliseVendas';
 import TelaDashboardVendas from './components/TelaDashboardVendas';
 import TelaGestaoFrentistas from './components/TelaGestaoFrentistas';
-import TelaGestaoFinanceira from './components/TelaGestaoFinanceira';
+import TelaGestaoFinanceira from './components/financeiro';
 import TelaConfiguracoes from './components/TelaConfiguracoes';
 import TelaGestaoEscalas from './components/TelaGestaoEscalas';
 import TelaGestaoClientes from './components/clientes/TelaGestaoClientes';
