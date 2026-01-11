@@ -42,4 +42,25 @@ export const recebimentoService = {
       .eq('fechamento_id', fechamentoId);
     if (error) throw error;
   },
+
+  async getByDateRange(startDate: string, endDate: string, postoId?: number): Promise<(Recebimento & { forma_pagamento: FormaPagamento | null; maquininha: Maquininha | null })[]> {
+    let query = supabase
+      .from('Recebimento')
+      .select(`
+        *,
+        forma_pagamento:FormaPagamento(*),
+        maquininha:Maquininha(*),
+        fechamento:Fechamento!inner(data, posto_id)
+      `)
+      .gte('fechamento.data', startDate)
+      .lte('fechamento.data', endDate);
+
+    if (postoId) {
+      query = query.eq('fechamento.posto_id', postoId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as unknown as (Recebimento & { forma_pagamento: FormaPagamento | null; maquininha: Maquininha | null })[];
+  },
 };

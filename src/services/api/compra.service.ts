@@ -41,6 +41,33 @@ export const compraService = {
   },
 
   /**
+   * Busca compras por intervalo de datas.
+   * @param startDate Data inicial (YYYY-MM-DD)
+   * @param endDate Data final (YYYY-MM-DD)
+   * @param postoId ID do posto (opcional)
+   * @returns Lista de compras do período
+   */
+  async getByDateRange(startDate: string, endDate: string, postoId?: number): Promise<(Compra & { combustivel: Combustivel; fornecedor: Fornecedor })[]> {
+    let query = supabase
+      .from('Compra')
+      .select(`
+        *,
+        combustivel:Combustivel(*),
+        fornecedor:Fornecedor(*)
+      `)
+      .gte('data', startDate)
+      .lte('data', endDate);
+
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
+
+    const { data, error } = await query.order('data', { ascending: false });
+    if (error) throw error;
+    return (data || []) as (Compra & { combustivel: Combustivel; fornecedor: Fornecedor })[];
+  },
+
+  /**
    * Cria uma nova compra e atualiza o estoque (custo médio).
    * @param compra Dados da compra
    * @returns Compra criada
