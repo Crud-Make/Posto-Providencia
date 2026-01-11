@@ -23,13 +23,18 @@ import {
     FileText,
     AlertTriangle
 } from 'lucide-react';
-import { api } from '../services/api';
-import { usePosto } from '../contexts/PostoContext';
-import { Loan, LoanInstallment } from '../types/index';
-import KPICard from './KPICard';
+import { api } from '../../../services/api';
+import { usePosto } from '../../../contexts/PostoContext';
+import { Loan, LoanInstallment } from '../../../types/index';
 import { toast } from 'sonner';
 
-const TelaGestaoFinanceira: React.FC = () => {
+/**
+ * Componente para gerenciamento completo de empréstimos.
+ * 
+ * Permite criar, editar, listar e excluir empréstimos, além de gerenciar
+ * o pagamento individual de parcelas.
+ */
+const GestaoEmprestimos: React.FC = () => {
     const { postoAtivoId } = usePosto();
     const [loans, setLoans] = useState<Loan[]>([]);
     const [loading, setLoading] = useState(true);
@@ -52,6 +57,9 @@ const TelaGestaoFinanceira: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
 
+    /**
+     * Carrega a lista de empréstimos do posto ativo.
+     */
     const loadData = async () => {
         setLoading(true);
         try {
@@ -90,6 +98,10 @@ const TelaGestaoFinanceira: React.FC = () => {
         loadData();
     }, [postoAtivoId]);
 
+    /**
+     * Manipula a criação ou atualização de um empréstimo.
+     * @param e Evento de submissão do formulário
+     */
     const handleCreateLoan = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -123,6 +135,10 @@ const TelaGestaoFinanceira: React.FC = () => {
         }
     };
 
+    /**
+     * Exclui um empréstimo e suas parcelas.
+     * @param loanId ID do empréstimo a ser excluído
+     */
     const handleDeleteLoan = async (loanId: string) => {
         if (!confirm("Tem certeza que deseja excluir este empréstimo e todas as suas parcelas?")) return;
 
@@ -137,6 +153,10 @@ const TelaGestaoFinanceira: React.FC = () => {
         }
     };
 
+    /**
+     * Prepara o modal para edição de um empréstimo existente.
+     * @param loan Objeto do empréstimo a ser editado
+     */
     const handleEditLoan = (loan: Loan) => {
         setIsEditing(true);
         setEditingLoanId(loan.id);
@@ -155,6 +175,11 @@ const TelaGestaoFinanceira: React.FC = () => {
         setShowNewLoanModal(true);
     };
 
+    /**
+     * Atualiza o status de pagamento de uma parcela.
+     * @param installmentId ID da parcela
+     * @param status Novo status ('pago' ou 'pendente')
+     */
     const handlePayInstallment = async (installmentId: string, status: 'pago' | 'pendente') => {
         try {
             await api.parcela.update(Number(installmentId), {
@@ -191,21 +216,20 @@ const TelaGestaoFinanceira: React.FC = () => {
 
     if (loading && loans.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[600px] w-full text-red-600">
+            <div className="flex flex-col items-center justify-center min-h-[400px] w-full text-red-600">
                 <Loader2 size={48} className="animate-spin mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">Carregando dados financeiros...</p>
+                <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">Carregando dados de empréstimos...</p>
             </div>
         );
     }
 
     return (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
-
+        <div className="animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Gestão Financeira</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie empréstimos, parcelas e compromissos futuros do posto.</p>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Gestão de Empréstimos</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie empréstimos, parcelas e compromissos futuros.</p>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -601,4 +625,4 @@ const TelaGestaoFinanceira: React.FC = () => {
     );
 };
 
-export default TelaGestaoFinanceira;
+export const GestaoEmprestimosComponent = GestaoEmprestimos;

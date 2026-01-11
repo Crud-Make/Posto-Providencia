@@ -40,6 +40,17 @@ export const despesaService = {
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
 
+    return this.getByDateRange(startDate, endDate, postoId);
+  },
+
+  /**
+   * Busca despesas por intervalo de datas.
+   * @param startDate Data inicial (YYYY-MM-DD)
+   * @param endDate Data final (YYYY-MM-DD)
+   * @param postoId ID do posto (opcional)
+   * @returns Lista de despesas do período
+   */
+  async getByDateRange(startDate: string, endDate: string, postoId?: number): Promise<Despesa[]> {
     let query = supabase
       .from('Despesa')
       .select('*')
@@ -50,10 +61,10 @@ export const despesaService = {
       query = query.eq('posto_id', postoId);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query.order('data', { ascending: false });
 
     if (error) {
-      console.warn('Erro ao buscar despesas (tabela pode não existir):', error);
+      console.warn('Erro ao buscar despesas:', error);
       return [];
     }
     return data || [];
