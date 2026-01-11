@@ -13,14 +13,11 @@ import TelaAnaliseVendas from './components/TelaAnaliseVendas';
 import TelaDashboardVendas from './components/TelaDashboardVendas';
 import TelaGestaoFrentistas from './components/TelaGestaoFrentistas';
 import TelaGestaoFinanceira from './components/TelaGestaoFinanceira';
-import TelaDashboardSolvencia from './components/TelaDashboardSolvencia';
 import TelaConfiguracoes from './components/TelaConfiguracoes';
 import TelaGestaoEscalas from './components/TelaGestaoEscalas';
 import TelaGestaoClientes from './components/clientes/TelaGestaoClientes';
 import TelaGestaoDespesas from './components/TelaGestaoDespesas';
 import TelaDashboardProprietario from './components/TelaDashboardProprietario';
-import TelaGestaoBaratencia from './components/TelaGestaoBaratencia';
-import { StrategicDashboard } from './components/ai/strategic-dashboard';
 import TelaLogin from './components/TelaLogin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
@@ -35,7 +32,7 @@ import UpdateNotifier from './components/UpdateNotifier';
  */
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'owner_dashboard'>('dashboard');
 
   // Estado para controlar o menu mobile (Drawer)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -94,9 +91,6 @@ const AppContent: React.FC = () => {
             {currentView === 'dashboard' && (
               <TelaDashboard onNewClosing={() => setCurrentView('closing')} />
             )}
-            {currentView === 'ai_strategy' && (
-              <StrategicDashboard />
-            )}
             {currentView === 'sales_dashboard' && (
               <TelaDashboardVendas />
             )}
@@ -124,9 +118,6 @@ const AppContent: React.FC = () => {
             {currentView === 'finance' && (
               <TelaGestaoFinanceira />
             )}
-            {currentView === 'solvency' && (
-              <TelaDashboardSolvencia />
-            )}
             {currentView === 'analysis' && (
               <TelaAnaliseCustos />
             )}
@@ -147,9 +138,6 @@ const AppContent: React.FC = () => {
             )}
             {currentView === 'owner_dashboard' && (
               <TelaDashboardProprietario />
-            )}
-            {currentView === 'baratencia' && (
-              <TelaGestaoBaratencia />
             )}
           </div>
         </main>
