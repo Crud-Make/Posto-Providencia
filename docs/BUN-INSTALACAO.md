@@ -203,10 +203,36 @@ powershell -c "irm bun.sh/install.ps1 | iex"
 - [x] Bun instalado (v1.3.5)
 - [x] Localização verificada
 - [x] Versão testada
-- [ ] PATH permanente configurado (opcional)
+- [x] PATH permanente configurado ✅ **CONCLUÍDO**
 - [ ] Branch criada
 - [ ] Dependências migradas
 - [ ] Aplicação testada
+
+## 🎉 PATH CONFIGURADO GLOBALMENTE!
+
+### **Problema Resolvido**
+O Bun agora está no PATH global do Windows e funcionará em **qualquer terminal**!
+
+### **Comando Executado**
+```powershell
+[Environment]::SetEnvironmentVariable(
+    "Path",
+    [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Users\Thiago\.bun\bin",
+    "User"
+)
+```
+
+### **Verificação**
+```powershell
+bun --version
+# Output: 1.3.5 ✅
+```
+
+### **Benefícios**
+- ✅ Funciona em qualquer novo terminal
+- ✅ Não precisa reiniciar o computador
+- ✅ Configuração permanente
+- ✅ Pronto para usar!
 
 ---
 
