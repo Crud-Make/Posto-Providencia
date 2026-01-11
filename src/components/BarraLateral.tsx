@@ -15,16 +15,14 @@ import {
   Calendar,
   Target,
   Building2,
-  BrainCircuit,
-  Crown,
-  Wallet
+  Crown
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia') => void;
+  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'owner_dashboard';
+  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'owner_dashboard') => void;
   className?: string;
 }
 
@@ -42,19 +40,16 @@ const BarraLateral: React.FC<SidebarProps & { onClose?: () => void }> = ({ curre
 
   const menuItems = [
     { id: 'owner_dashboard', label: 'Visão Proprietário', icon: Crown },
-    { id: 'ai_strategy', label: 'Estrategista IA', icon: BrainCircuit },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'closing', label: 'Fechamento de Caixa', icon: ShoppingCart },
     { id: 'daily_report', label: 'Relatório Diário', icon: ClipboardList },
     { id: 'purchase', label: 'Compras', icon: ShoppingBag },
     { id: 'attendants', label: 'Frentistas', icon: Users },
     { id: 'clients', label: 'Clientes / Fiado', icon: Users },
-    { id: 'baratencia', label: 'Baratência', icon: Wallet },
     { id: 'inventory', label: 'Tanques (Combustível)', icon: Fuel },
     { id: 'products', label: 'Produtos e Estoque', icon: Package },
     { id: 'finance', label: 'Empréstimos', icon: Banknote },
     { id: 'expenses', label: 'Gestão de Despesas', icon: ShoppingBag },
-    { id: 'solvency', label: 'Painel de Solvência', icon: Target },
     { id: 'schedule', label: 'Escala e Folgas', icon: Calendar },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ] as const;
