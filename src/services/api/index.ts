@@ -37,6 +37,7 @@ export { vendaProdutoService } from './vendaProduto.service';
 export { escalaService } from './escala.service';
 export { clienteService } from './cliente.service';
 export { notaFrentistaService } from './notaFrentista.service';
+export { tanqueService } from './tanque.service';
 export { resetService } from './reset.service';
 export { aggregatorService } from './aggregator.service';
 export { aggregatorService as legacyService } from './aggregator.service';
@@ -79,6 +80,7 @@ import { vendaProdutoService } from './vendaProduto.service';
 import { escalaService } from './escala.service';
 import { clienteService } from './cliente.service';
 import { notaFrentistaService } from './notaFrentista.service';
+import { tanqueService } from './tanque.service';
 import { resetService } from './reset.service';
 
 // TODO: Importar outros services conforme forem migrados
@@ -91,6 +93,7 @@ export const api = {
   bomba: bombaService,
   bico: bicoService,
   estoque: estoqueService,
+  tanque: tanqueService,
   frentista: frentistaService,
   leitura: leituraService,
   fechamento: fechamentoService,

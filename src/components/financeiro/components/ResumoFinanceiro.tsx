@@ -1,5 +1,5 @@
 import React from 'react';
-import KPICard from '../../KPICard';
+import KPICard from '../../dashboard/components/KPICard';
 import { DadosFinanceiros } from '../hooks/useFinanceiro';
 import { DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 

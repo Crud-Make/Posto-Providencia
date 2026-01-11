@@ -1,29 +1,29 @@
 import React, { useState } from 'react';
 import Cabecalho from './components/Cabecalho';
 import BarraLateral from './components/BarraLateral';
-import TelaDashboard from './components/TelaDashboard';
-import TelaFechamentoDiario from './components/TelaFechamentoDiario';
-import TelaRelatorioDiario from './components/TelaRelatorioDiario';
-import TelaRegistroCompras from './components/TelaRegistroCompras';
-import TelaDashboardEstoque from './components/TelaDashboardEstoque';
-import TelaGestaoEstoque from './components/TelaGestaoEstoque';
-import TelaAnaliseCustos from './components/TelaAnaliseCustos';
-import TelaLeiturasDiarias from './components/TelaLeiturasDiarias';
-import TelaAnaliseVendas from './components/TelaAnaliseVendas';
-import TelaDashboardVendas from './components/TelaDashboardVendas';
-import TelaGestaoFrentistas from './components/TelaGestaoFrentistas';
+import TelaDashboard from './components/dashboard';
+import TelaFechamentoDiario from './components/fechamento-diario';
+import TelaRelatorioDiario from './components/relatorio-diario';
+import TelaRegistroCompras from './components/registro-compras';
+import TelaDashboardEstoque from './components/estoque/dashboard';
+import TelaGestaoEstoque from './components/estoque/gestao';
+import TelaAnaliseCustos from './components/analise-custos';
+import TelaLeiturasDiarias from './components/leituras';
+import TelaAnaliseVendas from './components/vendas/analise';
+import TelaDashboardVendas from './components/vendas/dashboard';
+import TelaGestaoFrentistas from './components/frentistas';
 import TelaGestaoFinanceira from './components/financeiro';
-import TelaConfiguracoes from './components/TelaConfiguracoes';
+import { TelaConfiguracoes } from './components/configuracoes';
 import TelaGestaoEscalas from './components/TelaGestaoEscalas';
 import TelaGestaoClientes from './components/clientes/TelaGestaoClientes';
-import TelaGestaoDespesas from './components/TelaGestaoDespesas';
-import TelaDashboardProprietario from './components/TelaDashboardProprietario';
+import TelaGestaoDespesas from './components/despesas';
+import TelaDashboardProprietario from './components/dashboard-proprietario';
 import TelaLogin from './components/TelaLogin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
 import { Loader2 } from 'lucide-react';
 import { Toaster } from 'sonner';
-import UpdateNotifier from './components/UpdateNotifier';
+import UpdateNotifier from './components/common/UpdateNotifier';
 
 /**
  * Componente principal de conteúdo da aplicação.

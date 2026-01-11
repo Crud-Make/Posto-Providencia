@@ -2,6 +2,7 @@ import React from 'react';
 import { Package } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
 import { CombustivelHibrido } from '../../hooks/registro-compras/useCombustiveisHibridos';
+import { CalculosRegistro } from '../../hooks/registro-compras/useCalculosRegistro';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 import { Database } from '../../types/database/index';
 
@@ -10,8 +11,8 @@ type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
 interface Props {
    combustiveis: CombustivelHibrido[];
    updateCombustivel: (id: number, field: keyof CombustivelHibrido, value: string) => void;
-   calculos: any;
-   totais: any;
+   calculos: CalculosRegistro;
+   totais: CalculosRegistro['totais'];
    despesasMes: string;
    setDespesasMes: (v: string) => void;
    saving: boolean;

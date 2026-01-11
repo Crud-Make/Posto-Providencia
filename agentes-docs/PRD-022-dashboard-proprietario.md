@@ -1,106 +1,134 @@
 # PRD-022: Refatoração TelaDashboardProprietario.tsx
 
 > **Issue:** A criar
-> **Componente:** `TelaDashboardProprietario.tsx` (~599 linhas)
+> **Componente:** `TelaDashboardProprietario.tsx` (599 linhas)
 > **Sprint:** 4 (Componente 1/7)
 > **Prioridade:** 🔴 Alta
+> **Data:** 11/01/2026
 
 ---
 
-## 🎯 Objetivo
+## 🎯 1. Objetivo
 
-Refatorar o dashboard principal do proprietário, extraindo lógica de agregação de métricas e visualizações em hooks e componentes especializados.
+Modularizar o componente `TelaDashboardProprietario.tsx`, transformando-o em um dashboard estratégico de alta performance. O foco é separar a complexa lógica de agregação de dados (vendas, despesas, dívidas, empréstimos) da camada de apresentação, garantindo manutenibilidade e clareza.
 
 ---
 
-## 📊 Estrutura Proposta
+## 📊 2. Estado Atual
 
+### 2.1 Análise do Componente
+- **Arquivo:** `src/components/TelaDashboardProprietario.tsx`
+- **Linhas:** ~599
+- **Responsabilidades:**
+  - Buscar postos ativos.
+  - Calcular vendas do dia e mês (via `fechamentoService`).
+  - Calcular dívidas pendentes (query direta Supabase).
+  - Calcular empréstimos ativos (query direta Supabase).
+  - Calcular despesas pendentes (query direta Supabase).
+  - Calcular margem média de combustíveis (query direta Supabase).
+  - Exibir cards de resumo (Vendas, Lucro, Dívidas, Equipe).
+  - Exibir demonstrativo financeiro (Entradas - Saídas = Resultado).
+  - Exibir alertas (embora a lógica de alertas pareça estática/simples no código atual).
+
+### 2.2 Problemas
+1. **Lógica de Dados Misturada com UI:** Queries do Supabase dentro do `useEffect`/`loadData`.
+2. **Cálculos Manuais:** Reductions e filtros feitos diretamente no render ou no fetch.
+3. **Falta de Reutilização:** Lógica de busca de despesas/dívidas poderia ser útil em outros lugares.
+4. **UI Monolítica:** Um único arquivo gigante contendo toda a estrutura visual.
+
+---
+
+## 🔧 3. Arquitetura Proposta
+
+### 3.1 Estrutura de Diretórios
 ```
 src/components/dashboard-proprietario/
-├── TelaDashboardProprietario.tsx     # ~100 linhas
+├── TelaDashboardProprietario.tsx     # Orquestrador (~100 linhas)
 │
 ├── components/
-│   ├── ResumoExecutivo.tsx           # Cards principais (~120 linhas)
-│   ├── GraficosPerformance.tsx       # Gráficos Recharts (~180 linhas)
-│   ├── AlertasGerenciais.tsx         # Alertas críticos (~100 linhas)
-│   └── UltimasTransacoes.tsx         # Lista resumida (~80 linhas)
+│   ├── ResumoExecutivo.tsx           # Cards do topo (Vendas, Lucro, Dívidas, Equipe)
+│   ├── DemonstrativoFinanceiro.tsx   # Seção "Entradas - Saídas = Resultado"
+│   ├── AlertasGerenciais.tsx         # Lista de alertas
+│   └── FiltrosDashboard.tsx          # Seletor de período (Hoje/Semana/Mês)
 │
 └── hooks/
-    ├── useDashboardProprietario.ts   # Orquestração (~150 linhas)
-    ├── useMetricasGerais.ts          # Cálculos de KPIs (~120 linhas)
-    └── useTendencias.ts              # Análise de tendências (~100 linhas)
+    ├── useDashboardProprietario.ts   # Hook principal de dados (agregação)
+    └── useCalculosDashboard.ts       # Lógica pura de cálculos (margens, totais)
+```
+
+### 3.2 Interfaces (Types)
+
+```typescript
+// src/components/dashboard-proprietario/types.ts
+
+export interface ResumoFinanceiro {
+  vendas: number;
+  lucroEstimado: number;
+  dividas: number;
+  despesas: number;
+  emprestimos: number;
+  frentistasAtivos: number;
+  margemMedia: number;
+}
+
+export interface DadosDashboard {
+  hoje: ResumoFinanceiro;
+  mes: ResumoFinanceiro;
+  posto: {
+    id: string;
+    nome: string;
+  };
+  ultimaAtualizacao: string;
+}
+
+export type PeriodoFiltro = 'hoje' | 'semana' | 'mes';
 ```
 
 ---
 
-## 🔍 Responsabilidades dos Módulos
+## 📝 4. Especificação dos Hooks
 
-### Hooks
+### 4.1 `useDashboardProprietario.ts`
+- **Entrada:** `periodo: PeriodoFiltro`
+- **Responsabilidade:**
+  - Buscar dados de TODAS as fontes em paralelo (`Promise.all`).
+  - `fechamentoService.getByDateRange`
+  - `despesaService.getPendentes`
+  - `dividaService.getPendentes` (se existir, ou query direta encapsulada)
+  - Retornar objeto `DadosDashboard` formatado.
+  - Gerenciar estados `loading`, `refreshing`, `error`.
 
-**useDashboardProprietario.ts**
-- Orquestrar carregamento de dados
-- Gerenciar período selecionado
-- Agregar dados de múltiplas fontes
-
-**useMetricasGerais.ts**
-- Calcular receita total
-- Calcular despesas totais
-- Calcular lucro líquido
-- Calcular margem de lucro
-- Calcular ticket médio
-
-**useTendencias.ts**
-- Comparação com período anterior
-- Cálculo de variação percentual
-- Identificação de tendências (alta/baixa/estável)
-- Projeções simples
-
-### Componentes
-
-**ResumoExecutivo.tsx**
-- 4-6 cards de métricas principais
-- Cores semânticas (verde/vermelho)
-- Variação percentual vs período anterior
-- Loading skeleton
-
-**GraficosPerformance.tsx**
-- Gráfico de linha: Receita vs Despesa
-- Gráfico de barras: Vendas por combustível
-- Gráfico de pizza: Formas de pagamento
-- Tooltip customizado
-
-**AlertasGerenciais.tsx**
-- Alertas de estoque baixo
-- Alertas de despesas altas
-- Alertas de margem baixa
-- Ícones e cores por severidade
-
-**UltimasTransacoes.tsx**
-- Últimas 10 transações
-- Data, tipo, valor
-- Badge de tipo de transação
-- Link para detalhes
+### 4.2 `useCalculosDashboard.ts` (Opcional, pode estar dentro do hook principal se for simples)
+- Calcular totais e margens.
+- Validar consistência (ex: margem não pode ser > 100% ou < 0% sem warning).
 
 ---
 
-## ✅ Critérios de Aceite
+## 🎨 5. Especificação dos Componentes
 
-- [ ] Componente principal <150 linhas
-- [ ] Cada hook <150 linhas
-- [ ] Cada componente <200 linhas
-- [ ] Zero `any`
-- [ ] JSDoc em português
-- [ ] Gráficos renderizam corretamente
-- [ ] Filtros de período funcionam
-- [ ] Build sem erros
+### 5.1 `ResumoExecutivo.tsx`
+- Recebe `dados: ResumoFinanceiro`.
+- Renderiza os 4 cards principais do topo.
+- Usa gradientes e ícones conforme design atual.
+
+### 5.2 `DemonstrativoFinanceiro.tsx`
+- Recebe `dados: ResumoFinanceiro` (do mês ou período selecionado).
+- Layout de 3 colunas: Geração de Caixa | Despesas Operacionais | Resultado Líquido.
+- Visualização clara do fluxo: `Receita - Despesa = Lucro`.
+
+### 5.3 `AlertasGerenciais.tsx`
+- Exibe alertas de:
+  - Margem abaixo do esperado.
+  - Dívidas altas.
+  - Pendências financeiras críticas.
 
 ---
 
-## 📚 Referência
+## ✅ 6. Critérios de Aceite
+- [ ] UI idêntica ou melhor que a original (respeitar design system).
+- [ ] Zero queries Supabase dentro de componentes UI.
+- [ ] JSDoc completo em PT-BR.
+- [ ] Types rigorosos (sem `any`).
+- [ ] Carregamento com Skeleton ou Spinner centralizado.
+- [ ] Build de produção sem erros.
 
-**Padrão:** Similar ao StrategicDashboard (#13)
-**Arquivo de exemplo:** `src/components/ai/strategic-dashboard/`
-
----
-
-**Tempo Estimado:** 8-10 horas
