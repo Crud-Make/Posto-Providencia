@@ -16,7 +16,7 @@ import TelaGestaoFinanceira from './components/TelaGestaoFinanceira';
 import TelaDashboardSolvencia from './components/TelaDashboardSolvencia';
 import TelaConfiguracoes from './components/TelaConfiguracoes';
 import TelaGestaoEscalas from './components/TelaGestaoEscalas';
-import TelaGestaoClientes from './components/TelaGestaoClientes';
+import TelaGestaoClientes from './components/clientes/TelaGestaoClientes';
 import TelaGestaoDespesas from './components/TelaGestaoDespesas';
 import TelaDashboardProprietario from './components/TelaDashboardProprietario';
 import TelaGestaoBaratencia from './components/TelaGestaoBaratencia';
