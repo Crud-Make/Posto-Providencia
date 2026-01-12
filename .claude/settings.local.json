@@ -25,7 +25,9 @@
       "Bash(gh issue view:*)",
       "Bash(gh issue edit 8 --body \"$\\(cat <<''EOF''\n## Descrição\n\nO arquivo `src/services/api.ts` está com **~4100 linhas** e precisa ser modularizado para melhorar manutenibilidade, navegação e testabilidade.\n\n## Problemas Identificados\n\n| Problema | Impacto |\n|----------|---------|\n| Arquivo monolítico \\(~4100 linhas\\) | Difícil navegação e manutenção |\n| Uso de `any` em ~30+ locais | Perda de segurança de tipos |\n| Duplicação de código \\(filtro `postoId`\\) | Código repetido em quase todos os métodos |\n| Lógica de negócio misturada | Cálculos dentro de services de API |\n| Funções muito longas | `getMonthlyAnalysis` com ~200 linhas |\n\n## Estrutura Proposta\n\n```\nsrc/services/\n├── api/\n│   ├── index.ts              # Exporta tudo \\(mantém compatibilidade\\)\n│   ├── base.ts               # withPostoFilter\\(\\), tipos comuns\n│   ├── posto.service.ts\n│   ├── combustivel.service.ts\n│   ├── bomba.service.ts\n│   ├── bico.service.ts\n│   ├── frentista.service.ts\n│   ├── leitura.service.ts\n│   ├── fechamento.service.ts # fechamento + fechamentoFrentista\n│   ├── estoque.service.ts\n│   ├── compra.service.ts\n│   ├── financeiro.service.ts # emprestimo, parcela, divida, solvency\n│   ├── dashboard.service.ts\n│   ├── notificacao.service.ts\n│   └── legacy.ts             # fetchDashboardData, fetchSettingsData, etc\n└── supabase.ts\n```\n\n## Critérios de Aceite\n\n- [ ] Cada service em arquivo separado\n- [ ] Zero uso de `any` - tipagem completa\n- [ ] Helper `withPostoFilter\\(\\)` para eliminar duplicação\n- [ ] Compatibilidade mantida \\(`api.combustivel`, `api.fechamento`, etc\\)\n- [ ] Imports existentes continuam funcionando\n- [ ] Documentação JSDoc em português\n- [ ] Build sem erros\n\n## Referências\n\n- Branch: `refactor/issue-7-reestruturacao-src`\n- Relacionado: #7 \\(reestruturação src\\)\nEOF\n\\)\")",
       "Bash(tree:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(dir \"c:\\\\Users\\\\Thiago\\\\Documents\\\\Posto-Providencia\\\\.agent\")",
+      "Bash(dir:*)"
     ]
   }
 }
