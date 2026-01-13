@@ -134,7 +134,7 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
           categoria: 'Recebimento',
           descricao: `Recebimento ${r.forma_pagamento?.nome || 'Diversos'}`,
           valor: r.valor,
-          data: (r as any).fechamento?.data || dataInicio, // Fallback
+          data: r.fechamento?.data || dataInicio, // Fallback
           origem: 'recebimento'
         });
       });

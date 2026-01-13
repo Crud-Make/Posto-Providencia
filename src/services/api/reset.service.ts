@@ -1,4 +1,7 @@
 import { supabase } from '../supabase';
+import type { Database } from '../../types/database/index';
+
+type TableName = keyof Database['public']['Tables'];
 
 export const resetService = {
   /**
@@ -28,12 +31,25 @@ export const resetService = {
       const deletedCounts: Record<string, number> = {};
 
       // Helper para deletar com filtro opcional de posto
-      const deleteTable = async (tableName: string, postoFilter: boolean = true) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let query = (supabase as any).from(tableName).delete();
+      const deleteTable = async (tableName: TableName, postoFilter: boolean = true) => {
+        let query = supabase.from(tableName).delete();
 
         if (postoFilter && postoId) {
-          query = query.eq('posto_id', postoId);
+          if (tableName === 'Leitura' || 
+              tableName === 'FechamentoFrentista' || 
+              tableName === 'Fechamento' || 
+              tableName === 'NotaFrentista' || 
+              tableName === 'Emprestimo' || 
+              tableName === 'Divida' || 
+              tableName === 'Despesa' || 
+              tableName === 'Compra' || 
+              tableName === 'MovimentacaoEstoque' ||
+              tableName === 'Notificacao') {
+             // Todas estas tabelas têm posto_id. TypeScript precisa de ajuda para entender que a string tableName garante isso
+             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+             // @ts-ignore - Garantimos que essas tabelas têm posto_id
+             query = query.eq('posto_id', postoId);
+          }
         } else if (!postoFilter) {
           // Deleta tudo se não filtrar por posto
           query = query.neq('id', 0); // Trick para deletar tudo
@@ -52,12 +68,10 @@ export const resetService = {
         // Precisamos buscar as frentistas do posto para deletar as vendas
         const { data: frentistas } = await supabase.from('Frentista').select('id').eq('posto_id', postoId);
         if (frentistas && frentistas.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any).from('VendaProduto').delete().in('frentista_id', frentistas.map(f => f.id));
+          await supabase.from('VendaProduto').delete().in('frentista_id', frentistas.map(f => f.id));
         }
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('VendaProduto').delete().neq('id', 0);
+        await supabase.from('VendaProduto').delete().neq('id', 0);
       }
 
       // 2. Deletar Leituras
@@ -68,12 +82,10 @@ export const resetService = {
       if (postoId) {
         const { data: fechamentos } = await supabase.from('Fechamento').select('id').eq('posto_id', postoId);
         if (fechamentos && fechamentos.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any).from('Recebimento').delete().in('fechamento_id', fechamentos.map(f => f.id));
+          await supabase.from('Recebimento').delete().in('fechamento_id', fechamentos.map(f => f.id));
         }
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('Recebimento').delete().neq('id', 0);
+        await supabase.from('Recebimento').delete().neq('id', 0);
       }
 
       // 4. Deletar Notificações
@@ -93,12 +105,10 @@ export const resetService = {
       if (postoId) {
         const { data: emp } = await supabase.from('Emprestimo').select('id').eq('posto_id', postoId);
         if (emp && emp.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any).from('Parcela').delete().in('emprestimo_id', emp.map(e => e.id));
+          await supabase.from('Parcela').delete().in('emprestimo_id', emp.map(e => e.id));
         }
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('Parcela').delete().neq('id', 0);
+        await supabase.from('Parcela').delete().neq('id', 0);
       }
 
       // 9. Deletar Empréstimos
@@ -120,17 +130,14 @@ export const resetService = {
       if (postoId) {
         const { data: fren } = await supabase.from('Frentista').select('id').eq('posto_id', postoId);
         if (fren && fren.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any).from('Escala').delete().in('frentista_id', fren.map(f => f.id));
+          await supabase.from('Escala').delete().in('frentista_id', fren.map(f => f.id));
         }
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('Escala').delete().neq('id', 0);
+        await supabase.from('Escala').delete().neq('id', 0);
       }
 
       // 11. Deletar Histórico de Tanques
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let queryHist = (supabase as any).from('HistoricoTanque').delete();
+      let queryHist = supabase.from('HistoricoTanque').delete();
       if (postoId) {
         // Buscar tanques do posto
         const { data: tanques } = await supabase
@@ -150,8 +157,7 @@ export const resetService = {
       deletedCounts['HistoricoTanque'] = histData?.length || 0;
 
       // 12. Resetar Estoque para zero
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let queryEstoque = (supabase as any)
+      let queryEstoque = supabase
         .from('Estoque')
         .update({
           quantidade_atual: 0,
@@ -169,8 +175,7 @@ export const resetService = {
       deletedCounts['Estoque (resetado)'] = estoqueData?.length || 0;
 
       // 13. Resetar saldo devedor dos clientes
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let queryClientes = (supabase as any)
+      let queryClientes = supabase
         .from('Cliente')
         .update({ saldo_devedor: 0 });
 

@@ -29,7 +29,8 @@
       "Bash(dir \"c:\\\\Users\\\\Thiago\\\\Documents\\\\Posto-Providencia\\\\.agent\")",
       "Bash(dir:*)",
       "Bash(timeout 10 npm run dev:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(powershell -Command:*)"
     ]
   }
 }

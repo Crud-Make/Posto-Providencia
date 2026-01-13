@@ -96,7 +96,7 @@ export const useGestaoEstoque = () => {
         observacao: formData.get('observacao') as string,
         data: new Date().toISOString(),
         posto_id: postoAtivoId
-      } as any);
+      });
       setIsMovementModalOpen(false);
       setSelectedProductForMovement(null);
       setMovementType('entrada'); // Reset default
