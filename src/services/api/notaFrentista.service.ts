@@ -171,11 +171,13 @@ export const notaFrentistaService = {
     if (error) throw error;
 
     const notas = data || [];
-    const totalPendente = notas.reduce((acc: number, n: any) => acc + n.valor, 0);
+    type NotaComCliente = { valor: number; cliente: { id: number; nome: string } | null };
+    const notasTyped = notas as unknown as NotaComCliente[];
+    const totalPendente = notasTyped.reduce((acc, n) => acc + n.valor, 0);
 
     // Agrupa por cliente
     const porCliente: Record<string, { nome: string; valor: number }> = {};
-    notas.forEach((n: any) => {
+    notasTyped.forEach((n) => {
       const clienteId = n.cliente?.id?.toString() || 'unknown';
       const clienteNome = n.cliente?.nome || 'Desconhecido';
       if (!porCliente[clienteId]) {

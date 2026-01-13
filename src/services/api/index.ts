@@ -83,8 +83,7 @@ import { notaFrentistaService } from './notaFrentista.service';
 import { tanqueService } from './tanque.service';
 import { resetService } from './reset.service';
 
-// TODO: Importar outros services conforme forem migrados
-
+// [13/01 17:00] Todos os serviços já foram migrados e importados.
 export const api = {
   posto: postoService,
   turno: turnoService,

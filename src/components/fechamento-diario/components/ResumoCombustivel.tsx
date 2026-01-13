@@ -107,11 +107,11 @@ export const SecaoResumo: React.FC<SecaoResumoProps> = ({
     ];
 
     return linhas.map(linha => {
-      const rowData: any = { meio: linha.label };
+      const rowData: Record<string, string | number> = { meio: linha.label };
       let totalLinha = 0;
 
       frentistasAtivos.forEach(f => {
-        const valor = parseValue((f.sessao as any)[linha.key]);
+        const valor = parseValue(f.sessao[linha.key as keyof SessaoFrentista] as string);
         rowData[f.nome] = valor;
         totalLinha += valor;
       });
@@ -273,7 +273,7 @@ export const SecaoResumo: React.FC<SecaoResumoProps> = ({
                     const valor = linha[nome];
                     return (
                       <td key={colIdx} className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 text-right font-mono">
-                        {valor > 0 ? paraReais(valor) : <span className="text-slate-600">-</span>}
+                        {typeof valor === 'number' && valor > 0 ? paraReais(valor) : <span className="text-slate-600">-</span>}
                       </td>
                     );
                   })}

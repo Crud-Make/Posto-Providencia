@@ -101,7 +101,7 @@ export const useSessoesFrentistas = (
       );
 
       if (dados.length > 0) {
-        const mapeadas: SessaoFrentista[] = (dados as any[]).map(fs => ({
+        const mapeadas: SessaoFrentista[] = dados.map(fs => ({
           tempId: `existing-${fs.id}`,
           frentistaId: fs.frentista_id,
           valor_cartao: paraReais(fs.valor_cartao),
@@ -170,7 +170,7 @@ export const useSessoesFrentistas = (
 
             await fechamentoFrentistaService.update(Number(tempId.replace('existing-', '')), {
               observacoes: obsNova
-            } as any);
+            });
 
             console.log('✅ Status persistido no banco');
           }

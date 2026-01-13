@@ -33,21 +33,20 @@ export const useFrentistas = () => {
             if (erroFrentistas) throw erroFrentistas;
 
             // Mapeia para o tipo PerfilFrentista
-            const listaMapeada: PerfilFrentista[] = (dadosFrentistas || []).map((f: any) => ({
+            const listaMapeada: PerfilFrentista[] = (dadosFrentistas || []).map((f) => ({
                 id: String(f.id),
                 nome: f.nome,
                 cpf: f.cpf,
                 status: f.ativo ? 'Ativo' : 'Inativo',
                 dataAdmissao: f.data_admissao,
-                email: f.email,
                 telefone: f.telefone,
                 postoId: f.posto_id
             }));
 
             setFrentistas(listaMapeada);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Erro ao carregar frentistas:', err);
-            setError(err.message || 'Erro ao carregar lista de frentistas');
+            setError(err instanceof Error ? err.message : 'Erro ao carregar lista de frentistas');
         } finally {
             setLoading(false);
         }
@@ -88,7 +87,7 @@ export const useFrentistas = () => {
             }
             await carregarFrentistas();
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Erro ao salvar frentista:', err);
             throw err;
         } finally {
@@ -101,7 +100,7 @@ export const useFrentistas = () => {
             await frentistaService.delete(Number(id));
             await carregarFrentistas();
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Erro ao excluir frentista:', err);
             throw err;
         }

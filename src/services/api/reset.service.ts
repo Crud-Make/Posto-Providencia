@@ -45,7 +45,7 @@ export const resetService = {
       };
 
       // 1. Deletar Vendas de Produtos (refere-se a FechamentoFrentista)
-      await deleteTable('VendaProduto', false); 
+      await deleteTable('VendaProduto', false);
 
       // Deletar VendaProduto (sem posto_id na tabela)
       if (postoId) {
@@ -192,11 +192,11 @@ export const resetService = {
         deletedCounts
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao resetar sistema:', error);
       return {
         success: false,
-        message: `Erro ao resetar sistema: ${error.message}`,
+        message: `Erro ao resetar sistema: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         deletedCounts: {}
       };
     }
