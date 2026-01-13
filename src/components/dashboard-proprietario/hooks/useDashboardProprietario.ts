@@ -12,6 +12,14 @@ interface UseDashboardReturn {
   recarregar: () => Promise<void>;
 }
 
+/**
+ * Hook personalizado para obter dados do dashboard.
+ *
+ * Realiza chamadas assíncronas para serviços de postos, fechamentos, frentistas e financeiro.
+ * Consolida os dados em uma estrutura unificada para exibição.
+ *
+ * @returns {UseDashboardReturn} Objeto contendo dados, estado de carregamento, erro e função de recarga.
+ */
 export function useDashboardProprietario(): UseDashboardReturn {
   const [dados, setDados] = useState<DadosDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +79,8 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
 
   // Fechamentos Hoje
   const fechamentosHoje = await fechamentoService.getByDate(today, posto.id);
-  const vendasHoje = fechamentosHoje.reduce((acc: number, f: any) => acc + (f.total_vendas || 0), 0);
+  type FechamentoRow = { total_vendas?: number };
+  const vendasHoje = (fechamentosHoje as FechamentoRow[]).reduce((acc, f) => acc + (f.total_vendas || 0), 0);
 
   // Fechamentos Mês
   const { data: fechamentosMes } = await supabase
@@ -80,7 +89,7 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
     .eq('posto_id', posto.id)
     .gte('data', startOfMonth)
     .lte('data', today);
-  
+
   const vendasMes = (fechamentosMes || []).reduce((acc, f) => acc + (f.total_vendas || 0), 0);
 
   // Dívidas
@@ -89,7 +98,7 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
     .select('valor')
     .eq('posto_id', posto.id)
     .eq('status', 'pendente');
-  
+
   const dividasTotal = (dividas || []).reduce((acc, d) => acc + (d.valor || 0), 0);
 
   // Empréstimos
@@ -98,7 +107,7 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
     .select('valor_total')
     .eq('posto_id', posto.id)
     .eq('ativo', true);
-  
+
   const emprestimosTotal = (emprestimos || []).reduce((acc, e) => acc + (e.valor_total || 0), 0);
 
   // Despesas
@@ -107,7 +116,7 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
     .select('valor')
     .eq('posto_id', posto.id)
     .eq('status', 'pendente');
-  
+
   const despesasPendentes = (despesas || []).reduce((acc, d) => acc + (d.valor || 0), 0);
 
   // Margem Média

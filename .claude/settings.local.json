@@ -27,7 +27,9 @@
       "Bash(tree:*)",
       "Bash(wc:*)",
       "Bash(dir \"c:\\\\Users\\\\Thiago\\\\Documents\\\\Posto-Providencia\\\\.agent\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(timeout:*)"
     ]
   }
 }

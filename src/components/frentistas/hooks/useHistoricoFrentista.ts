@@ -26,10 +26,22 @@ export const useHistoricoFrentista = () => {
 
             if (error) throw error;
 
-            const historicoFormatado: HistoricoFrentista[] = (data || []).map((h: any) => {
+            type FechamentoFrentistaRow = {
+                id: number;
+                valor_cartao?: number;
+                valor_nota?: number;
+                valor_pix?: number;
+                valor_dinheiro?: number;
+                valor_conferido?: number;
+                fechamento?: {
+                    data?: string;
+                    turno?: { nome?: string } | null;
+                } | null;
+            };
+            const historicoFormatado: HistoricoFrentista[] = ((data || []) as FechamentoFrentistaRow[]).map((h) => {
                 const totalDeclarado = (h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0);
                 const diferenca = totalDeclarado - (h.valor_conferido || 0);
-                
+
                 return {
                     id: String(h.id),
                     data: h.fechamento?.data || 'N/A',

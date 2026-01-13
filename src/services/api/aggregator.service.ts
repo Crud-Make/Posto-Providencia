@@ -9,7 +9,43 @@ import { fechamentoFrentistaService } from './fechamentoFrentista.service';
 import { compraService } from './compra.service';
 import { despesaService } from './despesa.service';
 import { configuracaoService } from './configuracao.service';
-import type { Combustivel, Frentista } from '../../types/database/index';
+import type { Combustivel, Frentista, FechamentoFrentista, Leitura, Compra, Fechamento } from '../../types/database/index';
+
+interface FechamentoFrentistaWithRelations extends FechamentoFrentista {
+  fechamento?: Fechamento & {
+    turno?: {
+      nome: string;
+    };
+  };
+}
+
+interface LeituraWithRelations extends Leitura {
+  bico?: {
+    combustivel_id: number;
+  };
+  combustivel?: {
+    Combustivel?: {
+      nome: string;
+    };
+  };
+}
+
+interface CaixaAberto {
+  frentista_id: number;
+  fechamento: {
+    status: string;
+    data: string;
+  };
+}
+
+interface CompraWithRelations extends Compra {
+  combustivel?: {
+    nome: string;
+  };
+  fornecedor?: {
+    nome: string;
+  };
+}
 
 /**
  * Service Aggregator (Padrão Facade)
@@ -211,8 +247,7 @@ export const aggregatorService = {
 
     // ClosingsData - Lista consolidada de status dos frentistas
     // Mapeia os fechamentos por frentista (sem filtro de turno - sistema simplificado)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fechamentosMap = new Map<number, any>();
+    const fechamentosMap = new Map<number, FechamentoFrentista>();
     fechamentosFrentistaHoje.forEach((ff) => {
       fechamentosMap.set(ff.frentista_id, ff);
     });
@@ -444,8 +479,7 @@ export const aggregatorService = {
       console.error('Error fetching frentistas:', frentistasError);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const frentistas = (frentistasData || []).map((f: any) => ({ ...f, email: null }));
+    const frentistas = (frentistasData || []).map((f) => ({ ...f, email: null }));
 
     // Buscar histórico de fechamentos por frentista
     const fechamentos = await Promise.all(
@@ -470,10 +504,9 @@ export const aggregatorService = {
       .gte('fechamento.data', `${hojeStr}T00:00:00`)
       .lte('fechamento.data', `${hojeStr}T23:59:59`);
 
-    const mapCaixaAberto = new Set();
+    const mapCaixaAberto = new Set<number>();
     if (caixasAbertos) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      caixasAbertos.forEach((c: any) => {
+      (caixasAbertos as unknown as CaixaAberto[]).forEach((c) => {
         mapCaixaAberto.add(c.frentista_id);
       });
     }
@@ -524,9 +557,8 @@ export const aggregatorService = {
     const allHistories = fechamentos.flat();
     const history = allHistories.slice(0, 10).map((h) => ({
       id: String(h.id),
-      date: h.fechamento?.data || 'N/A',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      shift: (h.fechamento as any)?.turno?.nome || 'N/A',
+      date: (h as FechamentoFrentistaWithRelations).fechamento?.data || 'N/A',
+      shift: (h as FechamentoFrentistaWithRelations).fechamento?.turno?.nome || 'N/A',
       value: ((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0),
       status: ((((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0)) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
     }));
@@ -557,7 +589,7 @@ export const aggregatorService = {
     ]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const leituras = (leiturasRecentes.data || []) as any[];
+    const leituras = (leiturasRecentes.data || []) as LeituraWithRelations[];
 
     // Map código para icon e color
     const iconMap: Record<string, 'pump' | 'leaf' | 'truck'> = {
@@ -602,8 +634,7 @@ export const aggregatorService = {
       const code = e.combustivel?.codigo || 'N/A';
 
       // Filtra dados do período para este combustível
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const vendasComb = leituras.filter(l => (l.bico as any)?.combustivel_id === e.combustivel_id);
+      const vendasComb = leituras.filter(l => l.bico?.combustivel_id === e.combustivel_id);
       const comprasComb = compras.filter(c => c.combustivel_id === e.combustivel_id);
 
       const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
@@ -671,8 +702,7 @@ export const aggregatorService = {
       id: `venda-${l.id}`,
       date: new Date(l.data).toLocaleDateString('pt-BR') + ' 22:00',
       type: 'Venda' as const,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      product: (l.combustivel as any)?.Combustivel?.nome || 'N/A',
+      product: l.combustivel?.Combustivel?.nome || 'N/A',
       quantity: -(l.litros_vendidos || 0),
       responsible: 'Sistema',
       status: 'Concluído' as const,
@@ -716,8 +746,7 @@ export const aggregatorService = {
     ]);
 
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const leituras = (leiturasMes.data || []) as any[];
+    const leituras = (leiturasMes.data || []) as LeituraWithRelations[];
     const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
     const totalVolumeVendido = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
 
@@ -730,8 +759,7 @@ export const aggregatorService = {
     }
 
     return estoque.map(e => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const vendasComb = leituras.filter(l => (l.bico as any)?.combustivel_id === e.combustivel_id);
+      const vendasComb = leituras.filter(l => l.bico?.combustivel_id === e.combustivel_id);
       const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
       const receitaBruta = vendasComb.reduce((acc, l) => acc + (l.valor_total || 0), 0);
 

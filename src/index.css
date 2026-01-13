@@ -1,5 +1,22 @@
 /* [11/01 09:25] Otimização de tipografia integrada com index.html */
 /* [11/01 09:30] Adição de Tabular Figures para dados financeiros e Roboto Mono para técnicos */
+/* [13/01 08:20] Movido CSS inline do index.html para resolver conflito Vite no build */
+
+/* Aplicação global das fontes */
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-display {
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: -0.02em;
+}
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;

@@ -189,7 +189,12 @@ export const aiService = {
         // Group by Frentista using a Map to handle potential null names safely
         const stats = new Map<string, { total: number; diff: number; count: number }>();
 
-        performanceData.forEach((p: any) => {
+        type PerformanceItem = {
+            valor_total?: number;
+            diferenca?: number;
+            frentista?: { nome: string } | null;
+        };
+        (performanceData as unknown as PerformanceItem[]).forEach((p) => {
             const name = p.frentista?.nome || 'Desconhecido';
             const current = stats.get(name) || { total: 0, diff: 0, count: 0 };
 

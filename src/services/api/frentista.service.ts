@@ -15,20 +15,24 @@ export const frentistaService = {
     const { data, error } = await query;
     if (error) throw error;
 
-    if (postoId && data) {
-      return (data as any[]).filter((f: any) => f.posto_id === postoId);
+    const typedData = (data || []) as (Frentista & { email: string | null })[];
+
+    if (postoId) {
+      return typedData.filter((f) => f.posto_id === postoId);
     }
 
-    return (data || []) as (Frentista & { email: string | null })[];
+    return typedData;
   },
 
   async getAll(postoId?: number): Promise<Frentista[]> {
-    const baseQuery = supabase
+    let query = supabase
       .from('Frentista')
       .select('*')
       .eq('ativo', true);
 
-    const query = withPostoFilter(baseQuery, postoId);
+    if (postoId) {
+      query = query.eq('posto_id', postoId);
+    }
 
     const { data, error } = await query.order('nome');
     if (error) throw error;
