@@ -43,7 +43,7 @@ export const recebimentoService = {
     if (error) throw error;
   },
 
-  async getByDateRange(startDate: string, endDate: string, postoId?: number): Promise<(Recebimento & { forma_pagamento: FormaPagamento | null; maquininha: Maquininha | null })[]> {
+  async getByDateRange(startDate: string, endDate: string, postoId?: number): Promise<(Recebimento & { forma_pagamento: FormaPagamento | null; maquininha: Maquininha | null; fechamento?: { data: string } })[]> {
     let query = supabase
       .from('Recebimento')
       .select(`
@@ -61,6 +61,6 @@ export const recebimentoService = {
 
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []) as unknown as (Recebimento & { forma_pagamento: FormaPagamento | null; maquininha: Maquininha | null })[];
+    return (data || []) as unknown as (Recebimento & { forma_pagamento: FormaPagamento | null; maquininha: Maquininha | null; fechamento?: { data: string } })[];
   },
 };

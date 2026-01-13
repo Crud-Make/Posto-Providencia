@@ -1,19 +1,25 @@
 import { supabase } from '../supabase';
+import type { ClienteTable, NotaFrentistaTable } from '../../types/database/tables/clientes';
+import type { FrentistaTable } from '../../types/database/tables/operacoes';
+
+export interface NotaFrentista extends NotaFrentistaTable['Row'] {
+  frentista?: Pick<FrentistaTable['Row'], 'id' | 'nome'>;
+}
 
 export interface Cliente {
   id: number;
   nome: string;
-  documento?: string;
-  telefone?: string;
-  email?: string;
-  endereco?: string;
+  documento?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  endereco?: string | null;
   limite_credito?: number;
   saldo_devedor?: number;
   ativo: boolean;
   bloqueado?: boolean;
   posto_id: number;
   created_at?: string;
-  notas?: any[]; // Tipo NotaFrentista será definido no outro arquivo, usando any aqui para evitar dependência circular complexa ou usar interface local
+  notas?: Partial<NotaFrentista>[];
 }
 
 export const clienteService = {
