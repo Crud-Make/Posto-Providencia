@@ -27,7 +27,7 @@ export const dividaService = {
 
     const { data, error } = await query.order('data_vencimento', { ascending: true });
     if (error) throw error;
-    
+
     return (data || []).map((d: DividaRow) => ({
       id: String(d.id),
       descricao: d.descricao,
@@ -56,7 +56,7 @@ export const dividaService = {
       .select()
       .single();
     if (error) throw error;
-    
+
     return {
       id: String(data.id),
       descricao: data.descricao,
@@ -74,8 +74,7 @@ export const dividaService = {
    * @returns Dívida atualizada
    */
   async update(id: string, updates: Partial<Divida>): Promise<Divida> {
-    const updateData: any = { ...updates };
-    if (updateData.id) delete updateData.id;
+    const { id: _, ...updateData } = updates;
 
     const { data, error } = await supabase
       .from('Divida')
@@ -84,7 +83,7 @@ export const dividaService = {
       .select()
       .single();
     if (error) throw error;
-    
+
     return {
       id: String(data.id),
       descricao: data.descricao,
