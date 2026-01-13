@@ -20,7 +20,7 @@ export const useAnaliseCustos = () => {
 
             // Inicializa margens simuladas com a margem bruta real
             const initialMargins: Margins = {};
-            result.forEach((item: any) => {
+            result.forEach((item: ProfitabilityItem) => {
                 const currentMarginPercent = item.precoVenda > 0 ? (item.margemBrutaL / item.precoVenda) * 100 : 0;
                 initialMargins[item.combustivelId] = Math.max(0, Math.round(currentMarginPercent * 10) / 10);
             });

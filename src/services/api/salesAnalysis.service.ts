@@ -96,8 +96,27 @@ export const salesAnalysisService = {
     // 2. Aggregate by combustivel & Calculate Total Sales Volume
     let totalSalesVolume = 0;
 
+    // Define tipo para leitura com bico e combustível
+    type LeituraComBico = {
+      litros_vendidos?: number;
+      valor_total?: number;
+      leitura_inicial: number;
+      leitura_final: number;
+      bico?: {
+        id: number;
+        numero: number;
+        combustivel?: {
+          id: number;
+          nome: string;
+          codigo: string;
+          preco_venda?: number;
+        };
+      };
+    };
+    const leiturasTyped = (leituras || []) as unknown as LeituraComBico[];
+
     // First pass to sum volume
-    (leituras || []).forEach((l: any) => {
+    leiturasTyped.forEach((l) => {
       if (l.litros_vendidos) totalSalesVolume += l.litros_vendidos;
     });
 
@@ -106,7 +125,7 @@ export const salesAnalysisService = {
     const despesaPorLitro = totalSalesVolume > 0 ? totalDespesas / totalSalesVolume : 0;
 
     const porCombustivel: Record<string, {
-      combustivel: any;
+      combustivel: NonNullable<LeituraComBico['bico']>['combustivel'];
       bicoIds: Set<number>;
       litros: number;
       valor: number;
@@ -115,7 +134,7 @@ export const salesAnalysisService = {
       leituraFinal: number;
     }> = {};
 
-    (leituras || []).forEach((l: any) => {
+    leiturasTyped.forEach((l) => {
       if (!l.bico || !l.bico.combustivel) return;
 
       const codigo = l.bico.combustivel.codigo;
@@ -233,9 +252,11 @@ export const salesAnalysisService = {
       .gte('data', prevStartDate)
       .lte('data', prevEndDate);
 
+    type LeituraPrev = { litros_vendidos?: number; valor_total?: number };
+    const prevLeiturasTyped = (prevLeituras || []) as unknown as LeituraPrev[];
     const previousPeriod = {
-      volume: (prevLeituras || []).reduce((acc: number, l: any) => acc + (l.litros_vendidos || 0), 0),
-      revenue: (prevLeituras || []).reduce((acc: number, l: any) => acc + (l.valor_total || 0), 0),
+      volume: prevLeiturasTyped.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0),
+      revenue: prevLeiturasTyped.reduce((acc, l) => acc + (l.valor_total || 0), 0),
       profit: 0, // Simplification
     };
 

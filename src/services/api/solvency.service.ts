@@ -62,7 +62,9 @@ export const solvencyService = {
 
     const { data: recebimentos, error: recError } = await queryRec;
     if (recError) throw recError;
-    const saldoAtual = recebimentos?.reduce((acc, r: any) => acc + Number(r.valor), 0) || 0;
+    type RecebimentoComValor = { valor: number };
+    const recTyped = (recebimentos || []) as unknown as RecebimentoComValor[];
+    const saldoAtual = recTyped.reduce((acc, r) => acc + Number(r.valor), 0);
 
     // 2. Média Diária (Faturamento Líquido dos últimos 30 dias)
     let queryFech = supabase
@@ -146,7 +148,7 @@ export const solvencyService = {
 
     // 5. Progresso: Vendas (lucro) acumuladas no mês atual
     const inicioMes = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-    
+
     let queryLeituras = supabase
       .from('Leitura')
       .select('litros_vendidos')

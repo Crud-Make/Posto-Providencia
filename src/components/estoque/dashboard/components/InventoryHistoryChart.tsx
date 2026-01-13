@@ -12,13 +12,21 @@ interface InventoryHistoryChartProps {
     tankName: string;
 }
 
-const LegendWrapper = (props: any) => {
-    const { payload } = props;
+interface LegendEntry {
+    color?: string;
+    value: string;
+}
+
+interface LegendWrapperProps {
+    payload?: LegendEntry[];
+}
+
+const LegendWrapper: React.FC<LegendWrapperProps> = ({ payload }) => {
     if (!payload) return null;
 
     return (
         <div className="flex justify-center gap-4 mt-2 text-xs text-gray-500">
-            {payload.map((entry: any, index: number) => (
+            {payload.map((entry, index) => (
                 <div key={`item-${index}`} className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                     <span>{entry.value === 'volume_livro' ? 'Estoque Calculado (Livro)' : 'Estoque Físico'}</span>
