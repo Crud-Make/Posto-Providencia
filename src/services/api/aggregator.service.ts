@@ -271,7 +271,7 @@ export const aggregatorService = {
           (fechamento.valor_dinheiro || 0);
 
         // Status baseado na diferença (falta de caixa)
-        const diferenca = Math.abs(fechamento.diferenca || 0);
+        const diferenca = Math.abs(fechamento.diferenca_calculada || 0);
         status = diferenca === 0 ? 'OK' : diferenca > 50 ? 'Divergente' : 'OK';
       }
 
@@ -549,7 +549,6 @@ export const aggregatorService = {
         avatarColorClass: avatarColors[idx % avatarColors.length],
         email: f.email || 'Não cadastrado',
         posto_id: f.posto_id,
-        turno_id: f.turno_id,
       };
     });
 

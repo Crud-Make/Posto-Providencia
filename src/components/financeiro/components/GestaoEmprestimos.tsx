@@ -28,6 +28,8 @@ import { usePosto } from '../../../contexts/PostoContext';
 import { Loan, LoanInstallment } from '../../../types/index';
 import { toast } from 'sonner';
 
+import { DatabaseEnums } from '../../../types/database/enums';
+
 /**
  * Componente para gerenciamento completo de empréstimos.
  * 
@@ -42,14 +44,27 @@ const GestaoEmprestimos: React.FC = () => {
     const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
 
     // Form state
-    const [formData, setFormData] = useState({
+    interface LoanFormData {
+        credor: string;
+        valor_total: number;
+        quantidade_parcelas: number;
+        valor_parcela: number;
+        data_emprestimo: string;
+        data_primeiro_vencimento: string;
+        periodicidade: DatabaseEnums["periodicity_type"];
+        taxa_juros: number;
+        observacoes: string;
+        posto_id: number;
+    }
+
+    const [formData, setFormData] = useState<LoanFormData>({
         credor: '',
         valor_total: 0,
         quantidade_parcelas: 1,
         valor_parcela: 0,
         data_emprestimo: new Date().toISOString().split('T')[0],
         data_primeiro_vencimento: '',
-        periodicidade: 'mensal' as 'mensal' | 'quinzenal' | 'semanal' | 'diario',
+        periodicidade: 'mensal',
         taxa_juros: 0,
         observacoes: '',
         posto_id: postoAtivoId || 1
@@ -106,10 +121,10 @@ const GestaoEmprestimos: React.FC = () => {
         e.preventDefault();
         try {
             if (isEditing && editingLoanId) {
-                await api.emprestimo.update(Number(editingLoanId), formData as any);
+                await api.emprestimo.update(Number(editingLoanId), formData);
                 toast.success("Empréstimo atualizado com sucesso!");
             } else {
-                await api.emprestimo.create(formData as any);
+                await api.emprestimo.create(formData);
                 toast.success("Empréstimo criado com sucesso!");
             }
             setShowNewLoanModal(false);
@@ -167,7 +182,7 @@ const GestaoEmprestimos: React.FC = () => {
             valor_parcela: loan.valorParcela,
             data_emprestimo: loan.dataEmprestimo,
             data_primeiro_vencimento: loan.dataPrimeiroVencimento,
-            periodicidade: loan.periodicidade as any,
+            periodicidade: loan.periodicidade as DatabaseEnums["periodicity_type"],
             taxa_juros: loan.taxaJuros,
             observacoes: loan.observacoes,
             posto_id: postoAtivoId || 1
@@ -561,7 +576,7 @@ const GestaoEmprestimos: React.FC = () => {
                                     <label className="block text-xs font-black text-gray-400 uppercase tracking-wider mb-2">Periodicidade</label>
                                     <select
                                         value={formData.periodicidade}
-                                        onChange={(e) => setFormData({ ...formData, periodicidade: e.target.value as any })}
+                                        onChange={(e) => setFormData({ ...formData, periodicidade: e.target.value as DatabaseEnums["periodicity_type"] })}
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold"
                                     >
                                         <option value="mensal">Mensal</option>
