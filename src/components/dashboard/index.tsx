@@ -1,3 +1,12 @@
+// [13/01 10:20] Adicionado JSDoc para conformidade com Regra 5/Qualidade
+/**
+ * Tela de Dashboard Principal (Visão Geral do Posto)
+ *
+ * Exibe os principais indicadores de desempenho (KPIs), gráficos de volume de combustível
+ * e tabela de fechamentos recentes. Permite filtrar por data e frentista.
+ *
+ * @module TelaDashboard
+ */
 import React from 'react';
 import {
   Download,

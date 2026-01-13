@@ -41,7 +41,9 @@ export const postoService = {
 
     if (error) throw error;
     // Tipagem correta para o retorno do join
-    return (data || []).map((up: any) => up.posto).filter(Boolean) as Posto[];
+    type UsuarioPostoComPosto = { posto: Posto };
+    const typedData = (data || []) as unknown as UsuarioPostoComPosto[];
+    return typedData.map((up) => up.posto).filter(Boolean);
   },
 
   async getAllIncludingInactive(): Promise<Posto[]> {

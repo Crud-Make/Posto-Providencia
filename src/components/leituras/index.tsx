@@ -1,3 +1,12 @@
+// [13/01 10:10] Adicionado JSDoc para conformidade com Regra 5/Qualidade
+/**
+ * Tela de Registro de Leituras Diárias
+ *
+ * Permite ao usuário visualizar e registrar leituras de bicos (encerrantes) para o fechamento diário.
+ * Gerencia a seleção de datas, carregamento de bicos e salvamento em lote.
+ *
+ * @module TelaLeituras
+ */
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
@@ -9,15 +18,26 @@ import {
 } from 'lucide-react';
 import { bicoService, leituraService } from '../../services/api';
 import { usePosto } from '../../contexts/PostoContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLeituras } from '../fechamento-diario/hooks/useLeituras';
 import { TabelaLeituras } from './components/TabelaLeituras';
 import { ResumoLeituras } from './components/ResumoLeituras';
 import type { PumpGroup } from './types';
 import type { BicoComDetalhes } from '../../types/fechamento';
 
+/**
+ * Componente principal para a tela de leituras.
+ *
+ * Exibe uma tabela de leituras agrupadas por bomba e um resumo dos totais.
+ * Utiliza hooks personalizados para gerenciar o estado das leituras e bicos.
+ *
+ * @component
+ * @returns {JSX.Element} A tela completa de registro de leituras.
+ */
 const TelaLeituras: React.FC = () => {
   // Context
   const { postoAtivoId } = usePosto();
+  const { user } = useAuth();
 
   // State
   const [bicos, setBicos] = useState<BicoComDetalhes[]>([]);
@@ -96,7 +116,7 @@ const TelaLeituras: React.FC = () => {
             leitura_final: final,
             combustivel_id: bico.combustivel.id,
             preco_litro: bico.combustivel.preco_venda,
-            usuario_id: 1, // TODO: Pegar do contexto de auth
+            usuario_id: user?.id || 1,
             posto_id: postoAtivoId,
             turno_id: null // Explicitamente null para leitura diária sem turno
           };

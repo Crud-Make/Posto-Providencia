@@ -29,7 +29,7 @@ interface UseFiltrosFinanceirosReturn {
   /** Estado atual dos filtros */
   filtros: FiltrosFinanceiros;
   /** Função para atualizar um campo específico dos filtros */
-  atualizar: (campo: keyof FiltrosFinanceiros, valor: any) => void;
+  atualizar: (campo: keyof FiltrosFinanceiros, valor: FiltrosFinanceiros[keyof FiltrosFinanceiros]) => void;
   /** Função para resetar os filtros para o estado inicial (mês atual) */
   resetar: () => void;
   /** Função para aplicar presets de data (hoje, semana, mês, ano) */
@@ -47,7 +47,7 @@ export function useFiltrosFinanceiros(initialPostoId?: number): UseFiltrosFinanc
     const hoje = new Date();
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-    
+
     return {
       dataInicio: inicioMes.toISOString().split('T')[0],
       dataFim: fimMes.toISOString().split('T')[0]
@@ -67,7 +67,7 @@ export function useFiltrosFinanceiros(initialPostoId?: number): UseFiltrosFinanc
     }
   }, [initialPostoId]);
 
-  const atualizar = useCallback((campo: keyof FiltrosFinanceiros, valor: any) => {
+  const atualizar = useCallback((campo: keyof FiltrosFinanceiros, valor: FiltrosFinanceiros[keyof FiltrosFinanceiros]) => {
     setFiltros(prev => ({ ...prev, [campo]: valor }));
   }, []);
 

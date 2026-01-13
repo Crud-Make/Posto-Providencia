@@ -9,7 +9,7 @@ interface FiltrosFinanceirosProps {
   /** Estado atual dos filtros */
   filtros: IFiltros;
   /** Função callback para aplicar alteração em um filtro específico */
-  onAplicar: (campo: keyof IFiltros, valor: any) => void;
+  onAplicar: (campo: keyof IFiltros, valor: IFiltros[keyof IFiltros]) => void;
   /** Função callback para resetar filtros */
   onReset: () => void;
   /** Função callback para aplicar preset de data */

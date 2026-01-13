@@ -27,6 +27,7 @@ import { useSessoesFrentistas } from './hooks/useSessoesFrentistas';
 import { usePagamentos } from './hooks/usePagamentos';
 import { useFechamento } from './hooks/useFechamento';
 import { useAutoSave } from './hooks/useAutoSave';
+import type { SessaoFrentista } from '../../types/fechamento';
 
 import {
    fechamentoService,
@@ -151,7 +152,7 @@ const TelaFechamentoDiario: React.FC = () => {
          if (rascunhoRestaurado) {
             console.log('📦 Aplicando rascunho restaurado...');
             if (rascunhoRestaurado.leituras) definirLeituras(rascunhoRestaurado.leituras);
-            if (rascunhoRestaurado.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as any);
+            if (rascunhoRestaurado.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
             if (rascunhoRestaurado.turnoSelecionado) setSelectedTurno(rascunhoRestaurado.turnoSelecionado);
          } else {
             // Se não tem rascunho, carrega do banco
@@ -304,9 +305,9 @@ const TelaFechamentoDiario: React.FC = () => {
             window.location.reload();
          }, 1500);
 
-      } catch (err: any) {
+      } catch (err: unknown) {
          console.error(err);
-         setError('Erro ao salvar fechamento: ' + (err.message || 'Erro desconhecido'));
+         setError('Erro ao salvar fechamento: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
       } finally {
          setSaving(false);
       }

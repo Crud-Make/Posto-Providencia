@@ -1,14 +1,40 @@
+// [13/01 10:15] Adicionado JSDoc para conformidade com Regra 5/Qualidade
+/**
+ * Componente FormDespesa
+ *
+ * Modal para criação e edição de despesas.
+ * Permite preencher detalhes como descrição, valor, data, categoria e status de pagamento.
+ *
+ * @module FormDespesa
+ */
 import React, { useState, useEffect } from 'react';
 import { X, Save, DollarSign, Calendar, Tag, FileText, AlertCircle } from 'lucide-react';
 import { Despesa, DespesaFormData, CATEGORIAS_DESPESA } from '../types';
 
+/**
+ * Propriedades do componente FormDespesa.
+ */
 interface FormDespesaProps {
+    /** Dados iniciais para edição (opcional) */
     initialData?: Despesa | null;
+    /** ID do posto associado à despesa */
     postoId: number;
+    /** Função de callback ao salvar a despesa */
     onSave: (data: DespesaFormData, id?: string) => Promise<boolean>;
+    /** Função de callback ao cancelar/fechar o modal */
     onCancel: () => void;
 }
 
+/**
+ * Formulário modal para gerenciar despesas.
+ *
+ * Gerencia o estado interno do formulário e validações básicas.
+ * Suporta modos de criação e edição baseados na prop `initialData`.
+ *
+ * @component
+ * @param {FormDespesaProps} props - Propriedades do componente.
+ * @returns {JSX.Element} O modal com o formulário de despesa.
+ */
 const FormDespesa: React.FC<FormDespesaProps> = ({
     initialData,
     postoId,
