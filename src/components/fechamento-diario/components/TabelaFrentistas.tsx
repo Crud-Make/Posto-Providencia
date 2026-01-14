@@ -1,6 +1,15 @@
 import React from 'react';
-// [09/01] Adição de totalizadores e coluna de total por linha - Padronização tabelas escuras
-import { Trash2, Plus, User } from 'lucide-react';
+import {
+  Trash2,
+  Plus,
+  User,
+  Smartphone,
+  CreditCard,
+  FileText,
+  Banknote,
+  Tag,
+  AlertCircle
+} from 'lucide-react';
 import { SessaoFrentista } from '../../../types/fechamento';
 import { Frentista } from '../../../types/database/index';
 import { paraReais, parseValue } from '../../../utils/formatters';
@@ -24,179 +33,184 @@ export const SecaoSessoesFrentistas: React.FC<SecaoSessoesFrentistasProps> = ({
   onAdicionarSessao,
   isLoading
 }) => {
-  // Cálculos dos totais das colunas
-  const totais = sessoes.reduce((acc, sessao) => ({
-    dinheiro: acc.dinheiro + parseValue(sessao.valor_dinheiro),
-    cartao: acc.cartao + parseValue(sessao.valor_cartao),
-    pix: acc.pix + parseValue(sessao.valor_pix),
-    nota: acc.nota + parseValue(sessao.valor_nota),
-    baratao: acc.baratao + parseValue(sessao.valor_baratao),
-  }), { dinheiro: 0, cartao: 0, pix: 0, nota: 0, baratao: 0 });
 
-  const totalGeral = Object.values(totais).reduce((acc, val) => acc + val, 0);
+  // Definição das linhas da matriz (Tipos de Pagamento)
+  const linhasPagamento = [
+    { key: 'valor_pix', label: 'Pix', icon: <Smartphone size={16} className="text-teal-400" /> },
+    { key: 'valor_cartao_debito', label: 'Cartão Débito', icon: <CreditCard size={16} className="text-blue-400" /> },
+    { key: 'valor_cartao_credito', label: 'Cartão Crédito', icon: <CreditCard size={16} className="text-indigo-400" /> },
+    { key: 'valor_nota', label: 'Nota a Prazo', icon: <FileText size={16} className="text-purple-400" /> },
+    { key: 'valor_dinheiro', label: 'Dinheiro', icon: <Banknote size={16} className="text-emerald-400" /> },
+    { key: 'valor_baratao', label: 'Baratão/Outros', icon: <Tag size={16} className="text-yellow-400" /> },
+  ] as const;
+
+  // Cálculos auxiliar
+  const calcularTotalSessao = (sessao: SessaoFrentista) => {
+    return linhasPagamento.reduce((acc, linha) => acc + parseValue(sessao[linha.key]), 0);
+  };
+
+  const calcularTotalPorTipo = (chave: typeof linhasPagamento[number]['key']) => {
+    return sessoes.reduce((acc, sessao) => acc + parseValue(sessao[chave]), 0);
+  };
+
+  const totalGeralCaixa = sessoes.reduce((acc, sessao) => acc + calcularTotalSessao(sessao), 0);
 
   return (
     <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700/50 p-6 mb-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold flex items-center gap-3 text-slate-100">
-          <div className="p-2 bg-purple-500/20 rounded-lg">
-            <span className="text-xl">👤</span>
+          <div className="p-2 bg-blue-500/20 rounded-lg">
+            <span className="text-xl">👥</span>
           </div>
-          Sessões de Frentistas
+          Detalhamento por Frentista
         </h2>
+
         <div className="flex items-center gap-4">
-          <div className="px-4 py-2 bg-slate-900/50 rounded-lg border border-slate-700/50">
-            <span className="text-xs text-slate-400 uppercase tracking-wider block">Total Geral</span>
-            <span className="text-lg font-mono font-bold text-emerald-400">{paraReais(totalGeral)}</span>
+          <div className={`px-3 py-1 rounded-full text-xs font-bold border ${sessoes.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-slate-700 text-slate-400 border-slate-600'}`}>
+            {sessoes.length} Ativos
           </div>
           <button
             onClick={onAdicionarSessao}
             disabled={isLoading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 font-medium transition-colors disabled:opacity-50 shadow-md"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 font-medium transition-colors disabled:opacity-50 shadow-md"
           >
-            <Plus size={18} />
-            Adicionar Frentista
+            <Plus size={16} />
+            Adicionar
           </button>
         </div>
       </div>
 
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="min-w-full divide-y divide-slate-700/50">
-          <thead className="bg-slate-900/50">
-            <tr>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[200px] rounded-tl-lg">Frentista</th>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[140px]">Dinheiro</th>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[140px]">Cartão</th>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[140px]">PIX</th>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[140px]">Nota/Vale</th>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[140px]">Baratão</th>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[140px]">Total</th>
-              <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-10 rounded-tr-lg"></th>
-            </tr>
-          </thead>
-          <tbody className="bg-slate-800 divide-y divide-slate-700/50">
-            {sessoes.map((sessao) => {
-              const totalSessao = parseValue(sessao.valor_dinheiro) + 
-                                parseValue(sessao.valor_cartao) + 
-                                parseValue(sessao.valor_pix) + 
-                                parseValue(sessao.valor_nota) + 
-                                parseValue(sessao.valor_baratao);
-              
-              return (
-                <tr key={sessao.tempId} className="hover:bg-slate-700/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <select
-                      value={sessao.frentistaId || ''}
-                      onChange={(e) => onSessaoChange(sessao.tempId, 'frentistaId', e.target.value)}
-                      disabled={isLoading}
-                      className="block w-full bg-slate-900 border-slate-700 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-2.5 text-slate-200 border transition-colors cursor-pointer"
-                    >
-                      <option value="" className="bg-slate-800 text-slate-400">Selecione...</option>
-                      {frentistas.filter(f => f.ativo).map(f => (
-                        <option key={f.id} value={f.id} className="bg-slate-800 text-slate-200">{f.nome}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={sessao.valor_dinheiro}
-                      onChange={(e) => onSessaoChange(sessao.tempId, 'valor_dinheiro', e.target.value)}
-                      onBlur={(e) => onSessaoBlur(sessao.tempId, 'valor_dinheiro', e.target.value)}
-                      disabled={isLoading}
-                      className="block w-full bg-slate-900 border-slate-700 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm p-2.5 border text-slate-100 font-mono placeholder-slate-600"
-                      placeholder="R$ 0,00"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={sessao.valor_cartao}
-                      onChange={(e) => onSessaoChange(sessao.tempId, 'valor_cartao', e.target.value)}
-                      onBlur={(e) => onSessaoBlur(sessao.tempId, 'valor_cartao', e.target.value)}
-                      disabled={isLoading}
-                      className="block w-full bg-slate-900 border-slate-700 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-2.5 border text-slate-100 font-mono placeholder-slate-600"
-                      placeholder="R$ 0,00"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={sessao.valor_pix}
-                      onChange={(e) => onSessaoChange(sessao.tempId, 'valor_pix', e.target.value)}
-                      onBlur={(e) => onSessaoBlur(sessao.tempId, 'valor_pix', e.target.value)}
-                      disabled={isLoading}
-                      className="block w-full bg-slate-900 border-slate-700 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm p-2.5 border text-slate-100 font-mono placeholder-slate-600"
-                      placeholder="R$ 0,00"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={sessao.valor_nota}
-                      onChange={(e) => onSessaoChange(sessao.tempId, 'valor_nota', e.target.value)}
-                      onBlur={(e) => onSessaoBlur(sessao.tempId, 'valor_nota', e.target.value)}
-                      disabled={isLoading}
-                      className="block w-full bg-slate-900 border-slate-700 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm p-2.5 border text-slate-100 font-mono placeholder-slate-600"
-                      placeholder="R$ 0,00"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={sessao.valor_baratao}
-                      onChange={(e) => onSessaoChange(sessao.tempId, 'valor_baratao', e.target.value)}
-                      onBlur={(e) => onSessaoBlur(sessao.tempId, 'valor_baratao', e.target.value)}
-                      disabled={isLoading}
-                      className="block w-full bg-slate-900 border-slate-700 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm p-2.5 border text-slate-100 font-mono placeholder-slate-600"
-                      placeholder="R$ 0,00"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="block w-full bg-slate-800/50 border border-slate-700/50 rounded-lg p-2.5 text-slate-300 font-mono font-bold text-right">
-                      {paraReais(totalSessao)}
+        {sessoes.length === 0 ? (
+          <div className="text-center text-slate-500 py-12 flex flex-col items-center gap-2 border-2 border-dashed border-slate-700/50 rounded-xl">
+            <User size={48} className="text-slate-600 mb-2" />
+            <p className="text-lg font-medium">Nenhum frentista adicionado</p>
+            <p className="text-sm">Clique em "Adicionar" para iniciar o detalhamento.</p>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-slate-700/50 bg-slate-900/40 rounded-xl overflow-hidden">
+            <thead>
+              <tr className="bg-slate-900">
+                <th className="px-4 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider sticky left-0 z-10 bg-slate-900 border-r border-slate-800 w-[200px]">
+                  MEIO DE PAGAMENTO
+                </th>
+                {sessoes.map((sessao) => (
+                  <th key={sessao.tempId} className="px-4 py-2 min-w-[160px] relative group">
+                    <div className="flex flex-col gap-2">
+                      <select
+                        value={sessao.frentistaId || ''}
+                        onChange={(e) => onSessaoChange(sessao.tempId, 'frentistaId', e.target.value)}
+                        disabled={isLoading}
+                        className="block w-full bg-slate-800 border-slate-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs py-1.5 px-2 text-slate-200 font-bold uppercase tracking-wide text-center appearance-none cursor-pointer hover:bg-slate-700 transition-colors"
+                      >
+                        <option value="" className="text-slate-500">SELECIONE...</option>
+                        {frentistas.filter(f => f.ativo).map(f => (
+                          <option key={f.id} value={f.id}>{f.nome.toUpperCase()}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => onRemoverSessao(sessao.tempId)}
+                        className="absolute -top-1 -right-1 p-1 bg-red-500/10 text-red-400 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all"
+                        title="Remover Frentista"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => onRemoverSessao(sessao.tempId)}
-                      disabled={isLoading}
-                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                      title="Remover"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot className="bg-slate-900/50 font-bold border-t border-slate-700/50">
-            <tr>
-              <td className="px-4 py-4 text-right text-slate-400 uppercase tracking-wider text-xs">Totais</td>
-              <td className="px-4 py-4 text-emerald-400 font-mono text-sm">{paraReais(totais.dinheiro)}</td>
-              <td className="px-4 py-4 text-blue-400 font-mono text-sm">{paraReais(totais.cartao)}</td>
-              <td className="px-4 py-4 text-teal-400 font-mono text-sm">{paraReais(totais.pix)}</td>
-              <td className="px-4 py-4 text-purple-400 font-mono text-sm">{paraReais(totais.nota)}</td>
-              <td className="px-4 py-4 text-yellow-400 font-mono text-sm">{paraReais(totais.baratao)}</td>
-              <td className="px-4 py-4 text-white font-mono text-base border-t-2 border-slate-600 bg-slate-800/30">{paraReais(totalGeral)}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+                  </th>
+                ))}
+                <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider min-w-[120px] bg-slate-900/50 border-l border-slate-800">
+                  TOTAL CAIXA
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/30">
+              {/* Linhas de Pagamento */}
+              {linhasPagamento.map((linha) => {
+                const totalLinha = calcularTotalPorTipo(linha.key);
+                return (
+                  <tr key={linha.key} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-300 flex items-center gap-2 border-r border-slate-800/50">
+                      {linha.icon}
+                      {linha.label}
+                    </td>
+                    {sessoes.map((sessao) => (
+                      <td key={`${sessao.tempId}-${linha.key}`} className="px-2 py-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={sessao[linha.key]}
+                          onChange={(e) => onSessaoChange(sessao.tempId, linha.key, e.target.value)}
+                          onBlur={(e) => onSessaoBlur(sessao.tempId, linha.key, e.target.value)}
+                          disabled={isLoading}
+                          className="block w-full bg-slate-800/50 border-slate-700/50 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-1.5 px-2 text-right text-slate-200 font-mono placeholder-slate-700 transition-all hover:bg-slate-800"
+                          placeholder="0,00"
+                        />
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-bold font-mono text-slate-300 border-l border-slate-800/50 bg-slate-800/20">
+                      {paraReais(totalLinha)}
+                    </td>
+                  </tr>
+                );
+              })}
 
-      {sessoes.length === 0 && (
-        <div className="text-center text-slate-500 py-12 flex flex-col items-center gap-2">
-          <div className="text-4xl filter grayscale opacity-50">👥</div>
-          <p>Nenhuma sessão iniciada. Clique em "Adicionar Frentista".</p>
-        </div>
-      )}
+              {/* Linha Total Venda Frentista */}
+              <tr className="bg-blue-900/20 font-bold">
+                <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-200 border-r border-slate-800/50">
+                  Total Venda Frentista
+                </td>
+                {sessoes.map((sessao) => (
+                  <td key={`total-${sessao.tempId}`} className="px-4 py-4 whitespace-nowrap text-right text-sm font-mono text-white">
+                    {paraReais(calcularTotalSessao(sessao))}
+                  </td>
+                ))}
+                <td className="px-4 py-4 whitespace-nowrap text-right text-base font-mono text-blue-400 border-l border-slate-800/50 bg-blue-900/30">
+                  {paraReais(totalGeralCaixa)}
+                </td>
+              </tr>
+
+              {/* Linha Diferença (Falta) - Placeholder visual por enquanto */}
+              <tr className="bg-red-900/10">
+                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-400 border-r border-slate-800/50">
+                  Diferença (Falta)
+                </td>
+                {sessoes.map((sessao) => (
+                  <td key={`dif-${sessao.tempId}`} className="px-4 py-3 whitespace-nowrap text-right text-sm font-mono text-slate-500">
+                    -
+                  </td>
+                ))}
+                <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-mono text-red-400 border-l border-slate-800/50">
+                  -
+                </td>
+              </tr>
+
+              {/* Linha Participação % */}
+              <tr className="bg-slate-900/30 text-xs">
+                <td className="px-4 py-3 whitespace-nowrap text-slate-500 border-r border-slate-800/50">
+                  Participação %
+                </td>
+                {sessoes.map((sessao) => {
+                  const totalSessao = calcularTotalSessao(sessao);
+                  const perc = totalGeralCaixa > 0 ? (totalSessao / totalGeralCaixa) * 100 : 0;
+                  return (
+                    <td key={`perc-${sessao.tempId}`} className="px-4 py-3 whitespace-nowrap text-right font-mono text-slate-500">
+                      {perc.toFixed(2)}%
+                    </td>
+                  );
+                })}
+                <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-slate-400 border-l border-slate-800/50">
+                  100%
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        )}
+      </div>
+      <div className="mt-4 text-xs text-slate-500 flex items-center gap-2">
+        <AlertCircle size={14} />
+        * Valores de Venda Concentrador devem ser preenchidos com o total vendido registrado na bomba (Encerrante).
+      </div>
     </div>
   );
 };
