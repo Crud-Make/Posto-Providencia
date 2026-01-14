@@ -194,7 +194,7 @@ export const aiService = {
             diferenca?: number;
             frentista?: { nome: string } | null;
         };
-        (performanceData as unknown as PerformanceItem[]).forEach((p) => {
+        (performanceData || []).forEach((p: PerformanceItem) => {
             const name = p.frentista?.nome || 'Desconhecido';
             const current = stats.get(name) || { total: 0, diff: 0, count: 0 };
 

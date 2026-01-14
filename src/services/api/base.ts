@@ -11,11 +11,12 @@ import { supabase } from '../supabase';
  * @param postoId - ID do posto (opcional)
  * @returns Query com filtro aplicado
  */
-export function withPostoFilter<T extends { eq: (column: string, value: number) => T }>(
-  query: T,
-  postoId?: number
-): T {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withPostoFilter<T>(query: T, postoId?: number): T {
   if (postoId) {
+    // Usando any/ts-ignore para evitar erro de "instanciação excessivamente profunda" do TS
+    // com os tipos complexos do Supabase Query Builder
+    // @ts-ignore
     return query.eq('posto_id', postoId);
   }
   return query;

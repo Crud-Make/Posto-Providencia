@@ -1,157 +1,77 @@
-import React, { useState } from 'react';
-import Cabecalho from './components/Cabecalho';
-import BarraLateral from './components/BarraLateral';
-import TelaDashboard from './components/dashboard';
-import TelaFechamentoDiario from './components/fechamento-diario';
-import TelaRelatorioDiario from './components/relatorio-diario';
-import TelaRegistroCompras from './components/registro-compras';
-import TelaDashboardEstoque from './components/estoque/dashboard';
-import TelaGestaoEstoque from './components/estoque/gestao';
-import TelaAnaliseCustos from './components/analise-custos';
-import TelaLeiturasDiarias from './components/leituras';
-import TelaAnaliseVendas from './components/vendas/analise';
-import TelaDashboardVendas from './components/vendas/dashboard';
-import TelaGestaoFrentistas from './components/frentistas';
-import TelaGestaoFinanceira from './components/financeiro';
-import { TelaConfiguracoes } from './components/configuracoes';
-import TelaGestaoEscalas from './components/TelaGestaoEscalas';
-import TelaGestaoClientes from './components/clientes/TelaGestaoClientes';
-import TelaGestaoDespesas from './components/despesas';
-import TelaDashboardProprietario from './components/dashboard-proprietario';
-import TelaLogin from './components/TelaLogin';
+import React, { Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PostoProvider } from './contexts/PostoContext';
-import { Loader2 } from 'lucide-react';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'sonner';
+import { Loader2 } from 'lucide-react';
 import UpdateNotifier from './components/common/UpdateNotifier';
+import MainLayout from './layouts/MainLayout';
+import TelaLogin from './components/TelaLogin';
 
-/**
- * Componente principal de conteúdo da aplicação.
- * Gerencia o estado da visualização atual (currentView) e o layout principal (BarraLateral + Cabecalho + Conteúdo).
- * Também lida com a verificação de autenticação e estados de carregamento iniciais.
- */
-const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'owner_dashboard'>('dashboard');
+// Lazy loading das telas para melhor performance
+const TelaDashboard = React.lazy(() => import('./components/dashboard'));
+const TelaFechamentoDiario = React.lazy(() => import('./components/fechamento-diario'));
+const TelaRelatorioDiario = React.lazy(() => import('./components/relatorio-diario'));
+const TelaRegistroCompras = React.lazy(() => import('./components/registro-compras'));
+const TelaDashboardEstoque = React.lazy(() => import('./components/estoque/dashboard'));
+const TelaGestaoEstoque = React.lazy(() => import('./components/estoque/gestao'));
+const TelaAnaliseCustos = React.lazy(() => import('./components/analise-custos'));
+const TelaLeiturasDiarias = React.lazy(() => import('./components/leituras'));
+const TelaAnaliseVendas = React.lazy(() => import('./components/vendas/analise'));
+const TelaDashboardVendas = React.lazy(() => import('./components/vendas/dashboard'));
+const TelaGestaoFrentistas = React.lazy(() => import('./components/frentistas'));
+const TelaGestaoFinanceira = React.lazy(() => import('./components/financeiro'));
+// TelaConfiguracoes é export nomeado
+const TelaConfiguracoes = React.lazy(() => import('./components/configuracoes').then(module => ({ default: module.TelaConfiguracoes })));
+const TelaGestaoEscalas = React.lazy(() => import('./components/TelaGestaoEscalas'));
+const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGestaoClientes'));
+const TelaGestaoDespesas = React.lazy(() => import('./components/despesas'));
+const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
 
-  // Estado para controlar o menu mobile (Drawer)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+// Componente de Loading para Suspense
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-full w-full min-h-[400px] text-blue-600">
+    <Loader2 size={48} className="animate-spin" />
+  </div>
+);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-blue-600">
-        <Loader2 size={48} className="animate-spin" />
-      </div>
-    );
-  }
-
-  // Mesmo sem usuário, mostramos o app agora (auth mockada)
-  if (!user) {
-    return <TelaLogin />;
-  }
+const AppRoutes = () => {
+  const { user } = useAuth();
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <TelaLogin />} />
+      
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Suspense fallback={<LoadingFallback />}><TelaDashboard /></Suspense>} />
+        <Route path="/fechamento" element={<Suspense fallback={<LoadingFallback />}><TelaFechamentoDiario /></Suspense>} />
+        <Route path="/relatorio-diario" element={<Suspense fallback={<LoadingFallback />}><TelaRelatorioDiario /></Suspense>} />
+        <Route path="/compras" element={<Suspense fallback={<LoadingFallback />}><TelaRegistroCompras /></Suspense>} />
+        <Route path="/estoque/tanques" element={<Suspense fallback={<LoadingFallback />}><TelaDashboardEstoque /></Suspense>} />
+        <Route path="/estoque/produtos" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoEstoque /></Suspense>} />
+        <Route path="/analise-custos" element={<Suspense fallback={<LoadingFallback />}><TelaAnaliseCustos /></Suspense>} />
+        <Route path="/leituras" element={<Suspense fallback={<LoadingFallback />}><TelaLeiturasDiarias /></Suspense>} />
+        <Route path="/vendas/analise" element={<Suspense fallback={<LoadingFallback />}><TelaAnaliseVendas /></Suspense>} />
+        <Route path="/vendas/dashboard" element={<Suspense fallback={<LoadingFallback />}><TelaDashboardVendas /></Suspense>} />
+        <Route path="/frentistas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoFrentistas /></Suspense>} />
+        <Route path="/financeiro" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoFinanceira /></Suspense>} />
+        <Route path="/configuracoes" element={<Suspense fallback={<LoadingFallback />}><TelaConfiguracoes /></Suspense>} />
+        <Route path="/escalas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoEscalas /></Suspense>} />
+        <Route path="/clientes" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoClientes /></Suspense>} />
+        <Route path="/despesas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoDespesas /></Suspense>} />
+        <Route path="/proprietario" element={<Suspense fallback={<LoadingFallback />}><TelaDashboardProprietario /></Suspense>} />
+      </Route>
 
-      {/* Overlay Backdrop para Mobile */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden animate-in fade-in"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Barra Lateral (Desktop + Mobile Drawer) */}
-      <BarraLateral
-        currentView={currentView}
-        onNavigate={(view) => {
-          setCurrentView(view);
-          setIsMobileMenuOpen(false); // Fecha o menu ao navegar no mobile
-        }}
-        onClose={() => setIsMobileMenuOpen(false)}
-        className={`
-          ${isMobileMenuOpen ? 'flex fixed inset-y-0 left-0 z-50 shadow-xl' : 'hidden'} 
-          lg:flex lg:static lg:shadow-none lg:h-screen lg:sticky lg:top-0
-        `}
-      />
-
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Cabeçalho para Mobile */}
-        <div className="lg:hidden">
-          <Cabecalho
-            currentView={currentView}
-            onNavigate={setCurrentView}
-            onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          />
-        </div>
-
-        {/* Conteúdo Principal */}
-        <main className="flex-1 overflow-y-auto w-full custom-scrollbar">
-          <div className="w-full">
-            {currentView === 'dashboard' && (
-              <TelaDashboard onNewClosing={() => setCurrentView('closing')} />
-            )}
-            {currentView === 'sales_dashboard' && (
-              <TelaDashboardVendas />
-            )}
-            {currentView === 'attendants' && (
-              <TelaGestaoFrentistas />
-            )}
-            {currentView === 'settings' && (
-              <TelaConfiguracoes />
-            )}
-            {currentView === 'closing' && (
-              <TelaFechamentoDiario />
-            )}
-            {currentView === 'readings' && (
-              <TelaLeiturasDiarias />
-            )}
-            {currentView === 'inventory' && (
-              <TelaDashboardEstoque />
-            )}
-            {currentView === 'products' && (
-              <TelaGestaoEstoque />
-            )}
-            {currentView === 'purchase' && (
-              <TelaRegistroCompras />
-            )}
-            {currentView === 'finance' && (
-              <TelaGestaoFinanceira />
-            )}
-            {currentView === 'analysis' && (
-              <TelaAnaliseCustos />
-            )}
-            {currentView === 'reports' && (
-              <TelaAnaliseVendas />
-            )}
-            {currentView === 'schedule' && (
-              <TelaGestaoEscalas />
-            )}
-            {currentView === 'clients' && (
-              <TelaGestaoClientes />
-            )}
-            {currentView === 'daily_report' && (
-              <TelaRelatorioDiario />
-            )}
-            {currentView === 'expenses' && (
-              <TelaGestaoDespesas />
-            )}
-            {currentView === 'owner_dashboard' && (
-              <TelaDashboardProprietario />
-            )}
-          </div>
-        </main>
-      </div>
-    </div>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 };
 
-import { ThemeProvider } from './contexts/ThemeContext';
+// [14/01 07:05] Refatoração completa para React Router + Lazy Loading.
+// Implementado Suspense para carregamento sob demanda das rotas.
 
-/**
- * Componente raiz da aplicação (Ponto de Entrada).
- * Provê os contextos globais (Auth, Posto, Theme) e o componente de notificações Toaster.
- */
 const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -159,7 +79,9 @@ const App: React.FC = () => {
         <ThemeProvider>
           <Toaster position="top-right" richColors closeButton />
           <UpdateNotifier />
-          <AppContent />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
         </ThemeProvider>
       </PostoProvider>
     </AuthProvider>

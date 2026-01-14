@@ -1,18 +1,14 @@
 import { supabase } from '../supabase';
+import type { Escala as EscalaBase, Frentista } from '../../types/database/aliases';
+import type { WithRelations } from '../../types/ui/helpers';
 
-export interface Escala {
-  id: number;
-  frentista_id: number;
-  data: string;
-  tipo: 'FOLGA' | 'TRABALHO';
-  turno_id?: number;
-  observacao?: string;
-  posto_id?: number;
-  created_at?: string;
-  Frentista?: {
-    nome: string;
-  };
-}
+// [14/01 16:05] Alinhando Escala com tipos do Supabase e relacionamentos
+export type Escala = WithRelations<
+  EscalaBase,
+  {
+    Frentista?: Pick<Frentista, 'nome'>;
+  }
+>;
 
 export const escalaService = {
   /**
@@ -35,7 +31,7 @@ export const escalaService = {
         console.warn('Erro ao buscar escalas (tabela pode não existir):', error);
         return [];
       }
-      return (data as unknown as Escala[]) || [];
+      return (data || []) as Escala[];
     } catch (error) {
       console.warn('Erro ao buscar escalas:', error);
       return [];
@@ -67,7 +63,7 @@ export const escalaService = {
         console.warn('Erro ao buscar escalas por mês (tabela pode não existir):', error);
         return [];
       }
-      return (data as unknown as Escala[]) || [];
+      return (data || []) as Escala[];
     } catch (error) {
       console.warn('Erro ao buscar escalas por mês:', error);
       return [];
@@ -84,7 +80,7 @@ export const escalaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as Escala;
+    return data as Escala;
   },
 
   /**
@@ -98,7 +94,7 @@ export const escalaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as Escala;
+    return data as Escala;
   },
 
   /**

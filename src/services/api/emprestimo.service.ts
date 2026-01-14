@@ -1,12 +1,13 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database/index';
+import type { Emprestimo as EmprestimoRow, Parcela as ParcelaRow, InsertTables, UpdateTables } from '../../types/database/index';
 import { parcelaService } from './parcela.service';
 
-type Emprestimo = Database['public']['Tables']['Emprestimo']['Row'];
-type EmprestimoInsert = Database['public']['Tables']['Emprestimo']['Insert'];
-type EmprestimoUpdate = Database['public']['Tables']['Emprestimo']['Update'];
-type Parcela = Database['public']['Tables']['Parcela']['Row'];
-type ParcelaInsert = Database['public']['Tables']['Parcela']['Insert'];
+// [14/01 19:05] Alinhando tipos de Emprestimo/Parcela com aliases e helpers
+type Emprestimo = EmprestimoRow;
+type EmprestimoInsert = InsertTables<'Emprestimo'>;
+type EmprestimoUpdate = UpdateTables<'Emprestimo'>;
+type Parcela = ParcelaRow;
+type ParcelaInsert = InsertTables<'Parcela'>;
 
 /**
  * Serviço para gerenciamento de Empréstimos.

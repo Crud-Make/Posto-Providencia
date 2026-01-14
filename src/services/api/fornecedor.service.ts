@@ -1,8 +1,9 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database/index';
+import type { Fornecedor as FornecedorRow, InsertTables } from '../../types/database/index';
 
-type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
-type FornecedorInsert = Database['public']['Tables']['Fornecedor']['Insert'];
+// [14/01 19:05] Alinhando tipos de Fornecedor com aliases e helpers
+type Fornecedor = FornecedorRow;
+type FornecedorInsert = InsertTables<'Fornecedor'>;
 
 /**
  * Serviço para gerenciamento de Fornecedores.

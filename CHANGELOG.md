@@ -1,5 +1,27 @@
 # Changelog
 
+## [Não Lançado]
+
+### 📚 Documentação
+- **[14/01/2026]** Criado PRD-022: Smart Types - Sistema de Tipagem Inteligente
+  - Documentação completa sobre a arquitetura de Smart Types
+  - Análise comparativa: Smart Types vs DTOs
+  - Guia de uso para desenvolvedores
+  - Roadmap de implementação em 4 fases
+  - Commit: `docs: adiciona PRD-022 sobre Smart Types`
+  - Arquivos: `documentos/PRD-022-SMART-TYPES.md`, `docs/GUIA-SMART-TYPES.md`
+
+### 🔧 Refatoração
+- **[14/01/2026]** Implementada Fase 1 de Smart Types (Issue #21)
+  - Criado utility type `WithRelations<T, R>` em `src/types/ui/helpers.ts`
+  - Refatorado `cliente.service.ts` para usar Smart Types derivados do Supabase
+  - Eliminadas 14 linhas de definições manuais de interfaces
+  - Adicionado campo `bloqueado` em `ClienteTable`
+  - Redução de 4 ocorrências de `as unknown as` (27 → 23)
+  - Commit: `refactor: implementa Smart Types no cliente.service (#21)`
+
+---
+
 ## [12/01/2026] - 🎉 REFATORAÇÃO 100% CONCLUÍDA - SPRINTS 3, 4 E 5 FINALIZADAS
 
 ### 🏆 MARCO HISTÓRICO DO PROJETO

@@ -506,7 +506,7 @@ export const aggregatorService = {
 
     const mapCaixaAberto = new Set<number>();
     if (caixasAbertos) {
-      (caixasAbertos as unknown as CaixaAberto[]).forEach((c) => {
+      (caixasAbertos as CaixaAberto[]).forEach((c) => {
         mapCaixaAberto.add(c.frentista_id);
       });
     }

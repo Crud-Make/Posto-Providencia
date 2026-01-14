@@ -13,6 +13,7 @@ import {
   compraService 
 } from '../../../services/api';
 
+// [14/01 15:40] Expondo tipos financeiros para uso centralizado em componentes
 /**
  * Interface que representa uma transação financeira unificada.
  */

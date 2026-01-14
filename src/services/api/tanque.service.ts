@@ -1,7 +1,8 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database/index';
+import type { Tanque as TanqueRow, HistoricoTanque, InsertTables, UpdateTables } from '../../types/database/index';
 
-export type Tanque = Database['public']['Tables']['Tanque']['Row'] & {
+// [14/01 19:05] Alinhando tipos de Tanque e histórico com aliases/helpers
+export type Tanque = TanqueRow & {
     combustivel?: {
         nome: string;
         codigo: string;
@@ -9,8 +10,8 @@ export type Tanque = Database['public']['Tables']['Tanque']['Row'] & {
         preco_custo: number;
     };
 };
-type InsertTanque = Database['public']['Tables']['Tanque']['Insert'];
-type UpdateTanque = Database['public']['Tables']['Tanque']['Update'];
+type InsertTanque = InsertTables<'Tanque'>;
+type UpdateTanque = UpdateTables<'Tanque'>;
 
 export const tanqueService = {
     async getAll(postoId?: number) {
@@ -106,7 +107,7 @@ export const tanqueService = {
             .order('data', { ascending: true });
 
         if (error) throw error;
-        return data as Database['public']['Tables']['HistoricoTanque']['Row'][];
+        return data as HistoricoTanque[];
     },
 
     async saveHistory(payload: { tanque_id: number; data: string; volume_livro?: number; volume_fisico?: number }) {

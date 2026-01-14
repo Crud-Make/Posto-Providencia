@@ -1,26 +1,26 @@
 import { supabase } from '../supabase';
-import type { ClienteTable, NotaFrentistaTable } from '../../types/database/tables/clientes';
+import type { ClienteTable } from '../../types/database/tables/clientes';
 import type { FrentistaTable } from '../../types/database/tables/operacoes';
+import type { WithRelations } from '../../types/ui/helpers';
+import type { Cliente, NotaFrentista } from '../../types/ui/smart-types';
 
-export interface NotaFrentista extends NotaFrentistaTable['Row'] {
-  frentista?: Pick<FrentistaTable['Row'], 'id' | 'nome'>;
-}
+// [14/01 15:20] Centralização de tipos de Cliente/NotaFrentista em smart-types.ts
 
-export interface Cliente {
-  id: number;
-  nome: string;
-  documento?: string | null;
-  telefone?: string | null;
-  email?: string | null;
-  endereco?: string | null;
-  limite_credito?: number;
-  saldo_devedor?: number;
-  ativo: boolean;
-  bloqueado?: boolean;
-  posto_id: number;
-  created_at?: string;
-  notas?: Partial<NotaFrentista>[];
-}
+// Tipos com relacionamentos
+export type NotaFrentistaComFrentista = WithRelations<
+  NotaFrentista,
+  { frentista?: Pick<FrentistaTable['Row'], 'id' | 'nome'> }
+>;
+
+export type ClienteComNotas = WithRelations<
+  Cliente,
+  { notas?: NotaFrentista[] }
+>;
+
+export type ClienteCompleto = WithRelations<
+  Cliente,
+  { notas?: NotaFrentistaComFrentista[] }
+>;
 
 export const clienteService = {
   async getAll(postoId?: number): Promise<Cliente[]> {
@@ -35,10 +35,10 @@ export const clienteService = {
 
     const { data, error } = await query.order('nome');
     if (error) throw error;
-    return (data as unknown as Cliente[]) || [];
+    return (data || []) as Cliente[];
   },
 
-  async getAllWithSaldo(postoId?: number): Promise<Cliente[]> {
+  async getAllWithSaldo(postoId?: number): Promise<ClienteComNotas[]> {
     let query = supabase
       .from('Cliente')
       .select(`
@@ -53,10 +53,10 @@ export const clienteService = {
 
     const { data, error } = await query.order('nome');
     if (error) throw error;
-    return (data as unknown as Cliente[]) || [];
+    return (data || []) as ClienteComNotas[];
   },
 
-  async getById(id: number): Promise<Cliente | null> {
+  async getById(id: number): Promise<ClienteCompleto | null> {
     const { data, error } = await supabase
       .from('Cliente')
       .select(`
@@ -69,7 +69,7 @@ export const clienteService = {
       .eq('id', id)
       .single();
     if (error) throw error;
-    return data as unknown as Cliente;
+    return data as ClienteCompleto;
   },
 
   async getDevedores(postoId?: number): Promise<Cliente[]> {
@@ -85,37 +85,20 @@ export const clienteService = {
 
     const { data, error } = await query.order('saldo_devedor', { ascending: false });
     if (error) throw error;
-    return (data as unknown as Cliente[]) || [];
+    return (data || []) as Cliente[];
   },
 
-  async create(cliente: {
-    nome: string;
-    documento?: string;
-    telefone?: string;
-    email?: string;
-    endereco?: string;
-    limite_credito?: number;
-    posto_id: number;
-  }): Promise<Cliente> {
+  async create(cliente: ClienteTable['Insert']): Promise<Cliente> {
     const { data, error } = await supabase
       .from('Cliente')
       .insert(cliente)
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as Cliente;
+    return data as Cliente;
   },
 
-  async update(id: number, updates: {
-    nome?: string;
-    documento?: string;
-    telefone?: string;
-    email?: string;
-    endereco?: string;
-    limite_credito?: number;
-    ativo?: boolean;
-    bloqueado?: boolean;
-  }): Promise<Cliente> {
+  async update(id: number, updates: ClienteTable['Update']): Promise<Cliente> {
     const { data, error } = await supabase
       .from('Cliente')
       .update(updates)
@@ -123,7 +106,7 @@ export const clienteService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as Cliente;
+    return data as Cliente;
   },
 
   async delete(id: number): Promise<void> {
@@ -148,6 +131,6 @@ export const clienteService = {
 
     const { data, error } = await query.order('nome').limit(20);
     if (error) throw error;
-    return (data as unknown as Cliente[]) || [];
+    return (data || []) as Cliente[];
   }
 };
