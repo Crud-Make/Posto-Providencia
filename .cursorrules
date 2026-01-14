@@ -1,9 +1,389 @@
-# Regras Posto Providência v2.1
+# 📋 Cursor Rules - Posto Providência v3.0
 
-⚠️ **REGRA ZERO**: Execute 
-**Idioma**: 100% PT-BR.
-**Qualidade**: Clean Code (SOLID/DRY). JSDoc OBRIGATÓRIO em tudo.
-**Rastreio**: Ao editar código existente, INSIRA acima da linha: `// [DD/MM HH:mm] O que mudou/Porquê`.
-**Git**: Branch vinculada a Issue. Commit Semântico. PR só após aval do user.
-**Tech**: TypeScript Estrito (ZERO `any`). Interfaces antes da implementação.
-**Mantra**: Simplicidade > Complexidade. Se quebrar, restaure via tags.
+> **Última Atualização:** 14/01/2026
+> **Status do Projeto:** Refatoração 100% Concluída | Manutenção de Qualidade
+
+---
+
+## ⚠️ REGRA ZERO - A Mais Importante
+
+```
+ENTENDA ANTES DE ENTREGAR.
+Pergunte até ter absoluta clareza. Código errado é pior que nenhum código.
+```
+
+---
+
+## 🌐 IDIOMA
+
+- **100% Português (Brasil)** em tudo:
+  - Comentários, variáveis em português quando fizer sentido (ex: `frentista`, `combustivel`)
+  - JSDoc, mensagens de erro, logs
+  - Documentação e commits
+
+---
+
+## 🏗️ ARQUITETURA OBRIGATÓRIA
+
+### Estrutura de Feature (Padrão Inviolável)
+```
+src/components/nome-feature/
+├── index.tsx              # Orquestrador (máx 150 linhas)
+├── types.ts               # Tipos locais (se necessário)
+├── hooks/
+│   ├── useFeature.ts      # Hook principal de dados (máx 200 linhas)
+│   ├── useActions.ts      # Hook de ações/mutations
+│   └── useFilters.ts      # Hook de filtros (se aplicável)
+└── components/
+    ├── Header.tsx         # Cabeçalho (máx 250 linhas cada)
+    ├── Summary.tsx        # Cards de resumo
+    ├── Table.tsx          # Tabela/Lista
+    └── Filters.tsx        # Filtros
+```
+
+### Limites de Linhas por Arquivo
+| Tipo de Arquivo | Máximo |
+|-----------------|--------|
+| Componente Principal (index.tsx) | 150 linhas |
+| Hooks | 200 linhas |
+| Componentes UI | 250 linhas |
+| Services | 300 linhas |
+
+---
+
+## 📝 TYPESCRIPT ESTRITO
+
+### Regra Absoluta: ZERO `any`
+```typescript
+// ❌ PROIBIDO - any em qualquer forma
+const dados: any = {};
+function processar(item: any) {}
+(data as unknown as Tipo[])
+
+// ✅ CORRETO - Tipos explícitos
+const dados: DadosFinanceiros = {};
+function processar(item: Transacao) {}
+(data || []) as Tipo[]
+```
+
+### Smart Types - Padrão de Tipos
+```typescript
+// ❌ NUNCA crie interfaces manuais para entidades do banco
+interface Cliente {
+  id: number;
+  nome: string;
+}
+
+// ✅ SEMPRE derive dos tipos do Supabase
+import type { ClienteTable } from '../../types/database/tables/clientes';
+export type Cliente = ClienteTable['Row'];
+export type CreateCliente = ClienteTable['Insert'];
+export type UpdateCliente = ClienteTable['Update'];
+
+// ✅ Use WithRelations para relacionamentos
+import { WithRelations } from '../../types/ui/helpers';
+export type ClienteComNotas = WithRelations<Cliente, { notas?: NotaFrentista[] }>;
+```
+
+### Interfaces Antes da Implementação
+Sempre defina interfaces/tipos ANTES de implementar a lógica:
+```typescript
+// 1. Primeiro: defina o contrato
+interface UseFinanceiroReturn {
+  dados: DadosFinanceiros;
+  carregando: boolean;
+  erro: string | null;
+  recarregar: () => Promise<void>;
+}
+
+// 2. Depois: implemente
+export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn {
+  // implementação...
+}
+```
+
+---
+
+## 📚 JSDoc OBRIGATÓRIO
+
+### Em Todo Arquivo
+```typescript
+/**
+ * Hook para gerenciamento de dados financeiros consolidados.
+ *
+ * Busca vendas, despesas, recebimentos e compras do período selecionado,
+ * agregando em métricas consolidadas de receita, despesa e lucro.
+ */
+```
+
+### Em Toda Interface
+```typescript
+/**
+ * Interface que representa uma transação financeira unificada.
+ */
+export interface Transacao {
+  readonly id: string;
+  /** Tipo da transação: receita (entrada) ou despesa (saída) */
+  tipo: 'receita' | 'despesa';
+  /** Categoria da transação para agrupamento */
+  categoria: string;
+  /** Valor monetário da transação */
+  valor: number;
+}
+```
+
+### Em Toda Função Exportada
+```typescript
+/**
+ * Hook principal para orquestração de dados financeiros.
+ * 
+ * @param filtros - Filtros de data e contexto aplicados
+ * @returns Dados agregados, estado de carregamento e função de refresh
+ */
+export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn {
+```
+
+---
+
+## 🔄 RASTREIO DE MUDANÇAS
+
+Ao editar código existente, INSIRA um comentário acima da linha modificada:
+```typescript
+// [DD/MM HH:mm] O que mudou / Por quê
+const novoValor = calcularNovo();
+```
+
+Exemplo real:
+```typescript
+// [14/01 15:40] Expondo tipos financeiros para uso centralizado em componentes
+export interface Transacao { ... }
+```
+
+---
+
+## 🌿 GIT & CONTROLE DE VERSÃO
+
+### Branches
+| Tipo | Formato | Exemplo |
+|------|---------|---------|
+| Feature | `feature/<descricao>` | `feature/relatorio-vendas` |
+| Bug Fix | `fix/<descricao>` | `fix/calculo-margem` |
+| Refactor | `refactor/<descricao>` | `refactor/modularizar-hooks` |
+| Issue | `refactor/#<numero>-<descricao>` | `refactor/#22-smart-types` |
+
+### Commits Semânticos
+```bash
+feat: adiciona dashboard de vendas
+fix: corrige cálculo de margem líquida
+refactor: modulariza TelaGestaoFinanceira
+docs: atualiza guia de Smart Types
+chore: atualiza dependências
+```
+
+### Workflow Obrigatório
+1. **Sempre** vincule branch a uma Issue
+2. **Sempre** faça PR para `main`
+3. **Nunca** faça push direto para `main`
+4. **Aguarde** CI passar antes de merge
+5. **Documente** no CHANGELOG.md
+
+---
+
+## 🛠️ STACK TECNOLÓGICA
+
+| Tecnologia | Versão | Uso |
+|------------|--------|-----|
+| **Bun** | Latest | Runtime (6x mais rápido que npm) |
+| **React** | 19.x | UI Framework |
+| **TypeScript** | 5.8+ | Tipagem estrita |
+| **Vite** | 6.x | Build tool |
+| **Supabase** | 2.x | Backend/Auth/DB |
+| **Recharts** | 3.x | Gráficos |
+| **Lucide React** | 0.560+ | Ícones |
+| **Sonner** | 2.x | Toasts/Notificações |
+
+### Comandos Padrão
+```bash
+bun run dev      # Desenvolvimento (porta 3015)
+bun run build    # Build de produção
+bun run preview  # Preview do build
+```
+
+---
+
+## 📁 ESTRUTURA DE PASTAS DO PROJETO
+
+```
+src/
+├── components/           # Componentes organizados por feature
+│   ├── feature-name/     # Cada feature é uma pasta
+│   └── common/           # Componentes compartilhados
+├── contexts/             # Contextos React (Auth, Theme, etc.)
+├── hooks/                # Hooks globais compartilhados
+├── layouts/              # Layouts de página
+├── services/
+│   ├── api/              # Services de API (um por entidade)
+│   └── supabase.ts       # Cliente Supabase
+├── types/
+│   ├── database/         # Tipos derivados do Supabase
+│   │   └── tables/       # Um arquivo por tabela
+│   └── ui/               # Tipos de UI e helpers
+├── utils/                # Utilitários puros
+└── constants.ts          # Constantes globais
+```
+
+---
+
+## 🎯 PRINCÍPIOS DE CÓDIGO
+
+### 1. Simplicidade > Complexidade
+```typescript
+// ❌ Over-engineering
+const resultado = array
+  .filter(Boolean)
+  .map(x => transform(x))
+  .reduce((acc, curr) => ({ ...acc, [curr.id]: curr }), {});
+
+// ✅ Claro e direto
+const resultado: Record<string, Item> = {};
+for (const item of array) {
+  if (item) resultado[item.id] = transform(item);
+}
+```
+
+### 2. Single Responsibility
+- Um hook = uma responsabilidade
+- Um componente = uma parte da UI
+- Um service = uma entidade do banco
+
+### 3. Composição sobre Herança
+```typescript
+// ✅ Compose hooks
+function useFeature() {
+  const dados = useDados();
+  const filtros = useFiltros();
+  const acoes = useAcoes(dados.recarregar);
+  
+  return { ...dados, ...filtros, ...acoes };
+}
+```
+
+### 4. Evite Verbosidade Desnecessária
+```typescript
+// ❌ Verbose
+const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  event.preventDefault();
+  onClick();
+};
+
+// ✅ Direto (se não precisa do event)
+const handleClick = () => onClick();
+```
+
+---
+
+## ⚠️ ANTI-PATTERNS PROIBIDOS
+
+### 1. Código Morto
+Nunca deixe código comentado "para depois":
+```typescript
+// ❌ Proibido
+// function antigaFuncao() { ... }
+// const valorAntigo = 42;
+```
+
+### 2. Console.log em Produção
+Use apenas para debugging temporário, remova antes do commit:
+```typescript
+// ❌ Não commite isso
+console.log('debug:', dados);
+```
+
+### 3. Magic Numbers/Strings
+```typescript
+// ❌ Magic numbers
+if (margem > 15) { ... }
+
+// ✅ Constantes nomeadas
+const MARGEM_MINIMA_SAUDAVEL = 15;
+if (margem > MARGEM_MINIMA_SAUDAVEL) { ... }
+```
+
+### 4. Props Drilling Excessivo
+Se passar props por 3+ níveis, use Context ou refatore:
+```typescript
+// ❌ Props drilling
+<Pai dado={dado}>
+  <Filho dado={dado}>
+    <Neto dado={dado}>
+      <Bisneto dado={dado} />
+
+// ✅ Context ou composição
+<DadoProvider value={dado}>
+  <Pai><Filho><Neto><Bisneto /></Neto></Filho></Pai>
+</DadoProvider>
+```
+
+---
+
+## 🔒 SEGURANÇA
+
+1. **Nunca** exponha chaves secretas em código
+2. **Sempre** use variáveis de ambiente (`.env.local`)
+3. **Nunca** commite arquivos `.env` com valores reais
+4. **Sempre** valide inputs do usuário
+5. **Sempre** use RLS (Row Level Security) no Supabase
+
+---
+
+## 📊 DOCUMENTAÇÃO OBRIGATÓRIA
+
+### Ao Criar Nova Feature
+1. Atualizar `CHANGELOG.md` com as mudanças
+2. Criar PRD se for feature complexa
+3. Documentar no `STATUS_DO_PROJETO.md` se relevante
+
+### Ao Concluir Issue
+1. Fechar issue no GitHub com comentário
+2. Atualizar documentação relacionada
+3. Criar tag de versão se for release
+
+---
+
+## 🚨 SE ALGO QUEBRAR
+
+1. **Não entre em pânico**
+2. Verifique o último commit funcional
+3. Use `git stash` se precisar salvar trabalho em andamento
+4. Restaure via tags estáveis: `git checkout v3.0.0`
+5. Consulte `docs/VERSOES_ESTAVEIS.md` para rollback
+
+---
+
+## 📖 REFERÊNCIAS RÁPIDAS
+
+| Documento | Propósito |
+|-----------|-----------|
+| `docs/GUIA-SMART-TYPES.md` | Como usar tipos derivados |
+| `docs/GUIA-HOOKS-CUSTOMIZADOS.md` | Padrões de hooks |
+| `docs/STATUS_DO_PROJETO.md` | Estado atual do projeto |
+| `docs/PLANO-REFATORACAO-COMPLETO.md` | Histórico de refatoração |
+| `CHANGELOG.md` | Histórico de mudanças |
+
+---
+
+## 🎯 MANTRA DO PROJETO
+
+```
+✅ Entender > Entregar rápido
+✅ Simplicidade > Complexidade
+✅ Tipos fortes > Flexibilidade perigosa
+✅ Código limpo > Comentários explicativos
+✅ Modular > Monolítico
+✅ Perguntar > Assumir
+```
+
+---
+
+**Posto Providência - Sistema de Gestão de Posto de Combustíveis**
+*Desenvolvido com excelência técnica e qualidade de código premium.*

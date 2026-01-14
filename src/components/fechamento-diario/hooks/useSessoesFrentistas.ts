@@ -16,13 +16,28 @@ import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } f
 
 /**
  * Interface para totais detalhados dos frentistas
+ * 
+ * @remarks
+ * Contém a soma de todos os valores por tipo de pagamento
+ * de todas as sessões de frentistas.
  */
 export interface TotaisFrentistas {
-  cartao: number;
-  nota: number;
-  pix: number;
-  dinheiro: number;
-  total: number;
+  /** Total de cartão (débito + crédito consolidado) */
+  readonly cartao: number;
+  /** Total de cartão débito */
+  readonly cartao_debito: number;
+  /** Total de cartão crédito */
+  readonly cartao_credito: number;
+  /** Total de notas a prazo */
+  readonly nota: number;
+  /** Total de Pix */
+  readonly pix: number;
+  /** Total em dinheiro */
+  readonly dinheiro: number;
+  /** Total de baratão/outros */
+  readonly baratao: number;
+  /** Soma geral de todos os valores */
+  readonly total: number;
 }
 
 /**
@@ -41,7 +56,7 @@ interface RetornoSessoesFrentistas {
   definirSessoes: React.Dispatch<React.SetStateAction<SessaoFrentista[]>>;
 }
 
-// ... (interfaces mantidas)
+// [14/01 08:41] Correção: Removido comentário órfão e sincronizado interface
 
 /**
  * Cria uma sessão vazia para novo frentista
@@ -100,23 +115,25 @@ export const useSessoesFrentistas = (
         postoId
       );
 
+      // [14/01 08:45] Correção de mapeamento usando nomes de campos do banco
+      // Campos do banco: baratao, encerrante, diferenca_calculada
+      // Campos da UI: valor_baratao, valor_encerrante, etc
       if (dados.length > 0) {
         const mapeadas: SessaoFrentista[] = dados.map(fs => ({
           tempId: `existing-${fs.id}`,
           frentistaId: fs.frentista_id,
           valor_cartao: paraReais(fs.valor_cartao),
-          valor_cartao_debito: paraReais(fs.valor_cartao_debito),
-          valor_cartao_credito: paraReais(fs.valor_cartao_credito),
+          valor_cartao_debito: '', // Não existe no banco atual
+          valor_cartao_credito: '', // Não existe no banco atual
           valor_nota: paraReais(fs.valor_nota),
           valor_pix: paraReais(fs.valor_pix),
           valor_dinheiro: paraReais(fs.valor_dinheiro),
-          valor_baratao: paraReais(fs.valor_baratao),
-          valor_encerrante: paraReais(fs.valor_encerrante),
+          valor_baratao: paraReais(fs.baratao), // Campo do banco: baratao
+          valor_encerrante: paraReais(fs.encerrante), // Campo do banco: encerrante
           valor_conferido: paraReais(fs.valor_conferido),
           observacoes: fs.observacoes || '',
-          valor_produtos: paraReais(fs.valor_produtos || 0),
-          status: (fs.status as 'pendente' | 'conferido') || 'pendente',
-          data_hora_envio: fs.data_hora_envio
+          valor_produtos: '', // Não existe no banco atual
+          status: 'pendente' // Não existe no banco atual
         }));
         setSessoes(mapeadas);
         console.log('✅ Sessões de frentistas carregadas');

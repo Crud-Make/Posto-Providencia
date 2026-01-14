@@ -34,10 +34,10 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
   return (
     <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700/50 p-6 mb-6">
       <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-slate-100">
-        <div className="p-2 bg-blue-500/20 rounded-lg">
-          <span className="text-xl">📊</span>
+        <div className="p-2 bg-emerald-500/20 rounded-lg">
+          <span className="text-xl">⛽</span>
         </div>
-        Leituras dos Encerrantes
+        Venda Concentrador
       </h2>
 
       <div className="overflow-x-auto custom-scrollbar">
@@ -69,11 +69,11 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
               const leitura = leituras[bico.id] || { inicial: '', fechamento: '' };
               const litros = calcLitros(bico.id);
               const totalVenda = litros.value * bico.combustivel.preco_venda;
-              
+
               // Adaptação de cores para dark mode baseado no combustível
               let corBadge = { bg: 'bg-slate-700', text: 'text-slate-300', border: 'border-slate-600' };
               const nomeCombustivel = bico.combustivel.nome.toLowerCase();
-              
+
               if (nomeCombustivel.includes('gasolina')) corBadge = { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30' };
               else if (nomeCombustivel.includes('etanol')) corBadge = { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30' };
               else if (nomeCombustivel.includes('diesel')) corBadge = { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30' };
