@@ -1,18 +1,14 @@
 import { supabase } from '../supabase';
+import type { VendaProduto as VendaProdutoBase, Produto } from '../../types/database/aliases';
+import type { WithRelations } from '../../types/ui/helpers';
 
-export interface VendaProduto {
-  id: number;
-  frentista_id: number;
-  produto_id: number;
-  quantidade: number;
-  valor_unitario: number;
-  valor_total: number;
-  data: string;
-  created_at?: string;
-  Produto?: {
-    nome: string;
-  };
-}
+// [14/01 16:10] VendaProduto alinhado com tipos do Supabase e relacionamento Produto
+export type VendaProduto = WithRelations<
+  VendaProdutoBase,
+  {
+    Produto?: Pick<Produto, 'nome'>;
+  }
+>;
 
 export const vendaProdutoService = {
   /**
@@ -26,6 +22,6 @@ export const vendaProdutoService = {
       .eq('data', date);
       
     if (error) throw error;
-    return (data as unknown as VendaProduto[]) || [];
+    return (data || []) as VendaProduto[];
   }
 };

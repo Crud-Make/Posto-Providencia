@@ -1,8 +1,8 @@
 import React from 'react';
 import { DollarSign } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
-import { CombustivelHibrido } from '../../hooks/registro-compras/useCombustiveisHibridos';
-import { CalculosRegistro } from '../../hooks/registro-compras/useCalculosRegistro';
+import { CombustivelHibrido } from './hooks/useCombustiveisHibridos';
+import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais, analisarValor } from '../../utils/formatters';
 
 interface Props {

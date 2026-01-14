@@ -9,49 +9,47 @@ import {
   Fuel,
   ShoppingBag,
   ClipboardList,
-  BarChart2,
   Sun,
   Moon,
   Calendar,
-  Target,
-  Building2,
   Crown
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-
+import { NavLink } from 'react-router-dom';
 
 interface SidebarProps {
-  currentView: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'owner_dashboard';
-  onNavigate: (view: 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'owner_dashboard') => void;
+  onClose?: () => void;
   className?: string;
 }
+
+// [14/01 06:40] Refatorado para usar React Router (NavLink) em vez de estado manual.
+// Removemos currentView e onNavigate, pois a rota define o estado ativo.
 
 /**
  * Componente de Menu Lateral (Sidebar) do Dashboard.
  * 
- * @param currentView - A visualização/tela atualmente selecionada.
- * @param onNavigate - Função de callback disparada ao clicar em um item de menu para mudar a tela.
+ * @param onClose - Função opcional para fechar o menu (usado no mobile).
  * @param className - Classes CSS opcionais adicionais.
  * 
- * Responsável pela navegação principal entre os módulos do sistema (Vendas, Estoque, Frentistas, etc).
+ * Responsável pela navegação principal entre os módulos do sistema.
  */
-const BarraLateral: React.FC<SidebarProps & { onClose?: () => void }> = ({ currentView, onNavigate, onClose, className = '' }) => {
+const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '' }) => {
   const { theme, toggleTheme } = useTheme();
 
   const menuItems = [
-    { id: 'owner_dashboard', label: 'Visão Proprietário', icon: Crown },
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'closing', label: 'Fechamento de Caixa', icon: ShoppingCart },
-    { id: 'daily_report', label: 'Relatório Diário', icon: ClipboardList },
-    { id: 'purchase', label: 'Compras', icon: ShoppingBag },
-    { id: 'attendants', label: 'Frentistas', icon: Users },
-    { id: 'clients', label: 'Clientes / Fiado', icon: Users },
-    { id: 'inventory', label: 'Tanques (Combustível)', icon: Fuel },
-    { id: 'products', label: 'Produtos e Estoque', icon: Package },
-    { id: 'finance', label: 'Empréstimos', icon: Banknote },
-    { id: 'expenses', label: 'Gestão de Despesas', icon: ShoppingBag },
-    { id: 'schedule', label: 'Escala e Folgas', icon: Calendar },
-    { id: 'settings', label: 'Configurações', icon: Settings },
+    { path: '/proprietario', label: 'Visão Proprietário', icon: Crown },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/fechamento', label: 'Fechamento de Caixa', icon: ShoppingCart },
+    { path: '/relatorio-diario', label: 'Relatório Diário', icon: ClipboardList },
+    { path: '/compras', label: 'Compras', icon: ShoppingBag },
+    { path: '/frentistas', label: 'Frentistas', icon: Users },
+    { path: '/clientes', label: 'Clientes / Fiado', icon: Users },
+    { path: '/estoque/tanques', label: 'Tanques (Combustível)', icon: Fuel },
+    { path: '/estoque/produtos', label: 'Produtos e Estoque', icon: Package },
+    { path: '/financeiro', label: 'Empréstimos', icon: Banknote },
+    { path: '/despesas', label: 'Gestão de Despesas', icon: ShoppingBag },
+    { path: '/escalas', label: 'Escala e Folgas', icon: Calendar },
+    { path: '/configuracoes', label: 'Configurações', icon: Settings },
   ] as const;
 
   return (
@@ -73,7 +71,7 @@ const BarraLateral: React.FC<SidebarProps & { onClose?: () => void }> = ({ curre
               onClick={onClose}
               className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             >
-              <Users size={24} className="sr-only" /> {/* Using Users as placeholder or X import needed */}
+              <Users size={24} className="sr-only" />
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
             </button>
           )}
@@ -82,25 +80,28 @@ const BarraLateral: React.FC<SidebarProps & { onClose?: () => void }> = ({ curre
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-1">
           {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                onNavigate(item.id);
-                if (onClose) onClose();
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group
-                ${currentView === item.id
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={onClose}
+              className={({ isActive }) => `
+                w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group
+                ${isActive
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                 }
               `}
             >
-              <item.icon
-                size={20}
-                className={currentView === item.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}
-              />
-              {item.label}
-            </button>
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    size={20}
+                    className={isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}
+                  />
+                  {item.label}
+                </>
+              )}
+            </NavLink>
           ))}
         </nav>
 

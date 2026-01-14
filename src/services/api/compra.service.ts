@@ -1,11 +1,10 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database/index';
+import type { Compra as CompraRow, Combustivel, Fornecedor, InsertTables } from '../../types/database/index';
 import { estoqueService } from './estoque.service';
 
-type Compra = Database['public']['Tables']['Compra']['Row'];
-type CompraInsert = Database['public']['Tables']['Compra']['Insert'];
-type Combustivel = Database['public']['Tables']['Combustivel']['Row'];
-type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
+// [14/01 19:05] Alinhando tipos de Compra com aliases e helpers
+type Compra = CompraRow;
+type CompraInsert = InsertTables<'Compra'>;
 
 /**
  * Serviço para gerenciamento de Compras de Combustível.

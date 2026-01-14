@@ -40,10 +40,9 @@ export const postoService = {
       .eq('ativo', true);
 
     if (error) throw error;
-    // Tipagem correta para o retorno do join
-    type UsuarioPostoComPosto = { posto: Posto };
-    const typedData = (data || []) as unknown as UsuarioPostoComPosto[];
-    return typedData.map((up) => up.posto).filter(Boolean);
+    type UsuarioPostoComPosto = { posto: Posto | null };
+    const typedData = (data || []) as UsuarioPostoComPosto[];
+    return typedData.map((up) => up.posto).filter((posto): posto is Posto => Boolean(posto));
   },
 
   async getAllIncludingInactive(): Promise<Posto[]> {

@@ -1,14 +1,9 @@
 import React from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-
-interface HistoryData {
-    data: string;
-    volume_livro: number | null;
-    volume_fisico: number | null;
-}
+import { TankHistoryEntry } from '../types';
 
 interface InventoryHistoryChartProps {
-    data: HistoryData[];
+    data: TankHistoryEntry[];
     tankName: string;
 }
 
@@ -48,7 +43,10 @@ export const InventoryHistoryChart: React.FC<InventoryHistoryChartProps> = ({ da
     // Format date for XAxis (DD/MM)
     const formattedData = data.map(item => ({
         ...item,
-        formattedDate: new Date(item.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        formattedDate: new Date(item.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        // Ensure values are numbers or null for recharts
+        volume_livro: item.volume_livro ?? null,
+        volume_fisico: item.volume_fisico ?? null
     }));
 
     return (

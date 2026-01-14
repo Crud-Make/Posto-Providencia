@@ -15,6 +15,7 @@ export interface ClienteTable {
     saldo_devedor: number
     posto_id: number
     ativo: boolean
+    bloqueado?: boolean
     created_at: string
     updated_at: string
   }
@@ -29,6 +30,7 @@ export interface ClienteTable {
     saldo_devedor?: number
     posto_id: number
     ativo?: boolean
+    bloqueado?: boolean
     created_at?: string
     updated_at?: string
   }
@@ -43,6 +45,7 @@ export interface ClienteTable {
     saldo_devedor?: number
     posto_id?: number
     ativo?: boolean
+    bloqueado?: boolean
     created_at?: string
     updated_at?: string
   }

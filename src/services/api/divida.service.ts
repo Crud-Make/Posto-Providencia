@@ -1,16 +1,6 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database/index';
-
-type DividaRow = Database['public']['Tables']['Divida']['Row'];
-
-export interface Divida {
-  id: string;
-  descricao: string;
-  valor: number;
-  data_vencimento: string;
-  status: 'pendente' | 'pago';
-  posto_id: number | null;
-}
+import type { DBDivida } from '../../types/database/aliases';
+import type { Divida } from '../../types';
 
 /**
  * Serviço para gerenciamento de Dívidas.
@@ -28,7 +18,7 @@ export const dividaService = {
     const { data, error } = await query.order('data_vencimento', { ascending: true });
     if (error) throw error;
 
-    return (data || []).map((d: DividaRow) => ({
+    return (data || []).map((d: DBDivida) => ({
       id: String(d.id),
       descricao: d.descricao,
       valor: Number(d.valor),

@@ -1,26 +1,24 @@
-import React, { useState } from 'react';
-import { Fuel, Menu, X, Sun, Moon } from 'lucide-react';
+import React from 'react';
+import { Fuel, Menu, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import PostoSelector from './common/PostoSelector';
-
-type ViewType = 'dashboard' | 'closing' | 'inventory' | 'products' | 'purchase' | 'finance' | 'solvency' | 'analysis' | 'readings' | 'reports' | 'sales_dashboard' | 'attendants' | 'settings' | 'schedule' | 'clients' | 'daily_report' | 'expenses' | 'ai_strategy' | 'owner_dashboard' | 'baratencia';
+import { Link } from 'react-router-dom';
 
 interface HeaderProps {
-  currentView: ViewType;
-  onNavigate: (view: ViewType) => void;
   onMobileMenuToggle: () => void;
 }
+
+// [14/01 06:45] Refatorado para usar React Router (Link).
+// Removido currentView e onNavigate, pois a navegação é via URL.
 
 /**
  * Componente de Cabeçalho (Header) do Dashboard.
  * 
- * @param currentView - A visualização/tela atualmente selecionada.
- * @param onNavigate - Função de callback disparada ao clicar em itens de navegação.
  * @param onMobileMenuToggle - Função para abrir/fechar o menu mobile (Side Drawer).
  * 
  * Contém a identificação do posto ativo, troca de tema e menu hambúrguer para dispositivos móveis.
  */
-const Cabecalho: React.FC<HeaderProps> = ({ currentView, onNavigate, onMobileMenuToggle }) => {
+const Cabecalho: React.FC<HeaderProps> = ({ onMobileMenuToggle }) => {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -36,12 +34,12 @@ const Cabecalho: React.FC<HeaderProps> = ({ currentView, onNavigate, onMobileMen
           </button>
 
           <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white cursor-pointer"
-              onClick={() => onNavigate('dashboard')}
+            <Link
+              to="/dashboard"
+              className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white cursor-pointer hover:bg-blue-700 transition-colors"
             >
               <Fuel size={18} />
-            </div>
+            </Link>
             <PostoSelector />
           </div>
         </div>
@@ -60,4 +58,3 @@ const Cabecalho: React.FC<HeaderProps> = ({ currentView, onNavigate, onMobileMen
 };
 
 export default Cabecalho;
-
