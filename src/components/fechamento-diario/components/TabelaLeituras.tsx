@@ -5,14 +5,100 @@ import { paraReais } from '../../../utils/formatters';
 
 interface TabelaLeiturasProps {
   bicos: BicoComDetalhes[];
-  leituras: Record<number, { inicial: string; fechamento: string }>;
+  leituras: Record<number, { inicial: string; fechamento: string; preco?: string }>;
   onLeituraInicialChange: (bicoId: number, valor: string) => void;
   onLeituraFechamentoChange: (bicoId: number, valor: string) => void;
   onLeituraInicialBlur: (bicoId: number) => void;
   onLeituraFechamentoBlur: (bicoId: number) => void;
+  // [14/01 09:00] Props para edição de preço
+  onPrecoChange: (bicoId: number, valor: string) => void;
+  onPrecoBlur: (bicoId: number) => void;
   calcLitros: (bicoId: number) => { value: number; display: string };
+  calcVenda: (bicoId: number) => { value: number; display: string };
   isLoading?: boolean;
 }
+
+// Componente interno para edição de preço com confirmação
+const InputPreco: React.FC<{
+  valorAtual: string;
+  valorOriginal: string;
+  onConfirmar: (valor: string) => void;
+  isLoading?: boolean;
+}> = ({ valorAtual, valorOriginal, onConfirmar, isLoading }) => {
+  const [editando, setEditando] = React.useState(false);
+  const [valorTemp, setValorTemp] = React.useState(valorAtual);
+
+  // Inicia edição
+  const iniciarEdicao = () => {
+    setValorTemp(valorAtual);
+    setEditando(true);
+  };
+
+  // Cancela edição
+  const cancelar = () => {
+    setValorTemp(valorAtual);
+    setEditando(false);
+  };
+
+  // Confirma edição
+  const confirmar = () => {
+    onConfirmar(valorTemp);
+    setEditando(false);
+  };
+
+  // Se o valor foi alterado externamente (ex: reset), atualiza o temp
+  React.useEffect(() => {
+    setValorTemp(valorAtual);
+  }, [valorAtual]);
+
+  if (editando) {
+    return (
+      <div className="flex items-center gap-1 min-w-[140px]">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={valorTemp}
+          onChange={(e) => setValorTemp(e.target.value)}
+          className="w-20 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block sm:text-lg bg-slate-900 border-slate-700 rounded-lg p-1.5 text-slate-100 placeholder-slate-600 font-mono text-center"
+          autoFocus
+        />
+        <button
+          onClick={confirmar}
+          className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 border border-emerald-500/30 transition-colors"
+          title="Confirmar (Sim)"
+        >
+          ✓
+        </button>
+        <button
+          onClick={cancelar}
+          className="p-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 border border-red-500/30 transition-colors"
+          title="Cancelar (Não)"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative group cursor-pointer" onClick={iniciarEdicao} title="Clique para alterar o preço">
+      <div className={`
+        py-2 px-3 rounded-lg border border-transparent 
+        group-hover:border-slate-600 group-hover:bg-slate-800/50 transition-all
+        text-center font-mono font-medium text-slate-300
+        ${valorAtual !== valorOriginal ? 'text-amber-400 font-bold' : ''}
+      `}>
+        {valorAtual}
+        {valorAtual !== valorOriginal && (
+          <span className="absolute -top-1 -right-1 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
   bicos,
@@ -21,14 +107,15 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
   onLeituraFechamentoChange,
   onLeituraInicialBlur,
   onLeituraFechamentoBlur,
+  onPrecoChange,
+  onPrecoBlur,
   calcLitros,
+  calcVenda,
   isLoading
 }) => {
-  // Calcula o total geral de vendas (Litros * Preço)
+  // Calcula o total geral de vendas
   const totalGeralVendas = bicos.reduce((acc, bico) => {
-    const litros = calcLitros(bico.id).value;
-    const valor = litros * bico.combustivel.preco_venda;
-    return acc + valor;
+    return acc + calcVenda(bico.id).value;
   }, 0);
 
   return (
@@ -56,7 +143,7 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
               <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Litros (L)
               </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Valor Lt $
               </th>
               <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider rounded-tr-lg">
@@ -68,7 +155,11 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
             {bicos.map((bico) => {
               const leitura = leituras[bico.id] || { inicial: '', fechamento: '' };
               const litros = calcLitros(bico.id);
-              const totalVenda = litros.value * bico.combustivel.preco_venda;
+              const venda = calcVenda(bico.id);
+
+              // Preço a exibir: override ou cadastro
+              const precoOriginal = paraReais(bico.combustivel.preco_venda);
+              const precoExibicao = leitura.preco || precoOriginal;
 
               // Adaptação de cores para dark mode baseado no combustível
               let corBadge = { bg: 'bg-slate-700', text: 'text-slate-300', border: 'border-slate-600' };
@@ -121,13 +212,22 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-slate-400 font-mono">
-                      {paraReais(bico.combustivel.preco_venda)}
-                    </span>
+                    <InputPreco
+                      valorAtual={precoExibicao}
+                      valorOriginal={precoOriginal}
+                      onConfirmar={(novoValor) => {
+                        onPrecoChange(bico.id, novoValor);
+                        // onPrecoBlur já formata, se necessário chamar manualmente ou deixar o hook formatar na change se for o caso.
+                        // Como a função alterarPreco no hook chama formatarSimples que limpa e formata, está ok.
+                        // Mas para garantir formatação final de centavos, podemos chamar o onPrecoBlur.
+                        setTimeout(() => onPrecoBlur(bico.id), 100);
+                      }}
+                      isLoading={isLoading}
+                    />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`text-lg font-bold font-mono ${totalVenda > 0 ? 'text-blue-400' : 'text-slate-500'}`}>
-                      {paraReais(totalVenda)}
+                    <span className={`text-lg font-bold font-mono ${venda.value > 0 ? 'text-blue-400' : 'text-slate-500'}`}>
+                      {venda.display}
                     </span>
                   </td>
                 </tr>

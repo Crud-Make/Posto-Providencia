@@ -81,7 +81,10 @@ const TelaFechamentoDiario: React.FC = () => {
       alterarFechamento,
       aoSairInicial,
       aoSairFechamento,
+      alterarPreco,
+      aoSairPreco,
       calcLitros,
+      calcVenda,
       definirLeituras
    } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
 
@@ -365,7 +368,10 @@ const TelaFechamentoDiario: React.FC = () => {
                      onLeituraFechamentoChange={alterarFechamento}
                      onLeituraInicialBlur={aoSairInicial}
                      onLeituraFechamentoBlur={aoSairFechamento}
+                     onPrecoChange={alterarPreco}
+                     onPrecoBlur={aoSairPreco}
                      calcLitros={calcLitros}
+                     calcVenda={calcVenda}
                      isLoading={loading}
                   />
 

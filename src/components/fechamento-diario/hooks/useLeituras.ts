@@ -9,13 +9,11 @@
  * @version 1.0.0
  */
 
-// [09/01 09:35] Ajuste na integração com serviço de leituras
-// Motivo: Correção de nomes de métodos e parâmetros para compatibilidade com API
-
+// [14/01 08:55] Adição de override de preço por bico
 import React, { useState, useCallback, useRef } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import { leituraService } from '../../../services/api';
-import { formatarParaBR } from '../../../utils/formatters';
+import { formatarParaBR, analisarValor, formatarValorSimples, formatarValorAoSair, paraReais } from '../../../utils/formatters';
 
 /**
  * Estrutura de uma leitura
@@ -23,6 +21,7 @@ import { formatarParaBR } from '../../../utils/formatters';
 export interface Leitura {
   inicial: string;
   fechamento: string;
+  preco?: string; // Preço sobrescrito para este bico
 }
 
 /**
@@ -72,8 +71,10 @@ interface RetornoLeituras {
   carregarLeituras: () => Promise<void>;
   alterarInicial: (bicoId: number, valor: string) => void;
   alterarFechamento: (bicoId: number, valor: string) => void;
+  alterarPreco: (bicoId: number, valor: string) => void;
   aoSairInicial: (bicoId: number) => void;
   aoSairFechamento: (bicoId: number) => void;
+  aoSairPreco: (bicoId: number) => void;
   calcLitros: (bicoId: number) => ResultadoLitros;
   calcVenda: (bicoId: number) => ResultadoVenda;
   totals: Totais;
@@ -229,7 +230,7 @@ export const useLeituras = (
 
     try {
       let dados;
-      
+
       if (turnoSelecionado) {
         dados = await leituraService.getByDateAndTurno(
           dataSelecionada,
@@ -335,6 +336,37 @@ export const useLeituras = (
   }, [leituras]);
 
   /**
+   * Handler para mudança de preço
+   */
+  const alterarPreco = useCallback((bicoId: number, valor: string) => {
+    const formatado = formatarValorSimples(valor);
+    setLeituras(prev => ({
+      ...prev,
+      [bicoId]: { ...prev[bicoId], preco: formatado }
+    }));
+  }, []);
+
+  /**
+   * Handler para blur no preço
+   */
+  const aoSairPreco = useCallback((bicoId: number) => {
+    const valor = leituras[bicoId]?.preco || '';
+    if (!valor) return;
+
+    // Formata o preço com 2 decimais (usando formatarValorAoSair do formatters.ts)
+    // Precisaria renomear localmente o formatarAoSair de leituras (leituras usa 3 casas para quantidades, moeda usa 2)
+    // Mas aqui importamos formatarValorAoSair sob o mesmo nome? Não.
+    // O hook tem uma função interna formatarAoSair (linhas 149-174) que usa 3 casas decimais.
+    // Vou usar a função importada para valores monetários: formatarValorAoSair
+    const formatado = formatarValorAoSair(valor);
+
+    setLeituras(prev => ({
+      ...prev,
+      [bicoId]: { ...prev[bicoId], preco: formatado }
+    }));
+  }, [leituras]);
+
+  /**
    * Calcula litros vendidos para um bico
    */
   const calcLitros = useCallback((bicoId: number): ResultadoLitros => {
@@ -364,7 +396,13 @@ export const useLeituras = (
       return { value: 0, display: '-' };
     }
 
-    const venda = litrosData.value * bico.combustivel.preco_venda;
+    const leitura = leituras[bicoId];
+    // Se tiver override de preco, usa ele. Senão, usa do cadastro.
+    const precoUnitario = leitura?.preco
+      ? analisarValor(leitura.preco)
+      : bico.combustivel.preco_venda;
+
+    const venda = litrosData.value * precoUnitario;
     return {
       value: venda,
       display: venda.toLocaleString('pt-BR', {
@@ -374,7 +412,7 @@ export const useLeituras = (
         maximumFractionDigits: 2
       })
     };
-  }, [bicos, calcLitros]);
+  }, [bicos, calcLitros, leituras]);
 
   /**
    * Calcula totais gerais
@@ -441,8 +479,10 @@ export const useLeituras = (
     carregarLeituras,
     alterarInicial,
     alterarFechamento,
+    alterarPreco,
     aoSairInicial,
     aoSairFechamento,
+    aoSairPreco,
     calcLitros,
     calcVenda,
     totals,
