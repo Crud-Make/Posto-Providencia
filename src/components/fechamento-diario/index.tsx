@@ -99,7 +99,7 @@ const TelaFechamentoDiario: React.FC = () => {
       alterarCampoFrentista,
       aoSairCampoFrentista,
       definirSessoes
-   } = useSessoesFrentistas(postoAtivoId);
+   } = useSessoesFrentistas(postoAtivoId, frentistas);
 
    // 4. Pagamentos (Caixa Geral)
    const {
