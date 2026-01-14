@@ -1,4 +1,6 @@
-import { Cliente, NotaFrentista, Frentista } from '../../types/database/index';
+// [14/01 15:30] Alinhando tipos de clientes/notas com Smart Types e aliases do database
+import type { Frentista } from '../../types/database/index';
+import type { Cliente, NotaFrentista } from '../../types/ui/smart-types';
 
 // Dados e Estados
 
@@ -32,17 +34,10 @@ export interface ClientesResumoData {
     valorTotalPendente: number;
 }
 
-/**
- * Dados do formulário de cadastro/edição de cliente.
- */
-export interface ClienteFormData {
-    nome: string;
-    documento: string;
-    telefone: string;
-    email: string;
-    limite_credito: string;
-    endereco: string;
-}
+// [14/01 15:57] ClienteFormData agora derivado de Cliente via form-types
+import type { ClienteFormFields } from '../../types/ui/form-types';
+
+export type ClienteFormData = ClienteFormFields;
 
 /**
  * Dados do formulário de nova nota de fiado.

@@ -63,7 +63,7 @@ export const solvencyService = {
     const { data: recebimentos, error: recError } = await queryRec;
     if (recError) throw recError;
     type RecebimentoComValor = { valor: number };
-    const recTyped = (recebimentos || []) as unknown as RecebimentoComValor[];
+    const recTyped = (recebimentos || []) as RecebimentoComValor[];
     const saldoAtual = recTyped.reduce((acc, r) => acc + Number(r.valor), 0);
 
     // 2. Média Diária (Faturamento Líquido dos últimos 30 dias)

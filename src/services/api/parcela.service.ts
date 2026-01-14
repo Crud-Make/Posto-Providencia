@@ -1,9 +1,10 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database/index';
+import type { Parcela as ParcelaRow, InsertTables, UpdateTables } from '../../types/database/index';
 
-type Parcela = Database['public']['Tables']['Parcela']['Row'];
-type ParcelaInsert = Database['public']['Tables']['Parcela']['Insert'];
-type ParcelaUpdate = Database['public']['Tables']['Parcela']['Update'];
+// [14/01 19:05] Alinhando tipos de Parcela com aliases e helpers
+type Parcela = ParcelaRow;
+type ParcelaInsert = InsertTables<'Parcela'>;
+type ParcelaUpdate = UpdateTables<'Parcela'>;
 
 /**
  * Serviço para gerenciamento de Parcelas de empréstimos.

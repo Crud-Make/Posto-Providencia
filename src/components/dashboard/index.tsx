@@ -24,12 +24,13 @@ import FuelVolumeChart from './components/FuelVolumeChart';
 import ClosingsTable from './components/ClosingsTable';
 import PerformanceSidebar from './components/PerformanceSidebar';
 import { useDashboard } from './hooks/useDashboard';
+import { useNavigate } from 'react-router-dom';
 
-interface TelaDashboardProps {
-  onNewClosing: () => void;
-}
+// [14/01 07:00] Refatorado para usar useNavigate em vez de prop callback.
+// Permite navegação direta para a rota de fechamento.
 
-const TelaDashboard: React.FC<TelaDashboardProps> = ({ onNewClosing }) => {
+const TelaDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const {
     loading,
     data,
@@ -75,7 +76,7 @@ const TelaDashboard: React.FC<TelaDashboardProps> = ({ onNewClosing }) => {
             Exportar
           </button>
           <button
-            onClick={onNewClosing}
+            onClick={() => navigate('/fechamento')}
             className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white rounded-lg text-sm font-medium hover:bg-red-800 transition-colors shadow-sm"
           >
             <Plus size={16} />

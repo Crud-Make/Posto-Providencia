@@ -1,9 +1,10 @@
 import { supabase } from '../supabase';
-import { Database } from '../../types/database/index';
+import type { DBDespesa, InsertTables, UpdateTables } from '../../types/database/index';
 
-type Despesa = Database['public']['Tables']['Despesa']['Row'];
-type DespesaInsert = Database['public']['Tables']['Despesa']['Insert'];
-type DespesaUpdate = Database['public']['Tables']['Despesa']['Update'];
+// [14/01 19:05] Alinhando tipos de Despesa com aliases e helpers
+type Despesa = DBDespesa;
+type DespesaInsert = InsertTables<'Despesa'>;
+type DespesaUpdate = UpdateTables<'Despesa'>;
 
 /**
  * Serviço para gerenciamento de Despesas.

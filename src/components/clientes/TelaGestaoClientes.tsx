@@ -136,9 +136,24 @@ const TelaGestaoClientes: React.FC = () => {
             </div>
             
             {/* Modais */}
-            <ModalCliente {...clienteForm} />
-            <ModalNovaNota {...notaForm} />
-            <ModalPagamento {...pagamentoForm} />
+            <ModalCliente 
+                {...clienteForm} 
+                onClose={clienteForm.closeModal}
+                onSave={clienteForm.handleSave}
+                onChange={clienteForm.handleChange}
+            />
+            <ModalNovaNota 
+                {...notaForm} 
+                onClose={notaForm.closeModal}
+                onSave={notaForm.handleSave}
+                onChange={notaForm.handleChange}
+            />
+            <ModalPagamento 
+                {...pagamentoForm} 
+                onClose={pagamentoForm.closeModal}
+                onConfirm={pagamentoForm.handleConfirm}
+                onChange={pagamentoForm.handleChange}
+            />
         </div>
     );
 };

@@ -1,10 +1,20 @@
 import { supabase } from '../supabase';
-import type { NotaFrentista, InsertTables, Frentista, Cliente } from '@/types/database/index';
+import type { NotaFrentistaTable, ClienteTable } from '../../types/database/tables/clientes';
+import type { FrentistaTable } from '../../types/database/tables/operacoes';
+import type { WithRelations } from '../../types/ui/helpers';
 
-export type NotaFrentistaResponse = NotaFrentista & {
-  cliente?: Partial<Cliente>;
-  frentista?: Partial<Frentista>;
-};
+// [14/01 10:30] Refatoração para usar tipos do Supabase e WithRelations
+export type NotaFrentista = NotaFrentistaTable['Row'];
+export type Cliente = ClienteTable['Row'];
+export type Frentista = FrentistaTable['Row'];
+
+export type NotaFrentistaResponse = WithRelations<
+  NotaFrentista,
+  {
+    cliente?: Partial<Cliente>;
+    frentista?: Partial<Frentista>;
+  }
+>;
 
 export interface ResumoFiado {
   totalPendente: number;
@@ -29,7 +39,7 @@ export const notaFrentistaService = {
 
     const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
-    return (data as unknown as NotaFrentistaResponse[]) || [];
+    return (data || []) as NotaFrentistaResponse[];
   },
 
   async getPendentes(postoId?: number): Promise<NotaFrentistaResponse[]> {
@@ -48,7 +58,7 @@ export const notaFrentistaService = {
 
     const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
-    return (data as unknown as NotaFrentistaResponse[]) || [];
+    return (data || []) as NotaFrentistaResponse[];
   },
 
   async getByCliente(clienteId: number): Promise<NotaFrentistaResponse[]> {
@@ -62,7 +72,7 @@ export const notaFrentistaService = {
       .order('data', { ascending: false });
 
     if (error) throw error;
-    return (data as unknown as NotaFrentistaResponse[]) || [];
+    return (data || []) as NotaFrentistaResponse[];
   },
 
   async getByDateRange(dataInicio: string, dataFim: string, postoId?: number): Promise<NotaFrentistaResponse[]> {
@@ -82,10 +92,10 @@ export const notaFrentistaService = {
 
     const { data, error } = await query.order('data', { ascending: false });
     if (error) throw error;
-    return (data as unknown as NotaFrentistaResponse[]) || [];
+    return (data || []) as NotaFrentistaResponse[];
   },
 
-  async create(nota: InsertTables<'NotaFrentista'>): Promise<NotaFrentistaResponse> {
+  async create(nota: NotaFrentistaTable['Insert']): Promise<NotaFrentistaResponse> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .insert({
@@ -96,7 +106,7 @@ export const notaFrentistaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentistaResponse;
+    return data as NotaFrentistaResponse;
   },
 
   async registrarPagamento(id: number, formaPagamento: string, observacoes?: string, dataPagamento?: string): Promise<NotaFrentistaResponse> {
@@ -113,7 +123,7 @@ export const notaFrentistaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentistaResponse;
+    return data as NotaFrentistaResponse;
   },
 
   async cancelar(id: number, observacoes?: string): Promise<NotaFrentistaResponse> {
@@ -127,14 +137,10 @@ export const notaFrentistaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentistaResponse;
+    return data as NotaFrentistaResponse;
   },
 
-  async update(id: number, updates: {
-    valor?: number;
-    descricao?: string;
-    observacoes?: string;
-  }): Promise<NotaFrentistaResponse> {
+  async update(id: number, updates: NotaFrentistaTable['Update']): Promise<NotaFrentistaResponse> {
     const { data, error } = await supabase
       .from('NotaFrentista')
       .update(updates)
@@ -142,7 +148,7 @@ export const notaFrentistaService = {
       .select()
       .single();
     if (error) throw error;
-    return data as unknown as NotaFrentistaResponse;
+    return data as NotaFrentistaResponse;
   },
 
   async delete(id: number): Promise<void> {
@@ -172,7 +178,7 @@ export const notaFrentistaService = {
 
     const notas = data || [];
     type NotaComCliente = { valor: number; cliente: { id: number; nome: string } | null };
-    const notasTyped = notas as unknown as NotaComCliente[];
+    const notasTyped = notas as NotaComCliente[];
     const totalPendente = notasTyped.reduce((acc, n) => acc + n.valor, 0);
 
     // Agrupa por cliente

@@ -113,7 +113,7 @@ export const salesAnalysisService = {
         };
       };
     };
-    const leiturasTyped = (leituras || []) as unknown as LeituraComBico[];
+    const leiturasTyped = (leituras || []) as LeituraComBico[];
 
     // First pass to sum volume
     leiturasTyped.forEach((l) => {
@@ -253,7 +253,7 @@ export const salesAnalysisService = {
       .lte('data', prevEndDate);
 
     type LeituraPrev = { litros_vendidos?: number; valor_total?: number };
-    const prevLeiturasTyped = (prevLeituras || []) as unknown as LeituraPrev[];
+    const prevLeiturasTyped = (prevLeituras || []) as LeituraPrev[];
     const previousPeriod = {
       volume: prevLeiturasTyped.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0),
       revenue: prevLeiturasTyped.reduce((acc, l) => acc + (l.valor_total || 0), 0),

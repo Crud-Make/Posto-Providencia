@@ -1,8 +1,8 @@
 import React from 'react';
 import { Package } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
-import { CombustivelHibrido } from '../../hooks/registro-compras/useCombustiveisHibridos';
-import { CalculosRegistro } from '../../hooks/registro-compras/useCalculosRegistro';
+import { CombustivelHibrido } from './hooks/useCombustiveisHibridos';
+import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 import { Database } from '../../types/database/index';
 
