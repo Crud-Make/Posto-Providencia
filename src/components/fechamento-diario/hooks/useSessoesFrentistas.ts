@@ -9,20 +9,36 @@
  * @version 1.0.0
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
+import type { Frentista } from '../../../types/database/index';
 import { fechamentoFrentistaService } from '../../../services/api';
 import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
 
 /**
  * Interface para totais detalhados dos frentistas
+ * 
+ * @remarks
+ * Contém a soma de todos os valores por tipo de pagamento
+ * de todas as sessões de frentistas.
  */
 export interface TotaisFrentistas {
-  cartao: number;
-  nota: number;
-  pix: number;
-  dinheiro: number;
-  total: number;
+  /** Total de cartão (débito + crédito consolidado) */
+  readonly cartao: number;
+  /** Total de cartão débito */
+  readonly cartao_debito: number;
+  /** Total de cartão crédito */
+  readonly cartao_credito: number;
+  /** Total de notas a prazo */
+  readonly nota: number;
+  /** Total de Pix */
+  readonly pix: number;
+  /** Total em dinheiro */
+  readonly dinheiro: number;
+  /** Total de baratão/outros */
+  readonly baratao: number;
+  /** Soma geral de todos os valores */
+  readonly total: number;
 }
 
 /**
@@ -41,7 +57,7 @@ interface RetornoSessoesFrentistas {
   definirSessoes: React.Dispatch<React.SetStateAction<SessaoFrentista[]>>;
 }
 
-// ... (interfaces mantidas)
+// [14/01 08:41] Correção: Removido comentário órfão e sincronizado interface
 
 /**
  * Cria uma sessão vazia para novo frentista
@@ -78,10 +94,27 @@ const criarSessaoVazia = (): SessaoFrentista => ({
  * const { sessoes, adicionarFrentista } = useSessoesFrentistas(postoId);
  */
 export const useSessoesFrentistas = (
-  postoId: number | null
+  postoId: number | null,
+  frentistas: Frentista[] = []
 ): RetornoSessoesFrentistas => {
-  const [sessoes, setSessoes] = useState<SessaoFrentista[]>([criarSessaoVazia()]);
+  const [sessoes, setSessoes] = useState<SessaoFrentista[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [inicializado, setInicializado] = useState(false);
+
+  // Inicializa sessões automaticamente para todos os frentistas ativos
+  useEffect(() => {
+    if (frentistas.length > 0 && !inicializado) {
+      const frentistasAtivos = frentistas.filter(f => f.ativo);
+      const sessoesIniciais = frentistasAtivos.map(f => ({
+        ...criarSessaoVazia(),
+        tempId: `frentista-${f.id}`,
+        frentistaId: f.id
+      }));
+      setSessoes(sessoesIniciais);
+      setInicializado(true);
+      console.log(`✅ ${frentistasAtivos.length} frentistas inicializados`);
+    }
+  }, [frentistas, inicializado]);
 
   /**
    * Carrega sessões existentes do banco
@@ -100,38 +133,68 @@ export const useSessoesFrentistas = (
         postoId
       );
 
+      // [14/01 08:45] Correção de mapeamento usando nomes de campos do banco
+      // Campos do banco: baratao, encerrante, diferenca_calculada
+      // Campos da UI: valor_baratao, valor_encerrante, etc
+      // [Fix] Merge inteligente: Dados do Banco + Frentistas Ativos sem dados
+      const sessoesMap = new Map<number, SessaoFrentista>();
+
+      // 1. Popula com dados vindos do banco
       if (dados.length > 0) {
-        const mapeadas: SessaoFrentista[] = dados.map(fs => ({
-          tempId: `existing-${fs.id}`,
-          frentistaId: fs.frentista_id,
-          valor_cartao: paraReais(fs.valor_cartao),
-          valor_cartao_debito: paraReais(fs.valor_cartao_debito),
-          valor_cartao_credito: paraReais(fs.valor_cartao_credito),
-          valor_nota: paraReais(fs.valor_nota),
-          valor_pix: paraReais(fs.valor_pix),
-          valor_dinheiro: paraReais(fs.valor_dinheiro),
-          valor_baratao: paraReais(fs.valor_baratao),
-          valor_encerrante: paraReais(fs.valor_encerrante),
-          valor_conferido: paraReais(fs.valor_conferido),
-          observacoes: fs.observacoes || '',
-          valor_produtos: paraReais(fs.valor_produtos || 0),
-          status: (fs.status as 'pendente' | 'conferido') || 'pendente',
-          data_hora_envio: fs.data_hora_envio
-        }));
-        setSessoes(mapeadas);
-        console.log('✅ Sessões de frentistas carregadas');
-      } else {
-        // Inicia com uma sessão vazia
-        setSessoes([criarSessaoVazia()]);
-        console.log('✅ Sessão de frentista inicializada (vazia)');
+        dados.forEach(fs => {
+          if (fs.frentista_id) {
+            sessoesMap.set(fs.frentista_id, {
+              // [Fix] Mapeamento direto dos campos existentes no banco (confirmado via MCP)
+              tempId: `existing-${fs.id}`,
+              frentistaId: fs.frentista_id,
+              valor_cartao: '', // Ignora legado
+              valor_cartao_debito: paraReais(fs.valor_cartao_debito),
+              valor_cartao_credito: paraReais(fs.valor_cartao_credito),
+              valor_nota: paraReais(fs.valor_nota),
+              valor_pix: paraReais(fs.valor_pix),
+              valor_dinheiro: paraReais(fs.valor_dinheiro),
+              valor_baratao: paraReais(fs.baratao),
+              valor_encerrante: paraReais(fs.encerrante),
+              valor_conferido: paraReais(fs.valor_conferido),
+              observacoes: fs.observacoes || '',
+              valor_produtos: '',
+              status: 'pendente'
+            });
+          }
+        });
       }
+
+      // 2. Garante que TODO frentista ativo tenha uma sessão (vazia ou carregada)
+      const frentistasAtivos = frentistas.filter(f => f.ativo);
+
+      const sessoesCompletas = frentistasAtivos.map(f => {
+        // Se já tem dados do banco, usa. Se não, cria vazia vinculada a ele.
+        const sessaoExistente = sessoesMap.get(f.id);
+        if (sessaoExistente) return sessaoExistente;
+
+        return {
+          ...criarSessaoVazia(),
+          tempId: `auto-${f.id}`,
+          frentistaId: f.id // Garante que já vem selecionado
+        };
+      });
+
+      if (sessoesCompletas.length > 0) {
+        setSessoes(sessoesCompletas);
+        console.log(`✅ Sessões carregadas e mescladas: ${sessoesCompletas.length} frentistas na tela.`);
+      } else {
+        // Fallback se não tiver frentistas ativos (ex: erro de cadastro)
+        setSessoes([criarSessaoVazia()]);
+      }
+
     } catch (err) {
-      console.error('❌ Erro ao carregar sessões:', err);
-      setSessoes([criarSessaoVazia()]);
+      console.error('❌ Erro ao carregar sessões (Merge):', err);
+      // Mantém estado anterior ou inicia vazio mas tenta respeitar frentistas
+      setSessoes(prev => prev.length > 0 ? prev : [criarSessaoVazia()]);
     } finally {
       setCarregando(false);
     }
-  }, [postoId]);
+  }, [postoId, frentistas]);
 
   /**
    * Adiciona nova sessão de frentista
@@ -236,27 +299,14 @@ export const useSessoesFrentistas = (
       const baratao = analisarValor(fs.valor_baratao);
 
       return {
-        cartao: acc.cartao + cartao,
+        cartao: acc.cartao + cartao + debito + credito, // Soma cartao legado + debito + credito
         cartao_debito: acc.cartao_debito + debito,
         cartao_credito: acc.cartao_credito + credito,
         nota: acc.nota + nota,
         pix: acc.pix + pix,
         dinheiro: acc.dinheiro + dinheiro,
         baratao: acc.baratao + baratao,
-        total: acc.total + cartao + nota + pix + dinheiro + baratao // Note: debito/credito might be part of cartao or separate? Assuming separate fields in UI but logic might vary. 
-        // In original code: total = cartao + nota + pix + dinheiro + baratao. 
-        // Does 'cartao' include debito/credito? 
-        // In 'loadFrentistaSessions' it summed them separately.
-        // Let's assume total logic stays same as original hook (cartao + others). 
-        // But if 'valor_cartao' is used as sum of debit/credit, then it's fine.
-        // If they are separate inputs, they should be added to total.
-        // Looking at original code:
-        // total: acc.total + parseValue(fs.valor_cartao) + ...
-        // It seems only 'valor_cartao' was added to total.
-        // But 'updatePaymentsFromFrentistas' used cartao_debito/credito.
-
-        // I'll assume 'valor_cartao' is the aggregate or the specific 'credit' depending on usage.
-        // But wait, the hook returns totals.
+        total: acc.total + cartao + debito + credito + nota + pix + dinheiro + baratao
       };
     }, { cartao: 0, cartao_debito: 0, cartao_credito: 0, nota: 0, pix: 0, dinheiro: 0, baratao: 0, total: 0 });
   }, [sessoes]);

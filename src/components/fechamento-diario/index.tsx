@@ -37,9 +37,11 @@ import {
 } from '../../services/api';
 import { parseValue } from '../../utils/formatters';
 
+// [14/01 08:48] Reorganização do layout para igualar à produção (#24)
 // Subcomponentes
 import { HeaderFechamento } from './components/HeaderFechamento';
 import { TabelaLeituras } from './components/TabelaLeituras';
+import { CardResumoCombustivel } from './components/CardResumoCombustivel';
 import { SecaoSessoesFrentistas } from './components/TabelaFrentistas';
 import { SecaoPagamentos } from './components/PainelFinanceiro';
 import { SecaoResumo } from './components/ResumoCombustivel';
@@ -79,7 +81,10 @@ const TelaFechamentoDiario: React.FC = () => {
       alterarFechamento,
       aoSairInicial,
       aoSairFechamento,
+      alterarPreco,
+      aoSairPreco,
       calcLitros,
+      calcVenda,
       definirLeituras
    } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
 
@@ -94,7 +99,7 @@ const TelaFechamentoDiario: React.FC = () => {
       alterarCampoFrentista,
       aoSairCampoFrentista,
       definirSessoes
-   } = useSessoesFrentistas(postoAtivoId);
+   } = useSessoesFrentistas(postoAtivoId, frentistas);
 
    // 4. Pagamentos (Caixa Geral)
    const {
@@ -331,7 +336,7 @@ const TelaFechamentoDiario: React.FC = () => {
             loading={loadingDados}
          />
 
-         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in zoom-in-95 duration-300">
+         <div className="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in zoom-in-95 duration-300">
             {/* Alertas e Loading */}
             {loading && (
                <div className="mb-6">
@@ -354,6 +359,7 @@ const TelaFechamentoDiario: React.FC = () => {
 
             {/* Conteúdo das Abas */}
             <div className="bg-slate-800/30 rounded-2xl border border-slate-700/50 p-1">
+               {/* Aba Leituras de Bombas: Venda Concentrador + Resumo por Combustível + Gráficos */}
                <div className={activeTab === 'leituras' ? 'block' : 'hidden'}>
                   <TabelaLeituras
                      bicos={bicos}
@@ -362,41 +368,51 @@ const TelaFechamentoDiario: React.FC = () => {
                      onLeituraFechamentoChange={alterarFechamento}
                      onLeituraInicialBlur={aoSairInicial}
                      onLeituraFechamentoBlur={aoSairFechamento}
+                     onPrecoChange={alterarPreco}
+                     onPrecoBlur={aoSairPreco}
                      calcLitros={calcLitros}
+                     calcVenda={calcVenda}
                      isLoading={loading}
                   />
 
-                  <div className="mt-8 border-t border-slate-700/50 pt-8">
-                     <SecaoSessoesFrentistas
-                        sessoes={frentistaSessions}
-                        frentistas={frentistas}
-                        onSessaoChange={alterarCampoFrentista}
-                        onSessaoBlur={aoSairCampoFrentista}
-                        onRemoverSessao={removerFrentista}
-                        onAdicionarSessao={adicionarFrentista}
-                        isLoading={loading}
-                     />
-                  </div>
+                  {/* Resumo por Combustível - Igual à produção */}
+                  <CardResumoCombustivel
+                     leituras={leituras}
+                     bicos={bicos}
+                     isLoading={loading}
+                  />
+
+                  {/* Gráficos - Volume, Faturamento, Distribuição de Pagamentos */}
+                  <SecaoResumo
+                     totalLitros={totalLitros}
+                     totalSessoes={totalFrentistas}
+                     totalPagamentos={totalPagamentos}
+                     leituras={leituras}
+                     bicos={bicos}
+                     sessoes={frentistaSessions}
+                     frentistas={frentistas}
+                     isLoading={loading}
+                  />
                </div>
 
+               {/* Aba Fechamento Financeiro: Sessões de Frentistas + Detalhamento */}
                <div className={activeTab === 'financeiro' ? 'block' : 'hidden'}>
-                  <SecaoPagamentos
-                     pagamentos={payments}
-                     onPagamentoChange={(idx, val) => alterarPagamento(idx, val)}
-                     onPagamentoBlur={(idx) => aoSairPagamento(idx)}
-                     totalPagamentos={totalPagamentos}
+                  <SecaoSessoesFrentistas
+                     sessoes={frentistaSessions}
+                     frentistas={frentistas}
+                     onSessaoChange={alterarCampoFrentista}
+                     onSessaoBlur={aoSairCampoFrentista}
+                     onRemoverSessao={removerFrentista}
+                     onAdicionarSessao={adicionarFrentista}
                      isLoading={loading}
                   />
 
                   <div className="mt-8">
-                     <SecaoResumo
-                        totalLitros={totalLitros}
-                        totalSessoes={totalFrentistas}
+                     <SecaoPagamentos
+                        pagamentos={payments}
+                        onPagamentoChange={(idx, val) => alterarPagamento(idx, val)}
+                        onPagamentoBlur={(idx) => aoSairPagamento(idx)}
                         totalPagamentos={totalPagamentos}
-                        leituras={leituras}
-                        bicos={bicos}
-                        sessoes={frentistaSessions}
-                        frentistas={frentistas}
                         isLoading={loading}
                      />
                   </div>
