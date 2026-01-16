@@ -7,7 +7,9 @@
     "dev": "vite --port 3015",
     "build": "node -e \"const fs = require('fs'); fs.writeFileSync('./public/version.json', JSON.stringify({version: Date.now().toString()}))\" && vite build",
     "preview": "vite preview",
-    "validate": "./scripts/validate-rules.sh",
+    "lint": "eslint . --ext .ts,.tsx",
+    "type-check": "tsc --noEmit",
+    "validate": "powershell -ExecutionPolicy Bypass -File ./scripts/validate-rules.ps1",
     "push": "./scripts/push.sh"
   },
   "dependencies": {
@@ -23,7 +25,10 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.39.2",
     "pg": "^8.16.3",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
