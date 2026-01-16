@@ -26,7 +26,19 @@ import type {
 } from './database.types';
 
 import {
+  Cliente,
+  CreateCliente,
+  UpdateCliente,
   Divida,
+  CreateDivida,
+  UpdateDivida,
+  ApiResponse,
+  createSuccessResponse,
+  createErrorResponse,
+  isSuccess
+} from '../types/ui';
+
+import {
   SolvencyStatus,
   SolvencyProjection
 } from '../types';
@@ -2037,63 +2049,59 @@ export const notificationService = {
 // ============================================
 
 export const dividaService = {
-  async getAll(postoId?: number): Promise<Divida[]> {
-    let query: any = supabase.from('Divida').select('*');
-    if (postoId) query = query.eq('posto_id', postoId);
+  async getAll(postoId?: number): Promise<ApiResponse<Divida[]>> {
+    try {
+      let query = supabase.from('Divida').select('*');
+      if (postoId) query = query.eq('posto_id', postoId);
 
-    const { data, error } = await query.order('data_vencimento', { ascending: true });
-    if (error) throw error;
-    return data.map((d: any) => ({
-      id: String(d.id),
-      descricao: d.descricao,
-      valor: Number(d.valor),
-      data_vencimento: d.data_vencimento,
-      status: d.status,
-      posto_id: d.posto_id
-    }));
+      const { data, error } = await query.order('data_vencimento', { ascending: true });
+      if (error) throw error;
+      return createSuccessResponse(data as Divida[]);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao buscar dívidas');
+    }
   },
 
-  async create(divida: Omit<Divida, 'id'>): Promise<Divida> {
-    const { data, error } = await supabase
-      .from('Divida')
-      .insert(divida)
-      .select()
-      .single();
-    if (error) throw error;
-    return {
-      id: String(data.id),
-      descricao: data.descricao,
-      valor: Number(data.valor),
-      data_vencimento: data.data_vencimento,
-      status: data.status,
-      posto_id: data.posto_id
-    };
+  async create(divida: CreateDivida): Promise<ApiResponse<Divida>> {
+    try {
+      const { data, error } = await supabase
+        .from('Divida')
+        .insert(divida)
+        .select()
+        .single();
+      if (error) throw error;
+      return createSuccessResponse(data as Divida);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao criar dívida');
+    }
   },
 
-  async update(id: string, updates: Partial<Divida>): Promise<Divida> {
-    const { data, error } = await supabase
-      .from('Divida')
-      .update(updates as any)
-      .eq('id', Number(id))
-      .select()
-      .single();
-    if (error) throw error;
-    return {
-      id: String(data.id),
-      descricao: data.descricao,
-      valor: Number(data.valor),
-      data_vencimento: data.data_vencimento,
-      status: data.status,
-      posto_id: data.posto_id
-    };
+  async update(id: number, updates: UpdateDivida): Promise<ApiResponse<Divida>> {
+    try {
+      const { data, error } = await supabase
+        .from('Divida')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return createSuccessResponse(data as Divida);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao atualizar dívida');
+    }
   },
 
-  async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('Divida')
-      .delete()
-      .eq('id', Number(id));
-    if (error) throw error;
+  async delete(id: number): Promise<ApiResponse<void>> {
+    try {
+      const { error } = await supabase
+        .from('Divida')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return createSuccessResponse(undefined);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao deletar dívida');
+    }
   }
 };
 
@@ -2143,7 +2151,8 @@ export const solvencyService = {
     const mediaDiaria = totalVendas30 / 30;
 
     // 3. Dívidas Pendentes
-    const dividas = await dividaService.getAll(postoId);
+    const response = await dividaService.getAll(postoId);
+    const dividas = isSuccess(response) ? response.data : [];
     const pendentes = dividas.filter(d => d.status === 'pendente');
 
     const proximasParcelas: SolvencyStatus[] = pendentes.map(d => {
@@ -2173,7 +2182,7 @@ export const solvencyService = {
       }
 
       return {
-        dividaId: d.id,
+        dividaId: String(d.id),
         descricao: d.descricao,
         valor: d.valor,
         dataVencimento: d.data_vencimento,
@@ -3054,132 +3063,148 @@ export const escalaService = {
 // ============================================
 
 export const clienteService = {
-  async getAll(postoId?: number): Promise<any[]> {
-    let query = (supabase as any)
-      .from('Cliente')
-      .select('*')
-      .eq('ativo', true);
+  async getAll(postoId?: number): Promise<ApiResponse<Cliente[]>> {
+    try {
+      let query = supabase
+        .from('Cliente')
+        .select('*')
+        .eq('ativo', true);
 
-    if (postoId) {
-      query = query.eq('posto_id', postoId);
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
+
+      const { data, error } = await query.order('nome');
+      if (error) throw error;
+      return createSuccessResponse(data as Cliente[]);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao buscar clientes');
     }
-
-    const { data, error } = await query.order('nome');
-    if (error) throw error;
-    return data || [];
   },
 
-  async getAllWithSaldo(postoId?: number): Promise<any[]> {
-    let query = (supabase as any)
-      .from('Cliente')
-      .select(`
-        *,
-        notas:NotaFrentista(id, valor, status, data)
-      `)
-      .eq('ativo', true);
-
-    if (postoId) {
-      query = query.eq('posto_id', postoId);
-    }
-
-    const { data, error } = await query.order('nome');
-    if (error) throw error;
-    return data || [];
-  },
-
-  async getById(id: number): Promise<any | null> {
-    const { data, error } = await supabase
-      .from('Cliente')
-      .select(`
-        *,
-        notas:NotaFrentista(
+  async getAllWithSaldo(postoId?: number): Promise<ApiResponse<Cliente[]>> {
+    try {
+      let query = supabase
+        .from('Cliente')
+        .select(`
           *,
-          frentista:Frentista(id, nome)
-        )
-      `)
-      .eq('id', id)
-      .single();
-    if (error) throw error;
-    return data;
-  },
+          notas:NotaFrentista(id, valor, status, data)
+        `)
+        .eq('ativo', true);
 
-  async getDevedores(postoId?: number): Promise<any[]> {
-    let query = (supabase as any)
-      .from('Cliente')
-      .select('*')
-      .eq('ativo', true)
-      .gt('saldo_devedor', 0);
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
 
-    if (postoId) {
-      query = query.eq('posto_id', postoId);
+      const { data, error } = await query.order('nome');
+      if (error) throw error;
+      return createSuccessResponse(data as unknown as Cliente[]);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao buscar clientes com saldo');
     }
-
-    const { data, error } = await query.order('saldo_devedor', { ascending: false });
-    if (error) throw error;
-    return data || [];
   },
 
-  async create(cliente: {
-    nome: string;
-    documento?: string;
-    telefone?: string;
-    email?: string;
-    endereco?: string;
-    limite_credito?: number;
-    posto_id: number;
-  }): Promise<any> {
-    const { data, error } = await supabase
-      .from('Cliente')
-      .insert(cliente)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
-  async update(id: number, updates: {
-    nome?: string;
-    documento?: string;
-    telefone?: string;
-    email?: string;
-    endereco?: string;
-    limite_credito?: number;
-    ativo?: boolean;
-    bloqueado?: boolean;
-  }): Promise<any> {
-    const { data, error } = await supabase
-      .from('Cliente')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
-  async delete(id: number): Promise<void> {
-    // Soft delete
-    const { error } = await supabase
-      .from('Cliente')
-      .update({ ativo: false })
-      .eq('id', id);
-    if (error) throw error;
-  },
-
-  async search(termo: string, postoId?: number): Promise<any[]> {
-    let query = (supabase as any)
-      .from('Cliente')
-      .select('*')
-      .eq('ativo', true)
-      .or(`nome.ilike.%${termo}%,documento.ilike.%${termo}%,telefone.ilike.%${termo}%`);
-
-    if (postoId) {
-      query = query.eq('posto_id', postoId);
+  async getById(id: number): Promise<ApiResponse<Cliente>> {
+    try {
+      const { data, error } = await supabase
+        .from('Cliente')
+        .select(`
+          *,
+          notas:NotaFrentista(
+            *,
+            frentista:Frentista(id, nome)
+          )
+        `)
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+      return createSuccessResponse(data as unknown as Cliente);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao buscar cliente');
     }
+  },
 
-    const { data, error } = await query.order('nome').limit(20);
-    if (error) throw error;
-    return data || [];
+  async getDevedores(postoId?: number): Promise<ApiResponse<Cliente[]>> {
+    try {
+      let query = supabase
+        .from('Cliente')
+        .select('*')
+        .eq('ativo', true)
+        .gt('saldo_devedor', 0);
+
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
+
+      const { data, error } = await query.order('saldo_devedor', { ascending: false });
+      if (error) throw error;
+      return createSuccessResponse(data as Cliente[]);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao buscar devedores');
+    }
+  },
+
+  async create(cliente: CreateCliente): Promise<ApiResponse<Cliente>> {
+    try {
+      const { data, error } = await supabase
+        .from('Cliente')
+        .insert(cliente)
+        .select()
+        .single();
+      if (error) throw error;
+      return createSuccessResponse(data as Cliente);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao criar cliente');
+    }
+  },
+
+  async update(id: number, updates: UpdateCliente & { bloqueado?: boolean }): Promise<ApiResponse<Cliente>> {
+    try {
+      const { data, error } = await supabase
+        .from('Cliente')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return createSuccessResponse(data as Cliente);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao atualizar cliente');
+    }
+  },
+
+  async delete(id: number): Promise<ApiResponse<void>> {
+    try {
+      // Soft delete
+      const { error } = await supabase
+        .from('Cliente')
+        .update({ ativo: false })
+        .eq('id', id);
+      if (error) throw error;
+      return createSuccessResponse(undefined);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao deletar cliente');
+    }
+  },
+
+  async search(termo: string, postoId?: number): Promise<ApiResponse<Cliente[]>> {
+    try {
+      let query = supabase
+        .from('Cliente')
+        .select('*')
+        .eq('ativo', true)
+        .or(`nome.ilike.%${termo}%,documento.ilike.%${termo}%,telefone.ilike.%${termo}%`);
+
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
+
+      const { data, error } = await query.order('nome').limit(20);
+      if (error) throw error;
+      return createSuccessResponse(data as Cliente[]);
+    } catch (error) {
+      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao buscar clientes');
+    }
   }
 };
 
