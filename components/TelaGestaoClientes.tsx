@@ -21,6 +21,7 @@ import {
 import { usePosto } from '../contexts/PostoContext';
 import { clienteService, notaFrentistaService, frentistaService } from '../services/api';
 import { Cliente, NotaFrentista } from '../services/database.types';
+import { isSuccess } from '../types/ui';
 import { toast } from 'sonner';
 
 // Componente para Badges de Status
@@ -171,14 +172,24 @@ const TelaGestaoClientes: React.FC = () => {
         try {
             if (!postoAtivo?.id) return;
 
-            const data = await clienteService.getAllWithSaldo(postoAtivo.id);
+            const response = await clienteService.getAllWithSaldo(postoAtivo.id);
+            if (!isSuccess(response)) {
+                console.error('Erro ao carregar clientes:', response.error);
+                return;
+            }
 
-            // Processar dados para calcular saldo real (caso o trigger não tenha pego retroativo)
+            type ClienteComNotas = Cliente & {
+                notas?: { status: string; valor: number }[];
+                bloqueado?: boolean;
+            };
+
+            const data = response.data as ClienteComNotas[];
+
             const clientesProcessados = data.map(c => {
                 const saldoCalculado = c.notas
                     ? c.notas
-                        .filter((n: any) => n.status === 'pendente')
-                        .reduce((acc: number, n: any) => acc + Number(n.valor), 0)
+                        .filter(n => n.status === 'pendente')
+                        .reduce((acc, n) => acc + Number(n.valor), 0)
                     : 0;
 
                 return {
@@ -189,7 +200,6 @@ const TelaGestaoClientes: React.FC = () => {
 
             setClientes(clientesProcessados);
 
-            // Calcular resumo
             const devedores = clientesProcessados.filter(c => c.saldo_devedor > 0);
             const totalPendente = devedores.reduce((acc, c) => acc + c.saldo_devedor, 0);
 

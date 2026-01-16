@@ -98,7 +98,7 @@ const TelaDashboardSolvencia: React.FC = () => {
         setSaving(true);
         try {
             if (editingDivida) {
-                await dividaService.update(editingDivida.id, formState);
+                await dividaService.update(Number(editingDivida.id), formState);
                 toast.success("Dívida atualizada!");
             } else {
                 await dividaService.create(formState);
@@ -118,7 +118,7 @@ const TelaDashboardSolvencia: React.FC = () => {
         if (!confirm("Tem certeza que deseja excluir esta dívida?")) return;
 
         try {
-            await dividaService.delete(id);
+            await dividaService.delete(Number(id));
             toast.success("Dívida excluída!");
             loadData();
         } catch (error) {
@@ -135,7 +135,7 @@ const TelaDashboardSolvencia: React.FC = () => {
         // Let's offer a quick action: mark as paid if they manually paid it
         if (confirm("Deseja marcar esta dívida como PAGA para remover o alerta de déficit?")) {
             try {
-                await dividaService.update(dividaId, { status: 'pago' });
+                await dividaService.update(Number(dividaId), { status: 'pago' });
                 toast.success("Dívida marcada como paga. Recalculando projeção...");
                 loadData();
             } catch (error) {
