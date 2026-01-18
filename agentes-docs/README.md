@@ -64,6 +64,12 @@
 | **[PRD-031](./PRD-031-analise-custos.md)** | TelaAnaliseCustos.tsx | 436 | 🟢 Baixa | ⏳ Pendente |
 | **[PRD-032](./PRD-032-fechamento-diario.md)** | TelaFechamentoDiario/index.tsx | 418 | 🟢 Baixa | ⏳ Pendente |
 
+## 📗 PRDs por Componente (Sprint 6 - Monorepo)
+
+| PRD | Componente | Descrição | Prioridade | Status |
+|-----|------------|-----------|------------|---------|
+| **[PRD-033](./PRD-033-MIGRACAO-MONOREPO.md)** | Infraestrutura | Monorepo + Mobile Refactor | 🔴 Alta | ⏳ PRÓXIMO |
+
 ---
 
 ## 🚀 Fluxo de Trabalho Recomendado
@@ -132,11 +138,11 @@ Sprint 4 (Dashboards):          ████████████████
 Sprint 5 (Componentes Finais):  ████████████████████ 100% ✅
 
 Componentes Concluídos: 12/12
-Próximo: FASE 4 - FINALIZAÇÃO E CELEBRAÇÃO 🚀
+Próximo: FASE 4 - MIGRACAO MONOREPO E REFRESH MOBILE 🚀
 
 Total Refatorado: ~16.365 linhas
-Total Pendente: 0 linhas
-Dívida Técnica: 0%
+Total Pendente: ~12.000 linhas (Mobile)
+Dívida Técnica: 5% (Foco Mobile)
 ```
 
 ---
@@ -191,6 +197,11 @@ Para CADA componente, garantir:
 10. TelaRelatorioDiario.tsx (474 linhas) ⚠️ Reutilizar usePagamentos.ts
 11. TelaAnaliseCustos.tsx (436 linhas)
 12. TelaFechamentoDiario/index.tsx (418 linhas) ⚠️ Reutilizar useFechamento.ts
+
+### Sprint 6 (Monorepo & Mobile)
+13. **Migração Monorepo** (Estrutura Bun Workspaces)
+14. **Refatoração Mobile** (@posto/types e modularização)
+15. **Refatoração RegistroScreen.tsx** (Mobile - 1100 linhas)
 
 ---
 

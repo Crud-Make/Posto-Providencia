@@ -395,7 +395,48 @@ src/components/fechamento-diario/
 
 ---
 
-## 🎉 FASE 4: FINALIZAÇÃO E CELEBRAÇÃO
+## 🎯 FASE 4: SPRINT 6 - MONOREPO E REFRESH MOBILE (Ação Estrutural)
+
+### Componente #13: Infraestrutura Monorepo
+
+**Prioridade:** 🔴 CRÍTICA (Bloqueador de tipos)
+**Objetivo:** Sincronizar Web e Mobile
+**PRD:** [PRD-033-MIGRACAO-MONOREPO.md](./PRD-033-MIGRACAO-MONOREPO.md)
+**Instruções:** [INSTRUCOES-MONOREPO.md](./INSTRUCOES-MONOREPO.md)
+
+#### Estrutura a Criar
+```
+/
+├── apps/
+│   ├── web/
+│   └── mobile/
+└── packages/
+    ├── types/
+    ├── api-core/
+    └── utils/
+```
+
+### Componente #14: Refatoração RegistroScreen.tsx (Mobile)
+
+**Prioridade:** 🔴 Alta
+**Linhas:** 1177 → ~150
+**Tempo:** 12-16 horas
+**Objetivo:** Aplicar padrão Senior no Mobile
+
+#### Estrutura a Criar
+```
+apps/mobile/
+├── hooks/
+│   └── useRegistroFechamento.ts
+└── components/registro/
+    ├── EncerranteCard.tsx
+    ├── PagamentosGrid.tsx
+    └── NotasList.tsx
+```
+
+---
+
+## 🎉 FASE 5: FINALIZAÇÃO E CELEBRAÇÃO
 
 ### Passo 1: Validação Final
 ```bash

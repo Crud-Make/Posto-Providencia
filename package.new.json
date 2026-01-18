@@ -1,0 +1,23 @@
+{
+    "name": "posto-providencia-monorepo",
+    "version": "3.0.0",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev": "bun --filter @posto/web dev",
+        "dev:web": "bun --filter @posto/web dev",
+        "dev:mobile": "cd apps/mobile && bun start",
+        "build": "bun run build:packages && bun --filter @posto/web build",
+        "build:packages": "bun run --filter './packages/*' typecheck",
+        "typecheck": "bun run --filter './packages/*' typecheck && bun --filter @posto/web typecheck",
+        "mobile:start": "cd apps/mobile && bun start",
+        "mobile:android": "cd apps/mobile && npx expo run:android",
+        "mobile:ios": "cd apps/mobile && npx expo run:ios"
+    },
+    "devDependencies": {
+        "typescript": "~5.8.2"
+    }
+}
