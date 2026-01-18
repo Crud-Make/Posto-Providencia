@@ -5,7 +5,7 @@
  * Gerencia operações CRUD de bombas de combustível
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import type { Bomba, Bico, Combustivel, InsertTables, UpdateTables } from '../../types/database/index';
 import {
   ApiResponse,

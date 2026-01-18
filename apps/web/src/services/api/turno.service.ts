@@ -5,7 +5,7 @@
  * Gerencia operações CRUD de turnos de trabalho (Manhã, Tarde, Noite)
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import type { Turno, InsertTables, UpdateTables } from '../../types/database/index';
 import {
   ApiResponse,

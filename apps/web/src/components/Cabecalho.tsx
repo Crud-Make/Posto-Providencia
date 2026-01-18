@@ -1,7 +1,7 @@
 import React from 'react';
 import { Fuel, Menu, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import PostoSelector from './common/PostoSelector';
+import PostoSelector from '@shared/ui/PostoSelector';
 import { Link } from 'react-router-dom';
 
 interface HeaderProps {

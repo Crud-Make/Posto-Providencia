@@ -5,7 +5,7 @@
  * Gerencia configurações do sistema (chave-valor)
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import type { Configuracao } from '../../types/database/index';
 import {
   ApiResponse,

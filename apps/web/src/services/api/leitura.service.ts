@@ -5,7 +5,7 @@
  * Gerencia leituras de bombas, cálculos de vendas e atualização automática de estoque
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import { estoqueService } from './estoque.service';
 import type { Leitura, Bico, Combustivel, Bomba, InsertTables, UpdateTables } from '../../types/database/index';
 import {

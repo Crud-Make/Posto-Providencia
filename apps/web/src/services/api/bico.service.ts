@@ -5,7 +5,7 @@
  * Gerencia operações CRUD de bicos (pontos de abastecimento em cada bomba)
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import type { Bico, Bomba, Combustivel, InsertTables, UpdateTables } from '../../types/database/index';
 import {
   ApiResponse,

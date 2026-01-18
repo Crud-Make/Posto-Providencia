@@ -5,7 +5,7 @@
  * Gerencia operações de estoque, previsão de abastecimento e monitoramento de níveis
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import type { Estoque, Combustivel, UpdateTables } from '../../types/database/index';
 import {
   ApiResponse,

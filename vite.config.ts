@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
 		resolve: {
 			alias: {
 				'@': path.resolve(__dirname, './apps/web/src'),
+				'@shared': path.resolve(__dirname, './apps/web/src/shared'),
 			}
 		},
 		build: {

@@ -5,7 +5,7 @@
  * Gerencia operações CRUD de combustíveis do posto (Gasolina, Etanol, Diesel, etc)
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import type { Combustivel, InsertTables, UpdateTables } from '../../types/database/index';
 import {
   ApiResponse,
