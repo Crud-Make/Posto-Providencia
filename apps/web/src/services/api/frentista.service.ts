@@ -5,7 +5,7 @@
  * Gerencia operações CRUD de frentistas (funcionários responsáveis pelo abastecimento)
  */
 
-import { supabase, withPostoFilter } from './base';
+import { supabase, withPostoFilter } from './base.ts';
 import type { Frentista, InsertTables, UpdateTables } from '../../types/database/index';
 import {
   ApiResponse,

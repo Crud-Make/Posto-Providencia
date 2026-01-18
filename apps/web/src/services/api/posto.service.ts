@@ -5,7 +5,7 @@
  * Gerencia operações CRUD de postos de gasolina
  */
 
-import { supabase } from './base';
+import { supabase } from './base.ts';
 import type { Posto, InsertTables, UpdateTables } from '../../types/database/index';
 import {
   ApiResponse,

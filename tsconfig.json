@@ -58,6 +58,7 @@
     "*.cjs",
     "create_*.ts",
     "verify_*.ts",
-    "reset_*.ts"
+		"reset_*.ts",
+		"posto-mobile"
   ]
 }
