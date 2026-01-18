@@ -81,7 +81,9 @@ const TelaDashboardProprietario: React.FC = () => {
         setLoading(true);
         try {
             // Buscar todos os postos ativos
-            const postos = await postoService.getAll();
+            const response = await postoService.getAll();
+            if (!isSuccess(response)) throw new Error(response.error);
+            const postos = response.data;
 
             const today = new Date().toISOString().split('T')[0];
             const currentMonth = new Date().toISOString().slice(0, 7);
@@ -426,8 +428,8 @@ const TelaDashboardProprietario: React.FC = () => {
 
                     {/* Badge de Status Financeiro */}
                     <div className={`px-4 py-2 rounded-full text-sm font-bold border flex items-center gap-2 ${data.totalLucroMes - data.totalDespesasPendentes >= 0
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400'
-                            : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-400'
+                        : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
                         }`}>
                         {data.totalLucroMes - data.totalDespesasPendentes >= 0 ? (
                             <>
@@ -505,8 +507,8 @@ const TelaDashboardProprietario: React.FC = () => {
 
                     {/* 3. Resultado Final */}
                     <div className={`rounded-2xl p-6 border relative overflow-hidden group transition-all ${data.totalLucroMes - data.totalDespesasPendentes >= 0
-                            ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30 hover:border-emerald-300'
-                            : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-800/30 hover:border-red-300 ring-4 ring-red-50 dark:ring-red-900/10'
+                        ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30 hover:border-emerald-300'
+                        : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-800/30 hover:border-red-300 ring-4 ring-red-50 dark:ring-red-900/10'
                         }`}>
                         <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity`}>
                             {data.totalLucroMes - data.totalDespesasPendentes >= 0
@@ -516,21 +518,21 @@ const TelaDashboardProprietario: React.FC = () => {
                         </div>
                         <div className="relative z-10">
                             <p className={`text-sm font-medium uppercase tracking-wider mb-2 ${data.totalLucroMes - data.totalDespesasPendentes >= 0
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : 'text-red-600 dark:text-red-400'
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-red-600 dark:text-red-400'
                                 }`}>
                                 Resultado Líquido
                             </p>
                             <p className={`text-3xl font-bold ${data.totalLucroMes - data.totalDespesasPendentes >= 0
-                                    ? 'text-emerald-700 dark:text-emerald-300'
-                                    : 'text-red-700 dark:text-red-300'
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : 'text-red-700 dark:text-red-300'
                                 }`}>
                                 {formatCurrency(data.totalLucroMes - data.totalDespesasPendentes)}
                             </p>
 
                             <div className={`mt-4 pt-4 border-t ${data.totalLucroMes - data.totalDespesasPendentes >= 0
-                                    ? 'border-emerald-200/50 dark:border-emerald-800/30'
-                                    : 'border-red-200/50 dark:border-red-800/30'
+                                ? 'border-emerald-200/50 dark:border-emerald-800/30'
+                                : 'border-red-200/50 dark:border-red-800/30'
                                 }`}>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
                                     Valor final estimado após dedução das despesas.
