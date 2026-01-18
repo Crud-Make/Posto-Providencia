@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
 			alias: {
 				'@': path.resolve(__dirname, './apps/web/src'),
 				'@shared': path.resolve(__dirname, './apps/web/src/shared'),
+				'@posto/types': path.resolve(__dirname, './packages/types/src/index.ts'),
+				'@posto/utils': path.resolve(__dirname, './packages/utils/src/index.ts'),
+				'@posto/api-core': path.resolve(__dirname, './packages/api-core/src/index.ts'),
 			}
 		},
 		build: {

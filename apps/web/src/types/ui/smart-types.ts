@@ -7,11 +7,12 @@
  * garantindo single source of truth com o schema do banco.
  */
 import type { ClienteTable, NotaFrentistaTable } from '../database/tables/clientes';
+import type { Cliente as ClienteDomain } from '@posto/types';
 
 /**
  * Cliente base para operações de leitura (SELECT).
  */
-export type Cliente = ClienteTable['Row'];
+export type Cliente = ClienteDomain;
 
 /**
  * Payload para criação de cliente (INSERT).

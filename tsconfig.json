@@ -19,29 +19,38 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
-		"paths": {
-			"@/*": [
-				"./apps/web/src/*"
-			],
-			"@app/*": [
-				"./apps/web/src/app/*"
-			],
-			"@pages/*": [
-				"./apps/web/src/pages/*"
-			],
-			"@widgets/*": [
-				"./apps/web/src/widgets/*"
-			],
-			"@features/*": [
-				"./apps/web/src/features/*"
-			],
-			"@entities/*": [
-				"./apps/web/src/entities/*"
-			],
-			"@shared/*": [
-				"./apps/web/src/shared/*"
-			]
-		},
+    "paths": {
+      "@/*": [
+        "./apps/web/src/*"
+      ],
+      "@app/*": [
+        "./apps/web/src/app/*"
+      ],
+      "@pages/*": [
+        "./apps/web/src/pages/*"
+      ],
+      "@widgets/*": [
+        "./apps/web/src/widgets/*"
+      ],
+      "@features/*": [
+        "./apps/web/src/features/*"
+      ],
+      "@entities/*": [
+        "./apps/web/src/entities/*"
+      ],
+      "@shared/*": [
+        "./apps/web/src/shared/*"
+      ],
+      "@posto/types": [
+        "./packages/types/src/index.ts"
+      ],
+      "@posto/utils": [
+        "./packages/utils/src/index.ts"
+      ],
+      "@posto/api-core": [
+        "./packages/api-core/src/index.ts"
+      ]
+    },
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "baseUrl": "."
@@ -58,7 +67,7 @@
     "*.cjs",
     "create_*.ts",
     "verify_*.ts",
-		"reset_*.ts",
-		"posto-mobile"
+    "reset_*.ts",
+    "posto-mobile"
   ]
 }

@@ -152,3 +152,23 @@ export interface VendaProduto {
     fechamento_frentista_id: number | null;
     posto_id: number;
 }
+
+/**
+ * Interface representando uma Nota de Frentista (Nota a Prazo)
+ */
+export interface NotaFrentista {
+    id: number;
+    cliente_id: number;
+    frentista_id: number;
+    fechamento_frentista_id: number | null;
+    valor: number;
+    descricao: string | null;
+    data: string;
+    data_pagamento: string | null;
+    status: 'pendente' | 'pago' | 'cancelado';
+    forma_pagamento: string | null;
+    observacoes: string | null;
+    posto_id: number;
+    created_at: string;
+    updated_at: string;
+}
