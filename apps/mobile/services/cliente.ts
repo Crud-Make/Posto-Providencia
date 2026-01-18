@@ -1,22 +1,7 @@
 import { supabase } from '../lib/supabase';
+import type { Cliente as ClienteDb } from '@posto/types';
 
-/**
- * Interface que representa um cliente no sistema.
- */
-export interface Cliente {
-    /** Identificador único do cliente */
-    id: number;
-    /** Nome completo do cliente */
-    nome: string;
-    /** Documento (CPF/CNPJ) do cliente */
-    documento?: string;
-    /** ID do posto ao qual o cliente pertence */
-    posto_id?: number;
-    /** Indica se o cliente está ativo */
-    ativo: boolean;
-    /** Indica se o cliente está bloqueado para vendas a prazo */
-    bloqueado?: boolean;
-}
+export type Cliente = ClienteDb;
 
 /**
  * Serviço para gerenciar operações relacionadas a clientes.

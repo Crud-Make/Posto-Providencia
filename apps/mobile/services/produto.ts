@@ -1,22 +1,7 @@
 import { supabase } from '../lib/supabase';
+import type { Produto as ProdutoDb } from '@posto/types';
 
-/**
- * Interface que representa um produto à venda no posto.
- */
-export interface Produto {
-    /** Identificador único do produto */
-    id: number;
-    /** Nome/Descrição do produto */
-    nome: string;
-    /** Preço de venda unitário */
-    preco_venda: number;
-    /** Quantidade atual em estoque */
-    estoque_atual: number;
-    /** Categoria do produto (ex: 'Lubrificantes', 'Conveniência') */
-    categoria: string;
-    /** Indica se o produto está ativo para venda */
-    ativo: boolean;
-}
+export type Produto = ProdutoDb;
 
 /**
  * Serviço para gerenciar operações relacionadas a produtos.
@@ -48,4 +33,3 @@ export const produtoService = {
         return data || [];
     },
 };
-

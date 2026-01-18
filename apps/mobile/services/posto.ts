@@ -1,28 +1,7 @@
 import { supabase } from '../lib/supabase';
+import type { Posto as PostoDb } from '@posto/types';
 
-/**
- * Interface que representa um Posto de Combustível no sistema.
- */
-export interface Posto {
-    /** Identificador único do posto */
-    id: number;
-    /** Nome fantasia do posto */
-    nome: string;
-    /** CNPJ do posto */
-    cnpj: string | null;
-    /** Endereço completo */
-    endereco: string | null;
-    /** Cidade onde o posto está localizado */
-    cidade: string | null;
-    /** Estado (UF) onde o posto está localizado */
-    estado: string | null;
-    /** Telefone de contato */
-    telefone: string | null;
-    /** Email de contato */
-    email: string | null;
-    /** Indica se o posto está ativo no sistema */
-    ativo: boolean;
-}
+export type Posto = PostoDb;
 
 /**
  * Serviço para gerenciar operações relacionadas a postos.
