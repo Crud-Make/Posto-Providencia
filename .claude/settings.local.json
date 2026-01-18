@@ -31,7 +31,8 @@
       "Bash(timeout 10 npm run dev:*)",
       "Bash(timeout:*)",
       "Bash(powershell -Command:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
