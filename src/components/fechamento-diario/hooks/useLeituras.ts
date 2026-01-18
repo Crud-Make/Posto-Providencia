@@ -11,11 +11,18 @@
 
 // [09/01 09:35] Ajuste na integração com serviço de leituras
 // Motivo: Correção de nomes de métodos e parâmetros para compatibilidade com API
+// [18/01 00:00] Adaptar consumo do leituraService para ApiResponse
+// Motivo: Services agora retornam { success, data, error } (Smart Types)
 
-import React, { useState, useCallback, useRef } from 'react';
+import * as React from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import { leituraService } from '../../../services/api';
 import { formatarParaBR } from '../../../utils/formatters';
+import { isSuccess } from '../../../types/ui/response-types';
+
+type LeituraPorDataResponse = Awaited<ReturnType<typeof leituraService.getByDate>>;
+type UltimaLeituraResponse = Awaited<ReturnType<typeof leituraService.getLastReading>>;
 
 /**
  * Estrutura de uma leitura
@@ -228,10 +235,12 @@ export const useLeituras = (
     setErro(null);
 
     try {
-      let dados;
-      
+      let dadosRes: LeituraPorDataResponse;
+
       if (turnoSelecionado) {
-        dados = await leituraService.getByDateAndTurno(
+        // [18/01 00:00] Checar success e extrair data do ApiResponse
+        // Motivo: leituraService agora retorna ApiResponse
+        dadosRes = await leituraService.getByDateAndTurno(
           dataSelecionada,
           turnoSelecionado,
           postoId
@@ -239,11 +248,23 @@ export const useLeituras = (
       } else {
         // Se não tem turno selecionado, busca todas do dia
         // Nota: isso assume que para visualização diária queremos todas as leituras
-        dados = await leituraService.getByDate(
+        // [18/01 00:00] Checar success e extrair data do ApiResponse
+        // Motivo: leituraService agora retorna ApiResponse
+        dadosRes = await leituraService.getByDate(
           dataSelecionada,
           postoId
         );
       }
+
+      if (!isSuccess(dadosRes)) {
+        // [18/01 00:00] Tratar erro de ApiResponse sem quebrar UI
+        // Motivo: Evitar acesso a .length em ErrorResponse
+        setErro(dadosRes.error);
+        setLeituras({});
+        return;
+      }
+
+      const dados = dadosRes.data;
 
       if (dados.length > 0) {
         // Modo edição: usa leituras existentes
@@ -258,7 +279,16 @@ export const useLeituras = (
         console.log('✅ Leituras existentes carregadas');
       } else {
         // Modo criação: busca última leitura para inicializar
-        const ultimasLeituras = await leituraService.getLastReading(postoId);
+        // [18/01 00:00] Checar success e extrair data do ApiResponse
+        // Motivo: leituraService agora retorna ApiResponse
+        const ultimasLeiturasRes: UltimaLeituraResponse = await leituraService.getLastReading(postoId);
+        if (!isSuccess(ultimasLeiturasRes)) {
+          setErro(ultimasLeiturasRes.error);
+          setLeituras({});
+          return;
+        }
+
+        const ultimasLeituras = ultimasLeiturasRes.data;
         const mapeado = bicos.reduce((acc, bico) => {
           const ultima = ultimasLeituras.find(l => l.bico_id === bico.id);
           acc[bico.id] = {

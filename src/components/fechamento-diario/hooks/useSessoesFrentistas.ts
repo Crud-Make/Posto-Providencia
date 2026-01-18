@@ -9,19 +9,26 @@
  * @version 1.0.0
  */
 
+// [18/01 00:00] Adaptar consumo do fechamentoFrentistaService para ApiResponse
+// Motivo: Services agora retornam { success, data, error } (Smart Types)
+
 import { useState, useCallback, useMemo } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import { fechamentoFrentistaService } from '../../../services/api';
 import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
+import { isSuccess } from '../../../types/ui/response-types';
 
 /**
  * Interface para totais detalhados dos frentistas
  */
 export interface TotaisFrentistas {
   cartao: number;
+  cartao_debito: number;
+  cartao_credito: number;
   nota: number;
   pix: number;
   dinheiro: number;
+  baratao: number;
   total: number;
 }
 
@@ -94,11 +101,21 @@ export const useSessoesFrentistas = (
 
     setCarregando(true);
     try {
-      const dados = await fechamentoFrentistaService.getByDateAndTurno(
+      // [18/01 00:00] Checar success e extrair data do ApiResponse
+      // Motivo: fechamentoFrentistaService agora retorna ApiResponse
+      const dadosRes = await fechamentoFrentistaService.getByDateAndTurno(
         data,
         turno,
         postoId
       );
+
+      if (!isSuccess(dadosRes)) {
+        console.error('❌ Erro ao carregar sessões:', dadosRes.error);
+        setSessoes([criarSessaoVazia()]);
+        return;
+      }
+
+      const dados = dadosRes.data;
 
       if (dados.length > 0) {
         const mapeadas: SessaoFrentista[] = dados.map(fs => ({
@@ -168,9 +185,16 @@ export const useSessoesFrentistas = (
               ? obsAtual
               : `[CONFERIDO] ${obsAtual}`.trim();
 
-            await fechamentoFrentistaService.update(Number(tempId.replace('existing-', '')), {
+            // [18/01 00:00] Checar success do update (ApiResponse)
+            // Motivo: Evitar sinalizar sucesso quando service retorna erro
+            const updateRes = await fechamentoFrentistaService.update(Number(tempId.replace('existing-', '')), {
               observacoes: obsNova
             });
+
+            if (!isSuccess(updateRes)) {
+              console.error('❌ Erro ao persistir status:', updateRes.error);
+              return;
+            }
 
             console.log('✅ Status persistido no banco');
           }
@@ -243,20 +267,7 @@ export const useSessoesFrentistas = (
         pix: acc.pix + pix,
         dinheiro: acc.dinheiro + dinheiro,
         baratao: acc.baratao + baratao,
-        total: acc.total + cartao + nota + pix + dinheiro + baratao // Note: debito/credito might be part of cartao or separate? Assuming separate fields in UI but logic might vary. 
-        // In original code: total = cartao + nota + pix + dinheiro + baratao. 
-        // Does 'cartao' include debito/credito? 
-        // In 'loadFrentistaSessions' it summed them separately.
-        // Let's assume total logic stays same as original hook (cartao + others). 
-        // But if 'valor_cartao' is used as sum of debit/credit, then it's fine.
-        // If they are separate inputs, they should be added to total.
-        // Looking at original code:
-        // total: acc.total + parseValue(fs.valor_cartao) + ...
-        // It seems only 'valor_cartao' was added to total.
-        // But 'updatePaymentsFromFrentistas' used cartao_debito/credito.
-
-        // I'll assume 'valor_cartao' is the aggregate or the specific 'credit' depending on usage.
-        // But wait, the hook returns totals.
+        total: acc.total + cartao + nota + pix + dinheiro + baratao
       };
     }, { cartao: 0, cartao_debito: 0, cartao_credito: 0, nota: 0, pix: 0, dinheiro: 0, baratao: 0, total: 0 });
   }, [sessoes]);
