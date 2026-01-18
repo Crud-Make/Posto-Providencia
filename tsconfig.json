@@ -19,29 +19,29 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@app/*": [
-        "./src/app/*"
-      ],
-      "@pages/*": [
-        "./src/pages/*"
-      ],
-      "@widgets/*": [
-        "./src/widgets/*"
-      ],
-      "@features/*": [
-        "./src/features/*"
-      ],
-      "@entities/*": [
-        "./src/entities/*"
-      ],
-      "@shared/*": [
-        "./src/shared/*"
-      ]
-    },
+		"paths": {
+			"@/*": [
+				"./apps/web/src/*"
+			],
+			"@app/*": [
+				"./apps/web/src/app/*"
+			],
+			"@pages/*": [
+				"./apps/web/src/pages/*"
+			],
+			"@widgets/*": [
+				"./apps/web/src/widgets/*"
+			],
+			"@features/*": [
+				"./apps/web/src/features/*"
+			],
+			"@entities/*": [
+				"./apps/web/src/entities/*"
+			],
+			"@shared/*": [
+				"./apps/web/src/shared/*"
+			]
+		},
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "baseUrl": "."
