@@ -5,7 +5,7 @@ import { PostoProvider } from './contexts/PostoContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import UpdateNotifier from './components/common/UpdateNotifier';
+import UpdateNotifier from './shared/ui/UpdateNotifier';
 import MainLayout from './layouts/MainLayout';
 import TelaLogin from './components/TelaLogin';
 
