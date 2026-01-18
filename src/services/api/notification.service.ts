@@ -1,4 +1,9 @@
 import { supabase } from '../supabase';
+import {
+  ApiResponse,
+  createSuccessResponse,
+  createErrorResponse
+} from '../../types/ui/response-types';
 
 export interface PushToken {
   id: number;
@@ -31,82 +36,87 @@ export interface Notificacao {
   created_at: string;
 }
 
+/**
+ * Serviço de Notificações
+ * 
+ * @remarks
+ * Gerencia notificações push para frentistas (falta de caixa, avisos, etc)
+ */
 export const notificationService = {
   /**
    * Busca tokens de push ativos para um frentista
-   * @param frentistaId ID do frentista
-   * @returns Lista de tokens Expo Push
+   * @param frentistaId - ID do frentista
    */
-  async getTokensByFrentistaId(frentistaId: number): Promise<string[]> {
-    const { data, error } = await supabase
-      .from('PushToken')
-      .select('expo_push_token')
-      .eq('frentista_id', frentistaId)
-      .eq('ativo', true);
+  async getTokensByFrentistaId(frentistaId: number): Promise<ApiResponse<string[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('PushToken')
+        .select('expo_push_token')
+        .eq('frentista_id', frentistaId)
+        .eq('ativo', true);
 
-    if (error) {
-      console.error('Erro ao buscar tokens:', error);
-      return [];
+      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
+
+      return createSuccessResponse(data?.map((t: { expo_push_token: string }) => t.expo_push_token) || []);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
-
-    return data?.map((t: { expo_push_token: string }) => t.expo_push_token) || [];
   },
 
   /**
    * Cria uma notificação no banco de dados
-   * @param data Dados da notificação
-   * @returns ID da notificação criada ou null em caso de erro
+   * @param data - Dados da notificação
    */
-  async createNotification(data: NotificationData): Promise<number | null> {
-    const { data: notification, error } = await supabase
-      .from('Notificacao')
-      .insert({
-        frentista_id: data.frentista_id,
-        fechamento_frentista_id: data.fechamento_frentista_id,
-        titulo: data.titulo,
-        mensagem: data.mensagem,
-        tipo: data.tipo,
-        valor_falta: data.valor_falta,
-      })
-      .select('id')
-      .single();
+  async createNotification(data: NotificationData): Promise<ApiResponse<number | null>> {
+    try {
+      const { data: notification, error } = await supabase
+        .from('Notificacao')
+        .insert({
+          frentista_id: data.frentista_id,
+          fechamento_frentista_id: data.fechamento_frentista_id,
+          titulo: data.titulo,
+          mensagem: data.mensagem,
+          tipo: data.tipo,
+          valor_falta: data.valor_falta,
+        })
+        .select('id')
+        .single();
 
-    if (error) {
-      console.error('Erro ao criar notificação:', error);
-      return null;
+      if (error) return createErrorResponse(error.message, 'INSERT_ERROR');
+
+      return createSuccessResponse(notification?.id || null);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
-
-    return notification?.id || null;
   },
 
   /**
    * Envia push notification via Expo Push API
-   * @param expoPushTokens Lista de tokens para envio
-   * @param titulo Título da notificação
-   * @param mensagem Corpo da notificação
-   * @param data Dados adicionais opcionais
-   * @returns True se enviado com sucesso (pelo menos a requisição), False caso contrário
+   * @param expoPushTokens - Lista de tokens para envio
+   * @param titulo - Título da notificação
+   * @param mensagem - Corpo da notificação
+   * @param data - Dados adicionais opcionais
    */
   async sendPushNotification(
     expoPushTokens: string[],
     titulo: string,
     mensagem: string,
     data?: Record<string, unknown>
-  ): Promise<boolean> {
-    if (expoPushTokens.length === 0) {
-      console.log('Nenhum token disponível para envio');
-      return false;
-    }
-
-    const messages = expoPushTokens.map(token => ({
-      to: token,
-      sound: 'default' as const,
-      title: titulo,
-      body: mensagem,
-      data: data || {},
-    }));
-
+  ): Promise<ApiResponse<boolean>> {
     try {
+      if (expoPushTokens.length === 0) {
+        console.log('Nenhum token disponível para envio');
+        return createSuccessResponse(false);
+      }
+
+      const messages = expoPushTokens.map(token => ({
+        to: token,
+        sound: 'default' as const,
+        title: titulo,
+        body: mensagem,
+        data: data || {},
+      }));
+
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: {
@@ -119,101 +129,113 @@ export const notificationService = {
 
       const result = await response.json();
       console.log('Push notification enviada:', result);
-      return true;
-    } catch (error) {
-      console.error('Erro ao enviar push notification:', error);
-      return false;
+      return createSuccessResponse(true);
+    } catch (err) {
+      console.error('Erro ao enviar push notification:', err);
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
   },
 
   /**
    * Notifica frentista sobre falta de caixa
-   * @param frentistaId ID do frentista
-   * @param fechamentoFrentistaId ID do fechamento
-   * @param valorFalta Valor da falta
-   * @returns True se processado com sucesso
+   * @param frentistaId - ID do frentista
+   * @param fechamentoFrentistaId - ID do fechamento
+   * @param valorFalta - Valor da falta
    */
   async sendFaltaCaixaNotification(
     frentistaId: number,
     fechamentoFrentistaId: number,
     valorFalta: number
-  ): Promise<boolean> {
-    const titulo = '⚠️ Falta de Caixa';
-    const mensagem = `Faltou R$ ${valorFalta.toFixed(2).replace('.', ',')} no seu fechamento de caixa.`;
+  ): Promise<ApiResponse<boolean>> {
+    try {
+      const titulo = '⚠️ Falta de Caixa';
+      const mensagem = `Faltou R$ ${valorFalta.toFixed(2).replace('.', ',')} no seu fechamento de caixa.`;
 
-    // 1. Criar registro no banco
-    const notificationId = await this.createNotification({
-      frentista_id: frentistaId,
-      fechamento_frentista_id: fechamentoFrentistaId,
-      titulo,
-      mensagem,
-      tipo: 'FALTA_CAIXA',
-      valor_falta: valorFalta,
-    });
+      // 1. Criar registro no banco
+      const notificationResult = await this.createNotification({
+        frentista_id: frentistaId,
+        fechamento_frentista_id: fechamentoFrentistaId,
+        titulo,
+        mensagem,
+        tipo: 'FALTA_CAIXA',
+        valor_falta: valorFalta,
+      });
 
-    if (!notificationId) {
-      console.error('Falha ao criar notificação no banco');
-      return false;
+      if (!notificationResult.success || !notificationResult.data) {
+        return createErrorResponse('Falha ao criar notificação no banco', 'INSERT_ERROR');
+      }
+
+      const notificationId = notificationResult.data;
+
+      // 2. Buscar tokens do frentista
+      const tokensResult = await this.getTokensByFrentistaId(frentistaId);
+      const tokens = tokensResult.success ? tokensResult.data : [];
+
+      if (tokens.length === 0) {
+        console.log('Frentista não possui dispositivos registrados');
+        return createSuccessResponse(true); // Notificação criada, mas sem push
+      }
+
+      // 3. Enviar push
+      const sentResult = await this.sendPushNotification(tokens, titulo, mensagem, {
+        type: 'FALTA_CAIXA',
+        fechamentoFrentistaId,
+        valorFalta,
+      });
+
+      // 4. Atualizar status de envio
+      if (sentResult.success && sentResult.data) {
+        await supabase
+          .from('Notificacao')
+          .update({
+            enviada: true,
+            data_envio: new Date().toISOString(),
+          })
+          .eq('id', notificationId);
+      }
+
+      return createSuccessResponse(sentResult.success && sentResult.data);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
-
-    // 2. Buscar tokens do frentista
-    const tokens = await this.getTokensByFrentistaId(frentistaId);
-
-    if (tokens.length === 0) {
-      console.log('Frentista não possui dispositivos registrados');
-      // Atualizar notificação como não enviada (já é o padrão)
-      return true; // Notificação criada, mas sem push
-    }
-
-    // 3. Enviar push
-    const sent = await this.sendPushNotification(tokens, titulo, mensagem, {
-      type: 'FALTA_CAIXA',
-      fechamentoFrentistaId,
-      valorFalta,
-    });
-
-    // 4. Atualizar status de envio
-    if (sent) {
-      await supabase
-        .from('Notificacao')
-        .update({
-          enviada: true,
-          data_envio: new Date().toISOString(),
-        })
-        .eq('id', notificationId);
-    }
-
-    return sent;
   },
 
   /**
    * Busca todas as notificações de um frentista
-   * @param frentistaId ID do frentista
-   * @returns Lista de notificações
+   * @param frentistaId - ID do frentista
    */
-  async getByFrentistaId(frentistaId: number): Promise<Notificacao[]> {
-    const { data, error } = await supabase
-      .from('Notificacao')
-      .select('*')
-      .eq('frentista_id', frentistaId)
-      .order('created_at', { ascending: false });
+  async getByFrentistaId(frentistaId: number): Promise<ApiResponse<Notificacao[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('Notificacao')
+        .select('*')
+        .eq('frentista_id', frentistaId)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Erro ao buscar notificações:', error);
-      return [];
+      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
+
+      return createSuccessResponse((data as Notificacao[]) || []);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
-
-    return (data as Notificacao[]) || [];
   },
 
   /**
    * Marca notificação como lida
-   * @param notificationId ID da notificação
+   * @param notificationId - ID da notificação
    */
-  async markAsRead(notificationId: number): Promise<void> {
-    await supabase
-      .from('Notificacao')
-      .update({ lida: true })
-      .eq('id', notificationId);
+  async markAsRead(notificationId: number): Promise<ApiResponse<void>> {
+    try {
+      const { error } = await supabase
+        .from('Notificacao')
+        .update({ lida: true })
+        .eq('id', notificationId);
+
+      if (error) return createErrorResponse(error.message, 'UPDATE_ERROR');
+      return createSuccessResponse(undefined);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 };
+

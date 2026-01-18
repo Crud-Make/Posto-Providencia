@@ -11,11 +11,15 @@
 
 // [09/01 09:40] Correção de tipagem no mapeamento de pagamentos
 // Motivo: Propriedade 'taxa' estava sendo acessada incorretamente como 'taxa_percentual'
+// [18/01 00:00] Adaptar consumo do formaPagamentoService para ApiResponse
+// Motivo: Services agora retornam { success, data, error } (Smart Types)
 
-import React, { useState, useCallback, useMemo } from 'react';
+import * as React from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { EntradaPagamento } from '../../../types/fechamento';
 import { formaPagamentoService } from '../../../services/api';
 import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
+import { isSuccess } from '../../../types/ui/response-types';
 
 /**
  * Retorno do hook usePagamentos
@@ -58,7 +62,16 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
 
     setCarregando(true);
     try {
-      const dados = await formaPagamentoService.getAll(postoId);
+      // [18/01 00:00] Checar success e extrair data do ApiResponse
+      // Motivo: formaPagamentoService agora retorna ApiResponse
+      const dadosRes = await formaPagamentoService.getAll(postoId);
+      if (!isSuccess(dadosRes)) {
+        console.error('❌ Erro ao carregar formas de pagamento:', dadosRes.error);
+        setPagamentos([]);
+        return;
+      }
+
+      const dados = dadosRes.data;
       const inicializados: EntradaPagamento[] = dados.map(fp => ({
         id: fp.id,
         nome: fp.nome,

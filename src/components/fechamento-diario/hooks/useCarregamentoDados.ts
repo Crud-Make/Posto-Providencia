@@ -9,12 +9,16 @@
  * @version 1.0.0
  */
 
+// [18/01 00:00] Adaptar consumo dos services para ApiResponse
+// Motivo: Services agora retornam { success, data, error } (Smart Types)
+
 import { useState, useCallback, useEffect } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import type { Frentista, Turno } from '../../../types/database/index';
 import { bicoService, frentistaService, turnoService } from '../../../services/api';
 import { supabase } from '../../../services/supabase';
 import { TURNOS_PADRAO } from '../../../types/fechamento';
+import { isSuccess } from '../../../types/ui/response-types';
 
 /**
  * Retorno do hook useCarregamentoDados
@@ -62,18 +66,40 @@ export const useCarregamentoDados = (
 
     try {
       // Carrega em paralelo para melhor performance
-      const [dadosBicos, dadosFrentistas, dadosTurnos] = await Promise.all([
+      // [18/01 00:00] Checar success e extrair data do ApiResponse
+      // Motivo: services agora retornam ApiResponse
+      const [dadosBicosRes, dadosFrentistasRes, dadosTurnosRes] = await Promise.all([
         bicoService.getWithDetails(postoId),
         frentistaService.getAll(postoId),
         turnoService.getAll(postoId)
       ]);
 
-      setBicos(dadosBicos);
-      setFrentistas(dadosFrentistas);
+      const erros: string[] = [];
+      if (!isSuccess(dadosBicosRes)) {
+        erros.push(dadosBicosRes.error);
+        setBicos([]);
+      } else {
+        setBicos(dadosBicosRes.data);
+      }
+
+      if (!isSuccess(dadosFrentistasRes)) {
+        erros.push(dadosFrentistasRes.error);
+        setFrentistas([]);
+      } else {
+        setFrentistas(dadosFrentistasRes.data);
+      }
 
       // Usa turnos do banco ou fallback para padrão
-      if (dadosTurnos.length > 0) {
-        setTurnos(dadosTurnos);
+      if (isSuccess(dadosTurnosRes) && dadosTurnosRes.data.length > 0) {
+        setTurnos(dadosTurnosRes.data);
+      } else if (!isSuccess(dadosTurnosRes)) {
+        erros.push(dadosTurnosRes.error);
+      }
+
+      if (erros.length > 0) {
+        setErro(erros[0]);
+        console.error('❌ Erro ao carregar dados do posto:', erros.join(' | '));
+        return;
       }
 
       console.log('✅ Dados carregados com sucesso');

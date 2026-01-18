@@ -1,80 +1,143 @@
 /**
- * Service de Frentistas
+ * Serviço de Frentistas
  *
  * @remarks
- * Gerencia operações CRUD de frentistas
+ * Gerencia operações CRUD de frentistas (funcionários responsáveis pelo abastecimento)
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Frentista, InsertTables, UpdateTables } from '@/types/database/index';
+import type { Frentista, InsertTables, UpdateTables } from '../../types/database/index';
+import {
+  ApiResponse,
+  createSuccessResponse,
+  createErrorResponse
+} from '../../types/ui/response-types';
 
 export const frentistaService = {
-  async getWithEmail(postoId?: number): Promise<(Frentista & { email: string | null })[]> {
-    const query = supabase.rpc('get_frentistas_with_email');
+  /**
+   * Busca frentistas com seus emails de login
+   * @param postoId - ID do posto (opcional)
+   * @remarks Usa RPC para fazer join com a tabela auth.users
+   */
+  async getWithEmail(postoId?: number): Promise<ApiResponse<(Frentista & { email: string | null })[]>> {
+    try {
+      const query = supabase.rpc('get_frentistas_with_email');
 
-    const { data, error } = await query;
-    if (error) throw error;
+      const { data, error } = await query;
+      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
 
-    const typedData = (data || []) as (Frentista & { email: string | null })[];
+      const typedData = (data || []) as (Frentista & { email: string | null })[];
 
-    if (postoId) {
-      return typedData.filter((f) => f.posto_id === postoId);
+      if (postoId) {
+        const filtered = typedData.filter((f) => f.posto_id === postoId);
+        return createSuccessResponse(filtered);
+      }
+
+      return createSuccessResponse(typedData);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
-
-    return typedData;
   },
 
-  async getAll(postoId?: number): Promise<Frentista[]> {
-    let query = supabase
-      .from('Frentista')
-      .select('*')
-      .eq('ativo', true);
+  /**
+   * Lista todos os frentistas ativos
+   * @param postoId - ID do posto (opcional)
+   */
+  async getAll(postoId?: number): Promise<ApiResponse<Frentista[]>> {
+    try {
+      let query = supabase
+        .from('Frentista')
+        .select('*')
+        .eq('ativo', true);
 
-    if (postoId) {
-      query = query.eq('posto_id', postoId);
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
+
+      const { data, error } = await query.order('nome');
+      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
+
+      return createSuccessResponse(data as Frentista[]);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
-
-    const { data, error } = await query.order('nome');
-    if (error) throw error;
-    return data || [];
   },
 
-  async getById(id: number): Promise<Frentista | null> {
-    const { data, error } = await supabase
-      .from('Frentista')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
+  /**
+   * Busca um frentista por ID
+   * @param id - ID do frentista
+   */
+  async getById(id: number): Promise<ApiResponse<Frentista | null>> {
+    try {
+      const { data, error } = await supabase
+        .from('Frentista')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) return createErrorResponse(error.message, 'NOT_FOUND');
+      return createSuccessResponse(data as Frentista | null);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 
-  async create(frentista: InsertTables<'Frentista'>): Promise<Frentista> {
-    const { data, error } = await supabase
-      .from('Frentista')
-      .insert(frentista)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  /**
+   * Cria um novo frentista
+   * @param frentista - Dados do frentista
+   */
+  async create(frentista: InsertTables<'Frentista'>): Promise<ApiResponse<Frentista>> {
+    try {
+      const { data, error } = await supabase
+        .from('Frentista')
+        .insert(frentista)
+        .select()
+        .single();
+
+      if (error) return createErrorResponse(error.message, 'INSERT_ERROR');
+      return createSuccessResponse(data as Frentista);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 
-  async update(id: number, frentista: UpdateTables<'Frentista'>): Promise<Frentista> {
-    const { data, error } = await supabase
-      .from('Frentista')
-      .update(frentista)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  /**
+   * Atualiza dados de um frentista
+   * @param id - ID do frentista
+   * @param frentista - Dados a serem atualizados
+   */
+  async update(id: number, frentista: UpdateTables<'Frentista'>): Promise<ApiResponse<Frentista>> {
+    try {
+      const { data, error } = await supabase
+        .from('Frentista')
+        .update(frentista)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) return createErrorResponse(error.message, 'UPDATE_ERROR');
+      return createSuccessResponse(data as Frentista);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 
-  async delete(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('Frentista')
-      .update({ ativo: false })
-      .eq('id', id);
-    if (error) throw error;
+  /**
+   * Desativa um frentista (Soft Delete)
+   * @param id - ID do frentista
+   */
+  async delete(id: number): Promise<ApiResponse<void>> {
+    try {
+      const { error } = await supabase
+        .from('Frentista')
+        .update({ ativo: false })
+        .eq('id', id);
+
+      if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
+      return createSuccessResponse(undefined);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 };
+

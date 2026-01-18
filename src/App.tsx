@@ -17,7 +17,7 @@ const TelaRegistroCompras = React.lazy(() => import('./components/registro-compr
 const TelaDashboardEstoque = React.lazy(() => import('./components/estoque/dashboard'));
 const TelaGestaoEstoque = React.lazy(() => import('./components/estoque/gestao'));
 const TelaAnaliseCustos = React.lazy(() => import('./components/analise-custos'));
-const TelaLeiturasDiarias = React.lazy(() => import('./components/leituras'));
+const TelaLeiturasDiarias = React.lazy(() => import('./components/leituras-diarias'));
 const TelaAnaliseVendas = React.lazy(() => import('./components/vendas/analise'));
 const TelaDashboardVendas = React.lazy(() => import('./components/vendas/dashboard'));
 const TelaGestaoFrentistas = React.lazy(() => import('./components/frentistas'));
@@ -42,7 +42,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <TelaLogin />} />
-      
+
       <Route element={<MainLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Suspense fallback={<LoadingFallback />}><TelaDashboard /></Suspense>} />

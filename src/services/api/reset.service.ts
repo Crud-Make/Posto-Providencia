@@ -1,12 +1,30 @@
 import { supabase } from '../supabase';
 import type { Database } from '../../types/database/index';
+import {
+  ApiResponse,
+  createSuccessResponse,
+  createErrorResponse
+} from '../../types/ui/response-types';
 
 type TableName = keyof Database['public']['Tables'];
 
+interface ResetResult {
+  message: string;
+  deletedCounts: Record<string, number>;
+}
+
+/**
+ * Serviço de Reset do Sistema
+ * 
+ * @remarks
+ * ATENÇÃO: Serviço destrutivo! Permite resetar dados transacionais do sistema
+ */
 export const resetService = {
   /**
-   * Reseta TODOS os dados transacionais do sistema.
-   * ATENÇÃO: Esta ação é IRREVERSÍVEL!
+   * Reseta TODOS os dados transacionais do sistema
+   * @param postoId - ID do posto (opcional, se não informado reseta tudo)
+   * @remarks
+   * **ATENÇÃO: Esta ação é IRREVERSÍVEL!**
    * 
    * Mantém apenas:
    * - Tabelas de configuração (Posto, Combustivel, Bomba, Bico, Turno, FormaPagamento, etc)
@@ -22,11 +40,7 @@ export const resetService = {
    * - Histórico de tanques
    * - Reseta estoque para zero
    */
-  async resetAllData(postoId?: number): Promise<{
-    success: boolean;
-    message: string;
-    deletedCounts: Record<string, number>;
-  }> {
+  async resetAllData(postoId?: number): Promise<ApiResponse<ResetResult>> {
     try {
       const deletedCounts: Record<string, number> = {};
 
@@ -35,24 +49,22 @@ export const resetService = {
         let query = supabase.from(tableName).delete();
 
         if (postoFilter && postoId) {
-          if (tableName === 'Leitura' || 
-              tableName === 'FechamentoFrentista' || 
-              tableName === 'Fechamento' || 
-              tableName === 'NotaFrentista' || 
-              tableName === 'Emprestimo' || 
-              tableName === 'Divida' || 
-              tableName === 'Despesa' || 
-              tableName === 'Compra' || 
-              tableName === 'MovimentacaoEstoque' ||
-              tableName === 'Notificacao') {
-             // Todas estas tabelas têm posto_id. TypeScript precisa de ajuda para entender que a string tableName garante isso
-             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-             // @ts-ignore - Garantimos que essas tabelas têm posto_id
-             query = query.eq('posto_id', postoId);
+          if (tableName === 'Leitura' ||
+            tableName === 'FechamentoFrentista' ||
+            tableName === 'Fechamento' ||
+            tableName === 'NotaFrentista' ||
+            tableName === 'Emprestimo' ||
+            tableName === 'Divida' ||
+            tableName === 'Despesa' ||
+            tableName === 'Compra' ||
+            tableName === 'MovimentacaoEstoque' ||
+            tableName === 'Notificacao') {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore - Garantimos que essas tabelas têm posto_id
+            query = query.eq('posto_id', postoId);
           }
         } else if (!postoFilter) {
-          // Deleta tudo se não filtrar por posto
-          query = query.neq('id', 0); // Trick para deletar tudo
+          query = query.neq('id', 0);
         }
 
         const { data, error } = await query.select();
@@ -65,7 +77,6 @@ export const resetService = {
 
       // Deletar VendaProduto (sem posto_id na tabela)
       if (postoId) {
-        // Precisamos buscar as frentistas do posto para deletar as vendas
         const { data: frentistas } = await supabase.from('Frentista').select('id').eq('posto_id', postoId);
         if (frentistas && frentistas.length > 0) {
           await supabase.from('VendaProduto').delete().in('frentista_id', frentistas.map(f => f.id));
@@ -78,7 +89,7 @@ export const resetService = {
       await deleteTable('Leitura');
 
       // 3. Deletar Recebimentos (refere-se a Fechamento)
-      await deleteTable('Recebimento', false); // Recebimento não tem posto_id direto
+      await deleteTable('Recebimento', false);
       if (postoId) {
         const { data: fechamentos } = await supabase.from('Fechamento').select('id').eq('posto_id', postoId);
         if (fechamentos && fechamentos.length > 0) {
@@ -136,10 +147,9 @@ export const resetService = {
         await supabase.from('Escala').delete().neq('id', 0);
       }
 
-      // 11. Deletar Histórico de Tanques
+      // 15. Deletar Histórico de Tanques
       let queryHist = supabase.from('HistoricoTanque').delete();
       if (postoId) {
-        // Buscar tanques do posto
         const { data: tanques } = await supabase
           .from('Tanque')
           .select('id')
@@ -156,7 +166,7 @@ export const resetService = {
       if (histError) throw histError;
       deletedCounts['HistoricoTanque'] = histData?.length || 0;
 
-      // 12. Resetar Estoque para zero
+      // 16. Resetar Estoque para zero
       let queryEstoque = supabase
         .from('Estoque')
         .update({
@@ -174,7 +184,7 @@ export const resetService = {
       if (estoqueError) throw estoqueError;
       deletedCounts['Estoque (resetado)'] = estoqueData?.length || 0;
 
-      // 13. Resetar saldo devedor dos clientes
+      // 17. Resetar saldo devedor dos clientes
       let queryClientes = supabase
         .from('Cliente')
         .update({ saldo_devedor: 0 });
@@ -189,21 +199,20 @@ export const resetService = {
       if (clientesError) throw clientesError;
       deletedCounts['Cliente (saldo zerado)'] = clientesData?.length || 0;
 
-      return {
-        success: true,
+      return createSuccessResponse({
         message: postoId
           ? `Sistema resetado com sucesso para o posto ${postoId}!`
           : 'Sistema resetado completamente com sucesso!',
         deletedCounts
-      };
+      });
 
     } catch (error: unknown) {
       console.error('Erro ao resetar sistema:', error);
-      return {
-        success: false,
-        message: `Erro ao resetar sistema: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        deletedCounts: {}
-      };
+      return createErrorResponse(
+        error instanceof Error ? error.message : 'Erro desconhecido',
+        'RESET_ERROR'
+      );
     }
   }
 };
+

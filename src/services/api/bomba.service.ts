@@ -1,66 +1,107 @@
 /**
- * Service de Bombas
+ * Serviço de Bombas
  *
  * @remarks
- * Gerencia operações CRUD de bombas
+ * Gerencia operações CRUD de bombas de combustível
  */
 
 import { supabase, withPostoFilter } from './base';
-import type { Bomba, Bico, Combustivel, InsertTables, UpdateTables } from '@/types/database/index';
+import type { Bomba, Bico, Combustivel, InsertTables, UpdateTables } from '../../types/database/index';
+import {
+  ApiResponse,
+  createSuccessResponse,
+  createErrorResponse
+} from '../../types/ui/response-types';
 
 export const bombaService = {
-  async getAll(postoId?: number): Promise<Bomba[]> {
-    const baseQuery = supabase
-      .from('Bomba')
-      .select('*')
-      .eq('ativo', true);
+  /**
+   * Lista todas as bombas ativas
+   * @param postoId - ID do posto (opcional)
+   */
+  async getAll(postoId?: number): Promise<ApiResponse<Bomba[]>> {
+    try {
+      const baseQuery = supabase
+        .from('Bomba')
+        .select('*')
+        .eq('ativo', true);
 
-    const query = withPostoFilter(baseQuery, postoId);
-    
-    const { data, error } = await query.order('nome');
-    if (error) throw error;
-    return data || [];
+      const query = withPostoFilter(baseQuery, postoId);
+
+      const { data, error } = await query.order('nome');
+      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
+
+      return createSuccessResponse(data as Bomba[]);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 
-  async getWithBicos(postoId?: number): Promise<(Bomba & { bicos: (Bico & { combustivel: Combustivel })[] })[]> {
-    const baseQuery = supabase
-      .from('Bomba')
-      .select(`
-        *,
-        bicos:Bico(
+  /**
+   * Lista bombas com seus bicos e combustíveis associados
+   * @param postoId - ID do posto (opcional)
+   */
+  async getWithBicos(postoId?: number): Promise<ApiResponse<(Bomba & { bicos: (Bico & { combustivel: Combustivel })[] })[]>> {
+    try {
+      const baseQuery = supabase
+        .from('Bomba')
+        .select(`
           *,
-          combustivel:Combustivel(*)
-        )
-      `)
-      .eq('ativo', true);
+          bicos:Bico(
+            *,
+            combustivel:Combustivel(*)
+          )
+        `)
+        .eq('ativo', true);
 
-    const query = withPostoFilter(baseQuery, postoId);
+      const query = withPostoFilter(baseQuery, postoId);
 
-    const { data, error } = await query.order('nome');
-    if (error) throw error;
-    
-    // Casting necessário devido à complexidade do retorno do join
-    return (data || []) as (Bomba & { bicos: (Bico & { combustivel: Combustivel })[] })[];
+      const { data, error } = await query.order('nome');
+      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
+
+      return createSuccessResponse((data || []) as (Bomba & { bicos: (Bico & { combustivel: Combustivel })[] })[]);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 
-  async create(bomba: InsertTables<'Bomba'>): Promise<Bomba> {
-    const { data, error } = await supabase
-      .from('Bomba')
-      .insert(bomba)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  /**
+   * Cria uma nova bomba
+   * @param bomba - Dados da bomba
+   */
+  async create(bomba: InsertTables<'Bomba'>): Promise<ApiResponse<Bomba>> {
+    try {
+      const { data, error } = await supabase
+        .from('Bomba')
+        .insert(bomba)
+        .select()
+        .single();
+
+      if (error) return createErrorResponse(error.message, 'INSERT_ERROR');
+      return createSuccessResponse(data as Bomba);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 
-  async update(id: number, bomba: UpdateTables<'Bomba'>): Promise<Bomba> {
-    const { data, error } = await supabase
-      .from('Bomba')
-      .update(bomba)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  /**
+   * Atualiza uma bomba existente
+   * @param id - ID da bomba
+   * @param bomba - Dados a serem atualizados
+   */
+  async update(id: number, bomba: UpdateTables<'Bomba'>): Promise<ApiResponse<Bomba>> {
+    try {
+      const { data, error } = await supabase
+        .from('Bomba')
+        .update(bomba)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) return createErrorResponse(error.message, 'UPDATE_ERROR');
+      return createSuccessResponse(data as Bomba);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
   },
 };
+

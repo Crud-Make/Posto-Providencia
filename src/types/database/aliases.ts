@@ -53,8 +53,8 @@ export type VendaProduto = VendaProdutoTable['Row'];
 export type MovimentacaoEstoque = MovimentacaoEstoqueTable['Row'];
 
 // Clientes
-export type Cliente = ClienteTable['Row'];
-export type NotaFrentista = NotaFrentistaTable['Row'];
+export type DBCliente = ClienteTable['Row'];
+export type DBNotaFrentista = NotaFrentistaTable['Row'];
 export type ClienteBaratencia = ClienteBaratenciaTable['Row'];
 export type CarteiraBaratencia = CarteiraBaratenciaTable['Row'];
 export type TransacaoBaratencia = TransacaoBaratenciaTable['Row'];
