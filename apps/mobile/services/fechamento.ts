@@ -1,32 +1,15 @@
 import { supabase } from '../lib/supabase';
 import { usuarioService } from './usuario';
 import { frentistaService } from './frentista';
+import type { Fechamento as FechamentoDb, FechamentoFrentista as FechamentoFrentistaDb } from '@posto/types';
+import { calcularTotalPagamentos } from '@posto/utils';
+import { createSuccessResponse, createErrorResponse } from '@posto/api-core';
+import type { ApiResponse } from '@posto/types';
 
 /**
  * Interface que representa um fechamento de turno geral (caixa).
  */
-export interface Fechamento {
-    /** Identificador único do fechamento */
-    id: number;
-    /** Data do fechamento (YYYY-MM-DD) */
-    data: string;
-    /** ID do usuário responsável pelo fechamento */
-    usuario_id: number;
-    /** ID do turno do fechamento */
-    turno_id: number;
-    /** Status do fechamento (ex: 'ABERTO', 'FECHADO') */
-    status: string;
-    /** Valor total das vendas registradas */
-    total_vendas?: number;
-    /** Valor total recebido (soma dos pagamentos) */
-    total_recebido?: number;
-    /** Diferença entre recebido e vendas (sobra/falta) */
-    diferenca?: number;
-    /** Observações gerais do fechamento */
-    observacoes?: string;
-    /** ID do posto ao qual o fechamento pertence */
-    posto_id: number;
-}
+export type Fechamento = FechamentoDb;
 
 /**
  * Interface para entrada de nota a prazo por um frentista.
@@ -41,34 +24,7 @@ export interface NotaFrentistaInput {
 /**
  * Interface que representa o fechamento individual de um frentista.
  */
-export interface FechamentoFrentista {
-    /** Identificador único do fechamento do frentista */
-    id: number;
-    /** ID do fechamento geral vinculado */
-    fechamento_id: number;
-    /** ID do frentista */
-    frentista_id: number;
-    /** Valor em cartão (legado/genérico) */
-    valor_cartao: number;
-    /** Valor em cartão de débito */
-    valor_cartao_debito: number;
-    /** Valor em cartão de crédito */
-    valor_cartao_credito: number;
-    /** Valor em dinheiro */
-    valor_dinheiro: number;
-    /** Valor em PIX */
-    valor_pix: number;
-    /** Valor em notas a prazo */
-    valor_nota: number;
-    /** Valor total conferido/informado */
-    valor_conferido: number;
-    /** Valor em moedas (informativo, geralmente já incluso em dinheiro) */
-    valor_moedas: number;
-    /** Diferença calculada para o frentista */
-    diferenca: number;
-    /** Observações do frentista */
-    observacoes: string | null;
-}
+export type FechamentoFrentista = FechamentoFrentistaDb;
 
 /**
  * Interface para histórico de fechamentos de frentista com dados relacionados.
@@ -213,12 +169,14 @@ export const fechamentoService = {
         }
 
         const totalRecebido = (frentistasData || []).reduce((acc, item) => {
-            return acc +
-                (item.valor_cartao_debito || 0) +
-                (item.valor_cartao_credito || 0) +
-                (item.valor_nota || 0) +
-                (item.valor_pix || 0) +
-                (item.valor_dinheiro || 0);
+            return acc + calcularTotalPagamentos({
+                valor_dinheiro: item.valor_dinheiro ?? 0,
+                valor_pix: item.valor_pix ?? 0,
+                valor_cartao_credito: item.valor_cartao_credito ?? 0,
+                valor_cartao_debito: item.valor_cartao_debito ?? 0,
+                valor_nota: item.valor_nota ?? 0,
+                valor_moedas: 0,
+            });
         }, 0);
 
         // Se totalVendasManual for 0, podemos tentar usar a soma dos encerrantes ou manter o valor anterior
@@ -419,11 +377,7 @@ export const fechamentoFrentistaService = {
  * @param {SubmitClosingData} closingData - Dados do fechamento.
  * @returns {Promise<{success: boolean, message: string, fechamentoId?: number}>} Resultado da operação.
  */
-export async function submitMobileClosing(closingData: SubmitClosingData): Promise<{
-    success: boolean;
-    message: string;
-    fechamentoId?: number;
-}> {
+export async function submitMobileClosing(closingData: SubmitClosingData): Promise<ApiResponse<{ mensagem: string; fechamentoId: number }> | { success: boolean; message: string }> {
     try {
         // 1. Verificar autenticação (Modo Híbrido: Com ou Sem Login)
         const { data: { user } } = await supabase.auth.getUser();
@@ -493,12 +447,9 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
             frentista = await frentistaService.getByUserId(user.id);
         }
 
-        if (!frentista) {
-            return {
-                success: false,
-                message: 'Frentista não identificado. Por favor selecione um frentista no topo da tela.',
-            };
-        }
+		if (!frentista) {
+			return createErrorResponse('FRENTISTA_NAO_IDENTIFICADO', 'Frentista não identificado. Por favor selecione um frentista no topo da tela.');
+		}
 
         // 4. Calcular totais primeiro
         const totalInformado =
@@ -527,9 +478,9 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
 
         // 6. Verificar se frentista já fechou neste turno
         const jaFechou = await fechamentoFrentistaService.exists(fechamentoGeral.id, frentista.id);
-        if (jaFechou) {
-            return { success: false, message: 'Você já realizou o fechamento para este turno hoje.' };
-        }
+		if (jaFechou) {
+			return createErrorResponse('FECHAMENTO_JA_REALIZADO', 'Você já realizou o fechamento para este turno hoje.');
+		}
 
         // 7. Registrar Fechamento Individual do Frentista
         await fechamentoFrentistaService.create({
@@ -553,7 +504,7 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
         await fechamentoService.updateTotals(fechamentoGeral.id, 0, closingData.observacoes);
 
         // 9. Registrar Notas a Prazo (se houver)
-        if (closingData.notas && closingData.notas.length > 0) {
+		if (closingData.notas && closingData.notas.length > 0) {
             const notasParaInserir = closingData.notas.map(nota => ({
                 cliente_id: nota.cliente_id,
                 frentista_id: frentista.id,
@@ -568,19 +519,22 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
                 .from('NotaPrazo') // Certifique-se que a tabela existe
                 .insert(notasParaInserir);
 
-            if (notasError) {
-                console.error('Erro ao salvar notas a prazo:', notasError);
-                // Não falhamos o fechamento todo por erro na nota, mas logamos
-            }
+			if (notasError) {
+				console.error('Erro ao salvar notas a prazo:', notasError);
+				// Não falhamos o fechamento todo por erro na nota, mas retornamos aviso
+			}
         }
 
-        return { success: true, message: 'Fechamento realizado com sucesso!', fechamentoId: fechamentoGeral.id };
+		return createSuccessResponse({
+			mensagem: 'Fechamento realizado com sucesso!',
+			fechamentoId: fechamentoGeral.id,
+		});
 
     } catch (error) {
         console.error('Erro no submitMobileClosing:', error);
-        return {
-            success: false,
-            message: error instanceof Error ? error.message : 'Ocorreu um erro inesperado ao processar o fechamento.'
-        };
+		return createErrorResponse(
+			'FECHAMENTO_MOBILE_ERRO',
+			error instanceof Error ? error.message : 'Ocorreu um erro inesperado ao processar o fechamento.'
+		);
     }
 }

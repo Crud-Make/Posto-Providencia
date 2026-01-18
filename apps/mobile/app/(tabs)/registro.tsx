@@ -311,12 +311,12 @@ export default function RegistroScreen() {
                                 }))
                             };
 
-                            const result = await submitMobileClosing(closingData);
-
-                            if (result.success) {
+							const result = await submitMobileClosing(closingData);
+							
+							if ('data' in result && result.success) {
                                 Alert.alert(
                                     '✅ Enviado!',
-                                    result.message,
+									result.data?.mensagem ?? 'Fechamento realizado com sucesso!',
                                     [{
                                         text: 'OK',
                                         onPress: () => {
@@ -334,9 +334,13 @@ export default function RegistroScreen() {
                                         }
                                     }]
                                 );
-                            } else {
-                                Alert.alert('❌ Erro', result.message);
-                            }
+							} else {
+								if ('error' in result && result.error) {
+									Alert.alert('❌ Erro', result.error.message);
+								} else {
+									Alert.alert('❌ Erro', 'Não foi possível processar o fechamento.');
+								}
+							}
                         } catch (error) {
                             console.error('Error submitting closing:', error);
                             Alert.alert(
