@@ -1,26 +1,7 @@
 import { supabase } from '../lib/supabase';
+import type { VendaProduto as VendaProdutoDb } from '@posto/types';
 
-/**
- * Interface que representa uma venda de produto (não combustível) realizada por um frentista.
- */
-export interface VendaProduto {
-    /** Identificador único da venda */
-    id: number;
-    /** ID do frentista que realizou a venda */
-    frentista_id: number;
-    /** ID do produto vendido */
-    produto_id: number;
-    /** Quantidade vendida */
-    quantidade: number;
-    /** Valor unitário do produto no momento da venda */
-    valor_unitario: number;
-    /** Valor total da venda (quantidade * valor_unitario) */
-    valor_total: number;
-    /** Data da venda (ISO string) */
-    data: string;
-    /** ID do fechamento do frentista associado (opcional) */
-    fechamento_frentista_id?: number;
-    /** Dados do produto relacionado (join) */
+export interface VendaProduto extends VendaProdutoDb {
     Produto?: { nome: string };
 }
 
@@ -100,4 +81,3 @@ export const vendaProdutoService = {
         return data;
     },
 };
-

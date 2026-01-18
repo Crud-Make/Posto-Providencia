@@ -1,20 +1,7 @@
 import { supabase } from '../lib/supabase';
+import type { Turno as TurnoDb } from '@posto/types';
 
-/**
- * Interface que representa um Turno de trabalho.
- */
-export interface Turno {
-    /** Identificador único do turno */
-    id: number;
-    /** Nome do turno (ex: 'Manhã', 'Tarde', 'Noite') */
-    nome: string;
-    /** Horário de início do turno (formato HH:mm:ss) */
-    horario_inicio: string;
-    /** Horário de fim do turno (formato HH:mm:ss) */
-    horario_fim: string;
-    /** Indica se o turno está ativo */
-    ativo?: boolean | null;
-}
+export type Turno = TurnoDb;
 
 /**
  * Interface estendida de Turno com status de fechamento.
