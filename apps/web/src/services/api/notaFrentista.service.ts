@@ -1,7 +1,11 @@
 import { supabase } from '../supabase';
-import type { NotaFrentistaTable, ClienteTable } from '../../types/database/tables/clientes';
-import type { FrentistaTable } from '../../types/database/tables/operacoes';
+import type { NotaFrentistaTable } from '../../types/database/tables/clientes';
 import type { WithRelations } from '../../types/ui/helpers';
+import type {
+  NotaFrentista as NotaFrentistaDomain,
+  Cliente as ClienteDomain,
+  Frentista as FrentistaDomain
+} from '@posto/types';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -9,9 +13,9 @@ import {
 } from '../../types/ui/response-types';
 
 // [14/01 10:30] Refatoração para usar tipos do Supabase e WithRelations
-export type NotaFrentista = NotaFrentistaTable['Row'];
-export type Cliente = ClienteTable['Row'];
-export type Frentista = FrentistaTable['Row'];
+export type NotaFrentista = NotaFrentistaDomain;
+export type Cliente = ClienteDomain;
+export type Frentista = FrentistaDomain;
 
 export type NotaFrentistaResponse = WithRelations<
   NotaFrentista,

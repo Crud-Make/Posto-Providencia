@@ -7,14 +7,26 @@ import { EmprestimoTable, ParcelaTable, DividaTable, DespesaTable } from './tabl
 import { CompraTable, FornecedorTable } from './tables/compras';
 import { ProdutoTable, VendaProdutoTable, MovimentacaoEstoqueTable } from './tables/produtos';
 import { ClienteTable, NotaFrentistaTable } from './tables/clientes';
+import type {
+  Posto as PostoDomain,
+  Turno as TurnoDomain,
+  Usuario as UsuarioDomain,
+  Frentista as FrentistaDomain,
+  Fechamento as FechamentoDomain,
+  FechamentoFrentista as FechamentoFrentistaDomain,
+  Escala as EscalaDomain,
+  Produto as ProdutoDomain,
+  VendaProduto as VendaProdutoDomain,
+  Cliente as ClienteDomain,
+} from '@posto/types';
 import { ClienteBaratenciaTable, CarteiraBaratenciaTable, TransacaoBaratenciaTable, TokenAbastecimentoTable, PromocaoBaratenciaTable } from './tables/baratencia';
 import { NotificacaoTable, PushTokenTable } from './tables/notificacoes';
 
 // Infraestrutura
-export type Posto = PostoTable['Row'];
-export type Turno = TurnoTable['Row'];
+export type Posto = PostoDomain;
+export type Turno = TurnoDomain;
 export type Configuracao = ConfiguracaoTable['Row'];
-export type Usuario = UsuarioTable['Row'];
+export type Usuario = UsuarioDomain;
 export type UsuarioPosto = UsuarioPostoTable['Row'];
 
 // Combustíveis
@@ -26,12 +38,12 @@ export type HistoricoTanque = HistoricoTanqueTable['Row'];
 export type Estoque = EstoqueTable['Row'];
 
 // Operações
-export type Frentista = FrentistaTable['Row'];
+export type Frentista = FrentistaDomain;
 export type Leitura = LeituraTable['Row'];
-export type Fechamento = FechamentoTable['Row'];
-export type FechamentoFrentista = FechamentoFrentistaTable['Row'];
+export type Fechamento = FechamentoDomain;
+export type FechamentoFrentista = FechamentoFrentistaDomain;
 export type Recebimento = RecebimentoTable['Row'];
-export type Escala = EscalaTable['Row'];
+export type Escala = EscalaDomain;
 
 // Pagamentos
 export type FormaPagamento = FormaPagamentoTable['Row'];
@@ -48,11 +60,12 @@ export type Compra = CompraTable['Row'];
 export type Fornecedor = FornecedorTable['Row'];
 
 // Produtos
-export type Produto = ProdutoTable['Row'];
-export type VendaProduto = VendaProdutoTable['Row'];
+export type Produto = ProdutoDomain;
+export type VendaProduto = VendaProdutoDomain;
 export type MovimentacaoEstoque = MovimentacaoEstoqueTable['Row'];
 
 // Clientes
+export type Cliente = ClienteDomain;
 export type DBCliente = ClienteTable['Row'];
 export type DBNotaFrentista = NotaFrentistaTable['Row'];
 export type ClienteBaratencia = ClienteBaratenciaTable['Row'];

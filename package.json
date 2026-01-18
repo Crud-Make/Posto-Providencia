@@ -1,20 +1,19 @@
-
 {
-	"name": "posto-providencia-monorepo",
-	"private": true,
-	"version": "3.0.0",
-	"type": "module",
-	"workspaces": [
-		"apps/*",
-		"packages/*"
-	],
-	"scripts": {
-		"dev": "bun --bun vite --port 3015",
-		"build": "bun -e \"Bun.write('./apps/web/public/version.json', JSON.stringify({version: Date.now().toString()}))\" && bun --bun vite build",
-		"preview": "bun --bun vite preview",
-		"validate": "./scripts/validate-rules.sh",
-		"push": "./scripts/push.sh"
-	},
+  "name": "posto-providencia-monorepo",
+  "private": true,
+  "version": "3.0.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --bun vite --port 3015",
+    "build": "bun -e \"Bun.write('./apps/web/public/version.json', JSON.stringify({version: Date.now().toString()}))\" && bun --bun vite build",
+    "preview": "bun --bun vite preview",
+    "validate": "./scripts/validate-rules.sh",
+    "push": "./scripts/push.sh"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "lucide-react": "^0.560.0",
@@ -22,7 +21,10 @@
     "react-dom": "^19.2.1",
     "react-router-dom": "^7.12.0",
     "recharts": "^3.5.1",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "@posto/types": "workspace:*",
+    "@posto/utils": "workspace:*",
+    "@posto/api-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.19.2",

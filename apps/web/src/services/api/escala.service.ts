@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import type { Escala as EscalaBase, Frentista } from '../../types/database/aliases';
+import type { Escala as EscalaDomain, Frentista as FrentistaDomain } from '@posto/types';
 import type { WithRelations } from '../../types/ui/helpers';
 import {
   ApiResponse,
@@ -9,9 +9,9 @@ import {
 
 // [14/01 16:05] Alinhando Escala com tipos do Supabase e relacionamentos
 export type Escala = WithRelations<
-  EscalaBase,
+  EscalaDomain,
   {
-    Frentista?: Pick<Frentista, 'nome'>;
+    Frentista?: Pick<FrentistaDomain, 'nome'>;
   }
 >;
 

@@ -7,14 +7,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePosto } from '../../../contexts/PostoContext';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
+import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
-
-interface Frentista {
-  id: number;
-  nome: string;
-}
 
 /**
  * KPIs do Dashboard.

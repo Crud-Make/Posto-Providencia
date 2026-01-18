@@ -1,16 +1,17 @@
 import { supabase } from './supabase';
-import { Database } from '../types/database/index';
+import type { Posto, Fechamento, Cliente, Frentista } from '@posto/types';
 
 // Helper Types for direct usage
-export type Posto = Database['public']['Tables']['Posto']['Row'];
-export type Combustivel = Database['public']['Tables']['Combustivel']['Row'];
-export type Fechamento = Database['public']['Tables']['Fechamento']['Row'];
-export type Despesa = Database['public']['Tables']['Despesa']['Row'];
-export type Estoque = Database['public']['Tables']['Estoque']['Row'];
-export type Cliente = Database['public']['Tables']['Cliente']['Row'];
-export type NotaFrentista = Database['public']['Tables']['NotaFrentista']['Row'];
-export type FechamentoFrentista = Database['public']['Tables']['FechamentoFrentista']['Row'];
-export type Frentista = Database['public']['Tables']['Frentista']['Row'];
+export type Combustivel = { preco_venda: number };
+export type Despesa = { valor: number; categoria: string };
+export type Estoque = { quantidade_atual: number };
+export type NotaFrentista = { valor: number; status: string; data: string };
+export type FechamentoFrentista = {
+  valor_conferido: number | null;
+  diferenca_calculada: number | null;
+  frentista?: { nome: string } | null;
+  posto_id: number;
+};
 
 // Types for AI Insights
 export type InsightSeverity = 'info' | 'success' | 'warning' | 'critical';
