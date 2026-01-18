@@ -32,7 +32,7 @@ import { HeaderFechamento } from './components/HeaderFechamento';
 import { TabLeituras } from './components/TabLeituras';
 import { TabFinanceiro } from './components/TabFinanceiro';
 import { FooterAcoes } from './components/FooterAcoes';
-import { ProgressIndicator } from '../shared/ui/ValidationAlert';
+import { ProgressIndicator } from '@shared/ui/ValidationAlert';
 
 const TelaFechamentoDiario: React.FC = () => {
    const { user } = useAuth();

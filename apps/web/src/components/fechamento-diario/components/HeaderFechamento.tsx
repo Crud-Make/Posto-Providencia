@@ -1,7 +1,6 @@
 import React from 'react';
 import { TrendingUp, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { Turno } from '../../../types/database/index';
-import { ProgressIndicator } from '../../shared/ui/ValidationAlert';
 
 interface HeaderFechamentoProps {
     selectedDate: string;
