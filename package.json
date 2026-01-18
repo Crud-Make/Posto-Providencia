@@ -10,7 +10,7 @@
 	],
 	"scripts": {
 		"dev": "bun --bun vite --port 3015",
-		"build": "bun -e \"Bun.write('./public/version.json', JSON.stringify({version: Date.now().toString()}))\" && bun --bun vite build",
+		"build": "bun -e \"Bun.write('./apps/web/public/version.json', JSON.stringify({version: Date.now().toString()}))\" && bun --bun vite build",
 		"preview": "bun --bun vite preview",
 		"validate": "./scripts/validate-rules.sh",
 		"push": "./scripts/push.sh"
