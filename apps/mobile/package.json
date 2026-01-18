@@ -1,5 +1,5 @@
 {
-  "name": "mobile",
+  "name": "@posto/mobile",
   "version": "1.4.3",
   "main": "expo-router/entry",
   "scripts": {
@@ -9,6 +9,9 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@posto/types": "workspace:*",
+    "@posto/utils": "workspace:*",
+    "@posto/api-core": "workspace:*",
     "@expo/metro-runtime": "~6.1.2",
     "@react-native-community/datetimepicker": "^8.5.1",
     "@react-native-picker/picker": "2.11.1",
