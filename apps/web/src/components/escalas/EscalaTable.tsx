@@ -1,14 +1,7 @@
 import React from 'react';
 import { FileText, Edit2 } from 'lucide-react';
 import type { Escala } from '../../services/api/escala.service';
-
-/**
- * Interface simplificada para o frentista
- */
-interface Frentista {
-    id: number;
-    nome: string;
-}
+import type { Frentista } from '@posto/types';
 
 /**
  * Interface para as propriedades da tabela de escala

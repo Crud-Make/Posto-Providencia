@@ -1,6 +1,7 @@
 // [10/01 17:46] Criado durante refatoração Issue #16
 
 import { ProductConfig, NozzleConfig, PaymentMethodConfig } from '../../types';
+import type { Produto as ProdutoDomain } from '@posto/types';
 
 /**
  * Tipo de pagamento suportado pelo sistema.
@@ -11,7 +12,7 @@ export type PaymentType = 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix
  * Interface para configuração de produto (combustível).
  * Reutiliza a interface ProductConfig do sistema.
  */
-export interface Produto extends ProductConfig { }
+export interface Produto extends ProductConfig, ProdutoDomain {}
 
 /**
  * Interface para configuração de bico.

@@ -1,12 +1,5 @@
 import type { Escala } from '../../../services/api/escala.service';
-
-/**
- * Interface simplificada para o frentista no utilitário de exportação
- */
-interface Frentista {
-    id: number;
-    nome: string;
-}
+import type { Frentista } from '@posto/types';
 
 /**
  * Utilitário para exportar a escala mensal para PDF (via janela de impressão)

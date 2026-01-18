@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
 import { frentistaService, escalaService } from '../../../services/api';
 import type { Escala } from '../../../services/api/escala.service';
-
-/**
- * Interface para dados básicos de um frentista
- */
-interface Frentista {
-    id: number;
-    nome: string;
-}
+import type { Frentista } from '@posto/types';
 
 /**
  * Interface para o estado do modal de observação
