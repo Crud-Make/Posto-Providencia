@@ -64,77 +64,129 @@ interface SalesSummary {
 // ============================================
 
 export const postoService = {
-  async getAll(): Promise<Posto[]> {
-    const { data, error } = await supabase
-      .from('Posto')
-      .select('*')
-      .eq('ativo', true)
-      .order('id');
-    if (error) throw error;
-    return data || [];
+  async getAll(): Promise<ApiResponse<Posto[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('Posto')
+        .select('*')
+        .eq('ativo', true)
+        .order('id');
+      if (error) throw error;
+      return createSuccessResponse(data as Posto[]);
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao buscar postos',
+        'FETCH_ERROR'
+      );
+    }
   },
 
-  async getById(id: number): Promise<Posto | null> {
-    const { data, error } = await supabase
-      .from('Posto')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
+  async getById(id: number): Promise<ApiResponse<Posto>> {
+    try {
+      const { data, error } = await supabase
+        .from('Posto')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Posto não encontrado');
+      return createSuccessResponse(data as Posto);
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao buscar posto',
+        'FETCH_ERROR'
+      );
+    }
   },
 
-  async getByUser(usuarioId: number): Promise<Posto[]> {
-    const { data, error } = await supabase
-      .from('UsuarioPosto')
-      .select(`
-        *,
-        posto:Posto(*)
-      `)
-      .eq('usuario_id', usuarioId)
-      .eq('ativo', true);
+  async getByUser(usuarioId: number): Promise<ApiResponse<Posto[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('UsuarioPosto')
+        .select(`
+          *,
+          posto:Posto(*)
+        `)
+        .eq('usuario_id', usuarioId)
+        .eq('ativo', true);
 
-    if (error) throw error;
-    return (data || []).map(up => up.posto).filter(Boolean) as Posto[];
+      if (error) throw error;
+      const postos = (data || []).map(up => up.posto).filter(Boolean) as Posto[];
+      return createSuccessResponse(postos);
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao buscar postos do usuário',
+        'FETCH_ERROR'
+      );
+    }
   },
 
-  async getAllIncludingInactive(): Promise<Posto[]> {
-    const { data, error } = await supabase
-      .from('Posto')
-      .select('*')
-      .order('id');
-    if (error) throw error;
-    return data || [];
+  async getAllIncludingInactive(): Promise<ApiResponse<Posto[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('Posto')
+        .select('*')
+        .order('id');
+      if (error) throw error;
+      return createSuccessResponse(data as Posto[]);
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao buscar todos os postos',
+        'FETCH_ERROR'
+      );
+    }
   },
 
-  async create(posto: Omit<InsertTables<'Posto'>, 'id' | 'created_at'>): Promise<Posto> {
-    const { data, error } = await supabase
-      .from('Posto')
-      .insert(posto)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  async create(posto: Omit<InsertTables<'Posto'>, 'id' | 'created_at'>): Promise<ApiResponse<Posto>> {
+    try {
+      const { data, error } = await supabase
+        .from('Posto')
+        .insert(posto)
+        .select()
+        .single();
+      if (error) throw error;
+      return createSuccessResponse(data as Posto, 'Posto criado com sucesso');
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao criar posto',
+        'CREATE_ERROR'
+      );
+    }
   },
 
-  async update(id: number, posto: UpdateTables<'Posto'>): Promise<Posto> {
-    const { data, error } = await supabase
-      .from('Posto')
-      .update(posto)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  async update(id: number, posto: UpdateTables<'Posto'>): Promise<ApiResponse<Posto>> {
+    try {
+      const { data, error } = await supabase
+        .from('Posto')
+        .update(posto)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return createSuccessResponse(data as Posto, 'Posto atualizado com sucesso');
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao atualizar posto',
+        'UPDATE_ERROR'
+      );
+    }
   },
 
-  async delete(id: number): Promise<void> {
-    // Soft delete - apenas desativa o posto
-    const { error } = await supabase
-      .from('Posto')
-      .update({ ativo: false })
-      .eq('id', id);
-    if (error) throw error;
+  async delete(id: number): Promise<ApiResponse<void>> {
+    try {
+      // Soft delete - apenas desativa o posto
+      const { error } = await supabase
+        .from('Posto')
+        .update({ ativo: false })
+        .eq('id', id);
+      if (error) throw error;
+      return createSuccessResponse(undefined, 'Posto desativado com sucesso');
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao desativar posto',
+        'DELETE_ERROR'
+      );
+    }
   }
 };
 
@@ -147,29 +199,38 @@ export const combustivelService = {
   // Ordem customizada dos combustíveis
   ORDEM_COMBUSTIVEIS: ['GC', 'GA', 'ET', 'S10', 'DIESEL'] as const,
 
-  async getAll(postoId?: number): Promise<Combustivel[]> {
-    let query = (supabase as any)
-      .from('Combustivel')
-      .select('*')
-      .eq('ativo', true);
+  async getAll(postoId?: number): Promise<ApiResponse<Combustivel[]>> {
+    try {
+      let query = (supabase as any)
+        .from('Combustivel')
+        .select('*')
+        .eq('ativo', true);
 
-    if (postoId) {
-      query = query.eq('posto_id', postoId);
+      if (postoId) {
+        query = query.eq('posto_id', postoId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      // Ordena por ordem customizada
+      const ordem = this.ORDEM_COMBUSTIVEIS;
+      const sortedData = (data || []).sort((a: any, b: any) => {
+        const indexA = ordem.indexOf(a.codigo as any);
+        const indexB = ordem.indexOf(b.codigo as any);
+        // Itens não encontrados vão para o final
+        const posA = indexA === -1 ? 999 : indexA;
+        const posB = indexB === -1 ? 999 : indexB;
+        return posA - posB;
+      });
+
+      return createSuccessResponse(sortedData as Combustivel[]);
+    } catch (err) {
+      return createErrorResponse(
+        err instanceof Error ? err.message : 'Erro ao buscar combustíveis',
+        'FETCH_ERROR'
+      );
     }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    // Ordena por ordem customizada
-    const ordem = this.ORDEM_COMBUSTIVEIS;
-    return (data || []).sort((a, b) => {
-      const indexA = ordem.indexOf(a.codigo as any);
-      const indexB = ordem.indexOf(b.codigo as any);
-      // Itens não encontrados vão para o final
-      const posA = indexA === -1 ? 999 : indexA;
-      const posB = indexB === -1 ? 999 : indexB;
-      return posA - posB;
-    });
   },
 
 
