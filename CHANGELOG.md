@@ -11,6 +11,21 @@
   - Commit: `docs: adiciona PRD-022 sobre Smart Types`
   - Arquivos: `documentos/PRD-022-SMART-TYPES.md`, `docs/GUIA-SMART-TYPES.md`
 
+### 🏗️ Arquitetura Monorepo
+- **[18/01/2026]** Migração para estrutura de monorepo com pacotes compartilhados
+  - **Web (`apps/web`)**: Migrados componentes e serviços para usar `@posto/types`
+    - Atualizados: configuracoes, dashboard, escalas, aiService, escala.service, notaFrentista.service
+    - Tipos centralizados em `packages/types`
+  - **Mobile (`posto-mobile`)**: Migrados todos os serviços para usar pacotes compartilhados
+    - Removido `lib/types.ts` local (tipos agora vêm de `@posto/types`)
+    - Integração com `@posto/api-core` para serviços
+    - 33 arquivos atualizados, modularização da tela de registro
+  - **Pacotes compartilhados**:
+    - `@posto/types`: Fonte única de verdade para tipagem
+    - `@posto/utils`: Utilitários compartilhados
+    - `@posto/api-core`: Core de API compartilhado
+  - Commits: `fdcd660` (web), `513bd12` (mobile)
+
 ### 🔧 Refatoração
 - **[14/01/2026]** Implementada Fase 1 de Smart Types (Issue #21)
   - Criado utility type `WithRelations<T, R>` em `src/types/ui/helpers.ts`
