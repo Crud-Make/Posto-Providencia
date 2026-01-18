@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { useUpdateChecker } from '../../lib/useUpdateChecker';
-import type { Escala } from '../../lib/types';
+import type { Escala } from '@posto/types';
 import QRCode from 'react-native-qrcode-svg';
 import {
     User,
@@ -162,8 +162,8 @@ export default function PerfilScreen() {
         iconBg = '#f3f4f6',
         showArrow = true,
         danger = false
-	}: {
-		icon: LucideIcon;
+    }: {
+        icon: LucideIcon;
         label: string;
         subtitle?: string;
         onPress?: () => void;
