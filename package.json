@@ -1,12 +1,16 @@
 {
-  "name": "posto-gestao-pro-dashboard",
+  "name": "posto-providencia-monorepo",
   "private": true,
-  "version": "0.0.0",
+  "version": "3.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite --port 3015",
-    "build": "node -e \"const fs = require('fs'); fs.writeFileSync('./public/version.json', JSON.stringify({version: Date.now().toString()}))\" && vite build",
-    "preview": "vite preview",
+    "dev": "bun --bun vite --port 3015",
+    "build": "bun -e \"Bun.write('./apps/web/public/version.json', JSON.stringify({version: Date.now().toString()}))\" && bun --bun vite build",
+    "preview": "bun --bun vite preview",
     "validate": "./scripts/validate-rules.sh",
     "push": "./scripts/push.sh"
   },
@@ -15,8 +19,12 @@
     "lucide-react": "^0.560.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "react-router-dom": "^7.12.0",
     "recharts": "^3.5.1",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "@posto/types": "workspace:*",
+    "@posto/utils": "workspace:*",
+    "@posto/api-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.19.2",
@@ -26,6 +34,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "pg": "^8.16.3",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "xlsx": "^0.18.5"
   }
 }
