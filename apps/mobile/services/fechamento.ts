@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { usuarioService } from './usuario';
 import { frentistaService } from './frentista';
-import type { Fechamento as FechamentoDb, FechamentoFrentista as FechamentoFrentistaDb } from '@posto/types';
+ import type { Fechamento as FechamentoDb, FechamentoFrentista as FechamentoFrentistaDb } from '@posto/types';
 import { calcularTotalPagamentos } from '@posto/utils';
 import { createSuccessResponse, createErrorResponse } from '@posto/api-core';
 import type { ApiResponse } from '@posto/types';
