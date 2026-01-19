@@ -20,7 +20,9 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
 }) => {
     return (
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 p-4 shadow-2xl z-40 print:hidden text-white">
-            <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
+            {/* // [19/01 00:37] Ajuste de layout: Footer agora usa largura total. */}
+            {/* Motivo: Evitar conteúdo comprimido no centro em telas grandes. */}
+            <div className="w-full px-4 sm:px-6 lg:px-10 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
                 <div className="flex gap-8 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
                     <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700/50">
                         <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Vendas (Bomba)</p>

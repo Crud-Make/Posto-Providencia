@@ -12,6 +12,9 @@
 // [18/01 11:35] Refatoração final: Modularização completa, extração de handleSave e subcomponentes de abas.
 // Motivo: Reduzir complexidade do orquestrador e cumprir meta de < 150 linhas.
 
+// [19/01 00:30] Ajuste de layout: Removido max-width de 1600px para usar a largura total da tela.
+// Motivo: Usuário relatou que a tela estava muito comprimida no meio.
+
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';

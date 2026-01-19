@@ -27,7 +27,9 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
 }) => {
     return (
         <div className="bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50 sticky top-0 z-30 transition-all duration-300">
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            {/* // [19/01 00:36] Ajuste de layout: Header agora usa largura total. */}
+            {/* Motivo: Evitar conteúdo comprimido no centro em telas grandes. */}
+            <div className="w-full px-4 sm:px-6 lg:px-10 h-20 flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-3 tracking-tight">
                         <div className="p-2 bg-blue-600/20 rounded-lg">
@@ -72,7 +74,9 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
             </div>
 
             {/* Tabs - Estilo Pill Navigation */}
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex gap-2 mt-2 pb-0">
+            {/* // [19/01 00:36] Ajuste de layout: Tabs agora usam largura total. */}
+            {/* Motivo: Alinhar com o container principal sem max-width. */}
+            <div className="w-full px-4 sm:px-6 lg:px-10 flex gap-2 mt-2 pb-0">
                 <button
                     onClick={() => setActiveTab('leituras')}
                     className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'leituras'
