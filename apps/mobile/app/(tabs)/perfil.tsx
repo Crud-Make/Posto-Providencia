@@ -162,8 +162,8 @@ export default function PerfilScreen() {
         iconBg = '#f3f4f6',
         showArrow = true,
         danger = false
-    }: {
-        icon: LucideIcon;
+	}: {
+		icon: LucideIcon;
         label: string;
         subtitle?: string;
         onPress?: () => void;
