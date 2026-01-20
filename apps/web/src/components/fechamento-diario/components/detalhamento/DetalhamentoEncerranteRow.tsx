@@ -58,15 +58,18 @@ export const DetalhamentoEncerranteRow: React.FC<DetalhamentoEncerranteRowProps>
 
   return (
     <tr className="bg-slate-800/30">
-      <td className="px-4 py-4 text-slate-300 sticky left-0 bg-slate-800/95 border-r border-slate-700/50">
+      <td className="px-4 py-4 text-slate-300 sticky left-0 bg-slate-800/95 border border-slate-600">
         <div className="flex flex-col">
-          {/* Rótulo removido conforme solicitação */}
+          <span className="font-bold text-slate-100 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+            Venda Concentrador
+          </span>
         </div>
       </td>
       {sessoes.map(sessao => (
-        <Cell 
-          key={sessao.tempId} 
-          sessao={sessao} 
+        <Cell
+          key={sessao.tempId}
+          sessao={sessao}
           totalVendasPosto={totalVendasPosto}
           isEditing={editingId === sessao.frentistaId}
           tempValue={tempValue}
@@ -99,9 +102,9 @@ interface CellProps {
  */
 const Cell: React.FC<CellProps> = ({ sessao, totalVendasPosto, isEditing, tempValue, setTempValue, onClick, onBlur, onKeyDown }) => {
   const { vendaConcentrador } = useDetalhamentoFrentista(sessao, totalVendasPosto);
-  
+
   return (
-    <td className="px-4 py-4 text-center align-top">
+    <td className="px-4 py-4 text-center align-top border border-slate-600">
       <div className="flex flex-col items-center gap-1">
         <span className="font-bold text-slate-200 mb-1">{paraReais(vendaConcentrador)}</span>
         {isEditing ? (

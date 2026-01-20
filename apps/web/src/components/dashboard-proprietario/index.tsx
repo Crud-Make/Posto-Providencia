@@ -31,7 +31,7 @@ const TelaDashboardProprietario: React.FC = () => {
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center space-y-4">
           <p className="text-gray-500">Não foi possível carregar os dados.</p>
-          <button 
+          <button
             onClick={() => recarregar()}
             className="text-blue-600 hover:underline"
           >
@@ -43,7 +43,7 @@ const TelaDashboardProprietario: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="p-6 w-full space-y-8 animate-in fade-in duration-500">
       <FiltrosDashboard
         periodo={periodo}
         onPeriodoChange={setPeriodo}
@@ -66,7 +66,7 @@ const TelaDashboardProprietario: React.FC = () => {
       {/* Footer Info */}
       <div className="text-center text-sm text-gray-400 dark:text-gray-500 py-4 border-t border-gray-100 dark:border-gray-800">
         <p>
-          💡 Visualizando dados de: <strong>{periodo === 'hoje' ? 'Hoje' : 'Mês Corrente'}</strong>. 
+          💡 Visualizando dados de: <strong>{periodo === 'hoje' ? 'Hoje' : 'Mês Corrente'}</strong>.
           Os valores de lucro são estimativas baseadas na margem média cadastrada.
         </p>
         <p className="text-xs mt-1 opacity-70">

@@ -2,6 +2,7 @@ import React from 'react';
 import { SessaoFrentista } from '../../../../types/fechamento';
 import { paraReais, formatarPorcentagem } from '../../../../utils/formatters';
 import { useDetalhamentoFrentista } from '../../hooks/useDetalhamentoFrentista';
+import { AlertCircle, PieChart } from 'lucide-react';
 
 /**
  * Props comuns para as linhas de rodapé
@@ -20,9 +21,9 @@ interface BaseRowProps {
  */
 export const DetalhamentoDiferencaRow: React.FC<BaseRowProps> = ({ sessoes, totalVendasPosto }) => {
   return (
-    <tr className="hover:bg-slate-700/10 transition-colors">
-      <td className="px-4 py-3 font-medium text-slate-300 sticky left-0 bg-slate-800/95 border-r border-slate-700/50 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+    <tr className="hover:bg-slate-800/50 transition-colors">
+      <td className="px-4 py-3 font-medium text-slate-300 sticky left-0 bg-slate-900 border border-slate-700/50 flex items-center gap-2">
+        <AlertCircle size={16} className="text-orange-500" />
         Diferença (Quebra)
       </td>
       {sessoes.map(sessao => (
@@ -37,9 +38,9 @@ export const DetalhamentoDiferencaRow: React.FC<BaseRowProps> = ({ sessoes, tota
  */
 export const DetalhamentoParticipacaoRow: React.FC<BaseRowProps> = ({ sessoes, totalVendasPosto }) => {
   return (
-    <tr className="hover:bg-slate-700/10 transition-colors">
-      <td className="px-4 py-3 font-medium text-slate-300 sticky left-0 bg-slate-800/95 border-r border-slate-700/50 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+    <tr className="hover:bg-slate-800/50 transition-colors">
+      <td className="px-4 py-3 font-medium text-slate-300 sticky left-0 bg-slate-900 border border-slate-700/50 flex items-center gap-2">
+        <PieChart size={16} className="text-purple-500" />
         Participação (%)
       </td>
       {sessoes.map(sessao => (
@@ -54,10 +55,10 @@ export const DetalhamentoParticipacaoRow: React.FC<BaseRowProps> = ({ sessoes, t
  */
 const CellDiferenca: React.FC<{ sessao: SessaoFrentista; totalVendasPosto: number }> = ({ sessao, totalVendasPosto }) => {
   const { diferenca } = useDetalhamentoFrentista(sessao, totalVendasPosto);
-  const colorClass = diferenca > 0 ? 'text-red-400' : diferenca < 0 ? 'text-emerald-400' : 'text-slate-400';
-  
+  const colorClass = diferenca > 0 ? 'text-red-400 font-bold' : diferenca < 0 ? 'text-emerald-400 font-bold' : 'text-slate-500';
+
   return (
-    <td className={`px-4 py-3 text-center ${colorClass}`}>
+    <td className={`px-4 py-3 text-center border border-slate-700/50 ${colorClass}`}>
       {paraReais(diferenca)}
     </td>
   );
@@ -68,9 +69,9 @@ const CellDiferenca: React.FC<{ sessao: SessaoFrentista; totalVendasPosto: numbe
  */
 const CellParticipacao: React.FC<{ sessao: SessaoFrentista; totalVendasPosto: number }> = ({ sessao, totalVendasPosto }) => {
   const { participacao } = useDetalhamentoFrentista(sessao, totalVendasPosto);
-  
+
   return (
-    <td className="px-4 py-3 text-center text-slate-300">
+    <td className="px-4 py-3 text-center text-slate-400 border border-slate-700/50">
       {formatarPorcentagem(participacao)}
     </td>
   );

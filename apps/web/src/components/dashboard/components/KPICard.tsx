@@ -34,8 +34,8 @@ const KPICard: React.FC<KPICardProps> = ({
 
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</h3>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2 font-finance tabular-nums">{value}</p>
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 font-display uppercase tracking-wider">{title}</h3>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2 font-finance tracking-tight tabular-nums">{value}</p>
         </div>
         <div className={`p-3 rounded-lg ${iconBgColor} ${iconColor}`}>
           <Icon size={24} />

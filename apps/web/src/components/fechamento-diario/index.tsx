@@ -124,7 +124,7 @@ const TelaFechamentoDiario: React.FC = () => {
             postoNome={postoAtivo?.nome} loading={loadingDados}
          />
 
-         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             {loading && <div className="mb-6"><ProgressIndicator current={50} total={100} label="Sincronizando dados..." /></div>}
             {error && <div className="p-4 bg-red-900/20 text-red-200 rounded-xl border border-red-500/30 flex items-center gap-3 animate-shake"><AlertTriangle size={20} className="text-red-400" /><span>{error}</span></div>}
             {success && <div className="p-4 bg-emerald-900/20 text-emerald-200 rounded-xl border border-emerald-500/30 flex items-center gap-3 animate-bounce-subtle"><TrendingUp size={20} className="text-emerald-400" /><span>{success}</span></div>}
@@ -155,6 +155,11 @@ const TelaFechamentoDiario: React.FC = () => {
                      totalVendasPosto={totalVendas}
                      loading={loading}
                      onUpdateEncerrante={(tempId, valor) => alterarCampoFrentista(tempId, 'valor_encerrante', valor.toString())}
+                     onUpdateCampo={(tempId, campo, valor) => {
+                        // Type assertion to ensure campo is a valid key of SessaoFrentista
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        alterarCampoFrentista(tempId, campo as any, valor.toString());
+                     }}
                      data={selectedDate}
                   />
                )}
