@@ -15,7 +15,8 @@ interface TabDetalhamentoFrentistaProps {
   frentistas: Frentista[]; // Lista de cadastros de frentistas para lookup de nomes
   totalVendasPosto: number; // Total geral de vendas para cálculos
   loading?: boolean; // Estado de carregamento
-  onUpdateEncerrante?: (tempId: string, valor: number) => void; // Callback para atualização de valor
+  onUpdateEncerrante?: (tempId: string, valor: number) => void; // Callback para atualização de valor do encerrante
+  onUpdateCampo?: (tempId: string, campo: string, valor: number) => void; // Callback genérico para outros campos
   data?: string; // Data do fechamento para exibição no cabeçalho
 }
 
@@ -38,6 +39,7 @@ export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> =
   totalVendasPosto,
   loading,
   onUpdateEncerrante,
+  onUpdateCampo,
   data
 }) => {
   /**
@@ -54,29 +56,64 @@ export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> =
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-slate-700/50 bg-slate-800/20">
       <DetalhamentoHeader count={frentistaSessions.length} data={data} />
-      
-      <table className="w-full text-sm text-left">
+
+      <table className="w-full text-sm text-left border-collapse">
         <thead className="text-xs uppercase bg-slate-900/50 text-slate-400 font-medium">
           <tr>
-            <th className="px-4 py-3 sticky left-0 bg-slate-900/95 backdrop-blur z-10 border-r border-slate-700/50">
+            <th className="px-4 py-3 sticky left-0 bg-slate-900 border border-slate-700/50 z-20">
               Meio de Pagamento
             </th>
             {frentistaSessions.map(sessao => (
-              <th key={sessao.tempId} className="px-4 py-3 text-center min-w-[140px]">
+              <th key={sessao.tempId} className="px-4 py-3 text-center min-w-[140px] border border-slate-700/50 bg-slate-900/50 text-slate-300">
                 {getFrentistaNome(sessao.frentistaId)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700/30">
-          <DetalhamentoRow label="Pix" colorClass="bg-cyan-500" field="pix" sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
-          <DetalhamentoRow label="Cartão" colorClass="bg-blue-500" field="cartao" sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
-          <DetalhamentoRow label="Notas a Prazo" colorClass="bg-yellow-500" field="nota" sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
-          <DetalhamentoRow label="Dinheiro" colorClass="bg-emerald-500" field="dinheiro" sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
-          <DetalhamentoRow label="Baratão" colorClass="bg-pink-500" field="baratao" sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
-          
+          <DetalhamentoRow
+            label="Pix"
+            colorClass="bg-cyan-500"
+            field="pix"
+            sessoes={frentistaSessions}
+            totalVendasPosto={totalVendasPosto}
+            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_pix', val)}
+          />
+          <DetalhamentoRow
+            label="Cartão"
+            colorClass="bg-blue-500"
+            field="cartao"
+            sessoes={frentistaSessions}
+            totalVendasPosto={totalVendasPosto}
+            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_cartao', val)}
+          />
+          <DetalhamentoRow
+            label="Notas a Prazo"
+            colorClass="bg-yellow-500"
+            field="nota"
+            sessoes={frentistaSessions}
+            totalVendasPosto={totalVendasPosto}
+            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_nota', val)}
+          />
+          <DetalhamentoRow
+            label="Dinheiro"
+            colorClass="bg-emerald-500"
+            field="dinheiro"
+            sessoes={frentistaSessions}
+            totalVendasPosto={totalVendasPosto}
+            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_dinheiro', val)}
+          />
+          <DetalhamentoRow
+            label="Baratão"
+            colorClass="bg-pink-500"
+            field="baratao"
+            sessoes={frentistaSessions}
+            totalVendasPosto={totalVendasPosto}
+            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_baratao', val)}
+          />
+
           <DetalhamentoRow label="Total Venda Frentista" colorClass="" field="totalVenda" sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} isTotal />
-          
+
           <DetalhamentoEncerranteRow sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} onUpdateEncerrante={onUpdateEncerrante} />
           <DetalhamentoDiferencaRow sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
           <DetalhamentoParticipacaoRow sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />

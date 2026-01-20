@@ -25,7 +25,7 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
         <div className="flex items-center gap-3">
           <div className="w-1 h-6 bg-purple-600 rounded-full"></div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Performance Frentistas</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">Performance Frentistas</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">Ranking do dia</p>
           </div>
         </div>
@@ -40,7 +40,7 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
           data.map((item, index) => (
             <div key={item.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md ${index < 3 ? 'border-gray-200 dark:border-gray-700' : 'border-transparent bg-gray-50 dark:bg-gray-700/50'}`}>
               <div className="flex items-center gap-4">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${index === 0 ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30' : index === 1 ? 'text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700' : index === 2 ? 'text-amber-700 bg-amber-100 dark:bg-amber-900/30' : 'text-gray-400'}`}>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm font-finance ${index === 0 ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30' : index === 1 ? 'text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700' : index === 2 ? 'text-amber-700 bg-amber-100 dark:bg-amber-900/30' : 'text-gray-400'}`}>
                   {index + 1}º
                 </div>
 
@@ -63,7 +63,7 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
                     {item.status === 'conferido' && (
                       <div className="flex items-center gap-1 bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 rounded-md border border-green-200 dark:border-green-800 shadow-sm" title="Caixa Conferido">
                         <CheckCircle2 size={14} className="text-green-600 dark:text-green-400" />
-                        <span className="text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-tight">OK</span>
+                        <span className="text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-tight font-display">OK</span>
                       </div>
                     )}
                   </div>
@@ -71,7 +71,7 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
                 </div>
               </div>
               <div className="text-right">
-                <p className={`font-bold text-lg font-finance tabular-nums ${item.type === 'divergence' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{item.value}</p>
+                <p className={`font-bold text-lg font-finance tabular-nums tracking-tight ${item.type === 'divergence' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{item.value}</p>
                 <div className="flex items-center justify-end gap-1">
                   {getRankIcon(index)}
                   <p className={`text-xs font-medium ${item.type === 'ticket' ? 'text-green-600 dark:text-green-400' : (item.type === 'volume' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400')}`}>{item.subValue}</p>

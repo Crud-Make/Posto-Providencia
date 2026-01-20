@@ -29,10 +29,10 @@ import {
  */
 const TelaGestaoClientes: React.FC = () => {
     const { postoAtivo } = usePosto();
-    
+
     // Hooks de dados
     const { clientes, loading, resumo, refreshClientes } = useClientesData(postoAtivo?.id);
-    
+
     // Estado local
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCliente, setSelectedCliente] = useState<ClienteComSaldo | null>(null);
@@ -56,7 +56,7 @@ const TelaGestaoClientes: React.FC = () => {
         notaForm.refreshNotas();
         refreshClientes();
     });
-    
+
     // Handlers
     const handleClienteClick = (cliente: ClienteComSaldo) => {
         setSelectedCliente(cliente);
@@ -70,7 +70,7 @@ const TelaGestaoClientes: React.FC = () => {
         try {
             await clienteService.update(selectedCliente.id, { bloqueado: !isBlocked });
             toast.success(`Cliente ${isBlocked ? 'desbloqueado' : 'bloqueado'} com sucesso!`);
-            
+
             const novoEstado = { ...selectedCliente, bloqueado: !isBlocked };
             setSelectedCliente(novoEstado);
             refreshClientes();
@@ -94,12 +94,12 @@ const TelaGestaoClientes: React.FC = () => {
             toast.error('Erro ao excluir cliente');
         }
     };
-    
+
     return (
-        <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+        <div className="p-6 space-y-6 w-full mx-auto">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Clientes & Fiado</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">Clientes & Fiado</h1>
                     <p className="text-gray-500 dark:text-gray-400">Gerencie contas, limites e recebimentos de fiado</p>
                 </div>
                 <button
@@ -110,9 +110,9 @@ const TelaGestaoClientes: React.FC = () => {
                     Novo Cliente
                 </button>
             </div>
-            
+
             <ClientesResumo resumo={resumo} loading={loading} />
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <ClientesLista
                     clientes={clientes}
@@ -122,7 +122,7 @@ const TelaGestaoClientes: React.FC = () => {
                     onSearchChange={setSearchTerm}
                     onClienteClick={handleClienteClick}
                 />
-                
+
                 <ClienteDetalhes
                     cliente={selectedCliente}
                     notas={notaForm.notas}
@@ -134,22 +134,24 @@ const TelaGestaoClientes: React.FC = () => {
                     onPagamento={pagamentoForm.openModal}
                 />
             </div>
-            
+
             {/* Modais */}
-            <ModalCliente 
-                {...clienteForm} 
+            <ModalCliente
+                {...clienteForm}
                 onClose={clienteForm.closeModal}
                 onSave={clienteForm.handleSave}
                 onChange={clienteForm.handleChange}
             />
-            <ModalNovaNota 
-                {...notaForm} 
+            {/* [20/01 05:35] Fix: Passando prop isOpen explicitamente para corrigir erro de tipo */}
+            <ModalNovaNota
+                {...notaForm}
+                isOpen={notaForm.isModalOpen}
                 onClose={notaForm.closeModal}
                 onSave={notaForm.handleSave}
                 onChange={notaForm.handleChange}
             />
-            <ModalPagamento 
-                {...pagamentoForm} 
+            <ModalPagamento
+                {...pagamentoForm}
                 onClose={pagamentoForm.closeModal}
                 onConfirm={pagamentoForm.handleConfirm}
                 onChange={pagamentoForm.handleChange}

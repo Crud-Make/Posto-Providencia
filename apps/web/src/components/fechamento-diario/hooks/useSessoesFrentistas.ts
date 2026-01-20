@@ -85,8 +85,10 @@ const criarSessaoVazia = (): SessaoFrentista => ({
  * @example
  * const { sessoes, adicionarFrentista } = useSessoesFrentistas(postoId);
  */
+// [20/01 05:35] Fix: Adicionado parâmetro opcional frentistasCadastrados para evitar erro de referência
 export const useSessoesFrentistas = (
-  postoId: number | null
+  postoId: number | null,
+  frentistasCadastrados: Frentista[] = []
 ): RetornoSessoesFrentistas => {
   const [sessoes, setSessoes] = useState<SessaoFrentista[]>([]);
   const [carregando, setCarregando] = useState(false);
@@ -141,20 +143,20 @@ export const useSessoesFrentistas = (
       } else {
         // [20/01 11:55] Se não houver sessões salvas, carrega frentistas ativos
         // Motivo: Usuário deseja que os frentistas ativos apareçam automaticamente na nova tela
-        
+
         let frentistasParaSessao: Frentista[] = [];
 
         // Prioriza a lista passada via props (já carregada no contexto)
         if (frentistasCadastrados.length > 0) {
-           frentistasParaSessao = frentistasCadastrados.filter(f => f.ativo);
+          frentistasParaSessao = frentistasCadastrados.filter(f => f.ativo);
         } else {
-           // Fallback: busca via API se a lista props estiver vazia
-           const frentistasRes = await frentistaService.getAll(postoId);
-           if (isSuccess(frentistasRes)) {
-              frentistasParaSessao = frentistasRes.data;
-           }
+          // Fallback: busca via API se a lista props estiver vazia
+          const frentistasRes = await frentistaService.getAll(postoId);
+          if (isSuccess(frentistasRes)) {
+            frentistasParaSessao = frentistasRes.data;
+          }
         }
-        
+
         if (frentistasParaSessao.length > 0) {
           const sessoesIniciais = frentistasParaSessao.map(f => ({
             ...criarSessaoVazia(),
