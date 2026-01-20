@@ -14,7 +14,8 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
-import { fechamentoFrentistaService } from '../../../services/api';
+import type { Frentista } from '../../../types/database/index';
+import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
 import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -138,8 +139,34 @@ export const useSessoesFrentistas = (
         setSessoes(mapeadas);
         console.log('✅ Sessões de frentistas carregadas');
       } else {
-        setSessoes([]);
-        console.log('✅ Sem envios de frentistas para esta data/turno');
+        // [20/01 11:55] Se não houver sessões salvas, carrega frentistas ativos
+        // Motivo: Usuário deseja que os frentistas ativos apareçam automaticamente na nova tela
+        
+        let frentistasParaSessao: Frentista[] = [];
+
+        // Prioriza a lista passada via props (já carregada no contexto)
+        if (frentistasCadastrados.length > 0) {
+           frentistasParaSessao = frentistasCadastrados.filter(f => f.ativo);
+        } else {
+           // Fallback: busca via API se a lista props estiver vazia
+           const frentistasRes = await frentistaService.getAll(postoId);
+           if (isSuccess(frentistasRes)) {
+              frentistasParaSessao = frentistasRes.data;
+           }
+        }
+        
+        if (frentistasParaSessao.length > 0) {
+          const sessoesIniciais = frentistasParaSessao.map(f => ({
+            ...criarSessaoVazia(),
+            frentistaId: f.id,
+            // Mantém tempId gerado pelo criarSessaoVazia, mas garante unicidade extra se necessário
+          }));
+          setSessoes(sessoesIniciais);
+          console.log('✅ Sessões inicializadas com frentistas ativos');
+        } else {
+          setSessoes([]);
+          console.log('✅ Sem envios e sem frentistas ativos');
+        }
       }
     } catch (err) {
       console.error('❌ Erro ao carregar sessões:', err);

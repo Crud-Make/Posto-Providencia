@@ -9,9 +9,8 @@
  * @version 1.0.0
  */
 
-// [18/01 00:00] Adaptar consumo dos services para ApiResponse
-// Motivo: Services agora retornam { success, data, error } (Smart Types)
-
+// [20/01 10:00] Adição de updateBicoPrice para edição local de preços
+// Motivo: Permitir ajuste rápido de preço durante o fechamento sem alterar cadastro
 import { useState, useCallback, useEffect } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import type { Frentista, Turno } from '../../../types/database/index';
@@ -30,6 +29,7 @@ interface RetornoCarregamentoDados {
   carregando: boolean;
   erro: string | null;
   carregarDados: () => Promise<void>;
+  updateBicoPrice: (bicoId: number, newPrice: number) => void;
 }
 
 /**
@@ -54,6 +54,27 @@ export const useCarregamentoDados = (
   const [turnos, setTurnos] = useState<Turno[]>(TURNOS_PADRAO);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  /**
+   * Atualiza o preço de um bico localmente (apenas na memória da tela)
+   * 
+   * @param bicoId - ID do bico a ser atualizado
+   * @param newPrice - Novo preço a ser aplicado
+   */
+  const updateBicoPrice = useCallback((bicoId: number, newPrice: number) => {
+    setBicos(prev => prev.map(bico => {
+      if (bico.id === bicoId) {
+        return {
+          ...bico,
+          combustivel: {
+            ...bico.combustivel,
+            preco_venda: newPrice
+          }
+        };
+      }
+      return bico;
+    }));
+  }, []);
 
   /**
    * Carrega todos os dados necessários do posto
@@ -151,6 +172,7 @@ export const useCarregamentoDados = (
     turnos,
     carregando,
     erro,
-    carregarDados
+    carregarDados,
+    updateBicoPrice
   };
 };

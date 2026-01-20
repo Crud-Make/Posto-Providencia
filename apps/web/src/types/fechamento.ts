@@ -119,8 +119,10 @@ export const CORES_GRAFICO_PAGAMENTO = [
  * Definição padrão dos turnos quando não há configuração personalizada
  * Usado como fallback se o banco não retornar turnos
  */
+// [20/01 10:00] Correção de tipagem em TURNOS_PADRAO
+// Motivo: Adicionado posto_id: 0 para satisfazer a interface Turno
 export const TURNOS_PADRAO = [
-  { id: 1, nome: 'Manhã', horario_inicio: '06:00', horario_fim: '14:00', ativo: true },
-  { id: 2, nome: 'Tarde', horario_inicio: '14:00', horario_fim: '22:00', ativo: true },
-  { id: 3, nome: 'Noite', horario_inicio: '22:00', horario_fim: '06:00', ativo: true },
+  { id: 1, nome: 'Manhã', horario_inicio: '06:00', horario_fim: '14:00', ativo: true, posto_id: 0 },
+  { id: 2, nome: 'Tarde', horario_inicio: '14:00', horario_fim: '22:00', ativo: true, posto_id: 0 },
+  { id: 3, nome: 'Noite', horario_inicio: '22:00', horario_fim: '06:00', ativo: true, posto_id: 0 },
 ];
