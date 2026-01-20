@@ -1,7 +1,28 @@
 import { supabase } from '../lib/supabase';
-import type { Frentista as FrentistaDb } from '@posto/types';
 
-export type Frentista = FrentistaDb;
+/**
+ * Interface que representa um frentista no sistema.
+ */
+export interface Frentista {
+    /** Identificador único do frentista */
+    id: number;
+    /** Nome completo do frentista */
+    nome: string;
+    /** CPF do frentista */
+    cpf: string | null;
+    /** Telefone de contato */
+    telefone: string | null;
+    /** Data de admissão */
+    data_admissao: string | null;
+    /** Indica se o frentista está ativo */
+    ativo: boolean;
+    /** ID do usuário vinculado (UUID do Supabase Auth) */
+    user_id: string | null;
+    /** ID do turno preferencial */
+    turno_id?: number | null;
+    /** ID do posto ao qual pertence */
+    posto_id: number;
+}
 
 /**
  * Serviço para gerenciar operações relacionadas a frentistas.
