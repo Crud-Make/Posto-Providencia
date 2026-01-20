@@ -3,6 +3,7 @@ import { usePosto } from '../../../../contexts/PostoContext';
 import { leituraService, combustivelService, estoqueService } from '../../../../services/api';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
+import { isSuccess } from '../../../../types/ui/response-types';
 
 // Color mapping for fuels
 const FUEL_COLORS: Record<string, string> = {
@@ -15,7 +16,7 @@ const FUEL_COLORS: Record<string, string> = {
 
 export const useDashboardVendas = () => {
   const { postoAtivoId } = usePosto();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -47,11 +48,13 @@ export const useDashboardVendas = () => {
       const endDate = new Date(year, month, 0);
 
       // Fetch sales summary for the month
-      const allLeituras = await leituraService.getByDateRange(
+      const resLeituras = await leituraService.getByDateRange(
         startDate.toISOString().split('T')[0],
         endDate.toISOString().split('T')[0],
         postoAtivoId
       );
+
+      const allLeituras = isSuccess(resLeituras) ? resLeituras.data : [];
 
       // Calculate totals
       const totalLitros = allLeituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
@@ -90,7 +93,8 @@ export const useDashboardVendas = () => {
 
       // Calculate estimated profit (using a simple margin estimate)
       // In a real app, this would come from cost data
-      const estoquesData = await estoqueService.getAll(postoAtivoId);
+      const resEstoque = await estoqueService.getAll(postoAtivoId);
+      const estoquesData = isSuccess(resEstoque) ? resEstoque.data : [];
 
       let totalCost = 0;
       Object.values(byCombustivel).forEach(item => {
