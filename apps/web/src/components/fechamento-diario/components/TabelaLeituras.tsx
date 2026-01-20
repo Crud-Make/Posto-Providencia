@@ -1,5 +1,7 @@
 import React from 'react';
 // [09/01] Adição de colunas financeiras e totalizador geral - Restauração funcionalidade Tabela Escura
+// [20/01 10:00] Implementação de edição de preço inline
+// Motivo: Permitir ajuste rápido sem alterar cadastro global
 import { BicoComDetalhes } from '../../../types/fechamento';
 import { paraReais } from '../../../utils/formatters';
 
@@ -12,6 +14,7 @@ interface TabelaLeiturasProps {
   onLeituraFechamentoBlur: (bicoId: number) => void;
   calcLitros: (bicoId: number) => { value: number; display: string };
   isLoading?: boolean;
+  onUpdatePrice?: (bicoId: number, newPrice: number) => void;
 }
 
 export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
@@ -22,8 +25,45 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
   onLeituraInicialBlur,
   onLeituraFechamentoBlur,
   calcLitros,
-  isLoading
+  isLoading,
+  onUpdatePrice
 }) => {
+  const [editingPriceBicoId, setEditingPriceBicoId] = React.useState<number | null>(null);
+  const [tempPrice, setTempPrice] = React.useState<string>('');
+
+  /**
+   * Inicia a edição do preço ao clicar no valor
+   */
+  const handlePriceClick = (bico: BicoComDetalhes) => {
+    if (!onUpdatePrice) return;
+    setEditingPriceBicoId(bico.id);
+    setTempPrice(bico.combustivel.preco_venda.toString().replace('.', ','));
+  };
+
+  /**
+   * Finaliza a edição do preço e aplica a alteração
+   */
+  const handlePriceBlur = (bicoId: number) => {
+    if (editingPriceBicoId === bicoId && onUpdatePrice) {
+      const numericPrice = parseFloat(tempPrice.replace(',', '.'));
+      if (!isNaN(numericPrice) && numericPrice > 0) {
+        onUpdatePrice(bicoId, numericPrice);
+      }
+      setEditingPriceBicoId(null);
+    }
+  };
+
+  /**
+   * Gerencia teclas especiais durante a edição (Enter/Escape)
+   */
+  const handlePriceKeyDown = (e: React.KeyboardEvent, bicoId: number) => {
+    if (e.key === 'Enter') {
+      handlePriceBlur(bicoId);
+    } else if (e.key === 'Escape') {
+      setEditingPriceBicoId(null);
+    }
+  };
+
   // Calcula o total geral de vendas (Litros * Preço)
   const totalGeralVendas = bicos.reduce((acc, bico) => {
     const litros = calcLitros(bico.id).value;
@@ -121,9 +161,26 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-slate-400 font-mono">
-                      {paraReais(bico.combustivel.preco_venda)}
-                    </span>
+                    {editingPriceBicoId === bico.id ? (
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={tempPrice}
+                        onChange={(e) => setTempPrice(e.target.value)}
+                        onBlur={() => handlePriceBlur(bico.id)}
+                        onKeyDown={(e) => handlePriceKeyDown(e, bico.id)}
+                        autoFocus
+                        className="w-24 text-sm font-medium text-slate-100 bg-slate-900 border border-slate-700 rounded p-1 font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    ) : (
+                      <span
+                        className={`text-sm font-medium font-mono ${onUpdatePrice ? 'cursor-pointer hover:text-blue-400 border-b border-dashed border-transparent hover:border-blue-400 transition-colors' : ''} text-slate-400`}
+                        onClick={() => handlePriceClick(bico)}
+                        title={onUpdatePrice ? "Clique para editar o preço" : undefined}
+                      >
+                        {paraReais(bico.combustivel.preco_venda)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`text-lg font-bold font-mono ${totalVenda > 0 ? 'text-blue-400' : 'text-slate-500'}`}>

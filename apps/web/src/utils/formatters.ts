@@ -299,3 +299,22 @@ export const obterLabelPagamento = (tipo: string): string => {
       return tipo;
   }
 };
+
+/**
+ * Formata um número como porcentagem (ex: 10.5 -> "10,50%")
+ * 
+ * @param val - Valor numérico (já em porcentagem, ex: 10.5 para 10.5%)
+ * @param casas - Número de casas decimais (padrão: 2)
+ * @returns String formatada
+ */
+export const formatarPorcentagem = (val: number | string, casas: number = 2): string => {
+  const num = Number(val);
+  if (isNaN(num)) return '0,00%';
+  
+  const formatado = num.toLocaleString('pt-BR', {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas
+  });
+  
+  return `${formatado}%`;
+};
