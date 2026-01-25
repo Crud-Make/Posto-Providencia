@@ -1,12 +1,17 @@
 {
   "name": "@posto/mobile",
-  "version": "1.4.3",
+  "version": "1.6.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "eas:build": "eas build --platform android --profile production",
+    "eas:build:dev": "eas build --platform android --profile development",
+    "eas:build:preview": "eas build --platform android --profile preview",
+    "eas:update": "eas update --branch production --message 'Atualização automática'",
+    "eas:update:preview": "eas update --branch preview --message 'Atualização de teste'"
   },
   "dependencies": {
     "@posto/types": "workspace:*",
