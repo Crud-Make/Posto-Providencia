@@ -19,7 +19,7 @@ export interface Database {
       Configuracao: ConfiguracaoTable
       Usuario: UsuarioTable
       UsuarioPosto: UsuarioPostoTable
-      
+
       // Combustíveis
       Combustivel: CombustivelTable
       Bomba: BombaTable
@@ -27,7 +27,7 @@ export interface Database {
       Tanque: TanqueTable
       HistoricoTanque: HistoricoTanqueTable
       Estoque: EstoqueTable
-      
+
       // Operações
       Frentista: FrentistaTable
       Leitura: LeituraTable
@@ -35,26 +35,26 @@ export interface Database {
       FechamentoFrentista: FechamentoFrentistaTable
       Recebimento: RecebimentoTable
       Escala: EscalaTable
-      
+
       // Pagamentos
       FormaPagamento: FormaPagamentoTable
       Maquininha: MaquininhaTable
-      
+
       // Financeiro
       Emprestimo: EmprestimoTable
       Parcela: ParcelaTable
       Divida: DividaTable
       Despesa: DespesaTable
-      
+
       // Compras
       Compra: CompraTable
       Fornecedor: FornecedorTable
-      
+
       // Produtos
       Produto: ProdutoTable
       VendaProduto: VendaProdutoTable
       MovimentacaoEstoque: MovimentacaoEstoqueTable
-      
+
       // Clientes
       Cliente: ClienteTable
       NotaFrentista: NotaFrentistaTable
@@ -63,7 +63,7 @@ export interface Database {
       TransacaoBaratencia: TransacaoBaratenciaTable
       TokenAbastecimento: TokenAbastecimentoTable
       PromocaoBaratencia: PromocaoBaratenciaTable
-      
+
       // Notificações
       Notificacao: NotificacaoTable
       PushToken: PushTokenTable
@@ -87,6 +87,33 @@ export interface Database {
       get_frentistas_with_email: {
         Args: Record<string, never>
         Returns: (FrentistaTable['Row'] & { email: string | null })[]
+      }
+      get_fechamento_mensal: {
+        Args: { p_posto_id: number; p_mes: number; p_ano: number }
+        Returns: {
+          dia: string
+          volume_total: number
+          faturamento_bruto: number
+          lucro_bruto: number
+          custo_taxas: number
+          lucro_liquido: number
+          status: string
+          vol_gasolina: number
+          vol_aditivada: number
+          vol_etanol: number
+          vol_diesel: number
+        }[]
+      }
+      get_encerrantes_mensal: {
+        Args: { p_posto_id: number; p_mes: number; p_ano: number }
+        Returns: {
+          bico_nome: string
+          combustivel_nome: string
+          leitura_inicial: number
+          leitura_final: number
+          vendas_registradas: number
+          diferenca: number
+        }[]
       }
     }
     Enums: DatabaseEnums
