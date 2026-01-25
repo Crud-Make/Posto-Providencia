@@ -39,7 +39,7 @@ const UpdateNotifier: React.FC = () => {
         initVersion();
 
         // Define uma verificação periódica (a cada 2 minutos)
-        checkInterval.current = setInterval(async () => {
+        checkInterval.current = window.setInterval(async () => {
             const latestVersion = await fetchVersion();
 
             // Se já temos uma versão carregada e a nova for diferente, avisa o usuário
