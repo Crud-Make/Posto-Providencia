@@ -72,11 +72,11 @@ const TelaDashboard: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
+    <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
       {/* Page Title & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Visão Geral do Posto</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-display">Visão Geral do Posto</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Acompanhe os indicadores do dia e o status operacional.</p>
         </div>
         <div className="flex gap-3">

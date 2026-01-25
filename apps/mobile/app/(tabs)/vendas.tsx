@@ -4,9 +4,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShoppingBag, Search, Plus } from 'lucide-react-native';
 
 import { supabase } from '../../lib/supabase';
-import { frentistaService, type Frentista } from '../../services/frentista';
+import { frentistaService } from '../../services/frentista';
 import { produtoService, type Produto } from '../../services/produto';
 import { vendaProdutoService, type VendaProduto } from '../../services/vendaProduto';
+
+/**
+ * Interface que representa os dados básicos do frentista na tela de vendas.
+ */
+interface Frentista {
+    /** ID único do frentista */
+    id: number;
+    /** Nome do frentista */
+    nome: string;
+    /** ID do posto associado */
+    posto_id: number;
+}
 
 /**
  * Tela de Venda de Produtos.
