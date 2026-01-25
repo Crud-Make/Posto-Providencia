@@ -1,0 +1,1870 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-01-25T21:09:04.407Z",
+  "stack": {
+    "primaryLanguage": "typescript",
+    "languages": [
+      "javascript",
+      "typescript"
+    ],
+    "frameworks": [],
+    "buildTools": [
+      "vite",
+      "turborepo"
+    ],
+    "testFrameworks": [
+      "vitest"
+    ],
+    "packageManager": null,
+    "isMonorepo": true,
+    "hasDocker": false,
+    "hasCI": true
+  },
+  "structure": {
+    "totalFiles": 542,
+    "topDirectories": [
+      {
+        "name": "AGENTS.md",
+        "fileCount": 1
+      },
+      {
+        "name": "apps",
+        "fileCount": 370
+      },
+      {
+        "name": "archive",
+        "fileCount": 0
+      },
+      {
+        "name": "bun.lock",
+        "fileCount": 1
+      },
+      {
+        "name": "docs",
+        "fileCount": 99
+      },
+      {
+        "name": "eslint.config.mjs",
+        "fileCount": 1
+      },
+      {
+        "name": "imagens",
+        "fileCount": 2
+      },
+      {
+        "name": "package.json",
+        "fileCount": 1
+      },
+      {
+        "name": "packages",
+        "fileCount": 21
+      },
+      {
+        "name": "README.md",
+        "fileCount": 1
+      },
+      {
+        "name": "scripts",
+        "fileCount": 11
+      },
+      {
+        "name": "supabase",
+        "fileCount": 24
+      },
+      {
+        "name": "supabase_migrations",
+        "fileCount": 5
+      },
+      {
+        "name": "tsconfig.json",
+        "fileCount": 1
+      },
+      {
+        "name": "turbo.json",
+        "fileCount": 1
+      },
+      {
+        "name": "vercel.json",
+        "fileCount": 1
+      },
+      {
+        "name": "vite.config.ts",
+        "fileCount": 1
+      },
+      {
+        "name": "vitest.config.ts",
+        "fileCount": 1
+      }
+    ],
+    "languageDistribution": [
+      {
+        "extension": ".ts",
+        "count": 172
+      },
+      {
+        "extension": ".tsx",
+        "count": 143
+      },
+      {
+        "extension": ".md",
+        "count": 108
+      },
+      {
+        "extension": ".sql",
+        "count": 33
+      },
+      {
+        "extension": ".js",
+        "count": 28
+      },
+      {
+        "extension": ".png",
+        "count": 23
+      },
+      {
+        "extension": ".json",
+        "count": 20
+      },
+      {
+        "extension": ".css",
+        "count": 3
+      },
+      {
+        "extension": ".sh",
+        "count": 2
+      },
+      {
+        "extension": ".html",
+        "count": 2
+      }
+    ]
+  },
+  "architecture": {
+    "layers": [
+      {
+        "name": "Config",
+        "description": "Configuration and constants",
+        "directories": [
+          ".",
+          "apps/web/src/types/ui",
+          "apps/mobile"
+        ],
+        "symbolCount": 3,
+        "dependsOn": []
+      },
+      {
+        "name": "Utils",
+        "description": "Shared utilities and helpers",
+        "directories": [
+          "packages/utils/src",
+          "apps/mobile/lib",
+          "apps/web/src/utils",
+          "apps/web/src/types/ui",
+          "apps/web/src/components/escalas/utils",
+          "apps/web/src/shared/ui"
+        ],
+        "symbolCount": 27,
+        "dependsOn": [
+          "Controllers",
+          "Repositories"
+        ]
+      },
+      {
+        "name": "Repositories",
+        "description": "Data access and persistence",
+        "directories": [
+          "packages/types/src",
+          "packages/types/src/database",
+          "apps/web/src/types",
+          "packages/types/src/database/tables",
+          "apps/web/src/types/database",
+          "apps/web/src/types/database/tables",
+          "apps/web/src/components/configuracoes/hooks",
+          "apps/web/src/components/clientes/hooks",
+          "apps/mobile/components/registro",
+          "apps/web/src/components/relatorio-diario/components"
+        ],
+        "symbolCount": 112,
+        "dependsOn": [
+          "Models",
+          "Services",
+          "Components",
+          "Controllers"
+        ]
+      },
+      {
+        "name": "Controllers",
+        "description": "Request handling and routing",
+        "directories": [
+          "packages/types/src",
+          "packages/api-core/src",
+          "apps/mobile/lib"
+        ],
+        "symbolCount": 12,
+        "dependsOn": []
+      },
+      {
+        "name": "Services",
+        "description": "Business logic and orchestration",
+        "directories": [
+          "apps/mobile/services",
+          "apps/web/src/services",
+          "apps/web/src/services/api",
+          "apps/web/src/components/fechamento-diario/services"
+        ],
+        "symbolCount": 87,
+        "dependsOn": [
+          "Controllers",
+          "Models",
+          "Repositories",
+          "Utils",
+          "Components"
+        ]
+      },
+      {
+        "name": "Components",
+        "description": "UI components and views",
+        "directories": [
+          "apps/mobile/components/registro",
+          "apps/web/src/components/relatorio-diario",
+          "apps/web/src/components/leituras-diarias",
+          "apps/web/src/components/frentistas",
+          "apps/web/src/components/despesas",
+          "apps/web/src/components/dashboard-proprietario",
+          "apps/web/src/components/configuracoes",
+          "apps/web/src/components/clientes",
+          "apps/web/src/components/analise-custos",
+          "apps/web/src/components/vendas/dashboard",
+          "apps/web/src/components/vendas/analise",
+          "apps/web/src/components/relatorio-diario/hooks",
+          "apps/web/src/components/registro-compras/hooks",
+          "apps/web/src/components/leituras-diarias/hooks",
+          "apps/web/src/components/frentistas/hooks",
+          "apps/web/src/components/financeiro/hooks",
+          "apps/web/src/components/fechamento-diario/hooks",
+          "apps/web/src/components/estoque/gestao",
+          "apps/web/src/components/estoque/dashboard",
+          "apps/web/src/components/escalas/hooks",
+          "apps/web/src/components/despesas/hooks",
+          "apps/web/src/components/dashboard-proprietario/hooks",
+          "apps/web/src/components/dashboard/hooks",
+          "apps/web/src/components/configuracoes/hooks",
+          "apps/web/src/components/configuracoes/components",
+          "apps/web/src/components/clientes/hooks",
+          "apps/web/src/components/clientes/components",
+          "apps/web/src/components/analise-custos/hooks",
+          "apps/web/src/components/vendas/dashboard/hooks",
+          "apps/web/src/components/vendas/analise/hooks",
+          "apps/web/src/components/estoque/gestao/hooks",
+          "apps/web/src/components/estoque/dashboard/hooks",
+          "apps/web/src/components",
+          "apps/web/src/components/registro-compras",
+          "apps/web/src/components/financeiro",
+          "apps/web/src/components/fechamento-diario",
+          "apps/web/src/components/fechamento-mensal",
+          "apps/web/src/components/escalas",
+          "apps/web/src/components/dashboard",
+          "apps/web/src/components/relatorio-diario/components",
+          "apps/web/src/components/leituras-diarias/components",
+          "apps/web/src/components/frentistas/components",
+          "apps/web/src/components/financeiro/components",
+          "apps/web/src/components/fechamento-diario/components",
+          "apps/web/src/components/despesas/components",
+          "apps/web/src/components/dashboard-proprietario/components",
+          "apps/web/src/components/dashboard/components",
+          "apps/web/src/components/analise-custos/components",
+          "apps/web/src/components/vendas/dashboard/components",
+          "apps/web/src/components/vendas/analise/components",
+          "apps/web/src/components/fechamento-diario/components/resumo",
+          "apps/web/src/components/fechamento-diario/components/detalhamento",
+          "apps/web/src/components/estoque/gestao/components",
+          "apps/web/src/components/estoque/dashboard/components"
+        ],
+        "symbolCount": 218,
+        "dependsOn": [
+          "Models",
+          "Repositories",
+          "Services",
+          "Utils",
+          "Controllers"
+        ]
+      },
+      {
+        "name": "Models",
+        "description": "Data structures and domain objects",
+        "directories": [
+          "apps/web/src/types/database"
+        ],
+        "symbolCount": 1,
+        "dependsOn": []
+      }
+    ],
+    "patterns": [],
+    "entryPoints": [
+      "packages/utils/src/index.ts",
+      "packages/types/src/index.ts",
+      "packages/api-core/src/index.ts",
+      "packages/types/src/ui/index.ts",
+      "packages/types/src/database/index.ts",
+      "apps/web/src/types/index.ts",
+      "apps/web/src/services/index.ts",
+      "apps/web/src/types/ui/index.ts",
+      "apps/web/src/types/database/index.ts",
+      "apps/web/src/services/api/index.ts",
+      "apps/web/src/components/configuracoes/index.ts",
+      "apps/web/src/components/clientes/index.ts",
+      "apps/web/src/components/configuracoes/hooks/index.ts",
+      "apps/web/src/components/configuracoes/components/index.ts",
+      "apps/web/src/components/clientes/hooks/index.ts",
+      "apps/web/src/components/clientes/components/index.ts",
+      "apps/web/src/index.tsx",
+      "apps/mobile/app/index.tsx",
+      "apps/mobile/app/(tabs)/index.tsx",
+      "apps/web/src/components/relatorio-diario/index.tsx",
+      "apps/web/src/components/registro-compras/index.tsx",
+      "apps/web/src/components/leituras-diarias/index.tsx",
+      "apps/web/src/components/frentistas/index.tsx",
+      "apps/web/src/components/financeiro/index.tsx",
+      "apps/web/src/components/fechamento-diario/index.tsx",
+      "apps/web/src/components/fechamento-mensal/index.tsx",
+      "apps/web/src/components/despesas/index.tsx",
+      "apps/web/src/components/dashboard-proprietario/index.tsx",
+      "apps/web/src/components/dashboard/index.tsx",
+      "apps/web/src/components/analise-custos/index.tsx",
+      "apps/web/src/components/vendas/dashboard/index.tsx",
+      "apps/web/src/components/vendas/analise/index.tsx",
+      "apps/web/src/components/estoque/gestao/index.tsx",
+      "apps/web/src/components/estoque/dashboard/index.tsx"
+    ]
+  },
+  "symbols": {
+    "classes": [],
+    "interfaces": [
+      {
+        "name": "AIInsight",
+        "kind": "interface",
+        "file": "apps/web/src/services/aiService.ts",
+        "line": 20,
+        "exported": true
+      },
+      {
+        "name": "AlertaDashboard",
+        "kind": "interface",
+        "file": "apps/web/src/components/dashboard-proprietario/types.ts",
+        "line": 47,
+        "exported": true
+      },
+      {
+        "name": "ApiError",
+        "kind": "interface",
+        "file": "packages/types/src/api.ts",
+        "line": 48,
+        "exported": true
+      },
+      {
+        "name": "ApiResponse",
+        "kind": "interface",
+        "file": "packages/types/src/api.ts",
+        "line": 37,
+        "exported": true
+      },
+      {
+        "name": "AttendantClosing",
+        "kind": "interface",
+        "file": "packages/types/src/ui/legacy-types.ts",
+        "line": 16,
+        "exported": true
+      },
+      {
+        "name": "AttendantClosing",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/dashboard.ts",
+        "line": 32,
+        "exported": true
+      },
+      {
+        "name": "AttendantHistoryEntry",
+        "kind": "interface",
+        "file": "packages/types/src/ui/legacy-types.ts",
+        "line": 219,
+        "exported": true
+      },
+      {
+        "name": "AttendantHistoryEntry",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/attendants.ts",
+        "line": 28,
+        "exported": true
+      },
+      {
+        "name": "AttendantPerformance",
+        "kind": "interface",
+        "file": "packages/types/src/ui/legacy-types.ts",
+        "line": 25,
+        "exported": true
+      },
+      {
+        "name": "AttendantPerformance",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/dashboard.ts",
+        "line": 44,
+        "exported": true
+      },
+      {
+        "name": "AttendantProfile",
+        "kind": "interface",
+        "file": "packages/types/src/ui/legacy-types.ts",
+        "line": 202,
+        "exported": true
+      },
+      {
+        "name": "AttendantProfile",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/attendants.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "AuthResponse",
+        "kind": "interface",
+        "file": "apps/web/src/types/supabase-errors.ts",
+        "line": 17,
+        "exported": true
+      },
+      {
+        "name": "Bico",
+        "kind": "interface",
+        "file": "apps/web/src/components/configuracoes/types.ts",
+        "line": 21,
+        "exported": true
+      },
+      {
+        "name": "BicoTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/combustiveis.ts",
+        "line": 83,
+        "exported": true
+      },
+      {
+        "name": "BombaTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/combustiveis.ts",
+        "line": 50,
+        "exported": true
+      },
+      {
+        "name": "CalculosRegistro",
+        "kind": "interface",
+        "file": "apps/web/src/components/registro-compras/hooks/useCalculosRegistro.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "CarteiraBaratenciaTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/baratencia.ts",
+        "line": 54,
+        "exported": true
+      },
+      {
+        "name": "Cliente",
+        "kind": "interface",
+        "file": "apps/mobile/services/cliente.ts",
+        "line": 6,
+        "exported": true
+      },
+      {
+        "name": "Cliente",
+        "kind": "interface",
+        "file": "packages/types/src/database/tables/operacoes.ts",
+        "line": 108,
+        "exported": true
+      },
+      {
+        "name": "ClienteBaratenciaTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/baratencia.ts",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "ClienteComSaldo",
+        "kind": "interface",
+        "file": "apps/web/src/components/clientes/types.ts",
+        "line": 18,
+        "exported": true
+      },
+      {
+        "name": "ClienteDetalhesProps",
+        "kind": "interface",
+        "file": "apps/web/src/components/clientes/types.ts",
+        "line": 90,
+        "exported": true
+      },
+      {
+        "name": "ClientesListaProps",
+        "kind": "interface",
+        "file": "apps/web/src/components/clientes/types.ts",
+        "line": 78,
+        "exported": true
+      },
+      {
+        "name": "ClientesResumoData",
+        "kind": "interface",
+        "file": "apps/web/src/components/clientes/types.ts",
+        "line": 28,
+        "exported": true
+      },
+      {
+        "name": "ClientesResumoProps",
+        "kind": "interface",
+        "file": "apps/web/src/components/clientes/types.ts",
+        "line": 70,
+        "exported": true
+      },
+      {
+        "name": "ClienteTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/clientes.ts",
+        "line": 6,
+        "exported": true
+      },
+      {
+        "name": "ClosingAttendant",
+        "kind": "interface",
+        "file": "packages/types/src/ui/legacy-types.ts",
+        "line": 125,
+        "exported": true
+      },
+      {
+        "name": "ClosingAttendant",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/closing.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "ClosingReceipts",
+        "kind": "interface",
+        "file": "packages/types/src/ui/legacy-types.ts",
+        "line": 112,
+        "exported": true
+      },
+      {
+        "name": "ClosingReceipts",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/dashboard.ts",
+        "line": 149,
+        "exported": true
+      },
+      {
+        "name": "CombustivelTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/combustiveis.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "CompraTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/compras.ts",
+        "line": 4,
+        "exported": true
+      },
+      {
+        "name": "ConfiguracaoTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/infraestrutura.ts",
+        "line": 78,
+        "exported": true
+      },
+      {
+        "name": "ConfiguracoesData",
+        "kind": "interface",
+        "file": "apps/web/src/components/configuracoes/types.ts",
+        "line": 32,
+        "exported": true
+      },
+      {
+        "name": "DadosCombustivel",
+        "kind": "interface",
+        "file": "apps/web/src/components/fechamento-diario/services/calculosResumo.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "DadosDashboard",
+        "kind": "interface",
+        "file": "apps/web/src/components/dashboard-proprietario/types.ts",
+        "line": 19,
+        "exported": true
+      },
+      {
+        "name": "DadosFinanceiros",
+        "kind": "interface",
+        "file": "apps/web/src/components/financeiro/hooks/useFinanceiro.ts",
+        "line": 40,
+        "exported": true
+      },
+      {
+        "name": "DadosFormularioFrentista",
+        "kind": "interface",
+        "file": "apps/web/src/components/frentistas/types.ts",
+        "line": 31,
+        "exported": true
+      },
+      {
+        "name": "DadosPagamentoChart",
+        "kind": "interface",
+        "file": "apps/web/src/components/fechamento-diario/services/calculosResumo.ts",
+        "line": 22,
+        "exported": true
+      },
+      {
+        "name": "DailyTotals",
+        "kind": "interface",
+        "file": "apps/web/src/components/relatorio-diario/types.ts",
+        "line": 14,
+        "exported": true
+      },
+      {
+        "name": "Database",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/schema.ts",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "DatabaseEnums",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/enums.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "Despesa",
+        "kind": "interface",
+        "file": "packages/types/src/ui/legacy-types.ts",
+        "line": 319,
+        "exported": true
+      },
+      {
+        "name": "Despesa",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/financial.ts",
+        "line": 52,
+        "exported": true
+      },
+      {
+        "name": "DespesaFormData",
+        "kind": "interface",
+        "file": "apps/web/src/components/despesas/types.ts",
+        "line": 5,
+        "exported": true
+      },
+      {
+        "name": "DespesaTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/financeiro.ts",
+        "line": 151,
+        "exported": true
+      },
+      {
+        "name": "Divida",
+        "kind": "interface",
+        "file": "apps/web/src/types/ui/financial.ts",
+        "line": 40,
+        "exported": true
+      },
+      {
+        "name": "DividaTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/financeiro.ts",
+        "line": 112,
+        "exported": true
+      },
+      {
+        "name": "EmprestimoTable",
+        "kind": "interface",
+        "file": "apps/web/src/types/database/tables/financeiro.ts",
+        "line": 10,
+        "exported": true
+      }
+    ],
+    "functions": [
+      {
+        "name": "calcularDadosCombustivel",
+        "kind": "function",
+        "file": "apps/web/src/components/fechamento-diario/services/calculosResumo.ts",
+        "line": 59,
+        "exported": true
+      },
+      {
+        "name": "calcularDiferencaCaixa",
+        "kind": "function",
+        "file": "packages/utils/src/calculators.ts",
+        "line": 33,
+        "exported": true
+      },
+      {
+        "name": "calcularTotaisPagamentos",
+        "kind": "function",
+        "file": "apps/web/src/components/fechamento-diario/services/calculosResumo.ts",
+        "line": 100,
+        "exported": true
+      },
+      {
+        "name": "calcularTotalPagamentos",
+        "kind": "function",
+        "file": "packages/utils/src/calculators.ts",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "createErrorResponse",
+        "kind": "function",
+        "file": "packages/api-core/src/index.ts",
+        "line": 29,
+        "exported": true
+      },
+      {
+        "name": "createErrorResponse",
+        "kind": "function",
+        "file": "apps/web/src/types/ui/response-types.ts",
+        "line": 42,
+        "exported": true
+      },
+      {
+        "name": "createSuccessResponse",
+        "kind": "function",
+        "file": "packages/api-core/src/index.ts",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "DataFechamentoCard",
+        "kind": "function",
+        "file": "apps/mobile/components/registro/DataFechamentoCard.tsx",
+        "line": 21,
+        "exported": true
+      },
+      {
+        "name": "EncerranteCard",
+        "kind": "function",
+        "file": "apps/mobile/components/registro/EncerranteCard.tsx",
+        "line": 21,
+        "exported": true
+      },
+      {
+        "name": "FormasPagamentoList",
+        "kind": "function",
+        "file": "apps/mobile/components/registro/FormasPagamentoList.tsx",
+        "line": 22,
+        "exported": true
+      },
+      {
+        "name": "formatBR",
+        "kind": "function",
+        "file": "packages/utils/src/formatters.ts",
+        "line": 49,
+        "exported": true
+      },
+      {
+        "name": "formatCurrency",
+        "kind": "function",
+        "file": "packages/utils/src/formatters.ts",
+        "line": 34,
+        "exported": true
+      },
+      {
+        "name": "formatCurrencyInput",
+        "kind": "function",
+        "file": "packages/utils/src/formatters.ts",
+        "line": 63,
+        "exported": true
+      },
+      {
+        "name": "formatDateDisplay",
+        "kind": "function",
+        "file": "packages/utils/src/dates.ts",
+        "line": 11,
+        "exported": true
+      },
+      {
+        "name": "formatDateDisplay",
+        "kind": "function",
+        "file": "packages/utils/src/calculators.ts",
+        "line": 43,
+        "exported": true
+      },
+      {
+        "name": "formatDateForDB",
+        "kind": "function",
+        "file": "packages/utils/src/dates.ts",
+        "line": 23,
+        "exported": true
+      },
+      {
+        "name": "formatDateForDB",
+        "kind": "function",
+        "file": "packages/utils/src/calculators.ts",
+        "line": 53,
+        "exported": true
+      },
+      {
+        "name": "gerarTabelaDetalhamento",
+        "kind": "function",
+        "file": "apps/web/src/components/fechamento-diario/services/calculosResumo.ts",
+        "line": 136,
+        "exported": true
+      },
+      {
+        "name": "getUnreadNotifications",
+        "kind": "function",
+        "file": "apps/mobile/lib/notifications.ts",
+        "line": 190,
+        "exported": true
+      },
+      {
+        "name": "handleSupabaseError",
+        "kind": "function",
+        "file": "apps/web/src/services/api/base.ts",
+        "line": 30,
+        "exported": true
+      },
+      {
+        "name": "HeaderCard",
+        "kind": "function",
+        "file": "apps/mobile/components/registro/HeaderCard.tsx",
+        "line": 25,
+        "exported": true
+      },
+      {
+        "name": "Index",
+        "kind": "function",
+        "file": "apps/mobile/app/index.tsx",
+        "line": 11,
+        "exported": true
+      },
+      {
+        "name": "initializePushNotifications",
+        "kind": "function",
+        "file": "apps/mobile/app/_layout.tsx",
+        "line": 52,
+        "exported": true
+      },
+      {
+        "name": "isError",
+        "kind": "function",
+        "file": "packages/types/src/api.ts",
+        "line": 85,
+        "exported": true
+      },
+      {
+        "name": "isErrorResponse",
+        "kind": "function",
+        "file": "packages/api-core/src/index.ts",
+        "line": 56,
+        "exported": true
+      },
+      {
+        "name": "isSuccess",
+        "kind": "function",
+        "file": "packages/types/src/api.ts",
+        "line": 78,
+        "exported": true
+      },
+      {
+        "name": "isSuccessResponse",
+        "kind": "function",
+        "file": "packages/api-core/src/index.ts",
+        "line": 49,
+        "exported": true
+      },
+      {
+        "name": "isSupabaseError",
+        "kind": "function",
+        "file": "apps/web/src/types/supabase-errors.ts",
+        "line": 24,
+        "exported": true
+      },
+      {
+        "name": "markNotificationAsRead",
+        "kind": "function",
+        "file": "apps/mobile/lib/notifications.ts",
+        "line": 220,
+        "exported": true
+      },
+      {
+        "name": "parseValue",
+        "kind": "function",
+        "file": "packages/utils/src/formatters.ts",
+        "line": 14,
+        "exported": true
+      },
+      {
+        "name": "registerForPushNotificationsAsync",
+        "kind": "function",
+        "file": "apps/mobile/lib/notifications.ts",
+        "line": 34,
+        "exported": true
+      },
+      {
+        "name": "removePushToken",
+        "kind": "function",
+        "file": "apps/mobile/lib/notifications.ts",
+        "line": 174,
+        "exported": true
+      },
+      {
+        "name": "RootLayout",
+        "kind": "function",
+        "file": "apps/mobile/app/_layout.tsx",
+        "line": 26,
+        "exported": true
+      },
+      {
+        "name": "savePushToken",
+        "kind": "function",
+        "file": "apps/mobile/lib/notifications.ts",
+        "line": 98,
+        "exported": true
+      },
+      {
+        "name": "setupNotificationListeners",
+        "kind": "function",
+        "file": "apps/mobile/lib/notifications.ts",
+        "line": 238,
+        "exported": true
+      },
+      {
+        "name": "submitMobileClosing",
+        "kind": "function",
+        "file": "apps/mobile/services/fechamento.ts",
+        "line": 422,
+        "exported": true
+      },
+      {
+        "name": "TabIndex",
+        "kind": "function",
+        "file": "apps/mobile/app/(tabs)/index.tsx",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "UpdateBanner",
+        "kind": "function",
+        "file": "apps/mobile/lib/useUpdateChecker.ts",
+        "line": 261,
+        "exported": true
+      },
+      {
+        "name": "useClienteForm",
+        "kind": "function",
+        "file": "apps/web/src/components/clientes/hooks/useClienteForm.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "useClientesData",
+        "kind": "function",
+        "file": "apps/web/src/components/clientes/hooks/useClientesData.ts",
+        "line": 24,
+        "exported": true
+      },
+      {
+        "name": "useDashboardProprietario",
+        "kind": "function",
+        "file": "apps/web/src/components/dashboard-proprietario/hooks/useDashboardProprietario.ts",
+        "line": 24,
+        "exported": true
+      },
+      {
+        "name": "useFiltrosFinanceiros",
+        "kind": "function",
+        "file": "apps/web/src/components/financeiro/hooks/useFiltrosFinanceiros.ts",
+        "line": 45,
+        "exported": true
+      },
+      {
+        "name": "useFinanceiro",
+        "kind": "function",
+        "file": "apps/web/src/components/financeiro/hooks/useFinanceiro.ts",
+        "line": 90,
+        "exported": true
+      },
+      {
+        "name": "useFluxoCaixa",
+        "kind": "function",
+        "file": "apps/web/src/components/financeiro/hooks/useFluxoCaixa.ts",
+        "line": 47,
+        "exported": true
+      },
+      {
+        "name": "useLeiturasDiarias",
+        "kind": "function",
+        "file": "apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts",
+        "line": 15,
+        "exported": true
+      },
+      {
+        "name": "useNotaFrentista",
+        "kind": "function",
+        "file": "apps/web/src/components/clientes/hooks/useNotaFrentista.ts",
+        "line": 22,
+        "exported": true
+      },
+      {
+        "name": "usePagamento",
+        "kind": "function",
+        "file": "apps/web/src/components/clientes/hooks/usePagamento.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "useResumoCombustivel",
+        "kind": "function",
+        "file": "apps/web/src/components/fechamento-diario/hooks/useResumoCombustivel.ts",
+        "line": 47,
+        "exported": true
+      },
+      {
+        "name": "useSubmissaoFechamento",
+        "kind": "function",
+        "file": "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts",
+        "line": 35,
+        "exported": true
+      },
+      {
+        "name": "useUpdateChecker",
+        "kind": "function",
+        "file": "apps/mobile/lib/useUpdateChecker.ts",
+        "line": 60,
+        "exported": true
+      }
+    ],
+    "types": [
+      {
+        "name": "AlertSeverity",
+        "kind": "type",
+        "file": "apps/web/src/shared/ui/ValidationAlert.tsx",
+        "line": 4,
+        "exported": true
+      },
+      {
+        "name": "Bico",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 35,
+        "exported": true
+      },
+      {
+        "name": "BicoComDetalhes",
+        "kind": "type",
+        "file": "apps/web/src/types/fechamento.ts",
+        "line": 23,
+        "exported": true
+      },
+      {
+        "name": "Bomba",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 34,
+        "exported": true
+      },
+      {
+        "name": "CarteiraBaratencia",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 72,
+        "exported": true
+      },
+      {
+        "name": "Cliente",
+        "kind": "type",
+        "file": "apps/web/src/types/ui/smart-types.ts",
+        "line": 15,
+        "exported": true
+      },
+      {
+        "name": "Cliente",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 68,
+        "exported": true
+      },
+      {
+        "name": "Cliente",
+        "kind": "type",
+        "file": "apps/web/src/services/api/notaFrentista.service.ts",
+        "line": 17,
+        "exported": true
+      },
+      {
+        "name": "ClienteBaratencia",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 71,
+        "exported": true
+      },
+      {
+        "name": "ClienteComNotas",
+        "kind": "type",
+        "file": "apps/web/src/services/api/cliente.service.ts",
+        "line": 20,
+        "exported": true
+      },
+      {
+        "name": "ClienteCompleto",
+        "kind": "type",
+        "file": "apps/web/src/services/api/cliente.service.ts",
+        "line": 25,
+        "exported": true
+      },
+      {
+        "name": "ClienteFormData",
+        "kind": "type",
+        "file": "packages/types/src/ui/form-types.ts",
+        "line": 91,
+        "exported": true
+      },
+      {
+        "name": "ClienteFormData",
+        "kind": "type",
+        "file": "apps/web/src/components/clientes/types.ts",
+        "line": 40,
+        "exported": true
+      },
+      {
+        "name": "ClienteFormFields",
+        "kind": "type",
+        "file": "apps/web/src/types/ui/form-types.ts",
+        "line": 8,
+        "exported": true
+      },
+      {
+        "name": "ClienteResumo",
+        "kind": "type",
+        "file": "apps/web/src/types/ui/smart-types.ts",
+        "line": 33,
+        "exported": true
+      },
+      {
+        "name": "ClienteSemMetadata",
+        "kind": "type",
+        "file": "apps/web/src/types/ui/smart-types.ts",
+        "line": 38,
+        "exported": true
+      },
+      {
+        "name": "Combustivel",
+        "kind": "type",
+        "file": "apps/web/src/services/aiService.ts",
+        "line": 5,
+        "exported": true
+      },
+      {
+        "name": "Combustivel",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 33,
+        "exported": true
+      },
+      {
+        "name": "CombustivelHibrido",
+        "kind": "type",
+        "file": "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts",
+        "line": 28,
+        "exported": true
+      },
+      {
+        "name": "Compra",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 59,
+        "exported": true
+      },
+      {
+        "name": "Configuracao",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 28,
+        "exported": true
+      },
+      {
+        "name": "CreateCliente",
+        "kind": "type",
+        "file": "apps/web/src/types/ui/smart-types.ts",
+        "line": 22,
+        "exported": true
+      },
+      {
+        "name": "DBCliente",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 69,
+        "exported": true
+      },
+      {
+        "name": "DBDespesa",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 56,
+        "exported": true
+      },
+      {
+        "name": "DBDivida",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 55,
+        "exported": true
+      },
+      {
+        "name": "DBNotaFrentista",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 70,
+        "exported": true
+      },
+      {
+        "name": "Despesa",
+        "kind": "type",
+        "file": "apps/web/src/services/aiService.ts",
+        "line": 6,
+        "exported": true
+      },
+      {
+        "name": "Despesa",
+        "kind": "type",
+        "file": "apps/web/src/components/despesas/types.ts",
+        "line": 3,
+        "exported": true
+      },
+      {
+        "name": "Emprestimo",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 53,
+        "exported": true
+      },
+      {
+        "name": "Enums",
+        "kind": "type",
+        "file": "apps/web/src/types/database/helpers.ts",
+        "line": 14,
+        "exported": true
+      },
+      {
+        "name": "ErrorResponse",
+        "kind": "type",
+        "file": "packages/types/src/api.ts",
+        "line": 67,
+        "exported": true
+      },
+      {
+        "name": "Escala",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 46,
+        "exported": true
+      },
+      {
+        "name": "Escala",
+        "kind": "type",
+        "file": "apps/web/src/services/api/escala.service.ts",
+        "line": 11,
+        "exported": true
+      },
+      {
+        "name": "Estoque",
+        "kind": "type",
+        "file": "apps/web/src/services/aiService.ts",
+        "line": 7,
+        "exported": true
+      },
+      {
+        "name": "Estoque",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 38,
+        "exported": true
+      },
+      {
+        "name": "ExpenseData",
+        "kind": "type",
+        "file": "apps/web/src/components/relatorio-diario/types.ts",
+        "line": 24,
+        "exported": true
+      },
+      {
+        "name": "Fechamento",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 43,
+        "exported": true
+      },
+      {
+        "name": "Fechamento",
+        "kind": "type",
+        "file": "apps/web/src/services/api/recebimento.service.ts",
+        "line": 15,
+        "exported": true
+      },
+      {
+        "name": "FechamentoFrentista",
+        "kind": "type",
+        "file": "apps/web/src/services/aiService.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "FechamentoFrentista",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 44,
+        "exported": true
+      },
+      {
+        "name": "FechamentoFrentistaRow",
+        "kind": "type",
+        "file": "apps/web/src/components/frentistas/hooks/useHistoricoFrentista.ts",
+        "line": 29,
+        "exported": true
+      },
+      {
+        "name": "FilterCallback",
+        "kind": "type",
+        "file": "apps/web/src/types/callbacks.ts",
+        "line": 29,
+        "exported": true
+      },
+      {
+        "name": "ForEachCallback",
+        "kind": "type",
+        "file": "apps/web/src/types/callbacks.ts",
+        "line": 19,
+        "exported": true
+      },
+      {
+        "name": "FormaPagamento",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 49,
+        "exported": true
+      },
+      {
+        "name": "FormaPagamento",
+        "kind": "type",
+        "file": "apps/web/src/services/api/recebimento.service.ts",
+        "line": 13,
+        "exported": true
+      },
+      {
+        "name": "FormFields",
+        "kind": "type",
+        "file": "packages/types/src/ui/form-types.ts",
+        "line": 55,
+        "exported": true
+      },
+      {
+        "name": "FormValidation",
+        "kind": "type",
+        "file": "packages/types/src/ui/form-types.ts",
+        "line": 105,
+        "exported": true
+      },
+      {
+        "name": "Fornecedor",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 60,
+        "exported": true
+      },
+      {
+        "name": "Frentista",
+        "kind": "type",
+        "file": "apps/web/src/types/database/aliases.ts",
+        "line": 41,
+        "exported": true
+      },
+      {
+        "name": "Frentista",
+        "kind": "type",
+        "file": "apps/web/src/services/api/notaFrentista.service.ts",
+        "line": 18,
+        "exported": true
+      }
+    ],
+    "enums": [
+      {
+        "name": "FormaPagamento",
+        "kind": "enum",
+        "file": "packages/types/src/database/enums.ts",
+        "line": 18,
+        "exported": true
+      },
+      {
+        "name": "StatusFechamento",
+        "kind": "enum",
+        "file": "packages/types/src/database/enums.ts",
+        "line": 9,
+        "exported": true
+      },
+      {
+        "name": "TipoEscala",
+        "kind": "enum",
+        "file": "packages/types/src/database/enums.ts",
+        "line": 29,
+        "exported": true
+      },
+      {
+        "name": "UserRole",
+        "kind": "enum",
+        "file": "packages/types/src/database/enums.ts",
+        "line": 37,
+        "exported": true
+      }
+    ]
+  },
+  "publicAPI": [
+    {
+      "name": "AIInsight",
+      "kind": "interface",
+      "file": "apps/web/src/services/aiService.ts",
+      "line": 20,
+      "exported": true
+    },
+    {
+      "name": "AlertaDashboard",
+      "kind": "interface",
+      "file": "apps/web/src/components/dashboard-proprietario/types.ts",
+      "line": 47,
+      "exported": true
+    },
+    {
+      "name": "AlertSeverity",
+      "kind": "type",
+      "file": "apps/web/src/shared/ui/ValidationAlert.tsx",
+      "line": 4,
+      "exported": true
+    },
+    {
+      "name": "ApiError",
+      "kind": "interface",
+      "file": "packages/types/src/api.ts",
+      "line": 48,
+      "exported": true
+    },
+    {
+      "name": "ApiResponse",
+      "kind": "interface",
+      "file": "packages/types/src/api.ts",
+      "line": 37,
+      "exported": true
+    },
+    {
+      "name": "AttendantClosing",
+      "kind": "interface",
+      "file": "packages/types/src/ui/legacy-types.ts",
+      "line": 16,
+      "exported": true
+    },
+    {
+      "name": "AttendantClosing",
+      "kind": "interface",
+      "file": "apps/web/src/types/ui/dashboard.ts",
+      "line": 32,
+      "exported": true
+    },
+    {
+      "name": "AttendantHistoryEntry",
+      "kind": "interface",
+      "file": "packages/types/src/ui/legacy-types.ts",
+      "line": 219,
+      "exported": true
+    },
+    {
+      "name": "AttendantHistoryEntry",
+      "kind": "interface",
+      "file": "apps/web/src/types/ui/attendants.ts",
+      "line": 28,
+      "exported": true
+    },
+    {
+      "name": "AttendantPerformance",
+      "kind": "interface",
+      "file": "packages/types/src/ui/legacy-types.ts",
+      "line": 25,
+      "exported": true
+    },
+    {
+      "name": "AttendantPerformance",
+      "kind": "interface",
+      "file": "apps/web/src/types/ui/dashboard.ts",
+      "line": 44,
+      "exported": true
+    },
+    {
+      "name": "AttendantProfile",
+      "kind": "interface",
+      "file": "packages/types/src/ui/legacy-types.ts",
+      "line": 202,
+      "exported": true
+    },
+    {
+      "name": "AttendantProfile",
+      "kind": "interface",
+      "file": "apps/web/src/types/ui/attendants.ts",
+      "line": 8,
+      "exported": true
+    },
+    {
+      "name": "AuthResponse",
+      "kind": "interface",
+      "file": "apps/web/src/types/supabase-errors.ts",
+      "line": 17,
+      "exported": true
+    },
+    {
+      "name": "Bico",
+      "kind": "type",
+      "file": "apps/web/src/types/database/aliases.ts",
+      "line": 35,
+      "exported": true
+    },
+    {
+      "name": "Bico",
+      "kind": "interface",
+      "file": "apps/web/src/components/configuracoes/types.ts",
+      "line": 21,
+      "exported": true
+    },
+    {
+      "name": "BicoComDetalhes",
+      "kind": "type",
+      "file": "apps/web/src/types/fechamento.ts",
+      "line": 23,
+      "exported": true
+    },
+    {
+      "name": "BicoTable",
+      "kind": "interface",
+      "file": "apps/web/src/types/database/tables/combustiveis.ts",
+      "line": 83,
+      "exported": true
+    },
+    {
+      "name": "Bomba",
+      "kind": "type",
+      "file": "apps/web/src/types/database/aliases.ts",
+      "line": 34,
+      "exported": true
+    },
+    {
+      "name": "BombaTable",
+      "kind": "interface",
+      "file": "apps/web/src/types/database/tables/combustiveis.ts",
+      "line": 50,
+      "exported": true
+    },
+    {
+      "name": "calcularDadosCombustivel",
+      "kind": "function",
+      "file": "apps/web/src/components/fechamento-diario/services/calculosResumo.ts",
+      "line": 59,
+      "exported": true
+    },
+    {
+      "name": "calcularDiferencaCaixa",
+      "kind": "function",
+      "file": "packages/utils/src/calculators.ts",
+      "line": 33,
+      "exported": true
+    },
+    {
+      "name": "calcularTotaisPagamentos",
+      "kind": "function",
+      "file": "apps/web/src/components/fechamento-diario/services/calculosResumo.ts",
+      "line": 100,
+      "exported": true
+    },
+    {
+      "name": "calcularTotalPagamentos",
+      "kind": "function",
+      "file": "packages/utils/src/calculators.ts",
+      "line": 13,
+      "exported": true
+    },
+    {
+      "name": "CalculosRegistro",
+      "kind": "interface",
+      "file": "apps/web/src/components/registro-compras/hooks/useCalculosRegistro.ts",
+      "line": 8,
+      "exported": true
+    },
+    {
+      "name": "CarteiraBaratencia",
+      "kind": "type",
+      "file": "apps/web/src/types/database/aliases.ts",
+      "line": 72,
+      "exported": true
+    },
+    {
+      "name": "CarteiraBaratenciaTable",
+      "kind": "interface",
+      "file": "apps/web/src/types/database/tables/baratencia.ts",
+      "line": 54,
+      "exported": true
+    },
+    {
+      "name": "Cliente",
+      "kind": "interface",
+      "file": "apps/mobile/services/cliente.ts",
+      "line": 6,
+      "exported": true
+    },
+    {
+      "name": "Cliente",
+      "kind": "interface",
+      "file": "packages/types/src/database/tables/operacoes.ts",
+      "line": 108,
+      "exported": true
+    },
+    {
+      "name": "Cliente",
+      "kind": "type",
+      "file": "apps/web/src/types/ui/smart-types.ts",
+      "line": 15,
+      "exported": true
+    },
+    {
+      "name": "Cliente",
+      "kind": "type",
+      "file": "apps/web/src/types/database/aliases.ts",
+      "line": 68,
+      "exported": true
+    },
+    {
+      "name": "Cliente",
+      "kind": "type",
+      "file": "apps/web/src/services/api/notaFrentista.service.ts",
+      "line": 17,
+      "exported": true
+    },
+    {
+      "name": "ClienteBaratencia",
+      "kind": "type",
+      "file": "apps/web/src/types/database/aliases.ts",
+      "line": 71,
+      "exported": true
+    },
+    {
+      "name": "ClienteBaratenciaTable",
+      "kind": "interface",
+      "file": "apps/web/src/types/database/tables/baratencia.ts",
+      "line": 7,
+      "exported": true
+    },
+    {
+      "name": "ClienteComNotas",
+      "kind": "type",
+      "file": "apps/web/src/services/api/cliente.service.ts",
+      "line": 20,
+      "exported": true
+    },
+    {
+      "name": "ClienteCompleto",
+      "kind": "type",
+      "file": "apps/web/src/services/api/cliente.service.ts",
+      "line": 25,
+      "exported": true
+    },
+    {
+      "name": "ClienteComSaldo",
+      "kind": "interface",
+      "file": "apps/web/src/components/clientes/types.ts",
+      "line": 18,
+      "exported": true
+    },
+    {
+      "name": "ClienteDetalhesProps",
+      "kind": "interface",
+      "file": "apps/web/src/components/clientes/types.ts",
+      "line": 90,
+      "exported": true
+    },
+    {
+      "name": "ClienteFormData",
+      "kind": "type",
+      "file": "packages/types/src/ui/form-types.ts",
+      "line": 91,
+      "exported": true
+    },
+    {
+      "name": "ClienteFormData",
+      "kind": "type",
+      "file": "apps/web/src/components/clientes/types.ts",
+      "line": 40,
+      "exported": true
+    },
+    {
+      "name": "ClienteFormFields",
+      "kind": "type",
+      "file": "apps/web/src/types/ui/form-types.ts",
+      "line": 8,
+      "exported": true
+    },
+    {
+      "name": "ClienteResumo",
+      "kind": "type",
+      "file": "apps/web/src/types/ui/smart-types.ts",
+      "line": 33,
+      "exported": true
+    },
+    {
+      "name": "ClienteSemMetadata",
+      "kind": "type",
+      "file": "apps/web/src/types/ui/smart-types.ts",
+      "line": 38,
+      "exported": true
+    },
+    {
+      "name": "ClientesListaProps",
+      "kind": "interface",
+      "file": "apps/web/src/components/clientes/types.ts",
+      "line": 78,
+      "exported": true
+    },
+    {
+      "name": "ClientesResumoData",
+      "kind": "interface",
+      "file": "apps/web/src/components/clientes/types.ts",
+      "line": 28,
+      "exported": true
+    },
+    {
+      "name": "ClientesResumoProps",
+      "kind": "interface",
+      "file": "apps/web/src/components/clientes/types.ts",
+      "line": 70,
+      "exported": true
+    },
+    {
+      "name": "ClienteTable",
+      "kind": "interface",
+      "file": "apps/web/src/types/database/tables/clientes.ts",
+      "line": 6,
+      "exported": true
+    },
+    {
+      "name": "ClosingAttendant",
+      "kind": "interface",
+      "file": "packages/types/src/ui/legacy-types.ts",
+      "line": 125,
+      "exported": true
+    },
+    {
+      "name": "ClosingAttendant",
+      "kind": "interface",
+      "file": "apps/web/src/types/ui/closing.ts",
+      "line": 8,
+      "exported": true
+    },
+    {
+      "name": "ClosingReceipts",
+      "kind": "interface",
+      "file": "packages/types/src/ui/legacy-types.ts",
+      "line": 112,
+      "exported": true
+    }
+  ],
+  "dependencies": {
+    "mostImported": [
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/types/ui/response-types.ts",
+        "importedBy": 55
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/types/database/index.ts",
+        "importedBy": 43
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/services/supabase.ts",
+        "importedBy": 32
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/utils/formatters.ts",
+        "importedBy": 31
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/services/api/index.ts",
+        "importedBy": 31
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/types/fechamento.ts",
+        "importedBy": 29
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/contexts/PostoContext.tsx",
+        "importedBy": 24
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/mobile/lib/supabase.ts",
+        "importedBy": 17
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/clientes/types.ts",
+        "importedBy": 12
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/services/api/base.ts",
+        "importedBy": 9
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/configuracoes/types.ts",
+        "importedBy": 9
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/mobile/services/frentista.ts",
+        "importedBy": 7
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/services/api/estoque.service.ts",
+        "importedBy": 7
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/contexts/AuthContext.tsx",
+        "importedBy": 7
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/fechamento-diario/hooks/useLeituras.ts",
+        "importedBy": 7
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/despesas/types.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/relatorio-diario/types.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/frentistas/types.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "/home/thygas/.gemini/antigravity/scratch/Posto-Providencia/apps/web/src/components/dashboard-proprietario/types.ts",
+        "importedBy": 6
+      }
+    ]
+  },
+  "stats": {
+    "totalSymbols": 585,
+    "exportedSymbols": 387,
+    "analysisTimeMs": 1692
+  }
+}

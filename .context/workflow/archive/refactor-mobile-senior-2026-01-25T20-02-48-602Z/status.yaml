@@ -1,0 +1,33 @@
+project:
+  name: "refactor-mobile-senior"
+  scale: LARGE
+  started: "2026-01-25T19:56:09.818Z"
+  current_phase: R
+
+phases:
+  P:
+    status: filled
+    started_at: "2026-01-25T19:56:09.818Z"
+    completed_at: "2026-01-25T19:56:47.994Z"
+  R:
+    status: in_progress
+    started_at: "2026-01-25T19:56:47.995Z"
+  E:
+    status: pending
+  V:
+    status: pending
+  C:
+    status: pending
+
+execution:
+  history:
+    - timestamp: "2026-01-25T19:56:47.995Z"
+      phase: R
+      action: started
+  last_activity: "2026-01-25T19:56:47.995Z"
+  resume_context: "Fase R (Revisão) em progresso"
+
+approval:
+  plan_created: true
+  plan_approved: false
+
