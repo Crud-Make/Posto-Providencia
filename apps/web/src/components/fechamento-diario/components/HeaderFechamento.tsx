@@ -12,8 +12,8 @@ interface HeaderFechamentoProps {
     selectedTurno: number | null;
     setSelectedTurno: (id: number | null) => void;
     turnos: Turno[];
-    activeTab: 'leituras' | 'financeiro' | 'detalhamento';
-    setActiveTab: (tab: 'leituras' | 'financeiro' | 'detalhamento') => void;
+    activeTab: 'leituras' | 'financeiro' | 'detalhamento' | 'gestao-bicos' | 'fechamento-mensal';
+    setActiveTab: (tab: 'leituras' | 'financeiro' | 'detalhamento' | 'gestao-bicos' | 'fechamento-mensal') => void;
     postoNome?: string;
     loading?: boolean;
 }
@@ -112,6 +112,24 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
                         }`}
                 >
                     👥 Detalhamento Frentistas
+                </button>
+                <button
+                    onClick={() => setActiveTab('gestao-bicos')}
+                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'gestao-bicos'
+                        ? 'border-indigo-500 text-indigo-400'
+                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                        }`}
+                >
+                    🚀 Gestão de Bicos
+                </button>
+                <button
+                    onClick={() => setActiveTab('fechamento-mensal')}
+                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'fechamento-mensal'
+                        ? 'border-yellow-500 text-yellow-400'
+                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                        }`}
+                >
+                    📅 Fechamento Mensal
                 </button>
             </div>
 

@@ -36,6 +36,7 @@ interface SidebarProps {
 const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '' }) => {
   const { theme, toggleTheme } = useTheme();
 
+  // Definição dos itens do menu lateral
   const menuItems = [
     { path: '/proprietario', label: 'Visão Proprietário', icon: Crown },
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
