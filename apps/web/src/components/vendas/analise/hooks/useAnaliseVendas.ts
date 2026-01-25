@@ -2,21 +2,22 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesAnalysisService } from '../../../../services/api';
 import { usePosto } from '../../../../contexts/PostoContext';
 import { ProductData, ProfitabilityData, Totals, PeriodData, Insight } from '../types';
+import { isSuccess } from '../../../../types/ui/response-types';
 
 export const useAnaliseVendas = () => {
   const { postoAtivoId } = usePosto();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Data states
   const [products, setProducts] = useState<ProductData[]>([]);
   const [profitability, setProfitability] = useState<ProfitabilityData[]>([]);
-  const [totals, setTotals] = useState<Totals>({ 
-    volume: 0, 
-    revenue: 0, 
-    profit: 0, 
-    avgMargin: 0, 
-    avgProfitPerLiter: 0 
+  const [totals, setTotals] = useState<Totals>({
+    volume: 0,
+    revenue: 0,
+    profit: 0,
+    avgMargin: 0,
+    avgProfitPerLiter: 0
   });
   const [previousPeriod, setPreviousPeriod] = useState<PeriodData | null>(null);
 
@@ -31,8 +32,15 @@ export const useAnaliseVendas = () => {
       setLoading(true);
       setError(null);
 
-      const data = await salesAnalysisService.getMonthlyAnalysis(selectedYear, selectedMonth, postoAtivoId);
+      const response = await salesAnalysisService.getMonthlyAnalysis(selectedYear, selectedMonth, postoAtivoId);
 
+      if (!isSuccess(response)) {
+        setError(response.error);
+        setLoading(false);
+        return;
+      }
+
+      const data = response.data;
       setProducts(data.products);
       setProfitability(data.profitability);
       setTotals(data.totals);
@@ -76,7 +84,7 @@ export const useAnaliseVendas = () => {
 
     // Find best and worst products
     const sortedByProfit = [...products].sort((a, b) => b.profit - a.profit);
-    
+
     if (sortedByProfit.length > 0) {
       const best = sortedByProfit[0];
       const percentage = totals.profit > 0 ? (best.profit / totals.profit * 100).toFixed(1) : '0';

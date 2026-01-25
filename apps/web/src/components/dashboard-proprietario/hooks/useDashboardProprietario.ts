@@ -3,7 +3,8 @@ import { supabase } from '../../../services/supabase';
 import { postoService, frentistaService, fechamentoService } from '../../../services/api';
 import { DadosDashboard, PostoSummary, AlertaDashboard } from '../types';
 import { Posto } from '../../../types/database/index';
-import { AlertTriangle, TrendingDown, DollarSign } from 'lucide-react'; // Ícones para alertas se necessário, mas aqui retornamos dados
+import { isSuccess } from '../../../types/ui/response-types';
+import { AlertTriangle, TrendingDown, DollarSign } from 'lucide-react';
 
 interface UseDashboardReturn {
   dados: DadosDashboard | null;
@@ -31,7 +32,15 @@ export function useDashboardProprietario(): UseDashboardReturn {
 
     try {
       // 1. Buscar postos
-      const postos = await postoService.getAll();
+      const response = await postoService.getAll();
+      
+      if (!isSuccess(response)) {
+        setErro(response.error);
+        setLoading(false);
+        return;
+      }
+
+      const postos = response.data;
       if (postos.length === 0) {
         setErro('Nenhum posto encontrado.');
         setLoading(false);
@@ -74,13 +83,14 @@ export function useDashboardProprietario(): UseDashboardReturn {
 
 async function processarPosto(posto: Posto, today: string, startOfMonth: string): Promise<PostoSummary> {
   // Frentistas
-  const frentistas = await frentistaService.getAll(posto.id);
+  const resFrentistas = await frentistaService.getAll(posto.id);
+  const frentistas = isSuccess(resFrentistas) ? resFrentistas.data : [];
   const frentistasAtivos = frentistas.filter(f => f.ativo).length;
 
   // Fechamentos Hoje
-  const fechamentosHoje = await fechamentoService.getByDate(today, posto.id);
-  type FechamentoRow = { total_vendas?: number };
-  const vendasHoje = (fechamentosHoje as FechamentoRow[]).reduce((acc, f) => acc + (f.total_vendas || 0), 0);
+  const resFechamentos = await fechamentoService.getByDate(today, posto.id);
+  const fechamentosHoje = isSuccess(resFechamentos) ? resFechamentos.data : [];
+  const vendasHoje = fechamentosHoje.reduce((acc, f) => acc + (f.total_vendas || 0), 0);
 
   // Fechamentos Mês
   const { data: fechamentosMes } = await supabase
