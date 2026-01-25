@@ -27,6 +27,7 @@ const TelaConfiguracoes = React.lazy(() => import('./components/configuracoes').
 const TelaGestaoEscalas = React.lazy(() => import('./components/TelaGestaoEscalas'));
 const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGestaoClientes'));
 const TelaGestaoDespesas = React.lazy(() => import('./components/despesas'));
+const TelaFechamentoMensal = React.lazy(() => import('./components/fechamento-mensal'));
 const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
 
 // Componente de Loading para Suspense
@@ -61,6 +62,7 @@ const AppRoutes = () => {
         <Route path="/escalas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoEscalas /></Suspense>} />
         <Route path="/clientes" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoClientes /></Suspense>} />
         <Route path="/despesas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoDespesas /></Suspense>} />
+        <Route path="/fechamento-mensal" element={<Suspense fallback={<LoadingFallback />}><TelaFechamentoMensal /></Suspense>} />
         <Route path="/proprietario" element={<Suspense fallback={<LoadingFallback />}><TelaDashboardProprietario /></Suspense>} />
       </Route>
 
