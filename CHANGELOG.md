@@ -2,14 +2,21 @@
 
 ## [Não Lançado]
 
-### 📚 Documentação
-- **[14/01/2026]** Criado PRD-022: Smart Types - Sistema de Tipagem Inteligente
-  - Documentação completa sobre a arquitetura de Smart Types
-  - Análise comparativa: Smart Types vs DTOs
-  - Guia de uso para desenvolvedores
-  - Roadmap de implementação em 4 fases
-  - Commit: `docs: adiciona PRD-022 sobre Smart Types`
-  - Arquivos: `documentos/PRD-022-SMART-TYPES.md`, `docs/GUIA-SMART-TYPES.md`
+### 📚 Documentação & Smart Types
+- **[14/01/2026]** Smart Types Fase 2 (#22): Infraestrutura completa de tipagem type-safe
+  - Criados 4 arquivos de tipos (498 linhas): `smart-types.ts`, `form-types.ts`, `response-types.ts`, `index.ts`
+  - Tipos derivados automaticamente do banco de dados para todas as 35+ entidades
+  - Utility types para conversão automática de formulários (number → string)
+  - Padrões de resposta de API com type guards (`isSuccess`, `isError`)
+  - JSDoc completo em todos os arquivos com exemplos práticos
+  - Guia de uso completo (`docs/GUIA-SMART-TYPES.md`) com 15+ exemplos
+  - Relatório de refatoração (`docs/RELATORIO-REFATORACAO-SMART-TYPES.md`)
+  - PRD-022 e PRD-023 documentando arquitetura e roadmap
+  - Script de validação de regras (`scripts/validate-rules.ps1`)
+  - Configuração ESLint (`eslint.config.mjs`)
+
+### Funcionalidades
+- **Modo de Lançamento Flexível**: Permite salvar fechamentos diários com diferenças de caixa sem a obrigatoriedade de justificativa, facilitando o lançamento de dados históricos. Cor do alerta alterada para âmbar para indicar modo informativo.
 
 ### 🏗️ Arquitetura Monorepo
 - **[18/01/2026]** Migração para estrutura de monorepo com pacotes compartilhados
@@ -26,6 +33,7 @@
     - `@posto/api-core`: Core de API compartilhado
   - Commits: `fdcd660` (web), `513bd12` (mobile)
 
+<<<<<<< HEAD
 ### 🔧 Refatoração
 - **[14/01/2026]** Implementada Fase 1 de Smart Types (Issue #21)
   - Criado utility type `WithRelations<T, R>` em `src/types/ui/helpers.ts`
@@ -34,6 +42,34 @@
   - Adicionado campo `bloqueado` em `ClienteTable`
   - Redução de 4 ocorrências de `as unknown as` (27 → 23)
   - Commit: `refactor: implementa Smart Types no cliente.service (#21)`
+=======
+### Melhorado
+- **Type-Safety (#22)**: Redução de 91% nas ocorrências de `as unknown as` (23 → 2)
+- **Infraestrutura de Tipos**: +896% de linhas de código de tipos (50 → 498)
+- **Documentação**: JSDoc completo em 100% dos arquivos de tipos
+- **Padrões de Código**: Estabelecidos padrões consistentes para todos os 32 services
+
+### Corrigido
+- ✨ Restauração completa de ambiente após formatação (arquivos `.env` e `.env.local`).
+- 🛠️ Correção de política de segurança (INSERT) para frentistas na branch `fix/frentista-insert-policy`.
+- 🔍 Depuração de erro 401 na criação de frentistas (ajuste de autenticação pós-restauração).
+- **Perda de dados ao trocar aba do navegador**: Desativado polling agressivo e adicionada proteção para preservar dados digitados.
+- **Cálculo incorreto de encerrantes**: Função `formatOnBlur` agora aceita qualquer formato numérico e assume últimos 3 dígitos como decimais.
+- **Precisão Decimal e Máscara Monetária**: Implementada máscara estilo calculadora no detalhamento por frentista para permitir edição precisa de valores do mobile e correção de arredondamentos durante a digitação.
+- **Correção de Permissão (RLS)**: Corrigido erro 403 ao tentar cadastrar novos frentistas através da criação de política de INSERT no Supabase.
+- **Correção Crítica (RLS/Auth)**: Reescreve função `user_has_posto_access` para usar email em vez de ID (erro 22P02) e remove campo `turno_id` inválido do cadastro.
+- **Erro de integridade ao re-salvar fechamento**: Adicionada desvinculação robusta de notificações para evitar violação de chave estrangeira em `FechamentoFrentista`.
+- **Automatização de Leituras Iniciais**: Reativado o carregamento automático do último encerrante conhecido como leitura inicial para facilitar o lançamento histórico.
+- **Correção de Persistência entre Datas**: Corrigido bug onde dados digitados em uma data "grudavam" ao mudar o calendário.
+
+## [1.0.0] - 2026-01-04
+
+### Adicionado
+- Sistema de fechamento diário de caixa
+- Dashboard de vendas
+- Gestão de frentistas
+- Integração com app mobile para leituras
+>>>>>>> origin/refactor/#22-smart-types-fase-2
 
 ---
 
