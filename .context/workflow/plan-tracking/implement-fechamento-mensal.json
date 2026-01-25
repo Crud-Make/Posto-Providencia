@@ -1,0 +1,34 @@
+{
+  "planSlug": "implement-fechamento-mensal",
+  "progress": 100,
+  "phases": {
+    "E": {
+      "phaseId": "E",
+      "status": "completed",
+      "startedAt": "2026-01-25T20:59:30.084Z",
+      "steps": [
+        {
+          "stepIndex": 1,
+          "description": "Step 1",
+          "status": "completed",
+          "completedAt": "2026-01-25T20:59:30.084Z"
+        },
+        {
+          "stepIndex": 2,
+          "description": "Step 2",
+          "status": "completed",
+          "completedAt": "2026-01-25T21:00:31.597Z"
+        },
+        {
+          "stepIndex": 3,
+          "description": "Step 3",
+          "status": "completed",
+          "completedAt": "2026-01-25T21:02:03.254Z"
+        }
+      ],
+      "completedAt": "2026-01-25T21:02:03.254Z"
+    }
+  },
+  "decisions": [],
+  "lastUpdated": "2026-01-25T21:02:03.254Z"
+}

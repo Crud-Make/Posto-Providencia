@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { combustivelService, compraService, tanqueService } from '../../../services/api';
 import { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
+import { isSuccess, ErrorResponse } from '../../../types/ui/response-types';
 
 /**
  * Hook responsável pela persistência dos dados de registro de compras e estoque.
@@ -32,18 +33,42 @@ export const usePersistenciaRegistro = (
         calcEstoqueHoje: (c: CombustivelHibrido) => number,
         fornecedorId: number | null
     ) => {
-        if (!postoAtivoId) return;
+        if (!postoAtivoId) {
+            console.warn('[Compras] Posto ativo ID não definido');
+            return;
+        }
 
         try {
             setSaving(true);
             const hoje = new Date().toISOString().split('T')[0];
 
+            // [25/01 Debug] Log dos valores recebidos
+            console.log('[Compras] Iniciando salvamento:', {
+                postoAtivoId,
+                fornecedorId,
+                combustiveis: combustiveis.map(c => ({
+                    id: c.id,
+                    nome: c.nome,
+                    compra_lt: c.compra_lt,
+                    compra_lt_parsed: parseValue(c.compra_lt),
+                    compra_rs: c.compra_rs,
+                    compra_rs_parsed: parseValue(c.compra_rs),
+                    tanque_id: c.tanque_id
+                }))
+            });
+
             // 1. Validação: Se houver compras, fornecedor é obrigatório
             const temCompras = combustiveis.some(c => parseValue(c.compra_lt) > 0);
+            console.log('[Compras] Tem compras a registrar:', temCompras);
 
             if (temCompras && !fornecedorId) {
                 alert('Por favor, selecione um fornecedor para registrar as compras.');
+                setSaving(false); // [25/01 Fix] Reset saving state on early return
                 return;
+            }
+
+            if (!temCompras) {
+                console.log('[Compras] Nenhuma compra para registrar (todos compra_lt = 0 ou vazio)');
             }
 
             // 2. Processamento por combustível
@@ -51,9 +76,13 @@ export const usePersistenciaRegistro = (
                 const litrosCompra = parseValue(c.compra_lt);
                 const valorTotal = parseValue(c.compra_rs);
 
+                console.log(`[Compras] Processando ${c.nome}:`, { litrosCompra, valorTotal, fornecedorId });
+
                 // 2.1 Registrar Compra (se houver)
                 if (litrosCompra > 0 && fornecedorId) {
+                    console.log(`[Compras] Registrando compra de ${c.nome}...`);
                     await registrarCompra(c, litrosCompra, valorTotal, fornecedorId, hoje, postoAtivoId);
+                    console.log(`[Compras] ✅ Compra de ${c.nome} registrada com sucesso`);
                 }
 
                 // 2.2 Salvar Histórico de Tanque (se vinculado)
@@ -91,7 +120,7 @@ export const usePersistenciaRegistro = (
         postoId: number
     ) => {
         // A. Criar registro de compra
-        await compraService.create({
+        const payload = {
             combustivel_id: c.id,
             data,
             fornecedor_id: fornecedorId,
@@ -100,10 +129,23 @@ export const usePersistenciaRegistro = (
             custo_por_litro: litrosCompra > 0 ? valorTotal / litrosCompra : 0,
             observacoes: `Atualização de estoque via Painel`,
             posto_id: postoId
-        });
+        };
+
+        console.log('[Compras] Payload para compraService.create:', payload);
+
+        const result = await compraService.create(payload);
+
+        if (!isSuccess(result)) {
+            const errorMsg = (result as ErrorResponse).error;
+            console.error('[Compras] ❌ Erro ao criar compra:', errorMsg);
+            throw new Error(errorMsg || 'Erro ao criar compra');
+        }
+
+        console.log('[Compras] Compra criada no banco:', result.data);
 
         // B. Atualizar estoque atual do tanque
         if (c.tanque_id) {
+            console.log(`[Compras] Atualizando estoque do tanque ${c.tanque_id} (+${litrosCompra}L)`);
             await tanqueService.updateStock(c.tanque_id, litrosCompra);
         }
 
@@ -124,7 +166,7 @@ export const usePersistenciaRegistro = (
 
         const estoqueAjustado = Math.max(estoqueAntes, 0);
         const valorEstoqueAntigo = estoqueAjustado * custoAntigo;
-        
+
         const novoTotalValor = valorEstoqueAntigo + valorTotalCompra;
         const novoTotalLitros = estoqueAjustado + litrosCompra;
 
