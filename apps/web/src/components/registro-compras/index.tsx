@@ -81,7 +81,7 @@ const TelaRegistroCompras: React.FC = () => {
 
     return (
         <div className="flex-1 bg-gray-50 dark:bg-gray-900 h-screen overflow-y-auto custom-scrollbar">
-            <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
                 <HeaderRegistroCompras
                     onRefresh={loadData}

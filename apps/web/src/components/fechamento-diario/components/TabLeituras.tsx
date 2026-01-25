@@ -1,4 +1,6 @@
 import * as React from 'react';
+// [20/01 10:00] Adição de prop onUpdatePrice
+// Motivo: Propagar função de edição de preço para o componente filho TabelaLeituras
 import { TabelaLeituras } from './TabelaLeituras';
 import { EnviosMobile } from './EnviosMobile';
 import type { BicoComDetalhes, SessaoFrentista, Frentista } from '../../../types/fechamento';
@@ -17,6 +19,7 @@ interface TabLeiturasProps {
       aoSairFechamento: (id: number) => void;
       calcLitros: (id: number) => { value: number; display: string };
    };
+   onUpdatePrice: (bicoId: number, newPrice: number) => void;
 }
 
 /**
@@ -29,7 +32,8 @@ export const TabLeituras: React.FC<TabLeiturasProps> = ({
    frentistas,
    loading,
    onRefreshSessoes,
-   handlers
+   handlers,
+   onUpdatePrice
 }) => {
    return (
       <div className="animate-in fade-in duration-300">
@@ -42,6 +46,7 @@ export const TabLeituras: React.FC<TabLeiturasProps> = ({
             onLeituraFechamentoBlur={handlers.aoSairFechamento}
             calcLitros={handlers.calcLitros}
             isLoading={loading}
+            onUpdatePrice={onUpdatePrice}
          />
 
          <div className="mt-8 border-t border-slate-700/50 pt-8">

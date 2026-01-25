@@ -11,14 +11,14 @@ const ClosingsTable: React.FC<ClosingsTableProps> = ({ data }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
       <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Fechamentos do Dia</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">Fechamentos do Dia</h2>
         <button className="text-sm font-semibold text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">Ver todos</button>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+            <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-xs font-display uppercase tracking-wider">
               <th className="px-6 py-4 font-semibold">Frentista</th>
               <th className="px-6 py-4 font-semibold text-center">Status</th>
               <th className="px-6 py-4 font-semibold">Venda Total</th>
@@ -55,7 +55,7 @@ const ClosingsTable: React.FC<ClosingsTableProps> = ({ data }) => {
                       {closing.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white font-finance tabular-nums">
+                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white font-finance tracking-tight tabular-nums">
                     R$ {closing.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 text-right">

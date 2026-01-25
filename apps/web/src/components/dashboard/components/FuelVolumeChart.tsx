@@ -32,7 +32,7 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
           <p className="text-sm font-bold text-gray-800 dark:text-white mb-2">{label}</p>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.color }}></div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">
+            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium font-finance">
               {payload[0].value.toLocaleString('pt-BR')} Litros
             </p>
           </div>
@@ -75,7 +75,7 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
         <div className="flex items-center gap-3">
           <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-700 rounded-full"></div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Volume Vendido</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">Volume Vendido</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">Total de litros por combustível</p>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { usePosto } from '../../../../contexts/PostoContext';
 import { estoqueService, tanqueService } from '../../../../services/api';
 import { Tanque } from '../../../../services/api/tanque.service';
 import { TankHistory } from '../types';
+import { isSuccess } from '../../../../types/ui/response-types';
 
 export const useDashboardEstoque = () => {
   const { postoAtivoId } = usePosto();
@@ -22,14 +23,22 @@ export const useDashboardEstoque = () => {
 
     try {
       setLoading(true);
-      const data = await tanqueService.getAll(postoAtivoId);
+      const response = await tanqueService.getAll(postoAtivoId);
+
+      if (!isSuccess(response)) {
+        setLoading(false);
+        return;
+      }
+
+      const data = response.data;
       setTanques(data);
 
       // Fetch histories
       const histMap: TankHistory = {};
       await Promise.all(data.map(async (t) => {
         try {
-          const hist = await tanqueService.getHistory(t.id, 30);
+          const resHist = await tanqueService.getHistory(t.id, 30);
+          const hist = isSuccess(resHist) ? resHist.data : [];
           histMap[t.id] = hist || [];
         } catch (e) {
           console.error(`Erro ao buscar histórico tanque ${t.id}`, e);

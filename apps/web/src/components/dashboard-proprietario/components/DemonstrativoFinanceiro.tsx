@@ -20,7 +20,7 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 font-display">
             <span className="bg-blue-100 dark:bg-blue-900/30 p-1.5 rounded-lg">
               <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </span>
@@ -51,17 +51,17 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
             <ArrowUpRight className="w-24 h-24 text-blue-600" />
           </div>
           <div className="relative z-10">
-            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">
+            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2 font-display">
               Geração de Caixa (Margem)
             </p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            <p className="text-3xl font-bold text-gray-900 dark:text-white font-finance tracking-tight">
               {formatCurrency(dados.lucroEstimado)}
             </p>
 
             <div className="mt-4 pt-4 border-t border-blue-200/50 dark:border-blue-800/30">
               <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>Vendas Brutas:</span>
-                <span className="font-medium">{formatCurrency(dados.vendas)}</span>
+                <span className="font-medium font-finance">{formatCurrency(dados.vendas)}</span>
               </div>
               <div className="flex items-center justify-between text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">
                 <span>Margem Média:</span>
@@ -77,10 +77,10 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
             <PiggyBank className="w-24 h-24 text-amber-600" />
           </div>
           <div className="relative z-10">
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2 font-display">
               Despesas Operacionais
             </p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            <p className="text-3xl font-bold text-gray-900 dark:text-white font-finance tracking-tight">
               {formatCurrency(dados.despesas)}
             </p>
 
@@ -98,10 +98,10 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
             <Receipt className="w-24 h-24 text-emerald-600" />
           </div>
           <div className="relative z-10">
-            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">
+            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2 font-display">
               Resultado Líquido Est.
             </p>
-            <p className={`text-3xl font-bold ${(dados.lucroEstimado - dados.despesas) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+            <p className={`text-3xl font-bold ${(dados.lucroEstimado - dados.despesas) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'} font-finance tracking-tight`}>
               {formatCurrency(dados.lucroEstimado - dados.despesas)}
             </p>
 

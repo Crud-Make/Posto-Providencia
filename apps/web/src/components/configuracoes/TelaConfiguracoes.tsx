@@ -25,33 +25,33 @@ import {
  */
 const TelaConfiguracoes: React.FC = () => {
     const { postoAtivoId } = usePosto();
-    
+
     // Hooks de Dados e Controle
-    const { 
-        products, 
-        nozzles, 
-        paymentMethods, 
-        setPaymentMethods, 
-        loading 
+    const {
+        products,
+        nozzles,
+        paymentMethods,
+        setPaymentMethods,
+        loading
     } = useConfiguracoesData();
-    
-    const { 
-        tolerance, 
-        diasEstoqueCritico, 
-        diasEstoqueBaixo, 
+
+    const {
+        tolerance,
+        diasEstoqueCritico,
+        diasEstoqueBaixo,
         configsModified,
         updateTolerance,
         updateDiasCritico,
         updateDiasBaixo,
-        handleSaveConfigs 
+        handleSaveConfigs
     } = useParametros(postoAtivoId);
-    
-    const { 
-        isResetModalOpen, 
-        isResetting, 
-        openResetModal, 
-        closeResetModal, 
-        handleReset 
+
+    const {
+        isResetModalOpen,
+        isResetting,
+        openResetModal,
+        closeResetModal,
+        handleReset
     } = useResetSistema(postoAtivoId);
 
     const {
@@ -72,10 +72,10 @@ const TelaConfiguracoes: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
                             <Settings size={20} />
-                            <h1 className="text-xl font-bold">Configurações</h1>
+                            <h1 className="text-xl font-bold font-display uppercase tracking-wider">Configurações</h1>
                         </div>
                     </div>
-                    
+
                     {configsModified && (
                         <button
                             onClick={handleSaveConfigs}
@@ -88,17 +88,17 @@ const TelaConfiguracoes: React.FC = () => {
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-hide pb-24">
-                    <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="w-full mx-auto space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Coluna Esquerda: Produtos e Bicos */}
                             <div className="space-y-6">
-                                <GestaoProdutos 
-                                    products={products} 
-                                    loading={loading} 
+                                <GestaoProdutos
+                                    products={products}
+                                    loading={loading}
                                 />
-                                <GestaoBicos 
-                                    nozzles={nozzles} 
-                                    loading={loading} 
+                                <GestaoBicos
+                                    nozzles={nozzles}
+                                    loading={loading}
                                 />
                             </div>
 

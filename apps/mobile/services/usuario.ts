@@ -1,7 +1,20 @@
 import { supabase } from '../lib/supabase';
-import type { Usuario as UsuarioDb } from '@posto/types';
 
-export type Usuario = UsuarioDb;
+/**
+ * Interface que representa um usuário do sistema (vinculado ao Supabase Auth).
+ */
+export interface Usuario {
+    /** Identificador numérico do usuário (chave primária na tabela Usuario) */
+    id: number;
+    /** Nome completo do usuário */
+    nome: string;
+    /** Email do usuário (deve corresponder ao email no Auth) */
+    email: string;
+    /** Papel/Função do usuário (ex: 'ADMIN', 'FRENTISTA') */
+    role: string;
+    /** ID do posto ao qual o usuário está vinculado */
+    posto_id?: number;
+}
 
 /**
  * Serviço para gerenciar operações relacionadas a usuários.

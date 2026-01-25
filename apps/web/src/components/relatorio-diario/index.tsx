@@ -28,11 +28,11 @@ const TelaRelatorioDiario: React.FC = () => {
     }
 
     return (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-24">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-24">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 dark:text-gray-100">
+                    <h1 className="text-3xl md:text-4xl font-black font-display tracking-tight text-gray-900 dark:text-gray-100">
                         Relatório Diário
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
@@ -47,8 +47,8 @@ const TelaRelatorioDiario: React.FC = () => {
             </div>
 
             {/* KPI Cards */}
-            <ResumoKPIs 
-                totals={totals} 
+            <ResumoKPIs
+                totals={totals}
                 expensesCount={expensesDay.length}
                 fmtMoney={fmtMoney}
                 fmtLitros={fmtLitros}

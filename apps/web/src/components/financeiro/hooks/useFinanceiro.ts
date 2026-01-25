@@ -6,12 +6,13 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { FiltrosFinanceiros } from './useFiltrosFinanceiros';
-import { 
-  leituraService, 
-  despesaService, 
-  recebimentoService, 
-  compraService 
+import {
+  leituraService,
+  despesaService,
+  recebimentoService,
+  compraService
 } from '../../../services/api';
+import { isSuccess } from '../../../types/ui/response-types';
 
 // [14/01 15:40] Expondo tipos financeiros para uso centralizado em componentes
 /**
@@ -99,12 +100,17 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
       const { dataInicio, dataFim, postoId } = filtros;
 
       // Buscar dados em paralelo
-      const [vendas, despesas, recebimentos, compras] = await Promise.all([
+      const [vendasRes, despesasRes, recebimentosRes, comprasRes] = await Promise.all([
         leituraService.getByDateRange(dataInicio, dataFim, postoId),
         despesaService.getByDateRange(dataInicio, dataFim, postoId),
         recebimentoService.getByDateRange(dataInicio, dataFim, postoId),
         compraService.getByDateRange(dataInicio, dataFim, postoId)
       ]);
+
+      const vendas = isSuccess(vendasRes) ? vendasRes.data : [];
+      const despesas = isSuccess(despesasRes) ? despesasRes.data : [];
+      const recebimentos = isSuccess(recebimentosRes) ? recebimentosRes.data : [];
+      const compras = isSuccess(comprasRes) ? comprasRes.data : [];
 
       // Processar Transações
       const listaTransacoes: Transacao[] = [];
@@ -172,10 +178,10 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
       // Nota: Receitas = Vendas + Recebimentos (pode haver sobreposição em regime de caixa vs competência)
       // Assumindo Vendas = Competência, Recebimentos = Caixa de vendas a prazo.
       // Para simplificar e seguir PRD: Somamos tudo classificado.
-      
+
       const receitasTotal = totalVendas + totalRecebimentos;
       const despesasTotal = totalDespesasOps + totalCompras;
-      
+
       const lucroBruto = receitasTotal - totalCompras; // Simplificação: Receita - CMV (Aprox Compras)
       const lucroLiquido = receitasTotal - despesasTotal;
       const margem = receitasTotal > 0 ? (lucroLiquido / receitasTotal) * 100 : 0;

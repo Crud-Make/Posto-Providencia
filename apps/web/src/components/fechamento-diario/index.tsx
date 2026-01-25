@@ -15,6 +15,9 @@
 // [19/01 00:30] Ajuste de layout: Removido max-width de 1600px para usar a largura total da tela.
 // Motivo: Usuário relatou que a tela estava muito comprimida no meio.
 
+// [20/01 10:00] Integração da função updateBicoPrice no fluxo da tela
+// Motivo: Permitir a edição local de preços na tabela de leituras
+
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
@@ -34,6 +37,9 @@ import type { SessaoFrentista } from '../../types/fechamento';
 import { HeaderFechamento } from './components/HeaderFechamento';
 import { TabLeituras } from './components/TabLeituras';
 import { TabFinanceiro } from './components/TabFinanceiro';
+// [20/01 11:30] Adição da aba Detalhamento Frentistas
+// Motivo: Nova feature solicitada para visão detalhada por frentista
+import { TabDetalhamentoFrentista } from './components/TabDetalhamentoFrentista';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
 
@@ -44,11 +50,11 @@ const TelaFechamentoDiario: React.FC = () => {
    // --- Estados de Contexto da Tela ---
    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
    const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
-   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro'>('leituras');
+   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro' | 'detalhamento'>('leituras');
    const [observacoes] = useState<string>('');
 
    // --- Hooks de Dados e Lógica (Refatorados) ---
-   const { bicos, frentistas, turnos, carregando: loadingDados, carregarDados } = useCarregamentoDados(postoAtivoId);
+   const { bicos, frentistas, turnos, carregando: loadingDados, carregarDados, updateBicoPrice } = useCarregamentoDados(postoAtivoId);
 
    const {
       leituras, carregando: loadingLeituras, carregarLeituras,
@@ -58,7 +64,7 @@ const TelaFechamentoDiario: React.FC = () => {
    const {
       sessoes: frentistaSessions, carregando: loadingSessoes, totais: frentistasTotals,
       carregarSessoes, alterarCampoFrentista, aoSairCampoFrentista, definirSessoes
-   } = useSessoesFrentistas(postoAtivoId);
+   } = useSessoesFrentistas(postoAtivoId, frentistas);
 
    const {
       pagamentos: payments, carregando: loadingPagamentos, totalPagamentos, carregarPagamentos, alterarPagamento, aoSairPagamento
@@ -118,7 +124,7 @@ const TelaFechamentoDiario: React.FC = () => {
             postoNome={postoAtivo?.nome} loading={loadingDados}
          />
 
-         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             {loading && <div className="mb-6"><ProgressIndicator current={50} total={100} label="Sincronizando dados..." /></div>}
             {error && <div className="p-4 bg-red-900/20 text-red-200 rounded-xl border border-red-500/30 flex items-center gap-3 animate-shake"><AlertTriangle size={20} className="text-red-400" /><span>{error}</span></div>}
             {success && <div className="p-4 bg-emerald-900/20 text-emerald-200 rounded-xl border border-emerald-500/30 flex items-center gap-3 animate-bounce-subtle"><TrendingUp size={20} className="text-emerald-400" /><span>{success}</span></div>}
@@ -131,8 +137,9 @@ const TelaFechamentoDiario: React.FC = () => {
                         if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
                      }}
                      handlers={{ alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros }}
+                     onUpdatePrice={updateBicoPrice}
                   />
-               ) : (
+               ) : activeTab === 'financeiro' ? (
                   <TabFinanceiro
                      payments={payments} totalPagamentos={totalPagamentos} totalLitros={totalLitros} totalFrentistas={totalFrentistas}
                      leituras={leituras} bicos={bicos} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
@@ -140,6 +147,20 @@ const TelaFechamentoDiario: React.FC = () => {
                         if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
                      }}
                      handlers={{ alterarPagamento, aoSairPagamento }}
+                  />
+               ) : (
+                  <TabDetalhamentoFrentista
+                     frentistaSessions={frentistaSessions}
+                     frentistas={frentistas}
+                     totalVendasPosto={totalVendas}
+                     loading={loading}
+                     onUpdateEncerrante={(tempId, valor) => alterarCampoFrentista(tempId, 'valor_encerrante', valor.toString())}
+                     onUpdateCampo={(tempId, campo, valor) => {
+                        // Type assertion to ensure campo is a valid key of SessaoFrentista
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        alterarCampoFrentista(tempId, campo as any, valor.toString());
+                     }}
+                     data={selectedDate}
                   />
                )}
             </div>

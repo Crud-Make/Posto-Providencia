@@ -2,18 +2,26 @@ import React from 'react';
 import { TrendingUp, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { Turno } from '../../../types/database/index';
 
+/**
+ * Componente de cabeçalho do Fechamento Diário
+ * Contém seletores de data, turno e abas de navegação
+ */
 interface HeaderFechamentoProps {
     selectedDate: string;
     setSelectedDate: (date: string) => void;
     selectedTurno: number | null;
     setSelectedTurno: (id: number | null) => void;
     turnos: Turno[];
-    activeTab: 'leituras' | 'financeiro';
-    setActiveTab: (tab: 'leituras' | 'financeiro') => void;
+    activeTab: 'leituras' | 'financeiro' | 'detalhamento';
+    setActiveTab: (tab: 'leituras' | 'financeiro' | 'detalhamento') => void;
     postoNome?: string;
     loading?: boolean;
 }
 
+/**
+ * HeaderFechamento
+ * @param props - Propriedades do componente
+ */
 export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
     selectedDate,
     setSelectedDate,
@@ -76,6 +84,7 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
             {/* Tabs - Estilo Pill Navigation */}
             {/* // [19/01 00:36] Ajuste de layout: Tabs agora usam largura total. */}
             {/* Motivo: Alinhar com o container principal sem max-width. */}
+            {/* [20/01 11:30] Adição da aba Detalhamento Frentistas */}
             <div className="w-full px-4 sm:px-6 lg:px-10 flex gap-2 mt-2 pb-0">
                 <button
                     onClick={() => setActiveTab('leituras')}
@@ -94,6 +103,15 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
                         }`}
                 >
                     💰 Fechamento Financeiro
+                </button>
+                <button
+                    onClick={() => setActiveTab('detalhamento')}
+                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'detalhamento'
+                        ? 'border-purple-500 text-purple-400'
+                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                        }`}
+                >
+                    👥 Detalhamento Frentistas
                 </button>
             </div>
 
