@@ -40,6 +40,9 @@ import { TabFinanceiro } from './components/TabFinanceiro';
 // [20/01 11:30] Adição da aba Detalhamento Frentistas
 // Motivo: Nova feature solicitada para visão detalhada por frentista
 import { TabDetalhamentoFrentista } from './components/TabDetalhamentoFrentista';
+import { TabGestaoBicos } from './components/TabGestaoBicos';
+// lazy load para evitar peso inicial desnecessário
+import FechamentoMensal from '../fechamento-mensal';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
 
@@ -50,7 +53,7 @@ const TelaFechamentoDiario: React.FC = () => {
    // --- Estados de Contexto da Tela ---
    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
    const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
-   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro' | 'detalhamento'>('leituras');
+   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro' | 'detalhamento' | 'gestao-bicos' | 'fechamento-mensal'>('leituras');
    const [observacoes] = useState<string>('');
 
    // --- Hooks de Dados e Lógica (Refatorados) ---
@@ -148,19 +151,26 @@ const TelaFechamentoDiario: React.FC = () => {
                      }}
                      handlers={{ alterarPagamento, aoSairPagamento }}
                   />
-               ) : (
+               ) : activeTab === 'detalhamento' ? (
                   <TabDetalhamentoFrentista
                      frentistaSessions={frentistaSessions}
                      frentistas={frentistas}
                      totalVendasPosto={totalVendas}
                      loading={loading}
-                     onUpdateEncerrante={(tempId, valor) => alterarCampoFrentista(tempId, 'valor_encerrante', valor.toString())}
                      onUpdateCampo={(tempId, campo, valor) => {
                         // Type assertion to ensure campo is a valid key of SessaoFrentista
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         alterarCampoFrentista(tempId, campo as any, valor.toString());
                      }}
                      data={selectedDate}
+                  />
+               ) : activeTab === 'fechamento-mensal' ? (
+                  <FechamentoMensal isEmbedded={true} />
+               ) : (
+                  <TabGestaoBicos
+                     bicos={bicos}
+                     leituras={leituras}
+                     loading={loading}
                   />
                )}
             </div>
