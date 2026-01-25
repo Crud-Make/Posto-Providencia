@@ -1,11 +1,9 @@
+// [25/01 17:10] Refatoração Senior para Design Premium e Conciliação Robusta
+// Motivo: Implementar visão de dashboard financeiro com inversão de matriz e integração mobile.
+
 import React from 'react';
-// [20/01 11:45] Refatoração para subcomponentes
-// Motivo: Atender regra de limite de 150 linhas e melhorar organização
 import { SessaoFrentista, Frentista } from '../../../types/fechamento';
-import { DetalhamentoHeader } from './detalhamento/DetalhamentoHeader';
-import { DetalhamentoRow } from './detalhamento/DetalhamentoRow';
-import { DetalhamentoEncerranteRow } from './detalhamento/DetalhamentoEncerranteRow';
-import { DetalhamentoDiferencaRow, DetalhamentoParticipacaoRow } from './detalhamento/DetalhamentoRodapeRows';
+import { TabelaConciliacaoFrentistas } from './detalhamento/TabelaConciliacaoFrentistas';
 
 /**
  * Props para o componente TabDetalhamentoFrentista
@@ -15,110 +13,52 @@ interface TabDetalhamentoFrentistaProps {
   frentistas: Frentista[]; // Lista de cadastros de frentistas para lookup de nomes
   totalVendasPosto: number; // Total geral de vendas para cálculos
   loading?: boolean; // Estado de carregamento
-  onUpdateEncerrante?: (tempId: string, valor: number) => void; // Callback para atualização de valor do encerrante
   onUpdateCampo?: (tempId: string, campo: string, valor: number) => void; // Callback genérico para outros campos
   data?: string; // Data do fechamento para exibição no cabeçalho
+  onRefresh?: () => void; // Callback para sincronização
 }
 
 /**
- * Aba de Detalhamento por Frentista
+ * Aba de Detalhamento por Frentista (Versão Dashboard Premium)
  * 
  * @remarks
- * Exibe uma tabela pivô onde as colunas são os frentistas e as linhas são os tipos de pagamento.
- * Permite visualizar o desempenho individual e editar o valor do encerrante.
- * 
- * Estrutura:
- * - Header: Títulos das colunas (Nomes dos frentistas)
- * - Rows: Pix, Cartão, Nota, Dinheiro, Baratão, Total
- * - EncerranteRow: Linha editável para valor do concentrador
- * - RodapeRows: Diferença e Participação
+ * Orquestra a exibição de métricas rápidas e a tabela de conciliação robusta.
+ * Foca em uma experiência visual de alta qualidade com dados consolidados do mobile e sistema.
  */
 export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> = ({
   frentistaSessions,
   frentistas,
   totalVendasPosto,
   loading,
-  onUpdateEncerrante,
   onUpdateCampo,
-  data
+  data,
+  onRefresh
 }) => {
-  /**
-   * Helper para obter o nome do frentista pelo ID
-   */
-  const getFrentistaNome = (id: number | null) => {
-    if (!id) return 'Geral';
-    const f = frentistas.find(fr => fr.id === id);
-    return f ? f.nome.toUpperCase() : 'DESCONHECIDO';
-  };
-
-  if (loading) return <div className="p-8 text-center text-slate-400">Carregando dados dos frentistas...</div>;
+  if (loading) {
+    return (
+      <div className="p-20 text-center text-slate-400 bg-slate-900/20 rounded-3xl border border-slate-800">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
+          <p className="font-medium animate-pulse">Sincronizando frentistas e envios mobile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-slate-700/50 bg-slate-800/20">
-      <DetalhamentoHeader count={frentistaSessions.length} data={data} />
+    <div className="p-2 space-y-6">
+      <TabelaConciliacaoFrentistas
+        sessoes={frentistaSessions}
+        frentistas={frentistas}
+        onRefresh={onRefresh}
+        isLoading={loading}
+      />
 
-      <table className="w-full text-sm text-left border-collapse">
-        <thead className="text-xs uppercase bg-slate-900/50 text-slate-400 font-medium">
-          <tr>
-            <th className="px-4 py-3 sticky left-0 bg-slate-900 border border-slate-700/50 z-20">
-              Meio de Pagamento
-            </th>
-            {frentistaSessions.map(sessao => (
-              <th key={sessao.tempId} className="px-4 py-3 text-center min-w-[140px] border border-slate-700/50 bg-slate-900/50 text-slate-300">
-                {getFrentistaNome(sessao.frentistaId)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-700/30">
-          <DetalhamentoRow
-            label="Pix"
-            colorClass="bg-cyan-500"
-            field="pix"
-            sessoes={frentistaSessions}
-            totalVendasPosto={totalVendasPosto}
-            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_pix', val)}
-          />
-          <DetalhamentoRow
-            label="Cartão"
-            colorClass="bg-blue-500"
-            field="cartao"
-            sessoes={frentistaSessions}
-            totalVendasPosto={totalVendasPosto}
-            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_cartao', val)}
-          />
-          <DetalhamentoRow
-            label="Notas a Prazo"
-            colorClass="bg-yellow-500"
-            field="nota"
-            sessoes={frentistaSessions}
-            totalVendasPosto={totalVendasPosto}
-            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_nota', val)}
-          />
-          <DetalhamentoRow
-            label="Dinheiro"
-            colorClass="bg-emerald-500"
-            field="dinheiro"
-            sessoes={frentistaSessions}
-            totalVendasPosto={totalVendasPosto}
-            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_dinheiro', val)}
-          />
-          <DetalhamentoRow
-            label="Baratão"
-            colorClass="bg-pink-500"
-            field="baratao"
-            sessoes={frentistaSessions}
-            totalVendasPosto={totalVendasPosto}
-            onUpdate={(id, val) => onUpdateCampo && onUpdateCampo(id, 'valor_baratao', val)}
-          />
-
-          <DetalhamentoRow label="Total Venda Frentista" colorClass="" field="totalVenda" sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} isTotal />
-
-          <DetalhamentoEncerranteRow sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} onUpdateEncerrante={onUpdateEncerrante} />
-          <DetalhamentoDiferencaRow sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
-          <DetalhamentoParticipacaoRow sessoes={frentistaSessions} totalVendasPosto={totalVendasPosto} />
-        </tbody>
-      </table>
+      {frentistaSessions.length === 0 && (
+        <div className="p-12 text-center bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
+          <p className="text-slate-500 italic">Nenhum frentista registrado para este turno até o momento.</p>
+        </div>
+      )}
     </div>
   );
 };
