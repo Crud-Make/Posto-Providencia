@@ -1,0 +1,41 @@
+project:
+  name: "feature-gestao-bicos"
+  scale: MEDIUM
+  started: "2026-01-25T20:36:12.359Z"
+  current_phase: V
+
+phases:
+  P:
+    status: filled
+    started_at: "2026-01-25T20:36:12.359Z"
+    completed_at: "2026-01-25T20:36:56.787Z"
+  R:
+    status: filled
+    started_at: "2026-01-25T20:36:56.788Z"
+    completed_at: "2026-01-25T20:43:59.375Z"
+  E:
+    status: filled
+    started_at: "2026-01-25T20:43:59.375Z"
+    completed_at: "2026-01-25T20:44:08.498Z"
+  V:
+    status: in_progress
+    started_at: "2026-01-25T20:44:08.503Z"
+  C:
+    status: skipped
+    reason: "Not required for scale MEDIUM"
+
+execution:
+  history:
+    - timestamp: "2026-01-25T20:44:08.503Z"
+      phase: V
+      action: started
+  last_activity: "2026-01-25T20:44:08.503Z"
+  resume_context: "Fase V (Validação) em progresso"
+
+approval:
+  plan_created: true
+  plan_approved: true
+  approved_by: "architect"
+  approved_at: "2026-01-25T20:43:58.893Z"
+  approval_notes: "Design aprovado via input do usuário e implementação realizada."
+

@@ -1,0 +1,28 @@
+{
+  "planSlug": "implement-gestao-bicos-feature",
+  "progress": 100,
+  "phases": {
+    "E": {
+      "phaseId": "E",
+      "status": "completed",
+      "startedAt": "2026-01-25T20:43:59.412Z",
+      "steps": [
+        {
+          "stepIndex": 1,
+          "description": "Step 1",
+          "status": "completed",
+          "completedAt": "2026-01-25T20:43:59.412Z"
+        },
+        {
+          "stepIndex": 2,
+          "description": "Step 2",
+          "status": "completed",
+          "completedAt": "2026-01-25T20:44:08.435Z"
+        }
+      ],
+      "completedAt": "2026-01-25T20:44:08.435Z"
+    }
+  },
+  "decisions": [],
+  "lastUpdated": "2026-01-25T20:44:08.435Z"
+}

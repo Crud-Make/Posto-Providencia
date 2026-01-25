@@ -1,0 +1,13 @@
+{
+  "active": [
+    {
+      "slug": "refactor-mobile-senior-plan",
+      "path": "plans/refactor-mobile-senior-plan.md",
+      "title": "📋 Refactor Mobile Senior",
+      "linkedAt": "2026-01-25T19:56:42.823Z",
+      "status": "active"
+    }
+  ],
+  "completed": [],
+  "primary": "refactor-mobile-senior-plan"
+}

@@ -1,0 +1,34 @@
+project:
+  name: "aprimorar-detalhamento-frentistas-web"
+  scale: MEDIUM
+  started: "2026-01-25T20:02:48.614Z"
+  current_phase: R
+
+phases:
+  P:
+    status: filled
+    started_at: "2026-01-25T20:02:48.614Z"
+    completed_at: "2026-01-25T20:04:45.978Z"
+  R:
+    status: in_progress
+    started_at: "2026-01-25T20:04:45.987Z"
+  E:
+    status: pending
+  V:
+    status: pending
+  C:
+    status: skipped
+    reason: "Not required for scale MEDIUM"
+
+execution:
+  history:
+    - timestamp: "2026-01-25T20:04:45.987Z"
+      phase: R
+      action: started
+  last_activity: "2026-01-25T20:04:45.987Z"
+  resume_context: "Fase R (Revisão) em progresso"
+
+approval:
+  plan_created: true
+  plan_approved: false
+
