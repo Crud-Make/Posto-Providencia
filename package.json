@@ -10,11 +10,17 @@
   "scripts": {
     "dev": "bun --bun vite --port 3015",
     "build": "bun -e \"Bun.write('./apps/web/public/version.json', JSON.stringify({version: Date.now().toString()}))\" && bun --bun vite build",
+    "build:mobile": "cd apps/mobile && npx expo export",
+    "build:all": "bun run build && cd apps/mobile && npx expo export",
     "preview": "bun --bun vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
     "validate": "./scripts/validate-rules.sh",
-    "push": "./scripts/push.sh"
+    "push": "./scripts/push.sh",
+    "eas:update": "cd apps/mobile && npm run eas:update",
+    "eas:update:preview": "cd apps/mobile && npm run eas:update:preview",
+    "eas:build": "cd apps/mobile && npm run eas:build",
+    "eas:build:preview": "cd apps/mobile && npm run eas:build:preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
