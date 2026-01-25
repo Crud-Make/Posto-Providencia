@@ -83,6 +83,17 @@ export default function HistoricoScreen() {
      */
     useEffect(() => {
         loadHistorico();
+
+        // Realtime subscription para FechamentoFrentista
+        const subscription = supabase
+            .channel('historico_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'FechamentoFrentista' }, () => {
+                console.log('🔄 Histórico alterado, recarregando...');
+                loadHistorico();
+            })
+            .subscribe();
+
+        return () => { subscription.unsubscribe(); };
     }, [postoAtivoId]);
 
     /**

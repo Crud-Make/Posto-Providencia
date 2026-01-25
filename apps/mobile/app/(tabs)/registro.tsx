@@ -185,10 +185,11 @@ export default function RegistroScreen() {
 
         loadAllData();
 
-        // Realtime para Turnos e Fechamentos
+        // Realtime para Turnos, Fechamentos e FechamentoFrentista
         const subscription = supabase
             .channel('turnos_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'Turno' }, () => loadAllData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'Fechamento' }, () => loadAllData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'FechamentoFrentista' }, () => {
                 if (turnoId) loadFrentistasQueFecharam(turnoId);
             })

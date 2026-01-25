@@ -150,7 +150,7 @@ export const useCarregamentoDados = (
         {
           event: '*',
           schema: 'public',
-          table: 'fechamentos',
+          table: 'Fechamento',
           filter: `posto_id=eq.${postoId}`
         },
         () => {
