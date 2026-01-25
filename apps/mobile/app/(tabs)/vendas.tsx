@@ -79,6 +79,27 @@ export default function VendasScreen() {
     }, [frentista?.id, frentista?.posto_id]);
 
     /**
+     * Realtime subscriptions para Produtos e VendaProduto
+     */
+    useEffect(() => {
+        if (!frentista?.id || !frentista?.posto_id) return;
+
+        const subscription = supabase
+            .channel('vendas_changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'Produto' }, () => {
+                console.log('🔄 Produtos alterados, recarregando...');
+                loadData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'VendaProduto' }, () => {
+                console.log('🔄 Vendas alteradas, recarregando...');
+                loadVendas();
+            })
+            .subscribe();
+
+        return () => { subscription.unsubscribe(); };
+    }, [frentista?.id, frentista?.posto_id]);
+
+    /**
      * Carrega a lista de produtos disponíveis para o posto do frentista.
      */
     const loadData = async () => {
