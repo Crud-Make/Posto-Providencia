@@ -17,6 +17,7 @@
     "type-check": "tsc --noEmit",
     "validate": "./scripts/validate-rules.sh",
     "push": "./scripts/push.sh",
+    "reset-data": "node scripts/reset-and-import-data.js",
     "eas:update": "cd apps/mobile && npm run eas:update",
     "eas:update:preview": "cd apps/mobile && npm run eas:update:preview",
     "eas:build": "cd apps/mobile && npm run eas:build",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.7",
     "lucide-react": "^0.560.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
@@ -45,6 +47,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "eslint": "^9.39.2",
     "pg": "^8.16.3",
+    "react-native-css-interop": "^0.2.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "xlsx": "^0.18.5"

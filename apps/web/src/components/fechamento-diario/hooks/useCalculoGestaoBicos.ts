@@ -10,13 +10,13 @@ const MARGENS_PADRAO: Record<string, number> = {
     'Diesel': 0.0273    // ~2.73%
 };
 
+interface Leitura {
+    inicial: string;
+    fechamento: string;
+}
+
 interface LeituraMap {
-    [bicoId: number]: {
-        leitura_inicial?: number | string;
-        leitura_final?: number | string | null;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        [key: string]: any;
-    };
+    [bicoId: number]: Leitura;
 }
 
 /**
@@ -35,9 +35,9 @@ export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: Leitur
         // Lista detalhada para tabela
         const listaBicos = bicos.map(bico => {
             // 1. Obter e sanitizar leituras
-            const leitura = leituras[bico.id] || { leitura_inicial: 0, leitura_final: 0 };
-            const inicial = Number(leitura.leitura_inicial || 0);
-            const final = Number(leitura.leitura_final || inicial);
+            const leitura = leituras[bico.id] || { inicial: '0,000', fechamento: '0,000' };
+            const inicial = parseFloat(leitura.inicial.replace(/\./g, '').replace(',', '.')) || 0;
+            const final = parseFloat(leitura.fechamento.replace(/\./g, '').replace(',', '.')) || 0;
 
             // 2. Calcular Volume
             const volume = final >= inicial ? final - inicial : 0;

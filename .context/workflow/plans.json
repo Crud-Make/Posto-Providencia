@@ -1,13 +1,13 @@
 {
   "active": [
     {
-      "slug": "implement-fechamento-mensal",
-      "path": "plans/implement-fechamento-mensal.md",
-      "title": "Feature Fechamento Mensal -",
-      "linkedAt": "2026-01-25T20:54:32.786Z",
+      "slug": "gestao-despesas-janeiro-2026",
+      "path": "plans/gestao-despesas-janeiro-2026.md",
+      "title": "📋 Plano: Gestão de Despesas e Lucro Janeiro 2026",
+      "linkedAt": "2026-01-27T11:17:19.400Z",
       "status": "active"
     }
   ],
   "completed": [],
-  "primary": "implement-fechamento-mensal"
+  "primary": "gestao-despesas-janeiro-2026"
 }

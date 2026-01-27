@@ -38,6 +38,7 @@ export interface PostoSummary {
   frentistasAtivos: number;
   dividasTotal: number;
   despesasPendentes: number;
+  despesasTotalMes: number;
   ultimoFechamento: string | null;
 }
 

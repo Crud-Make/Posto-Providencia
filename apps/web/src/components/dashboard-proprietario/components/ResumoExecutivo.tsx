@@ -11,8 +11,8 @@ export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados }) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(value);
   };
 
@@ -48,8 +48,8 @@ export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados }) => {
 
       {/* Dívidas Totais */}
       <div className={`rounded-2xl p-5 animate-in fade-in zoom-in duration-300 delay-200 ${dados.dividas > 0
-          ? 'bg-gradient-to-br from-red-500 to-rose-600 text-white'
-          : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 text-gray-900 dark:text-white'
+        ? 'bg-gradient-to-br from-red-500 to-rose-600 text-white'
+        : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 text-gray-900 dark:text-white'
         }`}>
         <div className="flex items-center justify-between mb-3">
           <span className={`text-sm font-medium font-display uppercase tracking-wider ${dados.dividas > 0 ? 'text-red-100' : 'text-gray-500 dark:text-gray-400'}`}>

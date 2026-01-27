@@ -11,8 +11,8 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(value);
   };
 
@@ -86,7 +86,7 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
 
             <div className="mt-4 pt-4 border-t border-amber-200/50 dark:border-amber-800/30">
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                Total de gastos registrados e pendentes de pagamento no período.
+                Total de despesas operacionais do período (salários, custos fixos, etc).
               </p>
             </div>
           </div>

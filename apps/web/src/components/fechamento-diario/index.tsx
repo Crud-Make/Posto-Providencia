@@ -111,9 +111,11 @@ const TelaFechamentoDiario: React.FC = () => {
 
    useEffect(() => {
       if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado) {
-         carregarLeituras(); carregarSessoes(selectedDate, selectedTurno);
+         carregarLeituras();
+         carregarSessoes(selectedDate, selectedTurno);
+         carregarPagamentos(selectedDate, selectedTurno);
       }
-   }, [selectedDate, selectedTurno, restaurado, rascunhoRestaurado, carregarLeituras, carregarSessoes]);
+   }, [selectedDate, selectedTurno, restaurado, rascunhoRestaurado, carregarLeituras, carregarSessoes, carregarPagamentos]);
 
    // --- Render ---
    if (!user) return <div className="p-8 text-center text-slate-300">Carregando usuário...</div>;
@@ -139,7 +141,10 @@ const TelaFechamentoDiario: React.FC = () => {
                      onRefreshSessoes={() => {
                         if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
                      }}
-                     handlers={{ alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros }}
+                     handlers={{
+                        alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros,
+                        alterarCampoFrentista, aoSairCampoFrentista
+                     }}
                      onUpdatePrice={updateBicoPrice}
                   />
                ) : activeTab === 'financeiro' ? (

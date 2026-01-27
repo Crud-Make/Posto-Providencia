@@ -9,6 +9,7 @@ interface TabelaConciliacaoFrentistasProps {
   frentistas: Frentista[];
   onRefresh?: () => void;
   isLoading?: boolean;
+  onUpdateCampo?: (tempId: string, campo: string, valor: number | string) => void;
 }
 
 /**
@@ -21,7 +22,8 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
   sessoes,
   frentistas,
   onRefresh,
-  isLoading
+  isLoading,
+  onUpdateCampo
 }) => {
   // Filtra apenas frentistas que têm sessões nesta aba
   const frentistasComSessao = sessoes
@@ -69,6 +71,21 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
       }
     }, 0);
   };
+
+  const getSessaoPorFrentista = (frentistaId: number) => {
+    return sessoes.find(s => s.frentistaId === frentistaId);
+  }
+
+  const mapMeioToCampo = (meioId: string): keyof SessaoFrentista | null => {
+    switch (meioId) {
+      case 'pix': return 'valor_pix';
+      case 'cartao': return 'valor_cartao';
+      case 'nota': return 'valor_nota';
+      case 'dinheiro': return 'valor_dinheiro';
+      case 'baratao': return 'valor_baratao';
+      default: return null;
+    }
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -198,10 +215,30 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
                     {frentistasUnicos.map(f => {
                       const valor = getValorPorFrentistaEMeio(f.id, meio.id);
                       return (
-                        <td key={`${meio.id}-${f.id}`} className="px-6 py-4 text-center">
-                          <span className={`text-sm font-mono ${valor > 0 ? 'text-slate-100' : 'text-slate-600'}`}>
-                            {paraReais(valor)}
-                          </span>
+                        <td key={`${meio.id}-${f.id}`} className="px-2 py-3 text-center">
+                          {/* Input Editável */}
+                          {(() => {
+                            const sessao = getSessaoPorFrentista(f.id);
+                            const campo = mapMeioToCampo(meio.id);
+
+                            if (sessao && campo) {
+                              let val = sessao[campo];
+                              if (val === undefined || val === null) val = '';
+
+                              return (
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={val as string}
+                                  onChange={(e) => onUpdateCampo?.(sessao.tempId, campo, e.target.value)}
+                                  disabled={isLoading}
+                                  className="w-full bg-slate-800/50 border border-slate-700/50 rounded p-1.5 text-center text-sm font-mono text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none transition-all hover:bg-slate-700/50"
+                                />
+                              )
+                            }
+
+                            return <span className="text-slate-500">-</span>
+                          })()}
                         </td>
                       );
                     })}

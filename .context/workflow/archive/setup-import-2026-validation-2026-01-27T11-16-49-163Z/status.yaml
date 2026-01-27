@@ -1,0 +1,52 @@
+project:
+  name: "setup-import-2026-validation"
+  scale: MEDIUM
+  started: "2026-01-27T00:52:55.942Z"
+  current_phase: R
+
+phases:
+  P:
+    status: filled
+    started_at: "2026-01-27T00:52:55.942Z"
+    completed_at: "2026-01-27T00:53:29.656Z"
+  R:
+    status: in_progress
+    started_at: "2026-01-27T00:53:29.659Z"
+  E:
+    status: pending
+  V:
+    status: pending
+  C:
+    status: skipped
+    reason: "Not required for scale MEDIUM"
+
+agents:
+  architect-specialist:
+    status: completed
+    completed_at: "2026-01-27T00:53:34.163Z"
+    outputs: [".context/plans/setup-import-2026-validation.md", "scripts/reset-and-import-data.js"]
+  feature-developer:
+    status: in_progress
+    started_at: "2026-01-27T00:53:34.163Z"
+
+execution:
+  history:
+    - timestamp: "2026-01-27T00:52:55.942Z"
+      phase: P
+      action: started
+    - timestamp: "2026-01-27T00:53:29.656Z"
+      phase: P
+      action: completed
+    - timestamp: "2026-01-27T00:53:29.659Z"
+      phase: R
+      action: started
+    - timestamp: "2026-01-27T00:53:34.163Z"
+      phase: C
+      action: phase_skipped
+  last_activity: "2026-01-27T00:53:34.163Z"
+  resume_context: "Plano vinculado - aguardando revisão"
+
+approval:
+  plan_created: true
+  plan_approved: false
+
