@@ -22,13 +22,13 @@ const formatNumber = (value: number) =>
     new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
 // --- Tipos ---
+interface Leitura {
+    inicial: string;
+    fechamento: string;
+}
+
 interface LeituraMap {
-    [bicoId: number]: {
-        leitura_inicial?: number | string;
-        leitura_final?: number | string | null;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        [key: string]: any;
-    };
+    [bicoId: number]: Leitura;
 }
 
 interface TabGestaoBicosProps {

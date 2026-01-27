@@ -1,0 +1,13 @@
+{
+  "active": [
+    {
+      "slug": "setup-import-2026-validation",
+      "path": "plans/setup-import-2026-validation.md",
+      "title": "📋 Plan: Validation and Setup of 2026 Data Import",
+      "linkedAt": "2026-01-27T00:53:25.591Z",
+      "status": "active"
+    }
+  ],
+  "completed": [],
+  "primary": "setup-import-2026-validation"
+}

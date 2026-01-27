@@ -47,8 +47,7 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '' }) => {
     { path: '/clientes', label: 'Clientes / Fiado', icon: Users },
     { path: '/estoque/tanques', label: 'Tanques (Combustível)', icon: Fuel },
     { path: '/estoque/produtos', label: 'Produtos e Estoque', icon: Package },
-    { path: '/financeiro', label: 'Empréstimos', icon: Banknote },
-    { path: '/despesas', label: 'Gestão de Despesas', icon: ShoppingBag },
+    { path: '/financeiro', label: 'Gestão Financeira', icon: Banknote },
     { path: '/escalas', label: 'Escala e Folgas', icon: Calendar },
     { path: '/configuracoes', label: 'Configurações', icon: Settings },
   ] as const;

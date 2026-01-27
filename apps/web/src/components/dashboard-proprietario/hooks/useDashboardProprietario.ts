@@ -33,7 +33,7 @@ export function useDashboardProprietario(): UseDashboardReturn {
     try {
       // 1. Buscar postos
       const response = await postoService.getAll();
-      
+
       if (!isSuccess(response)) {
         setErro(response.error);
         setLoading(false);
@@ -87,20 +87,28 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
   const frentistas = isSuccess(resFrentistas) ? resFrentistas.data : [];
   const frentistasAtivos = frentistas.filter(f => f.ativo).length;
 
-  // Fechamentos Hoje
-  const resFechamentos = await fechamentoService.getByDate(today, posto.id);
-  const fechamentosHoje = isSuccess(resFechamentos) ? resFechamentos.data : [];
-  const vendasHoje = fechamentosHoje.reduce((acc, f) => acc + (f.total_vendas || 0), 0);
+  // ✅ DADOS REAIS DE LUCRO - Hoje
+  const { data: dadosHoje } = await supabase
+    .rpc('get_dashboard_proprietario', {
+      p_posto_id: posto.id,
+      p_data_inicio: today,
+      p_data_fim: today
+    });
 
-  // Fechamentos Mês
-  const { data: fechamentosMes } = await supabase
-    .from('Fechamento')
-    .select('total_vendas, data')
-    .eq('posto_id', posto.id)
-    .gte('data', startOfMonth)
-    .lte('data', today);
+  const vendasHoje = dadosHoje?.[0]?.total_vendas || 0;
+  const lucroHoje = dadosHoje?.[0]?.lucro_liquido || 0;
+  const volumeHoje = dadosHoje?.[0]?.volume_total || 0;
 
-  const vendasMes = (fechamentosMes || []).reduce((acc, f) => acc + (f.total_vendas || 0), 0);
+  // ✅ DADOS REAIS DE LUCRO - Mês
+  const { data: dadosMes } = await supabase
+    .rpc('get_dashboard_proprietario', {
+      p_posto_id: posto.id,
+      p_data_inicio: startOfMonth,
+      p_data_fim: today
+    });
+
+  const vendasMes = dadosMes?.[0]?.total_vendas || 0;
+  const lucroMes = dadosMes?.[0]?.lucro_liquido || 0;
 
   // Dívidas
   const { data: dividas } = await supabase
@@ -120,32 +128,27 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
 
   const emprestimosTotal = (emprestimos || []).reduce((acc, e) => acc + (e.valor_total || 0), 0);
 
-  // Despesas
-  const { data: despesas } = await supabase
+  // Despesas do Mês (todas as despesas do período, pagas ou pendentes)
+  const { data: despesasMes } = await supabase
+    .from('Despesa')
+    .select('valor')
+    .eq('posto_id', posto.id)
+    .gte('data', startOfMonth)
+    .lte('data', today);
+
+  const despesasTotalMes = (despesasMes || []).reduce((acc, d) => acc + (d.valor || 0), 0);
+
+  // Despesas Pendentes (apenas para alertas)
+  const { data: despesasPendentes } = await supabase
     .from('Despesa')
     .select('valor')
     .eq('posto_id', posto.id)
     .eq('status', 'pendente');
 
-  const despesasPendentes = (despesas || []).reduce((acc, d) => acc + (d.valor || 0), 0);
+  const despesasPendentesTotal = (despesasPendentes || []).reduce((acc, d) => acc + (d.valor || 0), 0);
 
-  // Margem Média
-  const { data: combustiveis } = await supabase
-    .from('Combustivel')
-    .select('preco_venda, preco_custo')
-    .eq('posto_id', posto.id)
-    .eq('ativo', true);
-
-  let margemMedia = 0;
-  if (combustiveis && combustiveis.length > 0) {
-    const margensValidas = combustiveis
-      .filter(c => c.preco_custo && c.preco_venda && c.preco_venda > 0 && c.preco_custo > 0)
-      .map(c => ((c.preco_venda - c.preco_custo) / c.preco_venda) * 100);
-
-    if (margensValidas.length > 0) {
-      margemMedia = margensValidas.reduce((a, b) => a + b, 0) / margensValidas.length;
-    }
-  }
+  // Margem REAL calculada a partir do lucro e vendas
+  const margemMedia = vendasMes > 0 ? (lucroMes / vendasMes) * 100 : 0;
 
   // Último Fechamento
   const { data: ultimoFech } = await supabase
@@ -159,12 +162,13 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
     posto,
     vendasHoje,
     vendasMes,
-    lucroEstimadoHoje: vendasHoje * (margemMedia / 100),
-    lucroEstimadoMes: vendasMes * (margemMedia / 100),
+    lucroEstimadoHoje: lucroHoje, // Agora é REAL, não estimado
+    lucroEstimadoMes: lucroMes,   // Agora é REAL, não estimado
     margemMedia,
     frentistasAtivos,
     dividasTotal: dividasTotal + emprestimosTotal,
-    despesasPendentes,
+    despesasPendentes: despesasPendentesTotal,
+    despesasTotalMes: despesasTotalMes,
     ultimoFechamento: ultimoFech?.[0]?.data || null
   };
 }
@@ -174,7 +178,8 @@ function consolidarDados(summaries: PostoSummary[], postoPrincipal: Posto): Dado
   const vendasHoje = summaries.reduce((acc, s) => acc + s.vendasHoje, 0);
   const lucroHoje = summaries.reduce((acc, s) => acc + s.lucroEstimadoHoje, 0);
   const dividasTotal = summaries.reduce((acc, s) => acc + s.dividasTotal, 0);
-  const despesasTotal = summaries.reduce((acc, s) => acc + s.despesasPendentes, 0);
+  const despesasPendentesTotal = summaries.reduce((acc, s) => acc + s.despesasPendentes, 0);
+  const despesasTotalMes = summaries.reduce((acc, s) => acc + s.despesasTotalMes, 0);
   const frentistasTotal = summaries.reduce((acc, s) => acc + s.frentistasAtivos, 0);
   const emprestimosTotal = 0; // Já somado em dividasTotal no helper processarPosto, mas separado na interface... 
   // Nota: No código original, dividasTotal = dividas + emprestimos. Vamos manter essa lógica para consistência visual.
@@ -194,7 +199,7 @@ function consolidarDados(summaries: PostoSummary[], postoPrincipal: Posto): Dado
       vendas: vendasHoje,
       lucroEstimado: lucroHoje,
       dividas: dividasTotal,
-      despesas: despesasTotal,
+      despesas: despesasPendentesTotal,
       emprestimos: emprestimosTotal,
       frentistasAtivos: frentistasTotal,
       margemMedia: margemMediaGlobal
@@ -203,7 +208,7 @@ function consolidarDados(summaries: PostoSummary[], postoPrincipal: Posto): Dado
       vendas: vendasMes,
       lucroEstimado: lucroMes,
       dividas: dividasTotal,
-      despesas: despesasTotal,
+      despesas: despesasTotalMes,
       emprestimos: emprestimosTotal,
       frentistasAtivos: frentistasTotal,
       margemMedia: margemMediaGlobal

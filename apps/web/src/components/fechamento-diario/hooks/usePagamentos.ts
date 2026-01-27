@@ -17,7 +17,9 @@
 import * as React from 'react';
 import { useState, useCallback, useMemo } from 'react';
 import type { EntradaPagamento } from '../../../types/fechamento';
+import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
 import { formaPagamentoService } from '../../../services/api';
+import { fechamentoService } from '../../../services/api/fechamento.service';
 import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -30,7 +32,7 @@ interface RetornoPagamentos {
   totalPagamentos: number;
   totalTaxas: number;
   totalLiquido: number;
-  carregarPagamentos: () => Promise<void>;
+  carregarPagamentos: (data?: string, turno?: number) => Promise<void>;
   alterarPagamento: (indice: number, valor: string) => void;
   aoSairPagamento: (indice: number) => void;
   definirPagamentos: React.Dispatch<React.SetStateAction<EntradaPagamento[]>>;
@@ -55,15 +57,14 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
   const [carregando, setCarregando] = useState(false);
 
   /**
-   * Carrega formas de pagamento do banco
+   * Carrega formas de pagamento do banco e valores salvos se houver
    */
-  const carregarPagamentos = useCallback(async () => {
+  const carregarPagamentos = useCallback(async (data?: string, turno?: number) => {
     if (!postoId) return;
 
     setCarregando(true);
     try {
-      // [18/01 00:00] Checar success e extrair data do ApiResponse
-      // Motivo: formaPagamentoService agora retorna ApiResponse
+      // 1. Carrega definições de formas de pagamento
       const dadosRes = await formaPagamentoService.getAll(postoId);
       if (!isSuccess(dadosRes)) {
         console.error('❌ Erro ao carregar formas de pagamento:', dadosRes.error);
@@ -71,16 +72,39 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
         return;
       }
 
-      const dados = dadosRes.data;
-      const inicializados: EntradaPagamento[] = dados.map(fp => ({
+      const formasPagamento = dadosRes.data;
+      let valoresSalvos: Record<number, number> = {};
+
+      // 2. Se data e turno fornecidos, busca valores salvos
+      if (data && turno) {
+        const fechamentoRes = await fechamentoService.getByDateAndTurno(data, turno, postoId);
+
+        if (isSuccess(fechamentoRes) && fechamentoRes.data) {
+          const detalhesRes = await fechamentoService.getWithDetails(fechamentoRes.data.id);
+
+          if (isSuccess(detalhesRes) && detalhesRes.data.recebimentos) {
+            detalhesRes.data.recebimentos.forEach((r: any) => {
+              // Recebimento deve ter forma_pagamento_id
+              if (r.forma_pagamento_id) {
+                valoresSalvos[r.forma_pagamento_id] = r.valor;
+              }
+            });
+            console.log('✅ Pagamentos salvos carregados do banco');
+          }
+        }
+      }
+
+      // 3. Mescla definições com valores (ou vazio)
+      const inicializados: EntradaPagamento[] = formasPagamento.map(fp => ({
         id: fp.id,
         nome: fp.nome,
         tipo: fp.tipo,
-        valor: '',
+        valor: valoresSalvos[fp.id] ? formatarValorSimples(valoresSalvos[fp.id].toFixed(2)) : '',
         taxa: fp.taxa || 0
       }));
+
       setPagamentos(inicializados);
-      console.log('✅ Formas de pagamento carregadas');
+
     } catch (err) {
       console.error('❌ Erro ao carregar formas de pagamento:', err);
     } finally {

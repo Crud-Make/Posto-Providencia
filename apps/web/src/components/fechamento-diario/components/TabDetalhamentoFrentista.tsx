@@ -52,6 +52,7 @@ export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> =
         frentistas={frentistas}
         onRefresh={onRefresh}
         isLoading={loading}
+        onUpdateCampo={onUpdateCampo}
       />
 
       {frentistaSessions.length === 0 && (

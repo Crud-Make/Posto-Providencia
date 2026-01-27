@@ -32,7 +32,8 @@ BEGIN
     cpf,
     telefone,
     user_id,
-    ativo
+    ativo,
+    posto_id
   )
   VALUES (
     COALESCE(NEW.raw_user_meta_data->>'nome', nome_extraido),
@@ -45,7 +46,8 @@ BEGIN
     ),
     COALESCE(NEW.raw_user_meta_data->>'telefone', '(00) 00000-0000'),
     NEW.id,
-    true
+    true,
+    1 -- Default posto_id: Posto Providência
   );
 
   RETURN NEW;

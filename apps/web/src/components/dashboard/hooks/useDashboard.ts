@@ -46,6 +46,7 @@ function extractApiData<T>(response: ApiResponse<T>): T {
 
 export const useDashboard = () => {
   const { postoAtivoId } = usePosto();
+  console.log('[useDashboard] postoAtivoId:', postoAtivoId);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
 
@@ -68,9 +69,11 @@ export const useDashboard = () => {
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [frentistasData] = await Promise.all([
+        const [frentistasResponse] = await Promise.all([
           frentistaService.getAll(postoAtivoId),
         ]);
+        const frentistasData = isSuccess(frentistasResponse) ? frentistasResponse.data : [];
+        console.log('[useDashboard] Frentistas carregados:', frentistasData.length, frentistasData);
         setFrentistas(frentistasData);
       } catch (error) {
         console.error("Failed to load filter options", error);

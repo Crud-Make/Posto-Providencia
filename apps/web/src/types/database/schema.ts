@@ -115,6 +115,42 @@ export interface Database {
           diferenca: number
         }[]
       }
+      get_dashboard_proprietario: {
+        Args: { p_posto_id: number; p_data_inicio: string; p_data_fim: string }
+        Returns: {
+          total_vendas: number
+          lucro_bruto: number
+          lucro_liquido: number
+          volume_total: number
+          custo_taxas: number
+        }[]
+      }
+      calcular_vendas_por_fechamento: {
+        Args: { p_posto_id: number; p_data_inicio: string; p_data_fim: string }
+        Returns: {
+          combustivel_id: number
+          combustivel_nome: string
+          volume_vendido: number
+          faturamento_total: number
+          lucro_bruto: number
+          preco_medio: number
+          dias_com_venda: number
+        }[]
+      }
+      reconciliar_estoque_vendas: {
+        Args: { p_posto_id: number; p_data_inicio: string; p_data_fim: string }
+        Returns: {
+          combustivel_id: number
+          combustivel_nome: string
+          estoque_inicial: number
+          compras_periodo: number
+          vendas_periodo: number
+          estoque_teorico: number
+          estoque_real: number
+          divergencia: number
+          divergencia_percent: number
+        }[]
+      }
     }
     Enums: DatabaseEnums
     CompositeTypes: {
