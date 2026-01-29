@@ -36,13 +36,10 @@ jobs:
         run: |
           bun install
 
-      - name: 🏗 Setup Expo and EAS
-        run: npm install -g expo-cli eas-cli
-
       - name: 🛠 Prebuild (Generate Android Folder)
         run: |
           cd apps/mobile
-          npx expo prebuild --platform android --no-install
+          npx expo prebuild --platform android --clean
 
       - name: 🔨 Build APK with Gradle
         run: |
