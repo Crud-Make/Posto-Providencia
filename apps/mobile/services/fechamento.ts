@@ -41,6 +41,7 @@ export interface NotaFrentistaInput {
 /**
  * Interface que representa o fechamento individual de um frentista.
  */
+// [29/01 11:42] Sincronizado com web - adicionado baratao, encerrante, diferenca_calculada, posto_id
 export interface FechamentoFrentista {
     /** Identificador único do fechamento do frentista */
     id: number;
@@ -64,12 +65,21 @@ export interface FechamentoFrentista {
     valor_conferido: number;
     /** Valor em moedas (informativo, geralmente já incluso em dinheiro) */
     valor_moedas: number;
-    /** Diferença calculada para o frentista */
+    /** Diferença calculada para o frentista (legado) */
     diferenca: number;
     /** Observações do frentista */
     observacoes: string | null;
+    /** ID do posto */
+    posto_id: number;
+    /** Valor do encerrante */
+    encerrante: number | null;
+    /** Diferença calculada (nova) */
+    diferenca_calculada: number | null;
+    /** Valor do baratao */
+    baratao: number | null;
 }
 
+// [29/01 11:43] Sincronizado com web - adicionado valor_moedas, baratao
 /**
  * Interface para histórico de fechamentos de frentista com dados relacionados.
  */
@@ -81,6 +91,8 @@ export interface FechamentoFrentistaHistorico {
     valor_nota: number | null;
     valor_pix: number | null;
     valor_dinheiro: number | null;
+    valor_moedas: number | null;
+    baratao: number | null;
     encerrante?: number | null;
     diferenca_calculada?: number | null;
     observacoes?: string | null;
@@ -114,6 +126,8 @@ export interface SubmitClosingData {
     valor_moedas: number;
     /** Valor total do encerrante (vendas totais da bomba) */
     valor_encerrante: number;
+    /** Valor total do Baratão */
+    valor_baratao: number;
     /** Valor da diferença (sobra ou falta) */
     falta_caixa: number;
     /** Observações do fechamento */
@@ -264,6 +278,7 @@ export const fechamentoFrentistaService = {
      * @param {object} data - Dados do fechamento do frentista.
      * @returns {Promise<FechamentoFrentista>} O registro criado.
      */
+    // [29/01 11:40] Adicionado baratao para sincronização com web
     async create(data: {
         fechamento_id: number;
         frentista_id: number;
@@ -279,6 +294,7 @@ export const fechamentoFrentistaService = {
         diferenca_calculada?: number;
         observacoes?: string;
         posto_id?: number;
+        baratao?: number;
     }): Promise<FechamentoFrentista> {
         const { data: created, error } = await supabase
             .from('FechamentoFrentista')
@@ -300,6 +316,7 @@ export const fechamentoFrentistaService = {
      * @param {object} data - Dados a serem atualizados.
      * @returns {Promise<FechamentoFrentista>} O registro atualizado.
      */
+    // [29/01 11:44] Adicionado baratao para sincronização com web
     async update(id: number, data: {
         valor_cartao: number;
         valor_cartao_debito: number;
@@ -312,6 +329,7 @@ export const fechamentoFrentistaService = {
         encerrante?: number;
         diferenca_calculada?: number;
         observacoes?: string;
+        baratao?: number;
     }): Promise<FechamentoFrentista> {
         const { data: updated, error } = await supabase
             .from('FechamentoFrentista')
@@ -511,7 +529,8 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
             closingData.valor_cartao_credito +
             closingData.valor_nota +
             closingData.valor_pix +
-            closingData.valor_dinheiro;
+            closingData.valor_dinheiro +
+            closingData.valor_baratao;
 
         // Se não informado pelo front (que agora envia), calcula baseada nos inputs
         // Mas o front já envia valor_encerrante calculado e falta_caixa
@@ -537,6 +556,7 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
         }
 
         // 7. Registrar Fechamento Individual do Frentista
+        // [29/01 11:41] Adicionado baratao: 0 para sincronização com schema web
         await fechamentoFrentistaService.create({
             fechamento_id: fechamentoGeral.id,
             frentista_id: frentista.id,
@@ -551,7 +571,8 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
             encerrante: totalVendas,
             diferenca_calculada: diferenca,
             observacoes: closingData.observacoes,
-            posto_id: closingData.posto_id
+            posto_id: closingData.posto_id,
+            baratao: closingData.valor_baratao
         });
 
         // 8. Atualizar totais do Fechamento Geral (somar com outros frentistas se houver)

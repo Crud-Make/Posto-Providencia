@@ -48,6 +48,7 @@ export default function RegistroScreen() {
         valorPix: '',
         valorDinheiro: '',
         valorMoedas: '',
+        valorBaratao: '',
         observacoes: '',
     });
 
@@ -81,6 +82,7 @@ export default function RegistroScreen() {
             valorPix: '',
             valorDinheiro: '',
             valorMoedas: '',
+            valorBaratao: '',
             observacoes: '',
         });
         setNotasAdicionadas([]);
@@ -100,7 +102,8 @@ export default function RegistroScreen() {
     const totalCartao = parseValue(registro.valorCartaoDebito) + parseValue(registro.valorCartaoCredito);
     const totalNotas = notasAdicionadas.reduce((acc, current) => acc + current.valor_number, 0);
     const totalMoedas = parseValue(registro.valorMoedas);
-    const totalInformado = totalCartao + totalNotas + parseValue(registro.valorPix) + parseValue(registro.valorDinheiro) + totalMoedas;
+    const totalBaratao = parseValue(registro.valorBaratao);
+    const totalInformado = totalCartao + totalNotas + parseValue(registro.valorPix) + parseValue(registro.valorDinheiro) + totalMoedas + totalBaratao;
     const diferencaCaixa = valorEncerrante - totalInformado;
     const temFalta = diferencaCaixa > 0;
     const temSobra = diferencaCaixa < 0;
@@ -301,6 +304,7 @@ export default function RegistroScreen() {
                                 valor_pix: parseValue(registro.valorPix),
                                 valor_dinheiro: parseValue(registro.valorDinheiro),
                                 valor_moedas: parseValue(registro.valorMoedas),
+                                valor_baratao: parseValue(registro.valorBaratao),
                                 valor_encerrante: valorEncerrante,
                                 falta_caixa: temFalta ? diferencaCaixa : 0,
                                 observacoes: registro.observacoes,
@@ -329,6 +333,7 @@ export default function RegistroScreen() {
                                                 valorPix: '',
                                                 valorDinheiro: '',
                                                 valorMoedas: '',
+                                                valorBaratao: '',
                                                 observacoes: '',
                                             });
                                             setNotasAdicionadas([]);
