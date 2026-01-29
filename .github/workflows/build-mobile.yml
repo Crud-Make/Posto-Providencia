@@ -35,11 +35,12 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           bun install
+          cd apps/mobile && bun add -d @expo/cli
 
       - name: 🛠 Prebuild (Generate Android Folder)
         run: |
           cd apps/mobile
-          npx expo prebuild --platform android --clean
+          bun run expo prebuild --platform android --clean
 
       - name: 🔨 Build APK with Gradle
         run: |
