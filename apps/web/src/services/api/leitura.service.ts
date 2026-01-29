@@ -11,7 +11,8 @@ import type { Leitura, Bico, Combustivel, Bomba, InsertTables, UpdateTables } fr
 import {
   ApiResponse,
   createSuccessResponse,
-  createErrorResponse
+  createErrorResponse,
+  isSuccess
 } from '../../types/ui/response-types';
 
 export interface VendaPorCombustivel {
@@ -53,8 +54,7 @@ export const leituraService = {
             bomba:Bomba(*)
           )
         `)
-        .gte('data', `${data}T00:00:00`)
-        .lte('data', `${data}T23:59:59`);
+        .eq('data', data);
 
       const query = withPostoFilter(baseQuery, postoId);
 
@@ -115,9 +115,6 @@ export const leituraService = {
    */
   async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<ApiResponse<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]>> {
     try {
-      const dataInicio = `${data}T00:00:00`;
-      const dataFim = `${data}T23:59:59`;
-
       const baseQuery = supabase
         .from('Leitura')
         .select(`
@@ -128,8 +125,7 @@ export const leituraService = {
             bomba:Bomba(*)
           )
         `)
-        .gte('data', dataInicio)
-        .lte('data', dataFim)
+        .eq('data', data)
         .eq('turno_id', turnoId);
 
       const query = withPostoFilter(baseQuery, postoId);
@@ -298,38 +294,58 @@ export const leituraService = {
 
       if (error) return createErrorResponse(error.message, 'BULK_INSERT_ERROR');
 
-      // Atualiza estoque para todas as leituras
-      const bicosIds = Array.from(new Set(leituras.map(l => l.bico_id)));
+      // [29/01 13:45] Atualiza estoque para todas as leituras (com tratamento de erro)
+      try {
+        const bicosIds = Array.from(new Set(leituras.map(l => l.bico_id)));
 
-      const { data: bicosData } = await supabase
-        .from('Bico')
-        .select('id, combustivel_id')
-        .in('id', bicosIds);
+        const { data: bicosData } = await supabase
+          .from('Bico')
+          .select('id, combustivel_id')
+          .in('id', bicosIds);
 
-      if (bicosData) {
-        const bicoToCombustivel = Object.fromEntries(
-          bicosData.map(b => [b.id, b.combustivel_id])
-        );
+        if (bicosData) {
+          const bicoToCombustivel = Object.fromEntries(
+            bicosData.map(b => [b.id, b.combustivel_id])
+          );
 
-        // Agrupa litros vendidos por combustível
-        const vendasPorCombustivel: Record<number, number> = {};
-        leiturasWithCalc.forEach(l => {
-          const combId = bicoToCombustivel[l.bico_id];
-          if (combId) {
-            vendasPorCombustivel[combId] = (vendasPorCombustivel[combId] || 0) + l.litros_vendidos;
-          }
-        });
+          // Agrupa litros vendidos por combustível
+          const vendasPorCombustivel: Record<number, number> = {};
+          leiturasWithCalc.forEach(l => {
+            const combId = bicoToCombustivel[l.bico_id];
+            if (combId) {
+              vendasPorCombustivel[combId] = (vendasPorCombustivel[combId] || 0) + l.litros_vendidos;
+            }
+          });
 
-        // Atualiza o estoque de cada combustível
-        for (const [combId, totalLitros] of Object.entries(vendasPorCombustivel)) {
-          const estoqueResponse = await estoqueService.getByCombustivel(Number(combId));
-          if (estoqueResponse.success && estoqueResponse.data) {
-            const estoque = estoqueResponse.data;
-            await estoqueService.update(estoque.id, {
-              quantidade_atual: estoque.quantidade_atual - totalLitros,
-            });
+          // Atualiza o estoque de cada combustível
+          for (const [combId, totalLitros] of Object.entries(vendasPorCombustivel)) {
+            try {
+              const estoqueResponse = await estoqueService.getByCombustivel(Number(combId));
+              if (estoqueResponse.success && estoqueResponse.data) {
+                const estoque = estoqueResponse.data;
+
+                // [29/01 13:55] Use direct update without select to avoid 406 Not Acceptable
+                const { error: updateError } = await supabase
+                  .from('Estoque')
+                  .update({
+                    quantidade_atual: estoque.quantidade_atual - totalLitros,
+                    ultima_atualizacao: new Date().toISOString(),
+                  })
+                  .eq('id', estoque.id);
+
+                if (updateError) {
+                  console.warn('[29/01 13:45] Erro ao atualizar estoque do combustível', combId, updateError);
+                }
+              }
+            } catch (estoqueErr) {
+              console.warn('[29/01 13:45] Erro ao processar estoque do combustível', combId, ':', estoqueErr);
+              // Continua mesmo se falhar
+            }
           }
         }
+      } catch (estoqueError) {
+        // [29/01 13:45] Não impede o salvamento das leituras se o estoque falhar
+        console.warn('[29/01 13:45] Erro ao atualizar estoque (não crítico):', estoqueError);
       }
 
       return createSuccessResponse(data as Leitura[]);
@@ -349,8 +365,7 @@ export const leituraService = {
       const { error } = await supabase
         .from('Leitura')
         .delete()
-        .gte('data', `${data}T00:00:00`)
-        .lte('data', `${data}T23:59:59`)
+        .eq('data', data)
         .eq('turno_id', 1)
         .eq('posto_id', postoId);
 
@@ -372,8 +387,7 @@ export const leituraService = {
       const { error } = await supabase
         .from('Leitura')
         .delete()
-        .gte('data', `${data}T00:00:00`)
-        .lte('data', `${data}T23:59:59`)
+        .eq('data', data)
         .eq('turno_id', turnoId)
         .eq('posto_id', postoId);
 

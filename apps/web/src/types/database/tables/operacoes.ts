@@ -148,6 +148,12 @@ export interface FechamentoTable {
     updatedAt: string
     usuario_id: number
     posto_id: number
+    lucro_bruto: number
+    custo_combustiveis: number
+    taxas_pagamento: number
+    lucro_liquido: number
+    margem_bruta_percentual: number
+    margem_liquida_percentual: number
   }
   Insert: {
     createdAt?: string
@@ -162,6 +168,12 @@ export interface FechamentoTable {
     updatedAt?: string
     usuario_id: number
     posto_id: number
+    lucro_bruto?: number
+    custo_combustiveis?: number
+    taxas_pagamento?: number
+    lucro_liquido?: number
+    margem_bruta_percentual?: number
+    margem_liquida_percentual?: number
   }
   Update: {
     createdAt?: string
@@ -176,6 +188,12 @@ export interface FechamentoTable {
     updatedAt?: string
     usuario_id?: number
     posto_id?: number
+    lucro_bruto?: number
+    custo_combustiveis?: number
+    taxas_pagamento?: number
+    lucro_liquido?: number
+    margem_bruta_percentual?: number
+    margem_liquida_percentual?: number
   }
   Relationships: [
     {

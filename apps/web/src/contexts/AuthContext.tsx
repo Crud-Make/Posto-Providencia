@@ -1,40 +1,68 @@
+/**
+ * Contexto de Autenticação
+ * @module AuthContext
+ * @description Gerencia estado de autenticação e sessão do usuário
+ * @remarks Utiliza mock user por padrão para modo desenvolvimento sem login
+ */
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { Usuario } from '../types/database/index';
+import { UsuarioTable } from '../types/database/tables/infraestrutura';
 import { Session } from '@supabase/supabase-js';
 import { AuthResponse } from '../types/supabase-errors';
 
+/**
+ * Tipo de usuário baseado no schema do banco de dados
+ * @typedef {UsuarioTable['Row']} Usuario
+ */
+type Usuario = UsuarioTable['Row'];
+
+/**
+ * Interface do Contexto de Autenticação
+ * @interface AuthContextType
+ */
 interface AuthContextType {
+    /** Sessão atual do Supabase */
     session: Session | null;
+    /** Dados do usuário logado */
     user: Usuario | null;
+    /** Estado de carregamento */
     loading: boolean;
+    /** Função de login */
     signIn: (email: string, password: string) => Promise<AuthResponse>;
+    /** Função de registro */
     signUp: (email: string, password: string, fullName: string) => Promise<AuthResponse>;
+    /** Função de logout */
     signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// MOCK USER for "No Login Needed" mode
+// [29/01 13:30] MOCK user para desenvolvimento sem autenticação obrigatória
 const MOCK_ADMIN_USER: Usuario = {
-    id: 999,
-    nome: 'Administrador (Auto)',
-    email: 'admin@postoprovidencia.com.br',
+    id: 1,
+    nome: 'Administrador',
+    email: 'admin@postoprovidencia.com',
     role: 'ADMIN',
     ativo: true,
-    senha: '', // Required by schema but never exposed
+    senha: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
 };
 
+/**
+ * Provider de Autenticação
+ * @param children - Componentes filhos que terão acesso ao contexto
+ * @returns JSX.Element - Provider com contexto de autenticação
+ * @remarks Inicializa com MOCK_ADMIN_USER para desenvolvimento
+ */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [session, setSession] = useState<Session | null>(null);
-    const [user, setUser] = useState<Usuario | null>(MOCK_ADMIN_USER); // Default to mock user
-    const [loading, setLoading] = useState(false); // No loading since we have a mock user
+    const [user, setUser] = useState<Usuario | null>(MOCK_ADMIN_USER); // [29/01 13:35] Usuário mock como padrão
+    const [loading, setLoading] = useState(false); // [29/01 13:35] Sem loading pois temos mock user
 
     useEffect(() => {
-        // We keep the background auth check just in case the user actually signs in
-        // or if we want to switch back easily later.
+        // [29/01 13:35] Mantém verificação de auth em background caso usuário faça login real
+        // ou se quisermos voltar facilmente depois
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user.email) {
                 setSession(session);
@@ -49,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setSession(session);
                 fetchUserProfile(session.user.email);
             } else {
-                // Return to mock user on sign out
+                // [29/01 13:35] Retorna ao mock user ao fazer logout
                 setSession(null);
                 setUser(MOCK_ADMIN_USER);
                 setLoading(false);
@@ -59,7 +87,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => subscription.unsubscribe();
     }, []);
 
-    const fetchUserProfile = async (email: string) => {
+    /**
+     * Busca o perfil do usuário no banco de dados
+     * @param email - Email do usuário para buscar
+     * @returns Promise<void>
+     * @remarks Fallback para MOCK_ADMIN_USER em caso de erro
+     */
+    const fetchUserProfile = async (email: string): Promise<void> => {
         try {
             setLoading(true);
             const { data, error } = await supabase
@@ -69,27 +103,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .single();
 
             if (error) {
-                console.error('Error fetching user profile:', error);
-                // Keep mock user on error
+                console.error('Erro ao buscar perfil do usuário:', error);
                 setUser(MOCK_ADMIN_USER);
                 return;
             }
 
             if (data) {
-                setUser(data);
+                setUser(data as Usuario);
             } else {
-                console.warn('User not found in database');
+                console.warn('Usuário não encontrado no banco de dados');
                 setUser(MOCK_ADMIN_USER);
             }
         } catch (err) {
-            console.error('Unexpected error fetching user:', err);
+            console.error('Erro inesperado ao buscar usuário:', err);
             setUser(MOCK_ADMIN_USER);
         } finally {
             setLoading(false);
         }
     };
 
-    const signIn = async (email: string, password: string) => {
+    /**
+     * Realiza login do usuário
+     * @param email - Email do usuário
+     * @param password - Senha do usuário
+     * @returns Promise<AuthResponse> - Resposta com erro se houver
+     */
+    const signIn = async (email: string, password: string): Promise<AuthResponse> => {
         const { error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -97,7 +136,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
     };
 
-    const signUp = async (email: string, password: string, fullName: string) => {
+    /**
+     * Registra um novo usuário
+     * @param email - Email do novo usuário
+     * @param password - Senha do novo usuário
+     * @param fullName - Nome completo do usuário
+     * @returns Promise<AuthResponse> - Resposta com erro se houver
+     * @remarks A senha é gerenciada pelo Supabase Auth, não armazenada na tabela Usuario
+     */
+    const signUp = async (email: string, password: string, fullName: string): Promise<AuthResponse> => {
         const { error: signUpError } = await supabase.auth.signUp({
             email,
             password,
@@ -105,15 +152,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (signUpError) return { error: signUpError };
 
-        // Note: Password is managed by Supabase Auth, not stored in Usuario table
-        // The 'senha' field in Usuario table should be removed from the schema
         const { error: profileError } = await supabase
             .from('Usuario')
             .upsert([
                 {
                     email,
                     nome: fullName,
-                    senha: '', // Empty string as placeholder - should be removed from schema
+                    senha: '',
                     ativo: true,
                     role: 'ADMIN'
                 }
@@ -122,10 +167,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: profileError };
     };
 
-    const signOut = async () => {
+    /**
+     * Realiza logout do usuário
+     * @returns Promise<void>
+     * @remarks Retorna ao MOCK_ADMIN_USER após logout
+     */
+    const signOut = async (): Promise<void> => {
         await supabase.auth.signOut();
         setSession(null);
-        setUser(MOCK_ADMIN_USER); // Go back to default mock
+        setUser(MOCK_ADMIN_USER);
     };
 
     return (
@@ -135,10 +185,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 };
 
-export const useAuth = () => {
+/**
+ * Hook para acessar o contexto de autenticação
+ * @returns AuthContextType - Contexto de autenticação com session, user, loading e funções
+ * @throws Error - Se usado fora do AuthProvider
+ * @example
+ * const { user, signIn, signOut } = useAuth();
+ */
+export const useAuth = (): AuthContextType => {
     const context = useContext(AuthContext);
     if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
+        throw new Error('useAuth deve ser usado dentro de um AuthProvider');
     }
     return context;
 };

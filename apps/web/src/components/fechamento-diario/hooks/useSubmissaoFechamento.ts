@@ -25,6 +25,7 @@ interface SubmissaoParams {
    podeFechar: boolean;
    observacoes: string;
    limparAutoSave: () => void;
+   onSuccess?: () => void;
 }
 
 /**
@@ -206,11 +207,19 @@ export function useSubmissaoFechamento() {
          }
 
          setSuccess('Fechamento realizado com sucesso!');
-         limparAutoSave();
+         console.log('[29/01 13:40] Fechamento salvo com sucesso, aguardando persistência no banco...');
 
-         // Recarrega a página após sucesso
+         // [29/01 13:40] Aguarda 500ms para garantir persistência no banco antes de limpar
+         await new Promise(resolve => setTimeout(resolve, 500));
+
+         limparAutoSave();
+         console.log('[29/01 13:40] AutoSave limpo, atualizando visualização...');
+
+         // [29/01 14:10] Em vez de recarregar a página, chama callback para atualizar dados em tela
          setTimeout(() => {
-            window.location.reload();
+            if (params.onSuccess) {
+               params.onSuccess();
+            }
          }, 1500);
 
       } catch (err: unknown) {
