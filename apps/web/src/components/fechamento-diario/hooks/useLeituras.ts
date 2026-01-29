@@ -234,8 +234,11 @@ export const useLeituras = (
     setCarregando(true);
     setErro(null);
 
+
     try {
       let dadosRes: LeituraPorDataResponse;
+
+
 
       if (turnoSelecionado) {
         // [18/01 00:00] Checar success e extrair data do ApiResponse
@@ -245,6 +248,7 @@ export const useLeituras = (
           turnoSelecionado,
           postoId
         );
+
       } else {
         // Se não tem turno selecionado, busca todas do dia
         // Nota: isso assume que para visualização diária queremos todas as leituras
@@ -254,17 +258,20 @@ export const useLeituras = (
           dataSelecionada,
           postoId
         );
+
       }
 
       if (!isSuccess(dadosRes)) {
         // [18/01 00:00] Tratar erro de ApiResponse sem quebrar UI
         // Motivo: Evitar acesso a .length em ErrorResponse
+        console.error('❌ [useLeituras] Erro ao buscar leituras:', dadosRes.error);
         setErro(dadosRes.error);
         setLeituras({});
         return;
       }
 
       const dados = dadosRes.data;
+
 
       if (dados.length > 0) {
         // Modo edição: usa leituras existentes
@@ -276,7 +283,7 @@ export const useLeituras = (
           return acc;
         }, {} as Record<number, Leitura>);
         setLeituras(mapeado);
-        console.log('✅ Leituras existentes carregadas');
+
       } else {
         // Modo criação: busca última leitura para inicializar
         // [18/01 00:00] Checar success e extrair data do ApiResponse
@@ -298,7 +305,7 @@ export const useLeituras = (
           return acc;
         }, {} as Record<number, Leitura>);
         setLeituras(mapeado);
-        console.log('✅ Leituras inicializadas com última leitura');
+
       }
 
       ultimoContextoCarregado.current = {
