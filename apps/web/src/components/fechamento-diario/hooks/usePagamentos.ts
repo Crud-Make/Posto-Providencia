@@ -83,12 +83,15 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
           const detalhesRes = await fechamentoService.getWithDetails(fechamentoRes.data.id);
 
           if (isSuccess(detalhesRes) && detalhesRes.data.recebimentos) {
+            // [29/01 13:40] Recebimentos carregados do banco
+            console.log('[29/01 13:40] Recebimentos carregados do banco:', detalhesRes.data.recebimentos.length, 'registros');
             detalhesRes.data.recebimentos.forEach((r: any) => {
               // Recebimento deve ter forma_pagamento_id
               if (r.forma_pagamento_id) {
                 valoresSalvos[r.forma_pagamento_id] = r.valor;
               }
             });
+            console.log('[29/01 13:40] Valores salvos mapeados:', Object.keys(valoresSalvos).length, 'formas de pagamento');
           }
         }
       }

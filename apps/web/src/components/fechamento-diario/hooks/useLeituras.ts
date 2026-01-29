@@ -274,7 +274,8 @@ export const useLeituras = (
 
 
       if (dados.length > 0) {
-        // Modo edição: usa leituras existentes
+        // [29/01 13:40] Modo edição: usa leituras existentes
+        console.log('[29/01 13:40] Leituras carregadas do banco:', dados.length, 'registros');
         const mapeado = dados.reduce((acc, l) => {
           acc[l.bico_id] = {
             inicial: formatarParaBR(l.leitura_inicial, 3),
@@ -283,6 +284,7 @@ export const useLeituras = (
           return acc;
         }, {} as Record<number, Leitura>);
         setLeituras(mapeado);
+        console.log('[29/01 13:40] Leituras mapeadas para estado:', Object.keys(mapeado).length, 'bicos');
 
       } else {
         // Modo criação: busca última leitura para inicializar
