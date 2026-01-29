@@ -36,6 +36,13 @@ export const leituraService = {
    */
   async getByDate(data: string, postoId?: number): Promise<ApiResponse<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]>> {
     try {
+      console.log('🔍 [leituraService.getByDate] Parâmetros:', {
+        data,
+        postoId,
+        dataInicio: `${data}T00:00:00`,
+        dataFim: `${data}T23:59:59`
+      });
+
       const baseQuery = supabase
         .from('Leitura')
         .select(`
@@ -46,15 +53,24 @@ export const leituraService = {
             bomba:Bomba(*)
           )
         `)
-        .eq('data', data);
+        .gte('data', `${data}T00:00:00`)
+        .lte('data', `${data}T23:59:59`);
 
       const query = withPostoFilter(baseQuery, postoId);
 
       const { data: leituras, error } = await query.order('id');
+
+      console.log('📊 [leituraService.getByDate] Resultado:', {
+        totalLeituras: leituras?.length || 0,
+        error: error?.message,
+        primeiraLeitura: leituras?.[0]
+      });
+
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
 
       return createSuccessResponse((leituras || []) as (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]);
     } catch (err) {
+      console.error('❌ [leituraService.getByDate] Exceção:', err);
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
   },
@@ -99,6 +115,9 @@ export const leituraService = {
    */
   async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<ApiResponse<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]>> {
     try {
+      const dataInicio = `${data}T00:00:00`;
+      const dataFim = `${data}T23:59:59`;
+
       const baseQuery = supabase
         .from('Leitura')
         .select(`
@@ -109,13 +128,17 @@ export const leituraService = {
             bomba:Bomba(*)
           )
         `)
-        .eq('data', data)
+        .gte('data', dataInicio)
+        .lte('data', dataFim)
         .eq('turno_id', turnoId);
 
       const query = withPostoFilter(baseQuery, postoId);
 
       const { data: leituras, error } = await query.order('id');
-      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
+
+      if (error) {
+        return createErrorResponse(error.message, 'FETCH_ERROR');
+      }
 
       return createSuccessResponse((leituras as unknown as (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]) || []);
     } catch (err) {

@@ -150,10 +150,15 @@ export const fechamentoService = {
         postoId?: number
     ): Promise<Fechamento> {
         // Primeiro tenta buscar um fechamento existente
+        // Ajuste para lidar com coluna timestamp (igual ao web)
+        const dataInicio = `${data}T00:00:00`;
+        const dataFim = `${data}T23:59:59`;
+
         let query = supabase
             .from('Fechamento')
             .select('*')
-            .eq('data', data)
+            .gte('data', dataInicio)
+            .lte('data', dataFim)
             .eq('turno_id', turnoId);
 
         if (postoId) {
@@ -463,7 +468,7 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
                     .select('id')
                     .limit(1)
                     .single();
-                
+
                 if (fallbackUser) {
                     usuarioIdParaRegistro = fallbackUser.id;
                 }

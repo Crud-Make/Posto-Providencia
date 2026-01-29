@@ -89,7 +89,6 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
                 valoresSalvos[r.forma_pagamento_id] = r.valor;
               }
             });
-            console.log('✅ Pagamentos salvos carregados do banco');
           }
         }
       }
