@@ -81,9 +81,9 @@ export function FormasPagamentoList({ registro, onChange }: FormasPagamentoListP
     return (
         <View className="px-4 mt-6">
             {FORMAS_PAGAMENTO.map(renderInputField)}
-            
+
             {/* Input separado para Moedas (não está na lista principal de constantes com ícone específico no design original, mas pode ser adicionado) */}
-             <View className="mb-4">
+            <View className="mb-4">
                 <View
                     className="flex-row items-center bg-white rounded-2xl border-2 border-gray-100 overflow-hidden"
                     style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
@@ -91,9 +91,9 @@ export function FormasPagamentoList({ registro, onChange }: FormasPagamentoListP
                     <View
                         className="p-4 items-center justify-center bg-yellow-50"
                     >
-                         {/* Reutilizando Banknote ou criando um ícone de moeda se necessário, aqui usando Banknote genérico */}
-                         {/* Na verdade o Lucide tem 'Coins' */}
-                         <Text className="text-2xl">🪙</Text>
+                        {/* Reutilizando Banknote ou criando um ícone de moeda se necessário, aqui usando Banknote genérico */}
+                        {/* Na verdade o Lucide tem 'Coins' */}
+                        <Text className="text-2xl">🪙</Text>
                     </View>
                     <View className="flex-1 px-4">
                         <Text className="text-xs text-gray-400 font-medium">Moedas</Text>
@@ -105,6 +105,34 @@ export function FormasPagamentoList({ registro, onChange }: FormasPagamentoListP
                                 placeholderTextColor="#d1d5db"
                                 value={registro.valorMoedas}
                                 onChangeText={(text) => onChange('valorMoedas', text)}
+                                keyboardType="decimal-pad"
+                            />
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+            {/* Input separado para Baratão */}
+            <View className="mb-4">
+                <View
+                    className="flex-row items-center bg-white rounded-2xl border-2 border-gray-100 overflow-hidden"
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
+                >
+                    <View
+                        className="p-4 items-center justify-center bg-purple-50"
+                    >
+                        <Text className="text-2xl">🏷️</Text>
+                    </View>
+                    <View className="flex-1 px-4">
+                        <Text className="text-xs text-gray-400 font-medium">Baratão</Text>
+                        <View className="flex-row items-center">
+                            <Text className="text-gray-500 text-lg font-medium mr-1">R$</Text>
+                            <TextInput
+                                className="flex-1 text-xl font-bold text-gray-800 py-2"
+                                placeholder="0,00"
+                                placeholderTextColor="#d1d5db"
+                                value={registro.valorBaratao}
+                                onChangeText={(text) => onChange('valorBaratao', text)}
                                 keyboardType="decimal-pad"
                             />
                         </View>

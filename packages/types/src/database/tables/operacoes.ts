@@ -76,6 +76,7 @@ export interface Fechamento {
 
 /**
  * Interface representando os detalhes do Fechamento por Frentista
+ * @remarks Sincronizado com web e mobile - [29/01 11:39] Adicionado baratao para compatibilidade com web
  */
 export interface FechamentoFrentista {
     id: number;
@@ -94,6 +95,7 @@ export interface FechamentoFrentista {
     posto_id: number;
     encerrante: number | null;
     diferenca_calculada: number | null;
+    baratao: number | null;
 }
 
 /**

@@ -109,6 +109,12 @@ export function ResumoCard({
                                 <Text className="text-xs font-medium text-gray-600">{formatCurrency(parseValue(registro.valorMoedas))}</Text>
                             </View>
                         )}
+                        {parseValue(registro.valorBaratao) > 0 && (
+                            <View className="flex-row justify-between items-center mb-1">
+                                <Text className="text-gray-400 text-xs">Baratão</Text>
+                                <Text className="text-xs font-medium text-gray-600">{formatCurrency(parseValue(registro.valorBaratao))}</Text>
+                            </View>
+                        )}
 
                     </View>
 

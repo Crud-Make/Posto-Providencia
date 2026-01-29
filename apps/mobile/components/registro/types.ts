@@ -25,7 +25,7 @@ export interface NotaItem {
     /** Nome do cliente para exibição */
     cliente_nome: string;
     /** Valor formatado como string para exibição */
-    valor: string; 
+    valor: string;
     /** Valor numérico para cálculos */
     valor_number: number;
 }
@@ -47,6 +47,8 @@ export interface RegistroTurno {
     valorDinheiro: string;
     /** Total em moedas */
     valorMoedas: string;
+    /** Total em Baratão */
+    valorBaratao: string;
     /** Observações gerais do fechamento */
     observacoes: string;
 }
