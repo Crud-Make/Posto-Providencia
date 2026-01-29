@@ -12,7 +12,7 @@
 // [18/01 00:00] Adaptar consumo do fechamentoFrentistaService para ApiResponse
 // Motivo: Services agora retornam { success, data, error } (Smart Types)
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
@@ -92,6 +92,10 @@ export const useSessoesFrentistas = (
 ): RetornoSessoesFrentistas => {
   const [sessoes, setSessoes] = useState<SessaoFrentista[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const ultimoContextoCarregado = useRef<{ data: string; turno: number | null }>({
+    data: '',
+    turno: null
+  });
 
   /**
    * Carrega sessões existentes do banco
@@ -101,6 +105,14 @@ export const useSessoesFrentistas = (
    */
   const carregarSessoes = useCallback(async (data: string, turno: number) => {
     if (!postoId) return;
+
+    // [29/01 13:40] Evita recarregar se já carregou para este contexto
+    if (
+      ultimoContextoCarregado.current.data === data &&
+      ultimoContextoCarregado.current.turno === turno
+    ) {
+      return;
+    }
 
     setCarregando(true);
     try {
@@ -121,6 +133,8 @@ export const useSessoesFrentistas = (
       const dados = dadosRes.data;
 
       if (dados.length > 0) {
+        // [29/01 13:40] Sessões de frentistas carregadas do banco
+        console.log('[29/01 13:40] Sessões de frentistas carregadas do banco:', dados.length, 'registros');
         const mapeadas: SessaoFrentista[] = dados.map(fs => ({
           tempId: `existing-${fs.id}`,
           frentistaId: fs.frentista_id,
@@ -139,7 +153,7 @@ export const useSessoesFrentistas = (
           data_hora_envio: fs.data_hora_envio
         }));
         setSessoes(mapeadas);
-        console.log('✅ Sessões de frentistas carregadas');
+        console.log('[29/01 13:40] Sessões de frentistas mapeadas:', mapeadas.length, 'frentistas');
       } else {
         // [20/01 11:55] Se não houver sessões salvas, carrega frentistas ativos
         // Motivo: Usuário deseja que os frentistas ativos apareçam automaticamente na nova tela
@@ -170,6 +184,12 @@ export const useSessoesFrentistas = (
           console.log('✅ Sem envios e sem frentistas ativos');
         }
       }
+
+      // [29/01 13:40] Atualiza contexto carregado
+      ultimoContextoCarregado.current = {
+        data,
+        turno
+      };
     } catch (err) {
       console.error('❌ Erro ao carregar sessões:', err);
       setSessoes([]);

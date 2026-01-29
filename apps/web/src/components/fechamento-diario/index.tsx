@@ -82,7 +82,7 @@ const TelaFechamentoDiario: React.FC = () => {
       leituras, sessoesFrentistas: frentistaSessions, carregando: loading, salvando: false
    });
 
-   const { saving, error, success, handleSave } = useSubmissaoFechamento();
+   const { saving, error, success, handleSave, setSuccess } = useSubmissaoFechamento();
 
    // --- Efeitos ---
    useEffect(() => {
@@ -97,7 +97,7 @@ const TelaFechamentoDiario: React.FC = () => {
    }, [turnos, selectedTurno]);
 
    useEffect(() => {
-      if (restaurado) {
+      if (restaurado && !saving && !success) {
          if (rascunhoRestaurado) {
             if (rascunhoRestaurado.leituras) definirLeituras(rascunhoRestaurado.leituras);
             if (rascunhoRestaurado.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
@@ -107,15 +107,15 @@ const TelaFechamentoDiario: React.FC = () => {
             if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
          }
       }
-   }, [restaurado, rascunhoRestaurado, carregarLeituras, definirLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
+   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, definirLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
 
    useEffect(() => {
-      if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado) {
+      if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado && !saving && !success) {
          carregarLeituras();
          carregarSessoes(selectedDate, selectedTurno);
          carregarPagamentos(selectedDate, selectedTurno);
       }
-   }, [selectedDate, selectedTurno, restaurado, rascunhoRestaurado, carregarLeituras, carregarSessoes, carregarPagamentos]);
+   }, [selectedDate, selectedTurno, restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos]);
 
    // --- Render ---
    if (!user) return <div className="p-8 text-center text-slate-300">Carregando usuário...</div>;
@@ -183,7 +183,28 @@ const TelaFechamentoDiario: React.FC = () => {
 
          <FooterAcoes
             totalVendas={totalVendas} totalFrentistas={totalFrentistas} diferenca={diferenca} saving={saving} podeFechar={podeFechar}
-            handleSave={() => handleSave({ selectedDate, selectedTurno, bicos, leituras, sessoesFrentistas: frentistaSessions, payments, totalVendas, totalFrentistas, diferenca, podeFechar, observacoes, limparAutoSave })}
+            handleSave={() => handleSave({
+               selectedDate,
+               selectedTurno,
+               bicos,
+               leituras,
+               sessoesFrentistas: frentistaSessions,
+               payments,
+               totalVendas,
+               totalFrentistas,
+               diferenca,
+               podeFechar,
+               observacoes,
+               limparAutoSave,
+               onSuccess: () => {
+                  setSuccess(null);
+                  carregarLeituras();
+                  if (selectedDate && selectedTurno) {
+                     carregarSessoes(selectedDate, selectedTurno);
+                     carregarPagamentos(selectedDate, selectedTurno);
+                  }
+               }
+            })}
          />
       </div>
    );

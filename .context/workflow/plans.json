@@ -1,13 +1,13 @@
 {
   "active": [
     {
-      "slug": "gestao-despesas-janeiro-2026",
-      "path": "plans/gestao-despesas-janeiro-2026.md",
-      "title": "📋 Plano: Gestão de Despesas e Lucro Janeiro 2026",
-      "linkedAt": "2026-01-27T11:17:19.400Z",
+      "slug": "fix-fechamento-save-table-clearing",
+      "path": "plans/fix-fechamento-save-table-clearing.md",
+      "title": "Plan: Fix Fechamento Table Clearing on Save",
+      "linkedAt": "2026-01-29T14:02:21.581Z",
       "status": "active"
     }
   ],
   "completed": [],
-  "primary": "gestao-despesas-janeiro-2026"
+  "primary": "fix-fechamento-save-table-clearing"
 }
