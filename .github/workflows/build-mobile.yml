@@ -20,8 +20,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          cache-dependency-path: apps/mobile/package-lock.json
 
       - name: 🏗 Setup Java
         uses: actions/setup-java@v4
@@ -32,6 +30,11 @@ jobs:
       - name: 🏗 Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: 🗑️ Remove legacy expo-cli
+        run: |
+          npm uninstall -g expo-cli || true
+          rm -rf /opt/hostedtoolcache/node/20.20.0/x64/lib/node_modules/expo-cli || true
+
       - name: 📦 Install dependencies
         run: |
           bun install
@@ -40,7 +43,7 @@ jobs:
       - name: 🛠 Prebuild (Generate Android Folder)
         run: |
           cd apps/mobile
-          bun run expo prebuild --platform android --clean
+          ./node_modules/.bin/expo prebuild --platform android --clean
 
       - name: 🔨 Build APK with Gradle
         run: |
