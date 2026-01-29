@@ -227,8 +227,11 @@ export interface FechamentoFrentistaTable {
     id: number
     observacoes: string | null
     valor_cartao: number
+    valor_cartao_debito: number
+    valor_cartao_credito: number
     valor_conferido: number
     valor_dinheiro: number
+    valor_moedas: number
     valor_nota: number
     valor_pix: number
     encerrante: number
@@ -242,8 +245,11 @@ export interface FechamentoFrentistaTable {
     id?: number
     observacoes?: string | null
     valor_cartao?: number
+    valor_cartao_debito?: number
+    valor_cartao_credito?: number
     valor_conferido?: number
     valor_dinheiro?: number
+    valor_moedas?: number
     valor_nota?: number
     valor_pix?: number
     encerrante?: number
@@ -257,8 +263,11 @@ export interface FechamentoFrentistaTable {
     id?: number
     observacoes?: string | null
     valor_cartao?: number
+    valor_cartao_debito?: number
+    valor_cartao_credito?: number
     valor_conferido?: number
     valor_dinheiro?: number
+    valor_moedas?: number
     valor_nota?: number
     valor_pix?: number
     encerrante?: number
