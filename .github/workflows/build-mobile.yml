@@ -2,7 +2,7 @@ name: Build Mobile APK (Debug)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/android-native-rebuild ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
