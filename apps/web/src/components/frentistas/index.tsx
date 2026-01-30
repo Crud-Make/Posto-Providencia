@@ -109,8 +109,8 @@ const TelaGestaoFrentistas: React.FC = () => {
                             key={status}
                             onClick={() => setFiltroStatus(status)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filtroStatus === status
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                                 }`}
                         >
                             {status}
@@ -120,18 +120,23 @@ const TelaGestaoFrentistas: React.FC = () => {
             </div>
 
             {/* Conteúdo Principal */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
                 {/* Lista (Esquerda) */}
-                <div className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden h-fit max-h-[calc(100vh-300px)] overflow-y-auto custom-scrollbar">
-                    <ListaFrentistas
-                        frentistas={frentistasFiltrados}
-                        frentistaSelecionadoId={frentistaSelecionadoId}
-                        onSelecionar={setFrentistaSelecionadoId}
-                    />
+                <div className="lg:col-span-1 bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 dark:border-slate-700/50 bg-gray-50/50 dark:bg-slate-800/80">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Colaboradores</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <ListaFrentistas
+                            frentistas={frentistasFiltrados}
+                            frentistaSelecionadoId={frentistaSelecionadoId}
+                            onSelecionar={setFrentistaSelecionadoId}
+                        />
+                    </div>
                 </div>
 
-                {/* Detalhes (Direita - Ocupa 2 colunas) */}
-                <div className="lg:col-span-2">
+                {/* Detalhes (Direita) */}
+                <div className="lg:col-span-3 h-full">
                     {frentistaSelecionado ? (
                         <DetalhesFrentista
                             frentista={frentistaSelecionado}
@@ -139,9 +144,12 @@ const TelaGestaoFrentistas: React.FC = () => {
                             onExcluir={handleExcluirFrentista}
                         />
                     ) : (
-                        <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-slate-700">
-                            <Users size={48} className="mb-4 opacity-50" />
-                            <p className="font-medium">Selecione um colaborador para ver detalhes</p>
+                        <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 bg-white/30 dark:bg-slate-800/20 rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-700/50 backdrop-blur-sm">
+                            <div className="w-20 h-20 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                                <Users size={40} className="opacity-30" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-2">Painel de Detalhes</h3>
+                            <p className="text-center max-w-xs text-gray-500">Selecione um colaborador na lista ao lado para gerenciar as informações, históricos e status.</p>
                         </div>
                     )}
                 </div>
