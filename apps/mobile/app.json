@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Posto Providência - Frentista",
+    "slug": "posto-frentista",
+    "scheme": "posto-frentista",
+    "version": "1.6.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#b91c1c"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.postoProvidencia.frentista"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#b91c1c"
+      },
+      "package": "com.postoProvidencia.frentista",
+      "googleServicesFile": "./google-services.json",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#b91c1c",
+          "defaultChannel": "default"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#b91c1c",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Posto Providência"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e62f5bc8-d8ea-42cc-82b2-8fddace513db"
+      }
+    },
+    "runtimeVersion": "1.6.0",
+    "updates": {
+      "url": "https://u.expo.dev/e62f5bc8-d8ea-42cc-82b2-8fddace513db"
+    }
+  }
+}
