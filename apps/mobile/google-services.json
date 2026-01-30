@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "250172483548",
+    "project_id": "posto-181d4",
+    "storage_bucket": "posto-181d4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:250172483548:android:0c7dd9699986410ea31119",
+        "android_client_info": {
+          "package_name": "com.postoProvidencia.frentista"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvzT5efyHzZqY1D5Poh51xMgRlERz5kP0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
