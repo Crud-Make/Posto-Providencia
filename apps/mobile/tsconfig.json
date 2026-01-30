@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"noEmit": true,
+		"baseUrl": "..",
+		"jsx": "react-jsx",
+		"moduleResolution": "node",
+		"paths": {
+			"@posto/types": [
+				"packages/types/src"
+			],
+			"@posto/types/*": [
+				"packages/types/src/*"
+			]
+		}
+	}
+}

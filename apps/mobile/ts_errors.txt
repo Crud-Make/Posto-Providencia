@@ -1,0 +1,17 @@
+/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:123168
+      throw e;
+      ^
+
+RangeError: Maximum call stack size exceeded
+    at checkPropertyAccessExpression (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:74931:41)
+    at checkExpressionWorker (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:80937:16)
+    at checkExpression (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:80846:32)
+    at checkNonNullExpression (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:74853:29)
+    at getEffectsSignature (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:70090:22)
+    at getTypeAtFlowCall (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:70442:25)
+    at getTypeAtFlowNode (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:70324:18)
+    at getFlowTypeOfReference (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:70281:45)
+    at checkIdentifier (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:72066:134)
+    at checkExpressionWorker (/home/thyago/Documentos/posto/mobile/node_modules/typescript/lib/_tsc.js:80903:16)
+
+Node.js v24.11.1
