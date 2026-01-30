@@ -25,7 +25,7 @@ interface HeaderCardProps {
 export function HeaderCard({ frentistaId, userName, postoNome, onPressSelect }: HeaderCardProps) {
     return (
         <View
-            className="mx-4 mt-4 p-5 bg-white rounded-3xl border border-gray-100"
+            className="mx-4 mt-4 p-5 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800"
             style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}
         >
             <View className="flex-row items-center justify-between">
@@ -40,7 +40,7 @@ export function HeaderCard({ frentistaId, userName, postoNome, onPressSelect }: 
                             className="flex-row items-center gap-1"
                             activeOpacity={0.7}
                         >
-                            <Text className="text-lg font-bold text-gray-800">
+                            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
                                 {frentistaId ? `Olá, ${userName}!` : 'Selecionar Frentista'}
                             </Text>
                             <ChevronDown size={16} color="#4b5563" />
@@ -49,8 +49,8 @@ export function HeaderCard({ frentistaId, userName, postoNome, onPressSelect }: 
                     </View>
                 </View>
                 {/* Badge de Modo Diário (apenas informativo, não clicável) */}
-                <View className="bg-gray-100 px-3 py-1.5 rounded-full">
-                    <Text className="text-gray-600 font-bold text-xs">Diário</Text>
+                <View className="bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+                    <Text className="text-gray-600 dark:text-gray-400 font-bold text-xs">Diário</Text>
                 </View>
             </View>
         </View>
