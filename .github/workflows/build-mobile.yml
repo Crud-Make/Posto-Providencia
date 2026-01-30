@@ -20,11 +20,34 @@ jobs:
         with:
           bun-version: latest
 
+      - name: 📦 Get bun store directory
+        id: bun-cache
+        run: |
+          echo "STORE_PATH=$(bun pm cache)" >> $GITHUB_OUTPUT
+
+      - name: ⚡️ Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.bun-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: 🏗 Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
+
+      - name: ⚡️ Cache Gradle wrapper and dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: 🏗 Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -40,7 +63,7 @@ jobs:
         working-directory: apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
