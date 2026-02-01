@@ -20,6 +20,7 @@ interface TabLeiturasProps {
       calcLitros: (id: number) => { value: number; display: string };
       alterarCampoFrentista?: (tempId: string, campo: any, valor: string) => void;
       aoSairCampoFrentista?: (tempId: string, campo: any, valor: string) => void;
+      removerFrentista?: (tempId: string) => void;
    };
    onUpdatePrice: (bicoId: number, newPrice: number) => void;
 }
@@ -58,6 +59,8 @@ export const TabLeituras: React.FC<TabLeiturasProps> = ({
                onRefresh={onRefreshSessoes}
                loading={loading}
                onUpdateCampo={handlers.alterarCampoFrentista}
+               onBlurCampo={handlers.aoSairCampoFrentista}
+               onRemoverSessao={handlers.removerFrentista}
             />
          </div>
       </div>
