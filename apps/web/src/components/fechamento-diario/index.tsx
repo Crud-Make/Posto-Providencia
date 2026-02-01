@@ -66,7 +66,7 @@ const TelaFechamentoDiario: React.FC = () => {
 
    const {
       sessoes: frentistaSessions, carregando: loadingSessoes, totais: frentistasTotals,
-      carregarSessoes, alterarCampoFrentista, aoSairCampoFrentista, definirSessoes
+      carregarSessoes, alterarCampoFrentista, aoSairCampoFrentista, definirSessoes, removerFrentista
    } = useSessoesFrentistas(postoAtivoId, frentistas);
 
    const {
@@ -143,7 +143,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      }}
                      handlers={{
                         alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros,
-                        alterarCampoFrentista, aoSairCampoFrentista
+                        alterarCampoFrentista, aoSairCampoFrentista, removerFrentista
                      }}
                      onUpdatePrice={updateBicoPrice}
                   />

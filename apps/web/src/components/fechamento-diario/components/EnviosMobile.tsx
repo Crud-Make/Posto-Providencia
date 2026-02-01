@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { RefreshCcw, Smartphone } from 'lucide-react';
+import { RefreshCcw, Smartphone, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
@@ -11,9 +11,19 @@ interface EnviosMobileProps {
   onRefresh?: () => void;
   loading?: boolean;
   onUpdateCampo?: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
+  onBlurCampo?: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
+  onRemoverSessao?: (tempId: string) => void;
 }
 
-export const EnviosMobile: React.FC<EnviosMobileProps> = ({ sessoes, frentistas, onRefresh, loading, onUpdateCampo }) => {
+export const EnviosMobile: React.FC<EnviosMobileProps> = ({
+  sessoes,
+  frentistas,
+  onRefresh,
+  loading,
+  onUpdateCampo,
+  onBlurCampo,
+  onRemoverSessao
+}) => {
   const sessoesComFrentista = React.useMemo(() => sessoes.filter(s => s.frentistaId), [sessoes]);
 
   return (
@@ -62,6 +72,7 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({ sessoes, frentistas,
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Nota/Vale</th>
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Baratão</th>
                 <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Total</th>
+                <th className="px-4 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider w-10">Ações</th>
               </tr>
             </thead>
             <tbody className="bg-slate-800 divide-y divide-slate-700/50">
@@ -96,13 +107,28 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({ sessoes, frentistas,
                           inputMode="decimal"
                           value={col.val}
                           onChange={(e) => onUpdateCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
+                          onBlur={(e) => onBlurCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
                           disabled={loading}
-                          className="w-full bg-slate-800/50 border border-slate-700 rounded p-2 text-right text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full bg-slate-800/50 border border-slate-700 rounded p-2 text-right text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-colors hover:bg-slate-700/50"
                         />
                       </td>
                     ))}
 
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-emerald-400 font-mono font-bold">{paraReais(total)}</td>
+                    <td className="px-4 py-4 text-center">
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Tem certeza que deseja remover este envio?')) {
+                            onRemoverSessao?.(s.tempId);
+                          }
+                        }}
+                        disabled={loading}
+                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                        title="Excluir Envio"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
