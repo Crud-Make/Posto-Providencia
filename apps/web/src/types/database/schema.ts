@@ -3,7 +3,7 @@ import { PostoTable, TurnoTable, ConfiguracaoTable, UsuarioTable, UsuarioPostoTa
 import { CombustivelTable, BombaTable, BicoTable, TanqueTable, HistoricoTanqueTable, EstoqueTable } from './tables/combustiveis';
 import { FrentistaTable, LeituraTable, FechamentoTable, FechamentoFrentistaTable, RecebimentoTable, EscalaTable } from './tables/operacoes';
 import { FormaPagamentoTable, MaquininhaTable } from './tables/pagamentos';
-import { EmprestimoTable, ParcelaTable, DividaTable, DespesaTable } from './tables/financeiro';
+import { EmprestimoTable, ParcelaTable, DividaTable, DespesaTable, ReceitaTable, CategoriaFinanceiraTable } from './tables/financeiro';
 import { CompraTable, FornecedorTable } from './tables/compras';
 import { ProdutoTable, VendaProdutoTable, MovimentacaoEstoqueTable } from './tables/produtos';
 import { ClienteTable, NotaFrentistaTable } from './tables/clientes';
@@ -45,6 +45,8 @@ export interface Database {
       Parcela: ParcelaTable
       Divida: DividaTable
       Despesa: DespesaTable
+      Receita: ReceitaTable
+      CategoriaFinanceira: CategoriaFinanceiraTable
 
       // Compras
       Compra: CompraTable

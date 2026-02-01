@@ -2,7 +2,8 @@
  * Hook para gerenciar combustíveis no Registro de Compras.
  *
  * @remarks
- * Normaliza retornos de `ApiResponse` e mantém o estado híbrido (string para inputs e number para cálculos).
+ * Normaliza retornos de `ApiResponse` e mantém o estado híbrido (string para inputs e numeric para cálculos).
+ * [01/02 15:30] Adicionado suporte a persistência de estado para evitar perda de dados ao navegar.
  */
 import { useState, useEffect } from 'react';
 import { combustivelService, estoqueService, tanqueService } from '../../../services/api';
@@ -11,6 +12,8 @@ import { isSuccess } from '../../../types/ui/response-types';
 import { Combustivel, Estoque, Tanque } from '../../../types/database/index';
 import { usePosto } from '../../../contexts/PostoContext';
 import { formatarParaBR } from '../../../utils/formatters';
+
+const STORAGE_KEY = 'registro_compras_form_data';
 
 /**
  * Extrai o `data` de uma `ApiResponse` com mensagem de erro consistente.
@@ -97,8 +100,41 @@ export const useCombustiveisHibridos = () => {
         }
     };
 
+    /**
+     * Verifica se existem dados persistidos no sessionStorage
+     */
+    const temDadosPersistidos = (): boolean => {
+        try {
+            const saved = sessionStorage.getItem(STORAGE_KEY);
+            if (!saved) return false;
+            
+            const data = JSON.parse(saved);
+            const temDados = data.combustiveis?.some((c: CombustivelHibrido) => 
+                c.inicial || c.fechamento || c.compra_lt || c.compra_rs || c.estoque_tanque
+            );
+            
+            // Verificar se dados não são muito antigos (mais de 24 horas)
+            const agora = Date.now();
+            const umDia = 24 * 60 * 60 * 1000;
+            if (agora - data.timestamp > umDia) {
+                sessionStorage.removeItem(STORAGE_KEY);
+                return false;
+            }
+            
+            return temDados || !!data.despesasMes;
+        } catch {
+            return false;
+        }
+    };
+
     useEffect(() => {
-        loadData();
+        // [01/02 15:30] Só carrega do banco se não houver dados persistidos
+        if (!temDadosPersistidos()) {
+            loadData();
+        } else {
+            console.log('[Compras] Dados persistidos encontrados, aguardando restauração...');
+            setLoading(false);
+        }
     }, [postoAtivoId]);
 
     /** Atualiza um campo específico de um combustível no estado local */

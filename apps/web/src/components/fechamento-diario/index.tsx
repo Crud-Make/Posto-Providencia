@@ -139,7 +139,7 @@ const TelaFechamentoDiario: React.FC = () => {
                   <TabLeituras
                      bicos={bicos} leituras={leituras} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
                      onRefreshSessoes={() => {
-                        if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
+                        if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno, true);
                      }}
                      handlers={{
                         alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros,
@@ -152,7 +152,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      payments={payments} totalPagamentos={totalPagamentos} totalLitros={totalLitros} totalFrentistas={totalFrentistas}
                      leituras={leituras} bicos={bicos} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
                      onRefreshSessoes={() => {
-                        if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
+                        if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno, true);
                      }}
                      handlers={{ alterarPagamento, aoSairPagamento }}
                   />

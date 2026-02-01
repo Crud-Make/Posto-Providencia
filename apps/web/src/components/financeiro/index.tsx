@@ -8,7 +8,12 @@ import { ResumoFinanceiro } from './components/ResumoFinanceiro';
 import { GraficoFluxoCaixa } from './components/GraficoFluxoCaixa';
 import { TabelaTransacoes } from './components/TabelaTransacoes';
 import { IndicadoresPerformance } from './components/IndicadoresPerformance';
-import { LayoutDashboard, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Loader2, Plus } from 'lucide-react';
+import FormDespesa from '../despesas/components/FormDespesa';
+import { DespesaFormData } from '../despesas/types';
+import { despesaService, receitaService } from '../../services/api';
+import { FormReceita, ReceitaFormData } from './components/FormReceita';
+// [01/02 11:22] Integrado FormReceita e lógica de salvamento de receitas extras.
 
 /**
  * Tela de Gestão Financeira.
@@ -20,10 +25,33 @@ import { LayoutDashboard, Loader2 } from 'lucide-react';
  */
 const TelaGestaoFinanceira: React.FC = () => {
   const { postoAtivoId } = usePosto();
+  const [showFormDespesa, setShowFormDespesa] = React.useState(false);
+  const [showFormReceita, setShowFormReceita] = React.useState(false);
 
   const { filtros, atualizar, resetar, aplicarPreset } = useFiltrosFinanceiros(postoAtivoId || undefined);
   const { dados, carregando, erro, recarregar } = useFinanceiro(filtros);
   const { series } = useFluxoCaixa(dados, 'diario');
+
+  const handleSaveDespesa = async (data: DespesaFormData, id?: string): Promise<boolean> => {
+    if (!id) {
+      const response = await despesaService.create(data);
+      if (response.success) {
+        await recarregar();
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const handleSaveReceita = async (data: ReceitaFormData): Promise<boolean> => {
+    // [01/02 11:38] Adicionando usuario_id nulo por padrão para satisfazer tipo ReceitaInsert
+    const response = await receitaService.create({ ...data, usuario_id: null });
+    if (response.success) {
+      await recarregar();
+      return true;
+    }
+    return false;
+  };
 
   return (
     <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
@@ -36,10 +64,31 @@ const TelaGestaoFinanceira: React.FC = () => {
           </p>
         </div>
 
-        {/* Badge de status */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-          <LayoutDashboard size={18} className="text-blue-600 dark:text-blue-400" />
-          <span className="text-sm font-bold text-blue-700 dark:text-blue-300">Visão Geral</span>
+        {/* Actions */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFormReceita(true)}
+            disabled={!postoAtivoId}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus size={18} />
+            Nova Receita
+          </button>
+
+          <button
+            onClick={() => setShowFormDespesa(true)}
+            disabled={!postoAtivoId}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus size={18} />
+            Nova Despesa
+          </button>
+
+          {/* Badge de status */}
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+            <LayoutDashboard size={18} className="text-blue-600 dark:text-blue-400" />
+            <span className="text-sm font-bold text-blue-700 dark:text-blue-300">Visão Geral</span>
+          </div>
         </div>
       </div>
 
@@ -76,6 +125,22 @@ const TelaGestaoFinanceira: React.FC = () => {
           </div>
           <TabelaTransacoes transacoes={dados.transacoes} />
         </>
+      )}
+
+      {showFormDespesa && postoAtivoId && (
+        <FormDespesa
+          postoId={postoAtivoId}
+          onSave={handleSaveDespesa}
+          onCancel={() => setShowFormDespesa(false)}
+        />
+      )}
+
+      {showFormReceita && postoAtivoId && (
+        <FormReceita
+          postoId={postoAtivoId}
+          onSave={handleSaveReceita}
+          onCancel={() => setShowFormReceita(false)}
+        />
       )}
     </div>
   );

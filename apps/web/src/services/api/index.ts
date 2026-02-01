@@ -24,6 +24,9 @@ export { fechamentoFrentistaService } from './fechamentoFrentista.service';
 export { formaPagamentoService } from './formaPagamento.service';
 export { maquininhaService } from './maquininha.service';
 export { despesaService } from './despesa.service';
+// [01/02 11:20] Adicionado receitaService e categoriaService para gestão financeira completa.
+export { receitaService } from './receita.service';
+export { categoriaService } from './categoria.service';
 export { parcelaService } from './parcela.service';
 export { dividaService } from './divida.service';
 export { emprestimoService } from './emprestimo.service';
@@ -66,7 +69,10 @@ import { recebimentoService } from './recebimento.service';
 import { fechamentoFrentistaService } from './fechamentoFrentista.service';
 import { formaPagamentoService } from './formaPagamento.service';
 import { maquininhaService } from './maquininha.service';
+// [01/02 11:20] Adicionado receitaService e categoriaService ao objeto central de API.
 import { despesaService } from './despesa.service';
+import { receitaService } from './receita.service';
+import { categoriaService } from './categoria.service';
 import { parcelaService } from './parcela.service';
 import { dividaService } from './divida.service';
 import { emprestimoService } from './emprestimo.service';
@@ -101,6 +107,8 @@ export const api = {
   formaPagamento: formaPagamentoService,
   maquininha: maquininhaService,
   despesa: despesaService,
+  receita: receitaService,
+  categoria: categoriaService,
   parcela: parcelaService,
   divida: dividaService,
   emprestimo: emprestimoService,

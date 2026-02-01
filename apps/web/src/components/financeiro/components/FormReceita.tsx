@@ -1,115 +1,74 @@
-// [13/01 10:15] Adicionado JSDoc para conformidade com Regra 5/Qualidade
-/**
- * Componente FormDespesa
- *
- * Modal para criação e edição de despesas.
- * Permite preencher detalhes como descrição, valor, data, categoria e status de pagamento.
- *
- * @module FormDespesa
- */
 import React, { useState, useEffect } from 'react';
-import { X, Save, DollarSign, Calendar, Tag, FileText, AlertCircle } from 'lucide-react';
-import { Despesa, DespesaFormData, CATEGORIAS_DESPESA } from '../types';
-// [01/02 11:15] Integração com categorias dinâmicas e remoção de casting 'any' para conformidade.
+import { X, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
+// [01/02 11:30] Criado formulário de receitas extras com suporte a categorias dinâmicas.
 import { categoriaService, CategoriaFinanceira } from '../../../services/api/categoria.service';
 
 /**
- * Propriedades do componente FormDespesa.
+ * Interface para os dados do formulário de receita.
  */
-interface FormDespesaProps {
-    /** Dados iniciais para edição (opcional) */
-    initialData?: Despesa | null;
-    /** ID do posto associado à despesa */
+export interface ReceitaFormData {
+    descricao: string;
+    valor: number;
+    data: string;
+    categoria_id: number | null;
+    status: 'recebido' | 'pendente';
+    observacoes: string;
+    posto_id: number;
+}
+
+/**
+ * Propriedades do componente FormReceita.
+ */
+interface FormReceitaProps {
     postoId: number;
-    /** Função de callback ao salvar a despesa */
-    onSave: (data: DespesaFormData, id?: string) => Promise<boolean>;
-    /** Função de callback ao cancelar/fechar o modal */
+    onSave: (data: ReceitaFormData) => Promise<boolean>;
     onCancel: () => void;
 }
 
 /**
- * Formulário modal para gerenciar despesas.
- *
- * Gerencia o estado interno do formulário e validações básicas.
- * Suporta modos de criação e edição baseados na prop `initialData`.
+ * Formulário modal para gerenciar receitas extras.
  *
  * @component
- * @param {FormDespesaProps} props - Propriedades do componente.
- * @returns {JSX.Element} O modal com o formulário de despesa.
  */
-const FormDespesa: React.FC<FormDespesaProps> = ({
-    initialData,
+export const FormReceita: React.FC<FormReceitaProps> = ({
     postoId,
     onSave,
     onCancel
 }) => {
-    const [formData, setFormData] = useState<DespesaFormData>({
+    const [formData, setFormData] = useState<ReceitaFormData>({
         descricao: '',
-        categoria: 'Outros',
         valor: 0,
         data: new Date().toISOString().split('T')[0],
-        status: 'pendente',
-        data_pagamento: null,
+        categoria_id: null,
+        status: 'recebido',
         observacoes: '',
         posto_id: postoId
     });
 
-    // Add categoria_id to state if not present in type yet, assume extended type handling
-    const [categoriaId, setCategoriaId] = useState<number | null>(initialData?.categoria_id || null);
-    const [categoriasDB, setCategoriasDB] = useState<CategoriaFinanceira[]>([]);
-    const [loadingCats, setLoadingCats] = useState(true);
-
+    const [categorias, setCategorias] = useState<CategoriaFinanceira[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loadingCats, setLoadingCats] = useState(true);
 
     useEffect(() => {
         const loadCats = async () => {
             setLoadingCats(true);
-            const res = await categoriaService.getAll(postoId, 'despesa');
+            const res = await categoriaService.getAll(postoId, 'receita');
             if (res.success) {
-                setCategoriasDB(res.data || []);
+                setCategorias(res.data || []);
+                if (res.data && res.data.length > 0) {
+                    setFormData(prev => ({ ...prev, categoria_id: res.data![0].id }));
+                }
             }
             setLoadingCats(false);
         };
         loadCats();
     }, [postoId]);
 
-    useEffect(() => {
-        if (initialData) {
-            setFormData({
-                descricao: initialData.descricao,
-                categoria: initialData.categoria || 'Outros',
-                valor: initialData.valor,
-                data: initialData.data,
-                status: initialData.status,
-                data_pagamento: initialData.data_pagamento || null,
-                observacoes: initialData.observacoes || '',
-                posto_id: initialData.posto_id
-            });
-            setCategoriaId(initialData.categoria_id || null);
-        }
-    }, [initialData]);
-
-    const handleCategoriaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const selectedId = Number(e.target.value);
-        const selectedCat = categoriasDB.find(c => c.id === selectedId);
-
-        if (selectedCat) {
-            setCategoriaId(selectedCat.id);
-            setFormData(prev => ({ ...prev, categoria: selectedCat.nome }));
-        } else {
-            // Fallback for manual or legacy options if mixed
-            setCategoriaId(null);
-            setFormData(prev => ({ ...prev, categoria: e.target.value }));
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            // Inject categoria_id into payload if supported by backend interface
-            const payload = { ...formData, categoria_id: categoriaId };
-            const success = await onSave(payload, initialData?.id);
+            const success = await onSave(formData);
             if (success) {
                 onCancel();
             }
@@ -123,7 +82,7 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
             <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h3 className="text-xl font-black text-gray-900 dark:text-white">
-                        {initialData ? 'Editar Despesa' : 'Nova Despesa'}
+                        Nova Receita Extra
                     </h3>
                     <button
                         onClick={onCancel}
@@ -143,8 +102,8 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                                 required
                                 value={formData.descricao}
                                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                                className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Ex: Conta de Luz"
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="Ex: Aluguel de Loja"
                             />
                         </div>
                     </div>
@@ -161,7 +120,7 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                                     required
                                     value={formData.valor}
                                     onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })}
-                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
                                     placeholder="0,00"
                                 />
                             </div>
@@ -176,7 +135,7 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                                     required
                                     value={formData.data}
                                     onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
                                 />
                             </div>
                         </div>
@@ -188,21 +147,15 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                             <div className="relative">
                                 <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <select
-                                    value={categoriaId || ''}
-                                    onChange={handleCategoriaChange}
-                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                                    value={formData.categoria_id || ''}
+                                    onChange={(e) => setFormData({ ...formData, categoria_id: Number(e.target.value) })}
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none disabled:opacity-50"
                                     disabled={loadingCats}
                                 >
                                     <option value="">Selecione...</option>
-                                    {categoriasDB.length > 0 ? (
-                                        categoriasDB.map(cat => (
-                                            <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                                        ))
-                                    ) : (
-                                        CATEGORIAS_DESPESA.map((cat, idx) => (
-                                            <option key={idx} value={cat}>{cat}</option>
-                                        ))
-                                    )}
+                                    {categorias.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -212,43 +165,27 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                             <div className="flex bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
                                 <button
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, status: 'pendente', data_pagamento: null })}
+                                    onClick={() => setFormData({ ...formData, status: 'pendente' })}
                                     className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${formData.status === 'pendente'
                                         ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                         }`}
                                 >
-                                    Pendente
+                                    A receber
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })}
-                                    className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${formData.status === 'pago'
+                                    onClick={() => setFormData({ ...formData, status: 'recebido' })}
+                                    className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${formData.status === 'recebido'
                                         ? 'bg-green-500 text-white shadow-sm'
                                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                         }`}
                                 >
-                                    Pago
+                                    Recebido
                                 </button>
                             </div>
                         </div>
                     </div>
-
-                    {formData.status === 'pago' && (
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Data Pagamento</label>
-                            <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="date"
-                                    required
-                                    value={formData.data_pagamento || ''}
-                                    onChange={(e) => setFormData({ ...formData, data_pagamento: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                        </div>
-                    )}
 
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Observações</label>
@@ -256,7 +193,7 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                             rows={3}
                             value={formData.observacoes}
                             onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
                             placeholder="Detalhes adicionais..."
                         />
                     </div>
@@ -272,7 +209,7 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? (
                                 <>
@@ -292,5 +229,3 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
         </div>
     );
 };
-
-export default FormDespesa;
