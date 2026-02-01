@@ -279,7 +279,7 @@ export const useLeituras = (
         const mapeado = dados.reduce((acc, l) => {
           acc[l.bico_id] = {
             inicial: formatarParaBR(l.leitura_inicial, 3),
-            fechamento: formatarParaBR(l.leitura_final, 3)
+            fechamento: l.leitura_final > 0 ? formatarParaBR(l.leitura_final, 3) : ''
           };
           return acc;
         }, {} as Record<number, Leitura>);
@@ -302,7 +302,7 @@ export const useLeituras = (
           const ultima = ultimasLeituras.find(l => l.bico_id === bico.id);
           acc[bico.id] = {
             inicial: ultima ? formatarParaBR(ultima.leitura_final, 3) : '0,000',
-            fechamento: '0,000'
+            fechamento: ''
           };
           return acc;
         }, {} as Record<number, Leitura>);
@@ -364,7 +364,11 @@ export const useLeituras = (
    */
   const aoSairFechamento = useCallback((bicoId: number) => {
     const valorAtual = leituras[bicoId]?.fechamento || '';
-    const formatado = formatarAoSair(valorAtual);
+    let formatado = formatarAoSair(valorAtual);
+
+    // Se o resultado for 0,000, limpa o campo para facilitar digitação
+    if (formatado === '0,000') formatado = '';
+
     if (formatado !== valorAtual) {
       setLeituras(prev => ({
         ...prev,
