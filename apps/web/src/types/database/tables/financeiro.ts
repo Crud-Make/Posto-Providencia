@@ -148,6 +148,106 @@ export interface DividaTable {
   ]
 }
 
+export interface CategoriaFinanceiraTable {
+  Row: {
+    id: number
+    nome: string
+    tipo: 'receita' | 'despesa' | 'ambos'
+    icone: string | null
+    cor: string | null
+    posto_id: number | null
+    created_at: string
+    updated_at: string
+  }
+  Insert: {
+    id?: number
+    nome: string
+    tipo: 'receita' | 'despesa' | 'ambos'
+    icone?: string | null
+    cor?: string | null
+    posto_id?: number | null
+    created_at?: string
+    updated_at?: string
+  }
+  Update: {
+    id?: number
+    nome?: string
+    tipo?: 'receita' | 'despesa' | 'ambos'
+    icone?: string | null
+    cor?: string | null
+    posto_id?: number | null
+    created_at?: string
+    updated_at?: string
+  }
+  Relationships: [
+    {
+      foreignKeyName: "CategoriaFinanceira_posto_id_fkey"
+      columns: ["posto_id"]
+      isOneToOne: false
+      referencedRelation: "Posto"
+      referencedColumns: ["id"]
+    }
+  ]
+}
+
+export interface ReceitaTable {
+  Row: {
+    id: number
+    descricao: string
+    valor: number
+    data: string
+    categoria_id: number | null
+    posto_id: number | null
+    status: string | null
+    observacoes: string | null
+    usuario_id: number | null
+    created_at: string
+    updated_at: string
+  }
+  Insert: {
+    id?: number
+    descricao: string
+    valor: number
+    data?: string
+    categoria_id?: number | null
+    posto_id?: number | null
+    status?: string | null
+    observacoes?: string | null
+    usuario_id?: number | null
+    created_at?: string
+    updated_at?: string
+  }
+  Update: {
+    id?: number
+    descricao?: string
+    valor?: number
+    data?: string
+    categoria_id?: number | null
+    posto_id?: number | null
+    status?: string | null
+    observacoes?: string | null
+    usuario_id?: number | null
+    created_at?: string
+    updated_at?: string
+  }
+  Relationships: [
+    {
+      foreignKeyName: "Receita_categoria_id_fkey"
+      columns: ["categoria_id"]
+      isOneToOne: false
+      referencedRelation: "CategoriaFinanceira"
+      referencedColumns: ["id"]
+    },
+    {
+      foreignKeyName: "Receita_posto_id_fkey"
+      columns: ["posto_id"]
+      isOneToOne: false
+      referencedRelation: "Posto"
+      referencedColumns: ["id"]
+    }
+  ]
+}
+
 export interface DespesaTable {
   Row: {
     id: number
@@ -160,6 +260,7 @@ export interface DespesaTable {
     posto_id: number
     data_pagamento: string | null
     observacoes: string | null
+    categoria_id: number | null
   }
   Insert: {
     id?: number
@@ -172,6 +273,7 @@ export interface DespesaTable {
     posto_id: number
     data_pagamento?: string | null
     observacoes?: string | null
+    categoria_id?: number | null
   }
   Update: {
     id?: number
@@ -184,6 +286,7 @@ export interface DespesaTable {
     posto_id?: number
     data_pagamento?: string | null
     observacoes?: string | null
+    categoria_id?: number | null
   }
   Relationships: [
     {
@@ -191,6 +294,13 @@ export interface DespesaTable {
       columns: ["posto_id"]
       isOneToOne: false
       referencedRelation: "Posto"
+      referencedColumns: ["id"]
+    },
+    {
+      foreignKeyName: "Despesa_categoria_id_fkey"
+      columns: ["categoria_id"]
+      isOneToOne: false
+      referencedRelation: "CategoriaFinanceira"
       referencedColumns: ["id"]
     }
   ]

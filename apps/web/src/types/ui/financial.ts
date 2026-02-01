@@ -59,6 +59,7 @@ export interface Despesa {
     posto_id: number;
     data_pagamento?: string | null;
     observacoes?: string;
+    categoria_id?: number | null;
 }
 
 /**

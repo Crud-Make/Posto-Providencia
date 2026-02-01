@@ -11,6 +11,7 @@ export interface DespesaFormData {
     data_pagamento: string | null;
     observacoes: string;
     posto_id: number;
+    categoria_id?: number | null;
 }
 
 export const CATEGORIAS_DESPESA = [

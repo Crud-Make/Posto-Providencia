@@ -1,13 +1,13 @@
 {
   "active": [
     {
-      "slug": "fix-fechamento-save-table-clearing",
-      "path": "plans/fix-fechamento-save-table-clearing.md",
-      "title": "Plan: Fix Fechamento Table Clearing on Save",
-      "linkedAt": "2026-01-29T14:02:21.581Z",
+      "slug": "gestao-financeira-db-feature-v2",
+      "path": "plans/gestao-financeira-db-feature-v2.md",
+      "title": "Gestão Financeira Consolidada - Backend e Banco de Dados",
+      "linkedAt": "2026-02-01T13:51:36.037Z",
       "status": "active"
     }
   ],
   "completed": [],
-  "primary": "fix-fechamento-save-table-clearing"
+  "primary": "gestao-financeira-db-feature-v2"
 }

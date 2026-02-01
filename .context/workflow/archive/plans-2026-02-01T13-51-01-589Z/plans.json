@@ -1,0 +1,13 @@
+{
+  "active": [
+    {
+      "slug": "fix-fechamento-save-table-clearing",
+      "path": "plans/fix-fechamento-save-table-clearing.md",
+      "title": "Plan: Fix Fechamento Table Clearing on Save",
+      "linkedAt": "2026-01-29T14:02:21.581Z",
+      "status": "active"
+    }
+  ],
+  "completed": [],
+  "primary": "fix-fechamento-save-table-clearing"
+}

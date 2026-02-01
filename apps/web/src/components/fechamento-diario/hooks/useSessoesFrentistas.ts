@@ -40,7 +40,7 @@ interface RetornoSessoesFrentistas {
   sessoes: SessaoFrentista[];
   carregando: boolean;
   totais: TotaisFrentistas;
-  carregarSessoes: (data: string, turno: number) => Promise<void>;
+  carregarSessoes: (data: string, turno: number, force?: boolean) => Promise<void>;
   adicionarFrentista: () => void;
   removerFrentista: (tempId: string) => void;
   atualizarSessao: (tempId: string, atualizacoes: Partial<SessaoFrentista>) => void;
@@ -103,11 +103,12 @@ export const useSessoesFrentistas = (
    * @param data - Data do fechamento
    * @param turno - Turno selecionado
    */
-  const carregarSessoes = useCallback(async (data: string, turno: number) => {
+  const carregarSessoes = useCallback(async (data: string, turno: number, force = false) => {
     if (!postoId) return;
 
-    // [29/01 13:40] Evita recarregar se já carregou para este contexto
+    // [29/01 13:40] Evita recarregar se já carregou para este contexto, a menos que seja forçado
     if (
+      !force &&
       ultimoContextoCarregado.current.data === data &&
       ultimoContextoCarregado.current.turno === turno
     ) {
