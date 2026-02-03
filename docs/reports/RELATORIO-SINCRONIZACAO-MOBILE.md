@@ -199,5 +199,26 @@ packages/
 
 ---
 
-**Criado por:** Antigravity AI  
-**Issue Relacionada:** [#26 - PRD-034 Refatoração Mobile e Migração Monorepo](https://github.com/Thyago-vibe/Posto-Providencia/issues/26)
+---
+
+## 📅 ATUALIZAÇÃO - 03/02/2026
+
+### ✅ Status do Build Mobile (posto-mobile)
+- **Versão:** 1.6.0
+- **Build:** APK gerado localmente com sucesso (85MB).
+- **OTA (Over-The-Air):** Configurado e testado no canal `production`.
+- **Dependências:** Sincronizadas com o Expo SDK 54.0.0.
+- **Correções:** Resolvido conflito de lockfiles (removido `bun.lock`) e erro de `ANDROID_HOME`.
+
+### 🔍 Investigação de Dados (Barbra)
+- **Resultado:** Os dados da frentista "Barbara" (ID 3) **estão chegando corretamente no banco de dados**. 
+- **Causa da Discrepância:** Identificado que os envios foram feitos em datas/turnos diferentes do esperado, o que causou a percepção de falta de dados na Web.
+- **Ação:** Nenhuma alteração de código necessária no backend, apenas ajuste de fluxo operacional.
+
+### 🚀 Próximos Passos
+1. Consolidar a migração de `posto-mobile/` → `apps/mobile/` para eliminar a duplicação definitivamente.
+2. Iniciar uso do `@posto/api-core` no mobile para padronizar respostas.
+
+---
+
+**Atualizado por:** Antigravity AI - 03/02/2026 08:25
