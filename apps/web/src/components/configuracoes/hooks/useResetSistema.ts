@@ -27,14 +27,14 @@ export const useResetSistema = (postoAtivoId: number) => {
         try {
             const result = await resetService.resetAllData(postoAtivoId);
 
-            if (result.success) {
+            if (result.success && result.data) {
                 // Mostra resumo do que foi deletado
-                const summary = Object.entries(result.deletedCounts)
+                const summary = Object.entries(result.data.deletedCounts)
                     .map(([table, count]) => `• ${table}: ${count} registros`)
                     .join('\n');
 
                 alert(
-                    `✅ ${result.message}\n\n` +
+                    `✅ ${result.data.message}\n\n` +
                     `Resumo:\n${summary}`
                 );
 
@@ -43,7 +43,7 @@ export const useResetSistema = (postoAtivoId: number) => {
                 // Recarrega a página para atualizar os dados
                 window.location.reload();
             } else {
-                alert(`❌ ${result.message}`);
+                alert(`❌ ${"error" in result ? result.error : "Erro desconhecido"}`);
             }
         } catch (error) {
             console.error("Erro ao resetar sistema:", error);

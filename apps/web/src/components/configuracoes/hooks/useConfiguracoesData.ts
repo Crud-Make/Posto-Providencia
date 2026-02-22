@@ -19,13 +19,13 @@ export const useConfiguracoesData = () => {
 
     const loadData = useCallback(async () => {
         if (!postoAtivoId) return;
-        
+
         setLoading(true);
         try {
             const data = await fetchSettingsData(postoAtivoId);
-            setProducts(data.products);
-            setNozzles(data.nozzles);
-            setPaymentMethods(data.paymentMethods || []);
+            setProducts(data?.products || []);
+            setNozzles(data?.nozzles || []);
+            setPaymentMethods(data?.paymentMethods || []);
         } catch (error) {
             console.error("Failed to fetch settings", error);
         } finally {
