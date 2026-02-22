@@ -247,31 +247,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Notas / Vales */}
-        <div className="pt-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileText size={24} className="text-white fill-white bg-white/20 p-1 rounded-sm" />
-              <div>
-                <h2 className="text-xl font-bold text-white">Notas / Vales</h2>
-                <p className="text-sm text-slate-400 font-medium">Vendas faturadas a prazo</p>
-              </div>
-            </div>
-            <button className="bg-[#00B4D8] text-white font-bold py-2.5 px-4 rounded-xl flex items-center gap-1.5 text-sm active:scale-95 transition-transform">
-              <Plus size={18} />
-              ADICIONAR
-            </button>
-          </div>
-
-          <div className="bg-[#131722] rounded-3xl p-10 border border-slate-800/60 border-dashed flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
-              <Receipt size={32} className="text-slate-400" />
-            </div>
-            <p className="text-slate-300 font-semibold mb-1">Nenhuma nota pendente</p>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Toque em adicionar para registrar</p>
-          </div>
-        </div>
-
         {/* Resumo do Turno */}
         <div className="pt-4 pb-2">
           <div className="bg-[#131722] rounded-[1.75rem] p-6 border border-slate-800/60">
