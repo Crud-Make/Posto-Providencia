@@ -279,17 +279,17 @@ const App: React.FC = () => {
               </h2>
             </div>
           </div>
-          <div className="relative">
-            <button className="bg-[#2563EB] hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl transition-colors text-sm shadow-[0_0_10px_rgba(37,99,235,0.3)]">
+          <label className="relative cursor-pointer">
+            <div className="bg-[#2563EB] hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl transition-colors text-sm shadow-[0_0_10px_rgba(37,99,235,0.3)] pointer-events-none">
               Alterar
-            </button>
+            </div>
             <input
               type="date"
               value={dataFechamento}
               onChange={(e) => setDataFechamento(e.target.value)}
               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             />
-          </div>
+          </label>
         </div>
 
         {/* Conferência de Vendas (Roxo) */}

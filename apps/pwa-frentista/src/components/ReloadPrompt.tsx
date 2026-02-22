@@ -1,4 +1,3 @@
-import React from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { RefreshCw, X } from 'lucide-react'
 
@@ -8,7 +7,14 @@ function ReloadPrompt() {
         updateServiceWorker,
     } = useRegisterSW({
         onRegistered(r) {
-            console.log('SW Registered')
+            console.log('SW Registered', r)
+            if (r) {
+                // Checa atualizações a cada 10 segundos para fins de teste mais rápido
+                setInterval(() => {
+                    console.log('Checando novidades do SW...')
+                    r.update()
+                }, 10 * 1000)
+            }
         },
         onRegisterError(error) {
             console.log('SW registration error', error)
