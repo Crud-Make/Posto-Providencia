@@ -102,15 +102,18 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
                       { campo: 'valor_baratao', val: s.valor_baratao },
                     ].map((col) => (
                       <td key={col.campo} className="px-2 py-3 text-right">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={col.val}
-                          onChange={(e) => onUpdateCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
-                          onBlur={(e) => onBlurCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
-                          disabled={loading}
-                          className="w-full bg-slate-800/50 border border-slate-700 rounded p-2 text-right text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-colors hover:bg-slate-700/50"
-                        />
+                        <div className="relative flex items-center">
+                          <span className="absolute left-2 text-slate-500/70 font-mono text-sm pointer-events-none select-none">R$</span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={col.val}
+                            onChange={(e) => onUpdateCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
+                            onBlur={(e) => onBlurCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
+                            disabled={loading}
+                            className="w-full bg-slate-800/50 border border-slate-700 rounded py-2 pr-2 pl-8 text-right text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-colors hover:bg-slate-700/50"
+                          />
+                        </div>
                       </td>
                     ))}
 
