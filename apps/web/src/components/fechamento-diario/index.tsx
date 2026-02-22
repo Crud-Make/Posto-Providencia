@@ -32,6 +32,7 @@ import { useFechamento } from './hooks/useFechamento';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useSubmissaoFechamento } from './hooks/useSubmissaoFechamento';
 import type { SessaoFrentista } from '../../types/fechamento';
+import { supabase } from '../../services/supabase';
 
 // Subcomponentes
 import { HeaderFechamento } from './components/HeaderFechamento';
@@ -72,6 +73,34 @@ const TelaFechamentoDiario: React.FC = () => {
    const {
       pagamentos: payments, carregando: loadingPagamentos, totalPagamentos, carregarPagamentos, alterarPagamento, aoSairPagamento
    } = usePagamentos(postoAtivoId);
+
+   // --- 🔴 REALTIME: Escuta envios do PWA em tempo real ---
+   useEffect(() => {
+      const channel = supabase
+         .channel('pwa-envios-realtime')
+         .on(
+            'postgres_changes',
+            {
+               event: 'INSERT',
+               schema: 'public',
+               table: 'FechamentoFrentista'
+            },
+            (payload) => {
+               console.log('🔔 Novo envio do PWA detectado em tempo real:', payload);
+               // Recarrega as sessões forçando refresh
+               if (selectedDate && selectedTurno) {
+                  carregarSessoes(selectedDate, selectedTurno, true);
+               }
+            }
+         )
+         .subscribe((status) => {
+            console.log('📡 Realtime status:', status);
+         });
+
+      return () => {
+         supabase.removeChannel(channel);
+      };
+   }, [selectedDate, selectedTurno, carregarSessoes]);
 
    const { totalLitros, totalVendas, totalFrentistas, diferenca, podeFechar } = useFechamento(bicos, leituras, frentistaSessions, payments);
 
