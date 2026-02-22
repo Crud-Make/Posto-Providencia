@@ -226,14 +226,17 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
                               if (val === undefined || val === null) val = '';
 
                               return (
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={val as string}
-                                  onChange={(e) => onUpdateCampo?.(sessao.tempId, campo, e.target.value)}
-                                  disabled={isLoading}
-                                  className="w-full bg-slate-800/50 border border-slate-700/50 rounded p-1.5 text-center text-sm font-mono text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none transition-all hover:bg-slate-700/50"
-                                />
+                                <div className="relative flex items-center justify-center">
+                                  <span className="absolute left-2 text-slate-500/70 font-mono text-[10px] pointer-events-none select-none">R$</span>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={val as string}
+                                    onChange={(e) => onUpdateCampo?.(sessao.tempId, campo, e.target.value)}
+                                    disabled={isLoading}
+                                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded py-1.5 pr-1.5 pl-6 text-center text-sm font-mono text-slate-200 focus:ring-1 focus:ring-blue-500 outline-none transition-all hover:bg-slate-700/50"
+                                  />
+                                </div>
                               )
                             }
 
