@@ -56,6 +56,7 @@ export const resetService = {
             tableName === 'Emprestimo' ||
             tableName === 'Divida' ||
             tableName === 'Despesa' ||
+            tableName === 'Receita' ||
             tableName === 'Compra' ||
             tableName === 'MovimentacaoEstoque' ||
             tableName === 'Notificacao') {
@@ -130,6 +131,9 @@ export const resetService = {
 
       // 11. Deletar Despesas
       await deleteTable('Despesa');
+
+      // 11.1 Deletar Receitas
+      await deleteTable('Receita');
 
       // 12. Deletar Compras
       await deleteTable('Compra');
