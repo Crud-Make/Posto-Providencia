@@ -21,8 +21,9 @@ export const useParametros = (postoAtivoId: number) => {
         const loadConfigs = async () => {
             if (!postoAtivoId) return;
             try {
-                const configs = await configuracaoService.getAll(postoAtivoId).catch(() => []);
-                
+                const response = await configuracaoService.getAll(postoAtivoId);
+                const configs = response.success ? (response.data || []) : [];
+
                 const tol = configs.find((c: Configuracao) => c.chave === "tolerancia_divergencia");
                 const diasCrit = configs.find((c: Configuracao) => c.chave === "dias_estoque_critico");
                 const diasBaixo = configs.find((c: Configuracao) => c.chave === "dias_estoque_baixo");
@@ -40,11 +41,18 @@ export const useParametros = (postoAtivoId: number) => {
     const handleSaveConfigs = async () => {
         setSaving(true);
         try {
-            await Promise.all([
+            const results = await Promise.all([
                 configuracaoService.update("tolerancia_divergencia", tolerance, postoAtivoId),
                 configuracaoService.update("dias_estoque_critico", diasEstoqueCritico, postoAtivoId),
                 configuracaoService.update("dias_estoque_baixo", diasEstoqueBaixo, postoAtivoId),
             ]);
+
+            const hasError = results.some(r => !r.success);
+            if (hasError) {
+                alert("Erro ao salvar algumas configurações.");
+                setSaving(false);
+                return;
+            }
 
             setConfigsModified(false);
             alert("Configurações salvas com sucesso!");

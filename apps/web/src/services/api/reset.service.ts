@@ -184,6 +184,22 @@ export const resetService = {
       if (estoqueError) throw estoqueError;
       deletedCounts['Estoque (resetado)'] = estoqueData?.length || 0;
 
+      // 16.1. Resetar volume atual dos Tanques
+      let queryTanqueUpdate = supabase
+        .from('Tanque')
+        .update({ estoque_atual: 0 });
+
+      if (postoId) {
+        queryTanqueUpdate = queryTanqueUpdate.eq('posto_id', postoId);
+      } else {
+        queryTanqueUpdate = queryTanqueUpdate.neq('id', 0);
+      }
+
+      const { data: tanqueData, error: tanqueError } = await queryTanqueUpdate.select();
+      if (tanqueError) throw tanqueError;
+      deletedCounts['Tanques (resetado)'] = tanqueData?.length || 0;
+
+
       // 17. Resetar saldo devedor dos clientes
       let queryClientes = supabase
         .from('Cliente')
