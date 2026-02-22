@@ -8,6 +8,7 @@ import {
 import { api } from './services/api';
 import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
+import ReloadPrompt from './components/ReloadPrompt';
 
 type TabType = 'registro' | 'vendas' | 'historico' | 'perfil';
 
@@ -191,6 +192,7 @@ const App: React.FC = () => {
     if (!selectedFrentista) {
       return (
         <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
+          <ReloadPrompt />
           <History size={48} className="text-slate-600 mb-4" />
           <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
           <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
@@ -200,6 +202,7 @@ const App: React.FC = () => {
     }
     return (
       <>
+        <ReloadPrompt />
         <HistoricoScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
         {renderBottomNav()}
       </>
@@ -211,6 +214,7 @@ const App: React.FC = () => {
     if (!selectedFrentista) {
       return (
         <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
+          <ReloadPrompt />
           <ShoppingBag size={48} className="text-slate-600 mb-4" />
           <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
           <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
@@ -220,6 +224,7 @@ const App: React.FC = () => {
     }
     return (
       <>
+        <ReloadPrompt />
         <VendasScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
         {renderBottomNav()}
       </>
@@ -228,6 +233,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans pb-32">
+      <ReloadPrompt />
       <div className="p-5 flex-1 space-y-4">
         <h1 className="text-2xl font-bold text-white mb-6">Registro de Turno</h1>
 
