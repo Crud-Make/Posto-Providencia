@@ -24,7 +24,7 @@ const GraficoLucratividade: React.FC<GraficoLucratividadeProps> = ({ shiftsData,
                 <TrendingUp size={20} className="text-green-600" />
                 Lucratividade vs Quebras
             </h3>
-            <ResponsiveContainer width="100%" height="85%">
+            <ResponsiveContainer width="99%" height="85%">
                 <BarChart data={shiftsData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis dataKey="turnoName" tickLine={false} axisLine={false} />

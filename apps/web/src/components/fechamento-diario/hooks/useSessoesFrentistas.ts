@@ -133,8 +133,18 @@ export const useSessoesFrentistas = (
 
       const dados = dadosRes.data;
 
+      // Obtemos frentistas ativos (independente se existem dados ou não)
+      let frentistasAtivos: Frentista[] = [];
+      if (frentistasCadastrados.length > 0) {
+        frentistasAtivos = frentistasCadastrados.filter(f => f.ativo);
+      } else {
+        const frentistasRes = await frentistaService.getAll(postoId);
+        if (isSuccess(frentistasRes)) {
+          frentistasAtivos = frentistasRes.data.filter((f: Frentista) => f.ativo);
+        }
+      }
+
       if (dados.length > 0) {
-        // [29/01 13:40] Sessões de frentistas carregadas do banco
         console.log('[29/01 13:40] Sessões de frentistas carregadas do banco:', dados.length, 'registros');
         const mapeadas: SessaoFrentista[] = dados.map(fs => ({
           tempId: `existing-${fs.id}`,
@@ -153,33 +163,49 @@ export const useSessoesFrentistas = (
           status: (fs.status as 'pendente' | 'conferido') || 'pendente',
           data_hora_envio: fs.data_hora_envio
         }));
-        setSessoes(mapeadas);
-        console.log('[29/01 13:40] Sessões de frentistas mapeadas:', mapeadas.length, 'frentistas');
+
+        const frentistasEnviados = new Set(mapeadas.map(m => m.frentistaId));
+
+        setSessoes(prevSessoes => {
+          const mapPendentes = new Map();
+          prevSessoes.forEach(s => {
+            if (s.tempId.startsWith('temp-') && s.frentistaId) {
+              mapPendentes.set(s.frentistaId, s);
+            }
+          });
+
+          const sessoesExtras: SessaoFrentista[] = [];
+          frentistasAtivos.forEach(f => {
+            if (!frentistasEnviados.has(f.id)) {
+              const sessaoLocal = mapPendentes.get(f.id);
+              sessoesExtras.push(sessaoLocal ? sessaoLocal : { ...criarSessaoVazia(), frentistaId: f.id });
+            }
+          });
+
+          return [...mapeadas, ...sessoesExtras];
+        });
+
+        console.log('[carregarSessoes] Mesclado dados do DB com rascunhos locais.');
+
       } else {
         // [20/01 11:55] Se não houver sessões salvas, carrega frentistas ativos
         // Motivo: Usuário deseja que os frentistas ativos apareçam automaticamente na nova tela
 
-        let frentistasParaSessao: Frentista[] = [];
+        if (frentistasAtivos.length > 0) {
+          setSessoes(prevSessoes => {
+            const mapPendentes = new Map();
+            prevSessoes.forEach(s => {
+              if (s.tempId.startsWith('temp-') && s.frentistaId) {
+                mapPendentes.set(s.frentistaId, s);
+              }
+            });
 
-        // Prioriza a lista passada via props (já carregada no contexto)
-        if (frentistasCadastrados.length > 0) {
-          frentistasParaSessao = frentistasCadastrados.filter(f => f.ativo);
-        } else {
-          // Fallback: busca via API se a lista props estiver vazia
-          const frentistasRes = await frentistaService.getAll(postoId);
-          if (isSuccess(frentistasRes)) {
-            frentistasParaSessao = frentistasRes.data;
-          }
-        }
-
-        if (frentistasParaSessao.length > 0) {
-          const sessoesIniciais = frentistasParaSessao.map(f => ({
-            ...criarSessaoVazia(),
-            frentistaId: f.id,
-            // Mantém tempId gerado pelo criarSessaoVazia, mas garante unicidade extra se necessário
-          }));
-          setSessoes(sessoesIniciais);
-          console.log('✅ Sessões inicializadas com frentistas ativos');
+            return frentistasAtivos.map(f => {
+              const sessaoLocal = mapPendentes.get(f.id);
+              return sessaoLocal ? sessaoLocal : { ...criarSessaoVazia(), frentistaId: f.id };
+            });
+          });
+          console.log('✅ Sessões inicializadas/recuperadas com frentistas ativos');
         } else {
           setSessoes([]);
           console.log('✅ Sem envios e sem frentistas ativos');
@@ -197,7 +223,7 @@ export const useSessoesFrentistas = (
     } finally {
       setCarregando(false);
     }
-  }, [postoId]);
+  }, [postoId, frentistasCadastrados]);
 
   /**
    * Adiciona nova sessão de frentista
@@ -210,9 +236,24 @@ export const useSessoesFrentistas = (
   /**
    * Remove sessão de frentista
    */
-  const removerFrentista = useCallback((tempId: string) => {
+  const removerFrentista = useCallback(async (tempId: string) => {
+    // Se for um registro que já existe no banco, exclui lá também
+    if (tempId.startsWith('existing-')) {
+      const id = parseInt(tempId.replace('existing-', ''), 10);
+      try {
+        const res = await fechamentoFrentistaService.delete(id);
+        if (!isSuccess(res)) {
+          console.error('❌ Erro ao excluir frentista no banco:', res.error);
+        } else {
+          console.log('✅ Frentista excluído do banco com sucesso');
+        }
+      } catch (err) {
+        console.error('❌ Erro inesperado ao excluir frentista:', err);
+      }
+    }
+
     setSessoes(prev => prev.filter(s => s.tempId !== tempId));
-    console.log('➖ Frentista removido:', tempId);
+    console.log('➖ Frentista removido da tela:', tempId);
   }, []);
 
   /**

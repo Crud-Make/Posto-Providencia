@@ -93,6 +93,49 @@ export const fechamentoFrentistaService = {
   },
 
   /**
+   * Exclui um único fechamento de frentista
+   * @param id - ID do fechamento de frentista a ser excluído
+   */
+  async delete(id: number): Promise<ApiResponse<void>> {
+    try {
+      console.log(`[delete] Iniciando exclusão do FechamentoFrentista: ${id}`);
+
+      // 1. Remover Notificações vinculadas (evita violação de FK)
+      await supabase
+        .from('Notificacao')
+        .update({ fechamento_frentista_id: null })
+        .eq('fechamento_frentista_id', id);
+
+      await supabase
+        .from('Notificacao')
+        .delete()
+        .eq('fechamento_frentista_id', id);
+
+      // 2. Desvincular Notas de Frentista
+      await supabase
+        .from('NotaFrentista')
+        .update({ fechamento_frentista_id: null })
+        .eq('fechamento_frentista_id', id);
+
+      // 3. Desvincular Venda de Produtos
+      await supabase
+        .from('VendaProduto')
+        .update({ fechamento_frentista_id: null })
+        .eq('fechamento_frentista_id', id);
+
+      const { error } = await supabase
+        .from('FechamentoFrentista')
+        .delete()
+        .eq('id', id);
+
+      if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
+      return createSuccessResponse(undefined);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
+  },
+
+  /**
    * Exclui todos os fechamentos de frentista vinculados a um fechamento principal
    * 
    * @param fechamentoId - ID do fechamento pai (consolidado)
