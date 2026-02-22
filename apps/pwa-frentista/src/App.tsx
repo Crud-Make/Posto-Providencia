@@ -44,7 +44,7 @@ const formatCurrency = (value: string) => {
   return amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const App: React.FC = () => {
+const AppComponent = ({ setDialog }: { setDialog: any }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFrentista, setSelectedFrentista] = useState<{ id: number, nome: string } | null>(null);
   const [frentistas, setFrentistas] = useState<{ id: number, nome: string }[]>([]);
@@ -107,13 +107,13 @@ const App: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!selectedFrentista) {
-      alert("Selecione um frentista antes de enviar.");
+      setDialog({ isOpen: true, title: 'Atenção', message: 'Selecione um frentista antes de enviar.', type: 'error' });
       return;
     }
 
     const valueEncerrante = parseInt(totalVendido.replace(/\D/g, ''), 10) / 100;
     if (isNaN(valueEncerrante) || valueEncerrante === 0) {
-      alert("O encerrante não pode ser R$ 0,00.");
+      setDialog({ isOpen: true, title: 'Valor Inválido', message: 'O encerrante não pode ser R$ 0,00.', type: 'error' });
       return;
     }
 
@@ -146,14 +146,14 @@ const App: React.FC = () => {
 
       await api.submitFrentistaClosing(payload);
 
-      alert("Registro do Turno enviado com sucesso! ✅");
+      setDialog({ isOpen: true, title: 'Sucesso!', message: 'Registro de Turno enviado com sucesso!', type: 'success' });
       // Limpa os dados
       setTotalVendido('');
       setPayments({ pix: '', dinheiro: '', moedas: '', baratao: '', notaPrazo: '', debito: '' });
       setSelectedFrentista(null);
 
     } catch (err: any) {
-      alert(`Erro no envio: ${err.message}`);
+      setDialog({ isOpen: true, title: 'Erro', message: err.message || 'Ocorreu um erro no servidor.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -426,4 +426,30 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default function App() {
+  const [dialog, setDialog] = useState<any>({ isOpen: false, title: '', message: '', type: 'success' });
+
+  return (
+    <>
+      <AppComponent setDialog={setDialog} />
+      {dialog.isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setDialog({ ...dialog, isOpen: false })} />
+          <div className={`relative w-full max-w-sm rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center transform transition-transform ${dialog.type === 'success' ? 'bg-[#10141d] border border-emerald-500/30' : 'bg-[#10141d] border border-red-500/30'}`}>
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${dialog.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-500'}`}>
+              {dialog.type === 'success' ? <Check size={32} /> : <AlertCircle size={32} />}
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">{dialog.title}</h3>
+            <p className="text-slate-300 mb-6 font-medium">{dialog.message}</p>
+            <button
+              onClick={() => setDialog({ ...dialog, isOpen: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition-colors outline-none focus:ring-2 ${dialog.type === 'success' ? 'bg-emerald-600 hover:bg-emerald-500 focus:ring-emerald-500/50' : 'bg-red-600 hover:bg-red-500 focus:ring-red-500/50'}`}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
