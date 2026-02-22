@@ -65,6 +65,7 @@ const App: React.FC = () => {
     notaPrazo: '',
     debito: ''
   });
+  const [dataFechamento, setDataFechamento] = useState(() => new Date().toISOString().split('T')[0]);
 
   const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTotalVendido(formatCurrency(e.target.value));
@@ -118,7 +119,7 @@ const App: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const dataStr = new Date().toISOString().split('T')[0];
+      const dataStr = dataFechamento;
       const turnoId = 1; // Fixo no exemplo (Ou calculado dependendo do horário)
       const postoId = 1;
 
@@ -177,12 +178,6 @@ const App: React.FC = () => {
           <History size={20} className={activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'} />
         </div>
         <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'}`}>Histórico</span>
-      </div>
-      <div className="flex flex-col items-center gap-1 opacity-50 cursor-pointer">
-        <div className="w-14 h-8 flex items-center justify-center">
-          <User size={20} className="text-slate-400" />
-        </div>
-        <span className="text-[10px] text-slate-400 font-bold tracking-wide">Perfil</span>
       </div>
     </div>
   );
@@ -279,12 +274,22 @@ const App: React.FC = () => {
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase mb-0.5">Data do Fechamento</p>
-              <h2 className="text-lg font-bold text-white leading-tight">22/02/2026</h2>
+              <h2 className="text-lg font-bold text-white leading-tight">
+                {new Date(dataFechamento + 'T00:00:00').toLocaleDateString('pt-BR')}
+              </h2>
             </div>
           </div>
-          <button className="bg-[#2563EB] hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl transition-colors text-sm shadow-[0_0_10px_rgba(37,99,235,0.3)]">
-            Alterar
-          </button>
+          <div className="relative">
+            <button className="bg-[#2563EB] hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl transition-colors text-sm shadow-[0_0_10px_rgba(37,99,235,0.3)]">
+              Alterar
+            </button>
+            <input
+              type="date"
+              value={dataFechamento}
+              onChange={(e) => setDataFechamento(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            />
+          </div>
         </div>
 
         {/* Conferência de Vendas (Roxo) */}
