@@ -3,9 +3,13 @@ import {
   User, Calendar, Gauge, Smartphone, Banknote,
   Coins, CircleDollarSign, FileText, CreditCard,
   ClipboardList, ShoppingBag, History, ChevronDown,
-  Plus, X, Receipt, Check, AlertCircle
+  X, Check, AlertCircle
 } from 'lucide-react';
 import { api } from './services/api';
+import HistoricoScreen from './screens/HistoricoScreen';
+import VendasScreen from './screens/VendasScreen';
+
+type TabType = 'registro' | 'vendas' | 'historico' | 'perfil';
 
 // Reusable card for payments
 const PaymentCard = ({ title, icon: Icon, iconColor, value, onChange }: any) => (
@@ -44,6 +48,7 @@ const App: React.FC = () => {
   const [selectedFrentista, setSelectedFrentista] = useState<{ id: number, nome: string } | null>(null);
   const [frentistas, setFrentistas] = useState<{ id: number, nome: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('registro');
 
   useEffect(() => {
     // Busca do banco POSTO ID: 1 como padrão (Pode vir de config/storage depois)
@@ -151,6 +156,75 @@ const App: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const renderBottomNav = () => (
+    <div className="fixed bottom-0 left-0 right-0 bg-[#0F131D] border-t border-slate-800/80 px-6 py-2 flex justify-between items-center z-50 pb-6">
+      <div onClick={() => setActiveTab('registro')} className="flex flex-col items-center gap-1 cursor-pointer">
+        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'registro' ? 'bg-[#FF756B]/10' : ''}`}>
+          <ClipboardList size={20} className={activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'} />
+        </div>
+        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Registro</span>
+      </div>
+      <div onClick={() => setActiveTab('vendas')} className="flex flex-col items-center gap-1 cursor-pointer">
+        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'vendas' ? 'bg-emerald-500/10' : ''}`}>
+          <ShoppingBag size={20} className={activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'} />
+        </div>
+        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'}`}>Vendas</span>
+      </div>
+      <div onClick={() => setActiveTab('historico')} className="flex flex-col items-center gap-1 cursor-pointer">
+        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'historico' ? 'bg-indigo-500/10' : ''}`}>
+          <History size={20} className={activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'} />
+        </div>
+        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'}`}>Histórico</span>
+      </div>
+      <div className="flex flex-col items-center gap-1 opacity-50 cursor-pointer">
+        <div className="w-14 h-8 flex items-center justify-center">
+          <User size={20} className="text-slate-400" />
+        </div>
+        <span className="text-[10px] text-slate-400 font-bold tracking-wide">Perfil</span>
+      </div>
+    </div>
+  );
+
+  // Tela de Histórico
+  if (activeTab === 'historico') {
+    if (!selectedFrentista) {
+      return (
+        <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
+          <History size={48} className="text-slate-600 mb-4" />
+          <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
+          <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
+          {renderBottomNav()}
+        </div>
+      );
+    }
+    return (
+      <>
+        <HistoricoScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
+        {renderBottomNav()}
+      </>
+    );
+  }
+
+  // Tela de Vendas
+  if (activeTab === 'vendas') {
+    if (!selectedFrentista) {
+      return (
+        <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
+          <ShoppingBag size={48} className="text-slate-600 mb-4" />
+          <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
+          <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
+          {renderBottomNav()}
+        </div>
+      );
+    }
+    return (
+      <>
+        <VendasScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
+        {renderBottomNav()}
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans pb-32">
@@ -336,33 +410,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0F131D] border-t border-slate-800/80 px-6 py-2 flex justify-between items-center z-50 pb-6">
-        <div className="flex flex-col items-center gap-1 cursor-pointer">
-          <div className="w-14 h-8 rounded-full bg-[#FF756B]/10 flex items-center justify-center">
-            <ClipboardList size={20} className="text-[#FF756B]" />
-          </div>
-          <span className="text-[10px] text-[#FF756B] font-bold tracking-wide">Registro</span>
-        </div>
-        <div className="flex flex-col items-center gap-1 opacity-50 cursor-pointer">
-          <div className="w-14 h-8 flex items-center justify-center">
-            <ShoppingBag size={20} className="text-slate-400" />
-          </div>
-          <span className="text-[10px] text-slate-400 font-bold tracking-wide">Vendas</span>
-        </div>
-        <div className="flex flex-col items-center gap-1 opacity-50 cursor-pointer">
-          <div className="w-14 h-8 flex items-center justify-center">
-            <History size={20} className="text-slate-400" />
-          </div>
-          <span className="text-[10px] text-slate-400 font-bold tracking-wide">Histórico</span>
-        </div>
-        <div className="flex flex-col items-center gap-1 opacity-50 cursor-pointer">
-          <div className="w-14 h-8 flex items-center justify-center">
-            <User size={20} className="text-slate-400" />
-          </div>
-          <span className="text-[10px] text-slate-400 font-bold tracking-wide">Perfil</span>
-        </div>
-      </div>
+      {renderBottomNav()}
     </div>
   );
 };
