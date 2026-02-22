@@ -71,7 +71,7 @@ export const useFormaPagamento = (
         try {
             if (editingPayment) {
                 // Update
-                const updated = await formaPagamentoService.update(
+                const response = await formaPagamentoService.update(
                     Number(editingPayment.id),
                     {
                         nome: paymentForm.name,
@@ -80,6 +80,12 @@ export const useFormaPagamento = (
                         ativo: paymentForm.active,
                     }
                 );
+
+                if (!response.success || !response.data) {
+                    alert("Erro ao atualizar forma de pagamento");
+                    return;
+                }
+                const updated = response.data;
 
                 setPaymentMethods((prev) =>
                     prev.map((p) =>
@@ -96,13 +102,19 @@ export const useFormaPagamento = (
                 );
             } else {
                 // Create
-                const created = await formaPagamentoService.create({
+                const response = await formaPagamentoService.create({
                     nome: paymentForm.name!,
                     tipo: paymentForm.type || "outros",
                     taxa: paymentForm.tax || 0,
                     ativo: paymentForm.active,
                     posto_id: postoAtivoId || 1,
                 });
+
+                if (!response.success || !response.data) {
+                    alert("Erro ao criar forma de pagamento");
+                    return;
+                }
+                const created = response.data;
 
                 setPaymentMethods((prev) => [
                     ...prev,
@@ -129,7 +141,12 @@ export const useFormaPagamento = (
      */
     const handleToggleStatus = async (id: string, currentStatus: boolean) => {
         try {
-            const updated = await formaPagamentoService.update(Number(id), { ativo: !currentStatus });
+            const response = await formaPagamentoService.update(Number(id), { ativo: !currentStatus });
+            if (!response.success || !response.data) {
+                alert("Erro ao alterar status.");
+                return;
+            }
+            const updated = response.data;
             setPaymentMethods(prev => prev.map(p => p.id === id ? { ...p, active: updated.ativo || false } : p));
         } catch (error) {
             console.error("Erro ao alterar status", error);
