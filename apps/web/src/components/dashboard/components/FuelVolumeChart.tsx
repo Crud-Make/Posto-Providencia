@@ -92,7 +92,7 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
             <p>Nenhum dado de volume registrado</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="99%" height="100%">
             <BarChart
               data={chartData.map((d, i) => {
                 const [start, end] = getFuelColors(d.name, i);

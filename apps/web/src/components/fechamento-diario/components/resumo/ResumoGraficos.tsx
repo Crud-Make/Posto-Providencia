@@ -45,7 +45,7 @@ export const ResumoGraficos: React.FC<ResumoGraficosProps> = ({ dadosCombustivel
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700/50 lg:col-span-1">
                 <h3 className="text-lg font-bold mb-6 text-slate-200 flex items-center gap-2"><span className="text-blue-500">●</span> Volume por Combustível (L)</h3>
                 <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="99%" height="100%">
                         <BarChart data={dadosCombustivel}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis dataKey="nome" tick={{ fontSize: 12, fill: '#9CA3AF' }} stroke="#4B5563" />
@@ -65,7 +65,7 @@ export const ResumoGraficos: React.FC<ResumoGraficosProps> = ({ dadosCombustivel
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700/50 lg:col-span-1">
                 <h3 className="text-lg font-bold mb-6 text-slate-200 flex items-center gap-2"><span className="text-emerald-500">●</span> Faturamento (R$)</h3>
                 <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="99%" height="100%">
                         <BarChart data={dadosCombustivel}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis dataKey="nome" tick={{ fontSize: 12, fill: '#9CA3AF' }} stroke="#4B5563" />
@@ -85,7 +85,7 @@ export const ResumoGraficos: React.FC<ResumoGraficosProps> = ({ dadosCombustivel
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700/50 lg:col-span-1">
                 <h3 className="text-lg font-bold mb-6 text-slate-200 flex items-center gap-2"><span className="text-purple-500">●</span> Pagamentos</h3>
                 <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="99%" height="100%">
                         <PieChart>
                             <Pie
                                 data={dadosPagamentos}
