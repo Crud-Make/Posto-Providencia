@@ -352,7 +352,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                             </div>
 
                             <div className="h-[320px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="99%" height="100%">
                                     <AreaChart data={dataGraficoDiario} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorVendas" x1="0" y1="0" x2="0" y2="1">
@@ -396,7 +396,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                                 Mix de Produtos
                             </h3>
                             <div className="h-[280px] w-full relative">
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="99%" height="100%">
                                     <PieChart>
                                         <Pie
                                             data={dataMixCombustivel}

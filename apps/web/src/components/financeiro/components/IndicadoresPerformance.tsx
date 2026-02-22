@@ -24,7 +24,7 @@ export const IndicadoresPerformance: React.FC<IndicadoresPerformanceProps> = ({ 
         const cat = t.categoria || 'Outros';
         mapa.set(cat, (mapa.get(cat) || 0) + t.valor);
       });
-      
+
     return Array.from(mapa.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
@@ -33,7 +33,7 @@ export const IndicadoresPerformance: React.FC<IndicadoresPerformanceProps> = ({ 
 
   const COLORS = ['#EF4444', '#F59E0B', '#3B82F6', '#10B981', '#6366F1'];
 
-  const formatCurrency = (val: number) => 
+  const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   return (
@@ -41,7 +41,7 @@ export const IndicadoresPerformance: React.FC<IndicadoresPerformanceProps> = ({ 
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Despesas por Categoria</h3>
       <div className="h-64">
         {despesasPorCategoria.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="99%" height="100%">
             <PieChart>
               <Pie
                 data={despesasPorCategoria}
@@ -57,7 +57,7 @@ export const IndicadoresPerformance: React.FC<IndicadoresPerformanceProps> = ({ 
                 ))}
               </Pie>
               <Tooltip formatter={(val: number) => formatCurrency(val)} />
-              <Legend verticalAlign="bottom" height={36}/>
+              <Legend verticalAlign="bottom" height={36} />
             </PieChart>
           </ResponsiveContainer>
         ) : (

@@ -81,12 +81,12 @@ const TelaFechamentoDiario: React.FC = () => {
          .on(
             'postgres_changes',
             {
-               event: 'INSERT',
+               event: '*',
                schema: 'public',
                table: 'FechamentoFrentista'
             },
             (payload) => {
-               console.log('🔔 Novo envio do PWA detectado em tempo real:', payload);
+               console.log('🔔 Alteração de FechamentoFrentista detectada em tempo real:', payload.eventType, payload);
                // Recarrega as sessões forçando refresh
                if (selectedDate && selectedTurno) {
                   carregarSessoes(selectedDate, selectedTurno, true);
