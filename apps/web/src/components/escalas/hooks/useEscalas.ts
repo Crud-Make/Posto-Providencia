@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { frentistaService, escalaService } from '../../../services/api';
+import { isSuccess } from '../../../types/ui/response-types';
 import type { Escala } from '../../../services/api/escala.service';
 import type { Frentista } from '@posto/types';
 
@@ -47,13 +48,13 @@ export const useEscalas = (postoAtivoId: number | null) => {
     const carregarDados = async () => {
         try {
             setCarregando(true);
-            const [frentistasData, escalasData] = await Promise.all([
+            const [frentistasRes, escalasRes] = await Promise.all([
                 frentistaService.getAll(postoAtivoId!),
                 escalaService.getByMonth(dataAtual.getMonth() + 1, dataAtual.getFullYear(), postoAtivoId!)
             ]);
 
-            setFrentistas(frentistasData.filter(f => f.ativo));
-            setEscalas(escalasData);
+            if (isSuccess(frentistasRes)) setFrentistas(frentistasRes.data.filter(f => f.ativo));
+            if (isSuccess(escalasRes)) setEscalas(escalasRes.data);
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
         } finally {
@@ -93,14 +94,14 @@ export const useEscalas = (postoAtivoId: number | null) => {
                     ));
                 }
             } else {
-                const novaEscala = await escalaService.create({
+                const novaEscalaRes = await escalaService.create({
                     frentista_id: frentistaId,
                     data: strData,
                     tipo: 'FOLGA',
                     posto_id: postoAtivoId || 1
                 });
 
-                setEscalas(prev => [...prev, novaEscala]);
+                if (isSuccess(novaEscalaRes)) setEscalas(prev => [...prev, novaEscalaRes.data]);
             }
         } catch (error) {
             console.error('Erro ao atualizar escala:', error);
@@ -143,14 +144,14 @@ export const useEscalas = (postoAtivoId: number | null) => {
                     e.id === modalObservacao.escalaId ? { ...e, observacao } : e
                 ));
             } else {
-                const novaEscala = await escalaService.create({
+                const novaEscalaRes = await escalaService.create({
                     frentista_id: modalObservacao.frentistaId,
                     data: strData,
                     tipo: 'TRABALHO',
                     observacao,
                     posto_id: postoAtivoId
                 });
-                setEscalas(prev => [...prev, novaEscala]);
+                if (isSuccess(novaEscalaRes)) setEscalas(prev => [...prev, novaEscalaRes.data]);
             }
 
             setModalObservacao(prev => ({ ...prev, isOpen: false }));

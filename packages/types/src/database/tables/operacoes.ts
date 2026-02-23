@@ -16,6 +16,8 @@ export interface Posto {
     telefone: string | null;
     email: string | null;
     ativo: boolean;
+    created_at?: string;
+    updated_at?: string;
 }
 
 /**
@@ -31,6 +33,7 @@ export interface Frentista {
     user_id: string | null;
     turno_id: number | null;
     posto_id: number;
+    created_at?: string;
 }
 
 /**
@@ -105,6 +108,7 @@ export interface Cliente {
     id: number;
     nome: string;
     documento: string | null;
+    endereco: string | null;
     posto_id: number;
     ativo: boolean;
     bloqueado: boolean;
@@ -112,6 +116,8 @@ export interface Cliente {
     email: string | null;
     limite_credito: number | null;
     saldo_devedor: number | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 /**
@@ -125,6 +131,8 @@ export interface Escala {
     turno_id: number | null;
     observacao: string | null;
     posto_id: number;
+    created_at?: string;
+    Frentista?: Frentista;
 }
 
 /**
@@ -134,10 +142,16 @@ export interface Produto {
     id: number;
     nome: string;
     preco_venda: number;
+    preco_custo: number | null;
     estoque_atual: number;
+    estoque_minimo: number | null;
     categoria: string;
+    codigo_barras: string | null;
+    unidade_medida: string | null;
+    descricao: string | null;
     ativo: boolean;
     posto_id: number;
+    created_at?: string;
 }
 
 /**
@@ -153,6 +167,8 @@ export interface VendaProduto {
     data: string;
     fechamento_frentista_id: number | null;
     posto_id: number;
+    created_at?: string;
+    Produto?: Produto;
 }
 
 /**

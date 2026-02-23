@@ -78,7 +78,9 @@ const GestaoEmprestimos: React.FC = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const data = await api.emprestimo.getAll(postoAtivoId);
+            const res = await api.emprestimo.getAll(postoAtivoId);
+            if (!('data' in res) || !res.data) return;
+            const data = res.data;
             setLoans(data.map(l => ({
                 id: String(l.id),
                 credor: l.credor,

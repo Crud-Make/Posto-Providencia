@@ -89,7 +89,7 @@ export const escalaService = {
    * Cria uma nova escala
    * @param escala - Dados da escala
    */
-  async create(escala: Omit<Escala, 'id' | 'created_at' | 'Frentista'>): Promise<ApiResponse<Escala>> {
+  async create(escala: Pick<Escala, 'frentista_id' | 'data' | 'tipo' | 'posto_id'> & { turno_id?: number | null; observacao?: string | null }): Promise<ApiResponse<Escala>> {
     try {
       const { data, error } = await supabase
         .from('Escala')
