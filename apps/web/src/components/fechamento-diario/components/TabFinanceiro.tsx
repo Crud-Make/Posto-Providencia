@@ -22,6 +22,7 @@ interface TabFinanceiroProps {
    handlers: {
       alterarPagamento: (idx: number, val: string) => void;
       aoSairPagamento: (idx: number) => void;
+      sincronizarComSessoes: (sessoes: SessaoFrentista[]) => void;
    };
 }
 
@@ -47,6 +48,7 @@ export const TabFinanceiro: React.FC<TabFinanceiroProps> = ({
             pagamentos={payments}
             onPagamentoChange={handlers.alterarPagamento}
             onPagamentoBlur={handlers.aoSairPagamento}
+            onAutoFill={() => handlers.sincronizarComSessoes(frentistaSessions)}
             totalPagamentos={totalPagamentos}
             isLoading={loading}
          />

@@ -35,6 +35,7 @@ interface RetornoPagamentos {
   carregarPagamentos: (data?: string, turno?: number) => Promise<void>;
   alterarPagamento: (indice: number, valor: string) => void;
   aoSairPagamento: (indice: number) => void;
+  sincronizarComSessoes: (sessoes: import('../../../types/fechamento').SessaoFrentista[]) => void;
   definirPagamentos: React.Dispatch<React.SetStateAction<EntradaPagamento[]>>;
 }
 
@@ -145,7 +146,44 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
       return atualizado;
     });
   }, []);
+  /**
+   * Sincroniza pagamentos com o valor total dos frentistas
+   */
+  const sincronizarComSessoes = useCallback((sessoes: import('../../../types/fechamento').SessaoFrentista[]) => {
+    setPagamentos(prev => prev.map(p => {
+      let sum = 0;
+      const t = (p.nome + ' ' + (p.tipo || '')).toLowerCase();
 
+      let matched = false;
+      if (t.includes('dinheiro')) {
+        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_dinheiro), 0);
+        matched = true;
+      } else if (t.includes('crédito') || t.includes('credito')) {
+        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_cartao_credito), 0);
+        matched = true;
+      } else if (t.includes('débito') || t.includes('debito')) {
+        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_cartao_debito) + analisarValor(s.valor_cartao), 0);
+        matched = true;
+      } else if (t.includes('pix')) {
+        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_pix), 0);
+        matched = true;
+      } else if (t.includes('nota') || t.includes('convênio') || t.includes('convenio') || t.includes('vale')) {
+        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_nota), 0);
+        matched = true;
+      } else if (t.includes('baratao') || t.includes('baratão') || t.includes('baratão')) {
+        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_baratao), 0);
+        matched = true;
+      }
+
+      if (matched) {
+        return {
+          ...p,
+          valor: sum > 0 ? formatarValorAoSair(sum.toString()) : ''
+        };
+      }
+      return p;
+    }));
+  }, []);
   /**
    * Calcula total de todos os pagamentos
    */
@@ -185,6 +223,7 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
     carregarPagamentos,
     alterarPagamento,
     aoSairPagamento,
+    sincronizarComSessoes,
     definirPagamentos: setPagamentos
   };
 };
