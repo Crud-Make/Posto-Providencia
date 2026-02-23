@@ -87,8 +87,7 @@ export const ResumoTabela: React.FC<ResumoTabelaProps> = ({
                                         {linha.meio}
                                     </td>
                                     {sessoes.filter(s => s.frentistaId).map((s, colIdx) => {
-                                        const nome = frentistas.find(f => f.id === s.frentistaId)?.nome.split(' ')[0] || 'Desc.';
-                                        const valor = linha[nome];
+                                        const valor = linha[s.tempId];
                                         return (
                                             <td key={colIdx} className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 text-right font-mono">
                                                 {typeof valor === 'number' && valor > 0 ? paraReais(valor) : <span className="text-slate-600">-</span>}
@@ -109,6 +108,7 @@ export const ResumoTabela: React.FC<ResumoTabelaProps> = ({
                                     const totalFrentista =
                                         parseValue(s.valor_dinheiro) +
                                         parseValue(s.valor_cartao_debito) +
+                                        parseValue(s.valor_cartao) +
                                         parseValue(s.valor_cartao_credito) +
                                         parseValue(s.valor_pix) +
                                         parseValue(s.valor_nota) +

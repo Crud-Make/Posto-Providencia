@@ -109,7 +109,7 @@ export function calcularTotaisPagamentos(sessoes: SessaoFrentista[]): DadosPagam
 
     sessoes.forEach((sessao) => {
         totais['Dinheiro'] += parseValue(sessao.valor_dinheiro);
-        totais['Cartão Débito'] += parseValue(sessao.valor_cartao_debito);
+        totais['Cartão Débito'] += parseValue(sessao.valor_cartao_debito) + parseValue(sessao.valor_cartao);
         totais['Cartão Crédito'] += parseValue(sessao.valor_cartao_credito);
         totais['Pix'] += parseValue(sessao.valor_pix);
         totais['Nota a Prazo'] += parseValue(sessao.valor_nota);
@@ -150,13 +150,14 @@ export function gerarTabelaDetalhamento(
         });
 
     const definicaoLinhas = [
-        { id: 'pix', label: 'Pix', key: 'valor_pix' as keyof SessaoFrentista },
-        { id: 'debito', label: 'Cartão Débito', key: 'valor_cartao_debito' as keyof SessaoFrentista },
-        { id: 'credito', label: 'Cartão Crédito', key: 'valor_cartao_credito' as keyof SessaoFrentista },
-        { id: 'nota', label: 'Nota a Prazo', key: 'valor_nota' as keyof SessaoFrentista },
-        { id: 'dinheiro', label: 'Dinheiro', key: 'valor_dinheiro' as keyof SessaoFrentista },
-        { id: 'outros', label: 'Outros', key: 'valor_baratao' as keyof SessaoFrentista },
+        { id: 'pix', label: 'Pix', keys: ['valor_pix'] as (keyof SessaoFrentista)[] },
+        { id: 'debito', label: 'Cartão Débito', keys: ['valor_cartao_debito', 'valor_cartao'] as (keyof SessaoFrentista)[] },
+        { id: 'credito', label: 'Cartão Crédito', keys: ['valor_cartao_credito'] as (keyof SessaoFrentista)[] },
+        { id: 'nota', label: 'Nota a Prazo', keys: ['valor_nota'] as (keyof SessaoFrentista)[] },
+        { id: 'dinheiro', label: 'Dinheiro', keys: ['valor_dinheiro'] as (keyof SessaoFrentista)[] },
+        { id: 'outros', label: 'Outros', keys: ['valor_baratao'] as (keyof SessaoFrentista)[] },
     ];
+
 
     return definicaoLinhas.map((linhaDef) => {
         const rowData: LinhaDetalhamento = {
@@ -167,8 +168,8 @@ export function gerarTabelaDetalhamento(
         let totalLinha = 0;
 
         frentistasAtivos.forEach((f) => {
-            const valor = parseValue(f.sessao[linhaDef.key] as string);
-            rowData[f.nome] = valor;
+            const valor = linhaDef.keys.reduce((acc, key) => acc + parseValue(f.sessao[key] as string), 0);
+            rowData[f.sessao.tempId] = valor;
             totalLinha += valor;
         });
 
