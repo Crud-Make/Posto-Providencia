@@ -63,7 +63,8 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
     moedas: '',
     baratao: '',
     notaPrazo: '',
-    debito: ''
+    debito: '',
+    credito: ''
   });
   const [dataFechamento, setDataFechamento] = useState(() => new Date().toISOString().split('T')[0]);
 
@@ -137,7 +138,7 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
         baratao: parseInt(payments.baratao.replace(/\D/g, ''), 10) / 100 || 0,
         valor_nota: parseInt(payments.notaPrazo.replace(/\D/g, ''), 10) / 100 || 0,
         valor_cartao_debito: parseInt(payments.debito.replace(/\D/g, ''), 10) / 100 || 0,
-        valor_cartao_credito: 0,
+        valor_cartao_credito: parseInt(payments.credito.replace(/\D/g, ''), 10) / 100 || 0,
         valor_cartao: 0,
         valor_conferido: calculateTotalPaymentsValue() / 100,
         diferenca_calculada: (calculateTotalPaymentsValue() - parseInt(totalVendido.replace(/\D/g, ''), 10)) / 100,
@@ -149,7 +150,7 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
       setDialog({ isOpen: true, title: 'Sucesso!', message: 'Registro de Turno enviado com sucesso!', type: 'success' });
       // Limpa os dados
       setTotalVendido('');
-      setPayments({ pix: '', dinheiro: '', moedas: '', baratao: '', notaPrazo: '', debito: '' });
+      setPayments({ pix: '', dinheiro: '', moedas: '', baratao: '', notaPrazo: '', debito: '', credito: '' });
       setSelectedFrentista(null);
 
     } catch (err: any) {
@@ -329,6 +330,7 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
             <PaymentCard title="Baratão" icon={CircleDollarSign} iconColor={{ bg: 'bg-[#EF4444]/20', text: 'text-[#EF4444]' }} value={payments.baratao} onChange={handlePaymentChange('baratao')} />
             <PaymentCard title="Nota a Prazo" icon={FileText} iconColor={{ bg: 'bg-[#00B4D8]/20', text: 'text-[#00B4D8]' }} value={payments.notaPrazo} onChange={handlePaymentChange('notaPrazo')} />
             <PaymentCard title="Débito" icon={CreditCard} iconColor={{ bg: 'bg-[#3B82F6]/20', text: 'text-[#3B82F6]' }} value={payments.debito} onChange={handlePaymentChange('debito')} />
+            <PaymentCard title="Crédito" icon={CreditCard} iconColor={{ bg: 'bg-[#8B5CF6]/20', text: 'text-[#8B5CF6]' }} value={payments.credito} onChange={handlePaymentChange('credito')} />
           </div>
         </div>
 

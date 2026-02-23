@@ -59,7 +59,7 @@ export const api = {
             .from('FechamentoFrentista')
             .select(`
         id, encerrante, valor_pix, valor_dinheiro, valor_moedas,
-        valor_cartao_debito, valor_nota, baratao, diferenca_calculada,
+        valor_cartao_debito, valor_cartao_credito, valor_nota, baratao, diferenca_calculada,
         valor_conferido, observacoes, data_hora_envio,
         fechamento:Fechamento(data, turno_id)
       `)

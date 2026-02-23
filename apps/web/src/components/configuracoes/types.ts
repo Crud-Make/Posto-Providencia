@@ -12,7 +12,7 @@ export type PaymentType = 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix
  * Interface para configuração de produto (combustível).
  * Reutiliza a interface ProductConfig do sistema.
  */
-export interface Produto extends ProductConfig, ProdutoDomain {}
+export type Produto = ProductConfig & Omit<ProdutoDomain, keyof ProductConfig>;
 
 /**
  * Interface para configuração de bico.
