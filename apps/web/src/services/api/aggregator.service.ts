@@ -298,6 +298,8 @@ export const aggregatorService = {
           // Calcula total a partir dos valores de pagamento
           totalSales =
             (fechamento.valor_cartao || 0) +
+            (fechamento.valor_cartao_debito || 0) +
+            (fechamento.valor_cartao_credito || 0) +
             (fechamento.valor_nota || 0) +
             (fechamento.valor_pix || 0) +
             (fechamento.valor_dinheiro || 0);
@@ -559,7 +561,7 @@ export const aggregatorService = {
       const list = frentistas.map((f, idx) => {
         const hist = fechamentos[idx] || [];
         const divergenceRate = hist.length > 0 ? Math.round((hist.filter(h => {
-          const diff = ((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0);
+          const diff = ((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0);
           return diff !== 0;
         }).length / hist.length) * 100) : 0;
 
@@ -602,8 +604,8 @@ export const aggregatorService = {
         id: String(h.id),
         date: (h as FechamentoFrentistaWithRelations).fechamento?.data || 'N/A',
         shift: (h as FechamentoFrentistaWithRelations).fechamento?.turno?.nome || 'N/A',
-        value: ((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0),
-        status: ((((h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0)) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
+        value: ((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0),
+        status: ((((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0)) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
       }));
 
       return createSuccessResponse({ list, history });
