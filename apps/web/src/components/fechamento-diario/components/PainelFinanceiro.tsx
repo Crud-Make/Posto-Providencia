@@ -6,6 +6,7 @@ interface SecaoPagamentosProps {
   pagamentos: EntradaPagamento[];
   onPagamentoChange: (index: number, valor: string) => void;
   onPagamentoBlur: (index: number) => void;
+  onAutoFill?: () => void;
   totalPagamentos: number;
   isLoading?: boolean;
 }
@@ -14,6 +15,7 @@ export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
   pagamentos,
   onPagamentoChange,
   onPagamentoBlur,
+  onAutoFill,
   totalPagamentos,
   isLoading = false
 }) => {
@@ -25,6 +27,19 @@ export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
         </div>
         Formas de Pagamento (Caixa Geral)
       </h2>
+      {onAutoFill && (
+        <div className="mb-6 flex justify-end">
+          <button
+            onClick={onAutoFill}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600/80 text-white rounded-lg transition-colors border border-slate-600 hover:border-blue-500 shadow-sm disabled:opacity-50 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+            title="Consolida e soma automaticamente os valores preenchidos na aba de Leituras e Frentistas"
+          >
+            <span className="text-blue-400">⚡</span>
+            Auto-preencher dos Frentistas
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {pagamentos.map((pagamento, index) => (
