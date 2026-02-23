@@ -20,5 +20,6 @@ export const testeFrentista: Frentista = {
   cpf: '000.000.000-00',       // Obrigatório
   data_admissao: '2024-01-01', // Obrigatório
   telefone: null,              // Obrigatório (pode ser null)
-  user_id: null                // Obrigatório (pode ser null)
+  user_id: null,               // Obrigatório (pode ser null)
+  turno_id: null               // Obrigatório (pode ser null)
 };

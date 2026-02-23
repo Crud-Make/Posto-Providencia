@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { despesaService } from '../../../services/api';
+import { isSuccess } from '../../../types/ui/response-types';
 import { usePosto } from '../../../contexts/PostoContext';
 import { Despesa, DespesaFormData } from '../types';
 import { toast } from 'sonner';
@@ -15,8 +16,9 @@ export const useDespesas = () => {
         if (!postoAtivoId) return;
         setLoading(true);
         try {
-            const data = await despesaService.getAll(postoAtivoId);
-            setExpenses(data.map(d => ({
+            const res = await despesaService.getAll(postoAtivoId);
+            if (!isSuccess(res)) return;
+            setExpenses(res.data.map(d => ({
                 id: String(d.id),
                 descricao: d.descricao,
                 categoria: d.categoria || 'Outros',

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { notaFrentistaService, frentistaService } from '../../../services/api';
+import { isSuccess } from '../../../types/ui/response-types';
 import { Frentista } from '../../../types/database/index';
 import { NotaFormData, NotaFrentistaComRelacoes } from '../types';
 
@@ -35,11 +36,13 @@ export function useNotaFrentista(
             setNotas([]);
             return;
         }
-        
+
         setLoadingNotas(true);
         try {
-            const data = await notaFrentistaService.getByCliente(clienteId);
-            setNotas(data);
+            const res = await notaFrentistaService.getByCliente(clienteId);
+            if (isSuccess(res)) {
+                setNotas(res.data as NotaFrentistaComRelacoes[]);
+            }
         } catch (error) {
             console.error('Erro ao carregar notas:', error);
             toast.error('Erro ao carregar notas do cliente');
@@ -51,9 +54,10 @@ export function useNotaFrentista(
     const loadFrentistas = useCallback(async () => {
         if (!postoId) return;
         try {
-            const data = await frentistaService.getAll(postoId);
-            // Filtrar apenas frentistas ativos
-            setFrentistas(data.filter((f) => f.ativo));
+            const res = await frentistaService.getAll(postoId);
+            if (isSuccess(res)) {
+                setFrentistas(res.data.filter((f) => f.ativo));
+            }
         } catch (error) {
             console.error('Erro ao carregar frentistas:', error);
             toast.error('Erro ao carregar lista de frentistas');

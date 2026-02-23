@@ -1,14 +1,13 @@
 // [14/01 15:50] Criação de tipos derivados para formulários da UI
-import type { Cliente } from './smart-types';
 
-type FormFields<T> = {
-  [K in keyof T]: T[K] extends number ? string : T[K];
-};
-
-export type ClienteFormFields = FormFields<
-  Pick<
-    Cliente,
-    'nome' | 'documento' | 'telefone' | 'email' | 'limite_credito' | 'endereco'
-  >
->;
-
+/**
+ * Campos do formulário de cliente - todos como string para uso em inputs
+ */
+export interface ClienteFormFields {
+  nome: string;
+  documento: string;
+  telefone: string;
+  email: string;
+  limite_credito: string;
+  endereco: string;
+}
