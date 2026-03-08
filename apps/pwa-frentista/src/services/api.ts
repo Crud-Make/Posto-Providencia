@@ -33,7 +33,7 @@ export const api = {
                 total_vendas: 0,
                 total_recebido: 0,
                 diferenca: 0,
-                status: 'pendente',
+                status: 'ABERTO',
                 usuario_id: usuarioId
             })
             .select()
