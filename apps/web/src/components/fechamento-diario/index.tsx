@@ -71,7 +71,10 @@ const TelaFechamentoDiario: React.FC = () => {
    } = useSessoesFrentistas(postoAtivoId, frentistas);
 
    const {
-      pagamentos: payments, carregando: loadingPagamentos, totalPagamentos, carregarPagamentos, alterarPagamento, aoSairPagamento
+      pagamentos: payments, carregando: loadingPagamentos, totalPagamentos, carregarPagamentos, alterarPagamento, aoSairPagamento,
+      // [24/07 21:05] Passa a extrair sincronizarComSessoes: a aba Financeiro (TabFinanceiro) exige essa handler
+      // no botão "auto-preencher". Sem ela: erro de tipo TS2741 (build quebra) + TypeError em runtime ao clicar.
+      sincronizarComSessoes
    } = usePagamentos(postoAtivoId);
 
    // --- 🔴 REALTIME: Escuta envios do PWA em tempo real ---
@@ -183,7 +186,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      onRefreshSessoes={() => {
                         if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno, true);
                      }}
-                     handlers={{ alterarPagamento, aoSairPagamento }}
+                     handlers={{ alterarPagamento, aoSairPagamento, sincronizarComSessoes }}
                   />
                ) : activeTab === 'detalhamento' ? (
                   <TabDetalhamentoFrentista
