@@ -124,7 +124,9 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
     try {
       const dataStr = dataFechamento;
       const postoId = 1;
-      const turnoId = await api.getTurnoAtual(postoId); // derivado do horário atual (tabela Turno)
+      // Universal (pedido do dono): frentista não escolhe turno. Todos os envios do
+      // dia caem num turno canônico único e a web mostra o dia inteiro (getByDate).
+      const turnoId = 1;
 
       // Chama a lógica inteligente da interface
       const fechamentoId = await api.getOrCreateFechamento(postoId, dataStr, turnoId);

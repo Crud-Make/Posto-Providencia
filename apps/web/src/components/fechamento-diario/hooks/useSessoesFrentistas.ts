@@ -117,11 +117,11 @@ export const useSessoesFrentistas = (
 
     setCarregando(true);
     try {
-      // [18/01 00:00] Checar success e extrair data do ApiResponse
-      // Motivo: fechamentoFrentistaService agora retorna ApiResponse
-      const dadosRes = await fechamentoFrentistaService.getByDateAndTurno(
+      // Universal (pedido do dono): o envio do frentista não tem turno. Carregamos
+      // TODOS os envios do dia (getByDate), independente do turno selecionado no topo.
+      // O parâmetro `turno` fica só no guard de cache abaixo.
+      const dadosRes = await fechamentoFrentistaService.getByDate(
         data,
-        turno,
         postoId
       );
 
