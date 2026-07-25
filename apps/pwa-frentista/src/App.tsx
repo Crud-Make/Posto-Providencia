@@ -121,8 +121,8 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
     setIsSubmitting(true);
     try {
       const dataStr = dataFechamento;
-      const turnoId = 1; // Fixo no exemplo (Ou calculado dependendo do horário)
       const postoId = 1;
+      const turnoId = await api.getTurnoAtual(postoId); // derivado do horário atual (tabela Turno)
 
       // Chama a lógica inteligente da interface
       const fechamentoId = await api.getOrCreateFechamento(postoId, dataStr, turnoId);
@@ -141,7 +141,7 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
         valor_cartao_credito: parseInt(payments.credito.replace(/\D/g, ''), 10) / 100 || 0,
         valor_cartao: 0,
         valor_conferido: calculateTotalPaymentsValue() / 100,
-        diferenca_calculada: (calculateTotalPaymentsValue() - parseInt(totalVendido.replace(/\D/g, ''), 10)) / 100,
+        diferenca_calculada: (parseInt(totalVendido.replace(/\D/g, ''), 10) - calculateTotalPaymentsValue()) / 100,
         observacoes: "Fechamento via PWA Frentista"
       };
 

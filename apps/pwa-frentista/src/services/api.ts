@@ -13,6 +13,38 @@ export const api = {
         return data;
     },
 
+    /**
+     * Deriva o turno atual do posto a partir do horário de agora.
+     * Consulta a tabela Turno (data-driven) e casa o horário corrente com a
+     * faixa horario_inicio..horario_fim, tratando turnos que viram a meia-noite.
+     * Faz fallback para o primeiro turno ativo (ou 1) se nada casar.
+     */
+    async getTurnoAtual(postoId: number): Promise<number> {
+        const { data, error } = await supabase
+            .from('Turno')
+            .select('id, horario_inicio, horario_fim')
+            .eq('posto_id', postoId)
+            .eq('ativo', true)
+            .order('horario_inicio');
+        if (error) throw new Error(error.message);
+        if (!data || data.length === 0) return 1;
+
+        const agora = new Date();
+        const hhmmss = agora.toTimeString().slice(0, 8); // "HH:MM:SS" no fuso local
+
+        const normaliza = (h: string) => h.slice(0, 8);
+        for (const t of data) {
+            const inicio = normaliza(t.horario_inicio);
+            const fim = normaliza(t.horario_fim);
+            const viraMeiaNoite = inicio > fim;
+            const dentro = viraMeiaNoite
+                ? (hhmmss >= inicio || hhmmss < fim)   // ex.: 22:00 -> 06:00
+                : (hhmmss >= inicio && hhmmss < fim);  // ex.: 06:00 -> 14:00
+            if (dentro) return t.id;
+        }
+        return data[0].id;
+    },
+
     /** Busca ou cria o Fechamento consolidado do dia/turno */
     async getOrCreateFechamento(postoId: number, dataStr: string, turnoId: number, usuarioId: number = 1) {
         const { data: fechamentos, error: fetchError } = await supabase
