@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import BarraLateral from '../components/BarraLateral';
 import Cabecalho from '../components/Cabecalho';
 import { Loader2 } from 'lucide-react';

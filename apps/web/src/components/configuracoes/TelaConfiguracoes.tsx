@@ -2,8 +2,7 @@
 // [10/01 17:55] Fix: Passando postoAtivoId para useResetSistema
 import React from 'react';
 import { Settings, AlertTriangle, RotateCcw, Save } from 'lucide-react';
-import { usePosto } from '../../contexts/PostoContext';
-import { FormaPagamento } from './types';
+import { usePosto } from '../../contexts/usePosto';
 import {
     useConfiguracoesData,
     useFormaPagamento,
@@ -122,20 +121,16 @@ const TelaConfiguracoes: React.FC = () => {
 
                                 <ParametrosFechamento
                                     tolerance={tolerance}
-                                    saving={false} // Managed internally by ParametrosFechamento or parent if needed
                                     modified={configsModified}
                                     onChange={updateTolerance}
-                                    onSave={handleSaveConfigs}
                                 />
 
                                 <ParametrosEstoque
                                     diasCritico={diasEstoqueCritico}
                                     diasBaixo={diasEstoqueBaixo}
-                                    saving={false}
                                     modified={configsModified}
                                     onChangeCritico={updateDiasCritico}
                                     onChangeBaixo={updateDiasBaixo}
-                                    onSave={handleSaveConfigs}
                                 />
 
                                 <div className="bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30 p-6">

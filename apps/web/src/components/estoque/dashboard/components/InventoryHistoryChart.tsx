@@ -1,35 +1,11 @@
 import React from 'react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { TankHistoryEntry } from '../types';
 
 interface InventoryHistoryChartProps {
     data: TankHistoryEntry[];
     tankName: string;
 }
-
-interface LegendEntry {
-    color?: string;
-    value: string;
-}
-
-interface LegendWrapperProps {
-    payload?: LegendEntry[];
-}
-
-const LegendWrapper: React.FC<LegendWrapperProps> = ({ payload }) => {
-    if (!payload) return null;
-
-    return (
-        <div className="flex justify-center gap-4 mt-2 text-xs text-gray-500">
-            {payload.map((entry, index) => (
-                <div key={`item-${index}`} className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                    <span>{entry.value === 'volume_livro' ? 'Estoque Calculado (Livro)' : 'Estoque Físico'}</span>
-                </div>
-            ))}
-        </div>
-    );
-};
 
 export const InventoryHistoryChart: React.FC<InventoryHistoryChartProps> = ({ data, tankName }) => {
     if (!data || data.length === 0) {

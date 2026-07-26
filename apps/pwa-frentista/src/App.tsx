@@ -5,6 +5,7 @@ import {
   ClipboardList, ShoppingBag, History, ChevronDown,
   X, Check, AlertCircle, Camera
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
 import HistoricoScreen from './screens/HistoricoScreen';
@@ -14,8 +15,23 @@ import ReloadPrompt from './components/ReloadPrompt';
 
 type TabType = 'registro' | 'vendas' | 'historico' | 'encerrante' | 'perfil';
 
+interface DialogState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: 'success' | 'error';
+}
+
+interface PaymentCardProps {
+  title: string;
+  icon: LucideIcon;
+  iconColor: { bg: string; text: string };
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
 // Reusable card for payments
-const PaymentCard = ({ title, icon: Icon, iconColor, value, onChange }: any) => (
+const PaymentCard = ({ title, icon: Icon, iconColor, value, onChange }: PaymentCardProps) => (
   <div className="bg-[#131722] rounded-2xl p-4 border border-slate-800/60 shadow-sm flex flex-col justify-between h-28">
     <div className="flex items-center gap-2 mb-2">
       <div className={`p-1.5 rounded-lg bg-opacity-10 flex items-center justify-center ${iconColor.bg}`}>
@@ -46,7 +62,7 @@ const formatCurrency = (value: string) => {
   return amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const AppComponent = ({ setDialog }: { setDialog: any }) => {
+const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateAction<DialogState>> }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Persistimos frentista e aba: no mobile, abrir a câmera pode descarregar a
   // página da memória e recarregar ao voltar — sem isso o app perdia o estado
@@ -168,8 +184,8 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
       setPayments({ pix: '', dinheiro: '', moedas: '', baratao: '', notaPrazo: '', debito: '', credito: '' });
       setSelectedFrentista(null);
 
-    } catch (err: any) {
-      setDialog({ isOpen: true, title: 'Erro', message: err.message || 'Ocorreu um erro no servidor.', type: 'error' });
+    } catch (err) {
+      setDialog({ isOpen: true, title: 'Erro', message: err instanceof Error ? err.message : 'Ocorreu um erro no servidor.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -472,7 +488,7 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
 };
 
 export default function App() {
-  const [dialog, setDialog] = useState<any>({ isOpen: false, title: '', message: '', type: 'success' });
+  const [dialog, setDialog] = useState<DialogState>({ isOpen: false, title: '', message: '', type: 'success' });
 
   return (
     <>

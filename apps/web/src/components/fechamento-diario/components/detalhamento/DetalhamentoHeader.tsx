@@ -8,10 +8,9 @@ import { Users, RefreshCcw } from 'lucide-react';
 
 interface DetalhamentoHeaderProps {
   count: number;
-  data?: string;
 }
 
-export const DetalhamentoHeader: React.FC<DetalhamentoHeaderProps> = ({ count, data }) => {
+export const DetalhamentoHeader: React.FC<DetalhamentoHeaderProps> = ({ count }) => {
   return (
     <div className="p-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-800/40">
       <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">

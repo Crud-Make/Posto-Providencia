@@ -195,7 +195,6 @@ export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
                     </h3>
                     <div className="space-y-6">
                         {Object.entries(dadosConsolidados.porCombustivel).map(([nome, dados], idx) => {
-                            const percent = Math.min((dados.faturamento / dados.meta) * 100, 100);
                             const percentDisplay = Math.min((dados.faturamento / 300000) * 100, 100).toFixed(1);
 
                             return (

@@ -4,7 +4,7 @@
  * @description Gerencia estado de autenticação e sessão do usuário
  * @remarks Utiliza mock user por padrão para modo desenvolvimento sem login
  */
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { UsuarioTable } from '../types/database/tables/infraestrutura';
 import { Session } from '@supabase/supabase-js';
@@ -20,7 +20,7 @@ type Usuario = UsuarioTable['Row'];
  * Interface do Contexto de Autenticação
  * @interface AuthContextType
  */
-interface AuthContextType {
+export interface AuthContextType {
     /** Sessão atual do Supabase */
     session: Session | null;
     /** Dados do usuário logado */
@@ -186,16 +186,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 /**
- * Hook para acessar o contexto de autenticação
- * @returns AuthContextType - Contexto de autenticação com session, user, loading e funções
- * @throws Error - Se usado fora do AuthProvider
- * @example
- * const { user, signIn, signOut } = useAuth();
+ * Contexto de Autenticação (objeto React puro, sem componente).
+ * @remarks Exportado apenas como default para não violar `react-refresh/only-export-components`
+ * (que escaneia exports nomeados de arquivo .tsx que também exporta componente). O hook `useAuth`
+ * mora em `./useAuth.ts` e consome este objeto via import default.
  */
-export const useAuth = (): AuthContextType => {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth deve ser usado dentro de um AuthProvider');
-    }
-    return context;
-};
+export default AuthContext;

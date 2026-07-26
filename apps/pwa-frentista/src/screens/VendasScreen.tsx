@@ -15,6 +15,9 @@ interface Produto {
     estoque_atual: number;
     categoria: string;
     unidade_medida: string;
+    // Coluna real no banco (aviso de estoque baixo), mas api.getProdutos não a
+    // seleciona hoje — fica sempre undefined, preservando o comportamento atual.
+    estoque_minimo?: number | null;
 }
 
 interface CarrinhoItem {
@@ -22,10 +25,19 @@ interface CarrinhoItem {
     quantidade: number;
 }
 
+interface VendaHoje {
+    id: number;
+    quantidade: number;
+    valor_unitario: number;
+    valor_total: number;
+    data: string;
+    produto: { nome: string; categoria: string } | null;
+}
+
 const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVoltar }) => {
     const [produtos, setProdutos] = useState<Produto[]>([]);
     const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
-    const [vendasHoje, setVendasHoje] = useState<any[]>([]);
+    const [vendasHoje, setVendasHoje] = useState<VendaHoje[]>([]);
     const [loading, setLoading] = useState(true);
     const [enviando, setEnviando] = useState(false);
 
@@ -35,7 +47,9 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
             api.getVendasProdutoHoje(frentistaId)
         ]).then(([prods, vendas]) => {
             setProdutos(prods);
-            setVendasHoje(vendas);
+            // Cliente Supabase não tipado com o Database gerado: o join infere `produto`
+            // como array na estrutura, mas essa FK é many-to-one — em runtime vem objeto único.
+            setVendasHoje(vendas as unknown as VendaHoje[]);
         }).catch(err => console.error(err))
             .finally(() => setLoading(false));
     }, [frentistaId]);
@@ -88,9 +102,9 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
                 api.getVendasProdutoHoje(frentistaId)
             ]);
             setProdutos(prods);
-            setVendasHoje(vendas);
-        } catch (err: any) {
-            alert(`Erro: ${err.message}`);
+            setVendasHoje(vendas as unknown as VendaHoje[]);
+        } catch (err) {
+            alert(`Erro: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
         } finally {
             setEnviando(false);
         }
@@ -138,7 +152,7 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
                                                         <p className="text-white font-semibold text-sm">{produto.nome}</p>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-emerald-400 font-bold text-sm">R$ {formatCurrency(produto.preco_venda)}</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${produto.estoque_atual <= (produto as any).estoque_minimo ? 'bg-red-500/20 text-red-400' : 'bg-slate-700/50 text-slate-400'}`}>
+                                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeof produto.estoque_minimo === 'number' && produto.estoque_atual <= produto.estoque_minimo ? 'bg-red-500/20 text-red-400' : 'bg-slate-700/50 text-slate-400'}`}>
                                                                 Est: {produto.estoque_atual}
                                                             </span>
                                                         </div>
@@ -181,7 +195,7 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
                             <div className="mt-6">
                                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Vendas de hoje</h3>
                                 <div className="space-y-2">
-                                    {vendasHoje.map((v: any) => (
+                                    {vendasHoje.map((v) => (
                                         <div key={v.id} className="bg-[#131722]/60 rounded-xl p-3 border border-slate-800/40 flex items-center justify-between">
                                             <div>
                                                 <p className="text-slate-300 text-sm font-medium">{v.produto?.nome || 'Produto'}</p>

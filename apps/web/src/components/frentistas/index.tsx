@@ -49,7 +49,7 @@ const TelaGestaoFrentistas: React.FC = () => {
                 if (frentistaSelecionadoId === id) {
                     setFrentistaSelecionadoId(null);
                 }
-            } catch (error) {
+            } catch {
                 alert('Erro ao excluir frentista.');
             }
         }

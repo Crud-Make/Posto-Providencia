@@ -16,6 +16,23 @@ interface BicoInfo {
     preco: number;
 }
 
+// Formato bruto devolvido por api.getBicos (select com join em Combustivel).
+interface BicoRow {
+    id: number;
+    numero: number;
+    combustivel_id: number;
+    combustivel: { nome: string; preco_venda: number } | null;
+}
+
+// Formato aceito por api.salvarLeituras.
+interface LinhaLeitura {
+    bico_id: number;
+    combustivel_id: number;
+    leitura_inicial: number;
+    leitura_final: number;
+    preco_litro: number;
+}
+
 const POSTO_ID = 1;
 // Teto de litros plausível por bico num turno — acima disso, provavelmente é
 // dígito errado (troca de dígito costuma gerar diferenças de milhares de litros).
@@ -86,8 +103,8 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     // Antes travava só durante o processamento, mas o reload acontecia enquanto a
     // câmera nativa estava aberta (a 1ª foto era perdida e precisava tirar de novo).
     useEffect(() => {
-        (window as any).__encerranteBusy = true;
-        return () => { (window as any).__encerranteBusy = false; };
+        window.__encerranteBusy = true;
+        return () => { window.__encerranteBusy = false; };
     }, []);
 
     // Mantém a function quente o tempo todo na tela (ping ao abrir + a cada 45s),
@@ -101,7 +118,9 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     useEffect(() => {
         Promise.all([api.getBicos(POSTO_ID), api.getUltimasLeiturasPorBico(POSTO_ID)])
             .then(([bs, ult]) => {
-                const mapped: BicoInfo[] = (bs as any[]).map(b => ({
+                // Cliente Supabase não tipado com o Database gerado: o join infere `combustivel`
+                // como array na estrutura, mas essa FK é many-to-one — em runtime vem objeto único.
+                const mapped: BicoInfo[] = (bs as unknown as BicoRow[]).map(b => ({
                     id: b.id,
                     numero: b.numero,
                     combustivel_id: b.combustivel_id,
@@ -148,8 +167,9 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
             setFeedback(comDuvida > 0
                 ? { tipo: 'erro', msg: `Li ${lidos} de ${bicos.length} bicos, mas ${comDuvida} ficaram em dúvida (destacados). Confira antes de enviar.` }
                 : { tipo: 'ok', msg: `Li ${lidos} de ${bicos.length} bicos. Confira e ajuste se precisar.` });
-        } catch (err: any) {
-            setFeedback({ tipo: 'erro', msg: err.message || 'Não consegui ler a foto. Tente novamente.' });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Não consegui ler a foto. Tente novamente.';
+            setFeedback({ tipo: 'erro', msg });
         } finally {
             setLendo(false);
         }
@@ -197,7 +217,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         }
 
         const linhas = bicos
-            .map(b => {
+            .map((b): LinhaLeitura | null => {
                 const final = parseBR(valores[b.id] || '');
                 if (!final) return null;
                 const inicial = ultimas.get(b.id) ?? final; // 1ª leitura do bico = base (litros 0)
@@ -209,7 +229,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                     preco_litro: b.preco,
                 };
             })
-            .filter(Boolean) as any[];
+            .filter((l): l is LinhaLeitura => l !== null);
 
         if (linhas.length === 0) {
             setFeedback({ tipo: 'erro', msg: 'Nenhum valor preenchido. Fotografe o papel primeiro.' });
@@ -227,8 +247,9 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
             setDuvidaOcr({});
             // recarrega as últimas leituras (agora as que acabamos de gravar viram base)
             api.getUltimasLeiturasPorBico(POSTO_ID).then(setUltimas).catch(() => { });
-        } catch (err: any) {
-            setFeedback({ tipo: 'erro', msg: err.message || 'Erro ao enviar as leituras.' });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Erro ao enviar as leituras.';
+            setFeedback({ tipo: 'erro', msg });
         } finally {
             setEnviando(false);
         }

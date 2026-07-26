@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { bicoService, leituraService } from '../../../services/api';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/useAuth';
 import { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { BicoComDetalhes } from '../../../types/fechamento';
@@ -25,7 +25,7 @@ export function useLeiturasDiarias(postoAtivoId: number | null) {
 
     // Hook de Leituras (Compartilhado com Fechamento Diário)
     const leiturasHook = useLeituras(postoAtivoId, selectedDate, null, bicos);
-    const { carregarLeituras, leituras, totals } = leiturasHook;
+    const { carregarLeituras, leituras } = leiturasHook;
 
     /**
      * Carrega configurações dos bicos do posto

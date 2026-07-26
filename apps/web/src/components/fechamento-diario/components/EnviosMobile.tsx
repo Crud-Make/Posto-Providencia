@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { RefreshCcw, Smartphone, Trash2 } from 'lucide-react';
-import { useAuth } from '../../../contexts/AuthContext';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { paraReais, parseValue } from '../../../utils/formatters';
@@ -71,6 +70,7 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Crédito</th>
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Nota/Vale</th>
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Baratão</th>
+                <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Moedas</th>
                 <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Total</th>
                 <th className="px-4 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider w-10">Ações</th>
               </tr>
@@ -86,7 +86,8 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
                 const credito = parseValue(s.valor_cartao_credito);
                 const nota = parseValue(s.valor_nota);
                 const baratao = parseValue(s.valor_baratao);
-                const total = dinheiro + pix + debito + credito + nota + baratao;
+                const moedas = parseValue(s.valor_moedas);
+                const total = dinheiro + pix + debito + credito + nota + baratao + moedas;
 
                 return (
                   <tr key={s.tempId} className="hover:bg-slate-700/20 transition-colors">
@@ -100,6 +101,7 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
                       { campo: 'valor_cartao_credito', val: s.valor_cartao_credito },
                       { campo: 'valor_nota', val: s.valor_nota },
                       { campo: 'valor_baratao', val: s.valor_baratao },
+                      { campo: 'valor_moedas', val: s.valor_moedas },
                     ].map((col) => (
                       <td key={col.campo} className="px-2 py-3 text-right">
                         <div className="relative flex items-center">

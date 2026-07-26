@@ -15,7 +15,7 @@ import {
   CheckCircle2,
   Save
 } from 'lucide-react';
-import { usePosto } from '../../contexts/PostoContext';
+import { usePosto } from '../../contexts/usePosto';
 import { useLeiturasDiarias } from './hooks/useLeiturasDiarias';
 import { TabelaLeituras } from './components/TabelaLeituras';
 import { ResumoLeituras } from './components/ResumoLeituras';

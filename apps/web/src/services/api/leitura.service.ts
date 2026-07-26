@@ -11,8 +11,7 @@ import type { Leitura, Bico, Combustivel, Bomba, InsertTables, UpdateTables } fr
 import {
   ApiResponse,
   createSuccessResponse,
-  createErrorResponse,
-  isSuccess
+  createErrorResponse
 } from '../../types/ui/response-types';
 
 export interface VendaPorCombustivel {

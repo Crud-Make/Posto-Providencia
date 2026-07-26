@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesAnalysisService } from '../../../../services/api';
-import { usePosto } from '../../../../contexts/PostoContext';
+import { usePosto } from '../../../../contexts/usePosto';
 import { ProductData, ProfitabilityData, Totals, PeriodData, Insight } from '../types';
 import { isSuccess } from '../../../../types/ui/response-types';
 

@@ -8,7 +8,7 @@
  * @module FormDespesa
  */
 import React, { useState, useEffect } from 'react';
-import { X, Save, DollarSign, Calendar, Tag, FileText, AlertCircle } from 'lucide-react';
+import { X, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
 import { Despesa, DespesaFormData, CATEGORIAS_DESPESA } from '../types';
 // [01/02 11:15] Integração com categorias dinâmicas e remoção de casting 'any' para conformidade.
 import { categoriaService, CategoriaFinanceira } from '../../../services/api/categoria.service';

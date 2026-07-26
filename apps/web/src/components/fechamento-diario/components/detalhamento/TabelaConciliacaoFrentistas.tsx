@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Info, CheckCircle2, AlertCircle, TrendingUp, Users, Wallet, Trophy } from 'lucide-react';
+import { Smartphone, Info, CheckCircle2, AlertCircle, TrendingUp, Wallet, Trophy, Coins } from 'lucide-react';
 import { paraReais, parseValue } from '../../../../utils/formatters';
 import { cartao as cartaoModulo, conferido } from '@posto/utils';
 import { meiosDaSessao } from '../../../../utils/fechamentoMeios';
@@ -9,7 +9,6 @@ import { SessaoFrentista } from '../../../../types/fechamento';
 interface TabelaConciliacaoFrentistasProps {
   sessoes: SessaoFrentista[];
   frentistas: Frentista[];
-  onRefresh?: () => void;
   isLoading?: boolean;
   onUpdateCampo?: (tempId: string, campo: string, valor: number | string) => void;
 }
@@ -23,7 +22,6 @@ interface TabelaConciliacaoFrentistasProps {
 export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasProps> = ({
   sessoes,
   frentistas,
-  onRefresh,
   isLoading,
   onUpdateCampo
 }) => {
@@ -58,6 +56,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
     { id: 'nota', label: 'Notas a Prazo', icon: <Info size={16} className="text-amber-400" /> },
     { id: 'dinheiro', label: 'Dinheiro', icon: <Wallet size={16} className="text-emerald-400" /> },
     { id: 'baratao', label: 'Baratão', icon: <AlertCircle size={16} className="text-yellow-400" /> },
+    { id: 'moedas', label: 'Moedas', icon: <Coins size={16} className="text-orange-400" /> },
   ];
 
   const getValorPorFrentistaEMeio = (frentistaId: number, meioId: string) => {
@@ -69,6 +68,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
         case 'nota': return acc + parseValue(s.valor_nota);
         case 'dinheiro': return acc + parseValue(s.valor_dinheiro);
         case 'baratao': return acc + parseValue(s.valor_baratao);
+        case 'moedas': return acc + parseValue(s.valor_moedas);
         default: return acc;
       }
     }, 0);
@@ -85,6 +85,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
       case 'nota': return 'valor_nota';
       case 'dinheiro': return 'valor_dinheiro';
       case 'baratao': return 'valor_baratao';
+      case 'moedas': return 'valor_moedas';
       default: return null;
     }
   }
@@ -189,16 +190,34 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
             <thead>
               <tr className="bg-slate-900/80 border-b border-slate-800">
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Meio de Pagamento</th>
-                {frentistasUnicos.map(f => (
-                  <th key={f.id} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 text-center min-w-[120px]">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">
-                        {f.nome.substring(0, 2).toUpperCase()}
+                {frentistasUnicos.map(f => {
+                  const sessaoFrentista = getSessaoPorFrentista(f.id);
+                  const estaConferido = sessaoFrentista?.status === 'conferido';
+                  return (
+                    <th key={f.id} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 text-center min-w-[120px]">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">
+                          {f.nome.substring(0, 2).toUpperCase()}
+                        </div>
+                        {f.nome.split(' ')[0]}
+                        {sessaoFrentista && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateCampo?.(sessaoFrentista.tempId, 'status', estaConferido ? 'pendente' : 'conferido')}
+                            disabled={isLoading}
+                            className={`mt-1 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold normal-case tracking-normal border transition-colors ${estaConferido
+                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                              : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:bg-slate-700/60'
+                              }`}
+                          >
+                            <CheckCircle2 size={10} />
+                            {estaConferido ? 'Conferido' : 'Marcar conferido'}
+                          </button>
+                        )}
                       </div>
-                      {f.nome.split(' ')[0]}
-                    </div>
-                  </th>
-                ))}
+                    </th>
+                  );
+                })}
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 text-right">Total</th>
               </tr>
             </thead>
@@ -215,7 +234,6 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
                       <span className="text-sm font-medium text-slate-300">{meio.label}</span>
                     </td>
                     {frentistasUnicos.map(f => {
-                      const valor = getValorPorFrentistaEMeio(f.id, meio.id);
                       return (
                         <td key={`${meio.id}-${f.id}`} className="px-2 py-3 text-center">
                           {/* Input Editável */}

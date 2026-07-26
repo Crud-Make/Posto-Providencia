@@ -178,7 +178,9 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
       });
 
       // 2. Recebimentos (Receita)
-      const totalRecebimentos = recebimentos.reduce((acc, r) => acc + (r.valor || 0), 0);
+      // Nota: recebimentos entram na lista de transações para detalhamento, mas o total
+      // NÃO é somado ao lucro (já contabilizado nas vendas via formas de pagamento) — ver
+      // comentário "CORREÇÃO CRÍTICA" abaixo.
       recebimentos.forEach(r => {
         listaTransacoes.push({
           id: `rec-${r.id}`,

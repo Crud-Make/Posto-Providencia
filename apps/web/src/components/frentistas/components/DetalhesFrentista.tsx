@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { User, Edit, Trash2, ShieldCheck, Mail, Clock } from 'lucide-react';
+import { User, Edit, Trash2, ShieldCheck, Clock } from 'lucide-react';
 import { PerfilFrentista } from '../types';
 import { useHistoricoFrentista } from '../hooks/useHistoricoFrentista';
 import { paraReais as formatarMoeda } from '../../../utils/formatters';

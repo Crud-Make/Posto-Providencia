@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePosto } from '../contexts/PostoContext';
+import { usePosto } from '../contexts/usePosto';
 import { useEscalas } from './escalas/hooks/useEscalas';
 import { exportarEscalaParaPdf } from './escalas/utils/exportPdf';
 

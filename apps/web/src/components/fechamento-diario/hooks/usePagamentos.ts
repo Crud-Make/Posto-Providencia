@@ -17,10 +17,10 @@
 import * as React from 'react';
 import { useState, useCallback, useMemo } from 'react';
 import type { EntradaPagamento } from '../../../types/fechamento';
-import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
+import type { Recebimento } from '../../../types/database/aliases';
 import { formaPagamentoService } from '../../../services/api';
 import { fechamentoService } from '../../../services/api/fechamento.service';
-import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
+import { analisarValor, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
 import { isSuccess } from '../../../types/ui/response-types';
 
 /**
@@ -86,7 +86,7 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
           if (isSuccess(detalhesRes) && detalhesRes.data.recebimentos) {
             // [29/01 13:40] Recebimentos carregados do banco
             console.log('[29/01 13:40] Recebimentos carregados do banco:', detalhesRes.data.recebimentos.length, 'registros');
-            detalhesRes.data.recebimentos.forEach((r: any) => {
+            detalhesRes.data.recebimentos.forEach((r: Recebimento) => {
               // Recebimento deve ter forma_pagamento_id
               if (r.forma_pagamento_id) {
                 valoresSalvos[r.forma_pagamento_id] = r.valor;
@@ -172,6 +172,9 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
         matched = true;
       } else if (t.includes('baratao') || t.includes('baratão') || t.includes('baratão')) {
         sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_baratao), 0);
+        matched = true;
+      } else if (t.includes('moeda')) {
+        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_moedas), 0);
         matched = true;
       }
 

@@ -5,7 +5,7 @@
  * Carrega fechamentos, leituras, turnos e despesas do posto e consolida totais do dia.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { usePosto } from '../../../contexts/PostoContext';
+import { usePosto } from '../../../contexts/usePosto';
 import {
     fechamentoService,
     leituraService,

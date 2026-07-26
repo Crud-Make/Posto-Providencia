@@ -1,6 +1,6 @@
 import React from 'react';
 import { Fuel, Menu, Sun, Moon } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/useTheme';
 import PostoSelector from '@shared/ui/PostoSelector';
 import { Link } from 'react-router-dom';
 

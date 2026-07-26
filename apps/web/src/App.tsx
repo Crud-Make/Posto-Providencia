@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/useAuth';
 import { PostoProvider } from './contexts/PostoContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'sonner';

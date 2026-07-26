@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { frentistaService, escalaService } from '../../../services/api';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { Escala } from '../../../services/api/escala.service';
@@ -36,16 +36,10 @@ export const useEscalas = (postoAtivoId: number | null) => {
         escalaId: null
     });
 
-    useEffect(() => {
-        if (postoAtivoId) {
-            carregarDados();
-        }
-    }, [dataAtual, postoAtivoId]);
-
     /**
      * Carrega frentistas e escalas do banco de dados
      */
-    const carregarDados = async () => {
+    const carregarDados = useCallback(async () => {
         try {
             setCarregando(true);
             const [frentistasRes, escalasRes] = await Promise.all([
@@ -60,7 +54,13 @@ export const useEscalas = (postoAtivoId: number | null) => {
         } finally {
             setCarregando(false);
         }
-    };
+    }, [postoAtivoId, dataAtual]);
+
+    useEffect(() => {
+        if (postoAtivoId) {
+            carregarDados();
+        }
+    }, [postoAtivoId, carregarDados]);
 
     /**
      * Formata data para string ISO (YYYY-MM-DD)

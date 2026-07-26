@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
 
-interface ThemeContextType {
+export interface ThemeContextType {
     theme: Theme;
     toggleTheme: () => void;
 }
@@ -41,10 +41,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 };
 
-export const useTheme = () => {
-    const context = useContext(ThemeContext);
-    if (context === undefined) {
-        throw new Error('useTheme must be used within a ThemeProvider');
-    }
-    return context;
-};
+/**
+ * Contexto de Tema (objeto React puro, sem componente).
+ * @remarks Exportado apenas como default para não violar `react-refresh/only-export-components`
+ * (que escaneia exports nomeados de arquivo .tsx que também exporta componente). O hook `useTheme`
+ * mora em `./useTheme.ts` e consome este objeto via import default.
+ */
+export default ThemeContext;

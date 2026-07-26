@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ChevronRight, User } from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 import { ClientesListaProps } from '../types';
 
 /**

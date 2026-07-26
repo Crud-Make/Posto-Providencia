@@ -1,5 +1,32 @@
 import { supabase } from '../lib/supabase';
 
+/** Payload enviado por App.tsx ao fechar o turno do frentista (shape de FechamentoFrentista.Insert). */
+interface FechamentoFrentistaPayload {
+    fechamento_id: number;
+    frentista_id: number;
+    posto_id: number;
+    encerrante: number;
+    valor_pix: number;
+    valor_dinheiro: number;
+    valor_moedas: number;
+    baratao: number;
+    valor_nota: number;
+    valor_cartao_debito: number;
+    valor_cartao_credito: number;
+    valor_cartao: number;
+    valor_conferido: number;
+    diferenca_calculada: number;
+    observacoes: string;
+}
+
+/** Linha crua devolvida pela query de leituras (select bico_id, leitura_final, data, id). */
+interface LeituraRow {
+    bico_id: number;
+    leitura_final: number;
+    data: string;
+    id: number;
+}
+
 export const api = {
     /** Busca Frentistas ativos do Posto */
     async getFrentistas(postoId: number) {
@@ -43,7 +70,7 @@ export const api = {
     },
 
     /** Envia o fechamento individual do frentista */
-    async submitFrentistaClosing(payload: any) {
+    async submitFrentistaClosing(payload: FechamentoFrentistaPayload) {
         const { data, error } = await supabase
             .from('FechamentoFrentista')
             .insert(payload)
@@ -152,7 +179,7 @@ export const api = {
             .limit(200);
         if (error) throw new Error(error.message);
         const ultimas = new Map<number, number>();
-        (data || []).forEach((l: any) => {
+        (data || []).forEach((l: LeituraRow) => {
             if (!ultimas.has(l.bico_id)) ultimas.set(l.bico_id, Number(l.leitura_final));
         });
         return ultimas;

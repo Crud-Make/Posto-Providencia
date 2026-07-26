@@ -8,10 +8,38 @@ import {
 
 /**
  * Serviço de Fechamento de Frentista
- * 
+ *
  * @remarks
  * Gerencia os fechamentos individuais de cada frentista (sessões de trabalho, diferenças, valores)
  */
+
+/** Fechamento (dados mínimos) trazido via join em `getHistoricoDiferencas` (`select: fechamento:Fechamento(data)`). */
+interface FechamentoResumoData {
+  data: string;
+}
+
+/** Fechamento com turno, trazido via join em `getByDate`/`getByDateAndTurno`
+ *  (`select: fechamento:Fechamento(data, turno_id, turno:Turno(*), posto_id)`). */
+interface FechamentoResumoComTurno {
+  data: string;
+  turno_id: number;
+  turno: Turno | null;
+  posto_id: number;
+}
+
+/**
+ * `data_hora_envio` existe na tabela real (ver `types/database/generated.ts`) mas ainda não
+ * foi adicionada ao tipo de domínio compartilhado `FechamentoFrentista` (`@posto/types`) —
+ * complementada aqui, no ponto onde a query de fato a seleciona (`select: *`).
+ */
+type FechamentoFrentistaRow = FechamentoFrentista & { data_hora_envio: string | null };
+
+type FechamentoFrentistaHistorico = FechamentoFrentistaRow & { fechamento: FechamentoResumoData | null };
+
+type FechamentoFrentistaComRelacoes = FechamentoFrentistaRow & {
+  frentista: Frentista | null;
+  fechamento: FechamentoResumoComTurno | null;
+};
 export const fechamentoFrentistaService = {
   /**
    * Busca todos os fechamentos de frentistas de um fechamento consolidado
@@ -238,7 +266,7 @@ export const fechamentoFrentistaService = {
    * @param frentistaId - ID do frentista
    * @param limit - Número máximo de registros (padrão: 30)
    */
-  async getHistoricoDiferencas(frentistaId: number, limit = 30): Promise<ApiResponse<any[]>> {
+  async getHistoricoDiferencas(frentistaId: number, limit = 30): Promise<ApiResponse<FechamentoFrentistaHistorico[]>> {
     try {
       const { data, error } = await supabase
         .from('FechamentoFrentista')
@@ -251,7 +279,7 @@ export const fechamentoFrentistaService = {
         .limit(limit);
 
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
-      return createSuccessResponse(data || []);
+      return createSuccessResponse((data || []) as FechamentoFrentistaHistorico[]);
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
@@ -262,7 +290,7 @@ export const fechamentoFrentistaService = {
    * @param dataStr - Data no formato YYYY-MM-DD
    * @param postoId - ID do posto (opcional)
    */
-  async getByDate(dataStr: string, postoId?: number): Promise<ApiResponse<any[]>> {
+  async getByDate(dataStr: string, postoId?: number): Promise<ApiResponse<FechamentoFrentistaComRelacoes[]>> {
     try {
       // Primeiro, buscar os IDs dos fechamentos para esta data e posto
       let fechamentoQuery = supabase
@@ -295,7 +323,7 @@ export const fechamentoFrentistaService = {
         .in('fechamento_id', fechamentoIds);
 
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
-      return createSuccessResponse(data || []);
+      return createSuccessResponse((data || []) as FechamentoFrentistaComRelacoes[]);
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }
@@ -307,7 +335,7 @@ export const fechamentoFrentistaService = {
    * @param turnoId - ID do turno
    * @param postoId - ID do posto (opcional)
    */
-  async getByDateAndTurno(dataStr: string, turnoId: number, postoId?: number): Promise<ApiResponse<any[]>> {
+  async getByDateAndTurno(dataStr: string, turnoId: number, postoId?: number): Promise<ApiResponse<FechamentoFrentistaComRelacoes[]>> {
     try {
       // Busca fechamento específico da data e turno
       let fechamentoQuery = supabase
@@ -341,7 +369,7 @@ export const fechamentoFrentistaService = {
         .eq('fechamento_id', fechamentoId);
 
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
-      return createSuccessResponse(data || []);
+      return createSuccessResponse((data || []) as FechamentoFrentistaComRelacoes[]);
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }

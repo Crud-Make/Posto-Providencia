@@ -18,8 +18,8 @@ interface TabLeiturasProps {
       aoSairInicial: (id: number) => void;
       aoSairFechamento: (id: number) => void;
       calcLitros: (id: number) => { value: number; display: string };
-      alterarCampoFrentista?: (tempId: string, campo: any, valor: string) => void;
-      aoSairCampoFrentista?: (tempId: string, campo: any, valor: string) => void;
+      alterarCampoFrentista?: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
+      aoSairCampoFrentista?: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
       removerFrentista?: (tempId: string) => void;
    };
    onUpdatePrice: (bicoId: number, newPrice: number) => void;

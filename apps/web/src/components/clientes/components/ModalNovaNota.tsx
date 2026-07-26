@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Save, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Save, Loader2 } from 'lucide-react';
 import { ModalNotaProps } from '../types';
 
 /**

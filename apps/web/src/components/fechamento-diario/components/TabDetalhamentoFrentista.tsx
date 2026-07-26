@@ -11,11 +11,8 @@ import { TabelaConciliacaoFrentistas } from './detalhamento/TabelaConciliacaoFre
 interface TabDetalhamentoFrentistaProps {
   frentistaSessions: SessaoFrentista[]; // Lista de sessões de frentistas
   frentistas: Frentista[]; // Lista de cadastros de frentistas para lookup de nomes
-  totalVendasPosto: number; // Total geral de vendas para cálculos
   loading?: boolean; // Estado de carregamento
   onUpdateCampo?: (tempId: string, campo: string, valor: number) => void; // Callback genérico para outros campos
-  data?: string; // Data do fechamento para exibição no cabeçalho
-  onRefresh?: () => void; // Callback para sincronização
 }
 
 /**
@@ -28,11 +25,8 @@ interface TabDetalhamentoFrentistaProps {
 export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> = ({
   frentistaSessions,
   frentistas,
-  totalVendasPosto,
   loading,
-  onUpdateCampo,
-  data,
-  onRefresh
+  onUpdateCampo
 }) => {
   if (loading) {
     return (
@@ -50,7 +44,6 @@ export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> =
       <TabelaConciliacaoFrentistas
         sessoes={frentistaSessions}
         frentistas={frentistas}
-        onRefresh={onRefresh}
         isLoading={loading}
         onUpdateCampo={onUpdateCampo}
       />

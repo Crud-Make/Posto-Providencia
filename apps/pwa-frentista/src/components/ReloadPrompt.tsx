@@ -34,7 +34,7 @@ function ReloadPrompt() {
     useEffect(() => {
         if (!needRefresh) return
         const t = setInterval(() => {
-            if (!(window as any).__encerranteBusy) {
+            if (!window.__encerranteBusy) {
                 updateServiceWorker(true)
             }
         }, 1500)

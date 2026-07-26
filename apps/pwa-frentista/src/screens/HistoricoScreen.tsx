@@ -8,13 +8,33 @@ interface HistoricoProps {
     onVoltar: () => void;
 }
 
+// Shape do retorno de api.getHistoricoFrentista (join com Fechamento).
+interface HistoricoItem {
+    id: number;
+    encerrante: number | null;
+    valor_pix: number | null;
+    valor_dinheiro: number | null;
+    valor_moedas: number | null;
+    valor_cartao_debito: number | null;
+    valor_cartao_credito: number | null;
+    valor_nota: number | null;
+    baratao: number | null;
+    diferenca_calculada: number | null;
+    valor_conferido: number | null;
+    observacoes: string | null;
+    data_hora_envio: string;
+    fechamento: { data: string; turno_id: number } | null;
+}
+
 const HistoricoScreen: React.FC<HistoricoProps> = ({ frentistaId, frentistaNome, onVoltar }) => {
-    const [historico, setHistorico] = useState<any[]>([]);
+    const [historico, setHistorico] = useState<HistoricoItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         api.getHistoricoFrentista(frentistaId)
-            .then(data => setHistorico(data))
+            // Cliente Supabase não tipado com o Database gerado: o join infere `fechamento`
+            // como array na estrutura, mas essa FK é many-to-one — em runtime vem objeto único.
+            .then(data => setHistorico(data as unknown as HistoricoItem[]))
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
     }, [frentistaId]);
@@ -53,7 +73,7 @@ const HistoricoScreen: React.FC<HistoricoProps> = ({ frentistaId, frentistaNome,
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {historico.map((item: any) => {
+                        {historico.map((item) => {
                             const diff = item.diferenca_calculada || 0;
                             const isPositive = diff > 0;
                             const isZero = diff === 0;

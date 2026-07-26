@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { despesaService } from '../../../services/api';
 import { isSuccess } from '../../../types/ui/response-types';
-import { usePosto } from '../../../contexts/PostoContext';
+import { usePosto } from '../../../contexts/usePosto';
 import { Despesa, DespesaFormData } from '../types';
 import { toast } from 'sonner';
 

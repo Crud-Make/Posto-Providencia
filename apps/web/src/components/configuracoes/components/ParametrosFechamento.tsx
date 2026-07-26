@@ -10,12 +10,10 @@ import { ParametrosFechamentoProps } from '../types';
  * @param {ParametrosFechamentoProps} props - Props do componente
  * @returns {JSX.Element} Componente renderizado
  */
-export const ParametrosFechamento: React.FC<ParametrosFechamentoProps> = ({ 
-    tolerance, 
+export const ParametrosFechamento: React.FC<ParametrosFechamentoProps> = ({
+    tolerance,
     onChange,
-    saving,
-    modified,
-    onSave
+    modified
 }) => {
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 relative">
