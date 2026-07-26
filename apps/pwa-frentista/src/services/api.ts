@@ -132,7 +132,7 @@ export const api = {
                 });
                 if (error) throw new Error(error.message);
                 if (data?.erro) throw new Error(String(data.erro));
-                return (data?.leituras || []) as { bico: number; numero: string | null }[];
+                return (data?.leituras || []) as { bico: number; numero: string | null; confianca: boolean | null }[];
             } catch (e) {
                 ultimoErro = e;
                 if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));

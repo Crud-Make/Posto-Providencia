@@ -76,7 +76,7 @@ interface RetornoLeituras {
   leituras: Record<number, Leitura>;
   carregando: boolean;
   erro: string | null;
-  carregarLeituras: () => Promise<void>;
+  carregarLeituras: (force?: boolean) => Promise<void>;
   alterarInicial: (bicoId: number, valor: string) => void;
   alterarFechamento: (bicoId: number, valor: string) => void;
   aoSairInicial: (bicoId: number) => void;
@@ -220,11 +220,12 @@ export const useLeituras = (
    * - Se existir fechamento para data/turno: carrega leituras existentes
    * - Senão: busca última leitura de fechamento para usar como inicial
    */
-  const carregarLeituras = useCallback(async () => {
+  const carregarLeituras = useCallback(async (force = false) => {
     if (!postoId || !dataSelecionada || bicos.length === 0) return;
 
-    // Evita recarregar se já carregou para este contexto
+    // Evita recarregar se já carregou para este contexto, a menos que seja forçado
     if (
+      !force &&
       ultimoContextoCarregado.current.data === dataSelecionada &&
       ultimoContextoCarregado.current.turno === turnoSelecionado
     ) {
@@ -277,9 +278,12 @@ export const useLeituras = (
         // [29/01 13:40] Modo edição: usa leituras existentes
         console.log('[29/01 13:40] Leituras carregadas do banco:', dados.length, 'registros');
         const mapeado = dados.reduce((acc, l) => {
+          // leitura_final === leitura_inicial é a leitura-base do dia (1ª foto do turno,
+          // ainda sem fechamento real) — mostra "final" em branco até a 2ª foto chegar.
+          const aindaSemFechamento = Number(l.leitura_final) === Number(l.leitura_inicial);
           acc[l.bico_id] = {
             inicial: formatarParaBR(l.leitura_inicial, 3),
-            fechamento: l.leitura_final > 0 ? formatarParaBR(l.leitura_final, 3) : ''
+            fechamento: (!aindaSemFechamento && l.leitura_final > 0) ? formatarParaBR(l.leitura_final, 3) : ''
           };
           return acc;
         }, {} as Record<number, Leitura>);
