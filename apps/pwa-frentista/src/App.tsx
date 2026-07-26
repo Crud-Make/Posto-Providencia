@@ -47,15 +47,33 @@ const formatCurrency = (value: string) => {
 
 const AppComponent = ({ setDialog }: { setDialog: any }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedFrentista, setSelectedFrentista] = useState<{ id: number, nome: string } | null>(null);
+  // Persistimos frentista e aba: no mobile, abrir a câmera pode descarregar a
+  // página da memória e recarregar ao voltar — sem isso o app perdia o estado
+  // e "voltava pra tela inicial".
+  const [selectedFrentista, setSelectedFrentista] = useState<{ id: number, nome: string } | null>(() => {
+    try { const s = localStorage.getItem('pwa.frentista'); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
   const [frentistas, setFrentistas] = useState<{ id: number, nome: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('registro');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    try { return (localStorage.getItem('pwa.activeTab') as TabType) || 'registro'; } catch { return 'registro'; }
+  });
 
   useEffect(() => {
     // Busca do banco POSTO ID: 1 como padrão (Pode vir de config/storage depois)
     api.getFrentistas(1).then(data => data && setFrentistas(data)).catch(err => console.error(err));
   }, []);
+
+  useEffect(() => {
+    try {
+      if (selectedFrentista) localStorage.setItem('pwa.frentista', JSON.stringify(selectedFrentista));
+      else localStorage.removeItem('pwa.frentista');
+    } catch { /* ignora */ }
+  }, [selectedFrentista]);
+
+  useEffect(() => {
+    try { localStorage.setItem('pwa.activeTab', activeTab); } catch { /* ignora */ }
+  }, [activeTab]);
 
   const [totalVendido, setTotalVendido] = useState('');
   const [payments, setPayments] = useState({
