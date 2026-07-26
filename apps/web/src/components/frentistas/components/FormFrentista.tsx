@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Save } from 'lucide-react';
 import { PerfilFrentista, DadosFormularioFrentista } from '../types';
 
 interface FormFrentistaProps {
@@ -10,6 +10,21 @@ interface FormFrentistaProps {
     loading: boolean;
 }
 
+const criarFormDataInicial = (frentista: PerfilFrentista | null): DadosFormularioFrentista =>
+    frentista
+        ? {
+            nome: frentista.nome,
+            cpf: frentista.cpf,
+            data_admissao: frentista.dataAdmissao?.split('T')[0] || new Date().toISOString().split('T')[0],
+            ativo: frentista.status === 'Ativo'
+        }
+        : {
+            nome: '',
+            cpf: '',
+            data_admissao: new Date().toISOString().split('T')[0],
+            ativo: true
+        };
+
 export const FormFrentista: React.FC<FormFrentistaProps> = ({
     frentista,
     isOpen,
@@ -17,30 +32,18 @@ export const FormFrentista: React.FC<FormFrentistaProps> = ({
     onSalvar,
     loading
 }) => {
-    const [formData, setFormData] = useState<DadosFormularioFrentista>({
-        nome: '',
-        cpf: '',
-        data_admissao: new Date().toISOString().split('T')[0],
-        ativo: true
-    });
+    const [formData, setFormData] = useState<DadosFormularioFrentista>(() => criarFormDataInicial(frentista));
 
-    useEffect(() => {
-        if (frentista) {
-            setFormData({
-                nome: frentista.nome,
-                cpf: frentista.cpf,
-                data_admissao: frentista.dataAdmissao?.split('T')[0] || new Date().toISOString().split('T')[0],
-                ativo: frentista.status === 'Ativo'
-            });
-        } else {
-            setFormData({
-                nome: '',
-                cpf: '',
-                data_admissao: new Date().toISOString().split('T')[0],
-                ativo: true
-            });
-        }
-    }, [frentista, isOpen]);
+    // Reseta os dados do formulário quando o modal (re)abre ou o frentista alvo muda,
+    // sem depender de um efeito: ajusta o estado durante a própria renderização
+    // (padrão documentado do React para "resetar estado quando uma prop muda").
+    const [frentistaAnterior, setFrentistaAnterior] = useState(frentista);
+    const [isOpenAnterior, setIsOpenAnterior] = useState(isOpen);
+    if (frentista !== frentistaAnterior || isOpen !== isOpenAnterior) {
+        setFrentistaAnterior(frentista);
+        setIsOpenAnterior(isOpen);
+        setFormData(criarFormDataInicial(frentista));
+    }
 
     if (!isOpen) return null;
 

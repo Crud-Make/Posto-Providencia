@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { Loader2, Lock, Mail } from 'lucide-react';
 
 const TelaLogin: React.FC = () => {

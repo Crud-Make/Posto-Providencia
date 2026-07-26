@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Filter, X, Search } from 'lucide-react';
+import { Calendar, Filter, X } from 'lucide-react';
 import { FiltrosFinanceiros as IFiltros } from '../hooks/useFiltrosFinanceiros';
 
 /**

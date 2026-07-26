@@ -1,19 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Plus,
     Search,
     Calendar,
     DollarSign,
     ArrowUpRight,
-    ArrowDownRight,
-    MoreVertical,
     CheckCircle2,
-    Clock,
-    AlertCircle,
     Trash2,
     Edit,
-    ChevronRight,
-    ChevronLeft,
     CreditCard,
     Wallet,
     Percent,
@@ -24,8 +18,8 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { api } from '../../../services/api';
-import { usePosto } from '../../../contexts/PostoContext';
-import { Loan, LoanInstallment } from '../../../types/index';
+import { usePosto } from '../../../contexts/usePosto';
+import { Loan } from '../../../types/index';
 import { toast } from 'sonner';
 
 import { DatabaseEnums } from '../../../types/database/enums';
@@ -75,7 +69,7 @@ const GestaoEmprestimos: React.FC = () => {
     /**
      * Carrega a lista de empréstimos do posto ativo.
      */
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.emprestimo.getAll(postoAtivoId);
@@ -109,11 +103,11 @@ const GestaoEmprestimos: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [postoAtivoId]);
 
     useEffect(() => {
         loadData();
-    }, [postoAtivoId]);
+    }, [loadData]);
 
     /**
      * Manipula a criação ou atualização de um empréstimo.

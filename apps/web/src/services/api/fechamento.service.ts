@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Fechamento, InsertTables, UpdateTables, Recebimento, FormaPagamento, Maquininha, FechamentoFrentista, Frentista, Usuario, Turno } from '../../types/database/index';
+import { Fechamento, InsertTables, UpdateTables, Recebimento, FormaPagamento, Maquininha, FechamentoFrentista, Frentista, Turno } from '../../types/database/index';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -8,10 +8,22 @@ import {
 
 /**
  * Serviço de Fechamento de Caixa
- * 
+ *
  * @remarks
  * Gerencia operações de fechamento diário, turnos e consolidação de vendas
  */
+
+/** Fechamento com todas as relações trazidas por `getWithDetails`
+ *  (`select: *, recebimentos:Recebimento(*, forma_pagamento:FormaPagamento(*), maquininha:Maquininha(*)),
+ *  fechamentos_frentista:FechamentoFrentista(*, frentista:Frentista(*)), usuario:Usuario(id, nome)`). */
+interface FechamentoComDetalhes extends Fechamento {
+  recebimentos: (Recebimento & {
+    forma_pagamento: FormaPagamento | null;
+    maquininha: Maquininha | null;
+  })[];
+  fechamentos_frentista: (FechamentoFrentista & { frentista: Frentista | null })[];
+  usuario: { id: string; nome: string } | null;
+}
 export const fechamentoService = {
   /**
    * Busca um fechamento único por data e posto
@@ -102,7 +114,7 @@ export const fechamentoService = {
    * Busca fechamento com todos os detalhes (recebimentos, frentistas, etc)
    * @param id - ID do fechamento
    */
-  async getWithDetails(id: number): Promise<ApiResponse<any>> {
+  async getWithDetails(id: number): Promise<ApiResponse<FechamentoComDetalhes>> {
     try {
       const { data, error } = await supabase
         .from('Fechamento')
@@ -123,7 +135,7 @@ export const fechamentoService = {
         .single();
 
       if (error) return createErrorResponse(error.message, 'NOT_FOUND');
-      return createSuccessResponse(data);
+      return createSuccessResponse(data as unknown as FechamentoComDetalhes);
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }

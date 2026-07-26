@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../../../services/supabase';
 import { frentistaService } from '../../../services/api';
-import { usePosto } from '../../../contexts/PostoContext';
+import { usePosto } from '../../../contexts/usePosto';
 import { PerfilFrentista, DadosFormularioFrentista } from '../types';
-import { fechamentoFrentistaService } from '../../../services/api/fechamentoFrentista.service';
 
 export const useFrentistas = () => {
     const { postoAtivoId } = usePosto();

@@ -12,8 +12,6 @@
 import { useMemo } from 'react';
 import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../../../types/fechamento';
 import {
-  calcularLitros,
-  calcularVenda,
   agruparPorCombustivel,
   calcularTotais,
   calcularPercentual,
@@ -36,7 +34,6 @@ interface RetornoFechamento {
   totalVendas: number;
   totalFrentistas: number;
   totalPagamentos: number;
-  totalProdutos: number;
 
   // Diferenças e análises
   diferenca: number;
@@ -109,15 +106,6 @@ export const useFechamento = (
   }, [sessoesFrentistas]);
 
   /**
-   * Total de produtos vendidos (soma de valor_produtos)
-   */
-  const totalProdutos = useMemo(() => {
-    return sessoesFrentistas.reduce((acc, fs) => {
-      return acc + analisarValor(fs.valor_produtos);
-    }, 0);
-  }, [sessoesFrentistas]);
-
-  /**
    * Total por forma de pagamento
    */
   const totalPagamentos = useMemo(() => {
@@ -185,7 +173,8 @@ export const useFechamento = (
           analisarValor(fs.valor_nota) +
           analisarValor(fs.valor_pix) +
           analisarValor(fs.valor_dinheiro) +
-          analisarValor(fs.valor_baratao);
+          analisarValor(fs.valor_baratao) +
+          analisarValor(fs.valor_moedas);
         return totalInformado === 0;
       }
     );
@@ -241,7 +230,6 @@ export const useFechamento = (
     totalVendas: totaisLeituras.valor,
     totalFrentistas,
     totalPagamentos,
-    totalProdutos,
 
     // Diferenças e análises
     diferenca,

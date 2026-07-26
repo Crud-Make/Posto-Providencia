@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchProfitabilityData } from '../../../services/api';
-import { usePosto } from '../../../contexts/PostoContext';
+import { usePosto } from '../../../contexts/usePosto';
 import { ProfitabilityItem, Margins } from '../types';
 
 export const useAnaliseCustos = () => {

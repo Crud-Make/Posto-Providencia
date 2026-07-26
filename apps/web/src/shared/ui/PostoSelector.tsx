@@ -1,6 +1,6 @@
 import React from 'react';
 import { Building2 } from 'lucide-react';
-import { usePosto } from '../../contexts/PostoContext';
+import { usePosto } from '../../contexts/usePosto';
 
 // ============================================
 // POSTO SELECTOR COMPONENT

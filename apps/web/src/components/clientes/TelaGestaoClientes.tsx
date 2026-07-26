@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePosto } from '../../contexts/PostoContext';
+import { usePosto } from '../../contexts/usePosto';
 import { clienteService } from '../../services/api';
 import { ClienteComSaldo } from './types';
 import {

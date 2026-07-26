@@ -81,7 +81,7 @@ export const dividaService = {
    */
   async update(id: string, updates: Partial<Divida>): Promise<ApiResponse<Divida>> {
     try {
-      const { id: _, ...updateData } = updates;
+      const { id: _id, ...updateData } = updates;
 
       const { data, error } = await supabase
         .from('Divida')

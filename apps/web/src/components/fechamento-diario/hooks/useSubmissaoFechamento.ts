@@ -1,7 +1,6 @@
-import * as React from 'react';
 import { useState } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { usePosto } from '../../../contexts/PostoContext';
+import { useAuth } from '../../../contexts/useAuth';
+import { usePosto } from '../../../contexts/usePosto';
 import {
    fechamentoService,
    leituraService,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { stockService } from '../../../../services/stockService';
-import { usePosto } from '../../../../contexts/PostoContext';
+import { usePosto } from '../../../../contexts/usePosto';
 import { Produto, MovementType } from '../types';
 
 export const useGestaoEstoque = () => {

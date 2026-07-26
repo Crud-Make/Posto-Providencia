@@ -71,7 +71,6 @@ const criarSessaoVazia = (): SessaoFrentista => ({
   valor_encerrante: '',
   valor_conferido: '',
   observacoes: '',
-  valor_produtos: '',
   status: 'pendente'
 });
 
@@ -164,8 +163,11 @@ export const useSessoesFrentistas = (
           valor_encerrante: paraReais(fs.encerrante ?? 0),
           valor_conferido: paraReais(fs.valor_conferido ?? 0),
           observacoes: fs.observacoes || '',
-          valor_produtos: paraReais(fs.valor_produtos || 0),
-          status: (fs.status as 'pendente' | 'conferido') || 'pendente',
+          // Não existe coluna `status` na tabela — o estado "conferido" é persistido como
+          // marcador de texto dentro de `observacoes` (ver `atualizarSessao` abaixo e
+          // `aggregator.service.ts` → `sessionStatus`, mesmo padrão). Reconstrói aqui pra não
+          // perder o estado ao recarregar a tela.
+          status: (fs.observacoes || '').includes('[CONFERIDO]') ? 'conferido' : 'pendente',
           data_hora_envio: fs.data_hora_envio
         }));
 

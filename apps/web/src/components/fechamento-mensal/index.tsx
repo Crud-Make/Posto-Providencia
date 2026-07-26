@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { usePosto } from '../../contexts/PostoContext';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { usePosto } from '../../contexts/usePosto';
 import { fechamentoMensalService, FechamentoMensalResumo, EncerranteMensal } from '../../services/api/fechamentoMensal.service';
 import { leituraService } from '../../services/api';
-import { TrendingUp, TrendingDown, Calendar, DollarSign, Droplets, CreditCard, ChevronDown, ChevronUp, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Calendar, DollarSign, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Cell, PieChart, Pie } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, PieChart, Pie } from 'recharts';
 
 interface FechamentoMensalProps {
     isEmbedded?: boolean;
@@ -24,7 +24,7 @@ const formatDate = (dateString: string) => {
     if (!dateString) return '--/--';
     const parts = dateString.split('-');
     if (parts.length !== 3) return dateString;
-    const [year, month, day] = parts;
+    const [, month, day] = parts;
     return `${day}/${month}`;
 };
 
@@ -36,7 +36,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
     const [loading, setLoading] = useState(false);
     const [dados, setDados] = useState<FechamentoMensalResumo[]>([]);
     const [encerrantes, setEncerrantes] = useState<EncerranteMensal[]>([]);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [temDadosPendentes, setTemDadosPendentes] = useState(false);
 
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -65,7 +65,6 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
 
     // Simple projection: (Total / DaysPassed) * DaysInMonth
     const projectedProfit = (totalizers.lucro / daysPassed) * daysInMonth;
-    const projectedVolume = (totalizers.volume / daysPassed) * daysInMonth;
 
     // Goals (Hardcoded for now, could be DB driven)
     const metaLucro = 60000;
@@ -88,7 +87,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
     ].filter(item => item.value > 0), [totalizers]);
 
 
-    const carregarDados = async () => {
+    const carregarDados = useCallback(async () => {
         if (typeof window === 'undefined') return; // Changed process.browser to typeof window === 'undefined' for broader compatibility
 
         try {
@@ -130,11 +129,11 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
         } finally {
             setLoading(false);
         }
-    };
+    }, [postoAtivo, selectedMonth]);
 
     useEffect(() => {
         carregarDados();
-    }, [postoAtivo, selectedMonth]);
+    }, [carregarDados]);
 
     return (
         <div className={`min-h-screen bg-slate-950 text-slate-100 font-sans ${isEmbedded ? 'bg-transparent min-h-0' : 'p-6 md:p-8'}`}>
@@ -194,7 +193,6 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
             {loading ? (
                 <div className="flex flex-col items-center justify-center p-32 text-center relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/40">
                     <div className="absolute inset-0 bg-blue-500/5 animate-pulse"></div>
-                    {/* <Loader2 size={48} className="animate-spin text-blue-500 mb-6 relative z-10" /> */}
                     <h3 className="text-xl font-bold text-white mb-2 relative z-10">Consolidando Dados Financeiros</h3>
                     <p className="text-slate-400 relative z-10">Calculando margens, volumes e projeções...</p>
                 </div>
@@ -524,23 +522,3 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
 };
 
 export default FechamentoMensal;
-
-// Utility components for Icons
-function Loader2({ className, size }: { className?: string, size?: number }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width={size || 24}
-            height={size || 24}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`lucide lucide-loader-2 ${className}`}
-        >
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-        </svg>
-    )
-}
