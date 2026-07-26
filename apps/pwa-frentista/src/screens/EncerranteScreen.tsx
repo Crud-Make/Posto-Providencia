@@ -77,6 +77,13 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     const [enviando, setEnviando] = useState(false);
     const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'erro'; msg: string } | null>(null);
 
+    // Trava o auto-reload do service worker enquanto lê a foto ou grava,
+    // pra não perder a captura no meio do caminho.
+    useEffect(() => {
+        (window as any).__encerranteBusy = lendo || enviando;
+        return () => { (window as any).__encerranteBusy = false; };
+    }, [lendo, enviando]);
+
     useEffect(() => {
         Promise.all([api.getBicos(POSTO_ID), api.getUltimasLeiturasPorBico(POSTO_ID)])
             .then(([bs, ult]) => {
