@@ -37,7 +37,7 @@ const formatNum = (n: number, casas = 3) =>
     n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
 
 // Reduz a foto no cliente antes de mandar (mantém a latência ~3s e evita payload gigante)
-async function fileParaBase64Reduzido(file: File, maxDim = 1400, quality = 0.82) {
+async function fileParaBase64Reduzido(file: File, maxDim = 1000, quality = 0.82) {
     const dataUrl: string = await new Promise((res, rej) => {
         const r = new FileReader();
         r.onload = () => res(r.result as string);
@@ -85,6 +85,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     }, [lendo, enviando]);
 
     useEffect(() => {
+        api.aquecerEncerrante(); // esquenta a function enquanto o frentista enquadra a foto
         Promise.all([api.getBicos(POSTO_ID), api.getUltimasLeiturasPorBico(POSTO_ID)])
             .then(([bs, ult]) => {
                 const mapped: BicoInfo[] = (bs as any[]).map(b => ({
