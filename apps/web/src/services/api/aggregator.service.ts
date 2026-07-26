@@ -1,4 +1,4 @@
-import { conferido, meiosFromFechamentoRow } from '@posto/utils';
+import { conferido, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel } from '@posto/utils';
 import { supabase } from '../supabase';
 import { combustivelService } from './combustivel.service';
 import { bicoService } from './bico.service';
@@ -26,6 +26,35 @@ function extractData<T>(response: ApiResponse<T>): T {
   }
   // Após o check acima, o TS sabe que é um ErrorResponse
   throw new Error(response.error || 'Erro ao buscar dados do serviço');
+}
+
+/**
+ * Despesa operacional real por litro do mês de referência (planilha Posto Jorro:
+ * despesas_totais_do_mês ÷ litros_vendidos_do_mês). A taxa de cartão entra aqui
+ * como mais um item da lista de despesas — não como dedução por transação.
+ * Fallback para a configuração `despesa_operacional_litro` quando não há despesas.
+ */
+async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promise<number> {
+  const year = refDate.getFullYear();
+  const month = refDate.getMonth() + 1;
+  const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
+
+  let queryLeitura = supabase.from('Leitura').select('litros_vendidos').gte('data', inicioMesStr);
+  if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
+
+  const [despesasRes, leiturasRes] = await Promise.all([
+    despesaService.getByMonth(year, month, postoId),
+    queryLeitura,
+  ]);
+
+  const totalDespesas = extractData(despesasRes).reduce((acc: number, d: { valor: number }) => acc + Number(d.valor), 0);
+  const totalLitros = (leiturasRes.data || []).reduce((acc: number, l: { litros_vendidos: number | null }) => acc + (l.litros_vendidos || 0), 0);
+
+  let rate = despesaOperacionalPorLitro(totalDespesas, totalLitros);
+  if (rate === 0) {
+    rate = extractData(await configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45));
+  }
+  return rate;
 }
 
 interface FechamentoFrentistaWithRelations extends FechamentoFrentista {
@@ -315,19 +344,19 @@ export const aggregatorService = {
         };
       });
 
-      // Calculate estimated profit
+      // Lucro estimado — despesa operacional REAL do mês (despesas/litros), não mais 0,45 fixo
+      const despesaOpLitro = await despesaOperacionalMensal(hoje, postoId);
       let totalLucroEstimado = 0;
       if (vendas.porCombustivel) {
         totalLucroEstimado = vendas.porCombustivel.reduce((acc, item) => {
-          // Find cost in estoque
           const est = estoque.find(e => e.combustivel_id === item.combustivel.id);
           const custoMedio = est?.custo_medio || 0;
-          // Using 0.45 as estimated operational cost per liter (simplified for dashboard)
-          const despesaOp = 0.45;
-
-          const custoTotal = custoMedio + despesaOp;
-          const lucroItem = item.valor - (item.litros * custoTotal);
-
+          const lucroItem = lucroCombustivel({
+            litros: item.litros,
+            precoVenda: item.litros > 0 ? item.valor / item.litros : 0,
+            custoMedio,
+            despesaOperacionalLitro: despesaOpLitro,
+          });
           return acc + lucroItem;
         }, 0);
       }
@@ -807,8 +836,8 @@ export const aggregatorService = {
       const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
       const totalVolumeVendido = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
 
-      // Cálculo de Despesa Operacional Real por Litro (Fórmula Planilha Posto Jorro 2025: H22 = H19/F11)
-      let despOperacional = totalVolumeVendido > 0 ? totalDespesas / totalVolumeVendido : 0;
+      // Cálculo de Despesa Operacional Real por Litro (Fórmula Planilha Posto Jorro: H22 = H19/F11)
+      let despOperacional = despesaOperacionalPorLitro(totalDespesas, totalVolumeVendido);
 
       // Fallback para configuração se não houver despesas registradas no mês
       if (despOperacional === 0) {
