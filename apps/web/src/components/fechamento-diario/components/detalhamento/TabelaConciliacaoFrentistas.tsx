@@ -1,6 +1,8 @@
 import React from 'react';
 import { Smartphone, Info, CheckCircle2, AlertCircle, TrendingUp, Users, Wallet, Trophy } from 'lucide-react';
 import { paraReais, parseValue } from '../../../../utils/formatters';
+import { cartao as cartaoModulo, conferido } from '@posto/utils';
+import { meiosDaSessao } from '../../../../utils/fechamentoMeios';
 import { Frentista } from '../../../../types/database/index';
 import { SessaoFrentista } from '../../../../types/fechamento';
 
@@ -36,7 +38,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
 
   // Totais Agregados para os Cards
   const totaisGerais = sessoes.reduce((acc, s) => ({
-    vendas: acc.vendas + (parseValue(s.valor_dinheiro) + parseValue(s.valor_cartao) + parseValue(s.valor_pix) + parseValue(s.valor_nota) + parseValue(s.valor_baratao)),
+    vendas: acc.vendas + conferido(meiosDaSessao(s)), // conferido canônico (7 buckets)
     // Ticket médio e lucro seriam calculados com base em mais dados, aqui usamos o que temos
   }), { vendas: 0 });
 
@@ -44,7 +46,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
   const rankingVendedores = frentistasUnicos.map(f => {
     const totalVendas = sessoes
       .filter(s => s.frentistaId === f.id)
-      .reduce((acc, s) => acc + (parseValue(s.valor_dinheiro) + parseValue(s.valor_cartao) + parseValue(s.valor_pix) + parseValue(s.valor_nota) + parseValue(s.valor_baratao)), 0);
+      .reduce((acc, s) => acc + conferido(meiosDaSessao(s)), 0);
     return { nome: f.nome, total: totalVendas };
   }).sort((a, b) => b.total - a.total);
 
@@ -63,7 +65,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
     return sessoesFrentista.reduce((acc, s) => {
       switch (meioId) {
         case 'pix': return acc + parseValue(s.valor_pix);
-        case 'cartao': return acc + parseValue(s.valor_cartao);
+        case 'cartao': return acc + cartaoModulo(meiosDaSessao(s)); // aditivo
         case 'nota': return acc + parseValue(s.valor_nota);
         case 'dinheiro': return acc + parseValue(s.valor_dinheiro);
         case 'baratao': return acc + parseValue(s.valor_baratao);
