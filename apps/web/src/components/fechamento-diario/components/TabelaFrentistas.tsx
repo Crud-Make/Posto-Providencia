@@ -3,7 +3,9 @@ import React from 'react';
 import { Trash2, Plus, User } from 'lucide-react';
 import { SessaoFrentista } from '../../../types/fechamento';
 import { Frentista } from '../../../types/database/index';
-import { paraReais, parseValue } from '../../../utils/formatters';
+import { paraReais } from '../../../utils/formatters';
+import { cartao as cartaoModulo, conferido } from '@posto/utils';
+import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
 interface SecaoSessoesFrentistasProps {
   sessoes: SessaoFrentista[];
@@ -25,15 +27,19 @@ export const SecaoSessoesFrentistas: React.FC<SecaoSessoesFrentistasProps> = ({
   isLoading
 }) => {
   // Cálculos dos totais das colunas
-  const totais = sessoes.reduce((acc, sessao) => ({
-    dinheiro: acc.dinheiro + parseValue(sessao.valor_dinheiro),
-    cartao: acc.cartao + parseValue(sessao.valor_cartao),
-    pix: acc.pix + parseValue(sessao.valor_pix),
-    nota: acc.nota + parseValue(sessao.valor_nota),
-    baratao: acc.baratao + parseValue(sessao.valor_baratao),
-  }), { dinheiro: 0, cartao: 0, pix: 0, nota: 0, baratao: 0 });
+  const totais = sessoes.reduce((acc, sessao) => {
+    const m = meiosDaSessao(sessao);
+    return {
+      dinheiro: acc.dinheiro + m.dinheiro,
+      cartao: acc.cartao + cartaoModulo(m), // aditivo: valor_cartao + débito + crédito
+      pix: acc.pix + m.pix,
+      nota: acc.nota + m.nota,
+      baratao: acc.baratao + m.baratao,
+    };
+  }, { dinheiro: 0, cartao: 0, pix: 0, nota: 0, baratao: 0 });
 
-  const totalGeral = Object.values(totais).reduce((acc, val) => acc + val, 0);
+  // Total geral canônico (7 buckets, inclui moedas — que não têm coluna própria)
+  const totalGeral = sessoes.reduce((acc, sessao) => acc + conferido(meiosDaSessao(sessao)), 0);
 
   return (
     <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700/50 p-6 mb-6">
@@ -76,11 +82,7 @@ export const SecaoSessoesFrentistas: React.FC<SecaoSessoesFrentistasProps> = ({
           </thead>
           <tbody className="bg-slate-800 divide-y divide-slate-700/50">
             {sessoes.map((sessao) => {
-              const totalSessao = parseValue(sessao.valor_dinheiro) + 
-                                parseValue(sessao.valor_cartao) + 
-                                parseValue(sessao.valor_pix) + 
-                                parseValue(sessao.valor_nota) + 
-                                parseValue(sessao.valor_baratao);
+              const totalSessao = conferido(meiosDaSessao(sessao)); // 7 buckets canônico
               
               return (
                 <tr key={sessao.tempId} className="hover:bg-slate-700/30 transition-colors">
