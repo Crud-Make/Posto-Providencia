@@ -5,6 +5,7 @@ import {
   ClipboardList, ShoppingBag, History, ChevronDown,
   X, Check, AlertCircle
 } from 'lucide-react';
+import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
 import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
@@ -76,33 +77,24 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
     setPayments(prev => ({ ...prev, [field]: formatCurrency(e.target.value) }));
   };
 
-  const calculateTotalPaymentsValue = () => {
-    let total = 0;
-    for (const key in payments) {
-      if (Object.prototype.hasOwnProperty.call(payments, key)) {
-        const value = payments[key as keyof typeof payments];
-        total += parseInt(value.replace(/\D/g, ''), 10) || 0;
-      }
-    }
-    return total;
-  };
+  // Conferido (reais) via módulo canônico: soma dos 7 buckets declarados.
+  const conferidoReais = () => conferido(meiosFromPwaPayments(payments));
+  const encerranteReais = () => (parseInt(totalVendido.replace(/\D/g, ''), 10) || 0) / 100;
 
   const renderDifference = () => {
-    const totalPayments = calculateTotalPaymentsValue();
-    const totalSold = parseInt(totalVendido.replace(/\D/g, ''), 10) || 0;
-    const difference = totalPayments - totalSold;
-
-    if (totalSold === 0) {
+    const encReais = encerranteReais();
+    if (encReais === 0) {
       return <p className="text-slate-400 font-medium">Informe o encerrante para ver o status</p>;
     }
 
-    // Exibe o valor em módulo: o rótulo (Sobra/Quebra) já indica a direção,
-    // e assim o número não contradiz o sinal gravado em diferenca_calculada.
-    const formattedDiff = (Math.abs(difference) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // diferenca canônica: encerrante − conferido (positivo = FALTA/quebra).
+    // Exibe em módulo; o rótulo (Sobra/Quebra) indica a direção.
+    const dif = diferenca(encReais, conferidoReais());
+    const formattedDiff = Math.abs(dif).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    if (difference === 0) {
+    if (dif === 0) {
       return <p className="text-green-400 font-medium flex items-center gap-1"><Check size={16} /> Tudo certo!</p>;
-    } else if (difference > 0) {
+    } else if (isSobra(dif)) {
       return <p className="text-orange-400 font-medium flex items-center gap-1"><AlertCircle size={16} /> ⬆️ Sobra de Caixa (R$ {formattedDiff})</p>;
     }
     return <p className="text-red-400 font-medium flex items-center gap-1"><AlertCircle size={16} /> ⬇️ Quebra de Caixa (R$ {formattedDiff})</p>;
@@ -144,8 +136,8 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
         valor_cartao_debito: parseInt(payments.debito.replace(/\D/g, ''), 10) / 100 || 0,
         valor_cartao_credito: parseInt(payments.credito.replace(/\D/g, ''), 10) / 100 || 0,
         valor_cartao: 0,
-        valor_conferido: calculateTotalPaymentsValue() / 100,
-        diferenca_calculada: (parseInt(totalVendido.replace(/\D/g, ''), 10) - calculateTotalPaymentsValue()) / 100,
+        valor_conferido: conferidoReais(),
+        diferenca_calculada: diferenca(encerranteReais(), conferidoReais()),
         observacoes: "Fechamento via PWA Frentista"
       };
 
@@ -353,7 +345,7 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 font-medium">Total Pagamentos</span>
-                <span className="text-white font-bold text-lg">R$ {(calculateTotalPaymentsValue() / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="text-white font-bold text-lg">R$ {conferidoReais().toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
 

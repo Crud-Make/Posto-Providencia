@@ -7,6 +7,8 @@
 import { useMemo } from 'react';
 import { SessaoFrentista } from '../../../types/fechamento';
 import { analisarValor } from '../../../utils/formatters';
+import { cartao as cartaoModulo, conferido } from '@posto/utils';
+import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
 /**
  * Interface que define a estrutura dos totais calculados para o detalhamento
@@ -49,22 +51,21 @@ export const useDetalhamentoFrentista = (
   totalVendasPosto: number
 ): TotaisDetalhamento => {
   return useMemo(() => {
-    // Conversão segura de valores string para number
-    const pix = analisarValor(sessao.valor_pix);
-    
-    // Agrupamento de cartões
-    const cartao = analisarValor(sessao.valor_cartao) + 
-                   analisarValor(sessao.valor_cartao_debito) + 
-                   analisarValor(sessao.valor_cartao_credito);
-                   
-    const nota = analisarValor(sessao.valor_nota);
-    const dinheiro = analisarValor(sessao.valor_dinheiro);
-    const baratao = analisarValor(sessao.valor_baratao);
-    
-    // Cálculo do total arrecadado
-    const totalVenda = pix + cartao + nota + dinheiro + baratao;
-    
-    // Comparativo com concentrador
+    // Aritmética canônica via @posto/utils (7 buckets, cartão aditivo, moedas).
+    const meios = meiosDaSessao(sessao);
+    const pix = meios.pix;
+    const cartao = cartaoModulo(meios); // valor_cartao + débito + crédito
+    const nota = meios.nota;
+    const dinheiro = meios.dinheiro;
+    const baratao = meios.baratao;
+
+    // Total arrecadado (conferido: inclui moedas)
+    const totalVenda = conferido(meios);
+
+    // Comparativo com concentrador.
+    // NOTA (consolidação): o sinal aqui segue a convenção antiga de exibição
+    // (totalVenda − concentrador). A convenção canônica é concentrador −
+    // conferido (falta positivo); flip pendente com QA visual dos rótulos.
     const vendaConcentrador = analisarValor(sessao.valor_encerrante);
     const diferenca = totalVenda - vendaConcentrador;
     

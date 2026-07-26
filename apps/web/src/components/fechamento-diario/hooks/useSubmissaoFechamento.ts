@@ -11,6 +11,8 @@ import {
 import { parseValue } from '../../../utils/formatters';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../../../types/fechamento';
+import { conferido, diferenca as calcularDiferenca } from '@posto/utils';
+import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
 interface SubmissaoParams {
    selectedDate: string;
@@ -138,31 +140,29 @@ export function useSubmissaoFechamento() {
             const frentistasToCreate = sessoesFrentistas
                .filter(fs => fs.frentistaId !== null)
                .map(fs => {
-                  const totalInformado =
-                     parseValue(fs.valor_cartao_debito) +
-                     parseValue(fs.valor_cartao_credito) +
-                     parseValue(fs.valor_nota) +
-                     parseValue(fs.valor_pix) +
-                     parseValue(fs.valor_dinheiro) +
-                     parseValue(fs.valor_baratao);
-
-                  const totalVendido = parseValue(fs.valor_encerrante);
-                  const diferencaCalc = totalVendido > 0 ? (totalVendido - totalInformado) : 0;
-                  const valorConf = totalVendido > 0 ? totalVendido : (parseValue(fs.valor_conferido) || totalInformado);
+                  // Aritmética canônica via @posto/utils (soma dos 7 buckets).
+                  const meios = meiosDaSessao(fs);
+                  const conf = conferido(meios);
+                  const encerrante = parseValue(fs.valor_encerrante);
+                  // diferenca = encerrante − conferido (positivo = FALTA). Só faz
+                  // sentido quando há encerrante lançado.
+                  const dif = encerrante > 0 ? calcularDiferenca(encerrante, conf) : 0;
 
                   return {
                      fechamento_id: fechamento.id,
                      frentista_id: fs.frentistaId!,
-                     valor_cartao: parseValue(fs.valor_cartao_debito) + parseValue(fs.valor_cartao_credito),
-                     valor_cartao_debito: parseValue(fs.valor_cartao_debito),
-                     valor_cartao_credito: parseValue(fs.valor_cartao_credito),
-                     valor_dinheiro: parseValue(fs.valor_dinheiro),
-                     valor_pix: parseValue(fs.valor_pix),
-                     valor_nota: parseValue(fs.valor_nota),
-                     baratao: parseValue(fs.valor_baratao),
-                     encerrante: totalVendido,
-                     diferenca_calculada: diferencaCalc,
-                     valor_conferido: valorConf,
+                     // Campos brutos preservados (não recomputa/zera o lump valor_cartao):
+                     valor_cartao: parseValue(fs.valor_cartao),
+                     valor_cartao_debito: meios.cartaoDebito,
+                     valor_cartao_credito: meios.cartaoCredito,
+                     valor_dinheiro: meios.dinheiro,
+                     valor_moedas: meios.moedas,
+                     valor_pix: meios.pix,
+                     valor_nota: meios.nota,
+                     baratao: meios.baratao,
+                     encerrante,
+                     diferenca_calculada: dif,
+                     valor_conferido: conf, // soma dos declarados (não mais = encerrante)
                      observacoes: fs.observacoes || '',
                      posto_id: postoAtivoId
                   };
