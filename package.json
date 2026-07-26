@@ -16,6 +16,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:golden": "bun test packages/utils/src/fechamento.golden.spec.ts",
     "validate": "./scripts/validate-rules.sh",
     "push": "./scripts/push.sh",
     "reset-data": "node scripts/reset-and-import-data.js"
