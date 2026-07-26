@@ -17,6 +17,9 @@ interface BicoInfo {
 }
 
 const POSTO_ID = 1;
+// Teto de litros plausível por bico num turno — acima disso, provavelmente é
+// dígito errado (troca de dígito costuma gerar diferenças de milhares de litros).
+const MAX_LITROS_PLAUSIVEL = 3000;
 
 // "1861796.633" -> "1.861.796,633" (formato do papel, pra o frentista conferir)
 const formatBR = (dotStr: string | null): string => {
@@ -73,6 +76,8 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     // valores editáveis por bico_id, no formato BR
     const [valores, setValores] = useState<Record<number, string>>({});
     const [temLeitura, setTemLeitura] = useState(false);
+    // bico_id -> a 2ª leitura (auto-conferência) divergiu da 1ª nesse bico
+    const [duvidaOcr, setDuvidaOcr] = useState<Record<number, boolean>>({});
 
     const [enviando, setEnviando] = useState(false);
     const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'erro'; msg: string } | null>(null);
@@ -123,16 +128,26 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
 
             // Mapeia por número do bico (papel lista 1..6 na ordem)
             const porNumero = new Map<number, string | null>();
-            leituras.forEach(l => porNumero.set(Number(l.bico), l.numero));
+            const duvidaPorNumero = new Map<number, boolean>();
+            leituras.forEach(l => {
+                porNumero.set(Number(l.bico), l.numero);
+                duvidaPorNumero.set(Number(l.bico), l.confianca === false);
+            });
 
             const novos: Record<number, string> = {};
+            const duvidas: Record<number, boolean> = {};
             bicos.forEach(b => {
                 novos[b.id] = formatBR(porNumero.get(b.numero) ?? null);
+                duvidas[b.id] = duvidaPorNumero.get(b.numero) ?? false;
             });
             setValores(novos);
+            setDuvidaOcr(duvidas);
             setTemLeitura(true);
             const lidos = leituras.filter(l => l.numero).length;
-            setFeedback({ tipo: 'ok', msg: `Li ${lidos} de ${bicos.length} bicos. Confira e ajuste se precisar.` });
+            const comDuvida = Object.values(duvidas).filter(Boolean).length;
+            setFeedback(comDuvida > 0
+                ? { tipo: 'erro', msg: `Li ${lidos} de ${bicos.length} bicos, mas ${comDuvida} ficaram em dúvida (destacados). Confira antes de enviar.` }
+                : { tipo: 'ok', msg: `Li ${lidos} de ${bicos.length} bicos. Confira e ajuste se precisar.` });
         } catch (err: any) {
             setFeedback({ tipo: 'erro', msg: err.message || 'Não consegui ler a foto. Tente novamente.' });
         } finally {
@@ -147,8 +162,40 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         return Math.max(0, final - inicial);
     };
 
+    // Aviso de plausibilidade: leitura final menor que a inicial (bomba não anda pra
+    // trás) ou litros vendidos acima do teto plausível — geralmente sinal de dígito
+    // errado, mesmo quando a auto-conferência do OCR bateu.
+    const avisoPlausibilidade = (b: BicoInfo): string | null => {
+        const final = parseBR(valores[b.id] || '');
+        const inicial = ultimas.get(b.id);
+        if (!final || inicial === undefined) return null;
+        if (final < inicial) return 'Leitura final menor que a anterior — confira o número.';
+        if (final - inicial > MAX_LITROS_PLAUSIVEL) return `Mais de ${MAX_LITROS_PLAUSIVEL}L de diferença — confira o número.`;
+        return null;
+    };
+
+    const avisoBico = (b: BicoInfo): string | null => {
+        if (duvidaOcr[b.id]) return 'A leitura ficou em dúvida na conferência automática.';
+        return avisoPlausibilidade(b);
+    };
+
+    const temAlgumAviso = useMemo(
+        () => bicos.some(b => avisoBico(b) !== null),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [bicos, valores, ultimas, duvidaOcr],
+    );
+
     const handleEnviar = async () => {
         setFeedback(null);
+
+        if (temAlgumAviso) {
+            const bicosComAviso = bicos.filter(b => avisoBico(b) !== null).map(b => b.numero).join(', ');
+            const confirmar = window.confirm(
+                `Bico(s) ${bicosComAviso} com leitura em dúvida. Tem certeza que quer enviar assim mesmo?`
+            );
+            if (!confirmar) return;
+        }
+
         const linhas = bicos
             .map(b => {
                 const final = parseBR(valores[b.id] || '');
@@ -177,6 +224,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
             setTemLeitura(false);
             setPreview(null);
             setValores({});
+            setDuvidaOcr({});
             // recarrega as últimas leituras (agora as que acabamos de gravar viram base)
             api.getUltimasLeiturasPorBico(POSTO_ID).then(setUltimas).catch(() => { });
         } catch (err: any) {
@@ -258,8 +306,9 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                         {bicos.map(b => {
                             const litros = litrosPreview(b);
                             const inicial = ultimas.get(b.id);
+                            const aviso = avisoBico(b);
                             return (
-                                <div key={b.id} className="bg-[#131722] rounded-2xl p-4 border border-slate-800/60">
+                                <div key={b.id} className={`bg-[#131722] rounded-2xl p-4 border ${aviso ? 'border-amber-500/60' : 'border-slate-800/60'}`}>
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                             <span className="w-7 h-7 rounded-full bg-indigo-500/15 text-indigo-300 text-xs font-bold flex items-center justify-center border border-indigo-500/30">
@@ -279,13 +328,21 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                                             type="text"
                                             inputMode="decimal"
                                             value={valores[b.id] || ''}
-                                            onChange={e => setValores(prev => ({ ...prev, [b.id]: e.target.value }))}
+                                            onChange={e => {
+                                                setValores(prev => ({ ...prev, [b.id]: e.target.value }));
+                                                setDuvidaOcr(prev => (prev[b.id] ? { ...prev, [b.id]: false } : prev));
+                                            }}
                                             placeholder="0,000"
                                             className="bg-transparent text-white text-lg font-semibold w-full outline-none focus:ring-0 placeholder:text-slate-600"
                                         />
                                     </div>
                                     {inicial !== undefined && (
                                         <p className="text-slate-600 text-[10px] mt-1">Leitura anterior: {formatNum(inicial)}</p>
+                                    )}
+                                    {aviso && (
+                                        <p className="text-amber-400 text-[11px] mt-1 flex items-center gap-1">
+                                            <AlertCircle size={11} /> {aviso}
+                                        </p>
                                     )}
                                 </div>
                             );

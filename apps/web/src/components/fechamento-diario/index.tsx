@@ -62,7 +62,7 @@ const TelaFechamentoDiario: React.FC = () => {
 
    const {
       leituras, carregando: loadingLeituras, carregarLeituras,
-      alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros, definirLeituras
+      alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros
    } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
 
    const {
@@ -105,6 +105,31 @@ const TelaFechamentoDiario: React.FC = () => {
       };
    }, [selectedDate, selectedTurno, carregarSessoes]);
 
+   // --- 🔴 REALTIME: Escuta leituras de bico (OCR encerrante) em tempo real ---
+   useEffect(() => {
+      const channel = supabase
+         .channel('leituras-bico-realtime')
+         .on(
+            'postgres_changes',
+            {
+               event: '*',
+               schema: 'public',
+               table: 'Leitura'
+            },
+            (payload) => {
+               console.log('🔔 Alteração de Leitura detectada em tempo real:', payload.eventType, payload);
+               carregarLeituras(true);
+            }
+         )
+         .subscribe((status) => {
+            console.log('📡 Realtime status (Leitura):', status);
+         });
+
+      return () => {
+         supabase.removeChannel(channel);
+      };
+   }, [carregarLeituras]);
+
    const { totalLitros, totalVendas, totalFrentistas, diferenca, podeFechar } = useFechamento(bicos, leituras, frentistaSessions, payments);
 
    const loading = loadingDados || loadingLeituras || loadingSessoes || loadingPagamentos;
@@ -130,16 +155,17 @@ const TelaFechamentoDiario: React.FC = () => {
 
    useEffect(() => {
       if (restaurado && !saving && !success) {
+         // As leituras dos bicos vêm do banco (OCR/PWA + realtime) — nunca do rascunho local,
+         // senão um rascunho antigo trava a tela pra sempre com valores desatualizados.
+         carregarLeituras();
          if (rascunhoRestaurado) {
-            if (rascunhoRestaurado.leituras) definirLeituras(rascunhoRestaurado.leituras);
             if (rascunhoRestaurado.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
             if (rascunhoRestaurado.turnoSelecionado) setSelectedTurno(rascunhoRestaurado.turnoSelecionado);
-         } else {
-            carregarLeituras();
-            if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
+         } else if (selectedDate && selectedTurno) {
+            carregarSessoes(selectedDate, selectedTurno);
          }
       }
-   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, definirLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
+   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
 
    useEffect(() => {
       if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado && !saving && !success) {

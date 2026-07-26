@@ -54,37 +54,63 @@ Deno.serve(async (req: Request) => {
 
     const model = 'gemini-flash-lite-latest';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: imagemBase64 } }, { text: PROMPT }] }],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: 'application/json',
-          // Limita a saída — a resposta é um JSON curto (6 bicos).
-          maxOutputTokens: 512,
-        },
-      }),
-    });
 
-    if (!resp.ok) return json({ erro: `gemini_http_${resp.status}`, detalhe: (await resp.text()).slice(0, 300) }, 502);
-    const data = await resp.json();
-    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const chamarGemini = (temperature: number) =>
+      fetch(url, {
+        method: 'POST',
+        headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: imagemBase64 } }, { text: PROMPT }] }],
+          generationConfig: {
+            temperature,
+            responseMimeType: 'application/json',
+            // Limita a saída — a resposta é um JSON curto (6 bicos).
+            maxOutputTokens: 512,
+          },
+        }),
+      });
 
-    let leituras: Array<{ bico: number; numero: string | null }> = [];
-    try {
+    const parseResposta = async (resp: Response): Promise<Array<{ bico: number; numero: string | null }>> => {
+      if (!resp.ok) throw new Error(`gemini_http_${resp.status}`);
+      const data = await resp.json();
+      const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
       const parsed = JSON.parse(texto);
       const arr = Array.isArray(parsed) ? parsed : parsed?.leituras;
-      if (Array.isArray(arr)) {
-        leituras = arr
-          .map((it: Record<string, unknown>) => ({ bico: Number(it.bico), numero: normalizar(it.numero) }))
-          .filter((it) => Number.isFinite(it.bico))
-          .sort((a, b) => a.bico - b.bico);
-      }
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((it: Record<string, unknown>) => ({ bico: Number(it.bico), numero: normalizar(it.numero) }))
+        .filter((it) => Number.isFinite(it.bico))
+        .sort((a, b) => a.bico - b.bico);
+    };
+
+    // Auto-conferencia: 2 chamadas em paralelo (temperature 0 = leitura principal,
+    // temperature 0.3 = segunda opiniao independente). Mesma latencia de 1 chamada
+    // (rodam em paralelo), sem precisar de outro provedor/API. Se as duas baterem
+    // digito a digito, confianca alta; se divergirem, o bico volta marcado pra
+    // conferencia manual do frentista antes de enviar.
+    const [respPrincipal, respVerificacao] = await Promise.all([chamarGemini(0), chamarGemini(0.3)]);
+
+    let principal: Array<{ bico: number; numero: string | null }>;
+    try {
+      principal = await parseResposta(respPrincipal);
     } catch {
-      return json({ erro: 'resposta_nao_json', detalhe: String(texto).slice(0, 300) }, 502);
+      return json({ erro: 'resposta_nao_json' }, 502);
     }
+
+    let verificacao: Array<{ bico: number; numero: string | null }> = [];
+    try {
+      verificacao = await parseResposta(respVerificacao);
+    } catch {
+      // Segunda chamada falhou (ex.: 502/timeout) — segue só com a principal,
+      // sem confianca calculada, em vez de derrubar a leitura toda.
+    }
+
+    const porBicoVerificacao = new Map(verificacao.map((v) => [v.bico, v.numero]));
+    const leituras = principal.map((l) => {
+      const numeroVerificacao = porBicoVerificacao.get(l.bico);
+      const confianca = numeroVerificacao === undefined ? null : numeroVerificacao === l.numero;
+      return { ...l, confianca };
+    });
 
     return json({ leituras });
   } catch (e) {
