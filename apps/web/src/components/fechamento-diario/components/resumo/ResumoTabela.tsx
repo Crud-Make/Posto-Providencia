@@ -1,6 +1,8 @@
 import React from 'react';
 import { RefreshCcw } from 'lucide-react';
-import { paraReais, parseValue } from '../../../../utils/formatters';
+import { paraReais } from '../../../../utils/formatters';
+import { conferido } from '@posto/utils';
+import { meiosDaSessao } from '../../../../utils/fechamentoMeios';
 import type { Frentista, SessaoFrentista } from '../../../../types/fechamento';
 import type { LinhaDetalhamento } from '../../services/calculosResumo';
 
@@ -105,14 +107,7 @@ export const ResumoTabela: React.FC<ResumoTabelaProps> = ({
                             <tr>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">Total Geral</td>
                                 {sessoes.filter(s => s.frentistaId).map((s, idx) => {
-                                    const totalFrentista =
-                                        parseValue(s.valor_dinheiro) +
-                                        parseValue(s.valor_cartao_debito) +
-                                        parseValue(s.valor_cartao) +
-                                        parseValue(s.valor_cartao_credito) +
-                                        parseValue(s.valor_pix) +
-                                        parseValue(s.valor_nota) +
-                                        parseValue(s.valor_baratao);
+                                    const totalFrentista = conferido(meiosDaSessao(s)); // 7 buckets canônico
                                     return (
                                         <td key={idx} className="px-6 py-4 whitespace-nowrap text-sm text-right text-emerald-400">
                                             {paraReais(totalFrentista)}

@@ -1,3 +1,4 @@
+import { conferido, meiosFromFechamentoRow } from '@posto/utils';
 import { supabase } from '../supabase';
 import { combustivelService } from './combustivel.service';
 import { bicoService } from './bico.service';
@@ -295,14 +296,8 @@ export const aggregatorService = {
         let totalSales = 0;
 
         if (fechamento) {
-          // Calcula total a partir dos valores de pagamento
-          totalSales =
-            (fechamento.valor_cartao || 0) +
-            (fechamento.valor_cartao_debito || 0) +
-            (fechamento.valor_cartao_credito || 0) +
-            (fechamento.valor_nota || 0) +
-            (fechamento.valor_pix || 0) +
-            (fechamento.valor_dinheiro || 0);
+          // Total conferido canônico (7 buckets, cartão aditivo, moedas + baratão)
+          totalSales = conferido(meiosFromFechamentoRow(fechamento));
 
           // Status baseado na diferença (falta de caixa)
           const diferenca = Math.abs(fechamento.diferenca_calculada || 0);
