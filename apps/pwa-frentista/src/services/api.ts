@@ -119,14 +119,26 @@ export const api = {
         supabase.functions.invoke('ler-encerrante', { body: { ping: true } }).catch(() => { });
     },
 
-    /** OCR do papel de encerrantes via Edge Function (Gemini). Devolve [{ bico, numero }]. */
+    /**
+     * OCR do papel de encerrantes via Edge Function (Gemini). Devolve [{ bico, numero }].
+     * Tenta 2x: se a 1ª cai numa function fria e falha/expira, a 2ª já pega ela quente.
+     */
     async lerEncerrante(imagemBase64: string, mimeType: string) {
-        const { data, error } = await supabase.functions.invoke('ler-encerrante', {
-            body: { imagemBase64, mimeType },
-        });
-        if (error) throw new Error(error.message);
-        if (data?.erro) throw new Error(String(data.erro));
-        return (data?.leituras || []) as { bico: number; numero: string | null }[];
+        let ultimoErro: unknown;
+        for (let tentativa = 1; tentativa <= 2; tentativa++) {
+            try {
+                const { data, error } = await supabase.functions.invoke('ler-encerrante', {
+                    body: { imagemBase64, mimeType },
+                });
+                if (error) throw new Error(error.message);
+                if (data?.erro) throw new Error(String(data.erro));
+                return (data?.leituras || []) as { bico: number; numero: string | null }[];
+            } catch (e) {
+                ultimoErro = e;
+                if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));
+            }
+        }
+        throw ultimoErro instanceof Error ? ultimoErro : new Error('Falha ao ler a foto');
     },
 
     /** Mapa bico_id -> última leitura_final registrada (vira a leitura_inicial do dia). */
