@@ -5,3 +5,4 @@
 
 export * from './formatters';
 export * from './fechamento';
+export * from './lucro';
