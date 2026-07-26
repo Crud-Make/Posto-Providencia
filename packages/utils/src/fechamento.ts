@@ -39,32 +39,45 @@ const num = (v: unknown): number =>
     typeof v === 'number' && Number.isFinite(v) ? v : 0;
 
 /**
- * Total de cartão de uma sessão (ADITIVO).
+ * Quantiza um valor em reais para centavos inteiros e volta.
+ *
+ * @remarks
+ * Skill fechamento-posto-providencia: dinheiro deve ser operado como inteiro
+ * (centavos) para não acumular erro de ponto flutuante. As funções agregadas
+ * desescalam só no retorno, garantindo precisão de centavo.
+ */
+const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
+
+/**
+ * Total de cartão de uma sessão (ADITIVO), em precisão de centavos.
  *
  * @returns `cartaoLegado + cartaoDebito + cartaoCredito`
  */
 export function cartao(m: MeiosPagamento): number {
-    return m.cartaoLegado + m.cartaoDebito + m.cartaoCredito;
+    return emCentavos(m.cartaoLegado + m.cartaoDebito + m.cartaoCredito);
 }
 
 /**
- * Valor conferido: soma de todos os meios de pagamento declarados (os 7 buckets).
+ * Valor conferido: soma de todos os meios de pagamento declarados (os 7 buckets),
+ * em precisão de centavos.
  *
  * @returns `dinheiro + moedas + pix + cartao(m) + nota + baratao`
  */
 export function conferido(m: MeiosPagamento): number {
-    return m.dinheiro + m.moedas + m.pix + cartao(m) + m.nota + m.baratao;
+    return emCentavos(
+        m.dinheiro + m.moedas + m.pix + cartao(m) + m.nota + m.baratao
+    );
 }
 
 /**
- * Diferença de caixa entre o encerrante e o valor conferido.
+ * Diferença de caixa entre o encerrante e o valor conferido, em precisão de centavos.
  *
  * @param encerrante - Valor do encerrante (total do relatório de fechamento).
  * @param valorConferido - Soma dos meios declarados (ver {@link conferido}).
  * @returns `encerrante − valorConferido`. Positivo = FALTA, negativo = SOBRA.
  */
 export function diferenca(encerrante: number, valorConferido: number): number {
-    return encerrante - valorConferido;
+    return emCentavos(encerrante - valorConferido);
 }
 
 /** `true` quando a diferença representa falta de caixa (encerrante > conferido). */
