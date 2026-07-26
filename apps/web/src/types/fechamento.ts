@@ -56,6 +56,7 @@ export interface SessaoFrentista {
   valor_nota: string; // Valor em nota/vale
   valor_pix: string; // Valor em PIX
   valor_dinheiro: string; // Valor em dinheiro
+  valor_moedas: string; // Valor em moedas (coletado no PWA; preservado no web)
   valor_baratao: string; // Valor do baratão
   valor_encerrante: string; // Valor total dos encerrantes
   valor_conferido: string; // Valor total conferido

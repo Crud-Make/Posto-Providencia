@@ -21,6 +21,8 @@ import {
   type SumarioCombustivel
 } from '../../../utils/calculators';
 import { analisarValor } from '../../../utils/formatters';
+import { conferido } from '@posto/utils';
+import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
 /**
  * Retorno do hook useFechamento
@@ -102,18 +104,8 @@ export const useFechamento = (
    * Total recebido pelos frentistas (soma dos valores declarados)
    */
   const totalFrentistas = useMemo(() => {
-    return sessoesFrentistas.reduce((acc, fs) => {
-      const cartaoLegado = analisarValor(fs.valor_cartao);
-      const cartaoDebito = analisarValor(fs.valor_cartao_debito);
-      const cartaoCredito = analisarValor(fs.valor_cartao_credito);
-      const cartao = cartaoLegado > 0 ? cartaoLegado : (cartaoDebito + cartaoCredito);
-      const nota = analisarValor(fs.valor_nota);
-      const pix = analisarValor(fs.valor_pix);
-      const dinheiro = analisarValor(fs.valor_dinheiro);
-      const baratao = analisarValor(fs.valor_baratao);
-
-      return acc + cartao + nota + pix + dinheiro + baratao;
-    }, 0);
+    // conferido canônico (7 buckets, cartão aditivo, inclui moedas) via @posto/utils
+    return sessoesFrentistas.reduce((acc, fs) => acc + conferido(meiosDaSessao(fs)), 0);
   }, [sessoesFrentistas]);
 
   /**
