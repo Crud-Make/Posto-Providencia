@@ -114,6 +114,11 @@ export const api = {
         return data || [];
     },
 
+    /** Aquece a Edge Function (evita cold start na hora da foto). Fire-and-forget. */
+    aquecerEncerrante() {
+        supabase.functions.invoke('ler-encerrante', { body: { ping: true } }).catch(() => { });
+    },
+
     /** OCR do papel de encerrantes via Edge Function (Gemini). Devolve [{ bico, numero }]. */
     async lerEncerrante(imagemBase64: string, mimeType: string) {
         const { data, error } = await supabase.functions.invoke('ler-encerrante', {

@@ -41,7 +41,12 @@ Deno.serve(async (req: Request) => {
     new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
   try {
-    const { imagemBase64, mimeType = 'image/jpeg' } = await req.json();
+    const body = await req.json();
+    // Aquecimento: um ping periódico mantém o isolate "quente" e evita o cold
+    // start (~15-40s) na hora que o frentista realmente fotografa.
+    if (body?.ping) return json({ pong: true });
+
+    const { imagemBase64, mimeType = 'image/jpeg' } = body;
     if (!imagemBase64) return json({ erro: 'imagemBase64 ausente' }, 400);
 
     const apiKey = Deno.env.get('GEMINI_API_KEY');
@@ -54,7 +59,12 @@ Deno.serve(async (req: Request) => {
       headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: imagemBase64 } }, { text: PROMPT }] }],
-        generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: 'application/json',
+          // Limita a saída — a resposta é um JSON curto (6 bicos).
+          maxOutputTokens: 512,
+        },
       }),
     });
 
