@@ -85,8 +85,15 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         return () => { (window as any).__encerranteBusy = false; };
     }, []);
 
+    // Mantém a function quente o tempo todo na tela (ping ao abrir + a cada 45s),
+    // pra a foto nunca cair num cold start (~1 min).
     useEffect(() => {
-        api.aquecerEncerrante(); // esquenta a function enquanto o frentista enquadra a foto
+        api.aquecerEncerrante();
+        const t = setInterval(() => api.aquecerEncerrante(), 45000);
+        return () => clearInterval(t);
+    }, []);
+
+    useEffect(() => {
         Promise.all([api.getBicos(POSTO_ID), api.getUltimasLeiturasPorBico(POSTO_ID)])
             .then(([bs, ult]) => {
                 const mapped: BicoInfo[] = (bs as any[]).map(b => ({
