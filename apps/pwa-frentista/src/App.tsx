@@ -3,14 +3,15 @@ import {
   User, Calendar, Gauge, Smartphone, Banknote,
   Coins, CircleDollarSign, FileText, CreditCard,
   ClipboardList, ShoppingBag, History, ChevronDown,
-  X, Check, AlertCircle
+  X, Check, AlertCircle, Camera
 } from 'lucide-react';
 import { api } from './services/api';
 import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
+import EncerranteScreen from './screens/EncerranteScreen';
 import ReloadPrompt from './components/ReloadPrompt';
 
-type TabType = 'registro' | 'vendas' | 'historico' | 'perfil';
+type TabType = 'registro' | 'vendas' | 'historico' | 'encerrante' | 'perfil';
 
 // Reusable card for payments
 const PaymentCard = ({ title, icon: Icon, iconColor, value, onChange }: any) => (
@@ -172,6 +173,12 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
         </div>
         <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Registro</span>
       </div>
+      <div onClick={() => setActiveTab('encerrante')} className="flex flex-col items-center gap-1 cursor-pointer">
+        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'encerrante' ? 'bg-[#FF756B]/10' : ''}`}>
+          <Camera size={20} className={activeTab === 'encerrante' ? 'text-[#FF756B]' : 'text-slate-400'} />
+        </div>
+        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'encerrante' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Encerrante</span>
+      </div>
       <div onClick={() => setActiveTab('vendas')} className="flex flex-col items-center gap-1 cursor-pointer">
         <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'vendas' ? 'bg-emerald-500/10' : ''}`}>
           <ShoppingBag size={20} className={activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'} />
@@ -204,6 +211,28 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
       <>
         <ReloadPrompt />
         <HistoricoScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
+        {renderBottomNav()}
+      </>
+    );
+  }
+
+  // Tela de Encerrante (OCR do papel de leituras)
+  if (activeTab === 'encerrante') {
+    if (!selectedFrentista) {
+      return (
+        <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
+          <ReloadPrompt />
+          <Camera size={48} className="text-slate-600 mb-4" />
+          <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
+          <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
+          {renderBottomNav()}
+        </div>
+      );
+    }
+    return (
+      <>
+        <ReloadPrompt />
+        <EncerranteScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
         {renderBottomNav()}
       </>
     );
