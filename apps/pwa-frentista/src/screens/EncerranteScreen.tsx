@@ -77,12 +77,13 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     const [enviando, setEnviando] = useState(false);
     const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'erro'; msg: string } | null>(null);
 
-    // Trava o auto-reload do service worker enquanto lê a foto ou grava,
-    // pra não perder a captura no meio do caminho.
+    // Trava o auto-reload do service worker durante TODO o tempo na tela Encerrante.
+    // Antes travava só durante o processamento, mas o reload acontecia enquanto a
+    // câmera nativa estava aberta (a 1ª foto era perdida e precisava tirar de novo).
     useEffect(() => {
-        (window as any).__encerranteBusy = lendo || enviando;
+        (window as any).__encerranteBusy = true;
         return () => { (window as any).__encerranteBusy = false; };
-    }, [lendo, enviando]);
+    }, []);
 
     useEffect(() => {
         api.aquecerEncerrante(); // esquenta a function enquanto o frentista enquadra a foto
