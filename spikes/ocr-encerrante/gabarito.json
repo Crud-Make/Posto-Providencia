@@ -1,5 +1,11 @@
 {
-  "COMENTARIO": "Apague esta linha. Para cada foto em fotos/, coloque o nome do arquivo e o numero DIGITADO A MAO (a verdade). Use ponto como separador decimal.",
-  "exemplo_bomba01.jpg": "1716778.963",
-  "exemplo_bomba02.jpg": "652805.292"
+  "_COMENTARIO": "Verdade digitada a mao por foto. Papel 'IMPRESSAO DE ENCERRANTES': cada foto mapeia bico->numero (ponto como separador decimal, todos os digitos, ordem 1..6).",
+  "real01.jpg": {
+    "1": "1861796.633",
+    "2": "694823.433",
+    "3": "451834.423",
+    "4": "375121.793",
+    "5": "34374.201",
+    "6": "15696.932"
+  }
 }
