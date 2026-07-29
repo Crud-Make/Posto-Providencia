@@ -46,9 +46,13 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
   let queryLeitura = supabase.from('Leitura').select('litros_vendidos').gte('data', inicioMesStr).lte('data', fimMesStr);
   if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
 
-  const [despesasRes, leiturasRes] = await Promise.all([
+  // A configuração de fallback é buscada na mesma onda (e só consumida se a taxa
+  // calculada der 0) — condicionar o fetch ao resultado criava um round-trip
+  // sequencial extra na cauda do carregamento do dashboard.
+  const [despesasRes, leiturasRes, configFallbackRes] = await Promise.all([
     despesaService.getByMonth(year, month, postoId),
     queryLeitura,
+    configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45),
   ]);
 
   const totalDespesas = extractData(despesasRes).reduce((acc: number, d: { valor: number }) => acc + Number(d.valor), 0);
@@ -56,7 +60,7 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
 
   let rate = despesaOperacionalPorLitro(totalDespesas, totalLitros);
   if (rate === 0) {
-    rate = extractData(await configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45));
+    rate = extractData(configFallbackRes);
   }
   return rate;
 }
@@ -293,17 +297,8 @@ export const aggregatorService = {
     postoId?: number
   ): Promise<ApiResponse<DashboardAggregatedData>> {
     try {
-      const [estoqueRes, frentistasRes, formasPagamentoRes] = await Promise.all([
-        estoqueService.getAll(postoId),
-        frentistaService.getAll(postoId),
-        formaPagamentoService.getAll(postoId),
-      ]);
-
-      const estoque = extractData(estoqueRes);
-      const frentistas = extractData(frentistasRes);
-      const formasPagamento = extractData(formasPagamentoRes);
-
-      // Calcula o range de data baseado no filtro
+      // Calcula o range de data baseado no filtro (cálculo local puro — precisa vir antes
+      // do disparo das queries pra permitir uma única onda paralela)
       const hoje = new Date();
       let dataInicio: string;
       let dataFim: string = hoje.toISOString().split('T')[0];
@@ -331,12 +326,19 @@ export const aggregatorService = {
           dataInicio = hoje.toISOString().split('T')[0];
       }
 
-      // Otimização: Busca dados em paralelo e limita o range de datas
-      const [leiturasDataRes, fechamentosFrentistaHojeRes] = await Promise.all([
+      // Onda única de queries: nenhuma depende do resultado de outra
+      const [estoqueRes, frentistasRes, formasPagamentoRes, leiturasDataRes, fechamentosFrentistaHojeRes, despesaOpLitro] = await Promise.all([
+        estoqueService.getAll(postoId),
+        frentistaService.getAll(postoId),
+        formaPagamentoService.getAll(postoId),
         leituraService.getByDateRange(dataInicio, dataFim, postoId),
-        fechamentoFrentistaService.getByDate(dataInicio, postoId)
+        fechamentoFrentistaService.getByDate(dataInicio, postoId),
+        despesaOperacionalMensal(hoje, postoId),
       ]);
 
+      const estoque = extractData(estoqueRes);
+      const frentistas = extractData(frentistasRes);
+      const formasPagamento = extractData(formasPagamentoRes);
       const leiturasData = extractData(leiturasDataRes);
       const fechamentosFrentistaHoje = extractData(fechamentosFrentistaHojeRes);
 
@@ -436,7 +438,6 @@ export const aggregatorService = {
       });
 
       // Lucro estimado — despesa operacional REAL do mês (despesas/litros), não mais 0,45 fixo
-      const despesaOpLitro = await despesaOperacionalMensal(hoje, postoId);
       let totalLucroEstimado = 0;
       if (vendas.porCombustivel) {
         totalLucroEstimado = vendas.porCombustivel.reduce((acc, item) => {

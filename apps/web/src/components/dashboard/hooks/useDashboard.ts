@@ -3,8 +3,9 @@
  *
  * @remarks
  * Centraliza carregamento/estado de filtros e padroniza a extração de dados de `ApiResponse`.
+ * Estado de UI dos dropdowns (abertura, clique fora) vive no componente `filter-dropdown`.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
 import type { Frentista } from '@posto/types';
@@ -46,7 +47,6 @@ function extractApiData<T>(response: ApiResponse<T>): T {
 
 export const useDashboard = () => {
   const { postoAtivoId } = usePosto();
-  console.log('[useDashboard] postoAtivoId:', postoAtivoId);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
 
@@ -54,27 +54,15 @@ export const useDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<string>('hoje');
   const [selectedFrentista, setSelectedFrentista] = useState<number | null>(null);
 
-  // Dropdown visibility
-  const [showDateDropdown, setShowDateDropdown] = useState(false);
-  const [showFrentistaDropdown, setShowFrentistaDropdown] = useState(false);
-
   // Options lists
   const [frentistas, setFrentistas] = useState<Frentista[]>([]);
-
-  // Refs for click outside
-  const dateRef = useRef<HTMLDivElement>(null);
-  const frentistaRef = useRef<HTMLDivElement>(null);
 
   // Load filter options
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [frentistasResponse] = await Promise.all([
-          frentistaService.getAll(postoAtivoId),
-        ]);
-        const frentistasData = isSuccess(frentistasResponse) ? frentistasResponse.data : [];
-        console.log('[useDashboard] Frentistas carregados:', frentistasData.length, frentistasData);
-        setFrentistas(frentistasData);
+        const frentistasResponse = await frentistaService.getAll(postoAtivoId);
+        setFrentistas(isSuccess(frentistasResponse) ? frentistasResponse.data : []);
       } catch (error) {
         console.error("Failed to load filter options", error);
       }
@@ -83,20 +71,6 @@ export const useDashboard = () => {
       loadOptions();
     }
   }, [postoAtivoId]);
-
-  // Close dropdowns on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dateRef.current && !dateRef.current.contains(event.target as Node)) {
-        setShowDateDropdown(false);
-      }
-      if (frentistaRef.current && !frentistaRef.current.contains(event.target as Node)) {
-        setShowFrentistaDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Load dashboard data
   useEffect(() => {
@@ -152,13 +126,7 @@ export const useDashboard = () => {
     setSelectedDate,
     selectedFrentista,
     setSelectedFrentista,
-    showDateDropdown,
-    setShowDateDropdown,
-    showFrentistaDropdown,
-    setShowFrentistaDropdown,
     frentistas,
-    dateRef,
-    frentistaRef,
     clearFilters,
     getDateLabel,
     getFrentistaLabel

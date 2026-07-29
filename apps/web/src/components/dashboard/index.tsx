@@ -13,21 +13,43 @@ import {
   Plus,
   Banknote,
   Calendar,
-  ChevronDown,
   Loader2,
   User,
   Droplet,
   TrendingUp,
 } from 'lucide-react';
 import KPICard from './components/KPICard';
-import FuelVolumeChart from './components/FuelVolumeChart';
 import ClosingsTable from './components/ClosingsTable';
 import PerformanceSidebar from './components/PerformanceSidebar';
+import FilterDropdown from './components/filter-dropdown';
 import { useDashboard } from './hooks/useDashboard';
 import { useNavigate } from 'react-router-dom';
 
 // [14/01 07:00] Refatorado para usar useNavigate em vez de prop callback.
 // Permite navegação direta para a rota de fechamento.
+
+// Lazy: FuelVolumeChart puxa o recharts (chunk vendor-charts). Import estático
+// travaria o primeiro paint da tela inteira esperando a lib de gráficos baixar.
+// O import dispara já na avaliação do módulo (não na montagem) pra baixar o chunk
+// em paralelo com as queries do dashboard — lazy puro só começaria o download
+// depois dos dados chegarem, serializando rede de dados + rede de código.
+const fuelVolumeChartImport = import('./components/FuelVolumeChart');
+const FuelVolumeChart = React.lazy(() => fuelVolumeChartImport);
+
+/** Placeholder com as mesmas dimensões do card do gráfico, pra não deslocar o layout. */
+const ChartSkeleton = () => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm h-full flex flex-col animate-pulse">
+    <div className="h-6 w-48 bg-gray-100 dark:bg-gray-700 rounded mb-6"></div>
+    <div className="flex-1 min-h-[300px] bg-gray-50 dark:bg-gray-700/50 rounded"></div>
+  </div>
+);
+
+const DATE_OPTIONS = [
+  { value: 'hoje', label: 'Hoje' },
+  { value: 'ontem', label: 'Ontem' },
+  { value: 'semana', label: 'Última Semana' },
+  { value: 'mes', label: 'Este Mês' }
+];
 
 const TelaDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -38,13 +60,7 @@ const TelaDashboard: React.FC = () => {
     setSelectedDate,
     selectedFrentista,
     setSelectedFrentista,
-    showDateDropdown,
-    setShowDateDropdown,
-    showFrentistaDropdown,
-    setShowFrentistaDropdown,
     frentistas,
-    dateRef,
-    frentistaRef,
     clearFilters,
     getDateLabel,
     getFrentistaLabel
@@ -96,68 +112,27 @@ const TelaDashboard: React.FC = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-8">
-        {/* Date Filter */}
-        <div className="relative" ref={dateRef}>
-          <div
-            onClick={() => setShowDateDropdown(!showDateDropdown)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 shadow-sm cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-          >
-            <Calendar size={16} className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Data:</span>
-            <span className="font-semibold text-gray-900 dark:text-white">{getDateLabel()}</span>
-            <ChevronDown size={14} className={`text-gray-400 ml-2 transition-transform ${showDateDropdown ? 'rotate-180' : ''}`} />
-          </div>
-          {showDateDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-              {[
-                { value: 'hoje', label: 'Hoje' },
-                { value: 'ontem', label: 'Ontem' },
-                { value: 'semana', label: 'Última Semana' },
-                { value: 'mes', label: 'Este Mês' }
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => { setSelectedDate(opt.value); setShowDateDropdown(false); }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedDate === opt.value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <FilterDropdown<string>
+          Icon={Calendar}
+          label="Data:"
+          selectedLabel={getDateLabel()}
+          selectedValue={selectedDate}
+          options={DATE_OPTIONS}
+          onSelect={setSelectedDate}
+        />
 
-        {/* Frentista Filter */}
-        <div className="relative" ref={frentistaRef}>
-          <div
-            onClick={() => setShowFrentistaDropdown(!showFrentistaDropdown)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 shadow-sm cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-          >
-            <User size={16} className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Frentista:</span>
-            <span className="font-semibold text-gray-900 dark:text-white">{getFrentistaLabel()}</span>
-            <ChevronDown size={14} className={`text-gray-400 ml-2 transition-transform ${showFrentistaDropdown ? 'rotate-180' : ''}`} />
-          </div>
-          {showFrentistaDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-60 overflow-y-auto">
-              <button
-                onClick={() => { setSelectedFrentista(null); setShowFrentistaDropdown(false); }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedFrentista === null ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
-              >
-                Todos
-              </button>
-              {frentistas.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => { setSelectedFrentista(f.id); setShowFrentistaDropdown(false); }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedFrentista === f.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-200'}`}
-                >
-                  {f.nome}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <FilterDropdown<number | null>
+          Icon={User}
+          label="Frentista:"
+          selectedLabel={getFrentistaLabel()}
+          selectedValue={selectedFrentista}
+          options={[
+            { value: null, label: 'Todos' },
+            ...frentistas.map(f => ({ value: f.id, label: f.nome }))
+          ]}
+          onSelect={setSelectedFrentista}
+          scrollable
+        />
 
         <button
           onClick={clearFilters}
@@ -211,7 +186,9 @@ const TelaDashboard: React.FC = () => {
       {/* Main Grid: Charts & Performance */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 h-full">
-          <FuelVolumeChart data={data.fuelData} />
+          <React.Suspense fallback={<ChartSkeleton />}>
+            <FuelVolumeChart data={data.fuelData} />
+          </React.Suspense>
         </div>
         <div className="lg:col-span-1 h-full">
           <PerformanceSidebar data={data.performanceData} />
