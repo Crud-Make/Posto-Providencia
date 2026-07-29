@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShoppingBag, ChevronLeft, Package, Minus, Plus, Check, AlertCircle } from 'lucide-react';
+import { ShoppingBag, ChevronLeft, Package, Minus, Plus, Check } from 'lucide-react';
 import { api } from '../services/api';
 
 interface VendasProps {

@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Carrega o .env da raiz do monorepo (VITE_SUPABASE_URL/ANON_KEY), como a web
+  envDir: path.resolve(__dirname, '../../'),
   server: {
     port: 3016, // Porta 3016 para o PWA (já que a web usa 3015)
     host: '0.0.0.0',
