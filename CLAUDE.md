@@ -34,7 +34,7 @@ apps/pwa-frentista    PWA onde o frentista envia o fechamento pelo celular
 packages/types        Tipos compartilhados (inclui os gerados pelo Supabase)
 packages/utils        Lógica de domínio pura e compartilhada (cálculo de fechamento e lucro)
 packages/api-core     Cliente Supabase e acesso a dados desacoplado
-docs/data/            Fonte auditável: xlsx original, sqlite de referência, fixtures de golden master
+docs/data/            Fonte auditável LOCAL (gitignored desde 2026-07-29 — nunca versionar dado real)
 ```
 
 **Regra estrutural:** cálculo de domínio mora em `packages/utils`. Se uma fórmula aparecer dentro de um
@@ -164,7 +164,10 @@ nunca pode ser reescrito de cabeça:
 - `diferenca` = **concentrador − conferido**. Positivo = **FALTA**, negativo = **SOBRA**.
 - **Custo operacional por litro** = despesas reais do mês ÷ litros vendidos no mês. **Nunca** valor
   fixo hardcoded. **Toda** despesa do posto entra nesse rateio, sem exceção.
-- `docs/data/` é fonte auditável: o xlsx original fica versionado e não se edita.
+- `docs/data/` é fonte auditável **local**: o xlsx original não se edita, mas **nunca é versionado**
+  (gitignored desde 2026-07-29 — o repo é público no GitHub e continha dado financeiro real do posto
+  no histórico de commits; histórico reescrito e limpo). Continua no disco, referenciado pelas skills
+  e golden masters — só não vai mais para o git, nem se o repo virar privado depois.
 - Toda fórmula aplicada exige **golden master** correspondente antes da tarefa ser considerada pronta.
 
 ---
@@ -205,7 +208,10 @@ nunca pode ser reescrito de cabeça:
   `ocr` e `testes-funcionais` divergiram por 20 commits resolvendo o MESMO bug ("moedas" fora da soma)
   em paralelo, sem nunca se encontrarem — só reconciliadas por sorte no merge `ffa4630`. Branches
   long-lived no mesmo domínio sem merge frequente geram retrabalho.
-- **`git push --force` é proibido.** Sem exceção.
+- **`git push --force` é proibido.** Sem exceção — **exceto** a reescrita pontual de histórico feita em
+  2026-07-29 para remover dado real do posto commitado por engano em repo público (resposta a incidente
+  de segurança, autorizada explicitamente por mim). Fora desse caso documentado, a regra continua sem
+  exceção.
 - **`CHANGELOG.md`** atualizado a cada bug corrigido ou funcionalidade concluída, seção `[Não Lançado]`.
 - **Regra de ouro:** nenhum merge na `main` e nenhum push remoto sem meu "ok" explícito. Fluxo:
   branch → implementar → eu valido em `localhost:3015` → PR → CI verde → merge.
