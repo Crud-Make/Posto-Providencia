@@ -2,6 +2,22 @@
 
 ## [Não Lançado]
 
+### 🗑️ Restos do app mobile removidos
+- **[29/07/2026]** O app Expo/React Native saiu do repo em `f2272a9` ("*remove mobile app (moved to
+  separate repo)*"), substituído pelo `apps/pwa-frentista`. Ficaram para trás artefatos que só geravam
+  ruído:
+  - **`.github/workflows/build-mobile.yml` apagado.** Rodava a cada push na `main` e a cada PR, e
+    falhava sempre no step "Prebuild": `working-directory: apps/mobile` — pasta que não existe mais
+    (`No such file or directory`). Vermelho permanente que não significava nada.
+  - **`app.json` da raiz apagado.** Stub de configuração do Expo, conteúdo integral `{"expo": {}}`,
+    sem nenhum referenciador.
+  - **`"posto-mobile"` removido do `exclude` do tsconfig.** Excluía pasta que não existe desde a era
+    do Smart Types.
+- **Não mexido, decisão pendente:** a dependência `react-native-css-interop` continua no `package.json`
+  da raiz. Nenhum import no código-fonte, nenhum pacote depende dela, `nativewind` (de quem ela é
+  runtime) não está instalado — é peso morto do mobile. Removê-la altera o `bun.lock`, então fica para
+  decisão explícita.
+
 ### 🧹 `bun run type-check` volta a ficar verde
 - **[29/07/2026]** Os 4 erros de TypeScript que sobreviviam no `tsc --noEmit` eram **3 causas,
   nenhuma delas bug de runtime** — o `include: ["**/*.ts"]` do tsconfig raiz varre o monorepo
