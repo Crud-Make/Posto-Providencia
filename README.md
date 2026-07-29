@@ -1,88 +1,84 @@
-# ⛽ PostoGestão Pro - Dashboard Administrativo
+# ⛽ Posto Providência
 
-O **PostoGestão Pro** é uma solução completa e moderna para a gestão automatizada de redes de postos de combustíveis. Desenvolvido para oferecer uma visão clara e em tempo real de toda a operação, desde as vendas na pista até a análise estratégica de lucros.
+Sistema de operação e gestão de caixa para o Posto Providência. Monorepo com o dashboard administrativo (web) e o app do frentista (PWA), compartilhando a lógica de domínio.
 
-![Status do Projeto](https://img.shields.io/badge/Status-Finalizado-success?style=for-the-badge)
 ![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
 ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
 ![Supabase](https://img.shields.io/badge/Supabase-3EC988?style=for-the-badge&logo=supabase&logoColor=white)
+![Bun](https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Mobile App](https://img.shields.io/badge/Mobile-Repo-blue?style=for-the-badge&logo=github)
-![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)
 
-## 🏗️ Arquitetura do Sistema
-Este ecossistema é composto por dois repositórios independentes:
-1.  **Dashboard (Este Repo):** Gestão administrativa e financeira (Vite/React).
-2.  **Mobile App:** Operação de pista para frentistas e clientes (Expo/React Native). [Acessar Repositório](https://github.com/Thyago-vibe/posto-mobile).
+## 🏗️ Estrutura do monorepo
 
-### 📊 Dashboard do Proprietário (Owner View)
-*   **Visão Consolidada:** Acompanhe múltiplos postos em uma única tela.
-*   **Métricas em Tempo Real:** Vendas do dia, lucro estimado, margem média e metas mensais.
-*   **Alertas Inteligentes:** Notificações automáticas sobre margem baixa, inadimplência elevada ou falta de fechamento.
+```
+apps/web              Painel/dashboard do gerente (React 19 + Vite)
+apps/pwa-frentista    PWA onde o frentista registra o fechamento de caixa pelo celular
+packages/types        Tipos compartilhados (incluindo os gerados pelo Supabase)
+packages/utils        Lógica de domínio pura e compartilhada (cálculo de fechamento e lucro)
+packages/api-core     Cliente Supabase e acesso a dados desacoplado
+```
 
-### 💰 Gestão Financeira e Fechamento
-*   **Fechamento de Caixa Digital:** Registro detalhado de vendas por frentista, turno e bico.
-*   **Controle de Recebimentos:** Gestão completa de dinheiro, cartões (com separação por maquininha), PIX e Fiado.
-*   **Despesas e Compras:** Registro de gastos operacionais e compras de combustíveis para cálculo preciso de lucro real.
+Cálculo de domínio (fechamento de caixa, lucro, encerrantes) mora em `packages/utils` — é compartilhado entre os dois apps e coberto por testes golden master contra dados reais do posto.
 
-### 📈 Controle de Estoque e Pista
-*   **Monitoramento de Tanques:** Gráficos de volume e histórico de variações.
-*   **Gestão de Produtos:** Controle de estoque de conveniência e lubrificantes.
-*   **Leituras de Encerrantes:** Registro rigoroso de bicos para evitar perdas.
+## 📊 Funcionalidades
 
-### 🤝 Clientes e "Fiado"
-*   **Gestão de Crédito:** Cadastro de clientes com limites personalizados.
-*   **Histórico de Dívidas:** Acompanhamento detalhado de parcelas e pagamentos pendentes.
+- **Dashboard do proprietário:** visão consolidada de vendas, lucro estimado, margem e metas.
+- **Fechamento de caixa digital:** registro por frentista, turno e bico; separação entre valor declarado e valor conferido.
+- **Controle de recebimentos:** dinheiro, cartões (por maquininha), PIX e fiado.
+- **Despesas e compras:** custo operacional por litro calculado a partir de despesas reais do mês, sem valor fixo hardcoded.
+- **Estoque e pista:** monitoramento de tanques e leitura de encerrantes por bico.
+- **Clientes e fiado:** cadastro com limite de crédito e histórico de dívidas/pagamentos.
+- **OCR de encerrante:** leitura automática do fotômetro via Gemini Vision (app do frentista).
 
-### 🤖 Estrategista IA (Opcional)
-*   **Análise Preditiva:** Integração com OpenAI/Gemini para sugestões de promoções baseadas no volume de vendas e desempenho por dia da semana.
+## 🛠️ Stack
 
-## 📱 Aplicativo Mobile (Frentistas)
-A operação de pista (fechamento, vendas de bico, vouchers) é realizada através de um aplicativo dedicado para Android/iOS.
-*   **Repositório:** [posto-mobile](https://github.com/Thyago-vibe/posto-mobile)
-*   **Tecnologia:** React Native + Expo.
+- **Frontend:** React 19, TypeScript, Vite.
+- **Estilização:** Tailwind CSS.
+- **Gráficos:** Recharts.
+- **Backend:** Supabase (PostgreSQL, Auth, RLS).
+- **Toolchain:** Bun (workspaces + Turborepo) — não usar npm/yarn/pnpm.
+- **Deploy:** Vercel.
 
-## 🛠️ Tecnologias Utilizadas
+## ⚙️ Configuração local
 
-*   **Frontend:** React 19, TypeScript, Vite.
-*   **Estilização:** Tailwind CSS (Modern UI/UX).
-*   **Gráficos:** Recharts para visualização de dados financeiros.
-*   **Backend:** Supabase (PostgreSQL, Auth, RLS).
-*   **Ícones:** Lucide React.
-*   **Deploy:** Vercel.
+1. **Clonar o repositório** (privado — precisa de acesso):
+   ```bash
+   git clone https://github.com/Crud-Make/Posto-Providencia.git
+   cd Posto-Providencia
+   ```
 
-## ⚙️ Configuração Local
+2. **Instalar dependências:**
+   ```bash
+   bun install
+   ```
 
-1.  **Clonar o repositório:**
-    ```bash
-    git clone https://github.com/Thyago-vibe/Posto-Providencia.git
-    cd Posto-Providencia
-    ```
+3. **Variáveis de ambiente:** copie `.env.example` para `.env` e preencha com as credenciais do Supabase:
+   ```bash
+   cp .env.example .env
+   ```
+   ```env
+   VITE_SUPABASE_URL=seu_url_do_supabase
+   VITE_SUPABASE_ANON_KEY=sua_chave_anon_do_supabase
+   ```
 
-2.  **Instalar dependências:**
-    ```bash
-    npm install
-    ```
+4. **Iniciar o dashboard** (porta 3015):
+   ```bash
+   bun run dev
+   ```
 
-3.  **Variáveis de Ambiente:**
-    Crie um arquivo `.env` na raiz do projeto com suas credenciais do Supabase:
-    ```env
-    VITE_SUPABASE_URL=seu_url_do_supabase
-    VITE_SUPABASE_ANON_KEY=sua_chave_anon_do_supabase
-    ```
-
-4.  **Iniciar desenvolvimento:**
-    ```bash
-    npm run dev
-    ```
+5. **Rodar os testes:**
+   ```bash
+   bun run test          # unitários/componente (Vitest)
+   bun run test:golden   # golden master contra dados reais (bun:test)
+   ```
 
 ## 📦 Deploy na Vercel
 
-O projeto já está configurado com `vercel.json` para suporte a Single Page Application (SPA). Ao conectar no GitHub da Vercel:
-*   **Build Command:** `npm run build`
-*   **Output Directory:** `dist`
-*   **Variables:** Adicione `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas configurações da Vercel.
+Configurado via `vercel.json` para SPA. Ao conectar o repositório na Vercel:
+- **Build Command:** `bun run build`
+- **Output Directory:** `dist`
+- **Variables:** `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
 
 ---
 
-Desenvolvido com ❤️ para a rede **Posto Providência**.
+Desenvolvido para a rede **Posto Providência**.
