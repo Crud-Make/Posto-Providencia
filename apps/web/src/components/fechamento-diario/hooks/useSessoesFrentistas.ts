@@ -16,8 +16,10 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
-import { analisarValor, paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
+import { paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
 import { isSuccess } from '../../../types/ui/response-types';
+import { cartao, conferido } from '@posto/utils';
+import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
 /**
  * Interface para totais detalhados dos frentistas
@@ -29,6 +31,7 @@ export interface TotaisFrentistas {
   nota: number;
   pix: number;
   dinheiro: number;
+  moedas: number;
   baratao: number;
   total: number;
 }
@@ -63,6 +66,7 @@ const criarSessaoVazia = (): SessaoFrentista => ({
   valor_nota: '',
   valor_pix: '',
   valor_dinheiro: '',
+  valor_moedas: '',
   valor_baratao: '',
   valor_encerrante: '',
   valor_conferido: '',
@@ -117,11 +121,11 @@ export const useSessoesFrentistas = (
 
     setCarregando(true);
     try {
-      // [18/01 00:00] Checar success e extrair data do ApiResponse
-      // Motivo: fechamentoFrentistaService agora retorna ApiResponse
-      const dadosRes = await fechamentoFrentistaService.getByDateAndTurno(
+      // Universal (pedido do dono): o envio do frentista não tem turno. Carregamos
+      // TODOS os envios do dia (getByDate), independente do turno selecionado no topo.
+      // O parâmetro `turno` fica só no guard de cache abaixo.
+      const dadosRes = await fechamentoFrentistaService.getByDate(
         data,
-        turno,
         postoId
       );
 
@@ -155,6 +159,7 @@ export const useSessoesFrentistas = (
           valor_nota: paraReais(fs.valor_nota),
           valor_pix: paraReais(fs.valor_pix),
           valor_dinheiro: paraReais(fs.valor_dinheiro),
+          valor_moedas: paraReais(fs.valor_moedas ?? 0),
           valor_baratao: paraReais(fs.baratao ?? 0),
           valor_encerrante: paraReais(fs.encerrante ?? 0),
           valor_conferido: paraReais(fs.valor_conferido ?? 0),
@@ -341,25 +346,19 @@ export const useSessoesFrentistas = (
    */
   const totais = useMemo((): TotaisFrentistas => {
     return sessoes.reduce((acc, fs) => {
-      const cartao = analisarValor(fs.valor_cartao);
-      const debito = analisarValor(fs.valor_cartao_debito);
-      const credito = analisarValor(fs.valor_cartao_credito);
-      const nota = analisarValor(fs.valor_nota);
-      const pix = analisarValor(fs.valor_pix);
-      const dinheiro = analisarValor(fs.valor_dinheiro);
-      const baratao = analisarValor(fs.valor_baratao);
-
+      const m = meiosDaSessao(fs);
       return {
-        cartao: acc.cartao + cartao,
-        cartao_debito: acc.cartao_debito + debito,
-        cartao_credito: acc.cartao_credito + credito,
-        nota: acc.nota + nota,
-        pix: acc.pix + pix,
-        dinheiro: acc.dinheiro + dinheiro,
-        baratao: acc.baratao + baratao,
-        total: acc.total + cartao + nota + pix + dinheiro + baratao
+        cartao: acc.cartao + cartao(m), // aditivo: valor_cartao + débito + crédito
+        cartao_debito: acc.cartao_debito + m.cartaoDebito,
+        cartao_credito: acc.cartao_credito + m.cartaoCredito,
+        nota: acc.nota + m.nota,
+        pix: acc.pix + m.pix,
+        dinheiro: acc.dinheiro + m.dinheiro,
+        moedas: acc.moedas + m.moedas,
+        baratao: acc.baratao + m.baratao,
+        total: acc.total + conferido(m) // 7 buckets, cartão aditivo
       };
-    }, { cartao: 0, cartao_debito: 0, cartao_credito: 0, nota: 0, pix: 0, dinheiro: 0, baratao: 0, total: 0 });
+    }, { cartao: 0, cartao_debito: 0, cartao_credito: 0, nota: 0, pix: 0, dinheiro: 0, moedas: 0, baratao: 0, total: 0 });
   }, [sessoes]);
 
   return {
