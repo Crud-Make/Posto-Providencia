@@ -69,6 +69,8 @@
     "verify_*.ts",
     "reset_*.ts",
     "posto-mobile",
-    "**/*.golden.spec.ts"
+    "**/*.golden.spec.ts",
+    "spikes",
+    "supabase/functions"
   ]
 }

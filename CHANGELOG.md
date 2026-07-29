@@ -2,6 +2,30 @@
 
 ## [Não Lançado]
 
+### 🧹 `bun run type-check` volta a ficar verde
+- **[29/07/2026]** Os 4 erros de TypeScript que sobreviviam no `tsc --noEmit` eram **3 causas,
+  nenhuma delas bug de runtime** — o `include: ["**/*.ts"]` do tsconfig raiz varre o monorepo
+  inteiro com um único config de app browser/Vite e puxa junto arquivo de outro runtime e
+  código morto:
+  - **`types/` da raiz apagada.** Cópia órfã criada em `3229d1f` (16/01, "Smart Types Fase 2")
+    e abandonada dois dias depois por `782c01b`, que migrou tudo pra `apps/web/src/types/` +
+    `@posto/types`. O import `../../services/database.types` apontava pra `<raiz>/services/`,
+    pasta que nunca existiu — quebrada há ~6 meses. Provado órfã por deletion test: tirar a
+    pasta da compilação não gerou nenhum erro de módulo não resolvido. O `types/ui/` vivo é o
+    de `apps/web/src/`.
+  - **`spikes` e `supabase/functions` excluídos do tsconfig.** O spike de OCR usa
+    `import.meta.dir` (API do Bun) e a Edge Function usa o global `Deno` — os dois **funcionam**
+    nos seus runtimes; o que faltava era não estarem sob o tsconfig do app, que só carrega
+    `lib: [ES2022, DOM]` e os tipos de `node`/`react`.
+  - `lint` deixa de apontar pra `types/` (o script quebrava com a pasta removida).
+- **CI passa a barrar isso.** `.github/workflows/ci.yml` ganhou `type-check` e `test`, e trocou
+  Node+`npm ci` por Bun — o job antigo nunca completaria, já que `bun run build` chama `bun -e`
+  internamente. É por isso que os 4 erros sobreviveram 6 meses: nada os gatilhava.
+  Os golden masters seguem **fora** do CI de propósito (dependem de `docs/data/*.sqlite`,
+  gitignored desde 29/07); continuam sendo portão obrigatório rodado na máquina.
+- `CLAUDE.md`: a Referência rápida e o checklist mandavam rodar `bun run typecheck`, script que
+  **não existe** (`bun run typecheck` → "Script not found"). Corrigido pra `type-check`.
+
 ### 🛢️ Encerrante Mensal (bloco `Caixa Dia 01 a 31` da planilha)
 - **[26/07/2026]** Novo módulo `@posto/utils/encerrante-mensal` — fonte única do acumulado
   mensal do encerrante, puro e sem I/O.
