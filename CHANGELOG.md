@@ -121,7 +121,6 @@
     - `@posto/api-core`: Core de API compartilhado
   - Commits: `fdcd660` (web), `513bd12` (mobile)
 
-<<<<<<< HEAD
 ### 🔧 Refatoração
 - **[14/01/2026]** Implementada Fase 1 de Smart Types (Issue #21)
   - Criado utility type `WithRelations<T, R>` em `src/types/ui/helpers.ts`
@@ -130,7 +129,7 @@
   - Adicionado campo `bloqueado` em `ClienteTable`
   - Redução de 4 ocorrências de `as unknown as` (27 → 23)
   - Commit: `refactor: implementa Smart Types no cliente.service (#21)`
-=======
+
 ### Melhorado
 - **Type-Safety (#22)**: Redução de 91% nas ocorrências de `as unknown as` (23 → 2)
 - **Infraestrutura de Tipos**: +896% de linhas de código de tipos (50 → 498)
@@ -149,15 +148,6 @@
 - **Erro de integridade ao re-salvar fechamento**: Adicionada desvinculação robusta de notificações para evitar violação de chave estrangeira em `FechamentoFrentista`.
 - **Automatização de Leituras Iniciais**: Reativado o carregamento automático do último encerrante conhecido como leitura inicial para facilitar o lançamento histórico.
 - **Correção de Persistência entre Datas**: Corrigido bug onde dados digitados em uma data "grudavam" ao mudar o calendário.
-
-## [1.0.0] - 2026-01-04
-
-### Adicionado
-- Sistema de fechamento diário de caixa
-- Dashboard de vendas
-- Gestão de frentistas
-- Integração com app mobile para leituras
->>>>>>> origin/refactor/#22-smart-types-fase-2
 
 ---
 
@@ -477,6 +467,16 @@
 - Melhorar manutenibilidade e testabilidade
 - Eliminar código duplicado
 - Seguir Princípio da Carta Curta (Regra 6.1)
+
+---
+
+## [1.0.0] - 2026-01-04
+
+### Adicionado
+- Sistema de fechamento diário de caixa
+- Dashboard de vendas
+- Gestão de frentistas
+- Integração com app mobile para leituras
 
 ## [Anterior]
 - Precisão Decimal e Máscara Monetária corrigidas.
