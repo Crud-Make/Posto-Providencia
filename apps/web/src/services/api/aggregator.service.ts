@@ -46,9 +46,13 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
   let queryLeitura = supabase.from('Leitura').select('litros_vendidos').gte('data', inicioMesStr).lte('data', fimMesStr);
   if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
 
-  const [despesasRes, leiturasRes] = await Promise.all([
+  // A configuração de fallback é buscada na mesma onda (e só consumida se a taxa
+  // calculada der 0) — condicionar o fetch ao resultado criava um round-trip
+  // sequencial extra na cauda do carregamento do dashboard.
+  const [despesasRes, leiturasRes, configFallbackRes] = await Promise.all([
     despesaService.getByMonth(year, month, postoId),
     queryLeitura,
+    configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45),
   ]);
 
   const totalDespesas = extractData(despesasRes).reduce((acc: number, d: { valor: number }) => acc + Number(d.valor), 0);
@@ -56,7 +60,7 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
 
   let rate = despesaOperacionalPorLitro(totalDespesas, totalLitros);
   if (rate === 0) {
-    rate = extractData(await configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45));
+    rate = extractData(configFallbackRes);
   }
   return rate;
 }
@@ -123,7 +127,7 @@ interface CaixaAberto {
  * @example
  * ```typescript
  * // Componente usa aggregator em vez de múltiplos services
- * const data = await aggregatorService.fetchDashboardData('hoje', null, postoId);
+ * const data = await aggregatorService.fetchDashboardData('2026-07-01', '2026-07-29', null, postoId);
  * ```
  */
 interface VendaCombustivel {
@@ -280,63 +284,39 @@ export const aggregatorService = {
   /**
    * Busca dados para o dashboard principal.
    * Agrega vendas, estoque, frentistas e formas de pagamento.
-   * Suporta filtros de data (hoje, ontem, semana, mes).
+   * O intervalo chega pronto da tela (calendário), em ISO local `aaaa-mm-dd`.
    *
-   * @param dateFilter - Filtro de data ('hoje' | 'ontem' | 'semana' | 'mes')
+   * @param dataInicio - Primeiro dia do período, ISO local `aaaa-mm-dd`
+   * @param dataFim - Último dia do período, ISO local `aaaa-mm-dd`
    * @param frentistaId - Filtro por frentista (opcional)
    * @param postoId - ID do posto (opcional)
    * @returns Objeto com métricas consolidadas
    */
   async fetchDashboardData(
-    dateFilter: string = 'hoje',
+    dataInicio: string,
+    dataFim: string,
     frentistaId: number | null = null,
     postoId?: number
   ): Promise<ApiResponse<DashboardAggregatedData>> {
     try {
-      const [estoqueRes, frentistasRes, formasPagamentoRes] = await Promise.all([
+      // Mês de referência do rateio de despesa operacional. Continua sendo o mês corrente,
+      // não o do período filtrado — comportamento preservado da versão anterior de propósito:
+      // mudá-lo altera o custo por litro (dinheiro) e exige golden master. Ver Issue #27.
+      const hoje = new Date();
+
+      // Onda única de queries: nenhuma depende do resultado de outra
+      const [estoqueRes, frentistasRes, formasPagamentoRes, leiturasDataRes, fechamentosFrentistaHojeRes, despesaOpLitro] = await Promise.all([
         estoqueService.getAll(postoId),
         frentistaService.getAll(postoId),
         formaPagamentoService.getAll(postoId),
+        leituraService.getByDateRange(dataInicio, dataFim, postoId),
+        fechamentoFrentistaService.getByDate(dataInicio, postoId),
+        despesaOperacionalMensal(hoje, postoId),
       ]);
 
       const estoque = extractData(estoqueRes);
       const frentistas = extractData(frentistasRes);
       const formasPagamento = extractData(formasPagamentoRes);
-
-      // Calcula o range de data baseado no filtro
-      const hoje = new Date();
-      let dataInicio: string;
-      let dataFim: string = hoje.toISOString().split('T')[0];
-
-      switch (dateFilter) {
-        case 'ontem': {
-          const ontem = new Date(hoje);
-          ontem.setDate(ontem.getDate() - 1);
-          dataInicio = ontem.toISOString().split('T')[0];
-          dataFim = dataInicio;
-          break;
-        }
-        case 'semana': {
-          const semanaAtras = new Date(hoje);
-          semanaAtras.setDate(semanaAtras.getDate() - 7);
-          dataInicio = semanaAtras.toISOString().split('T')[0];
-          break;
-        }
-        case 'mes': {
-          const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-          dataInicio = inicioMes.toISOString().split('T')[0];
-          break;
-        }
-        default: // 'hoje'
-          dataInicio = hoje.toISOString().split('T')[0];
-      }
-
-      // Otimização: Busca dados em paralelo e limita o range de datas
-      const [leiturasDataRes, fechamentosFrentistaHojeRes] = await Promise.all([
-        leituraService.getByDateRange(dataInicio, dataFim, postoId),
-        fechamentoFrentistaService.getByDate(dataInicio, postoId)
-      ]);
-
       const leiturasData = extractData(leiturasDataRes);
       const fechamentosFrentistaHoje = extractData(fechamentosFrentistaHojeRes);
 
@@ -436,7 +416,6 @@ export const aggregatorService = {
       });
 
       // Lucro estimado — despesa operacional REAL do mês (despesas/litros), não mais 0,45 fixo
-      const despesaOpLitro = await despesaOperacionalMensal(hoje, postoId);
       let totalLucroEstimado = 0;
       if (vendas.porCombustivel) {
         totalLucroEstimado = vendas.porCombustivel.reduce((acc, item) => {

@@ -3,12 +3,14 @@
  *
  * @remarks
  * Centraliza carregamento/estado de filtros e padroniza a extração de dados de `ApiResponse`.
+ * Estado de UI dos dropdowns (abertura, clique fora) vive no componente `filter-dropdown`.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
 import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
+import { hojeIso, type Periodo } from '../../../utils/periodo';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -46,35 +48,25 @@ function extractApiData<T>(response: ApiResponse<T>): T {
 
 export const useDashboard = () => {
   const { postoAtivoId } = usePosto();
-  console.log('[useDashboard] postoAtivoId:', postoAtivoId);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
 
   // Filters state
-  const [selectedDate, setSelectedDate] = useState<string>('hoje');
+  const [periodo, setPeriodo] = useState<Periodo>(() => {
+    const hoje = hojeIso();
+    return { inicio: hoje, fim: hoje };
+  });
   const [selectedFrentista, setSelectedFrentista] = useState<number | null>(null);
-
-  // Dropdown visibility
-  const [showDateDropdown, setShowDateDropdown] = useState(false);
-  const [showFrentistaDropdown, setShowFrentistaDropdown] = useState(false);
 
   // Options lists
   const [frentistas, setFrentistas] = useState<Frentista[]>([]);
-
-  // Refs for click outside
-  const dateRef = useRef<HTMLDivElement>(null);
-  const frentistaRef = useRef<HTMLDivElement>(null);
 
   // Load filter options
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [frentistasResponse] = await Promise.all([
-          frentistaService.getAll(postoAtivoId),
-        ]);
-        const frentistasData = isSuccess(frentistasResponse) ? frentistasResponse.data : [];
-        console.log('[useDashboard] Frentistas carregados:', frentistasData.length, frentistasData);
-        setFrentistas(frentistasData);
+        const frentistasResponse = await frentistaService.getAll(postoAtivoId);
+        setFrentistas(isSuccess(frentistasResponse) ? frentistasResponse.data : []);
       } catch (error) {
         console.error("Failed to load filter options", error);
       }
@@ -84,20 +76,6 @@ export const useDashboard = () => {
     }
   }, [postoAtivoId]);
 
-  // Close dropdowns on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dateRef.current && !dateRef.current.contains(event.target as Node)) {
-        setShowDateDropdown(false);
-      }
-      if (frentistaRef.current && !frentistaRef.current.contains(event.target as Node)) {
-        setShowFrentistaDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   // Load dashboard data
   useEffect(() => {
     const loadData = async () => {
@@ -106,7 +84,8 @@ export const useDashboard = () => {
         // Modo diário: passa null para turno (carrega dados do dia inteiro)
         // [18/01 10:34] Extraído payload de ApiResponse para evitar `kpis` indefinido no Dashboard.
         const dashboardResponse = (await fetchDashboardData(
-          selectedDate,
+          periodo.inicio,
+          periodo.fim,
           selectedFrentista,
           postoAtivoId
         )) as ApiResponse<DashboardData>;
@@ -122,21 +101,12 @@ export const useDashboard = () => {
     if (postoAtivoId) {
       loadData();
     }
-  }, [selectedDate, selectedFrentista, postoAtivoId]);
+  }, [periodo, selectedFrentista, postoAtivoId]);
 
   const clearFilters = () => {
-    setSelectedDate('hoje');
+    const hoje = hojeIso();
+    setPeriodo({ inicio: hoje, fim: hoje });
     setSelectedFrentista(null);
-  };
-
-  const getDateLabel = () => {
-    switch (selectedDate) {
-      case 'hoje': return 'Hoje';
-      case 'ontem': return 'Ontem';
-      case 'semana': return 'Última Semana';
-      case 'mes': return 'Este Mês';
-      default: return 'Hoje';
-    }
   };
 
   const getFrentistaLabel = () => {
@@ -148,19 +118,12 @@ export const useDashboard = () => {
   return {
     loading,
     data,
-    selectedDate,
-    setSelectedDate,
+    periodo,
+    setPeriodo,
     selectedFrentista,
     setSelectedFrentista,
-    showDateDropdown,
-    setShowDateDropdown,
-    showFrentistaDropdown,
-    setShowFrentistaDropdown,
     frentistas,
-    dateRef,
-    frentistaRef,
     clearFilters,
-    getDateLabel,
     getFrentistaLabel
   };
 };
