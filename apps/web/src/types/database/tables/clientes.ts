@@ -1,5 +1,3 @@
-import { Json } from '../base';
-
 /**
  * Tabelas do Domínio: Clientes
  */

@@ -61,7 +61,6 @@ export interface SessaoFrentista {
   valor_encerrante: string; // Valor total dos encerrantes
   valor_conferido: string; // Valor total conferido
   observacoes: string; // Observações sobre o fechamento
-  valor_produtos: string; // Valor de produtos vendidos
   status?: 'pendente' | 'conferido'; // Status do fechamento
   data_hora_envio?: string; // Data e hora do envio pelo app
 }

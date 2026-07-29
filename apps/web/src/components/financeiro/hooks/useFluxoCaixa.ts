@@ -78,20 +78,25 @@ export function useFluxoCaixa(
     });
 
     // Converter para array e ordenar
+    // [26/07 refactor] Acumulação feita em loop sequencial na mesma função (em vez de
+    // mutar `saldoAcumulado` de dentro do callback de `.map`), evitando reatribuir uma
+    // variável de fora depois que a função que a "fechou" já retornou seu valor.
+    const entradasOrdenadas = Array.from(mapa.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]));
+
+    const series: SerieFluxoCaixa[] = [];
     let saldoAcumulado = 0;
-    const series: SerieFluxoCaixa[] = Array.from(mapa.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([data, valores]) => {
-        const saldoDia = valores.receitas - valores.despesas;
-        saldoAcumulado += saldoDia;
-        return {
-          data,
-          receitas: valores.receitas,
-          despesas: valores.despesas,
-          saldo: saldoDia,
-          saldoAcumulado
-        };
+    for (const [data, valores] of entradasOrdenadas) {
+      const saldoDia = valores.receitas - valores.despesas;
+      saldoAcumulado += saldoDia;
+      series.push({
+        data,
+        receitas: valores.receitas,
+        despesas: valores.despesas,
+        saldo: saldoDia,
+        saldoAcumulado
       });
+    }
 
     return {
       series,

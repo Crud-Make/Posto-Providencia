@@ -1,4 +1,4 @@
-import { paraReais, parseValue } from '../../../utils/formatters';
+import { parseValue } from '../../../utils/formatters';
 import type { BicoComDetalhes, Frentista, SessaoFrentista } from '../../../types/fechamento';
 import type { Leitura } from '../hooks/useLeituras';
 
@@ -113,11 +113,11 @@ export function calcularTotaisPagamentos(sessoes: SessaoFrentista[]): DadosPagam
         totais['Cartão Crédito'] += parseValue(sessao.valor_cartao_credito);
         totais['Pix'] += parseValue(sessao.valor_pix);
         totais['Nota a Prazo'] += parseValue(sessao.valor_nota);
-        totais['Outros'] += parseValue(sessao.valor_baratao);
+        totais['Outros'] += parseValue(sessao.valor_baratao) + parseValue(sessao.valor_moedas);
     });
 
     return Object.entries(totais)
-        .filter(([_, valor]) => valor > 0)
+        .filter(([, valor]) => valor > 0)
         .map(([name, value]) => ({ name, value }));
 }
 
@@ -155,7 +155,7 @@ export function gerarTabelaDetalhamento(
         { id: 'credito', label: 'Cartão Crédito', keys: ['valor_cartao_credito'] as (keyof SessaoFrentista)[] },
         { id: 'nota', label: 'Nota a Prazo', keys: ['valor_nota'] as (keyof SessaoFrentista)[] },
         { id: 'dinheiro', label: 'Dinheiro', keys: ['valor_dinheiro'] as (keyof SessaoFrentista)[] },
-        { id: 'outros', label: 'Outros', keys: ['valor_baratao'] as (keyof SessaoFrentista)[] },
+        { id: 'outros', label: 'Outros', keys: ['valor_baratao', 'valor_moedas'] as (keyof SessaoFrentista)[] },
     ];
 
 

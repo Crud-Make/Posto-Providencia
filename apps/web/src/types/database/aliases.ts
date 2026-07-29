@@ -1,11 +1,11 @@
 import { Database } from './schema';
-import { PostoTable, TurnoTable, ConfiguracaoTable, UsuarioTable, UsuarioPostoTable } from './tables/infraestrutura';
+import { ConfiguracaoTable, UsuarioPostoTable } from './tables/infraestrutura';
 import { CombustivelTable, BombaTable, BicoTable, TanqueTable, HistoricoTanqueTable, EstoqueTable } from './tables/combustiveis';
-import { FrentistaTable, LeituraTable, FechamentoTable, FechamentoFrentistaTable, RecebimentoTable, EscalaTable } from './tables/operacoes';
+import { LeituraTable, RecebimentoTable } from './tables/operacoes';
 import { FormaPagamentoTable, MaquininhaTable } from './tables/pagamentos';
 import { EmprestimoTable, ParcelaTable, DividaTable, DespesaTable } from './tables/financeiro';
 import { CompraTable, FornecedorTable } from './tables/compras';
-import { ProdutoTable, VendaProdutoTable, MovimentacaoEstoqueTable } from './tables/produtos';
+import { MovimentacaoEstoqueTable } from './tables/produtos';
 import { ClienteTable, NotaFrentistaTable } from './tables/clientes';
 import type {
   Posto as PostoDomain,

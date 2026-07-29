@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { PerfilFrentista } from '../types';
 
 interface ListaFrentistasProps {

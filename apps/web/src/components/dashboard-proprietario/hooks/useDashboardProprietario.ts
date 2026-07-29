@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../services/supabase';
-import { postoService, frentistaService, fechamentoService } from '../../../services/api';
+import { postoService, frentistaService } from '../../../services/api';
 import { DadosDashboard, PostoSummary, AlertaDashboard } from '../types';
 import { Posto } from '../../../types/database/index';
 import { isSuccess } from '../../../types/ui/response-types';
-import { AlertTriangle, TrendingDown, DollarSign } from 'lucide-react';
 
 interface UseDashboardReturn {
   dados: DadosDashboard | null;
@@ -97,7 +96,6 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
 
   const vendasHoje = dadosHoje?.[0]?.total_vendas || 0;
   const lucroHoje = dadosHoje?.[0]?.lucro_liquido || 0;
-  const volumeHoje = dadosHoje?.[0]?.volume_total || 0;
 
   // ✅ DADOS REAIS DE LUCRO - Mês
   const { data: dadosMes } = await supabase

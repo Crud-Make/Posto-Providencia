@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { usePosto } from '../../contexts/PostoContext';
-import { fechamentoMensalService, FechamentoMensalResumo, EncerranteMensal } from '../../services/api/fechamentoMensal.service';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { usePosto } from '../../contexts/usePosto';
+import { fechamentoMensalService, FechamentoMensalResumo, EncerranteMensalConsolidado } from '../../services/api/fechamentoMensal.service';
 import { leituraService } from '../../services/api';
-import { TrendingUp, TrendingDown, Calendar, DollarSign, Droplets, CreditCard, ChevronDown, ChevronUp, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Calendar, DollarSign, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Cell, PieChart, Pie } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, PieChart, Pie } from 'recharts';
 
 interface FechamentoMensalProps {
     isEmbedded?: boolean;
@@ -24,7 +24,7 @@ const formatDate = (dateString: string) => {
     if (!dateString) return '--/--';
     const parts = dateString.split('-');
     if (parts.length !== 3) return dateString;
-    const [year, month, day] = parts;
+    const [, month, day] = parts;
     return `${day}/${month}`;
 };
 
@@ -35,8 +35,17 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [dados, setDados] = useState<FechamentoMensalResumo[]>([]);
-    const [encerrantes, setEncerrantes] = useState<EncerranteMensal[]>([]);
-    const [error, setError] = useState<string | null>(null);
+    const [encerrantes, setEncerrantes] = useState<EncerranteMensalConsolidado>({
+        bicos: [],
+        ultimoDiaFechado: null,
+        litros: 0,
+        litrosLancados: 0,
+        litrosEmLacuna: 0,
+        bruto: 0,
+        precoMedio: null,
+        temLacuna: false,
+    });
+    const [, setError] = useState<string | null>(null);
     const [temDadosPendentes, setTemDadosPendentes] = useState(false);
 
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -63,9 +72,13 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
 
     const daysPassed = dados.length || 1;
 
+    /** "Dia 01 a 24" — até onde o mês está realmente fechado. */
+    const periodoFechado = encerrantes.ultimoDiaFechado === null
+        ? '(sem dia fechado)'
+        : `(dia 01 a ${String(encerrantes.ultimoDiaFechado).padStart(2, '0')})`;
+
     // Simple projection: (Total / DaysPassed) * DaysInMonth
     const projectedProfit = (totalizers.lucro / daysPassed) * daysInMonth;
-    const projectedVolume = (totalizers.volume / daysPassed) * daysInMonth;
 
     // Goals (Hardcoded for now, could be DB driven)
     const metaLucro = 60000;
@@ -88,7 +101,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
     ].filter(item => item.value > 0), [totalizers]);
 
 
-    const carregarDados = async () => {
+    const carregarDados = useCallback(async () => {
         if (typeof window === 'undefined') return; // Changed process.browser to typeof window === 'undefined' for broader compatibility
 
         try {
@@ -109,7 +122,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
             setEncerrantes(encerrantes);
 
             // Verifica pendências se não houver dados fechados
-            if (resumo.length === 0 && encerrantes.length === 0) {
+            if (resumo.length === 0 && encerrantes.bicos.length === 0) {
                 const startDate = `${selectedMonth}-01`;
                 const lastDay = new Date(ano, mes, 0).getDate();
                 const endDate = `${selectedMonth}-${lastDay}`;
@@ -130,11 +143,11 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
         } finally {
             setLoading(false);
         }
-    };
+    }, [postoAtivo, selectedMonth]);
 
     useEffect(() => {
         carregarDados();
-    }, [postoAtivo, selectedMonth]);
+    }, [carregarDados]);
 
     return (
         <div className={`min-h-screen bg-slate-950 text-slate-100 font-sans ${isEmbedded ? 'bg-transparent min-h-0' : 'p-6 md:p-8'}`}>
@@ -194,7 +207,6 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
             {loading ? (
                 <div className="flex flex-col items-center justify-center p-32 text-center relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/40">
                     <div className="absolute inset-0 bg-blue-500/5 animate-pulse"></div>
-                    {/* <Loader2 size={48} className="animate-spin text-blue-500 mb-6 relative z-10" /> */}
                     <h3 className="text-xl font-bold text-white mb-2 relative z-10">Consolidando Dados Financeiros</h3>
                     <p className="text-slate-400 relative z-10">Calculando margens, volumes e projeções...</p>
                 </div>
@@ -444,68 +456,87 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                             <div>
                                 <h3 className="text-base font-bold text-slate-200 flex items-center gap-2">
                                     <CheckCircle2 size={18} className="text-emerald-500" />
-                                    Detalhamento dos Encerrantes (Bombas)
+                                    Encerrante do Mês {periodoFechado}
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-1">Comparativo auditável entre leitura física e sistema</p>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Acumulado do dia 01 até o último dia fechado. Dia começado e não encerrado não entra.
+                                </p>
                             </div>
-                            <div className="flex gap-3 text-xs font-medium bg-slate-950/50 p-2 rounded-lg border border-slate-800">
-                                <span className="flex items-center text-emerald-400 gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Normal</span>
-                                <span className="flex items-center text-red-400 gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Divergente</span>
-                            </div>
+                            {encerrantes.temLacuna ? (
+                                <div className="flex items-center gap-2 text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-2 rounded-lg">
+                                    <AlertCircle size={14} className="animate-pulse" />
+                                    {formatDecimal(encerrantes.litrosEmLacuna)} L sem fechamento lançado
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-2 rounded-lg">
+                                    <CheckCircle2 size={14} />
+                                    Nenhum dia em falta
+                                </div>
+                            )}
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm whitespace-nowrap">
                                 <thead>
                                     <tr className="bg-slate-950/30 text-[10px] uppercase text-slate-400 font-extrabold tracking-widest border-b border-slate-800">
                                         <th className="px-6 py-5">Bico / Produto</th>
-                                        <th className="px-6 py-5 text-right">Enc. Inicial ({formatDate(`${selectedMonth}-01`)})</th>
-                                        <th className="px-6 py-5 text-right">Enc. Atual</th>
-                                        <th className="px-6 py-5 text-right">Diferença</th>
-                                        <th className="px-6 py-5 text-right">Vendas Lançadas</th>
+                                        <th className="px-6 py-5 text-right">Enc. Inicial (dia 01)</th>
+                                        <th className="px-6 py-5 text-right">Enc. Final (dia {String(encerrantes.ultimoDiaFechado ?? '--').padStart(2, '0')})</th>
+                                        <th className="px-6 py-5 text-right">Litros do Mês</th>
+                                        <th className="px-6 py-5 text-right">Litros Lançados</th>
+                                        <th className="px-6 py-5 text-right">Em Lacuna</th>
+                                        <th className="px-6 py-5 text-right">Bruto</th>
                                         <th className="px-6 py-5 text-center">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/50">
-                                    {encerrantes.map((row, idx) => {
-                                        const isOk = Math.abs(row.diferenca) < 1; // 1 litro tolerance
-                                        const isPositive = row.diferenca > 0;
+                                    {encerrantes.bicos.map((row, idx) => {
+                                        const temLacuna = Math.abs(row.litrosEmLacuna) >= 0.001;
 
                                         return (
-                                            <tr key={idx} className="hover:bg-slate-800/40 transition-colors group">
+                                            <tr key={row.bico} className="hover:bg-slate-800/40 transition-colors group">
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border ${row.combustivel_nome.toLowerCase().includes('gasolina') ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                            row.combustivel_nome.toLowerCase().includes('etanol') ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border ${row.combustivelNome.toLowerCase().includes('gasolina') ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                            row.combustivelNome.toLowerCase().includes('etanol') ? 'bg-green-500/10 text-green-500 border-green-500/20' :
                                                                 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                                                             }`}>
                                                             {idx + 1}
                                                         </div>
                                                         <div>
-                                                            <div className="font-bold text-slate-200 group-hover:text-blue-400 transition-colors">{row.bico_nome}</div>
-                                                            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">{row.combustivel_nome}</div>
+                                                            <div className="font-bold text-slate-200 group-hover:text-blue-400 transition-colors">{row.bicoNome}</div>
+                                                            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">{row.combustivelNome}</div>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-slate-400 font-mono text-xs">
-                                                    {formatDecimal(row.leitura_inicial)}
+                                                    {row.inicial === null ? '--' : formatDecimal(row.inicial)}
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-slate-200 font-mono text-xs font-bold group-hover:text-white">
-                                                    {formatDecimal(row.leitura_final)}
+                                                    {row.fechamento === null ? '--' : formatDecimal(row.fechamento)}
                                                 </td>
-                                                <td className={`px-6 py-4 text-right font-mono font-bold ${isOk ? 'text-slate-600' : 'text-red-400'}`}>
-                                                    {isOk ? '--' : `${isPositive ? '+' : ''}${formatDecimal(row.diferenca)} L`}
+                                                <td className="px-6 py-4 text-right text-slate-100 font-mono font-bold">
+                                                    {formatDecimal(row.litros)} L
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-blue-300 font-mono font-medium">
-                                                    {formatNumber(row.vendas_registradas)} L
+                                                    {formatDecimal(row.litrosLancados)} L
+                                                </td>
+                                                <td className={`px-6 py-4 text-right font-mono font-bold ${temLacuna ? 'text-red-400' : 'text-slate-600'}`}>
+                                                    {temLacuna ? `${formatDecimal(row.litrosEmLacuna)} L` : '--'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right text-emerald-300 font-mono font-medium">
+                                                    {formatCurrency(row.bruto)}
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    {isOk ? (
-                                                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wide">
-                                                            <CheckCircle2 size={12} className="mr-1" /> OK
+                                                    {temLacuna ? (
+                                                        <span
+                                                            title={`Dias sem fechamento: ${row.diasEmLacuna.join(', ')}`}
+                                                            className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold uppercase tracking-wide animate-pulse"
+                                                        >
+                                                            <AlertCircle size={12} className="mr-1" /> {row.diasEmLacuna.length} dia(s)
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold uppercase tracking-wide animate-pulse">
-                                                            <AlertCircle size={12} className="mr-1" /> Erro
+                                                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wide">
+                                                            <CheckCircle2 size={12} className="mr-1" /> OK
                                                         </span>
                                                     )}
                                                 </td>
@@ -513,6 +544,31 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                                         );
                                     })}
                                 </tbody>
+                                {encerrantes.bicos.length > 0 && (
+                                    <tfoot>
+                                        <tr className="bg-slate-950/50 border-t-2 border-slate-700 font-bold">
+                                            <td className="px-6 py-4 text-slate-200 uppercase text-xs tracking-widest">
+                                                Total {periodoFechado}
+                                            </td>
+                                            <td colSpan={2} className="px-6 py-4 text-right text-slate-500 text-xs font-normal">
+                                                {encerrantes.precoMedio === null ? '' : `preço médio ${formatCurrency(encerrantes.precoMedio)}/L`}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-100 font-mono">
+                                                {formatDecimal(encerrantes.litros)} L
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-blue-300 font-mono">
+                                                {formatDecimal(encerrantes.litrosLancados)} L
+                                            </td>
+                                            <td className={`px-6 py-4 text-right font-mono ${encerrantes.temLacuna ? 'text-red-400' : 'text-slate-600'}`}>
+                                                {encerrantes.temLacuna ? `${formatDecimal(encerrantes.litrosEmLacuna)} L` : '--'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-emerald-300 font-mono">
+                                                {formatCurrency(encerrantes.bruto)}
+                                            </td>
+                                            <td />
+                                        </tr>
+                                    </tfoot>
+                                )}
                             </table>
                         </div>
                     </div>
@@ -524,23 +580,3 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
 };
 
 export default FechamentoMensal;
-
-// Utility components for Icons
-function Loader2({ className, size }: { className?: string, size?: number }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width={size || 24}
-            height={size || 24}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`lucide lucide-loader-2 ${className}`}
-        >
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-        </svg>
-    )
-}

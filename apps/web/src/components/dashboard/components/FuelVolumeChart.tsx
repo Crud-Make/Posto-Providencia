@@ -6,6 +6,35 @@ interface FuelVolumeChartProps {
   data: FuelData[];
 }
 
+// Tooltip customizado do gráfico. Precisa viver fora do componente: definir um
+// componente dentro do corpo de render recria a função a cada render e dispara
+// `react-hooks/static-components` (o Recharts a chama via render-prop `content`).
+interface TooltipPayloadItem {
+  value: number;
+  payload: { color: string };
+}
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+  label?: string;
+}
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-100 dark:border-gray-700 shadow-xl rounded-xl">
+        <p className="text-sm font-bold text-gray-800 dark:text-white mb-2">{label}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.color }}></div>
+          <p className="text-sm text-gray-600 dark:text-gray-300 font-medium font-finance">
+            {payload[0].value.toLocaleString('pt-BR')} Litros
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
   // 1. Sanitize Data: Remove negatives
   const chartData = data.map(d => ({
@@ -14,33 +43,6 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
   }));
 
   const hasData = chartData.some(d => d.volume > 0);
-
-  // Custom tooltip
-  interface TooltipPayloadItem {
-    value: number;
-    payload: { color: string };
-  }
-  interface CustomTooltipProps {
-    active?: boolean;
-    payload?: TooltipPayloadItem[];
-    label?: string;
-  }
-  const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-100 dark:border-gray-700 shadow-xl rounded-xl">
-          <p className="text-sm font-bold text-gray-800 dark:text-white mb-2">{label}</p>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].payload.color }}></div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium font-finance">
-              {payload[0].value.toLocaleString('pt-BR')} Litros
-            </p>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
   const getFuelColors = (name: string, index: number) => {
     const lower = name.toLowerCase();

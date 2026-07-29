@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, ChevronDown, RefreshCw } from 'lucide-react';
-import { usePosto } from '../../contexts/PostoContext';
+import { usePosto } from '../../contexts/usePosto';
 
 interface Props {
    onRefresh: () => void;

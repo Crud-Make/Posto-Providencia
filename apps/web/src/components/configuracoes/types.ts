@@ -15,16 +15,18 @@ export type PaymentType = 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix
 export type Produto = ProductConfig & Omit<ProdutoDomain, keyof ProductConfig>;
 
 /**
- * Interface para configuração de bico.
- * Reutiliza a interface NozzleConfig do sistema.
+ * Tipo para configuração de bico.
+ * Reutiliza a interface NozzleConfig do sistema, mantendo o nome semântico
+ * usado nesta fatia (`configuracoes`).
  */
-export interface Bico extends NozzleConfig { }
+export type Bico = NozzleConfig;
 
 /**
- * Interface para configuração de forma de pagamento.
- * Reutiliza a interface PaymentMethodConfig do sistema.
+ * Tipo para configuração de forma de pagamento.
+ * Reutiliza a interface PaymentMethodConfig do sistema, mantendo o nome semântico
+ * usado nesta fatia (`configuracoes`).
  */
-export interface FormaPagamento extends PaymentMethodConfig { }
+export type FormaPagamento = PaymentMethodConfig;
 
 /**
  * Dados carregados para a tela de configurações.
@@ -108,14 +110,10 @@ export interface GestaoFormasPagamentoProps {
 export interface ParametrosFechamentoProps {
     /** Valor da tolerância */
     tolerance: string;
-    /** Estado de salvamento */
-    saving: boolean;
     /** Se houve modificação */
     modified: boolean;
     /** Callback de alteração */
     onChange: (value: string) => void;
-    /** Callback de salvamento */
-    onSave: () => void;
 }
 
 /**
@@ -126,16 +124,12 @@ export interface ParametrosEstoqueProps {
     diasCritico: string;
     /** Dias para estoque baixo */
     diasBaixo: string;
-    /** Estado de salvamento */
-    saving: boolean;
     /** Se houve modificação */
     modified: boolean;
     /** Callback de alteração de dias críticos */
     onChangeCritico: (value: string) => void;
     /** Callback de alteração de dias baixos */
     onChangeBaixo: (value: string) => void;
-    /** Callback de salvamento */
-    onSave: () => void;
 }
 
 /**

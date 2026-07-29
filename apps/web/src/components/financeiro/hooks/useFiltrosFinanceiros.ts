@@ -4,7 +4,7 @@
  * Controla período selecionado, tipos de transação e outras
  * opções de filtro da tela financeira.
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 /**
  * Interface que define os filtros disponíveis para o painel financeiro.
@@ -54,25 +54,26 @@ export function useFiltrosFinanceiros(initialPostoId?: number): UseFiltrosFinanc
     };
   };
 
-  const [filtros, setFiltros] = useState<FiltrosFinanceiros>({
+  const [filtrosBase, setFiltrosBase] = useState<FiltrosFinanceiros>({
     ...getInitialDates(),
     tipoTransacao: 'todas',
     postoId: initialPostoId
   });
 
-  // Atualizar postoId quando prop mudar
-  useEffect(() => {
-    if (initialPostoId) {
-      setFiltros(prev => ({ ...prev, postoId: initialPostoId }));
-    }
-  }, [initialPostoId]);
+  // [26/07 refactor] postoId é sempre um espelho da prop `initialPostoId`: em vez de
+  // sincronizar via setState-em-effect (causa cascata de renders), deriva-se direto
+  // no render com useMemo — sem atraso de um ciclo e sem risco de loop.
+  const filtros = useMemo<FiltrosFinanceiros>(
+    () => ({ ...filtrosBase, postoId: initialPostoId || filtrosBase.postoId }),
+    [filtrosBase, initialPostoId]
+  );
 
   const atualizar = useCallback((campo: keyof FiltrosFinanceiros, valor: FiltrosFinanceiros[keyof FiltrosFinanceiros]) => {
-    setFiltros(prev => ({ ...prev, [campo]: valor }));
+    setFiltrosBase(prev => ({ ...prev, [campo]: valor }));
   }, []);
 
   const resetar = useCallback(() => {
-    setFiltros({
+    setFiltrosBase({
       ...getInitialDates(),
       tipoTransacao: 'todas',
       postoId: initialPostoId
@@ -102,7 +103,7 @@ export function useFiltrosFinanceiros(initialPostoId?: number): UseFiltrosFinanc
         break;
     }
 
-    setFiltros(prev => ({
+    setFiltrosBase(prev => ({
       ...prev,
       dataInicio: inicio.toISOString().split('T')[0],
       dataFim: fim.toISOString().split('T')[0]

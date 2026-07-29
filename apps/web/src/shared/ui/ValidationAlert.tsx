@@ -215,7 +215,6 @@ interface StockAlertProps {
     currentLevel: number;
     capacity: number;
     daysRemaining: number;
-    color?: string;
     onRegisterPurchase?: () => void;
     className?: string;
 }
@@ -228,7 +227,6 @@ export const StockAlert: React.FC<StockAlertProps> = ({
     currentLevel,
     capacity,
     daysRemaining,
-    color = 'gray',
     onRegisterPurchase,
     className = ''
 }) => {

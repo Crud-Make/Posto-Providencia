@@ -2,6 +2,37 @@
 
 ## [Não Lançado]
 
+### 🛢️ Encerrante Mensal (bloco `Caixa Dia 01 a 31` da planilha)
+- **[26/07/2026]** Novo módulo `@posto/utils/encerrante-mensal` — fonte única do acumulado
+  mensal do encerrante, puro e sem I/O.
+  - **Corrige o dia parcial**: o mês fecha no último dia com encerrante de fechamento
+    lançado, não no último dia com qualquer dado. A planilha usa o dia 25 de julho (que
+    tem inicial e não tem fechamento) e por isso mostra **−1.861.248 L**; o módulo fecha
+    no dia 24 e dá os **31.038,922 L** corretos.
+  - **Corrige o `MIN`/`MAX`**: a RPC `get_encerrantes_mensal` usava `MIN(leitura_inicial)`
+    e `MAX(leitura_final)` do mês. Min/max adota um encerrante digitado errado pra sempre
+    e nunca desanda — o erro fica invisível. Agora ancora no primeiro e no último dia.
+  - **Nova coluna "Em Lacuna"**: `salto do encerrante − soma dos dias lançados`, o
+    combustível que saiu da bomba sem fechamento correspondente. Zero em 6 meses de 2026;
+    **9.134 L em fevereiro** (dias 09–15 sem lançar), que a planilha não sinaliza.
+  - **Bruto somado dia a dia**, com o preço de cada dia. A planilha faz
+    `litros do mês × um preço só` digitado à mão e por isso diverge em todo mês com
+    mudança de preço (jan +2.337, mar +6.719, mai −3.594, jun −1.866). Divergência
+    conhecida e travada no golden master. Abril e julho batem exato — são os meses de
+    preço único.
+  - Litros operados em mililitros inteiros e dinheiro em centavos, pra não acumular ruído
+    de ponto flutuante nas ~180 linhas de um mês.
+- Golden master `encerrante-mensal.golden.spec.ts`: **141 testes** contra os 7 meses reais
+  de `docs/data/posto_jorro_2026.sqlite` (42 casos de mês × bico), incluindo impressão da
+  tabela de cada mês para conferência visual. Adicionado ao `bun run test:golden`.
+- `fechamentoMensal.service.ts` deixa de chamar a RPC e passa a buscar as leituras cruas do
+  mês, delegando a conta ao módulo. A RPC `get_encerrantes_mensal` fica órfã.
+- Tela de fechamento mensal: cabeçalho mostra o período realmente fechado ("dia 01 a 24"),
+  colunas Litros do Mês / Litros Lançados / Em Lacuna / Bruto, linha de TOTAL com preço
+  médio ponderado, e selo de alerta quando há dia sem fechamento.
+- `CONTEXT.md` criado — glossário do domínio (encerrante, salto do encerrante, dia parcial,
+  último dia fechado, lacuna, litros em lacuna).
+
 ### 📚 Documentação & Smart Types
 - **[14/01/2026]** Smart Types Fase 2 (#22): Infraestrutura completa de tipagem type-safe
   - Criados 4 arquivos de tipos (498 linhas): `smart-types.ts`, `form-types.ts`, `response-types.ts`, `index.ts`

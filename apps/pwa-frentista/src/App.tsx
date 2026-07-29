@@ -3,18 +3,35 @@ import {
   User, Calendar, Gauge, Smartphone, Banknote,
   Coins, CircleDollarSign, FileText, CreditCard,
   ClipboardList, ShoppingBag, History, ChevronDown,
-  X, Check, AlertCircle
+  X, Check, AlertCircle, Camera
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
 import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
+import EncerranteScreen from './screens/EncerranteScreen';
 import ReloadPrompt from './components/ReloadPrompt';
 
-type TabType = 'registro' | 'vendas' | 'historico' | 'perfil';
+type TabType = 'registro' | 'vendas' | 'historico' | 'encerrante' | 'perfil';
+
+interface DialogState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: 'success' | 'error';
+}
+
+interface PaymentCardProps {
+  title: string;
+  icon: LucideIcon;
+  iconColor: { bg: string; text: string };
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
 
 // Reusable card for payments
-const PaymentCard = ({ title, icon: Icon, iconColor, value, onChange }: any) => (
+const PaymentCard = ({ title, icon: Icon, iconColor, value, onChange }: PaymentCardProps) => (
   <div className="bg-[#131722] rounded-2xl p-4 border border-slate-800/60 shadow-sm flex flex-col justify-between h-28">
     <div className="flex items-center gap-2 mb-2">
       <div className={`p-1.5 rounded-lg bg-opacity-10 flex items-center justify-center ${iconColor.bg}`}>
@@ -45,17 +62,35 @@ const formatCurrency = (value: string) => {
   return amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const AppComponent = ({ setDialog }: { setDialog: any }) => {
+const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateAction<DialogState>> }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedFrentista, setSelectedFrentista] = useState<{ id: number, nome: string } | null>(null);
+  // Persistimos frentista e aba: no mobile, abrir a câmera pode descarregar a
+  // página da memória e recarregar ao voltar — sem isso o app perdia o estado
+  // e "voltava pra tela inicial".
+  const [selectedFrentista, setSelectedFrentista] = useState<{ id: number, nome: string } | null>(() => {
+    try { const s = localStorage.getItem('pwa.frentista'); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
   const [frentistas, setFrentistas] = useState<{ id: number, nome: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('registro');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    try { return (localStorage.getItem('pwa.activeTab') as TabType) || 'registro'; } catch { return 'registro'; }
+  });
 
   useEffect(() => {
     // Busca do banco POSTO ID: 1 como padrão (Pode vir de config/storage depois)
     api.getFrentistas(1).then(data => data && setFrentistas(data)).catch(err => console.error(err));
   }, []);
+
+  useEffect(() => {
+    try {
+      if (selectedFrentista) localStorage.setItem('pwa.frentista', JSON.stringify(selectedFrentista));
+      else localStorage.removeItem('pwa.frentista');
+    } catch { /* ignora */ }
+  }, [selectedFrentista]);
+
+  useEffect(() => {
+    try { localStorage.setItem('pwa.activeTab', activeTab); } catch { /* ignora */ }
+  }, [activeTab]);
 
   const [totalVendido, setTotalVendido] = useState('');
   const [payments, setPayments] = useState({
@@ -149,8 +184,8 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
       setPayments({ pix: '', dinheiro: '', moedas: '', baratao: '', notaPrazo: '', debito: '', credito: '' });
       setSelectedFrentista(null);
 
-    } catch (err: any) {
-      setDialog({ isOpen: true, title: 'Erro', message: err.message || 'Ocorreu um erro no servidor.', type: 'error' });
+    } catch (err) {
+      setDialog({ isOpen: true, title: 'Erro', message: err instanceof Error ? err.message : 'Ocorreu um erro no servidor.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -163,6 +198,12 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
           <ClipboardList size={20} className={activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'} />
         </div>
         <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Registro</span>
+      </div>
+      <div onClick={() => setActiveTab('encerrante')} className="flex flex-col items-center gap-1 cursor-pointer">
+        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'encerrante' ? 'bg-[#FF756B]/10' : ''}`}>
+          <Camera size={20} className={activeTab === 'encerrante' ? 'text-[#FF756B]' : 'text-slate-400'} />
+        </div>
+        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'encerrante' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Encerrante</span>
       </div>
       <div onClick={() => setActiveTab('vendas')} className="flex flex-col items-center gap-1 cursor-pointer">
         <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'vendas' ? 'bg-emerald-500/10' : ''}`}>
@@ -196,6 +237,28 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
       <>
         <ReloadPrompt />
         <HistoricoScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
+        {renderBottomNav()}
+      </>
+    );
+  }
+
+  // Tela de Encerrante (OCR do papel de leituras)
+  if (activeTab === 'encerrante') {
+    if (!selectedFrentista) {
+      return (
+        <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
+          <ReloadPrompt />
+          <Camera size={48} className="text-slate-600 mb-4" />
+          <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
+          <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
+          {renderBottomNav()}
+        </div>
+      );
+    }
+    return (
+      <>
+        <ReloadPrompt />
+        <EncerranteScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
         {renderBottomNav()}
       </>
     );
@@ -425,7 +488,7 @@ const AppComponent = ({ setDialog }: { setDialog: any }) => {
 };
 
 export default function App() {
-  const [dialog, setDialog] = useState<any>({ isOpen: false, title: '', message: '', type: 'success' });
+  const [dialog, setDialog] = useState<DialogState>({ isOpen: false, title: '', message: '', type: 'success' });
 
   return (
     <>

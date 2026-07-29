@@ -22,8 +22,8 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 
-import { useAuth } from '../../contexts/AuthContext';
-import { usePosto } from '../../contexts/PostoContext';
+import { useAuth } from '../../contexts/useAuth';
+import { usePosto } from '../../contexts/usePosto';
 import { useCarregamentoDados } from './hooks/useCarregamentoDados';
 import { useLeituras } from './hooks/useLeituras';
 import { useSessoesFrentistas } from './hooks/useSessoesFrentistas';
@@ -62,11 +62,11 @@ const TelaFechamentoDiario: React.FC = () => {
 
    const {
       leituras, carregando: loadingLeituras, carregarLeituras,
-      alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros, definirLeituras
+      alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros
    } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
 
    const {
-      sessoes: frentistaSessions, carregando: loadingSessoes, totais: frentistasTotals,
+      sessoes: frentistaSessions, carregando: loadingSessoes,
       carregarSessoes, alterarCampoFrentista, aoSairCampoFrentista, definirSessoes, removerFrentista
    } = useSessoesFrentistas(postoAtivoId, frentistas);
 
@@ -105,6 +105,31 @@ const TelaFechamentoDiario: React.FC = () => {
       };
    }, [selectedDate, selectedTurno, carregarSessoes]);
 
+   // --- 🔴 REALTIME: Escuta leituras de bico (OCR encerrante) em tempo real ---
+   useEffect(() => {
+      const channel = supabase
+         .channel('leituras-bico-realtime')
+         .on(
+            'postgres_changes',
+            {
+               event: '*',
+               schema: 'public',
+               table: 'Leitura'
+            },
+            (payload) => {
+               console.log('🔔 Alteração de Leitura detectada em tempo real:', payload.eventType, payload);
+               carregarLeituras(true);
+            }
+         )
+         .subscribe((status) => {
+            console.log('📡 Realtime status (Leitura):', status);
+         });
+
+      return () => {
+         supabase.removeChannel(channel);
+      };
+   }, [carregarLeituras]);
+
    const { totalLitros, totalVendas, totalFrentistas, diferenca, podeFechar } = useFechamento(bicos, leituras, frentistaSessions, payments);
 
    const loading = loadingDados || loadingLeituras || loadingSessoes || loadingPagamentos;
@@ -121,25 +146,40 @@ const TelaFechamentoDiario: React.FC = () => {
       if (postoAtivoId) { carregarDados(); carregarPagamentos(); }
    }, [postoAtivoId, carregarDados, carregarPagamentos]);
 
-   useEffect(() => {
-      if (turnos.length > 0 && !selectedTurno) {
-         const diario = turnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
-         setSelectedTurno(diario ? diario.id : turnos[0].id);
-      }
-   }, [turnos, selectedTurno]);
+   // Turno padrão: assim que a lista de turnos carrega e ainda não há turno selecionado,
+   // ajusta o estado direto no corpo do render (padrão oficial do React pra "sincronizar
+   // estado a partir de um dado já disponível", ver https://react.dev/learn/you-might-not-need-an-effect)
+   // em vez de useEffect+setState — elimina o aviso de react-hooks/set-state-in-effect e,
+   // de brinde, evita o frame extra com o turno ainda vazio antes do efeito rodar.
+   // A guarda `!selectedTurno` garante que só aplica uma vez: depois de setado, a
+   // condição vira falsa e não reexecuta.
+   if (turnos.length > 0 && !selectedTurno) {
+      const diario = turnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
+      setSelectedTurno(diario ? diario.id : turnos[0].id);
+   }
+
+   // Turno do rascunho restaurado: mesmo padrão do ajuste acima, direto no render.
+   // A guarda de igualdade evita reaplicar o mesmo valor a cada render (equivalente ao
+   // `if (rascunhoRestaurado.turnoSelecionado)` original, só que idempotente de forma
+   // explícita em vez de depender do bail-out silencioso do setState com valor igual).
+   if (restaurado && !saving && !success && rascunhoRestaurado?.turnoSelecionado && selectedTurno !== rascunhoRestaurado.turnoSelecionado) {
+      setSelectedTurno(rascunhoRestaurado.turnoSelecionado);
+   }
 
    useEffect(() => {
       if (restaurado && !saving && !success) {
-         if (rascunhoRestaurado) {
-            if (rascunhoRestaurado.leituras) definirLeituras(rascunhoRestaurado.leituras);
-            if (rascunhoRestaurado.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
-            if (rascunhoRestaurado.turnoSelecionado) setSelectedTurno(rascunhoRestaurado.turnoSelecionado);
-         } else {
-            carregarLeituras();
-            if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno);
+         // As leituras dos bicos e os envios do PWA vêm do banco (OCR/PWA + realtime) —
+         // nunca só do rascunho local, senão um rascunho antigo trava a tela pra sempre
+         // com valores desatualizados (carregarSessoes mescla com o rascunho por baixo:
+         // sessões já enviadas vêm do banco, sessões digitadas localmente e ainda não
+         // enviadas continuam preservadas).
+         carregarLeituras();
+         if (rascunhoRestaurado?.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
+         if (selectedDate && selectedTurno) {
+            carregarSessoes(selectedDate, selectedTurno);
          }
       }
-   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, definirLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
+   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
 
    useEffect(() => {
       if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado && !saving && !success) {
@@ -192,14 +232,10 @@ const TelaFechamentoDiario: React.FC = () => {
                   <TabDetalhamentoFrentista
                      frentistaSessions={frentistaSessions}
                      frentistas={frentistas}
-                     totalVendasPosto={totalVendas}
                      loading={loading}
                      onUpdateCampo={(tempId, campo, valor) => {
-                        // Type assertion to ensure campo is a valid key of SessaoFrentista
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        alterarCampoFrentista(tempId, campo as any, valor.toString());
+                        alterarCampoFrentista(tempId, campo as keyof SessaoFrentista, valor.toString());
                      }}
-                     data={selectedDate}
                   />
                ) : activeTab === 'fechamento-mensal' ? (
                   <FechamentoMensal isEmbedded={true} />

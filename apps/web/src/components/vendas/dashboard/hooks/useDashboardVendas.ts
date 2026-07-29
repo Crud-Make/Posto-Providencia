@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { usePosto } from '../../../../contexts/PostoContext';
-import { leituraService, combustivelService, estoqueService } from '../../../../services/api';
+import { usePosto } from '../../../../contexts/usePosto';
+import { leituraService, estoqueService } from '../../../../services/api';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
 import { isSuccess } from '../../../../types/ui/response-types';

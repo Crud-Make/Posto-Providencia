@@ -10,14 +10,12 @@ import { ParametrosEstoqueProps } from '../types';
  * @param {ParametrosEstoqueProps} props - Props do componente
  * @returns {JSX.Element} Componente renderizado
  */
-export const ParametrosEstoque: React.FC<ParametrosEstoqueProps> = ({ 
-    diasCritico, 
-    diasBaixo, 
-    onChangeCritico, 
+export const ParametrosEstoque: React.FC<ParametrosEstoqueProps> = ({
+    diasCritico,
+    diasBaixo,
+    onChangeCritico,
     onChangeBaixo,
-    saving,
-    modified,
-    onSave
+    modified
 }) => {
     return (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 relative">

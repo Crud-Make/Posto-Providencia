@@ -10,12 +10,15 @@ import { fechamentoFrentistaService } from './fechamentoFrentista.service';
 import { compraService } from './compra.service';
 import { despesaService } from './despesa.service';
 import { configuracaoService } from './configuracao.service';
-import type { Combustivel, Frentista, FechamentoFrentista, Leitura, Compra, Fechamento } from '../../types/database/index';
+import type { Combustivel, FechamentoFrentista, Leitura, Fechamento } from '../../types/database/index';
 import {
   ApiResponse,
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import type { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryAlert, InventoryTransaction } from '../../types/ui/dashboard';
+import type { ClosingAttendant } from '../../types/ui/closing';
+import type { AttendantProfile, AttendantHistoryEntry } from '../../types/ui/attendants';
 
 /**
  * Helper para extrair dados de ApiResponse com tratamento de erro
@@ -38,8 +41,9 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
   const year = refDate.getFullYear();
   const month = refDate.getMonth() + 1;
   const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
+  const fimMesStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
 
-  let queryLeitura = supabase.from('Leitura').select('litros_vendidos').gte('data', inicioMesStr);
+  let queryLeitura = supabase.from('Leitura').select('litros_vendidos').gte('data', inicioMesStr).lte('data', fimMesStr);
   if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
 
   const [despesasRes, leiturasRes] = await Promise.all([
@@ -84,15 +88,6 @@ interface CaixaAberto {
   };
 }
 
-interface CompraWithRelations extends Compra {
-  combustivel?: {
-    nome: string;
-  };
-  fornecedor?: {
-    nome: string;
-  };
-}
-
 /**
  * Service Aggregator (Padrão Facade)
  * 
@@ -128,13 +123,111 @@ interface CompraWithRelations extends Compra {
  * @example
  * ```typescript
  * // Componente usa aggregator em vez de múltiplos services
- * const data = await aggregatorService.fetchDashboardData('hoje', null, null, postoId);
+ * const data = await aggregatorService.fetchDashboardData('hoje', null, postoId);
  * ```
  */
 interface VendaCombustivel {
   combustivel: Combustivel;
   litros: number;
   valor: number;
+}
+
+/** Retorno de {@link aggregatorService.fetchSettingsData}. */
+interface SettingsData {
+  products: {
+    id: string;
+    name: string;
+    type: 'Combustível' | 'Biocombustível' | 'Diesel';
+    price: number;
+  }[];
+  nozzles: { id: string; number: string; productName: string; tankSource: string }[];
+  shifts: unknown[]; // Turnos removidos do sistema
+  paymentMethods: {
+    id: string;
+    name: string;
+    type: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'outros';
+    tax: number;
+    active: boolean;
+  }[];
+}
+
+/** Retorno de {@link aggregatorService.fetchDashboardData}. */
+interface DashboardAggregatedData {
+  fuelData: FuelData[];
+  paymentData: PaymentMethod[];
+  closingsData: AttendantClosing[];
+  performanceData: AttendantPerformance[];
+  kpis: {
+    totalSales: number;
+    avgTicket: number;
+    totalDivergence: number;
+    totalVolume: number;
+    totalProfit: number;
+  };
+}
+
+/** Retorno de {@link aggregatorService.fetchClosingData}. */
+interface ClosingData {
+  summaryData: FuelSummary[];
+  nozzleData: NozzleData[];
+  attendantsData: ClosingAttendant[];
+}
+
+/** Retorno de {@link aggregatorService.fetchAttendantsData}. */
+interface AttendantsData {
+  list: AttendantProfile[];
+  history: AttendantHistoryEntry[];
+}
+
+/**
+ * Retorno de {@link aggregatorService.fetchInventoryData}.
+ *
+ * @remarks
+ * `items` usa forma própria (não `InventoryItem` de `types/ui/dashboard.ts`): os nomes de campo
+ * de compras/vendas divergem (`totalPurchases`/`totalSales`/`lossOrGain` vs `purchases`/`sales`) —
+ * divergência pré-existente entre o service e aquele tipo de UI, fora do escopo desta limpeza.
+ */
+interface InventoryData {
+  items: {
+    id: string;
+    code: string;
+    name: string;
+    volume: number;
+    capacity: number;
+    percentage: number;
+    status: 'OK' | 'BAIXO' | 'CRÍTICO';
+    daysRemaining: number;
+    color: string;
+    iconType: 'pump' | 'leaf' | 'truck';
+    costPrice: number;
+    sellPrice: number;
+    previousStock: number;
+    totalPurchases: number;
+    totalSales: number;
+    lossOrGain: number;
+  }[];
+  alerts: InventoryAlert[];
+  transactions: InventoryTransaction[];
+  chartData: { day: string; sales: number; entry: number; salesPerc: number; entryPerc: number }[];
+  summary: { totalCost: number; totalSell: number; projectedProfit: number };
+}
+
+/** Item de retorno de {@link aggregatorService.fetchProfitabilityData}. */
+interface ProfitabilityItem {
+  id: number;
+  combustivelId: number;
+  nome: string;
+  codigo: string;
+  custoMedio: number;
+  despOperacional: number;
+  custoTotalL: number;
+  precoVenda: number;
+  volumeVendido: number;
+  receitaBruta: number;
+  lucroTotal: number;
+  margemLiquidaL: number;
+  margemBrutaL: number;
+  cor: string;
 }
 
 export const aggregatorService = {
@@ -145,7 +238,7 @@ export const aggregatorService = {
    * @param postoId - ID do posto (opcional)
    * @returns Objeto com listas formatadas de produtos, bicos, turnos e formas de pagamento
    */
-  async fetchSettingsData(postoId?: number): Promise<ApiResponse<any>> {
+  async fetchSettingsData(postoId?: number): Promise<ApiResponse<SettingsData>> {
     try {
       const [combustiveisRes, bicosRes, formasPagamentoRes] = await Promise.all([
         combustivelService.getAll(postoId),
@@ -191,16 +284,14 @@ export const aggregatorService = {
    *
    * @param dateFilter - Filtro de data ('hoje' | 'ontem' | 'semana' | 'mes')
    * @param frentistaId - Filtro por frentista (opcional)
-   * @param _turnoId - Deprecated: turno removido do sistema
    * @param postoId - ID do posto (opcional)
    * @returns Objeto com métricas consolidadas
    */
   async fetchDashboardData(
     dateFilter: string = 'hoje',
     frentistaId: number | null = null,
-    _turnoId: number | null = null, // Deprecated: turno removido do sistema
     postoId?: number
-  ): Promise<ApiResponse<any>> {
+  ): Promise<ApiResponse<DashboardAggregatedData>> {
     try {
       const [estoqueRes, frentistasRes, formasPagamentoRes] = await Promise.all([
         estoqueService.getAll(postoId),
@@ -424,7 +515,7 @@ export const aggregatorService = {
    * @param postoId - ID do posto (opcional)
    * @returns Dados consolidados para a tela de fechamento (resumo, bicos, frentistas)
    */
-  async fetchClosingData(postoId?: number): Promise<ApiResponse<any>> {
+  async fetchClosingData(postoId?: number): Promise<ApiResponse<ClosingData>> {
     try {
       const [frentistasRes, combustiveisRes, bicosRes] = await Promise.all([
         frentistaService.getAll(postoId),
@@ -532,7 +623,7 @@ export const aggregatorService = {
     }
   },
 
-  async fetchAttendantsData(postoId?: number): Promise<ApiResponse<any>> {
+  async fetchAttendantsData(postoId?: number): Promise<ApiResponse<AttendantsData>> {
     try {
       // Query frentistas directly from the table (including inactive for management screen)
       let query = supabase
@@ -626,8 +717,10 @@ export const aggregatorService = {
       const allHistories = fechamentos.flat();
       const history = allHistories.slice(0, 10).map((h) => ({
         id: String(h.id),
-        date: (h as FechamentoFrentistaWithRelations).fechamento?.data || 'N/A',
-        shift: (h as FechamentoFrentistaWithRelations).fechamento?.turno?.nome || 'N/A',
+        // getHistoricoDiferencas só seleciona `fechamento:Fechamento(data)` (sem turno) — o cast abaixo
+        // reflete uma leitura pré-existente de `.turno` que a query não traz; mantido como estava.
+        date: (h as unknown as FechamentoFrentistaWithRelations).fechamento?.data || 'N/A',
+        shift: (h as unknown as FechamentoFrentistaWithRelations).fechamento?.turno?.nome || 'N/A',
         value: ((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0),
         status: ((((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0)) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
       }));
@@ -638,7 +731,7 @@ export const aggregatorService = {
     }
   },
 
-  async fetchInventoryData(postoId?: number): Promise<ApiResponse<any>> {
+  async fetchInventoryData(postoId?: number): Promise<ApiResponse<InventoryData>> {
     try {
       const dataInicioAnalise = new Date();
       dataInicioAnalise.setDate(dataInicioAnalise.getDate() - 7);
@@ -663,7 +756,6 @@ export const aggregatorService = {
 
       if (leiturasRecentes.error) return createErrorResponse(leiturasRecentes.error.message);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const leituras = (leiturasRecentes.data || []) as LeituraWithRelations[];
 
       const estoque = extractData(estoqueRes);
@@ -808,16 +900,16 @@ export const aggregatorService = {
    * @param postoId - ID do posto (opcional)
    * @returns Métricas de rentabilidade (LUCRO LÍQUIDO, MARGEM, CUSTOS)
    */
-  async fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1, postoId?: number): Promise<ApiResponse<any>> {
+  async fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1, postoId?: number): Promise<ApiResponse<ProfitabilityItem[]>> {
     try {
       const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const fimMesStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
 
       let queryLeitura = supabase
         .from('Leitura')
         .select('*, bico:Bico(combustivel_id)')
-        .gte('data', inicioMesStr);
+        .gte('data', inicioMesStr)
+        .lte('data', fimMesStr);
 
       if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
 

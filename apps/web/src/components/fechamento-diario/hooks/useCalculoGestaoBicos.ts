@@ -25,15 +25,13 @@ interface LeituraMap {
  */
 export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: LeituraMap) => {
     return useMemo(() => {
-        let volumeTotal = 0;
-        let faturamentoTotal = 0;
-        let lucroTotal = 0;
-
         // Dados por Combustível
         const porCombustivel: Record<string, { volume: number, faturamento: number, meta: number, cor: string }> = {};
 
-        // Lista detalhada para tabela
-        const listaBicos = bicos.map(bico => {
+        // Cálculo por bico (função pura do .map, sem mutar variável de fora do closure —
+        // o React Compiler não pode garantir que uma reatribuição dentro do callback do
+        // .map termine junto com o render atual, daí o aviso de immutability).
+        const detalhes = bicos.map(bico => {
             // 1. Obter e sanitizar leituras
             const leitura = leituras[bico.id] || { inicial: '0,000', fechamento: '0,000' };
             const inicial = parseFloat(leitura.inicial.replace(/\./g, '').replace(',', '.')) || 0;
@@ -62,24 +60,6 @@ export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: Leitur
             const lucro = volume * (precoVenda - precoCusto);
             const margem = faturamento > 0 ? (lucro / faturamento) * 100 : 0;
 
-            // 5. Agregação Global
-            volumeTotal += volume;
-            faturamentoTotal += faturamento;
-            lucroTotal += lucro;
-
-            // 6. Agregação por Combustível
-            if (!porCombustivel[nomeCombustivel]) {
-                let cor = '#3B82F6'; // Default Blue
-                if (nomeCombustivel.includes('Gasolina')) cor = '#A855F7'; // Roxo
-                if (nomeCombustivel.includes('Diesel')) cor = '#22C55E'; // Verde
-                if (nomeCombustivel.includes('Etanol')) cor = '#F97316'; // Laranja
-
-                // Meta simulada baseada em histórico (pode ser parametrizada futuramente)
-                porCombustivel[nomeCombustivel] = { volume: 0, faturamento: 0, meta: 100000, cor };
-            }
-            porCombustivel[nomeCombustivel].volume += volume;
-            porCombustivel[nomeCombustivel].faturamento += faturamento;
-
             return {
                 id: bico.id,
                 numero: bico.numero,
@@ -93,7 +73,34 @@ export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: Leitur
                 // Meta de performance: 5000L/bico (exemplo)
                 performance: Math.min((volume / 5000) * 100, 100)
             };
-        }).sort((a, b) => b.faturamento - a.faturamento);
+        });
+
+        // 5. Agregação Global e por Combustível — laço direto no corpo do useMemo (não
+        // dentro de outro closure), então mutar `volumeTotal`/`porCombustivel` aqui é seguro
+        // e termina junto com este cálculo, sem sobreviver ao render.
+        let volumeTotal = 0;
+        let faturamentoTotal = 0;
+        let lucroTotal = 0;
+
+        for (const item of detalhes) {
+            volumeTotal += item.volume;
+            faturamentoTotal += item.faturamento;
+            lucroTotal += item.lucro;
+
+            if (!porCombustivel[item.combustivel]) {
+                let cor = '#3B82F6'; // Default Blue
+                if (item.combustivel.includes('Gasolina')) cor = '#A855F7'; // Roxo
+                if (item.combustivel.includes('Diesel')) cor = '#22C55E'; // Verde
+                if (item.combustivel.includes('Etanol')) cor = '#F97316'; // Laranja
+
+                // Meta simulada baseada em histórico (pode ser parametrizada futuramente)
+                porCombustivel[item.combustivel] = { volume: 0, faturamento: 0, meta: 100000, cor };
+            }
+            porCombustivel[item.combustivel].volume += item.volume;
+            porCombustivel[item.combustivel].faturamento += item.faturamento;
+        }
+
+        const listaBicos = [...detalhes].sort((a, b) => b.faturamento - a.faturamento);
 
         return { volumeTotal, faturamentoTotal, lucroTotal, listaBicos, porCombustivel };
     }, [bicos, leituras]);

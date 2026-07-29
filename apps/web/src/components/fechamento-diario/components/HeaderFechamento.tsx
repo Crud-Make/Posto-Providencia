@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { TrendingUp, Calendar, MapPin } from 'lucide-react';
 import { Turno } from '../../../types/database/index';
 
 /**

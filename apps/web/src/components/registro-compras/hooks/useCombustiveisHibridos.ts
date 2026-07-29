@@ -5,12 +5,12 @@
  * Normaliza retornos de `ApiResponse` e mantém o estado híbrido (string para inputs e numeric para cálculos).
  * [01/02 15:30] Adicionado suporte a persistência de estado para evitar perda de dados ao navegar.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { combustivelService, estoqueService, tanqueService } from '../../../services/api';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 import { Combustivel, Estoque, Tanque } from '../../../types/database/index';
-import { usePosto } from '../../../contexts/PostoContext';
+import { usePosto } from '../../../contexts/usePosto';
 import { formatarParaBR } from '../../../utils/formatters';
 
 const STORAGE_KEY = 'registro_compras_form_data';
@@ -57,7 +57,7 @@ export const useCombustiveisHibridos = () => {
     const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([]);
 
     /** Carrega todos os dados necessários (combustíveis, estoques e tanques) */
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         if (!postoAtivoId) return;
 
         try {
@@ -98,7 +98,7 @@ export const useCombustiveisHibridos = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [postoAtivoId]);
 
     /**
      * Verifica se existem dados persistidos no sessionStorage
@@ -135,7 +135,7 @@ export const useCombustiveisHibridos = () => {
             console.log('[Compras] Dados persistidos encontrados, aguardando restauração...');
             setLoading(false);
         }
-    }, [postoAtivoId]);
+    }, [postoAtivoId, loadData]);
 
     /** Atualiza um campo específico de um combustível no estado local */
     const updateCombustivel = (id: number, field: keyof CombustivelHibrido, value: string) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
 import type { Posto } from '../types/database/index';
 
@@ -6,7 +6,7 @@ import type { Posto } from '../types/database/index';
 // TYPES
 // ============================================
 
-interface PostoContextType {
+export interface PostoContextType {
     postos: Posto[];
     postoAtivo: Posto | null;
     postoAtivoId: number;
@@ -53,8 +53,13 @@ export const PostoProvider: React.FC<PostoProviderProps> = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Guarda se o posto ativo padrão já foi definido, sem precisar ler `postoAtivo`
+    // no closure de fetchPostos (evita recriar a função a cada mudança de estado
+    // e, com isso, evita loop no useEffect abaixo que depende de fetchPostos).
+    const postoAtivoDefinidoRef = useRef(false);
+
     // Carregar postos do banco de dados
-    const fetchPostos = async () => {
+    const fetchPostos = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -73,7 +78,9 @@ export const PostoProvider: React.FC<PostoProviderProps> = ({ children }) => {
             setPostos(postosData);
 
             // Se não houver posto ativo, selecionar o primeiro
-            if (postosData.length > 0 && !postoAtivo) {
+            if (postosData.length > 0 && !postoAtivoDefinidoRef.current) {
+                postoAtivoDefinidoRef.current = true;
+
                 // Verificar se há um posto salvo no localStorage
                 const savedPostoId = localStorage.getItem('postoAtivoId');
                 const defaultPosto = savedPostoId
@@ -101,18 +108,19 @@ export const PostoProvider: React.FC<PostoProviderProps> = ({ children }) => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
+            postoAtivoDefinidoRef.current = true;
             setPostos([fallbackPosto]);
             setPostoAtivoState(fallbackPosto);
             setPostoAtivoId(1);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Carregar postos na inicialização
     useEffect(() => {
         fetchPostos();
-    }, []);
+    }, [fetchPostos]);
 
     // Função para definir posto ativo
     const setPostoAtivo = (posto: Posto) => {
@@ -154,15 +162,10 @@ export const PostoProvider: React.FC<PostoProviderProps> = ({ children }) => {
 };
 
 // ============================================
-// HOOK
+// EXPORT DO CONTEXTO (objeto puro, sem componente)
 // ============================================
-
-export const usePosto = (): PostoContextType => {
-    const context = useContext(PostoContext);
-    if (!context) {
-        throw new Error('usePosto deve ser usado dentro de um PostoProvider');
-    }
-    return context;
-};
+// O hook `usePosto` mora em `./usePosto.ts` — extraído para satisfazer
+// `react-refresh/only-export-components` (Fast Refresh exige que um arquivo
+// .tsx só exporte componentes).
 
 export default PostoContext;

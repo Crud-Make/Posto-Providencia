@@ -1,5 +1,32 @@
 import { supabase } from '../lib/supabase';
 
+/** Payload enviado por App.tsx ao fechar o turno do frentista (shape de FechamentoFrentista.Insert). */
+interface FechamentoFrentistaPayload {
+    fechamento_id: number;
+    frentista_id: number;
+    posto_id: number;
+    encerrante: number;
+    valor_pix: number;
+    valor_dinheiro: number;
+    valor_moedas: number;
+    baratao: number;
+    valor_nota: number;
+    valor_cartao_debito: number;
+    valor_cartao_credito: number;
+    valor_cartao: number;
+    valor_conferido: number;
+    diferenca_calculada: number;
+    observacoes: string;
+}
+
+/** Linha crua devolvida pela query de leituras (select bico_id, leitura_final, data, id). */
+interface LeituraRow {
+    bico_id: number;
+    leitura_final: number;
+    data: string;
+    id: number;
+}
+
 export const api = {
     /** Busca Frentistas ativos do Posto */
     async getFrentistas(postoId: number) {
@@ -43,7 +70,7 @@ export const api = {
     },
 
     /** Envia o fechamento individual do frentista */
-    async submitFrentistaClosing(payload: any) {
+    async submitFrentistaClosing(payload: FechamentoFrentistaPayload) {
         const { data, error } = await supabase
             .from('FechamentoFrentista')
             .insert(payload)
@@ -100,6 +127,111 @@ export const api = {
             .single();
         if (error) throw new Error(error.message);
         return data;
+    },
+
+    /** Busca bicos ativos do posto com preço do combustível (para o encerrante) */
+    async getBicos(postoId: number) {
+        const { data, error } = await supabase
+            .from('Bico')
+            .select('id, numero, combustivel_id, combustivel:Combustivel(nome, preco_venda)')
+            .eq('posto_id', postoId)
+            .eq('ativo', true)
+            .order('numero');
+        if (error) throw new Error(error.message);
+        return data || [];
+    },
+
+    /** Aquece a Edge Function (evita cold start na hora da foto). Fire-and-forget. */
+    aquecerEncerrante() {
+        supabase.functions.invoke('ler-encerrante', { body: { ping: true } }).catch(() => { });
+    },
+
+    /**
+     * OCR do papel de encerrantes via Edge Function (Gemini). Devolve [{ bico, numero }].
+     * Tenta 2x: se a 1ª cai numa function fria e falha/expira, a 2ª já pega ela quente.
+     */
+    async lerEncerrante(imagemBase64: string, mimeType: string) {
+        let ultimoErro: unknown;
+        for (let tentativa = 1; tentativa <= 2; tentativa++) {
+            try {
+                const { data, error } = await supabase.functions.invoke('ler-encerrante', {
+                    body: { imagemBase64, mimeType },
+                });
+                if (error) throw new Error(error.message);
+                if (data?.erro) throw new Error(String(data.erro));
+                return (data?.leituras || []) as { bico: number; numero: string | null; confianca: boolean | null }[];
+            } catch (e) {
+                ultimoErro = e;
+                if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));
+            }
+        }
+        throw ultimoErro instanceof Error ? ultimoErro : new Error('Falha ao ler a foto');
+    },
+
+    /** Mapa bico_id -> última leitura_final registrada (vira a leitura_inicial do dia). */
+    async getUltimasLeiturasPorBico(postoId: number): Promise<Map<number, number>> {
+        const { data, error } = await supabase
+            .from('Leitura')
+            .select('bico_id, leitura_final, data, id')
+            .eq('posto_id', postoId)
+            .order('data', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(200);
+        if (error) throw new Error(error.message);
+        const ultimas = new Map<number, number>();
+        (data || []).forEach((l: LeituraRow) => {
+            if (!ultimas.has(l.bico_id)) ultimas.set(l.bico_id, Number(l.leitura_final));
+        });
+        return ultimas;
+    },
+
+    /**
+     * Grava as leituras do dia no turno canônico 1, substituindo as existentes
+     * (mesmo modelo delete-por-dia + insert usado pela web). Calcula litros e valor.
+     */
+    async salvarLeituras(params: {
+        postoId: number;
+        data: string;
+        usuarioId?: number;
+        linhas: {
+            bico_id: number;
+            combustivel_id: number;
+            leitura_inicial: number;
+            leitura_final: number;
+            preco_litro: number;
+        }[];
+    }) {
+        const { postoId, data: dataStr, usuarioId = 1, linhas } = params;
+        const turnoId = 1;
+
+        const { error: delError } = await supabase
+            .from('Leitura')
+            .delete()
+            .eq('data', dataStr)
+            .eq('turno_id', turnoId)
+            .eq('posto_id', postoId);
+        if (delError) throw new Error(delError.message);
+
+        const rows = linhas.map(l => {
+            const litros = Math.max(0, l.leitura_final - l.leitura_inicial);
+            return {
+                data: dataStr,
+                bico_id: l.bico_id,
+                combustivel_id: l.combustivel_id,
+                leitura_inicial: l.leitura_inicial,
+                leitura_final: l.leitura_final,
+                litros_vendidos: litros,
+                preco_litro: l.preco_litro,
+                valor_total: litros * l.preco_litro,
+                usuario_id: usuarioId,
+                turno_id: turnoId,
+                posto_id: postoId,
+            };
+        });
+
+        const { data: inserted, error } = await supabase.from('Leitura').insert(rows).select();
+        if (error) throw new Error(error.message);
+        return inserted;
     },
 
     /** Busca vendas de produtos do dia por frentista */

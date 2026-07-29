@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { usePosto } from '../../../../contexts/PostoContext';
-import { estoqueService, tanqueService } from '../../../../services/api';
+import { usePosto } from '../../../../contexts/usePosto';
+import { tanqueService } from '../../../../services/api';
 import { Tanque } from '../../../../services/api/tanque.service';
 import { TankHistory } from '../types';
 import { isSuccess } from '../../../../types/ui/response-types';
@@ -88,7 +88,7 @@ export const useDashboardEstoque = () => {
           data: new Date().toISOString().split('T')[0],
           volume_fisico: novoValor
         });
-      } catch (e) {
+      } catch {
         console.log('Histórico não registrado (funcionalidade opcional)');
       }
 

@@ -1,7 +1,7 @@
 // [10/01 17:46] Criado durante refatoração Issue #16
 import { useState, useEffect, useCallback } from 'react';
 import { fetchSettingsData } from '../../../services/api';
-import { usePosto } from '../../../contexts/PostoContext';
+import { usePosto } from '../../../contexts/usePosto';
 import { Produto, Bico, FormaPagamento } from '../types';
 
 /**

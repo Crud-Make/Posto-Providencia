@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { RefreshCw } from 'lucide-react'
 
@@ -27,13 +28,18 @@ function ReloadPrompt() {
         },
     })
 
-    // Quando detecta atualização, recarrega automaticamente
-    if (needRefresh) {
-        // Mostra banner por 1.5s e depois atualiza
-        setTimeout(() => {
-            updateServiceWorker(true)
+    // Quando detecta atualização, recarrega automaticamente — mas NUNCA durante
+    // uma foto/OCR/gravação em andamento (janela __encerranteBusy), senão a
+    // captura é perdida e o app parece "voltar pra tela inicial".
+    useEffect(() => {
+        if (!needRefresh) return
+        const t = setInterval(() => {
+            if (!window.__encerranteBusy) {
+                updateServiceWorker(true)
+            }
         }, 1500)
-    }
+        return () => clearInterval(t)
+    }, [needRefresh, updateServiceWorker])
 
     if (!needRefresh) return null
 

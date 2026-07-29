@@ -5,7 +5,7 @@
  * Centraliza carregamento/estado de filtros e padroniza a extração de dados de `ApiResponse`.
  */
 import { useState, useEffect, useRef } from 'react';
-import { usePosto } from '../../../contexts/PostoContext';
+import { usePosto } from '../../../contexts/usePosto';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
 import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
@@ -108,7 +108,6 @@ export const useDashboard = () => {
         const dashboardResponse = (await fetchDashboardData(
           selectedDate,
           selectedFrentista,
-          null,
           postoAtivoId
         )) as ApiResponse<DashboardData>;
         const dashboardData = extractApiData(dashboardResponse);

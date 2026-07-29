@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import type { Posto, Fechamento, Cliente, Frentista } from '@posto/types';
 
 // Helper Types for direct usage
 export type Combustivel = { preco_venda: number };
@@ -131,7 +130,7 @@ export const aiService = {
 
         salesHistory.forEach(sale => {
             const day = new Date(sale.data).getDay();
-            salesByDay[day].push(sale.total_vendas); // @ts-ignore
+            salesByDay[day].push(sale.total_vendas);
         });
 
         const avgByDay = Object.keys(salesByDay).map(day => {
