@@ -27,3 +27,10 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+
+# Dados reais do posto — nunca versionar (planilhas, exports, dumps)
+docs/data/
+documentos/
+atualizado.xlsx
+*.sqlite
+*.sqlite3
