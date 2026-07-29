@@ -2,6 +2,23 @@
 
 ## [Não Lançado]
 
+### 🥟 Node sai do repositório — toolchain 100% Bun
+- **[29/07/2026]** O runtime Node não é exigido por nada no projeto; o que existia eram rastros:
+  - **`validate`, `push` e `reset-data` removidos do `package.json`.** Os três apontavam para
+    `scripts/`, pasta **untrackada** na remediação de 29/07 — ou seja, num clone limpo os três
+    quebravam com "arquivo não encontrado". O `reset-data` era também a última invocação de `node`
+    do repositório. Os scripts continuam no disco e podem ser chamados direto
+    (`bun scripts/reset-and-import-data.js`); o que sai é a *declaração* de algo que o repositório
+    não contém.
+  - **`react-native-css-interop` removida das devDependencies.** Peso morto do app mobile: nenhum
+    import no código-fonte, nenhum pacote dependendo dela e `nativewind` (de quem ela é runtime)
+    nem instalado. Arrastava consigo **246 pacotes transitivos** — toolchain de Babel/Jest/istanbul
+    do React Native — que saíram do `bun.lock` junto (−473 linhas).
+- **Fica de propósito:** `@types/node` (raiz e `apps/pwa-frentista`). Não é o runtime, é o pacote de
+  *tipos* — o Bun implementa a camada `node:`, e sem ele `vite.config.ts` (que usa `path` e
+  `__dirname`) volta a quebrar o type-check. **Dívida conhecida:** está declarado em duas versões
+  major diferentes (`^22.19.2` na raiz, `^24.10.1` no PWA).
+
 ### 🗑️ Restos do app mobile removidos
 - **[29/07/2026]** O app Expo/React Native saiu do repo em `f2272a9` ("*remove mobile app (moved to
   separate repo)*"), substituído pelo `apps/pwa-frentista`. Ficaram para trás artefatos que só geravam
