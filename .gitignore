@@ -45,3 +45,5 @@ docs/
 agentes-docs/
 plans/
 scripts/
+.claude/
+.trae/
