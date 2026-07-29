@@ -2,6 +2,63 @@
 
 ## [Não Lançado]
 
+### 🥟 Node sai do repositório — toolchain 100% Bun
+- **[29/07/2026]** O runtime Node não é exigido por nada no projeto; o que existia eram rastros:
+  - **`validate`, `push` e `reset-data` removidos do `package.json`.** Os três apontavam para
+    `scripts/`, pasta **untrackada** na remediação de 29/07 — ou seja, num clone limpo os três
+    quebravam com "arquivo não encontrado". O `reset-data` era também a última invocação de `node`
+    do repositório. Os scripts continuam no disco e podem ser chamados direto
+    (`bun scripts/reset-and-import-data.js`); o que sai é a *declaração* de algo que o repositório
+    não contém.
+  - **`react-native-css-interop` removida das devDependencies.** Peso morto do app mobile: nenhum
+    import no código-fonte, nenhum pacote dependendo dela e `nativewind` (de quem ela é runtime)
+    nem instalado. Arrastava consigo **246 pacotes transitivos** — toolchain de Babel/Jest/istanbul
+    do React Native — que saíram do `bun.lock` junto (−473 linhas).
+- **Fica de propósito:** `@types/node` (raiz e `apps/pwa-frentista`). Não é o runtime, é o pacote de
+  *tipos* — o Bun implementa a camada `node:`, e sem ele `vite.config.ts` (que usa `path` e
+  `__dirname`) volta a quebrar o type-check. **Dívida conhecida:** está declarado em duas versões
+  major diferentes (`^22.19.2` na raiz, `^24.10.1` no PWA).
+
+### 🗑️ Restos do app mobile removidos
+- **[29/07/2026]** O app Expo/React Native saiu do repo em `f2272a9` ("*remove mobile app (moved to
+  separate repo)*"), substituído pelo `apps/pwa-frentista`. Ficaram para trás artefatos que só geravam
+  ruído:
+  - **`.github/workflows/build-mobile.yml` apagado.** Rodava a cada push na `main` e a cada PR, e
+    falhava sempre no step "Prebuild": `working-directory: apps/mobile` — pasta que não existe mais
+    (`No such file or directory`). Vermelho permanente que não significava nada.
+  - **`app.json` da raiz apagado.** Stub de configuração do Expo, conteúdo integral `{"expo": {}}`,
+    sem nenhum referenciador.
+  - **`"posto-mobile"` removido do `exclude` do tsconfig.** Excluía pasta que não existe desde a era
+    do Smart Types.
+- **Não mexido, decisão pendente:** a dependência `react-native-css-interop` continua no `package.json`
+  da raiz. Nenhum import no código-fonte, nenhum pacote depende dela, `nativewind` (de quem ela é
+  runtime) não está instalado — é peso morto do mobile. Removê-la altera o `bun.lock`, então fica para
+  decisão explícita.
+
+### 🧹 `bun run type-check` volta a ficar verde
+- **[29/07/2026]** Os 4 erros de TypeScript que sobreviviam no `tsc --noEmit` eram **3 causas,
+  nenhuma delas bug de runtime** — o `include: ["**/*.ts"]` do tsconfig raiz varre o monorepo
+  inteiro com um único config de app browser/Vite e puxa junto arquivo de outro runtime e
+  código morto:
+  - **`types/` da raiz apagada.** Cópia órfã criada em `3229d1f` (16/01, "Smart Types Fase 2")
+    e abandonada dois dias depois por `782c01b`, que migrou tudo pra `apps/web/src/types/` +
+    `@posto/types`. O import `../../services/database.types` apontava pra `<raiz>/services/`,
+    pasta que nunca existiu — quebrada há ~6 meses. Provado órfã por deletion test: tirar a
+    pasta da compilação não gerou nenhum erro de módulo não resolvido. O `types/ui/` vivo é o
+    de `apps/web/src/`.
+  - **`spikes` e `supabase/functions` excluídos do tsconfig.** O spike de OCR usa
+    `import.meta.dir` (API do Bun) e a Edge Function usa o global `Deno` — os dois **funcionam**
+    nos seus runtimes; o que faltava era não estarem sob o tsconfig do app, que só carrega
+    `lib: [ES2022, DOM]` e os tipos de `node`/`react`.
+  - `lint` deixa de apontar pra `types/` (o script quebrava com a pasta removida).
+- **CI passa a barrar isso.** `.github/workflows/ci.yml` ganhou `type-check` e `test`, e trocou
+  Node+`npm ci` por Bun — o job antigo nunca completaria, já que `bun run build` chama `bun -e`
+  internamente. É por isso que os 4 erros sobreviveram 6 meses: nada os gatilhava.
+  Os golden masters seguem **fora** do CI de propósito (dependem de `docs/data/*.sqlite`,
+  gitignored desde 29/07); continuam sendo portão obrigatório rodado na máquina.
+- `CLAUDE.md`: a Referência rápida e o checklist mandavam rodar `bun run typecheck`, script que
+  **não existe** (`bun run typecheck` → "Script not found"). Corrigido pra `type-check`.
+
 ### 🛢️ Encerrante Mensal (bloco `Caixa Dia 01 a 31` da planilha)
 - **[26/07/2026]** Novo módulo `@posto/utils/encerrante-mensal` — fonte única do acumulado
   mensal do encerrante, puro e sem I/O.
