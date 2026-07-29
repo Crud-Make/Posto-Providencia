@@ -12,7 +12,6 @@ import {
   Download,
   Plus,
   Banknote,
-  Calendar,
   Loader2,
   User,
   Droplet,
@@ -22,6 +21,7 @@ import KPICard from './components/KPICard';
 import ClosingsTable from './components/ClosingsTable';
 import PerformanceSidebar from './components/PerformanceSidebar';
 import FilterDropdown from './components/filter-dropdown';
+import DateRangePicker from './components/date-range-picker';
 import { useDashboard } from './hooks/useDashboard';
 import { useNavigate } from 'react-router-dom';
 
@@ -44,25 +44,17 @@ const ChartSkeleton = () => (
   </div>
 );
 
-const DATE_OPTIONS = [
-  { value: 'hoje', label: 'Hoje' },
-  { value: 'ontem', label: 'Ontem' },
-  { value: 'semana', label: 'Última Semana' },
-  { value: 'mes', label: 'Este Mês' }
-];
-
 const TelaDashboard: React.FC = () => {
   const navigate = useNavigate();
   const {
     loading,
     data,
-    selectedDate,
-    setSelectedDate,
+    periodo,
+    setPeriodo,
     selectedFrentista,
     setSelectedFrentista,
     frentistas,
     clearFilters,
-    getDateLabel,
     getFrentistaLabel
   } = useDashboard();
 
@@ -112,14 +104,7 @@ const TelaDashboard: React.FC = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-8">
-        <FilterDropdown<string>
-          Icon={Calendar}
-          label="Data:"
-          selectedLabel={getDateLabel()}
-          selectedValue={selectedDate}
-          options={DATE_OPTIONS}
-          onSelect={setSelectedDate}
-        />
+        <DateRangePicker periodo={periodo} onChange={setPeriodo} />
 
         <FilterDropdown<number | null>
           Icon={User}

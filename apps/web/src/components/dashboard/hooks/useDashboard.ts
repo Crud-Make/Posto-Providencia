@@ -10,6 +10,7 @@ import { usePosto } from '../../../contexts/usePosto';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
 import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
+import { hojeIso, type Periodo } from '../../../utils/periodo';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -51,7 +52,10 @@ export const useDashboard = () => {
   const [data, setData] = useState<DashboardData | null>(null);
 
   // Filters state
-  const [selectedDate, setSelectedDate] = useState<string>('hoje');
+  const [periodo, setPeriodo] = useState<Periodo>(() => {
+    const hoje = hojeIso();
+    return { inicio: hoje, fim: hoje };
+  });
   const [selectedFrentista, setSelectedFrentista] = useState<number | null>(null);
 
   // Options lists
@@ -80,7 +84,8 @@ export const useDashboard = () => {
         // Modo diário: passa null para turno (carrega dados do dia inteiro)
         // [18/01 10:34] Extraído payload de ApiResponse para evitar `kpis` indefinido no Dashboard.
         const dashboardResponse = (await fetchDashboardData(
-          selectedDate,
+          periodo.inicio,
+          periodo.fim,
           selectedFrentista,
           postoAtivoId
         )) as ApiResponse<DashboardData>;
@@ -96,21 +101,12 @@ export const useDashboard = () => {
     if (postoAtivoId) {
       loadData();
     }
-  }, [selectedDate, selectedFrentista, postoAtivoId]);
+  }, [periodo, selectedFrentista, postoAtivoId]);
 
   const clearFilters = () => {
-    setSelectedDate('hoje');
+    const hoje = hojeIso();
+    setPeriodo({ inicio: hoje, fim: hoje });
     setSelectedFrentista(null);
-  };
-
-  const getDateLabel = () => {
-    switch (selectedDate) {
-      case 'hoje': return 'Hoje';
-      case 'ontem': return 'Ontem';
-      case 'semana': return 'Última Semana';
-      case 'mes': return 'Este Mês';
-      default: return 'Hoje';
-    }
   };
 
   const getFrentistaLabel = () => {
@@ -122,13 +118,12 @@ export const useDashboard = () => {
   return {
     loading,
     data,
-    selectedDate,
-    setSelectedDate,
+    periodo,
+    setPeriodo,
     selectedFrentista,
     setSelectedFrentista,
     frentistas,
     clearFilters,
-    getDateLabel,
     getFrentistaLabel
   };
 };
