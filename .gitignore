@@ -35,3 +35,13 @@ documentos/
 atualizado.xlsx
 *.sqlite
 *.sqlite3
+
+# Documentação e tooling de agente de IA — só local, não vai pro repo
+CLAUDE.md
+AGENTS.md
+CONTEXT.md
+.context/
+docs/
+agentes-docs/
+plans/
+scripts/
