@@ -652,11 +652,15 @@ export const aggregatorService = {
       }
 
       // Lista de frentistas no formato AttendantProfile
+      //
+      // `divergenceRate` e o histórico abaixo usam `diferenca_calculada` (encerrante − conferido,
+      // positivo = FALTA), a mesma fonte de `fetchClosingData`. Antes somavam os meios de pagamento
+      // à mão esquecendo moedas e baratão, e comparavam com `valor_conferido` — toda sessão com
+      // moedas aparecia como "Divergente" sem divergência real.
       const list = frentistas.map((f, idx) => {
         const hist = fechamentos[idx] || [];
         const divergenceRate = hist.length > 0 ? Math.round((hist.filter(h => {
-          const diff = ((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0);
-          return diff !== 0;
+          return (h.diferenca_calculada || 0) !== 0;
         }).length / hist.length) * 100) : 0;
 
         // Pega iniciais do nome
@@ -694,15 +698,19 @@ export const aggregatorService = {
 
       // Histórico geral formatado usando turno real se disponível
       const allHistories = fechamentos.flat();
-      const history = allHistories.slice(0, 10).map((h) => ({
-        id: String(h.id),
-        // getHistoricoDiferencas só seleciona `fechamento:Fechamento(data)` (sem turno) — o cast abaixo
-        // reflete uma leitura pré-existente de `.turno` que a query não traz; mantido como estava.
-        date: (h as unknown as FechamentoFrentistaWithRelations).fechamento?.data || 'N/A',
-        shift: (h as unknown as FechamentoFrentistaWithRelations).fechamento?.turno?.nome || 'N/A',
-        value: ((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0),
-        status: ((((h.valor_cartao || 0) + (h.valor_cartao_debito || 0) + (h.valor_cartao_credito || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0)) - (h.valor_conferido || 0)) === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
-      }));
+      const history = allHistories.slice(0, 10).map((h) => {
+        const diferencaCaixa = h.diferenca_calculada || 0;
+
+        return {
+          id: String(h.id),
+          // getHistoricoDiferencas só seleciona `fechamento:Fechamento(data)` (sem turno) — o cast abaixo
+          // reflete uma leitura pré-existente de `.turno` que a query não traz; mantido como estava.
+          date: (h as unknown as FechamentoFrentistaWithRelations).fechamento?.data || 'N/A',
+          shift: (h as unknown as FechamentoFrentistaWithRelations).fechamento?.turno?.nome || 'N/A',
+          value: diferencaCaixa,
+          status: (diferencaCaixa === 0 ? 'OK' : 'Divergente') as 'OK' | 'Divergente',
+        };
+      });
 
       return createSuccessResponse({ list, history });
     } catch (error) {

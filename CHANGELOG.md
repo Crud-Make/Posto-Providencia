@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### 🪙 Fim do falso "Divergente" em caixa que fecha com moedas
+- **[29/07/2026]** Três pontos somavam os meios de pagamento à mão para apurar a diferença do
+  frentista, e a soma **esquecia `valor_moedas`, `baratao`, débito e crédito**. Toda sessão em que o
+  frentista recebeu moedas era marcada como *Divergente* sem haver divergência nenhuma, e com um
+  valor de diferença que não correspondia a nada.
+  - `aggregator.service.ts` — `divergenceRate` (linha 658) e o histórico geral (linhas 703–704).
+  - `useHistoricoFrentista.ts` (linhas 42–43).
+- **A correção não foi completar a soma.** Os três passaram a ler `diferenca_calculada`, a diferença
+  de caixa canônica (encerrante − conferido) já gravada no envio do fechamento. Somar os 7 buckets
+  daria `conferido − valor_conferido`, que é sempre 0 num registro consistente: esvaziaria o alarme
+  em vez de consertá-lo.
+- **Coberto por teste:** `aggregator.attendants.test.ts` e `useHistoricoFrentista.test.tsx` trancam
+  os dois casos que a soma manual confundia — caixa que bate **com** moedas (diferença 0, `OK`) e
+  falta real **com** moedas (diferença 10, `Divergente`).
+
 ### 🥟 Node sai do repositório — toolchain 100% Bun
 - **[29/07/2026]** O runtime Node não é exigido por nada no projeto; o que existia eram rastros:
   - **`validate`, `push` e `reset-data` removidos do `package.json`.** Os três apontavam para

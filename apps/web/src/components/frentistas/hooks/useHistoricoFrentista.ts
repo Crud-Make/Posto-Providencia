@@ -28,19 +28,22 @@ export const useHistoricoFrentista = () => {
 
             type FechamentoFrentistaRow = {
                 id: number;
-                valor_cartao?: number;
-                valor_nota?: number;
-                valor_pix?: number;
-                valor_dinheiro?: number;
-                valor_conferido?: number;
+                diferenca_calculada?: number | null;
                 fechamento?: {
                     data?: string;
                     turno?: { nome?: string } | null;
                 } | null;
             };
             const historicoFormatado: HistoricoFrentista[] = ((data || []) as FechamentoFrentistaRow[]).map((h) => {
-                const totalDeclarado = (h.valor_cartao || 0) + (h.valor_nota || 0) + (h.valor_pix || 0) + (h.valor_dinheiro || 0);
-                const diferenca = totalDeclarado - (h.valor_conferido || 0);
+                // `diferenca_calculada` é a diferença de caixa canônica (encerrante − conferido),
+                // gravada no envio do fechamento. Positivo = FALTA, negativo = SOBRA.
+                //
+                // Antes daqui saía `soma_manual_dos_meios − valor_conferido`, e a soma manual
+                // ignorava moedas, débito e crédito: toda sessão com esses meios acusava
+                // "Divergente" sem ter divergência nenhuma. Somar os 7 buckets não resolveria —
+                // conferido − valor_conferido é sempre 0 num registro consistente, o que
+                // esvaziaria o alarme em vez de consertá-lo.
+                const diferenca = h.diferenca_calculada || 0;
 
                 return {
                     id: String(h.id),
