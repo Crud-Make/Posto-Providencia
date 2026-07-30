@@ -20,7 +20,7 @@ export type {
     // Pagamentos
     FormaPagamento, Maquininha,
     // Financeiro
-    Emprestimo, Parcela, DBDivida, DBDespesa,
+    DBDespesa,
     // Compras
     Compra, Fornecedor,
     // Produtos

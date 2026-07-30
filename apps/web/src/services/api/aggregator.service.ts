@@ -683,7 +683,6 @@ export const aggregatorService = {
           status: (f.ativo ? 'Ativo' : 'Inativo') as 'Ativo' | 'Inativo',
           admissionDate: f.data_admissao || 'N/A',
           sinceDate: sinceDate,
-          cpf: f.cpf || 'XXX.XXX.XXX-XX',
           divergenceRate: divergenceRate,
           riskLevel: (divergenceRate <= 10 ? 'Baixo Risco' : divergenceRate <= 30 ? 'Médio Risco' : 'Alto Risco') as 'Baixo Risco' | 'Médio Risco' | 'Alto Risco',
           avatarColorClass: avatarColors[idx % avatarColors.length],

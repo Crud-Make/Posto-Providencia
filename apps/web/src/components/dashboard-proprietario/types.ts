@@ -6,9 +6,7 @@ import { Posto } from '../../types/database/index';
 export interface ResumoFinanceiro {
   vendas: number;
   lucroEstimado: number;
-  dividas: number;
   despesas: number;
-  emprestimos: number;
   frentistasAtivos: number;
   margemMedia: number;
 }
@@ -36,7 +34,6 @@ export interface PostoSummary {
   lucroEstimadoMes: number;
   margemMedia: number;
   frentistasAtivos: number;
-  dividasTotal: number;
   despesasPendentes: number;
   despesasTotalMes: number;
   ultimoFechamento: string | null;

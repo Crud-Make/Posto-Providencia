@@ -7,7 +7,6 @@
 export interface PerfilFrentista {
     id: string;
     nome: string;
-    cpf: string;
     status: 'Ativo' | 'Inativo';
     dataAdmissao: string;
     email?: string;
@@ -30,7 +29,6 @@ export interface FiltroFrentistas {
 
 export interface DadosFormularioFrentista {
     nome: string;
-    cpf: string;
     data_admissao: string;
     ativo: boolean;
 }

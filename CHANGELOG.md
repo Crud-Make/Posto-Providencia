@@ -2,6 +2,31 @@
 
 ## [Não Lançado]
 
+### 🗑️ Empréstimo/dívida e coleta de CPF removidos — features descontinuadas
+- **[30/07/2026]** Duas funcionalidades descontinuadas por decisão do dono. A auditoria de RLS
+  expôs o custo de mantê-las: `Frentista` guardava **9 CPFs e 7 telefones legíveis E graváveis por
+  qualquer anônimo**, e o `/proprietario` exibia dívida como **"Sem pendências ✓" em verde** —
+  não era só o R$ 0,00 conhecido, era o painel *afirmando* que não havia dívida quando na verdade
+  o RLS bloqueava a leitura e o `error` era engolido. Tranquilização falsa numa tela de dinheiro.
+- **Empréstimo/dívida —** saíram `GestaoEmprestimos.tsx` (639 linhas, **órfão**: nenhum import, a
+  rota `/financeiro` monta 6 outros blocos e nunca esse), os services `divida`, `emprestimo`,
+  `parcela` e `solvency`, as consultas a `Divida` e `Emprestimo` no `useDashboardProprietario`,
+  o card do `ResumoExecutivo` (grid de 4 para 3 colunas) e os tipos de UI órfãos (`Loan`,
+  `LoanInstallment`, `Divida`, `SolvencyStatus`, `SolvencyProjection`).
+- **Mantidos de propósito:** os tipos de schema e o `reset.service.ts`, que continua limpando
+  `Divida`/`Emprestimo`/`Parcela` num reset de posto. As tabelas seguem no banco; um utilitário
+  destrutivo não se mexe por arrumação. Dropar as tabelas fica como passo separado.
+- **CPF —** saíram o campo do formulário e sua máscara (`FormFrentista.tsx`), a exibição na lista
+  e no detalhe, o mapeamento em `useFrentistas.ts` e o fallback `'XXX.XXX.XXX-XX'` em
+  `aggregator.service.ts`. Em produção, `20260730_zera_cpf_frentista.sql` derrubou o `NOT NULL`
+  (pré-requisito conferido no `information_schema`) e zerou a coluna: **9 → 0 CPFs**, verificado.
+  Irreversível por desenho. Fechar a policy não era alternativa — revogar `anon` em `Frentista`
+  derruba a tela inteira, porque o painel fala com o banco como `anon`.
+- **⚠️ Continua exposto:** os **7 telefones** da mesma tabela, fora do escopo desta decisão.
+- **Sem regressão:** `type-check` e `lint` limpos; suíte em **4 fail / 1 error / 315 testes**,
+  idêntica à baseline medida com as mudanças guardadas em stash. As 4 falhas são pré-existentes,
+  em `fechamento-diario`, intocado aqui.
+
 ### 🛡️ Dumps de tabela e fotos de encerrante fora do `.gitignore`
 - **[29/07/2026]** Achados numa faxina da raiz, meses depois da purga de histórico que tirou dado
   real do posto deste repositório público. `spikes/ocr-encerrante/backup-reset-2026-07-26/` guardava

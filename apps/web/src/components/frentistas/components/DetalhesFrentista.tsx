@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { User, Edit, Trash2, ShieldCheck, Clock } from 'lucide-react';
+import { User, Edit, Trash2, Clock } from 'lucide-react';
 import { PerfilFrentista } from '../types';
 import { useHistoricoFrentista } from '../hooks/useHistoricoFrentista';
 import { paraReais as formatarMoeda } from '../../../utils/formatters';
@@ -55,13 +55,6 @@ export const DetalhesFrentista: React.FC<DetalhesFrentistaProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-lg">
-                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
-                            <ShieldCheck size={16} />
-                            <span className="text-xs font-medium">CPF</span>
-                        </div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">{frentista.cpf}</p>
-                    </div>
                     <div className="p-3 bg-gray-50 dark:bg-slate-900 rounded-lg">
                         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-1">
                             <User size={16} />

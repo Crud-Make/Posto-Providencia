@@ -49,9 +49,6 @@ export const ListaFrentistas: React.FC<ListaFrentistasProps> = ({
                                     }`}>
                                     {frentista.status}
                                 </span>
-                                <span className="text-gray-500 dark:text-gray-400">
-                                    CPF: {frentista.cpf}
-                                </span>
                             </div>
                         </div>
                     </div>

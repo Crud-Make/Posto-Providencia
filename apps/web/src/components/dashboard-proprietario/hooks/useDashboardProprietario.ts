@@ -108,24 +108,6 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
   const vendasMes = dadosMes?.[0]?.total_vendas || 0;
   const lucroMes = dadosMes?.[0]?.lucro_liquido || 0;
 
-  // Dívidas
-  const { data: dividas } = await supabase
-    .from('Divida')
-    .select('valor')
-    .eq('posto_id', posto.id)
-    .eq('status', 'pendente');
-
-  const dividasTotal = (dividas || []).reduce((acc, d) => acc + (d.valor || 0), 0);
-
-  // Empréstimos
-  const { data: emprestimos } = await supabase
-    .from('Emprestimo')
-    .select('valor_total')
-    .eq('posto_id', posto.id)
-    .eq('ativo', true);
-
-  const emprestimosTotal = (emprestimos || []).reduce((acc, e) => acc + (e.valor_total || 0), 0);
-
   // Despesas do Mês (todas as despesas do período, pagas ou pendentes)
   const { data: despesasMes } = await supabase
     .from('Despesa')
@@ -164,7 +146,6 @@ async function processarPosto(posto: Posto, today: string, startOfMonth: string)
     lucroEstimadoMes: lucroMes,   // Agora é REAL, não estimado
     margemMedia,
     frentistasAtivos,
-    dividasTotal: dividasTotal + emprestimosTotal,
     despesasPendentes: despesasPendentesTotal,
     despesasTotalMes: despesasTotalMes,
     ultimoFechamento: ultimoFech?.[0]?.data || null
@@ -175,12 +156,9 @@ function consolidarDados(summaries: PostoSummary[], postoPrincipal: Posto): Dado
   // Totais Hoje
   const vendasHoje = summaries.reduce((acc, s) => acc + s.vendasHoje, 0);
   const lucroHoje = summaries.reduce((acc, s) => acc + s.lucroEstimadoHoje, 0);
-  const dividasTotal = summaries.reduce((acc, s) => acc + s.dividasTotal, 0);
   const despesasPendentesTotal = summaries.reduce((acc, s) => acc + s.despesasPendentes, 0);
   const despesasTotalMes = summaries.reduce((acc, s) => acc + s.despesasTotalMes, 0);
   const frentistasTotal = summaries.reduce((acc, s) => acc + s.frentistasAtivos, 0);
-  const emprestimosTotal = 0; // Já somado em dividasTotal no helper processarPosto, mas separado na interface... 
-  // Nota: No código original, dividasTotal = dividas + emprestimos. Vamos manter essa lógica para consistência visual.
 
   // Totais Mês
   const vendasMes = summaries.reduce((acc, s) => acc + s.vendasMes, 0);
@@ -196,18 +174,14 @@ function consolidarDados(summaries: PostoSummary[], postoPrincipal: Posto): Dado
     hoje: {
       vendas: vendasHoje,
       lucroEstimado: lucroHoje,
-      dividas: dividasTotal,
       despesas: despesasPendentesTotal,
-      emprestimos: emprestimosTotal,
       frentistasAtivos: frentistasTotal,
       margemMedia: margemMediaGlobal
     },
     mes: {
       vendas: vendasMes,
       lucroEstimado: lucroMes,
-      dividas: dividasTotal,
       despesas: despesasTotalMes,
-      emprestimos: emprestimosTotal,
       frentistasAtivos: frentistasTotal,
       margemMedia: margemMediaGlobal
     },
@@ -240,14 +214,6 @@ function gerarAlertas(summaries: PostoSummary[]): AlertaDashboard[] {
       });
     }
 
-    // Alerta de Dívidas Altas (exemplo: > 50k)
-    if (s.dividasTotal > 50000) {
-      alerts.push({
-        type: 'danger',
-        posto: s.posto.nome,
-        message: `Dívidas acumuladas altas: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(s.dividasTotal)}`
-      });
-    }
   });
 
   if (alerts.length === 0) {

@@ -35,7 +35,6 @@ export const useFrentistas = () => {
             const listaMapeada: PerfilFrentista[] = (dadosFrentistas || []).map((f) => ({
                 id: String(f.id),
                 nome: f.nome,
-                cpf: f.cpf,
                 status: f.ativo ? 'Ativo' : 'Inativo',
                 dataAdmissao: f.data_admissao,
                 telefone: f.telefone,
