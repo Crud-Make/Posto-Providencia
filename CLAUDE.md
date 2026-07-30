@@ -284,6 +284,42 @@ Duas ressalvas operacionais:
 
 ---
 
+## 13. Qual skill usar
+
+O ambiente tem ~34 skills ativas de 5 fontes (3 de domínio no projeto, 4 em `~/.claude/skills`,
+18 do plugin `claude-mem`, 9 do `mattpocock-skills`, mais as nativas). Sem roteamento, duas delas
+resolvem a mesma coisa de jeitos diferentes e o trabalho sai duplicado.
+
+| Para isto                                   | Use                                                          |
+| ------------------------------------------- | ------------------------------------------------------------ |
+| Regra de negócio, fórmula, nomenclatura     | `fechamento-posto-providencia`                                 |
+| Importar/atualizar a partir do `.xlsx`      | `etl-planilha-posto-providencia`                               |
+| Avaliar ou planejar refatoração             | `refatoracao-posto-providencia`                                |
+| "Onde fica X", "quem usa Y", raio de impacto | agente `grafo` (§12)                                          |
+| Bug difícil                                 | `mattpocock-skills:diagnosing-bugs`                            |
+| Feature test-first                          | `mattpocock-skills:tdd`                                        |
+| Revisar o diff da branch                    | `mattpocock-skills:code-review`                                |
+| Desenhar módulo ou domínio                  | `mattpocock-skills:codebase-design`, `:domain-modeling`        |
+| Planejar trabalho em fases                  | `claude-mem:make-plan` + `:do`                                 |
+| Recall de sessão anterior                   | `claude-mem:mem-search`, `get_observations([IDs])`             |
+| Como mexer no código sem gerar dívida       | `karpathy-guidelines`                                          |
+
+**A regra que economiza dinheiro:** `claude-mem:make-plan`+`do` e o fluxo do mattpocock são **ambos**
+pipelines completos de "planeje em fases e execute com subagents". Rodar os dois no mesmo trabalho
+produz plano duplicado e queima token à toa. **Um pipeline por tarefa, nunca dois.**
+
+**Não use aqui:** `claude-mem:learn-codebase`, `:smart-explore` e `:pathfinder`. As três existem para
+entender uma base desconhecida lendo arquivo — este repo já tem o grafo do graphify indexado e o
+agente `grafo`, que respondem a mesma pergunta sem gastar leitura. Valem em repo sem grafo.
+
+`find-skills`, `prompt` e `dataviz`: sob demanda, quando eu pedir pelo nome.
+
+> Esta tabela estava só na memória do agente até 2026-07-29 — e nesse mesmo dia a memória deixou de
+> carregar por mudança de chave de sessão, sumindo com as 30 notas. Regra de processo que depende de
+> memória injetada é regra que um dia não existe; por isso mora aqui.
+
+---
+
 ## Referência rápida
 
 ```bash
