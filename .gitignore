@@ -39,9 +39,17 @@ atualizado.xlsx
 *.sqlite3
 .env
 
-# Documentação e tooling de agente de IA — só local, não vai pro repo
-CLAUDE.md
-claude.md
+# Documentação e tooling de agente de IA
+#
+# CLAUDE.md, .claude/skills/ e .claude/agents/ SÃO versionados desde 2026-07-29. Eram
+# ignorados e viviam só em disco: sem histórico, sem blame, sem backup — e são a fonte de
+# verdade do processo e do cálculo de dinheiro. Nenhum deles carrega valor, nome de pessoa
+# ou credencial (conferido antes de commitar); o dado real continua fora, em docs/.
+#
+# `claude.md` minúsculo saiu da lista de propósito: em sistema de arquivos case-insensitive
+# (Windows/macOS) a entrada minúscula também casa com CLAUDE.md e o esconderia de novo —
+# exatamente o incidente que o cabeçalho do CLAUDE.md registra. O arquivo foi aposentado
+# em 2026-07-26 e não existe mais.
 .cursorrules
 AGENTS.md
 CONTEXT.md
@@ -50,5 +58,7 @@ docs/
 agentes-docs/
 plans/
 scripts/
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/agents/
 .trae/
