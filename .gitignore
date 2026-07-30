@@ -73,4 +73,5 @@ scripts/
 .claude/*
 !.claude/skills/
 !.claude/agents/
+!.claude/docs/
 .trae/
