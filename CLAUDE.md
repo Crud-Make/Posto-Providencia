@@ -240,6 +240,8 @@ Já mentiu com confiança total uma vez; ver anexo.
 | Importar/atualizar a partir do `.xlsx`       | `etl-planilha-posto-providencia`                          |
 | Avaliar ou planejar refatoração              | `refatoracao-posto-providencia`                           |
 | "Onde fica X", "quem usa Y", raio de impacto | agente `grafo` (§12)                                      |
+| "Quanto deu X?", conferir número contra o real | agente `planilha`                                       |
+| "Essa tabela está protegida?", exposição do banco | agente `rls`                                         |
 | Bug difícil                                  | `mattpocock-skills:diagnosing-bugs`                       |
 | Feature test-first                           | `mattpocock-skills:tdd`                                   |
 | Revisar o diff da branch                     | `mattpocock-skills:code-review`                           |
@@ -254,6 +256,13 @@ Já mentiu com confiança total uma vez; ver anexo.
 - **Não use aqui:** `claude-mem:learn-codebase`, `:smart-explore`, `:pathfinder`. As três leem arquivo
   para entender base desconhecida; este repo já responde isso pelo grafo (§12). Valem em repo sem grafo.
 - `find-skills`, `prompt`, `dataviz`: sob demanda, quando eu pedir pelo nome.
+
+**Quando vale abrir um subagente:** só quando ele **lê muito e devolve pouco**. O `grafo` carrega um
+grafo de 2,5 MB e greps em 305 arquivos para devolver 10 linhas com `arquivo:linha` — aí o ganho é
+real. Subagente que envolve um comando só **gasta mais** que fazer direto: paga spawn, instruções e
+resumo para economizar nada. Por isso não existe agente de rodar teste — `bun test` sai em 146 linhas,
+abaixo do ponto de equilíbrio. Todo agente novo carrega a regra anti-alucinação do seu domínio, como o
+`grafo` carrega "grep confirma antes de afirmar".
 
 ---
 
