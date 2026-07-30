@@ -2,6 +2,28 @@
 
 ## [Não Lançado]
 
+### 🔓 Login do painel removido — era código inalcançável
+- **[29/07/2026]** O `AuthContext` inicializava `user` com `MOCK_ADMIN_USER` e `loading` com `false`,
+  então `!user` nunca era verdade: o guard do `MainLayout` e a rota `/login` eram **inalcançáveis em
+  runtime** e a `TelaLogin` não podia ser renderizada nem digitando a URL. Não havia botão de sair.
+  No banco, o último `last_sign_in_at` de `auth.users` é de **06/01/2026** — ninguém logava há sete
+  meses e o painel funcionava, porque todo o tráfego já saía como role `anon`.
+- **Saíram:** `AuthContext.tsx`, `useAuth.ts`, `TelaLogin.tsx`, o guard do `MainLayout`, a rota
+  `/login`, `postoService.getByUser` (sem chamador), `MobileAuthResponse` e
+  `types/supabase-errors.ts` (zero importadores). Mais 6 imagens de fundo de login órfãs. −514 linhas.
+- **`usuario_id` virou explícito:** os inserts de `Fechamento` e `Leitura` mandavam `user.id`, que
+  valia sempre `1` (o id do mock). Agora é `USUARIO_SISTEMA_ID` em
+  `apps/web/src/shared/constants/usuario-sistema.ts`, com o motivo documentado — é a FK para a única
+  linha de `Usuario`. Teste novo trava o literal `1` de propósito, para pegar a quebra de FK.
+- **Nada mudou em runtime:** as 18 telas, o catch-all e o `PostoContext` (que nunca dependeu de auth)
+  seguem iguais. `type-check`, `lint`, `build` e golden master (287/287) limpos.
+- **Dívida que isto expõe:** 14 telas já estão quebradas hoje por policies `auth.role() =
+  'authenticated'` (`Produto`, `Compra`, `Fornecedor`, `Emprestimo`, `Parcela`, `Divida`,
+  `MovimentacaoEstoque` e escritas em `Combustivel`/`Tanque`/`FormaPagamento`/`VendaProduto`). Sem
+  login, consertá-las passa a exigir abrir as policies para `anon`. O `/proprietario` mostra dívidas
+  como R$ 0,00 **sem erro**, porque o hook ignora o `error` do Supabase.
+- **PWA intocado** por decisão explícita: ele nunca autenticou e continua assim.
+
 ### 🥟 Node sai do repositório — toolchain 100% Bun
 - **[29/07/2026]** O runtime Node não é exigido por nada no projeto; o que existia eram rastros:
   - **`validate`, `push` e `reset-data` removidos do `package.json`.** Os três apontavam para

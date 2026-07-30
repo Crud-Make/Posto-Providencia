@@ -22,7 +22,6 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 
-import { useAuth } from '../../contexts/useAuth';
 import { usePosto } from '../../contexts/usePosto';
 import { useCarregamentoDados } from './hooks/useCarregamentoDados';
 import { useLeituras } from './hooks/useLeituras';
@@ -48,7 +47,6 @@ import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
 
 const TelaFechamentoDiario: React.FC = () => {
-   const { user } = useAuth();
    const { postoAtivoId, postoAtivo } = usePosto();
 
    // --- Estados de Contexto da Tela ---
@@ -190,8 +188,6 @@ const TelaFechamentoDiario: React.FC = () => {
    }, [selectedDate, selectedTurno, restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos]);
 
    // --- Render ---
-   if (!user) return <div className="p-8 text-center text-slate-300">Carregando usuário...</div>;
-
    return (
       <div className="min-h-screen bg-slate-900 text-slate-100 pb-24 font-sans selection:bg-blue-500/30">
          <HeaderFechamento

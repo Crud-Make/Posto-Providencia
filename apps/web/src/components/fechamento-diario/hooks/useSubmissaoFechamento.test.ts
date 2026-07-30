@@ -7,17 +7,6 @@ import type { SessaoFrentista } from '../../../types/fechamento';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock('../../../contexts/useAuth', () => ({
-    useAuth: () => ({
-        user: { id: 'user-1' },
-        session: null,
-        loading: false,
-        signIn: vi.fn(),
-        signUp: vi.fn(),
-        signOut: vi.fn(),
-    }),
-}));
-
 vi.mock('../../../contexts/usePosto', () => ({
     usePosto: () => ({
         postoAtivoId: 42,
@@ -100,6 +89,11 @@ function sessao(overrides: Partial<SessaoFrentista> = {}): SessaoFrentista {
 
 describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravação de histórico', () => {
     beforeEach(() => {
+        // Zera só o histórico de chamadas entre os testes — sem isto o `toHaveBeenCalledTimes(1)`
+        // do segundo caso conta as chamadas do primeiro. As implementações não são afetadas
+        // (isso seria `resetAllMocks`), então os `mockResolvedValue` abaixo seguem valendo.
+        vi.clearAllMocks();
+
         vi.mocked(fechamentoService.getByDateAndTurno).mockResolvedValue({
             success: false,
             error: 'não encontrado',
@@ -153,5 +147,34 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
 
         expect(registroFrentista.valor_moedas).toBe(200);
         expect(registroFrentista.valor_conferido).toBe(200);
+    });
+
+    // Trava o valor literal 1, de propósito: `Usuario` tem uma única linha no banco (id=1) e
+    // `Fechamento.usuario_id` é FK para ela. Comparar com a constante importada não serviria —
+    // mudar a constante mudaria os dois lados juntos e o teste seguiria verde enquanto a FK
+    // quebra em produção.
+    it('grava o fechamento com usuario_id = 1', async () => {
+        const { result } = renderHook(() => useSubmissaoFechamento());
+
+        await act(async () => {
+            await result.current.handleSave({
+                selectedDate: '2026-07-26',
+                selectedTurno: 1,
+                bicos: [],
+                leituras: {},
+                sessoesFrentistas: [sessao()],
+                payments: [],
+                totalVendas: 0,
+                totalFrentistas: 0,
+                diferenca: 0,
+                podeFechar: true,
+                observacoes: '',
+                limparAutoSave: vi.fn(),
+            });
+        });
+
+        expect(fechamentoService.create).toHaveBeenCalledTimes(1);
+        const [payloadFechamento] = vi.mocked(fechamentoService.create).mock.calls[0];
+        expect(payloadFechamento.usuario_id).toBe(1);
     });
 });

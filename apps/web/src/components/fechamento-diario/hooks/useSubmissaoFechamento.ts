@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../../../contexts/useAuth';
 import { usePosto } from '../../../contexts/usePosto';
+import { USUARIO_SISTEMA_ID } from '@shared/constants/usuario-sistema';
 import {
    fechamentoService,
    leituraService,
@@ -35,7 +35,6 @@ interface SubmissaoParams {
  * @returns { saving, error, success, handleSave }
  */
 export function useSubmissaoFechamento() {
-   const { user } = useAuth();
    const { postoAtivoId } = usePosto();
    const [saving, setSaving] = useState(false);
    const [error, setError] = useState<string | null>(null);
@@ -59,11 +58,6 @@ export function useSubmissaoFechamento() {
          observacoes,
          limparAutoSave
       } = params;
-
-      if (!user) {
-         setError('Usuário não autenticado.');
-         return;
-      }
 
       if (!postoAtivoId) {
          setError('Posto não selecionado.');
@@ -100,7 +94,7 @@ export function useSubmissaoFechamento() {
          } else {
             const createRes = await fechamentoService.create({
                data: selectedDate,
-               usuario_id: user.id,
+               usuario_id: USUARIO_SISTEMA_ID,
                turno_id: selectedTurno,
                status: 'RASCUNHO',
                posto_id: postoAtivoId
@@ -122,7 +116,7 @@ export function useSubmissaoFechamento() {
                leitura_final: parseValue(leituras[bico.id]?.fechamento || ''),
                combustivel_id: bico.combustivel.id,
                preco_litro: bico.combustivel.preco_venda,
-               usuario_id: user.id,
+               usuario_id: USUARIO_SISTEMA_ID,
                turno_id: selectedTurno,
                posto_id: postoAtivoId
             }));
