@@ -2,6 +2,34 @@
 
 ## [Não Lançado]
 
+### 🛡️ Dumps de tabela e fotos de encerrante fora do `.gitignore`
+- **[29/07/2026]** Achados numa faxina da raiz, meses depois da purga de histórico que tirou dado
+  real do posto deste repositório público. `spikes/ocr-encerrante/backup-reset-2026-07-26/` guardava
+  `Fechamento.json` com **162 registros reais** (`total_vendas`, `total_recebido`, `diferenca`),
+  `FechamentoFrentista.json` com `valor_conferido`/`valor_pix`/`valor_dinheiro` por frentista, e
+  `Leitura.json` em três variantes. Na raiz, `enc1.jpg`, `enc2.jpg` e `fototeste.jpg` — foto de
+  encerrante é leitura real de bomba.
+- **Nada vazou:** todos estavam untracked, e a varredura das árvores dos 694 commits alcançáveis não
+  encontra nenhum deles. O risco era um `git add .` distraído repetir o incidente.
+- **Correção:** `spikes/**/backup-reset-*/`, `/enc*.jpg` e `/foto*.jpg` no `.gitignore`. Os arquivos
+  seguem em disco — são insumo do spike de OCR; apagá-los é decisão do dono.
+
+### 🧹 Governança do projeto volta para o git
+- **[29/07/2026]** `CLAUDE.md` nunca tinha sido commitado — o arquivo que se declara fonte de verdade
+  de processo e arquitetura, e cujo cabeçalho registra o incidente de "regra invisível pra sempre",
+  estava ele próprio invisível para o git. Junto com `.claude/skills/` (as três skills de domínio,
+  incluindo a do cálculo de fechamento) e `.claude/agents/grafo.md`: 768 linhas sem histórico, sem
+  `blame` e sem backup, vivendo em um disco só.
+- Passaram a ser versionados após varredura — nenhum carrega valor em R$, nome de pessoa, CPF/CNPJ ou
+  credencial; citam apenas o *caminho* dos `.sqlite` de referência, que continuam ignorados. O ignore
+  virou `.claude/*` com negação seletiva, então `settings.local.json` segue fora.
+- A entrada `claude.md` minúscula saiu da lista: em sistema de arquivos case-insensitive ela também
+  casa com `CLAUDE.md` e o esconderia de novo.
+- **`CLAUDE.md` ganhou a §12** sobre o grafo do graphify: o grafo é hipótese, o grep decide. A skill
+  global manda responder direto do grafo; aqui não, porque em 29/07 o `affected "conferido()"`
+  afirmou com confiança total que só os testes consumiam o módulo canônico, quando 11 arquivos de
+  `apps/` importam ele.
+
 ### 🔓 Login do painel removido — era código inalcançável
 - **[29/07/2026]** O `AuthContext` inicializava `user` com `MOCK_ADMIN_USER` e `loading` com `false`,
   então `!user` nunca era verdade: o guard do `MainLayout` e a rota `/login` eram **inalcançáveis em
