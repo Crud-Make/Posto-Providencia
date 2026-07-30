@@ -271,7 +271,8 @@ abaixo do ponto de equilíbrio. Todo agente novo carrega a regra anti-alucinaç�
 Três regras deste arquivo deixaram de depender de eu lembrar delas. Rodam como hooks
 `PreToolUse` (`.claude/settings.json` → `.claude/hooks/`), executados pelo harness:
 
-- Escrita em `docs/data/` — **negada** (§6). Para ler, use o agente `planilha`.
+- Escrita em `docs/data/` — **negada** (§6), tanto por `Write`/`Edit` quanto por shell
+  (`>`, `rm`, `sed -i`, `DELETE`…). Leitura segue livre. Para consultar, agente `planilha`.
 - `git push --force` — **negado** (§9).
 - `git commit` na `main` — **pergunta** antes (§0.3), em vez de bloquear: commit de
   emergência continua possível, mas consciente.

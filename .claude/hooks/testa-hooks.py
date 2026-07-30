@@ -37,6 +37,25 @@ CASOS_DADOS = [
     ("packages/utils/src/fechamento.ts", None),
 ]
 
+# A porta dos fundos: os agentes têm Bash, então cobrir só Write/Edit não bastava.
+# Leitura via shell tem de continuar livre — é o uso normal do agente `planilha`.
+CASOS_SHELL = [
+    ("echo x > docs/data/nota.txt", "deny"),
+    ("rm docs/data/janeiro_referencia.sqlite", "deny"),
+    ("sed -i s/a/b/ docs/data/mes_01.csv", "deny"),
+    ('sqlite3 docs/data/posto_jorro_2026.sqlite "DELETE FROM despesa_mensal"', "deny"),
+    ("python3 -c \"open('docs/data/x.txt','w')\"", "deny"),
+    ('sqlite3 docs/data/posto_jorro_2026.sqlite "SELECT * FROM despesa_mensal"', None),
+    ("python3 -c \"open('docs/data/x.txt')\"", None),
+    ("cat docs/data/mes_01.csv", None),
+    ("grep -rn despesa docs/data/etl_2026 > /tmp/saida.txt", None),
+    ("ls -la docs/data/", None),
+    # O mesmo falso positivo do protege-git, agora aqui: mensagem de commit que
+    # DESCREVE a escrita proibida não é a escrita acontecendo. Mordeu duas vezes.
+    ("git commit -F - <<'EOF'\nfix: bloqueia > docs/data/x e rm docs/data\nEOF", None),
+    ('git commit -m "docs: DELETE em docs/data agora barrado"', None),
+]
+
 
 def roda(script: str, payload: dict) -> str | None:
     r = subprocess.run(
@@ -64,6 +83,13 @@ def main() -> int:
         ok = obtido == esperado
         falhas += not ok
         print(f"  {'✓' if ok else '✗'} {alvo.replace(f'{RAIZ}/', ''):60} {obtido or 'passa'}")
+
+    print("── protege-dados via shell ──")
+    for cmd, esperado in CASOS_SHELL:
+        obtido = roda("protege-dados.py", {"tool_input": {"command": cmd}})
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {cmd[:58]:60} {obtido or 'passa'}")
 
     print(f"\n{'TODOS OS CASOS PASSARAM' if not falhas else f'{falhas} FALHA(S)'}")
     return 1 if falhas else 0

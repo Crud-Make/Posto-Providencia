@@ -25,6 +25,12 @@
             "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/protege-git.py\"",
             "timeout": 10,
             "statusMessage": "Conferindo regras de git"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/protege-dados.py\"",
+            "timeout": 10,
+            "statusMessage": "Conferindo fonte auditável"
           }
         ]
       }

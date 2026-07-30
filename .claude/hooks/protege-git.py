@@ -14,11 +14,13 @@ import re
 import subprocess
 import sys
 
+from _comum import segmentos
+
 # `git push` seguido de --force / --force-with-lease / -f, ainda que com flags no meio.
 FORCE_PUSH = re.compile(
-    r"git\s+push\b[^;&|]*?(--force(-with-lease)?\b|\s-f(\s|$))"
+    r"^git\s+push\b.*?(--force(-with-lease)?\b|\s-f(\s|$))"
 )
-COMMIT = re.compile(r"git\s+(commit|merge)\b")
+COMMIT = re.compile(r"^git\s+(commit|merge)\b")
 
 MOTIVO_FORCE = (
     "Bloqueado pelo hook protege-git: `git push --force` é proibido pelo CLAUDE.md §9, "
@@ -31,31 +33,6 @@ MOTIVO_MAIN = (
     "O fluxo é branch → validar em localhost:3015 → PR → CI verde → merge. "
     "Confirme só se este commit for mesmo exceção consciente."
 )
-
-
-HEREDOC = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?")
-ASPAS = re.compile(r"'[^']*'|\"[^\"]*\"")
-
-
-def sem_texto_literal(cmd: str) -> str:
-    """Remove corpo de heredoc e trechos entre aspas antes de casar os padrões.
-
-    Sem isto o hook morde a própria mão: uma mensagem de commit que *cita*
-    `git push --force` — como a que documentou este hook — era bloqueada como se
-    fosse o comando, e um `grep` pela flag na documentação também. Texto que
-    descreve a regra não é a regra sendo violada.
-
-    Limite consciente: isto é guarda contra acidente, não sandbox. Quem escrever
-    `bash -c "git push --force"` passa, porque o comando some junto com as aspas.
-    O alvo é o deslize distraído, que é o que de fato acontece — não um burlador
-    determinado, que de todo jeito tem o terminal ao lado.
-    """
-    m = HEREDOC.search(cmd)
-    if m:
-        fim = re.search(rf"^{re.escape(m.group(1))}$", cmd[m.end():], re.M)
-        corte = m.end() + (fim.end() if fim else len(cmd))
-        cmd = cmd[: m.start()] + cmd[corte:]
-    return ASPAS.sub("", cmd)
 
 
 def branch_atual() -> str:
@@ -88,13 +65,13 @@ def main() -> None:
     cmd = str(entrada.get("tool_input", {}).get("command", ""))
     if not cmd:
         return
-    cmd = sem_texto_literal(cmd)
+    segs = segmentos(cmd)
 
-    if FORCE_PUSH.search(cmd):
+    if any(FORCE_PUSH.search(s) for s in segs):
         decide("deny", MOTIVO_FORCE)
         return
 
-    if COMMIT.search(cmd) and branch_atual() == "main":
+    if any(COMMIT.match(s) for s in segs) and branch_atual() == "main":
         decide("ask", MOTIVO_MAIN)
 
 
