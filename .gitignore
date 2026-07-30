@@ -39,6 +39,18 @@ atualizado.xlsx
 *.sqlite3
 .env
 
+# Dumps de tabela do spike de OCR. Achados fora do ignore em 2026-07-29, meses depois
+# da purga de histórico: backup-reset-2026-07-26/Fechamento.json sozinho tem 162
+# registros reais com total_vendas, total_recebido e diferenca, e o
+# FechamentoFrentista.json traz valor_conferido por frentista. Estavam untracked mas
+# alcançáveis por um `git add .` neste repo público.
+spikes/**/backup-reset-*/
+
+# Fotos de encerrante e de teste na raiz — são leitura real de bomba, mesma categoria
+# do dado acima. O spike de OCR as deixou soltas fora de qualquer pasta ignorada.
+/enc*.jpg
+/foto*.jpg
+
 # Documentação e tooling de agente de IA
 #
 # CLAUDE.md, .claude/skills/ e .claude/agents/ SÃO versionados desde 2026-07-29. Eram
