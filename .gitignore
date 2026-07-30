@@ -74,4 +74,6 @@ scripts/
 !.claude/skills/
 !.claude/agents/
 !.claude/docs/
+!.claude/hooks/
+!.claude/settings.json
 .trae/
