@@ -23,6 +23,14 @@
   login, consertá-las passa a exigir abrir as policies para `anon`. O `/proprietario` mostra dívidas
   como R$ 0,00 **sem erro**, porque o hook ignora o `error` do Supabase.
 - **PWA intocado** por decisão explícita: ele nunca autenticou e continua assim.
+- **`Usuario.senha` zerada no banco** (`20260729_zera_senha_usuario.sql`, aplicada em produção). A
+  coluna guardava a senha do `admin@postoprovidencia.com` em **texto puro**, e `Usuario` responde a
+  qualquer anônimo (policy `USING (true)`) — e-mail e senha de administrador estavam legíveis por
+  quem pegasse a chave pública do bundle. Não era hash. Com o login removido, nada no repositório lê
+  essa coluna. Zerar para `NULL` foi o caminho: revogar o `anon` em `Usuario` derrubaria o embed
+  `usuario:Usuario(id, nome)` das três queries de fechamento, porque o painel fala como `anon`.
+  A linha **continua existindo** — `Usuario.id = 1` é a FK de `Fechamento.usuario_id` e
+  `Leitura.usuario_id`. Verificado depois de aplicar: o embed responde `200` normalmente.
 
 ### 🥟 Node sai do repositório — toolchain 100% Bun
 - **[29/07/2026]** O runtime Node não é exigido por nada no projeto; o que existia eram rastros:
