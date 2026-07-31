@@ -20,6 +20,40 @@
   clique; sobrevive ao reload. No mobile, **com a barra marcada como recolhida no `localStorage`**, o
   drawer ainda abre com 256px, 12 rótulos, X funcional e sem o ☰ de desktop.
 
+### 🔒 Apagar o histórico de leituras deixa de ser possível pela chave pública
+- **[31/07/2026]** Probe com a anon key do bundle publicado (o site está na Vercel, ou seja,
+  na internet aberta) mostrou **`DELETE` autorizado nas 12 tabelas centrais** — as 276 linhas
+  de `Leitura`, base de todo o cálculo de fechamento, saíam num único `curl`. A chave é pública
+  por desenho e vai no JavaScript da página; a RLS era a única porta, e estava aberta.
+- **A trava é por data, não por quantidade:** a RLS decide linha a linha e não sabe contar —
+  não existe policy "no máximo N linhas". Como os dois caminhos legítimos de `DELETE` do app são
+  sempre escopados por data (`deleteByDate`/`deleteByShift` e o replace diário do PWA), a data é
+  o corte natural. Janela de **7 dias**, dimensionada contra o banco real: **264 das 276 linhas
+  saem do alcance**.
+- **`20260731_trava_delete_leitura_e_auditoria.sql`.** Derruba as policies de `Leitura` por
+  varredura de `pg_policies`, nunca por nome — há policies criadas pelo painel que não constam de
+  arquivo, e uma única `USING (true)` sobrevivente reabriria tudo (policies são OR entre si).
+- **O que muda no uso:** PWA igual (sempre grava o dia corrente); painel continua corrigindo valor
+  antigo por id; **refazer um dia antigo inteiro** deixa de funcionar pela tela e passa a exigir o
+  painel do Supabase. Perda aceita conscientemente.
+- **Auditoria append-only** (`AuditoriaDados`) em `Leitura`, `Fechamento` e `FechamentoFrentista`.
+  `UPDATE` segue livre em qualquer data por escolha do dono — é o vetor da alteração silenciosa,
+  e o log existe para torná-la detectável, já que reimportar a planilha só conserta o que se sabe
+  estar errado. Gatilho `SECURITY DEFINER` com `search_path` fixo; `anon` sem grant e RLS sem
+  policy, então o log é invisível e intocável pela API.
+- **Validado em Postgres 16 real** (container descartável com os papéis `anon`/`authenticated` e
+  uma policy `USING (true)` legada, para provar que a varredura a derruba): `DELETE FROM "Leitura"`
+  sem filtro como `anon` apagou **2 de 5** linhas, e as 3 do histórico sobreviveram; o replace do
+  PWA e o `UPDATE` de leitura antiga seguiram funcionando; `DELETE` de dia antigo devolveu
+  `DELETE 0`; o log registrou o `UPDATE` com antes/depois (100 → 111) e o `anon` levou
+  `permission denied` ao tentar lê-lo.
+- ⚠️ **`DELETE` bloqueado pela RLS não vira erro:** o PostgREST devolve `204` mesmo apagando zero
+  linhas. Ao verificar, conte as linhas antes e depois — nunca confie no status HTTP.
+- **Aplicada em produção** e confirmada em 31/07 pela API pública: `AuditoriaDados` responde
+  `42501 permission denied` (a tabela existe e o `anon` não alcança), enquanto uma tabela
+  inexistente responde `PGRST205`. A migração roda num único `BEGIN/COMMIT`, então não há
+  aplicação parcial — a policy do `DELETE` está ativa junto. As 276 linhas de `Leitura`, intactas.
+
 ### 🐛 Barra "Salvar Fechamento" cobria o conteúdo e aparecia nas 5 abas
 - **[31/07/2026]** A barra do `FooterAcoes` era `fixed bottom-0`, fora do fluxo, e o espaço dela era
   reservado por um `pb-24` (**96px fixos**) no container do Fechamento Diário. Só que a altura da
