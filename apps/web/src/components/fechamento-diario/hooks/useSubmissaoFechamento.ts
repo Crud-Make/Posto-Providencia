@@ -79,25 +79,30 @@ export function useSubmissaoFechamento() {
          setError(null);
          setSuccess(null);
 
+         // 0. Limpar as leituras do dia ANTES de qualquer outra coisa.
+         //
+         // Roda sempre, exista ou não `Fechamento` para a data — e é justamente o caso "não
+         // existe" que importa: dia histórico não tem fechamento, então antes isto era pulado,
+         // o código inseria por cima das leituras já gravadas e o dia ficava com o dobro dos
+         // litros (a agregação não separa por turno). Só há uma leitura por bico por dia.
+         //
+         // Vem antes de criar o `Fechamento` para não deixar fechamento órfão quando a exclusão
+         // é recusada, e antes das outras duas exclusões porque é a única barrada pela janela de
+         // 7 dias da RLS — `FechamentoFrentista` e `Recebimento` apagam sempre, e perdê-los para
+         // depois descobrir que as leituras não saíram deixaria o dia pela metade.
+         // Um DELETE barrado pela RLS não vira erro do Supabase: quem confere é o serviço,
+         // contando o que sobrou.
+         const leiturasAntigasRes = await leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId);
+         if (!isSuccess(leiturasAntigasRes)) {
+            throw new Error(leiturasAntigasRes.error || 'Erro ao limpar as leituras anteriores');
+         }
+
          // 1. Obter ou Criar Fechamento
          const fechamentoRes = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno, postoAtivoId);
 
          let fechamento;
          if (isSuccess(fechamentoRes) && fechamentoRes.data) {
             fechamento = fechamentoRes.data;
-
-            // Limpar dados antigos para sobrescrever.
-            //
-            // A exclusão das leituras vem PRIMEIRO e sozinha, de propósito: é a única das três
-            // barrada pela janela de 7 dias da RLS, e `FechamentoFrentista`/`Recebimento` não têm
-            // trava nenhuma. Em paralelo, um dia antigo perderia frentistas e recebimentos antes
-            // de descobrirmos que as leituras não saíram — o dia ficaria pela metade.
-            // Um DELETE barrado pela RLS não vira erro do Supabase: quem confere é o serviço,
-            // contando o que sobrou.
-            const leiturasRes = await leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId);
-            if (!isSuccess(leiturasRes)) {
-               throw new Error(leiturasRes.error || 'Erro ao limpar as leituras anteriores');
-            }
 
             const [frentistasRes, recebimentosRes] = await Promise.all([
                fechamentoFrentistaService.deleteByFechamento(fechamento.id),

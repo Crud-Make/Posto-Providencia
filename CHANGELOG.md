@@ -29,7 +29,26 @@
   Abortar depois deixaria o dia pela metade (leituras antigas intactas, frentistas e recebimentos
   zerados). As leituras agora são excluídas primeiro e sozinhas; o resto só é tocado se elas saírem.
 
-### ⚠️ Conhecido e NÃO corrigido — salvar um dia histórico dobra os litros
+### ✅ Salvar um dia histórico dobrava os litros — CORRIGIDO
+- **[31/07/2026]** Fechado o item registrado logo abaixo, depois de o dono confirmar a regra:
+  **o posto não trabalha por turno — é um encerrante por bico por dia, um a um.** A planilha diz o
+  mesmo (`encerrante_diario` tem chave `ano/mes/dia/bico`, sem turno).
+- **Backfill:** as 270 linhas com `turno_id` NULL passaram a `turno_id = 1`
+  (`20260731_leitura_uma_por_bico_por_dia`). Só `turno_id` mudou — litros e valor conferidos
+  idênticos antes e depois: **60.528,048 L / R$ 392.825,83**. As 270 alterações ficaram
+  registradas em `AuditoriaDados` com antes/depois.
+- **Índice único trocado para `(bico_id, data)`** — turno sai da chave. Mantê-lo só recriaria o
+  buraco: bastaria gravar o mesmo dia com outro turno para duplicar de novo.
+- **`useSubmissaoFechamento.ts`:** a exclusão das leituras saiu de dentro do ramo "fechamento
+  existe" e passou a rodar **sempre**, antes até de criar o `Fechamento` — era justamente o caminho
+  "não existe fechamento" (todo dia histórico) que inseria por cima sem apagar. Rodar antes da
+  criação também evita deixar fechamento órfão quando a exclusão é recusada.
+- **2 testes novos** travam o comportamento: a exclusão acontece mesmo sem `Fechamento` na data, e
+  uma exclusão recusada aborta antes de gravar qualquer coisa. Suíte: **37 Vitest + 287 golden**.
+- **Provado no banco:** o probe que antes levava o dia 10/07 de 1.485,642 L para 2.971,284 L agora
+  é recusado por `unique_violation`.
+
+### ⚠️ ~~Conhecido e NÃO corrigido~~ — salvar um dia histórico dobra os litros (histórico do achado)
 - **[31/07/2026]** Achado ao validar o item acima. **Bug pré-existente, anterior à trava de 7 dias.**
 - **270 das 276 linhas de `Leitura` têm `turno_id` NULL** — todo o histórico de 01/02 a 24/07, vindo
   do ETL. A planilha não tem conceito de turno (chave `ano/mes/dia/bico`), então o NULL é fiel à
