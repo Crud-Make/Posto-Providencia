@@ -39,9 +39,29 @@ atualizado.xlsx
 *.sqlite3
 .env
 
-# Documentação e tooling de agente de IA — só local, não vai pro repo
-CLAUDE.md
-claude.md
+# Dumps de tabela do spike de OCR. Achados fora do ignore em 2026-07-29, meses depois
+# da purga de histórico: backup-reset-2026-07-26/Fechamento.json sozinho tem 162
+# registros reais com total_vendas, total_recebido e diferenca, e o
+# FechamentoFrentista.json traz valor_conferido por frentista. Estavam untracked mas
+# alcançáveis por um `git add .` neste repo público.
+spikes/**/backup-reset-*/
+
+# Fotos de encerrante e de teste na raiz — são leitura real de bomba, mesma categoria
+# do dado acima. O spike de OCR as deixou soltas fora de qualquer pasta ignorada.
+/enc*.jpg
+/foto*.jpg
+
+# Documentação e tooling de agente de IA
+#
+# CLAUDE.md, .claude/skills/ e .claude/agents/ SÃO versionados desde 2026-07-29. Eram
+# ignorados e viviam só em disco: sem histórico, sem blame, sem backup — e são a fonte de
+# verdade do processo e do cálculo de dinheiro. Nenhum deles carrega valor, nome de pessoa
+# ou credencial (conferido antes de commitar); o dado real continua fora, em docs/.
+#
+# `claude.md` minúsculo saiu da lista de propósito: em sistema de arquivos case-insensitive
+# (Windows/macOS) a entrada minúscula também casa com CLAUDE.md e o esconderia de novo —
+# exatamente o incidente que o cabeçalho do CLAUDE.md registra. O arquivo foi aposentado
+# em 2026-07-26 e não existe mais.
 .cursorrules
 AGENTS.md
 CONTEXT.md
@@ -50,5 +70,10 @@ docs/
 agentes-docs/
 plans/
 scripts/
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/agents/
+!.claude/docs/
+!.claude/hooks/
+!.claude/settings.json
 .trae/
