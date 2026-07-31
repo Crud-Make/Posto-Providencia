@@ -41,7 +41,7 @@ vi.mock('../../../services/api', () => ({
 }));
 
 import { useSubmissaoFechamento } from './useSubmissaoFechamento';
-import { fechamentoService, fechamentoFrentistaService } from '../../../services/api';
+import { fechamentoService, fechamentoFrentistaService, leituraService } from '../../../services/api';
 
 /** Harness mínimo para exercitar um hook fora do @testing-library (não instalado neste projeto). */
 function renderHook<T>(useHookFn: () => T) {
@@ -98,6 +98,14 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
             success: false,
             error: 'não encontrado',
             code: 'NOT_FOUND',
+            timestamp: new Date().toISOString(),
+        });
+        // A exclusão das leituras do dia roda SEMPRE, exista ou não `Fechamento` para a data
+        // — inclusive neste cenário, em que `getByDateAndTurno` devolve NOT_FOUND. Sem este
+        // retorno o mock resolve `undefined`, a submissão aborta e nada chega ao `bulkCreate`.
+        vi.mocked(leituraService.deleteByShift).mockResolvedValue({
+            success: true,
+            data: undefined,
             timestamp: new Date().toISOString(),
         });
         vi.mocked(fechamentoService.create).mockResolvedValue({
@@ -176,5 +184,69 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         expect(fechamentoService.create).toHaveBeenCalledTimes(1);
         const [payloadFechamento] = vi.mocked(fechamentoService.create).mock.calls[0];
         expect(payloadFechamento.usuario_id).toBe(1);
+    });
+
+    // Regressão do bug que dobrava os litros de um dia histórico (31/07/2026).
+    // `getByDateAndTurno` devolve NOT_FOUND neste `beforeEach` — o caso do dia antigo, que não
+    // tem `Fechamento`. Antes, a exclusão das leituras morava dentro do ramo "fechamento existe",
+    // então esse caminho inseria por cima das leituras já gravadas e o dia ficava com o dobro.
+    it('apaga as leituras do dia mesmo quando não existe fechamento para a data', async () => {
+        const { result } = renderHook(() => useSubmissaoFechamento());
+
+        await act(async () => {
+            await result.current.handleSave({
+                selectedDate: '2026-07-10',
+                selectedTurno: 1,
+                bicos: [],
+                leituras: {},
+                sessoesFrentistas: [sessao()],
+                payments: [],
+                totalVendas: 0,
+                totalFrentistas: 0,
+                diferenca: 0,
+                podeFechar: true,
+                observacoes: '',
+                limparAutoSave: vi.fn(),
+            });
+        });
+
+        expect(leituraService.deleteByShift).toHaveBeenCalledTimes(1);
+        expect(leituraService.deleteByShift).toHaveBeenCalledWith('2026-07-10', 1, 42);
+    });
+
+    // A trava de 7 dias da RLS recusa apagar dia antigo, e um DELETE filtrado pela RLS não vira
+    // erro do Supabase — o serviço é quem detecta contando o que sobrou. Seguir gravando depois
+    // disso era o que duplicava o dia.
+    it('aborta antes de gravar quando a exclusão das leituras é recusada', async () => {
+        vi.mocked(leituraService.deleteByShift).mockResolvedValue({
+            success: false,
+            error: 'a proteção do banco só permite excluir os últimos 7 dias',
+            code: 'DELETE_BLOQUEADO',
+            timestamp: new Date().toISOString(),
+        });
+
+        const { result } = renderHook(() => useSubmissaoFechamento());
+
+        await act(async () => {
+            await result.current.handleSave({
+                selectedDate: '2026-07-10',
+                selectedTurno: 1,
+                bicos: [],
+                leituras: {},
+                sessoesFrentistas: [sessao()],
+                payments: [],
+                totalVendas: 0,
+                totalFrentistas: 0,
+                diferenca: 0,
+                podeFechar: true,
+                observacoes: '',
+                limparAutoSave: vi.fn(),
+            });
+        });
+
+        // Nada pode ter sido criado nem gravado — nem o fechamento, nem as sessões.
+        expect(fechamentoService.create).not.toHaveBeenCalled();
+        expect(fechamentoFrentistaService.bulkCreate).not.toHaveBeenCalled();
+        expect(result.current.error).toContain('7 dias');
     });
 });

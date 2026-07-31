@@ -2,6 +2,66 @@
 
 ## [Não Lançado]
 
+### 🐛 Salvar de novo um dia antigo duplicava as leituras em silêncio
+- **[31/07/2026]** Regressão introduzida pela própria trava de `DELETE` de 7 dias, no mesmo dia.
+  O painel salva um fechamento **apagando e regravando**; a trava passou a barrar o apagar de dias
+  antigos, mas **`DELETE` filtrado pela RLS não é erro** — vem `204`, zero linhas, `error: null`.
+  O serviço devolvia sucesso, o hook nem lia o retorno (estava solto num `Promise.all`), e o
+  `bulkCreate` inseria por cima. Resultado: **leituras em dobro** no dia — litros e valor dobrados —
+  e o estoque debitado duas vezes, com a tela exibindo "salvo com sucesso".
+- **Nada foi corrompido:** o banco tinha 0 duplicatas quando isso foi apurado. A falha estava armada,
+  não disparada — só dispararia ao reabrir e salvar um dia com mais de 7 dias.
+- **Corrigido em três pontos:**
+  - `leitura.service.ts` — `deleteByDate`/`deleteByShift` passam a **contar o que sobrou** depois do
+    `DELETE` e devolvem erro `DELETE_BLOQUEADO` com mensagem explicando a janela de 7 dias.
+  - `useSubmissaoFechamento.ts` — o retorno das três exclusões do `Promise.all` deixa de ser
+    descartado; qualquer falha aborta antes de reinserir.
+  - `apps/pwa-frentista/src/services/api.ts` — mesma conferência no replace diário. Na prática o PWA
+    só escreve o dia corrente, mas o padrão era idêntico.
+- **Rede de segurança no banco:** índice único `leitura_unica_bico_data_turno` em
+  `(bico_id, data, turno_id)` (`20260731_leitura_unica_por_bico_data_turno`). A tripla não tem
+  significado de negócio repetida — `litros = final − inicial` é por bico/dia/turno. Mesmo que um
+  caminho novo esqueça a conferência, o banco recusa a duplicata.
+- **Verificado:** duplicata recusada por `unique_violation` em probe revertido contra produção;
+  `type-check` limpo, `lint` limpo, **35 Vitest** e **287 golden** passando.
+- **A ordem das exclusões passou a importar:** as três eram disparadas juntas num `Promise.all`,
+  mas só `Leitura` tem janela de 7 dias — `FechamentoFrentista` e `Recebimento` apagam sempre.
+  Abortar depois deixaria o dia pela metade (leituras antigas intactas, frentistas e recebimentos
+  zerados). As leituras agora são excluídas primeiro e sozinhas; o resto só é tocado se elas saírem.
+
+### ✅ Salvar um dia histórico dobrava os litros — CORRIGIDO
+- **[31/07/2026]** Fechado o item registrado logo abaixo, depois de o dono confirmar a regra:
+  **o posto não trabalha por turno — é um encerrante por bico por dia, um a um.** A planilha diz o
+  mesmo (`encerrante_diario` tem chave `ano/mes/dia/bico`, sem turno).
+- **Backfill:** as 270 linhas com `turno_id` NULL passaram a `turno_id = 1`
+  (`20260731_leitura_uma_por_bico_por_dia`). Só `turno_id` mudou — litros e valor conferidos
+  idênticos antes e depois: **60.528,048 L / R$ 392.825,83**. As 270 alterações ficaram
+  registradas em `AuditoriaDados` com antes/depois.
+- **Índice único trocado para `(bico_id, data)`** — turno sai da chave. Mantê-lo só recriaria o
+  buraco: bastaria gravar o mesmo dia com outro turno para duplicar de novo.
+- **`useSubmissaoFechamento.ts`:** a exclusão das leituras saiu de dentro do ramo "fechamento
+  existe" e passou a rodar **sempre**, antes até de criar o `Fechamento` — era justamente o caminho
+  "não existe fechamento" (todo dia histórico) que inseria por cima sem apagar. Rodar antes da
+  criação também evita deixar fechamento órfão quando a exclusão é recusada.
+- **2 testes novos** travam o comportamento: a exclusão acontece mesmo sem `Fechamento` na data, e
+  uma exclusão recusada aborta antes de gravar qualquer coisa. Suíte: **37 Vitest + 287 golden**.
+- **Provado no banco:** o probe que antes levava o dia 10/07 de 1.485,642 L para 2.971,284 L agora
+  é recusado por `unique_violation`.
+
+### ⚠️ ~~Conhecido e NÃO corrigido~~ — salvar um dia histórico dobra os litros (histórico do achado)
+- **[31/07/2026]** Achado ao validar o item acima. **Bug pré-existente, anterior à trava de 7 dias.**
+- **270 das 276 linhas de `Leitura` têm `turno_id` NULL** — todo o histórico de 01/02 a 24/07, vindo
+  do ETL. A planilha não tem conceito de turno (chave `ano/mes/dia/bico`), então o NULL é fiel à
+  fonte. Só as 6 linhas de 26/07, gravadas pelo app, têm `turno_id = 1`.
+- **Consequência:** dia histórico não tem `Fechamento`, então salvá-lo pelo painel nem passa pelo
+  `DELETE` — cai no `else`, cria o fechamento e insere 6 linhas novas com `turno_id = 1` por cima
+  das 6 existentes com NULL. A agregação **não filtra turno** (`aggregator.service.ts:46,730,898`),
+  então soma as 12. Medido em probe revertido no dia 10/07: **litros 1.485,642 → 2.971,284**.
+- **O índice único não pega**, porque NULL e 1 são valores diferentes — e barrá-los seria proibir
+  turno legítimo. Também não adianta conferir o `DELETE`: não há `DELETE` nesse caminho.
+- **Conserto exige decisão de negócio** e por isso não foi feito: backfill de `turno_id = 1` nas 270
+  linhas do histórico, ou a agregação passar a tratar turno NULL e turno 1 como a mesma coisa.
+
 ### ✨ Barra lateral recolhível no desktop (☰)
 - **[31/07/2026]** No desktop (≥1024px) a barra lateral ocupava **256px fixos e não tinha como
   fechar**: o ☰ que existia era do `Cabecalho`, marcado `lg:hidden`, então só valia no mobile. Em

@@ -1,0 +1,60 @@
+-- =============================================================================
+-- Índice único em `Leitura` (bico_id, data, turno_id)
+--
+-- POR QUE:
+--   A trava de DELETE em 7 dias (20260731_trava_delete_leitura_e_auditoria)
+--   criou um modo de falha silencioso no painel. O fluxo de salvar um
+--   fechamento é apagar-e-regravar; um DELETE barrado pela RLS devolve 204 com
+--   `error: null`, então o app acreditava ter apagado e reinseria por cima.
+--   Sem trava de unicidade, o dia ficava com as leituras EM DOBRO — litros e
+--   valor dobrados, e o estoque debitado duas vezes por `bulkCreate`.
+--
+--   O app já foi corrigido para conferir a exclusão contando o que sobrou. Este
+--   índice é a segunda camada: mesmo que um caminho novo esqueça a conferência,
+--   o banco recusa a duplicata em vez de aceitá-la em silêncio.
+--
+-- POR QUE ESTA CHAVE:
+--   A fórmula do domínio é `litros = encerrante_final - encerrante_inicial` por
+--   bico, por dia, por turno. Duas linhas com a mesma tripla não têm significado
+--   de negócio — são sempre erro de gravação, nunca dado legítimo.
+--   `posto_id` fica de fora de propósito: `bico_id` já determina o posto pela FK,
+--   e incluí-lo permitiria duplicata caso `posto_id` viesse divergente.
+--
+-- SEGURANÇA DE APLICAÇÃO:
+--   Conferido antes de aplicar em 31/07/2026: 0 grupos duplicados nas 276 linhas.
+--   Se este arquivo falhar em outro ambiente, há duplicata preexistente — apure
+--   com a consulta do rodapé ANTES de apagar qualquer coisa.
+-- =============================================================================
+
+-- `NULLS NOT DISTINCT` é obrigatório aqui, não detalhe: **270 das 276 linhas têm
+-- `turno_id` NULL** (todo o histórico de 01/02 a 24/07, vindo do ETL — a planilha
+-- não tem conceito de turno, a chave dela é ano/mes/dia/bico). No padrão do
+-- Postgres, NULL é distinto de NULL num índice único, então sem esta cláusula a
+-- tripla (bico, data, NULL) poderia repetir à vontade e o índice não protegeria
+-- justamente as linhas que são 98% da base. Conferido: 0 duplicatas por essa
+-- chave tratando NULL como valor único, então o índice constrói.
+CREATE UNIQUE INDEX IF NOT EXISTS leitura_unica_bico_data_turno
+  ON public."Leitura" (bico_id, data, turno_id) NULLS NOT DISTINCT;
+
+-- ⚠️ O QUE ESTE ÍNDICE **NÃO** RESOLVE — bug pré-existente, anterior à trava de 7 dias:
+--   Um dia histórico (turno NULL) somado a um salvamento pelo painel (turno = 1) são
+--   duas linhas distintas para o índice, e a agregação NÃO filtra turno
+--   (`aggregator.service.ts:46,730,898` filtram só data e posto). Medido em probe
+--   revertido no dia 10/07: 6 linhas → 12, litros 1.485,642 → 2.971,284. **Dobra.**
+--   Pior: dia histórico não tem `Fechamento`, então o painel nem passa pelo DELETE —
+--   cria o fechamento e insere direto. Conserto exige decisão: fazer backfill de
+--   `turno_id = 1` nas 270 linhas do histórico, ou a agregação passar a tratar
+--   turno NULL e turno 1 como a mesma coisa. Não decidido aqui de propósito.
+
+-- =============================================================================
+-- Apurar duplicatas, se a criação falhar:
+--
+--   SELECT bico_id, data, turno_id, count(*) AS n, array_agg(id ORDER BY id) AS ids
+--   FROM public."Leitura"
+--   GROUP BY bico_id, data, turno_id
+--   HAVING count(*) > 1
+--   ORDER BY data;
+--
+-- Desfazer:
+--   DROP INDEX IF EXISTS public.leitura_unica_bico_data_turno;
+-- =============================================================================
