@@ -2,6 +2,29 @@
 
 ## [Não Lançado]
 
+### 🐛 Salvar de novo um dia antigo duplicava as leituras em silêncio
+- **[31/07/2026]** Regressão introduzida pela própria trava de `DELETE` de 7 dias, no mesmo dia.
+  O painel salva um fechamento **apagando e regravando**; a trava passou a barrar o apagar de dias
+  antigos, mas **`DELETE` filtrado pela RLS não é erro** — vem `204`, zero linhas, `error: null`.
+  O serviço devolvia sucesso, o hook nem lia o retorno (estava solto num `Promise.all`), e o
+  `bulkCreate` inseria por cima. Resultado: **leituras em dobro** no dia — litros e valor dobrados —
+  e o estoque debitado duas vezes, com a tela exibindo "salvo com sucesso".
+- **Nada foi corrompido:** o banco tinha 0 duplicatas quando isso foi apurado. A falha estava armada,
+  não disparada — só dispararia ao reabrir e salvar um dia com mais de 7 dias.
+- **Corrigido em três pontos:**
+  - `leitura.service.ts` — `deleteByDate`/`deleteByShift` passam a **contar o que sobrou** depois do
+    `DELETE` e devolvem erro `DELETE_BLOQUEADO` com mensagem explicando a janela de 7 dias.
+  - `useSubmissaoFechamento.ts` — o retorno das três exclusões do `Promise.all` deixa de ser
+    descartado; qualquer falha aborta antes de reinserir.
+  - `apps/pwa-frentista/src/services/api.ts` — mesma conferência no replace diário. Na prática o PWA
+    só escreve o dia corrente, mas o padrão era idêntico.
+- **Rede de segurança no banco:** índice único `leitura_unica_bico_data_turno` em
+  `(bico_id, data, turno_id)` (`20260731_leitura_unica_por_bico_data_turno`). A tripla não tem
+  significado de negócio repetida — `litros = final − inicial` é por bico/dia/turno. Mesmo que um
+  caminho novo esqueça a conferência, o banco recusa a duplicata.
+- **Verificado:** duplicata recusada por `unique_violation` em probe revertido contra produção;
+  `type-check` limpo, `lint` limpo, **35 Vitest** e **287 golden** passando.
+
 ### ✨ Barra lateral recolhível no desktop (☰)
 - **[31/07/2026]** No desktop (≥1024px) a barra lateral ocupava **256px fixos e não tinha como
   fechar**: o ☰ que existia era do `Cabecalho`, marcado `lg:hidden`, então só valia no mobile. Em

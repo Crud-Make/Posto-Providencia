@@ -212,6 +212,21 @@ export const api = {
             .eq('posto_id', postoId);
         if (delError) throw new Error(delError.message);
 
+        // Um DELETE barrado pela RLS (dia fora da janela de 7 dias) devolve 204 sem erro.
+        // Seguir daqui reinseriria as leituras por cima das antigas e dobraria o dia.
+        const { count: sobraram, error: erroConferencia } = await supabase
+            .from('Leitura')
+            .select('id', { count: 'exact', head: true })
+            .eq('data', dataStr)
+            .eq('turno_id', turnoId)
+            .eq('posto_id', postoId);
+        if (erroConferencia) throw new Error(erroConferencia.message);
+        if ((sobraram ?? 0) > 0) {
+            throw new Error(
+                'Não foi possível regravar as leituras deste dia: só é permitido alterar os últimos 7 dias.'
+            );
+        }
+
         const rows = linhas.map(l => {
             const litros = Math.max(0, l.leitura_final - l.leitura_inicial);
             return {

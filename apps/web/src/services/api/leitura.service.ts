@@ -28,6 +28,43 @@ export interface SalesSummary {
   leituras: (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[];
 }
 
+/**
+ * Mensagem exibida quando a RLS recusa apagar leituras fora da janela de 7 dias.
+ * @see supabase/migrations/20260731_trava_delete_leitura_e_auditoria.sql
+ */
+const ERRO_FORA_DA_JANELA =
+  'Não foi possível apagar as leituras deste dia: a proteção do banco só permite excluir os últimos 7 dias. ' +
+  'Para refazer um dia mais antigo, use o painel do Supabase.';
+
+/**
+ * Confere se um DELETE de leituras realmente apagou tudo o que casava com o filtro.
+ *
+ * @remarks Um DELETE barrado pela RLS **não é erro**: o PostgREST devolve 204 com zero
+ *          linhas afetadas e `error: null`. Sem esta conferência, o chamador acredita que
+ *          apagou, reinsere as leituras por cima e o dia fica com litros e valor em dobro
+ *          (não há índice único que segure — ver a migração citada em ERRO_FORA_DA_JANELA).
+ *          Por isso a prova é CONTAR o que sobrou, nunca ler o status da resposta.
+ * @returns `null` se não sobrou nada; caso contrário a mensagem de erro a propagar.
+ */
+async function conferirLeiturasApagadas(
+  filtros: { data: string; posto_id: number; turno_id?: number }
+): Promise<string | null> {
+  let consulta = supabase
+    .from('Leitura')
+    .select('id', { count: 'exact', head: true })
+    .eq('data', filtros.data)
+    .eq('posto_id', filtros.posto_id);
+
+  if (filtros.turno_id !== undefined) {
+    consulta = consulta.eq('turno_id', filtros.turno_id);
+  }
+
+  const { count, error } = await consulta;
+
+  if (error) return `Falha ao conferir a exclusão das leituras: ${error.message}`;
+  return (count ?? 0) > 0 ? ERRO_FORA_DA_JANELA : null;
+}
+
 export const leituraService = {
   /**
    * Busca todas as leituras de uma data específica
@@ -369,6 +406,10 @@ export const leituraService = {
         .eq('posto_id', postoId);
 
       if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
+
+      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId, turno_id: 1 });
+      if (bloqueio) return createErrorResponse(bloqueio, 'DELETE_BLOQUEADO');
+
       return createSuccessResponse(undefined);
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -391,6 +432,10 @@ export const leituraService = {
         .eq('posto_id', postoId);
 
       if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
+
+      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId, turno_id: turnoId });
+      if (bloqueio) return createErrorResponse(bloqueio, 'DELETE_BLOQUEADO');
+
       return createSuccessResponse(undefined);
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');

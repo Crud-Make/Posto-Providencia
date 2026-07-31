@@ -85,12 +85,24 @@ export function useSubmissaoFechamento() {
          let fechamento;
          if (isSuccess(fechamentoRes) && fechamentoRes.data) {
             fechamento = fechamentoRes.data;
-            // Limpar dados antigos para sobrescrever
-            await Promise.all([
+            // Limpar dados antigos para sobrescrever.
+            // O retorno de cada exclusão é conferido: um DELETE barrado pela RLS não vira
+            // erro do Supabase, e seguir daqui reinserindo duplicaria as leituras do dia.
+            const [leiturasRes, frentistasRes, recebimentosRes] = await Promise.all([
                leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId),
                fechamentoFrentistaService.deleteByFechamento(fechamento.id),
                recebimentoService.deleteByFechamento(fechamento.id)
             ]);
+
+            if (!isSuccess(leiturasRes)) {
+               throw new Error(leiturasRes.error || 'Erro ao limpar as leituras anteriores');
+            }
+            if (!isSuccess(frentistasRes)) {
+               throw new Error(frentistasRes.error || 'Erro ao limpar os frentistas anteriores');
+            }
+            if (!isSuccess(recebimentosRes)) {
+               throw new Error(recebimentosRes.error || 'Erro ao limpar os recebimentos anteriores');
+            }
          } else {
             const createRes = await fechamentoService.create({
                data: selectedDate,
