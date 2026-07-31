@@ -175,9 +175,15 @@ const TelaFechamentoDiario: React.FC = () => {
          if (rascunhoRestaurado?.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
          if (selectedDate && selectedTurno) {
             carregarSessoes(selectedDate, selectedTurno);
+            // Os pagamentos do Caixa Geral também vêm do banco e precisam ser carregados AQUI.
+            // Antes só o efeito de baixo os carregava, e ele é barrado por `!rascunhoRestaurado` —
+            // como o rascunho é gravado automaticamente, na prática havia quase sempre um, e os
+            // `Recebimento` salvos nunca voltavam: o bloco reabria zerado e a tela acusava sobra
+            // de caixa igual ao total do dia.
+            carregarPagamentos(selectedDate, selectedTurno);
          }
       }
-   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
+   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos, definirSessoes, selectedDate, selectedTurno]);
 
    useEffect(() => {
       if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado && !saving && !success) {
