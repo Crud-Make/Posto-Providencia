@@ -7,6 +7,12 @@ import { analisarValor, formatarValorSimples, paraReais } from './formatters';
  * @remarks Estes testes travam a fronteira entre as DUAS convenções que convivem no sistema:
  *          encerrante (litro, 3 casas decimais) e dinheiro (real, 2 casas). Misturar as duas
  *          já produziu valores 1000× menores e 100× maiores em produção.
+ *
+ * @remarks DIVERGÊNCIA CONHECIDA com o CLAUDE.md §4 ("dinheiro em centavos, inteiro"): estes
+ *          helpers trabalham com **reais em float**, e estes testes fixam esse comportamento
+ *          por escrito. É dívida herdada — documentada aqui em vez de "consertada" de lado,
+ *          conforme §7 ("divergência conhecida se documenta no teste"). Migrar para centavos
+ *          é decisão do dono do produto e exige varrer todos os chamadores de uma vez.
  */
 describe('analisarValor — convenção de ENCERRANTE, não de dinheiro', () => {
    // Este é o comportamento CORRETO e intencional para leitura de bomba: litro tem 3 casas,

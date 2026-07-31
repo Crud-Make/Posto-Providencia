@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { DadosFinanceiros } from '../hooks/useFinanceiro';
+import { paraReais } from '../../../utils/formatters';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 /**
@@ -35,9 +36,6 @@ export const DespesasPorCategoria: React.FC<DespesasPorCategoriaProps> = ({ dado
 
   const COLORS = ['#EF4444', '#F59E0B', '#3B82F6', '#10B981', '#6366F1'];
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
   return (
     <div className="bg-slate-900/40 rounded-2xl border border-slate-700/50 p-6 h-full">
       <h3 className="text-lg font-bold text-white mb-6">Despesas por Categoria</h3>
@@ -59,7 +57,7 @@ export const DespesasPorCategoria: React.FC<DespesasPorCategoriaProps> = ({ dado
                 ))}
               </Pie>
               <Tooltip
-                formatter={(val: number) => formatCurrency(val)}
+                formatter={(val: number) => paraReais(val)}
                 contentStyle={{
                   backgroundColor: '#1E293B',
                   border: '1px solid #334155',
