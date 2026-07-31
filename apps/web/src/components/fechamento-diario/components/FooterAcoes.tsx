@@ -19,7 +19,13 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
     handleSave
 }) => {
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 p-4 shadow-2xl z-40 print:hidden text-white">
+        // [31/07] `sticky` no lugar de `fixed`: a barra agora participa do layout e o
+        // próprio navegador reserva a altura dela, seja qual for.
+        // Motivo: com `fixed` ela saía do fluxo e o espaço era reservado por um `pb-24`
+        // (96px) fixo no container. Abaixo de `md` a barra empilha em duas linhas e vai a
+        // 162px — 66px de conteúdo (a última linha da tabela) ficavam cobertos para sempre,
+        // mesmo rolando até o fim. No desktop sobravam 1,7px: passava por coincidência.
+        <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-700 p-4 shadow-2xl z-40 print:hidden text-white">
             {/* // [19/01 00:37] Ajuste de layout: Footer agora usa largura total. */}
             {/* Motivo: Evitar conteúdo comprimido no centro em telas grandes. */}
             <div className="w-full px-4 sm:px-6 lg:px-10 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">

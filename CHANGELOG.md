@@ -2,6 +2,27 @@
 
 ## [Não Lançado]
 
+### 🐛 Barra "Salvar Fechamento" cobria o conteúdo e aparecia nas 5 abas
+- **[31/07/2026]** A barra do `FooterAcoes` era `fixed bottom-0`, fora do fluxo, e o espaço dela era
+  reservado por um `pb-24` (**96px fixos**) no container do Fechamento Diário. Só que a altura da
+  barra é variável: abaixo do breakpoint `md` (768px) ela empilha métricas e botão em duas linhas e
+  vai a **162px**. Resultado: **66px de conteúdo cobertos permanentemente** — a última linha da
+  tabela ficava inalcançável mesmo rolando até o fim. No desktop passava por **1,7px** de folga, ou
+  seja, funcionava por coincidência, não por projeto.
+- **Correção 1 (tamanho):** `sticky bottom-0` no lugar de `fixed`. A barra volta a participar do
+  layout, o navegador reserva a altura real dela seja qual for, e o `pb-24` — a reserva manual que
+  causava o bug — sai junto. Continua grudada no rodapé em qualquer posição de rolagem.
+- **Correção 2 (abas):** o `FooterAcoes` estava **fora do switch de abas**, então existia nas 5.
+  Em *Fechamento Mensal* e *Gestão de Bicos* exibia Vendas/Apurado/Diferença zerados sobre um painel
+  sem relação com o salvamento. Passa a renderizar só em `activeTab === 'leituras'`, por decisão do
+  dono do produto. **Consequência aceita:** para salvar depois de editar em *Fechamento Financeiro*
+  ou *Detalhamento Frentistas*, é preciso voltar à aba *Leituras de Bomba*.
+- **Verificação:** medido no navegador em `localhost:3015`, comparando altura da barra × espaço
+  reservado e conteúdo coberto no fim da rolagem. Antes, a 766px: 162,3px de barra, 96px reservados,
+  **65,6px cobertos**. Depois: **0 coberto** a 766px e a 1366px, e barra ausente nas outras 4 abas.
+- **Sem cobertura de teste automatizado:** o bug é de layout (o jsdom do Vitest não calcula
+  geometria) e o repo não tem Playwright — travar isso exigiria instalar dependência nova.
+
 ### 🐛 Gráfico "Volume Vendido" plotava o estoque, não a venda
 - **[31/07/2026]** O gráfico do dashboard rotulado **"Volume Vendido — Total de litros por
   combustível"** era alimentado por `estoque.quantidade_atual`: o que **sobrou no tanque**. Outra

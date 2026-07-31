@@ -189,7 +189,10 @@ const TelaFechamentoDiario: React.FC = () => {
 
    // --- Render ---
    return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 pb-24 font-sans selection:bg-blue-500/30">
+      // [31/07] `pb-24` removido: era a reserva manual de espaço para a barra `fixed` do
+      // FooterAcoes. Com a barra em `sticky` o espaço é reservado pelo próprio layout, e
+      // manter o padding só criaria uma faixa vazia embaixo dela.
+      <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/30">
          <HeaderFechamento
             selectedDate={selectedDate} setSelectedDate={setSelectedDate}
             selectedTurno={selectedTurno} setSelectedTurno={setSelectedTurno}
@@ -245,7 +248,13 @@ const TelaFechamentoDiario: React.FC = () => {
             </div>
          </div>
 
-         <FooterAcoes
+         {/* // [31/07] A barra de salvar passa a existir só na aba Leituras de Bomba. */}
+         {/* Motivo: estava fora do switch de abas, então aparecia nas 5. Em Fechamento */}
+         {/* Mensal e Gestão de Bicos ela exibia Vendas/Apurado/Diferença zerados sobre um */}
+         {/* painel que não tem nada a ver com o salvamento. Decisão do dono do produto em */}
+         {/* 31/07: só na primeira aba. Consequência aceita: para salvar após editar em */}
+         {/* Financeiro ou Detalhamento, é preciso voltar à aba Leituras de Bomba. */}
+         {activeTab === 'leituras' && <FooterAcoes
             totalVendas={totalVendas} totalFrentistas={totalFrentistas} diferenca={diferenca} saving={saving} podeFechar={podeFechar}
             handleSave={() => handleSave({
                selectedDate,
@@ -269,7 +278,7 @@ const TelaFechamentoDiario: React.FC = () => {
                   }
                }
             })}
-         />
+         />}
       </div>
    );
 };
