@@ -20,7 +20,7 @@ import type { EntradaPagamento } from '../../../types/fechamento';
 import type { Recebimento } from '../../../types/database/aliases';
 import { formaPagamentoService } from '../../../services/api';
 import { fechamentoService } from '../../../services/api/fechamento.service';
-import { analisarValor, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
+import { analisarValor, formatarValorSimples, formatarValorAoSair, paraReais } from '../../../utils/formatters';
 import { isSuccess } from '../../../types/ui/response-types';
 
 /**
@@ -181,7 +181,12 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
       if (matched) {
         return {
           ...p,
-          valor: sum > 0 ? formatarValorAoSair(sum.toString()) : ''
+          // `sum` JÁ é o valor em reais somado das sessões — formate direto.
+          // Não passe por `formatarValorAoSair`: ela chama `analisarValor`, que é parser de
+          // ENCERRANTE DE BOMBA e assume os últimos 3 dígitos como decimais quando não há
+          // vírgula (litros têm 3 casas). Em dinheiro isso divide por mil: o auto-preencher
+          // trazia R$ 2,44 no lugar de R$ 2.436,00.
+          valor: sum > 0 ? paraReais(sum) : ''
         };
       }
       return p;
