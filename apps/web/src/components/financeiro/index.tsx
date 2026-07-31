@@ -6,9 +6,8 @@ import { useFluxoCaixa } from './hooks/useFluxoCaixa';
 import { FiltrosFinanceiros } from './components/FiltrosFinanceiros';
 import { ResumoFinanceiro } from './components/ResumoFinanceiro';
 import { GraficoFluxoCaixa } from './components/GraficoFluxoCaixa';
-import { TabelaTransacoes } from './components/TabelaTransacoes';
-import { IndicadoresPerformance } from './components/IndicadoresPerformance';
-import { LayoutDashboard, Loader2, Plus } from 'lucide-react';
+import { DespesasPorCategoria } from './components/DespesasPorCategoria';
+import { Loader2, Plus } from 'lucide-react';
 import FormDespesa from '../despesas/components/FormDespesa';
 import { DespesaFormData } from '../despesas/types';
 import { despesaService, receitaService } from '../../services/api';
@@ -16,14 +15,23 @@ import { FormReceita, ReceitaFormData } from './components/FormReceita';
 // [01/02 11:22] Integrado FormReceita e lógica de salvamento de receitas extras.
 
 /**
- * Tela de Gestão Financeira.
- * 
- * Centraliza a visualização de dados financeiros do posto,
- * integrando receitas, despesas e fluxo de caixa.
- * 
- * @module TelaGestaoFinanceira
+ * Painel de Receitas e Despesas.
+ *
+ * @remarks
+ * [31/07] Era a rota `/financeiro` ("Gestão Financeira"), item próprio da barra lateral.
+ * Passou a ser aba do Fechamento de Caixa: lançar receita e despesa é operação de caixa,
+ * e ficava a dois cliques de distância de onde o caixa é conferido.
+ *
+ * O que mudou foi ONDE isto aparece, não O QUE é calculado — todos os números continuam
+ * vindo de `useFinanceiro` exatamente como antes.
+ *
+ * A tabela "Últimas Transações" foi removida nessa mudança. O pipeline que a alimentava
+ * (`dados.transacoes`) continua vivo de propósito: `GraficoFluxoCaixa` e
+ * `DespesasPorCategoria` derivam dele.
+ *
+ * @module PainelReceitasDespesas
  */
-const TelaGestaoFinanceira: React.FC = () => {
+export const PainelReceitasDespesas: React.FC = () => {
   const { postoAtivoId } = usePosto();
   const [showFormDespesa, setShowFormDespesa] = React.useState(false);
   const [showFormReceita, setShowFormReceita] = React.useState(false);
@@ -54,17 +62,15 @@ const TelaGestaoFinanceira: React.FC = () => {
   };
 
   return (
-    <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="p-5 space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white font-display uppercase tracking-wider">Gestão Financeira</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Visão consolidada de receitas, despesas e fluxo de caixa.
+          <h2 className="text-xl font-bold text-white">Receitas e Despesas</h2>
+          <p className="text-sm text-slate-400 mt-0.5">
+            Lançamentos e fluxo de caixa do período selecionado abaixo.
           </p>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFormReceita(true)}
@@ -83,12 +89,6 @@ const TelaGestaoFinanceira: React.FC = () => {
             <Plus size={18} />
             Nova Despesa
           </button>
-
-          {/* Badge de status */}
-          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-            <LayoutDashboard size={18} className="text-blue-600 dark:text-blue-400" />
-            <span className="text-sm font-bold text-blue-700 dark:text-blue-300">Visão Geral</span>
-          </div>
         </div>
       </div>
 
@@ -100,31 +100,28 @@ const TelaGestaoFinanceira: React.FC = () => {
       />
 
       {erro && (
-        <div className="p-4 mb-6 bg-red-50 text-red-600 rounded-xl border border-red-100 flex justify-between items-center">
+        <div className="p-4 bg-red-900/20 text-red-200 rounded-xl border border-red-500/30 flex justify-between items-center">
           <span>{erro}</span>
-          <button onClick={() => recarregar()} className="text-sm underline hover:text-red-800">Tentar novamente</button>
+          <button onClick={() => recarregar()} className="text-sm underline hover:text-red-100">Tentar novamente</button>
         </div>
       )}
 
       <ResumoFinanceiro dados={dados} carregando={carregando} />
 
       {carregando ? (
-        <div className="flex flex-col items-center justify-center min-h-[400px] w-full text-gray-400">
+        <div className="flex flex-col items-center justify-center min-h-[400px] w-full text-slate-500">
           <Loader2 size={48} className="animate-spin mb-4" />
           <p className="font-medium">Carregando dados financeiros...</p>
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div className="lg:col-span-2">
-              <GraficoFluxoCaixa series={series} />
-            </div>
-            <div>
-              <IndicadoresPerformance dados={dados} />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          <div className="lg:col-span-2">
+            <GraficoFluxoCaixa series={series} />
           </div>
-          <TabelaTransacoes transacoes={dados.transacoes} />
-        </>
+          <div>
+            <DespesasPorCategoria dados={dados} />
+          </div>
+        </div>
       )}
 
       {showFormDespesa && postoAtivoId && (
@@ -145,6 +142,3 @@ const TelaGestaoFinanceira: React.FC = () => {
     </div>
   );
 };
-
-export default TelaGestaoFinanceira;
-

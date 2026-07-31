@@ -34,7 +34,7 @@ import type { SessaoFrentista } from '../../types/fechamento';
 import { supabase } from '../../services/supabase';
 
 // Subcomponentes
-import { HeaderFechamento } from './components/HeaderFechamento';
+import { HeaderFechamento, type AbaFechamento } from './components/HeaderFechamento';
 import { TabLeituras } from './components/TabLeituras';
 import { TabFinanceiro } from './components/TabFinanceiro';
 // [20/01 11:30] Adição da aba Detalhamento Frentistas
@@ -43,6 +43,8 @@ import { TabDetalhamentoFrentista } from './components/TabDetalhamentoFrentista'
 import { TabGestaoBicos } from './components/TabGestaoBicos';
 // lazy load para evitar peso inicial desnecessário
 import FechamentoMensal from '../fechamento-mensal';
+// [31/07] Painel herdado da antiga rota /financeiro ("Gestão Financeira"), agora aba daqui.
+import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
 
@@ -52,7 +54,7 @@ const TelaFechamentoDiario: React.FC = () => {
    // --- Estados de Contexto da Tela ---
    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
    const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
-   const [activeTab, setActiveTab] = useState<'leituras' | 'financeiro' | 'detalhamento' | 'gestao-bicos' | 'fechamento-mensal'>('leituras');
+   const [activeTab, setActiveTab] = useState<AbaFechamento>('leituras');
    const [observacoes] = useState<string>('');
 
    // --- Hooks de Dados e Lógica (Refatorados) ---
@@ -175,9 +177,15 @@ const TelaFechamentoDiario: React.FC = () => {
          if (rascunhoRestaurado?.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
          if (selectedDate && selectedTurno) {
             carregarSessoes(selectedDate, selectedTurno);
+            // Os pagamentos do Caixa Geral também vêm do banco e precisam ser carregados AQUI.
+            // Antes só o efeito de baixo os carregava, e ele é barrado por `!rascunhoRestaurado` —
+            // como o rascunho é gravado automaticamente, na prática havia quase sempre um, e os
+            // `Recebimento` salvos nunca voltavam: o bloco reabria zerado e a tela acusava sobra
+            // de caixa igual ao total do dia.
+            carregarPagamentos(selectedDate, selectedTurno);
          }
       }
-   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, definirSessoes, selectedDate, selectedTurno]);
+   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos, definirSessoes, selectedDate, selectedTurno]);
 
    useEffect(() => {
       if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado && !saving && !success) {
@@ -236,6 +244,8 @@ const TelaFechamentoDiario: React.FC = () => {
                         alterarCampoFrentista(tempId, campo as keyof SessaoFrentista, valor.toString());
                      }}
                   />
+               ) : activeTab === 'receitas-despesas' ? (
+                  <PainelReceitasDespesas />
                ) : activeTab === 'fechamento-mensal' ? (
                   <FechamentoMensal isEmbedded={true} />
                ) : (

@@ -19,7 +19,6 @@ const TelaLeiturasDiarias = React.lazy(() => import('./components/leituras-diari
 const TelaAnaliseVendas = React.lazy(() => import('./components/vendas/analise'));
 const TelaDashboardVendas = React.lazy(() => import('./components/vendas/dashboard'));
 const TelaGestaoFrentistas = React.lazy(() => import('./components/frentistas'));
-const TelaGestaoFinanceira = React.lazy(() => import('./components/financeiro'));
 // TelaConfiguracoes é export nomeado
 const TelaConfiguracoes = React.lazy(() => import('./components/configuracoes').then(module => ({ default: module.TelaConfiguracoes })));
 const TelaGestaoEscalas = React.lazy(() => import('./components/TelaGestaoEscalas'));
@@ -51,7 +50,10 @@ const AppRoutes = () => {
         <Route path="/vendas/analise" element={<Suspense fallback={<LoadingFallback />}><TelaAnaliseVendas /></Suspense>} />
         <Route path="/vendas/dashboard" element={<Suspense fallback={<LoadingFallback />}><TelaDashboardVendas /></Suspense>} />
         <Route path="/frentistas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoFrentistas /></Suspense>} />
-        <Route path="/financeiro" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoFinanceira /></Suspense>} />
+        {/* [31/07] "Gestão Financeira" virou a aba "Receitas e Despesas" do Fechamento de */}
+        {/* Caixa. A rota fica como redirect em vez de sumir: link salvo pelo usuário cairia */}
+        {/* no catch-all e o levaria ao Dashboard, sem pista de para onde a tela foi. */}
+        <Route path="/financeiro" element={<Navigate to="/fechamento" replace />} />
         <Route path="/configuracoes" element={<Suspense fallback={<LoadingFallback />}><TelaConfiguracoes /></Suspense>} />
         <Route path="/escalas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoEscalas /></Suspense>} />
         <Route path="/clientes" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoClientes /></Suspense>} />

@@ -2,6 +2,36 @@
 
 ## [Não Lançado]
 
+### ♻️ "Gestão Financeira" saiu da barra lateral e virou aba do Fechamento de Caixa
+- **[31/07/2026]** Reorganização de navegação. Lançar receita e despesa é operação de caixa, mas
+  vivia numa rota própria (`/financeiro`), a dois cliques de onde o caixa é conferido.
+- **Onde foi parar:** aba **💵 Receitas e Despesas**, a 5ª de 6 em `/fechamento`. Chave nova
+  `receitas-despesas` — `financeiro` já pertence à aba "Fechamento Financeiro", que é outra coisa
+  (formas de pagamento do dia).
+- **O que mudou foi ONDE aparece, não O QUE é calculado.** Nenhuma fórmula foi tocada:
+  `useFinanceiro`, `useFluxoCaixa` e `useFiltrosFinanceiros` seguem intactos.
+- **Removido: a grade "Últimas Transações"** (`TabelaTransacoes.tsx`, 153 linhas, um único
+  consumidor). O pipeline que a alimentava (`dados.transacoes`) **continua vivo de propósito** —
+  o gráfico de Fluxo de Caixa e o de Despesas por Categoria derivam dele.
+- **`/financeiro` virou redirect para `/fechamento`**, em vez de sumir: link salvo pelo usuário
+  cairia no catch-all e o levaria ao Dashboard, sem pista de para onde a tela foi.
+- **Paleta:** os quatro componentes exclusivos do painel foram do tema claro (`bg-white`) para o
+  escuro das abas. `KPICard` **não** foi tocado — é compartilhado com o Dashboard; o resumo passou
+  a usar cartão local (`CartaoIndicador`).
+- **Renomeado:** `IndicadoresPerformance` → `DespesasPorCategoria`. O nome prometia KPIs de
+  performance; o componente sempre desenhou só despesas por categoria.
+- **Também nesta passada:**
+  - Botão "Ir para Fechamento Diário" do Fechamento Mensal apontava para `/fechamento-caixa`,
+    **rota que nunca existiu** — caía no catch-all e levava ao Dashboard. Agora vai para `/fechamento`.
+  - O tipo das abas estava escrito à mão em dois arquivos; virou `AbaFechamento`, derivado da
+    lista única `ABAS`. Os 6 botões, que eram blocos idênticos a menos de rótulo e cor, viraram um `map`.
+  - Saiu a legenda "vs período anterior" dos cartões de Receita e Despesa: nada era comparado com
+    período anterior, o valor de comparação era sempre string vazia.
+- **Verificado:** `type-check` limpo, `lint` limpo, **42 Vitest** e **287 golden** passando.
+- **Fica para a próxima branch** (exige mudar número, e esta não muda): `/proprietario` virar a tela
+  de lucro real do dono, unificação das 5 implementações de lucro em `@posto/utils`, e a rota órfã
+  `/despesas` — sem ela no menu, o custo operacional por litro cai no fallback fixo `0,45`.
+
 ### 🐛 Salvar de novo um dia antigo duplicava as leituras em silêncio
 - **[31/07/2026]** Regressão introduzida pela própria trava de `DELETE` de 7 dias, no mesmo dia.
   O painel salva um fechamento **apagando e regravando**; a trava passou a barrar o apagar de dias

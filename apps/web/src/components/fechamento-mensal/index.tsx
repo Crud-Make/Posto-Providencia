@@ -233,7 +233,9 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                             }
                         </p>
                         <button
-                            onClick={() => navigate('/fechamento-caixa')}
+                            // [31/07] Era '/fechamento-caixa', rota que nunca existiu: o botão
+                            // caía no catch-all e jogava o usuário no Dashboard.
+                            onClick={() => navigate('/fechamento')}
                             className={`${temDadosPendentes
                                 ? 'bg-yellow-500 hover:bg-yellow-600 text-black'
                                 : 'bg-blue-600 hover:bg-blue-700 text-white'
