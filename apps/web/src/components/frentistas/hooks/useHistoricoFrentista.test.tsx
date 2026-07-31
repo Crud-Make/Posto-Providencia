@@ -72,15 +72,20 @@ interface CaixaDoHook {
     carregar: ((id: string) => Promise<void>) | null;
 }
 
+/** A caixa vive no escopo do módulo, não numa prop: `react-hooks/immutability` proíbe
+ *  escrever em prop de componente, e a sonda existe justamente para escrever. Cada
+ *  `renderizarHistorico` a reinicia antes de montar, então um teste não vaza no outro. */
+let caixa: CaixaDoHook = { historico: [], carregar: null };
+
 /** Sonda: renderiza o hook e publica o retorno na caixa num efeito (nunca durante o
  *  render — `react-hooks/globals` proíbe efeito colateral em corpo de componente). */
-function Sonda({ caixa }: { caixa: CaixaDoHook }) {
+function Sonda() {
     const { historico, carregarHistorico } = useHistoricoFrentista();
 
     useEffect(() => {
         caixa.historico = historico;
         caixa.carregar = carregarHistorico;
-    }, [caixa, historico, carregarHistorico]);
+    }, [historico, carregarHistorico]);
 
     return null;
 }
@@ -88,13 +93,13 @@ function Sonda({ caixa }: { caixa: CaixaDoHook }) {
 /** Monta o hook num root React de verdade e dispara `carregarHistorico`, devolvendo
  *  o histórico já formatado. Sem @testing-library: só react-dom/client + act. */
 async function renderizarHistorico(): Promise<HistoricoFrentista[]> {
-    const caixa: CaixaDoHook = { historico: [], carregar: null };
+    caixa = { historico: [], carregar: null };
 
     const container = document.createElement('div');
     const root = createRoot(container);
 
     await act(async () => {
-        root.render(React.createElement(Sonda, { caixa }));
+        root.render(React.createElement(Sonda));
     });
 
     await act(async () => {
