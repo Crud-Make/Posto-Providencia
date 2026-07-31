@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### ✨ Barra lateral recolhível no desktop (☰)
+- **[31/07/2026]** No desktop (≥1024px) a barra lateral ocupava **256px fixos e não tinha como
+  fechar**: o ☰ que existia era do `Cabecalho`, marcado `lg:hidden`, então só valia no mobile. Em
+  telas como o Fechamento de Caixa — cuja tabela "Envios do App" tem 11 colunas — isso espremia o
+  conteúdo sem alternativa.
+- **Implementado:** botão ☰ no topo da própria barra recolhe de **256px para 64px**, deixando só os
+  ícones (o rótulo vira `title`, tooltip nativa, sem dependência nova). **+192px de conteúdo**, e a
+  navegação continua a um clique — não é preciso reexpandir para trocar de tela.
+- **A escolha é lembrada** entre recarregamentos (`localStorage`, chave `barraLateralRecolhida`),
+  seguindo o formato do `ThemeContext`: lê no inicializador do `useState`, grava no `useEffect`.
+- **Mobile intacto por construção:** todo o recolhimento usa prefixo `lg:`. Abaixo de 1024px a barra
+  continua sendo o drawer de 256px com rótulos, aberto pelo ☰ do `Cabecalho` e fechado pelo X — e o
+  ☰ novo é `hidden lg:flex`, invisível ali.
+- **Verificação em `localhost:3015`:** aberta 256px / conteúdo 1110,7px → recolhida 64px / conteúdo
+  1302,7px (**+192px**), 12 rótulos → 0, 12 ícones mantidos, tooltip presente; reexpande no segundo
+  clique; sobrevive ao reload. No mobile, **com a barra marcada como recolhida no `localStorage`**, o
+  drawer ainda abre com 256px, 12 rótulos, X funcional e sem o ☰ de desktop.
+
 ### 🐛 Barra "Salvar Fechamento" cobria o conteúdo e aparecia nas 5 abas
 - **[31/07/2026]** A barra do `FooterAcoes` era `fixed bottom-0`, fora do fluxo, e o espaço dela era
   reservado por um `pb-24` (**96px fixos**) no container do Fechamento Diário. Só que a altura da
