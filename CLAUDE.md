@@ -142,8 +142,13 @@ Detalhe nas skills (§13). O que nunca se reescreve de cabeça:
 ## 7. Testes
 
 - **Golden master:** `bun:test` + `bun:sqlite` contra o banco de referência real. É o teste que decide
-  se refatoração de cálculo pode ser mergeada.
-- **Unitário/componente:** Vitest, arquivo **ao lado** do código (`fechamento.test.ts`).
+  se refatoração de cálculo pode ser mergeada. Rode **`bun run test:golden`**.
+- **Unitário/componente:** Vitest, arquivo **ao lado** do código (`fechamento.test.ts`). Rode
+  **`bun run test`**.
+- **Nunca rode `bun test` puro.** O runner nativo do Bun varre o repo inteiro e tenta executar os
+  arquivos de Vitest, onde `vi` não existe — saem 4 falhas e 2 erros que **não são bugs**. Isso já
+  custou uma "baseline de falhas pré-existentes" imaginária, carregada por várias sessões. Suíte
+  saudável hoje: 287 golden + 30 vitest, **zero falhas**.
 - **Nunca consolide implementações duplicadas sem antes ter um teste rodando contra todas elas.**
   Consolidar primeiro e testar depois é como divergência silenciosa entra em produção.
 - Divergência conhecida entre planilha e código se **documenta no teste** — não se "conserta" no
@@ -288,7 +293,8 @@ Para revisar ou desligar: `/hooks`.
 bun install
 bun run dev --port 3015     # validação sempre em http://localhost:3015
 bun run type-check          # nome exato do script; `typecheck` sem hífen não existe
-bun test                    # golden masters
+bun run test                # Vitest — unitários e de componente
+bun run test:golden         # golden masters (NUNCA `bun test` puro — ver §7)
 git checkout -b feat/#12-nome
 git commit -m "feat: descrição (#12)"
 ```

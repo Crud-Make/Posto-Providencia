@@ -2,6 +2,53 @@
 
 ## [Não Lançado]
 
+### 🐛 Gráfico "Volume Vendido" plotava o estoque, não a venda
+- **[31/07/2026]** O gráfico do dashboard rotulado **"Volume Vendido — Total de litros por
+  combustível"** era alimentado por `estoque.quantidade_atual`: o que **sobrou no tanque**. Outra
+  grandeza e outra ordem de magnitude. Com 1.800 L vendidos e 13.000 L em tanque, o gráfico exibia
+  **13.000** — e não batia com o KPI de volume total logo ao lado, na mesma tela.
+- **Correção:** `fuelData` passa a sair de `porCombustivelVendas`, a mesma agregação de leituras que
+  alimenta o KPI. `maxCapacity` continua vindo do estoque (capacidade do tanque daquele combustível),
+  agora por `combustivel_id`; o `FuelVolumeChart` nunca o usou.
+- **Teste:** `aggregator.dashboard.test.ts` fixa estoque e venda em valores **propositalmente
+  distantes** (8.000/5.000 em tanque contra 1.500/300 vendidos), de modo que plotar a fonte errada
+  fica vermelho. O segundo caso amarra a soma do gráfico ao `kpis.totalVolume`.
+
+### ✅ A "baseline de 4 falhas pré-existentes" não existia — era o comando errado
+- **[31/07/2026]** Várias sessões carregaram a suíte como "4 fail / 1 error, pré-existentes, em
+  `fechamento-diario`". Não havia bug nenhum: `bun test` **puro** é o runner nativo do Bun, que varre
+  o repo e tenta executar os arquivos de **Vitest**, onde `vi` não existe. Os 4 arquivos que falhavam
+  eram exatamente os 4 de Vitest.
+- Comandos corretos: **`bun run test`** (Vitest) e **`bun run test:golden`** (golden masters), ambos
+  já presentes no `package.json`. Rodando assim: **287 golden + 30 Vitest, zero falhas.**
+- `CLAUDE.md` §7 e a Referência rápida corrigidos — a Referência mandava `bun test`, e era daí que o
+  erro se propagava a cada sessão nova.
+
+### 🗑️ Empréstimo/dívida e coleta de CPF removidos — features descontinuadas
+- **[30/07/2026]** Duas funcionalidades descontinuadas por decisão do dono. A auditoria de RLS
+  expôs o custo de mantê-las: `Frentista` guardava **9 CPFs e 7 telefones legíveis E graváveis por
+  qualquer anônimo**, e o `/proprietario` exibia dívida como **"Sem pendências ✓" em verde** —
+  não era só o R$ 0,00 conhecido, era o painel *afirmando* que não havia dívida quando na verdade
+  o RLS bloqueava a leitura e o `error` era engolido. Tranquilização falsa numa tela de dinheiro.
+- **Empréstimo/dívida —** saíram `GestaoEmprestimos.tsx` (639 linhas, **órfão**: nenhum import, a
+  rota `/financeiro` monta 6 outros blocos e nunca esse), os services `divida`, `emprestimo`,
+  `parcela` e `solvency`, as consultas a `Divida` e `Emprestimo` no `useDashboardProprietario`,
+  o card do `ResumoExecutivo` (grid de 4 para 3 colunas) e os tipos de UI órfãos (`Loan`,
+  `LoanInstallment`, `Divida`, `SolvencyStatus`, `SolvencyProjection`).
+- **Mantidos de propósito:** os tipos de schema e o `reset.service.ts`, que continua limpando
+  `Divida`/`Emprestimo`/`Parcela` num reset de posto. As tabelas seguem no banco; um utilitário
+  destrutivo não se mexe por arrumação. Dropar as tabelas fica como passo separado.
+- **CPF —** saíram o campo do formulário e sua máscara (`FormFrentista.tsx`), a exibição na lista
+  e no detalhe, o mapeamento em `useFrentistas.ts` e o fallback `'XXX.XXX.XXX-XX'` em
+  `aggregator.service.ts`. Em produção, `20260730_zera_cpf_frentista.sql` derrubou o `NOT NULL`
+  (pré-requisito conferido no `information_schema`) e zerou a coluna: **9 → 0 CPFs**, verificado.
+  Irreversível por desenho. Fechar a policy não era alternativa — revogar `anon` em `Frentista`
+  derruba a tela inteira, porque o painel fala com o banco como `anon`.
+- **⚠️ Continua exposto:** os **7 telefones** da mesma tabela, fora do escopo desta decisão.
+- **Sem regressão:** `type-check` e `lint` limpos; suíte em **4 fail / 1 error / 315 testes**,
+  idêntica à baseline medida com as mudanças guardadas em stash. As 4 falhas são pré-existentes,
+  em `fechamento-diario`, intocado aqui.
+
 ### 🛡️ Dumps de tabela e fotos de encerrante fora do `.gitignore`
 - **[29/07/2026]** Achados numa faxina da raiz, meses depois da purga de histórico que tirou dado
   real do posto deste repositório público. `spikes/ocr-encerrante/backup-reset-2026-07-26/` guardava

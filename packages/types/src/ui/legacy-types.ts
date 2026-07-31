@@ -283,39 +283,6 @@ export interface MobileHomeData {
   }[];
 }
 
-// --- NEW TYPES FOR LOAN MANAGEMENT ---
-
-export interface Loan {
-  id: string;
-  credor: string;
-  valorTotal: number;
-  quantidadeParcelas: number;
-  valorParcela: number;
-  dataEmprestimo: string;
-  dataPrimeiroVencimento: string;
-  periodicidade: 'mensal' | 'quinzenal' | 'semanal' | 'diario';
-  taxaJuros?: number;
-  observacoes?: string;
-  ativo: boolean;
-  parcelas?: LoanInstallment[];
-}
-
-export interface LoanInstallment {
-  id: string;
-  emprestimoId: string;
-  numeroParcela: number;
-  dataVencimento: string;
-  valor: number;
-  dataPagamento?: string | null;
-  status: 'pendente' | 'pago' | 'atrasado';
-  jurosMulta?: number;
-}
-
-// --- NEW TYPES FOR FINANCE & SOLVENCY ---
-
-// Divida removida por duplicidade com smart-types.ts
-
-
 export interface Despesa {
   id: string;
   descricao: string;
@@ -328,29 +295,3 @@ export interface Despesa {
   observacoes?: string;
 }
 
-export interface SolvencyStatus {
-  dividaId: string;
-  descricao: string;
-  valor: number;
-  dataVencimento: string;
-  status: 'verde' | 'amarelo' | 'vermelho';
-  mensagem: string;
-  deficitProjetado?: number;
-  diasAteVencimento: number;
-  coberturaPorcentagem: number;
-}
-
-export interface SolvencyProjection {
-  saldoAtual: number;
-  mediaDiaria: number;
-  proximasParcelas: SolvencyStatus[];
-  metaVendas?: {
-    totalCompromissos: number;
-    litrosNecessarios: number;
-    margemPorLitro: number;
-    litrosVendidosMes: number;
-    lucroGeradoMes: number;
-    progressoPorcentagem: number;
-    valorRestante: number;
-  };
-}

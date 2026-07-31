@@ -3,7 +3,7 @@ import { ConfiguracaoTable, UsuarioPostoTable } from './tables/infraestrutura';
 import { CombustivelTable, BombaTable, BicoTable, TanqueTable, HistoricoTanqueTable, EstoqueTable } from './tables/combustiveis';
 import { LeituraTable, RecebimentoTable } from './tables/operacoes';
 import { FormaPagamentoTable, MaquininhaTable } from './tables/pagamentos';
-import { EmprestimoTable, ParcelaTable, DividaTable, DespesaTable } from './tables/financeiro';
+import { DespesaTable } from './tables/financeiro';
 import { CompraTable, FornecedorTable } from './tables/compras';
 import { MovimentacaoEstoqueTable } from './tables/produtos';
 import { ClienteTable, NotaFrentistaTable } from './tables/clientes';
@@ -50,9 +50,6 @@ export type FormaPagamento = FormaPagamentoTable['Row'];
 export type Maquininha = MaquininhaTable['Row'];
 
 // Financeiro
-export type Emprestimo = EmprestimoTable['Row'];
-export type Parcela = ParcelaTable['Row'];
-export type DBDivida = DividaTable['Row'];
 export type DBDespesa = DespesaTable['Row'];
 
 // Compras

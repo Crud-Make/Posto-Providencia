@@ -14,7 +14,6 @@ export interface AttendantProfile {
     status: 'Ativo' | 'Inativo';
     admissionDate: string;
     sinceDate: string;
-    cpf: string;
     divergenceRate: number;
     riskLevel: 'Baixo Risco' | 'Médio Risco' | 'Alto Risco';
     avatarColorClass: string;

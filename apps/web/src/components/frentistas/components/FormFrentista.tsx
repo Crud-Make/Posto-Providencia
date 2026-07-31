@@ -14,13 +14,11 @@ const criarFormDataInicial = (frentista: PerfilFrentista | null): DadosFormulari
     frentista
         ? {
             nome: frentista.nome,
-            cpf: frentista.cpf,
             data_admissao: frentista.dataAdmissao?.split('T')[0] || new Date().toISOString().split('T')[0],
             ativo: frentista.status === 'Ativo'
         }
         : {
             nome: '',
-            cpf: '',
             data_admissao: new Date().toISOString().split('T')[0],
             ativo: true
         };
@@ -47,21 +45,10 @@ export const FormFrentista: React.FC<FormFrentistaProps> = ({
 
     if (!isOpen) return null;
 
-    const formatCPF = (value: string) => {
-        const numbers = value.replace(/\D/g, '');
-        return numbers
-            .replace(/^(\d{3})(\d)/, '$1.$2')
-            .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
-            .replace(/\.(\d{3})(\d)/, '.$1-$2')
-            .slice(0, 14);
-    };
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
 
-        if (name === 'cpf') {
-            setFormData(prev => ({ ...prev, [name]: formatCPF(value) }));
-        } else if (name === 'ativo') {
+        if (name === 'ativo') {
             setFormData(prev => ({ ...prev, ativo: value === 'true' }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
@@ -101,21 +88,6 @@ export const FormFrentista: React.FC<FormFrentistaProps> = ({
                             required
                             className="w-full px-4 py-2 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                             placeholder="Ex: João da Silva"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            CPF *
-                        </label>
-                        <input
-                            type="text"
-                            name="cpf"
-                            value={formData.cpf}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            placeholder="000.000.000-00"
                         />
                     </div>
 

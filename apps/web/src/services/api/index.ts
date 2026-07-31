@@ -27,10 +27,6 @@ export { despesaService } from './despesa.service';
 // [01/02 11:20] Adicionado receitaService e categoriaService para gestão financeira completa.
 export { receitaService } from './receita.service';
 export { categoriaService } from './categoria.service';
-export { parcelaService } from './parcela.service';
-export { dividaService } from './divida.service';
-export { emprestimoService } from './emprestimo.service';
-export { solvencyService } from './solvency.service';
 export { compraService } from './compra.service';
 export { fornecedorService } from './fornecedor.service';
 export { dashboardService } from './dashboard.service';
@@ -73,10 +69,6 @@ import { maquininhaService } from './maquininha.service';
 import { despesaService } from './despesa.service';
 import { receitaService } from './receita.service';
 import { categoriaService } from './categoria.service';
-import { parcelaService } from './parcela.service';
-import { dividaService } from './divida.service';
-import { emprestimoService } from './emprestimo.service';
-import { solvencyService } from './solvency.service';
 import { compraService } from './compra.service';
 import { fornecedorService } from './fornecedor.service';
 import { dashboardService } from './dashboard.service';
@@ -109,10 +101,6 @@ export const api = {
   despesa: despesaService,
   receita: receitaService,
   categoria: categoriaService,
-  parcela: parcelaService,
-  divida: dividaService,
-  emprestimo: emprestimoService,
-  solvency: solvencyService,
   compra: compraService,
   fornecedor: fornecedorService,
   dashboard: dashboardService,

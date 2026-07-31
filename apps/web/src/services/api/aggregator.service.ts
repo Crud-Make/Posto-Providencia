@@ -361,12 +361,15 @@ export const aggregatorService = {
         'fisico': '#eab308',
       };
 
-      // FuelData para gráfico
-      const fuelData = estoque.map(e => ({
-        name: e.combustivel?.nome || 'N/A',
-        volume: e.quantidade_atual,
-        maxCapacity: e.capacidade_tanque,
-        color: e.combustivel?.cor || coresCombs[e.combustivel?.codigo || ''] || '#888',
+      // FuelData para o gráfico "Volume Vendido": litros VENDIDOS no período, vindos
+      // das leituras. Antes vinha de `estoque.quantidade_atual` — o que sobrou no
+      // tanque, número de outra grandeza e ordem de magnitude, com o gráfico rotulado
+      // "Total de litros por combustível". Coberto por aggregator.dashboard.test.ts.
+      const fuelData = Object.values(porCombustivelVendas).map(v => ({
+        name: v.combustivel?.nome || 'N/A',
+        volume: v.litros,
+        maxCapacity: estoque.find(e => e.combustivel_id === v.combustivel?.id)?.capacidade_tanque ?? 0,
+        color: v.combustivel?.cor || coresCombs[v.combustivel?.codigo || ''] || '#888',
       }));
 
       // PaymentData real (agregado dos fechamentos ou pagamentos do dia)
@@ -683,7 +686,6 @@ export const aggregatorService = {
           status: (f.ativo ? 'Ativo' : 'Inativo') as 'Ativo' | 'Inativo',
           admissionDate: f.data_admissao || 'N/A',
           sinceDate: sinceDate,
-          cpf: f.cpf || 'XXX.XXX.XXX-XX',
           divergenceRate: divergenceRate,
           riskLevel: (divergenceRate <= 10 ? 'Baixo Risco' : divergenceRate <= 30 ? 'Médio Risco' : 'Alto Risco') as 'Baixo Risco' | 'Médio Risco' | 'Alto Risco',
           avatarColorClass: avatarColors[idx % avatarColors.length],

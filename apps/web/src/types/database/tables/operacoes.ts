@@ -10,7 +10,8 @@ import { DatabaseEnums } from '../enums'
 export interface FrentistaTable {
   Row: {
     ativo: boolean
-    cpf: string
+    /** @deprecated Feature descontinuada em 2026-07-30; coluna zerada em produção. */
+    cpf: string | null
     data_admissao: string
     id: number
     nome: string
@@ -20,7 +21,7 @@ export interface FrentistaTable {
   }
   Insert: {
     ativo?: boolean
-    cpf: string
+    cpf?: string | null
     data_admissao: string
     id?: number
     nome: string
@@ -30,7 +31,7 @@ export interface FrentistaTable {
   }
   Update: {
     ativo?: boolean
-    cpf?: string
+    cpf?: string | null
     data_admissao?: string
     id?: number
     nome?: string
