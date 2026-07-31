@@ -52,33 +52,6 @@ export const postoService = {
   },
 
   /**
-   * Busca postos vinculados a um usuário
-   * @param usuarioId - ID do usuário
-   */
-  async getByUser(usuarioId: number): Promise<ApiResponse<Posto[]>> {
-    try {
-      const { data, error } = await supabase
-        .from('UsuarioPosto')
-        .select(`
-          *,
-          posto:Posto(*)
-        `)
-        .eq('usuario_id', usuarioId)
-        .eq('ativo', true);
-
-      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
-
-      type UsuarioPostoComPosto = { posto: Posto | null };
-      const typedData = (data || []) as UsuarioPostoComPosto[];
-      const postos = typedData.map((up) => up.posto).filter((posto): posto is Posto => Boolean(posto));
-
-      return createSuccessResponse(postos);
-    } catch (err) {
-      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
-    }
-  },
-
-  /**
    * Lista todos os postos incluindo inativos
    */
   async getAllIncludingInactive(): Promise<ApiResponse<Posto[]>> {

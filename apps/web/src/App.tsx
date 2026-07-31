@@ -1,14 +1,11 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './contexts/useAuth';
 import { PostoProvider } from './contexts/PostoContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import UpdateNotifier from './shared/ui/UpdateNotifier';
 import MainLayout from './layouts/MainLayout';
-import TelaLogin from './components/TelaLogin';
 
 // Lazy loading das telas para melhor performance
 const TelaDashboard = React.lazy(() => import('./components/dashboard'));
@@ -39,12 +36,8 @@ const LoadingFallback = () => (
 );
 
 const AppRoutes = () => {
-  const { user } = useAuth();
-
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <TelaLogin />} />
-
       <Route element={<MainLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Suspense fallback={<LoadingFallback />}><TelaDashboard /></Suspense>} />
@@ -77,17 +70,15 @@ const AppRoutes = () => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <PostoProvider>
-        <ThemeProvider>
-          <Toaster position="top-right" richColors closeButton />
-          <UpdateNotifier />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </ThemeProvider>
-      </PostoProvider>
-    </AuthProvider>
+    <PostoProvider>
+      <ThemeProvider>
+        <Toaster position="top-right" richColors closeButton />
+        <UpdateNotifier />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </ThemeProvider>
+    </PostoProvider>
   );
 };
 

@@ -28,6 +28,9 @@ dist-ssr
 .vercel
 .env*.local
 
+# Grafo de conhecimento do graphify — carrega trechos de código e conteúdo de docs
+graphify-out/
+
 # Dados reais do posto — nunca versionar (planilhas, exports, dumps)
 docs/data/
 documentos/

@@ -3,19 +3,6 @@
  */
 
 /**
- * Resposta de autenticação mobile.
- */
-export interface MobileAuthResponse {
-    token: string;
-    user: {
-        id: string;
-        name: string;
-        role: 'admin' | 'manager' | 'attendant';
-        avatar: string;
-    };
-}
-
-/**
  * Notificação push para o app mobile.
  */
 export interface MobileNotification {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { bicoService, leituraService } from '../../../services/api';
-import { useAuth } from '../../../contexts/useAuth';
 import { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
+import { USUARIO_SISTEMA_ID } from '@shared/constants/usuario-sistema';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import type { PumpGroup } from '../types';
@@ -13,8 +13,6 @@ import type { PumpGroup } from '../types';
  * @returns Estados e funções para controle da tela de leituras
  */
 export function useLeiturasDiarias(postoAtivoId: number | null) {
-    const { user } = useAuth();
-
     // State
     const [bicos, setBicos] = useState<BicoComDetalhes[]>([]);
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -102,7 +100,7 @@ export function useLeiturasDiarias(postoAtivoId: number | null) {
                         leitura_final: final,
                         combustivel_id: bico.combustivel.id,
                         preco_litro: bico.combustivel.preco_venda,
-                        usuario_id: user?.id || 1,
+                        usuario_id: USUARIO_SISTEMA_ID,
                         posto_id: postoAtivoId,
                         turno_id: null
                     };

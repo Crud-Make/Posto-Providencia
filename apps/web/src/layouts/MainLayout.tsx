@@ -1,28 +1,13 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/useAuth';
+import { Outlet } from 'react-router-dom';
 import BarraLateral from '../components/BarraLateral';
 import Cabecalho from '../components/Cabecalho';
-import { Loader2 } from 'lucide-react';
 
 // [14/01 06:50] Criado Layout Principal para suportar React Router.
-// Contém a lógica de Sidebar e Header, além de proteger as rotas (Auth Guard).
+// Contém a lógica de Sidebar e Header.
 
 const MainLayout: React.FC = () => {
-  const { user, loading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-blue-600">
-        <Loader2 size={48} className="animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
