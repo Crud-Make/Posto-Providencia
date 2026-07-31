@@ -3,19 +3,21 @@ import { DadosFinanceiros } from '../hooks/useFinanceiro';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 /**
- * Props do componente IndicadoresPerformance.
+ * Props do componente DespesasPorCategoria.
  */
-interface IndicadoresPerformanceProps {
+interface DespesasPorCategoriaProps {
   /** Dados financeiros para análise */
   dados: DadosFinanceiros;
 }
 
 /**
- * Componente visual para indicadores de performance (KPIs detalhados).
- * 
- * Exibe gráfico de pizza com distribuição de despesas por categoria.
+ * Distribuição das despesas do período por categoria (Top 5), em gráfico de pizza.
+ *
+ * @remarks [31/07] Renomeado de `IndicadoresPerformance`. O nome antigo prometia KPIs de
+ *          performance e o componente sempre desenhou só despesas por categoria — o título
+ *          na tela já dizia isso desde o início.
  */
-export const IndicadoresPerformance: React.FC<IndicadoresPerformanceProps> = ({ dados }) => {
+export const DespesasPorCategoria: React.FC<DespesasPorCategoriaProps> = ({ dados }) => {
   const despesasPorCategoria = useMemo(() => {
     const mapa = new Map<string, number>();
     dados.transacoes
@@ -37,8 +39,8 @@ export const IndicadoresPerformance: React.FC<IndicadoresPerformanceProps> = ({ 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 mb-6">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Despesas por Categoria</h3>
+    <div className="bg-slate-900/40 rounded-2xl border border-slate-700/50 p-6 h-full">
+      <h3 className="text-lg font-bold text-white mb-6">Despesas por Categoria</h3>
       <div className="h-64">
         {despesasPorCategoria.length > 0 ? (
           <ResponsiveContainer width="99%" height="100%">
@@ -56,12 +58,20 @@ export const IndicadoresPerformance: React.FC<IndicadoresPerformanceProps> = ({ 
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(val: number) => formatCurrency(val)} />
+              <Tooltip
+                formatter={(val: number) => formatCurrency(val)}
+                contentStyle={{
+                  backgroundColor: '#1E293B',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#F1F5F9'
+                }}
+              />
               <Legend verticalAlign="bottom" height={36} />
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-full flex items-center justify-center text-gray-400">
+          <div className="h-full flex items-center justify-center text-slate-500">
             Sem dados de despesas
           </div>
         )}

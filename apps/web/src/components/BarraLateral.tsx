@@ -4,7 +4,6 @@ import {
   ShoppingCart,
   Users,
   Package,
-  Banknote,
   Settings,
   Fuel,
   ShoppingBag,
@@ -58,7 +57,8 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
     { path: '/clientes', label: 'Clientes / Fiado', icon: Users },
     { path: '/estoque/tanques', label: 'Tanques (Combustível)', icon: Fuel },
     { path: '/estoque/produtos', label: 'Produtos e Estoque', icon: Package },
-    { path: '/financeiro', label: 'Gestão Financeira', icon: Banknote },
+    // [31/07] "Gestão Financeira" (/financeiro) saiu daqui: virou a aba "Receitas e Despesas"
+    // dentro de Fechamento de Caixa, onde o caixa já é conferido. A rota antiga redireciona.
     { path: '/escalas', label: 'Escala e Folgas', icon: Calendar },
     { path: '/configuracoes', label: 'Configurações', icon: Settings },
   ] as const;

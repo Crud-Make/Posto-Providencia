@@ -3,6 +3,28 @@ import { TrendingUp, Calendar, MapPin } from 'lucide-react';
 import { Turno } from '../../../types/database/index';
 
 /**
+ * Abas do Fechamento de Caixa.
+ *
+ * @remarks [31/07] Extraído para cá porque a união estava escrita à mão em dois lugares
+ *          (props deste componente e estado do orquestrador) — adicionar aba exigia lembrar
+ *          de editar os dois. `AbaFechamento` agora é a fonte única.
+ *
+ *          `receitas-despesas` NÃO é `financeiro`: essa chave já pertence à aba "Fechamento
+ *          Financeiro", que trata das formas de pagamento do dia. Esta aqui é o painel de
+ *          lançamentos por período, herdado da antiga rota `/financeiro`.
+ */
+const ABAS = [
+    { chave: 'leituras', rotulo: '⛽ Leituras de Bomba', ativa: 'border-blue-500 text-blue-400' },
+    { chave: 'financeiro', rotulo: '💰 Fechamento Financeiro', ativa: 'border-emerald-500 text-emerald-400' },
+    { chave: 'detalhamento', rotulo: '👥 Detalhamento Frentistas', ativa: 'border-purple-500 text-purple-400' },
+    { chave: 'gestao-bicos', rotulo: '🚀 Gestão de Bicos', ativa: 'border-indigo-500 text-indigo-400' },
+    { chave: 'receitas-despesas', rotulo: '💵 Receitas e Despesas', ativa: 'border-cyan-500 text-cyan-400' },
+    { chave: 'fechamento-mensal', rotulo: '📅 Fechamento Mensal', ativa: 'border-yellow-500 text-yellow-400' }
+] as const;
+
+export type AbaFechamento = (typeof ABAS)[number]['chave'];
+
+/**
  * Componente de cabeçalho do Fechamento Diário
  * Contém seletores de data, turno e abas de navegação
  */
@@ -12,8 +34,8 @@ interface HeaderFechamentoProps {
     selectedTurno: number | null;
     setSelectedTurno: (id: number | null) => void;
     turnos: Turno[];
-    activeTab: 'leituras' | 'financeiro' | 'detalhamento' | 'gestao-bicos' | 'fechamento-mensal';
-    setActiveTab: (tab: 'leituras' | 'financeiro' | 'detalhamento' | 'gestao-bicos' | 'fechamento-mensal') => void;
+    activeTab: AbaFechamento;
+    setActiveTab: (tab: AbaFechamento) => void;
     postoNome?: string;
     loading?: boolean;
 }
@@ -85,52 +107,22 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
             {/* // [19/01 00:36] Ajuste de layout: Tabs agora usam largura total. */}
             {/* Motivo: Alinhar com o container principal sem max-width. */}
             {/* [20/01 11:30] Adição da aba Detalhamento Frentistas */}
-            <div className="w-full px-4 sm:px-6 lg:px-10 flex gap-2 mt-2 pb-0">
-                <button
-                    onClick={() => setActiveTab('leituras')}
-                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'leituras'
-                        ? 'border-blue-500 text-blue-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
-                        }`}
-                >
-                    ⛽ Leituras de Bomba
-                </button>
-                <button
-                    onClick={() => setActiveTab('financeiro')}
-                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'financeiro'
-                        ? 'border-emerald-500 text-emerald-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
-                        }`}
-                >
-                    💰 Fechamento Financeiro
-                </button>
-                <button
-                    onClick={() => setActiveTab('detalhamento')}
-                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'detalhamento'
-                        ? 'border-purple-500 text-purple-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
-                        }`}
-                >
-                    👥 Detalhamento Frentistas
-                </button>
-                <button
-                    onClick={() => setActiveTab('gestao-bicos')}
-                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'gestao-bicos'
-                        ? 'border-indigo-500 text-indigo-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
-                        }`}
-                >
-                    🚀 Gestão de Bicos
-                </button>
-                <button
-                    onClick={() => setActiveTab('fechamento-mensal')}
-                    className={`flex-1 md:flex-none px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === 'fechamento-mensal'
-                        ? 'border-yellow-500 text-yellow-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
-                        }`}
-                >
-                    📅 Fechamento Mensal
-                </button>
+            {/* [31/07] Os 6 botões viraram um map sobre ABAS: eram blocos idênticos a menos */}
+            {/* do rótulo e da cor, e a sexta aba tornaria a repetição cara de manter. */}
+            <div className="w-full px-4 sm:px-6 lg:px-10 flex gap-2 mt-2 pb-0 overflow-x-auto">
+                {ABAS.map(({ chave, rotulo, ativa }) => (
+                    <button
+                        key={chave}
+                        onClick={() => setActiveTab(chave)}
+                        aria-current={activeTab === chave ? 'page' : undefined}
+                        className={`flex-1 md:flex-none whitespace-nowrap px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === chave
+                            ? ativa
+                            : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                            }`}
+                    >
+                        {rotulo}
+                    </button>
+                ))}
             </div>
 
             {loading && (
