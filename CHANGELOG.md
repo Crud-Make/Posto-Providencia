@@ -29,6 +29,20 @@
   Abortar depois deixaria o dia pela metade (leituras antigas intactas, frentistas e recebimentos
   zerados). As leituras agora são excluídas primeiro e sozinhas; o resto só é tocado se elas saírem.
 
+### 🐛 "Auto-preencher dos Frentistas" dividia todo valor por mil
+- **[31/07/2026]** Achado na validação em `localhost:3015`. O botão trazia **R$ 7,44** onde deveria
+  trazer **R$ 7.436,00** — Pix R$ 2,44 no lugar de R$ 2.436,00, crédito R$ 1,30 no lugar de
+  R$ 1.300,00, e assim por diante.
+- **Causa:** `usePagamentos.ts:184` fazia `formatarValorAoSair(sum.toString())`. O `sum` já era o
+  número certo em reais, mas `formatarValorAoSair` chama `analisarValor`, que é **parser de
+  encerrante de bomba**: sem vírgula na string, ele assume os últimos 3 dígitos como decimais
+  (litros têm 3 casas). Então `"2436"` virava `2,436` e era formatado como R$ 2,44.
+- **Correção:** formatar direto com `paraReais(sum)`, sem passar por parser de texto digitado.
+- **Verificado na tela:** os 4 campos passaram a trazer 2.436,00 / 1.300,00 / 1.000,00 / 2.700,00,
+  total R$ 7.436,00, e o `Recebimento` gravou os mesmos valores no banco.
+- ⚠️ **`analisarValor` tem convenção de litro, não de dinheiro.** Todo uso dela sobre valor
+  monetário é suspeito e merece revisão à parte.
+
 ### ✅ Salvar um dia histórico dobrava os litros — CORRIGIDO
 - **[31/07/2026]** Fechado o item registrado logo abaixo, depois de o dono confirmar a regra:
   **o posto não trabalha por turno — é um encerrante por bico por dia, um a um.** A planilha diz o
