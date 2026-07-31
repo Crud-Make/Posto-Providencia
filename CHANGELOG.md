@@ -2,6 +2,28 @@
 
 ## [Não Lançado]
 
+### 🐛 Gráfico "Volume Vendido" plotava o estoque, não a venda
+- **[31/07/2026]** O gráfico do dashboard rotulado **"Volume Vendido — Total de litros por
+  combustível"** era alimentado por `estoque.quantidade_atual`: o que **sobrou no tanque**. Outra
+  grandeza e outra ordem de magnitude. Com 1.800 L vendidos e 13.000 L em tanque, o gráfico exibia
+  **13.000** — e não batia com o KPI de volume total logo ao lado, na mesma tela.
+- **Correção:** `fuelData` passa a sair de `porCombustivelVendas`, a mesma agregação de leituras que
+  alimenta o KPI. `maxCapacity` continua vindo do estoque (capacidade do tanque daquele combustível),
+  agora por `combustivel_id`; o `FuelVolumeChart` nunca o usou.
+- **Teste:** `aggregator.dashboard.test.ts` fixa estoque e venda em valores **propositalmente
+  distantes** (8.000/5.000 em tanque contra 1.500/300 vendidos), de modo que plotar a fonte errada
+  fica vermelho. O segundo caso amarra a soma do gráfico ao `kpis.totalVolume`.
+
+### ✅ A "baseline de 4 falhas pré-existentes" não existia — era o comando errado
+- **[31/07/2026]** Várias sessões carregaram a suíte como "4 fail / 1 error, pré-existentes, em
+  `fechamento-diario`". Não havia bug nenhum: `bun test` **puro** é o runner nativo do Bun, que varre
+  o repo e tenta executar os arquivos de **Vitest**, onde `vi` não existe. Os 4 arquivos que falhavam
+  eram exatamente os 4 de Vitest.
+- Comandos corretos: **`bun run test`** (Vitest) e **`bun run test:golden`** (golden masters), ambos
+  já presentes no `package.json`. Rodando assim: **287 golden + 30 Vitest, zero falhas.**
+- `CLAUDE.md` §7 e a Referência rápida corrigidos — a Referência mandava `bun test`, e era daí que o
+  erro se propagava a cada sessão nova.
+
 ### 🗑️ Empréstimo/dívida e coleta de CPF removidos — features descontinuadas
 - **[30/07/2026]** Duas funcionalidades descontinuadas por decisão do dono. A auditoria de RLS
   expôs o custo de mantê-las: `Frentista` guardava **9 CPFs e 7 telefones legíveis E graváveis por
