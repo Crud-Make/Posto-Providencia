@@ -24,6 +24,24 @@
   caminho novo esqueça a conferência, o banco recusa a duplicata.
 - **Verificado:** duplicata recusada por `unique_violation` em probe revertido contra produção;
   `type-check` limpo, `lint` limpo, **35 Vitest** e **287 golden** passando.
+- **A ordem das exclusões passou a importar:** as três eram disparadas juntas num `Promise.all`,
+  mas só `Leitura` tem janela de 7 dias — `FechamentoFrentista` e `Recebimento` apagam sempre.
+  Abortar depois deixaria o dia pela metade (leituras antigas intactas, frentistas e recebimentos
+  zerados). As leituras agora são excluídas primeiro e sozinhas; o resto só é tocado se elas saírem.
+
+### ⚠️ Conhecido e NÃO corrigido — salvar um dia histórico dobra os litros
+- **[31/07/2026]** Achado ao validar o item acima. **Bug pré-existente, anterior à trava de 7 dias.**
+- **270 das 276 linhas de `Leitura` têm `turno_id` NULL** — todo o histórico de 01/02 a 24/07, vindo
+  do ETL. A planilha não tem conceito de turno (chave `ano/mes/dia/bico`), então o NULL é fiel à
+  fonte. Só as 6 linhas de 26/07, gravadas pelo app, têm `turno_id = 1`.
+- **Consequência:** dia histórico não tem `Fechamento`, então salvá-lo pelo painel nem passa pelo
+  `DELETE` — cai no `else`, cria o fechamento e insere 6 linhas novas com `turno_id = 1` por cima
+  das 6 existentes com NULL. A agregação **não filtra turno** (`aggregator.service.ts:46,730,898`),
+  então soma as 12. Medido em probe revertido no dia 10/07: **litros 1.485,642 → 2.971,284**.
+- **O índice único não pega**, porque NULL e 1 são valores diferentes — e barrá-los seria proibir
+  turno legítimo. Também não adianta conferir o `DELETE`: não há `DELETE` nesse caminho.
+- **Conserto exige decisão de negócio** e por isso não foi feito: backfill de `turno_id = 1` nas 270
+  linhas do histórico, ou a agregação passar a tratar turno NULL e turno 1 como a mesma coisa.
 
 ### ✨ Barra lateral recolhível no desktop (☰)
 - **[31/07/2026]** No desktop (≥1024px) a barra lateral ocupava **256px fixos e não tinha como

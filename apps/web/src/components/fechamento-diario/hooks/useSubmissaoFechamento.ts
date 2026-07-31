@@ -85,18 +85,25 @@ export function useSubmissaoFechamento() {
          let fechamento;
          if (isSuccess(fechamentoRes) && fechamentoRes.data) {
             fechamento = fechamentoRes.data;
+
             // Limpar dados antigos para sobrescrever.
-            // O retorno de cada exclusão é conferido: um DELETE barrado pela RLS não vira
-            // erro do Supabase, e seguir daqui reinserindo duplicaria as leituras do dia.
-            const [leiturasRes, frentistasRes, recebimentosRes] = await Promise.all([
-               leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId),
+            //
+            // A exclusão das leituras vem PRIMEIRO e sozinha, de propósito: é a única das três
+            // barrada pela janela de 7 dias da RLS, e `FechamentoFrentista`/`Recebimento` não têm
+            // trava nenhuma. Em paralelo, um dia antigo perderia frentistas e recebimentos antes
+            // de descobrirmos que as leituras não saíram — o dia ficaria pela metade.
+            // Um DELETE barrado pela RLS não vira erro do Supabase: quem confere é o serviço,
+            // contando o que sobrou.
+            const leiturasRes = await leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId);
+            if (!isSuccess(leiturasRes)) {
+               throw new Error(leiturasRes.error || 'Erro ao limpar as leituras anteriores');
+            }
+
+            const [frentistasRes, recebimentosRes] = await Promise.all([
                fechamentoFrentistaService.deleteByFechamento(fechamento.id),
                recebimentoService.deleteByFechamento(fechamento.id)
             ]);
 
-            if (!isSuccess(leiturasRes)) {
-               throw new Error(leiturasRes.error || 'Erro ao limpar as leituras anteriores');
-            }
             if (!isSuccess(frentistasRes)) {
                throw new Error(frentistasRes.error || 'Erro ao limpar os frentistas anteriores');
             }
