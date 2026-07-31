@@ -102,7 +102,11 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
         id: fp.id,
         nome: fp.nome,
         tipo: fp.tipo,
-        valor: valoresSalvos[fp.id] ? formatarValorSimples(valoresSalvos[fp.id].toFixed(2)) : '',
+        // `paraReais` direto, NUNCA `formatarValorSimples(valor.toFixed(2))`: o `toFixed`
+        // produz ponto decimal ("2436.00") e `formatarValorSimples` trata todo ponto como
+        // separador de milhar — apagava o ponto, relia "243600" e devolvia "R$ 243.600".
+        // R$ 2.436,00 salvos voltavam como R$ 243.600 na tela.
+        valor: valoresSalvos[fp.id] ? paraReais(valoresSalvos[fp.id]) : '',
         taxa: fp.taxa || 0
       }));
 
