@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { despesaOperacionalPorLitro, margemPercentual } from '@posto/utils';
+import { hojeIso } from '../../../utils/periodo';
 import { supabase } from '../../../services/supabase';
 import { postoService, frentistaService } from '../../../services/api';
 import { DadosDashboard, PostoSummary, AlertaDashboard, ResumoFinanceiro } from '../types';
@@ -74,7 +75,11 @@ export function useDashboardProprietario(): UseDashboardReturn {
         return;
       }
 
-      const hoje = new Date().toISOString().split('T')[0];
+      // `hojeIso()`, NUNCA `new Date().toISOString()`: o posto está em GMT-3, então a
+      // partir das 21h locais o UTC já virou o dia seguinte. Com `toISOString()` a tela
+      // consultava 01/08 às 21h de 31/07 — e as DUAS abas zeravam, porque `inicioDoMes`
+      // também saltava para o mês novo. Todo dia, das 21h à meia-noite, o painel apagava.
+      const hoje = hojeIso();
       const inicioDoMes = `${hoje.slice(0, 7)}-01`;
 
       const summaries = await Promise.all(
@@ -135,12 +140,13 @@ async function buscarDespesas(postoId: number, inicio: string, fim: string): Pro
 }
 
 /**
- * Monta o resumo do período a partir da venda e das despesas já buscadas.
+ * Resumo do MÊS: as despesas lançadas no período entram inteiras.
  *
- * @remarks Exportada para teste. É o único lugar do painel onde a despesa é descontada —
- *          foi o desconto acontecendo em dois lugares que produziu o erro de 97%.
+ * @remarks Exportada para teste. É o único lugar do painel onde a despesa do mês é
+ *          descontada — foi o desconto acontecendo em dois lugares que produziu o erro
+ *          de 97%.
  */
-export function montarResumo(
+export function montarResumoDoMes(
   venda: VendaPeriodo,
   valoresDespesa: number[],
   frentistasAtivos: number
@@ -162,15 +168,53 @@ export function montarResumo(
   };
 }
 
+/**
+ * Resumo do DIA: a despesa que cabe ao dia é o rateio do mês vezes os litros do dia.
+ *
+ * @param rateioDoMes - Despesa operacional por litro apurada no mês inteiro.
+ *
+ * @remarks Somar as despesas *lançadas no dia* estaria errado, e de um jeito que engana
+ *          feio: despesa de posto é mensal (salário, energia, contador, imposto), lançada
+ *          numa data qualquer do mês. No dia do lançamento a tela mostraria o mês inteiro
+ *          de despesa contra a venda de um dia só — em 31/07/2026 isso dava R$ 18.585,76
+ *          de despesa contra R$ 0,00 de venda, "prejuízo" que nunca existiu. Nos outros
+ *          30 dias mostraria despesa zero e lucro inflado.
+ *
+ *          Ratear é o que a planilha faz e o que `@posto/utils/lucro` modela: o dia paga a
+ *          fatia dele do custo fixo, proporcional ao que vendeu.
+ */
+export function montarResumoDoDia(
+  venda: VendaPeriodo,
+  rateioDoMes: number,
+  temDespesaNoMes: boolean,
+  frentistasAtivos: number
+): ResumoFinanceiro {
+  const despesas = rateioDoMes * venda.litros;
+  const lucroReal = venda.lucroBruto - despesas;
+
+  return {
+    vendas: venda.vendas,
+    litros: venda.litros,
+    lucroBruto: venda.lucroBruto,
+    despesas,
+    rateioPorLitro: rateioDoMes,
+    lucroReal,
+    margemMedia: margemPercentual(lucroReal, venda.vendas),
+    temDespesa: temDespesaNoMes,
+    frentistasAtivos,
+  };
+}
+
 async function processarPosto(posto: Posto, hoje: string, inicioDoMes: string): Promise<PostoSummary> {
   const resFrentistas = await frentistaService.getAll(posto.id);
   const frentistas = isSuccess(resFrentistas) ? resFrentistas.data : [];
   const frentistasAtivos = frentistas.filter((f) => f.ativo).length;
 
-  const [vendaHoje, vendaMes, despesasHoje, despesasMes, pendentes, ultimoFech] = await Promise.all([
+  const [vendaHoje, vendaMes, despesasMes, pendentes, ultimoFech] = await Promise.all([
     buscarVendas(posto.id, hoje, hoje),
     buscarVendas(posto.id, inicioDoMes, hoje),
-    buscarDespesas(posto.id, hoje, hoje),
+    // Só as despesas do MÊS são buscadas: o dia recebe a fatia rateada, não os
+    // lançamentos daquela data — ver `montarResumoDoDia`.
     buscarDespesas(posto.id, inicioDoMes, hoje),
     supabase.from('Despesa').select('valor').eq('posto_id', posto.id).eq('status', 'pendente'),
     supabase
@@ -181,10 +225,12 @@ async function processarPosto(posto: Posto, hoje: string, inicioDoMes: string): 
       .limit(1),
   ]);
 
+  const resumoMes = montarResumoDoMes(vendaMes, despesasMes, frentistasAtivos);
+
   return {
     posto,
-    hoje: montarResumo(vendaHoje, despesasHoje, frentistasAtivos),
-    mes: montarResumo(vendaMes, despesasMes, frentistasAtivos),
+    hoje: montarResumoDoDia(vendaHoje, resumoMes.rateioPorLitro, resumoMes.temDespesa, frentistasAtivos),
+    mes: resumoMes,
     despesasPendentes: (pendentes.data ?? []).reduce((acc, d) => acc + Number(d.valor ?? 0), 0),
     ultimoFechamento: ultimoFech.data?.[0]?.data ?? null,
   };
