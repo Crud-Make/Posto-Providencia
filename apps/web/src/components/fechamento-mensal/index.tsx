@@ -5,6 +5,7 @@ import { leituraService } from '../../services/api';
 import { TrendingUp, Calendar, DollarSign, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, PieChart, Pie } from 'recharts';
+import { mesAtualIso } from '@posto/utils';
 
 interface FechamentoMensalProps {
     isEmbedded?: boolean;
@@ -48,7 +49,9 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
     const [, setError] = useState<string | null>(null);
     const [temDadosPendentes, setTemDadosPendentes] = useState(false);
 
-    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+    // `mesAtualIso()`: `toISOString().slice(0,7)` pulava o MÊS inteiro na virada — às 21h
+    // de 31/07 a tela abria já em agosto, vazia.
+    const [selectedMonth, setSelectedMonth] = useState(mesAtualIso());
 
     // Stats calculations
     const totalizers = useMemo(() => {

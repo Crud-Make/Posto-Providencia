@@ -4,14 +4,15 @@ import { notaFrentistaService, frentistaService } from '../../../services/api';
 import { isSuccess } from '../../../types/ui/response-types';
 import { Frentista } from '../../../types/database/index';
 import { NotaFormData, NotaFrentistaComRelacoes } from '../types';
+import { hojeIso } from '@posto/utils';
 
 const INITIAL_FORM_DATA: NotaFormData = {
     valor: '',
     descricao: '',
-    data: new Date().toISOString().split('T')[0],
+    data: hojeIso(),
     frentista_id: '',
     jaPaga: false,
-    dataPagamento: new Date().toISOString().split('T')[0],
+    dataPagamento: hojeIso(),
     formaPagamento: 'DINHEIRO'
 };
 

@@ -4,6 +4,7 @@ import { leituraService, estoqueService } from '../../../../services/api';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
 import { isSuccess } from '../../../../types/ui/response-types';
+import { paraIsoLocal } from '@posto/utils';
 
 // Color mapping for fuels
 const FUEL_COLORS: Record<string, string> = {
@@ -49,8 +50,8 @@ export const useDashboardVendas = () => {
 
       // Fetch sales summary for the month
       const resLeituras = await leituraService.getByDateRange(
-        startDate.toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0],
+        paraIsoLocal(startDate),
+        paraIsoLocal(endDate),
         postoAtivoId
       );
 

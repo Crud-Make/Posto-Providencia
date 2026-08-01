@@ -4,6 +4,7 @@ import { isSuccess } from '../../../types/ui/response-types';
 import { usePosto } from '../../../contexts/usePosto';
 import { Despesa, DespesaFormData } from '../types';
 import { toast } from 'sonner';
+import { hojeIso } from '@posto/utils';
 
 export const useDespesas = () => {
     const { postoAtivoId } = usePosto();
@@ -78,7 +79,7 @@ export const useDespesas = () => {
 
     const toggleStatus = async (expense: Despesa) => {
         const newStatus = expense.status === 'pendente' ? 'pago' : 'pendente';
-        const newDataPagamento = newStatus === 'pago' ? new Date().toISOString().split('T')[0] : null;
+        const newDataPagamento = newStatus === 'pago' ? hojeIso() : null;
 
         try {
             await despesaService.update(Number(expense.id), {

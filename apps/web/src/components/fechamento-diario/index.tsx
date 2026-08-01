@@ -47,12 +47,13 @@ import FechamentoMensal from '../fechamento-mensal';
 import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
+import { hojeIso } from '@posto/utils';
 
 const TelaFechamentoDiario: React.FC = () => {
    const { postoAtivoId, postoAtivo } = usePosto();
 
    // --- Estados de Contexto da Tela ---
-   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+   const [selectedDate, setSelectedDate] = useState<string>(hojeIso());
    const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
    const [activeTab, setActiveTab] = useState<AbaFechamento>('leituras');
    const [observacoes] = useState<string>('');

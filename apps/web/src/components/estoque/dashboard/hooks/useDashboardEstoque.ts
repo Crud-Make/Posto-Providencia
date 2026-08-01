@@ -4,6 +4,7 @@ import { tanqueService } from '../../../../services/api';
 import { Tanque } from '../../../../services/api/tanque.service';
 import { TankHistory } from '../types';
 import { isSuccess } from '../../../../types/ui/response-types';
+import { hojeIso } from '@posto/utils';
 
 export const useDashboardEstoque = () => {
   const { postoAtivoId } = usePosto();
@@ -85,7 +86,7 @@ export const useDashboardEstoque = () => {
       try {
         await tanqueService.saveHistory({
           tanque_id: selectedTanque.id,
-          data: new Date().toISOString().split('T')[0],
+          data: hojeIso(),
           volume_fisico: novoValor
         });
       } catch {

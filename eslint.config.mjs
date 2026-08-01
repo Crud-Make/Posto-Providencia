@@ -50,6 +50,24 @@ export default [
       "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }],
       "@typescript-eslint/no-empty-object-type": "error",
       "@typescript-eslint/ban-ts-comment": "error",
+      // Data de calendário NUNCA sai de `toISOString()`. O posto está em GMT-3: a partir
+      // das 21h locais o UTC já é o dia seguinte, então `.split('T')[0]` devolve amanhã e
+      // `.slice(0, 7)` pula o mês na virada. Isso apagou o painel do proprietário inteiro
+      // todas as noites (das 21h à meia-noite) até 31/07/2026. Use `hojeIso()` /
+      // `paraIsoLocal()` de `apps/web/src/utils/periodo.ts`.
+      //
+      // A regra mira só a extração de data/mês. `toISOString()` inteiro em campo de
+      // INSTANTE (`created_at`, `ultima_atualizacao`, `timestamp`) continua correto — ali
+      // UTC é exatamente o que se quer.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.object.callee.property.name='toISOString'][callee.property.name=/^(split|slice|substring|substr)$/]",
+          message:
+            "Data de calendário via toISOString() usa UTC e pula um dia depois das 21h (GMT-3). Use hojeIso()/paraIsoLocal() de utils/periodo.",
+        },
+      ],
       "react-hooks/set-state-in-effect": "error",
       "react-hooks/exhaustive-deps": "error",
       "react-hooks/static-components": "error",

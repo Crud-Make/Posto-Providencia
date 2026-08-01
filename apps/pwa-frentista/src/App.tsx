@@ -12,6 +12,7 @@ import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
 import EncerranteScreen from './screens/EncerranteScreen';
 import ReloadPrompt from './components/ReloadPrompt';
+import { hojeIso } from '@posto/utils';
 
 type TabType = 'registro' | 'vendas' | 'historico' | 'encerrante' | 'perfil';
 
@@ -102,7 +103,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     debito: '',
     credito: ''
   });
-  const [dataFechamento, setDataFechamento] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dataFechamento, setDataFechamento] = useState(() => hojeIso());
 
   const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTotalVendido(formatCurrency(e.target.value));

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, Camera, Check, AlertCircle, Loader2, Gauge, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
+import { hojeIso } from '@posto/utils';
 
 interface EncerranteProps {
     frentistaId: number;
@@ -238,7 +239,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
 
         setEnviando(true);
         try {
-            const data = new Date().toISOString().split('T')[0];
+            const data = hojeIso();
             await api.salvarLeituras({ postoId: POSTO_ID, data, linhas });
             setFeedback({ tipo: 'ok', msg: `${linhas.length} leituras enviadas com sucesso!` });
             setTemLeitura(false);

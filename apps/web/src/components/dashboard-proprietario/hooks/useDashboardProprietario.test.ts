@@ -43,6 +43,7 @@ describe('data do período — fuso horário', () => {
         const inicioDoMes = `${hoje.slice(0, 7)}-01`;
 
         // O que o código fazia antes — anotado para deixar o erro visível.
+        // eslint-disable-next-line no-restricted-syntax -- reproduz o bug de propósito
         expect(new Date().toISOString().split('T')[0]).toBe('2026-08-01');
 
         // O que ele faz agora.

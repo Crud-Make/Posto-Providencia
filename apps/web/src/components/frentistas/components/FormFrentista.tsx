@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { PerfilFrentista, DadosFormularioFrentista } from '../types';
+import { hojeIso } from '@posto/utils';
 
 interface FormFrentistaProps {
     frentista: PerfilFrentista | null;
@@ -14,12 +15,12 @@ const criarFormDataInicial = (frentista: PerfilFrentista | null): DadosFormulari
     frentista
         ? {
             nome: frentista.nome,
-            data_admissao: frentista.dataAdmissao?.split('T')[0] || new Date().toISOString().split('T')[0],
+            data_admissao: frentista.dataAdmissao?.split('T')[0] || hojeIso(),
             ativo: frentista.status === 'Ativo'
         }
         : {
             nome: '',
-            data_admissao: new Date().toISOString().split('T')[0],
+            data_admissao: hojeIso(),
             ativo: true
         };
 

@@ -5,6 +5,7 @@ import { USUARIO_SISTEMA_ID } from '@shared/constants/usuario-sistema';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import type { PumpGroup } from '../types';
+import { hojeIso } from '@posto/utils';
 
 /**
  * Hook para gerenciar a lógica de registro de leituras diárias.
@@ -15,7 +16,7 @@ import type { PumpGroup } from '../types';
 export function useLeiturasDiarias(postoAtivoId: number | null) {
     // State
     const [bicos, setBicos] = useState<BicoComDetalhes[]>([]);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(hojeIso());
     const [loadingBicos, setLoadingBicos] = useState(true);
     const [saving, setSaving] = useState(false);
     const [msgErro, setMsgErro] = useState<string | null>(null);

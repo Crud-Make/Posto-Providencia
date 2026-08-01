@@ -2,6 +2,38 @@
 
 ## [Não Lançado]
 
+### 🕒 Varredura de fuso: 41 lugares convertiam data de calendário via UTC
+- **[31/07/2026]** Depois de o painel do proprietário ser encontrado apagado às 21h37, varri o
+  monorepo inteiro. O padrão `toISOString().split('T')[0]` (e `.slice(0,7)`) aparecia em **41
+  pontos** de `apps/web` e `apps/pwa-frentista`.
+- **Nem toda ocorrência era bug.** Classificação medida, não presumida, com o relógio fixo em
+  31/07 às 21h37 (GMT-3):
+
+  | padrão | veredito |
+  | --- | --- |
+  | `new Date()` (agora) → dia/mês | **BUG** — devolvia `2026-08-01` e `2026-08` |
+  | aritmética sobre *agora* → dia | **BUG** — carrega a hora 21:37 junto |
+  | `new Date(ano, mês, dia)` → dia | seguro em GMT-3 (meia-noite local = 03:00Z, mesmo dia) |
+  | `toISOString()` inteiro em `created_at`/`ultima_atualizacao` | **correto** — ali UTC é o que se quer |
+
+- **O espelho do erro, na leitura:** `new Date('2026-07-31')` é parseado como meia-noite **UTC**,
+  que em GMT-3 é **21h do dia 30**. `useFluxoCaixa` fazia isso e depois chamava `getDate()`/
+  `getDay()` — o agrupamento semanal do gráfico saía deslocado um dia.
+- **Telas que apagavam ou erravam entre 21h e meia-noite:** Fechamento de Caixa (data inicial),
+  Fechamento Mensal (abria já no mês seguinte, vazio), Leituras Diárias, Relatório Diário,
+  Dashboard de Estoque, filtros de Receitas e Despesas (inclusive o preset "hoje"), Registro de
+  Compras, formulários de Despesa/Receita/Frentista/Nota/Pagamento, e o PWA do frentista
+  (data do encerrante).
+- **Primitivas mudaram-se para `packages/utils/src/data-local.ts`:** `hojeIso`, `paraIsoLocal`,
+  `paraMesLocal`, `deIsoLocal`, `mesAtualIso`, `primeiroDiaDoMes`, `ultimoDiaDoMes`, `somarDias`.
+  Os helpers viviam em `apps/web/src/utils/periodo.ts`, e o PWA sofria do mesmo bug sem poder
+  importá-los (§2: apps nunca se importam). `periodo.ts` passa a reexportá-los.
+- **Trava automática:** regra `no-restricted-syntax` no ESLint barra o padrão no CI, com a mensagem
+  explicando o porquê. Mira só a extração de data/mês — `toISOString()` em campo de instante
+  continua livre. Instrução é forte, portão automático é garantia (§14).
+- **Verificado:** lint limpo, `type-check` limpo, build dos **dois** apps, **71 Vitest** (10 novos
+  em `data-local.test.ts`) e **308 golden**, zero falhas.
+
 ### 💰 `/proprietario` passa a mostrar LUCRO REAL — e some um erro de 97%
 - **[31/07/2026]** A tela do dono exibia "Resultado Líquido Est." como `lucroEstimado − despesas`,
   onde `lucroEstimado` era o `lucro_liquido` da RPC `get_dashboard_proprietario` — **que já vinha

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { hojeIso } from '@posto/utils';
 
 /** Payload enviado por App.tsx ao fechar o turno do frentista (shape de FechamentoFrentista.Insert). */
 interface FechamentoFrentistaPayload {
@@ -251,7 +252,7 @@ export const api = {
 
     /** Busca vendas de produtos do dia por frentista */
     async getVendasProdutoHoje(frentistaId: number) {
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = hojeIso();
         const { data, error } = await supabase
             .from('VendaProduto')
             .select(`
