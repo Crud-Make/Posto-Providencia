@@ -16,7 +16,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:golden": "bun test packages/utils/src/fechamento.golden.spec.ts packages/utils/src/lucro.golden.spec.ts packages/utils/src/encerrante-mensal.golden.spec.ts"
+    "test:golden": "bun test packages/utils/src/*.golden.spec.ts"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.6",

@@ -6,4 +6,5 @@
 export * from './formatters';
 export * from './fechamento';
 export * from './lucro';
+export * from './despesa';
 export * from './encerrante-mensal';
