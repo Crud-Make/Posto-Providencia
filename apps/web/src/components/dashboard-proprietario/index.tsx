@@ -67,7 +67,9 @@ const TelaDashboardProprietario: React.FC = () => {
       <div className="text-center text-sm text-gray-400 dark:text-gray-500 py-4 border-t border-gray-100 dark:border-gray-800">
         <p>
           💡 Visualizando dados de: <strong>{periodo === 'hoje' ? 'Hoje' : 'Mês Corrente'}</strong>.
-          Os valores de lucro são estimativas baseadas na margem média cadastrada.
+          {/* [31/07] A frase antiga dizia "estimativas baseadas na margem média cadastrada". */}
+          {/* Não era verdade: o lucro sai da receita real menos o custo de compra real. */}
+          {' '}Lucro apurado da receita real menos o custo de compra e as despesas lançadas.
         </p>
         <p className="text-xs mt-1 opacity-70">
           Última atualização: {new Date(dados.ultimaAtualizacao).toLocaleTimeString()}

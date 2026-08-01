@@ -1,5 +1,6 @@
 import React from 'react';
 import { DollarSign, TrendingUp, Users } from 'lucide-react';
+import { formatCurrency } from '@posto/utils';
 import { ResumoFinanceiro } from '../types';
 
 interface ResumoExecutivoProps {
@@ -7,15 +8,6 @@ interface ResumoExecutivoProps {
 }
 
 export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados }) => {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value);
-  };
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Vendas Hoje */}
@@ -35,14 +27,18 @@ export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados }) => {
       {/* Lucro Estimado */}
       <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white animate-in fade-in zoom-in duration-300 delay-100">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-green-100 text-sm font-medium font-display uppercase tracking-wider">Lucro Est. Hoje</span>
+          <span className="text-green-100 text-sm font-medium font-display uppercase tracking-wider">
+            {dados.temDespesa ? 'Lucro Real Hoje' : 'Lucro Bruto Hoje'}
+          </span>
           <div className="p-2 bg-white/20 rounded-lg">
             <TrendingUp className="w-5 h-5" />
           </div>
         </div>
-        <p className="text-3xl font-bold font-finance tracking-tight">{formatCurrency(dados.lucroEstimado)}</p>
+        <p className="text-3xl font-bold font-finance tracking-tight">{formatCurrency(dados.lucroReal)}</p>
         <p className="text-green-200 text-sm mt-1">
-          Margem média: {dados.margemMedia.toFixed(1)}%
+          {dados.temDespesa
+            ? `Margem real: ${dados.margemMedia.toFixed(1)}%`
+            : 'Sem despesa lançada — valor bruto'}
         </p>
       </div>
 

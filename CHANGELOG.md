@@ -2,6 +2,46 @@
 
 ## [Não Lançado]
 
+### 💰 `/proprietario` passa a mostrar LUCRO REAL — e some um erro de 97%
+- **[31/07/2026]** A tela do dono exibia "Resultado Líquido Est." como `lucroEstimado − despesas`,
+  onde `lucroEstimado` era o `lucro_liquido` da RPC `get_dashboard_proprietario` — **que já vinha
+  líquido de despesa**. A despesa era descontada duas vezes.
+- **Ficou dormente por meses porque a tabela `Despesa` estava vazia** (subtrair zero duas vezes não
+  muda nada). Ao carregar julho/2026 (R$ 18.585,76), o resultado exibido cairia de **R$ 19.084,23
+  para R$ 440,96** — 97,7% de erro. O bug foi corrigido junto com a carga, antes de aparecer.
+- **A fórmula agora é a canônica:** `lucro_real = lucro_bruto − despesas_do_período`, que é a mesma
+  coisa que ratear a despesa por litro e descontar bico a bico (distributiva). O rateio aparece na
+  tela como número exibido (R$/L), não como etapa de cálculo.
+- **Não usa mais o `lucro_liquido` da RPC**, embora ele exista: a RPC desconta, além das despesas,
+  uma taxa de cartão por transação (`DÉBITO × 1,2%`, `CRÉDITO × 3,5%`, chumbadas no SQL). Isso
+  contradiz `packages/utils/src/lucro.ts:11-12` — no modelo da planilha a taxa de cartão é item da
+  lista de despesas mensais, não dedução por transação. Descontar dos dois jeitos conta duas vezes.
+  Em julho a diferença é R$ 57,50: pequena, mas é erro de modelo.
+- **Ausência de despesa agora aparece como ausência.** Sem lançamento no período a tela avisa que o
+  valor é bruto, não real, em vez de exibir lucro inflado. Alerta gerencial novo para o mesmo caso.
+- **A frase do rodapé era falsa:** dizia "estimativas baseadas na margem média cadastrada". O lucro
+  sempre saiu da receita real menos o custo de compra real.
+- **Margem do consolidado** passou a sair dos totais; era média simples das margens de cada posto,
+  que ignora o peso de cada um e devolve número que não existe.
+- **Coberto por teste:** `useDashboardProprietario.test.ts` trava a dupla contagem com os números
+  reais de julho, e o golden `lucro-real.golden.spec.ts` trava a fórmula.
+
+### 📊 Carga de julho/2026 em produção
+- **[31/07/2026]** `Despesa` estava **vazia** em produção, e `Compra` e `Receita` também.
+  Sem despesa, o rateio caía no fallback chumbado `0,45/L` (`aggregator.service.ts:55`) — número
+  fabricado, contra o §6.
+- **Inseridas 11 despesas de julho** (R$ 18.585,76), da aba trimestral da planilha. Somam exatamente
+  o `__TOTAL__` da própria planilha. Identificáveis por
+  `observacoes = 'ETL planilha 2026 — aba trimestral 07/2026'`.
+- **Custo e preço de venda estavam parados em janeiro.** Atualizados para julho: Gasolina Comum
+  5,802 / 6,98 · Aditivada 5,845 / 6,98 · Etanol 3,706 / 4,98 · Diesel 6,190 / 7,38. O custo velho
+  sozinho inflava o lucro de julho em **54,8%**.
+- **Conferido contra o golden:** recortando produção no mesmo período do ETL (até 24/07), o banco
+  devolve **R$ 18.272,33** contra **R$ 18.272,31** do golden — 2 centavos de arredondamento.
+  Julho fechado (até 27/07): **R$ 19.084,23**, margem 8,83%, rateio R$ 0,5745/L.
+- ⚠️ **Só julho foi carregado.** Fevereiro tem leitura em produção mas nenhuma despesa, e os outros
+  5 meses não têm leitura. O painel avisa quando falta despesa no período.
+
 ### ♻️ "Gestão Financeira" saiu da barra lateral e virou aba do Fechamento de Caixa
 - **[31/07/2026]** Reorganização de navegação. Lançar receita e despesa é operação de caixa, mas
   vivia numa rota própria (`/financeiro`), a dois cliques de onde o caixa é conferido.
