@@ -243,23 +243,15 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     );
   }
 
-  // Tela de Encerrante (OCR do papel de leituras)
+  // Tela de Encerrante (OCR do papel de leituras).
+  // Não exige frentista: o encerrante é a leitura da bomba, não pertence a
+  // ninguém — `Leitura` não tem coluna de frentista. Exigir a seleção era só
+  // cerimônia travando o envio (pedido do dono, 02/08).
   if (activeTab === 'encerrante') {
-    if (!selectedFrentista) {
-      return (
-        <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
-          <ReloadPrompt />
-          <Camera size={48} className="text-slate-600 mb-4" />
-          <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
-          <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
-          {renderBottomNav()}
-        </div>
-      );
-    }
     return (
       <>
         <ReloadPrompt />
-        <EncerranteScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
+        <EncerranteScreen frentistaNome={selectedFrentista?.nome} onVoltar={() => setActiveTab('registro')} />
         {renderBottomNav()}
       </>
     );
