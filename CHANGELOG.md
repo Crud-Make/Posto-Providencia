@@ -2,6 +2,27 @@
 
 ## [Não Lançado]
 
+### 🔧 Tipos do Supabase regenerados — e o arquivo errado estava sendo culpado
+- **[02/08/2026]** O aviso registrado na entrada da RLS abaixo apontava
+  `packages/types/src/database.types.ts` como fora de sincronia. Está mesmo — mas **esse arquivo é
+  código morto**: nenhum import o alcança (`packages/types/src/index.ts` exporta `./database`, a
+  pasta, não ele). O arquivo que tipa o client de verdade é
+  **`apps/web/src/types/database/generated.ts`**, via `apps/web/src/services/supabase.ts`.
+- **Regenerado o arquivo vivo** contra o banco: +346/−37 linhas.
+  - **Tabelas que o código não conhecia:** `AuditoriaDados` (criada na trava de 31/07),
+    `CategoriaFinanceira` e outras.
+  - **`Frentista.cpf` era `string` obrigatório, virou `string | null`** — reflexo da migração
+    `20260730_zera_cpf_frentista`. O type-check passa, então nenhum código assumia não-nulo.
+  - **`get_fechamento_mensal` tinha overload duplicado** herdado de antes de
+    `remove_duplicate_get_fechamento_mensal`; sumiu.
+- Gerado pelo MCP do Supabase — **não há `supabase` CLI nesta máquina**; é o mesmo gerador.
+- Portão completo verde com os tipos novos: lint, `type-check`, 71 Vitest, 308 golden, build dos 2 apps.
+- ⚠️ **Pendência de decisão, não de bug:** `packages/types/src/database.types.ts` (1611 linhas,
+  morto e desatualizado) ou vira o tipo canônico do monorepo — como o §1 do `CLAUDE.md` sugere — ou
+  é apagado. Hoje só serve para enganar quem o lê primeiro; foi exatamente o que aconteceu aqui.
+- O PWA cria o client **sem generic** (`createClient(URL, KEY)` em `apps/pwa-frentista/src/lib/supabase.ts`),
+  então não tem tipagem de banco nenhuma. Fora do escopo deste commit.
+
 ### 🔧 `actions/checkout` sobe para v5
 - **[02/08/2026]** O CI vinha avisando em toda execução: `actions/checkout@v4` declara Node 20, que
   o GitHub depreciou, e o runner já estava **forçando Node 24** por cima. O aviso não quebrava o
