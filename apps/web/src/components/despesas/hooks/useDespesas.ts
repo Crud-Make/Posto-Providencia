@@ -103,11 +103,14 @@ export const useDespesas = () => {
 
     // Stats
     const totalPending = expenses.filter(e => e.status === 'pendente').reduce((sum, e) => sum + e.valor, 0);
-    const totalPaidThisMonth = expenses.filter(e => {
-        const d = new Date(e.data);
-        const now = new Date();
-        return e.status === 'pago' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).reduce((sum, e) => sum + e.valor, 0);
+    // Compara `aaaa-mm` como string, sem construir Date: `new Date('2026-08-01')`
+    // é lido como UTC meia-noite e, em GMT-3, retrocede para 31/07 — a despesa
+    // lançada no dia 1º sairia do mês corrente, e a do último dia do mês entraria
+    // no mês anterior. Mesmo defeito que apagava o painel às 21h.
+    const mesCorrente = hojeIso().slice(0, 7);
+    const totalPaidThisMonth = expenses
+        .filter(e => e.status === 'pago' && e.data?.slice(0, 7) === mesCorrente)
+        .reduce((sum, e) => sum + e.valor, 0);
 
     return {
         expenses,
