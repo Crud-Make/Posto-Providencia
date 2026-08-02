@@ -5,6 +5,30 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/higiene.py\"",
+            "timeout": 20,
+            "statusMessage": "Conferindo saúde do ferramental"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/roteia-consulta.py\"",
+            "timeout": 10,
+            "statusMessage": "Encaminhando para o agente certo"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit|NotebookEdit",
@@ -31,6 +55,25 @@
             "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/protege-dados.py\"",
             "timeout": 10,
             "statusMessage": "Conferindo fonte auditável"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/checklist-commit.py\"",
+            "timeout": 10,
+            "statusMessage": "Conferindo checklist de commit"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/portao-golden.py\"",
+            "timeout": 10,
+            "statusMessage": "Conferindo cobertura de golden master"
           }
         ]
       }

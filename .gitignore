@@ -77,3 +77,7 @@ scripts/
 !.claude/hooks/
 !.claude/settings.json
 .trae/
+
+# Bytecode dos hooks — artefato de execução, nunca fonte.
+__pycache__/
+*.pyc
