@@ -9,6 +9,8 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import { deIsoLocal } from '@posto/utils';
+import { formatarDataBR } from '../../../utils/periodo';
 import { SerieFluxoCaixa } from '../hooks/useFluxoCaixa';
 
 /**
@@ -30,9 +32,17 @@ export const GraficoFluxoCaixa: React.FC<GraficoFluxoCaixaProps> = ({ series, al
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
 
+  /**
+   * Rótulo `dd/mm` do eixo.
+   *
+   * @remarks `deIsoLocal`, NUNCA `new Date(iso)`: a string `aaaa-mm-dd` é lida
+   *          como UTC meia-noite e, em GMT-3, volta um dia. O eixo exibia 30/07
+   *          para o lançamento de 31/07, e o mesmo acontecia em todo fim de mês.
+   *          Mesma família do bug que apagava o painel às 21h.
+   */
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const date = deIsoLocal(dateStr.slice(0, 10));
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
   };
 
   if (series.length === 0) {
@@ -73,7 +83,7 @@ export const GraficoFluxoCaixa: React.FC<GraficoFluxoCaixaProps> = ({ series, al
             />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
-              labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+              labelFormatter={(label: string) => formatarDataBR(label.slice(0, 10))}
               contentStyle={{
                 backgroundColor: '#1E293B',
                 border: '1px solid #334155',

@@ -2,6 +2,33 @@
 
 ## [Não Lançado]
 
+### 🧹 Removida a tela órfã `/despesas` — e destravado o caminho que sobrou
+- **[02/08/2026]** `/despesas` existia, funcionava e **nunca esteve no menu**: só se chegava
+  digitando a URL. O caminho oficial é **Fechamento de Caixa → aba "💵 Receitas e Despesas"**,
+  decisão de 31/07 que aposentou a "Gestão Financeira". Manter as duas dava dois lugares para a
+  mesma coisa, com vocabulários de categoria diferentes. A rota agora **redireciona** para
+  `/fechamento` em vez de sumir — quem tiver o link salvo não cai em página branca.
+- ⚠️ **Antes de apagar, o caminho novo estava com um bloqueio silencioso.** Três categorias com
+  **R$ 85.121,48** já lançados não existiam no seletor da aba oficial, então o dono não conseguiria
+  lançar nelas:
+
+  | Categoria | Lançamentos | Total | Situação |
+  |---|---:|---:|---|
+  | Outros | 32 | 72.406,02 | cadastro tinha `Outros (Despesa)` — **nome diferente** |
+  | Contabilidade | 7 | 10.525,46 | não existia |
+  | Encargos Sociais | 2 | 2.190,00 | não existia |
+
+  O `Outros` era o pior: mesma categoria com dois nomes partiria o gráfico em duas fatias, e o
+  **default do formulário já era `'Outros'`** — exatamente o nome ausente. `CategoriaFinanceira`
+  foi alinhada (renomeado + 2 inseridas): **9 de 9 categorias em uso agora existem no seletor.**
+- ⚠️ **A pasta NÃO foi apagada inteira.** `FormDespesa.tsx` e `types.ts` continuam: a aba oficial
+  importa os dois, e `relatorio-diario` importa o tipo `Despesa`. Apagar a pasta quebraria os dois
+  — o modal que o dono usa para lançar despesa mora ali.
+- **Mesmo bug de fuso encontrado na aba oficial e corrigido:** `GraficoFluxoCaixa` usava
+  `new Date(iso).toLocaleDateString()` no eixo e no tooltip, exibindo **30/07 para o lançamento de
+  31/07**. Trocado por `deIsoLocal`/`formatarDataBR`. A correção equivalente que eu tinha feito em
+  `TabelaDespesas` foi embora junto com a tela órfã — o defeito real estava aqui também.
+
 ### 🧾 Corrigido em produção o preço digitado errado em 14/03/2026
 - **[02/08/2026]** Naquele dia a gasolina (comum e aditivada) estava lançada a **R$ 9,98/L**. O preço
   correto é **6,98** — 9 digitado no lugar de 6. Corrigidas **4 linhas** de `Leitura` (bicos 7, 8, 11

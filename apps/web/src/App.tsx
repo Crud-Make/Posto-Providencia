@@ -23,7 +23,6 @@ const TelaGestaoFrentistas = React.lazy(() => import('./components/frentistas'))
 const TelaConfiguracoes = React.lazy(() => import('./components/configuracoes').then(module => ({ default: module.TelaConfiguracoes })));
 const TelaGestaoEscalas = React.lazy(() => import('./components/TelaGestaoEscalas'));
 const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGestaoClientes'));
-const TelaGestaoDespesas = React.lazy(() => import('./components/despesas'));
 const TelaFechamentoMensal = React.lazy(() => import('./components/fechamento-mensal'));
 const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
 
@@ -57,7 +56,14 @@ const AppRoutes = () => {
         <Route path="/configuracoes" element={<Suspense fallback={<LoadingFallback />}><TelaConfiguracoes /></Suspense>} />
         <Route path="/escalas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoEscalas /></Suspense>} />
         <Route path="/clientes" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoClientes /></Suspense>} />
-        <Route path="/despesas" element={<Suspense fallback={<LoadingFallback />}><TelaGestaoDespesas /></Suspense>} />
+        {/* [02/08] `/despesas` REMOVIDA. Era tela orfã: existia, funcionava, mas nunca
+            esteve no menu — só se chegava digitando a URL. O caminho oficial para o dono
+            lançar despesa é Fechamento de Caixa → aba "💵 Receitas e Despesas", decisão de
+            31/07 que aposentou a "Gestão Financeira". Manter as duas dava dois lugares para
+            a mesma coisa, com vocabulários de categoria diferentes.
+            O `FormDespesa` e o `types.ts` daquela pasta CONTINUAM: são usados pela aba
+            oficial e pelo relatório diário. */}
+        <Route path="/despesas" element={<Navigate to="/fechamento" replace />} />
         <Route path="/fechamento-mensal" element={<Suspense fallback={<LoadingFallback />}><TelaFechamentoMensal /></Suspense>} />
         <Route path="/proprietario" element={<Suspense fallback={<LoadingFallback />}><TelaDashboardProprietario /></Suspense>} />
       </Route>
