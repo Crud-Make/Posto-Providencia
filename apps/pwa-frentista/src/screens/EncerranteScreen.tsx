@@ -206,6 +206,19 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         [bicos, valores, ultimas, duvidaOcr],
     );
 
+    /**
+     * Libera o envio: basta um bico com valor, com ou sem foto.
+     *
+     * @remarks Deliberadamente **não** olha `temLeitura`. O OCR é o caminho
+     *          feliz, não o único — foto tremida, rede caindo no posto ou a
+     *          função fria deixavam o frentista digitar os números na mão e
+     *          descobrir só no fim que o botão continuava travado.
+     */
+    const temValorParaEnviar = useMemo(
+        () => bicos.some(b => parseBR(valores[b.id] || '') > 0),
+        [bicos, valores],
+    );
+
     const handleEnviar = async () => {
         setFeedback(null);
 
@@ -233,7 +246,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
             .filter((l): l is LinhaLeitura => l !== null);
 
         if (linhas.length === 0) {
-            setFeedback({ tipo: 'erro', msg: 'Nenhum valor preenchido. Fotografe o papel primeiro.' });
+            setFeedback({ tipo: 'erro', msg: 'Nenhum valor preenchido. Fotografe o papel ou digite as leituras.' });
             return;
         }
 
@@ -341,7 +354,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                                                 <p className="text-slate-500 text-[11px] mt-0.5">{b.combNome} · R$ {formatNum(b.preco, 2)}/L</p>
                                             </div>
                                         </div>
-                                        {temLeitura && litros > 0 && (
+                                        {litros > 0 && (
                                             <span className="text-emerald-400 text-[11px] font-semibold">{formatNum(litros)} L</span>
                                         )}
                                     </div>
@@ -373,7 +386,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                 )}
 
                 {/* Total */}
-                {temLeitura && (
+                {temValorParaEnviar && (
                     <div className="bg-[#131722] rounded-2xl p-4 border border-slate-800/60 flex justify-between items-center">
                         <span className="text-slate-400 font-medium text-sm">Total estimado de vendas</span>
                         <span className="text-emerald-400 font-bold text-lg">
@@ -387,9 +400,9 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
             <div className="px-5 pt-4">
                 <button
                     onClick={handleEnviar}
-                    disabled={enviando || !temLeitura}
+                    disabled={enviando || !temValorParaEnviar}
                     className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-white transition-all
-                        ${enviando || !temLeitura
+                        ${enviando || !temValorParaEnviar
                             ? 'bg-indigo-600/40 cursor-not-allowed'
                             : 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-[0_0_20px_rgba(79,70,229,0.3)]'}`}
                 >

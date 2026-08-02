@@ -28,6 +28,18 @@
   o painel vazio, a tela acusa uma **"SOBRA DE CAIXA" igual à venda do dia inteiro** — R$ 14.119,81
   no 15/06 — em **31/31 dias de março** e **30/30 de junho**.
 
+### ⛽ PWA — encerrante aceita digitação manual, sem depender da foto
+- **[02/08/2026]** O botão **"Confirmar e Enviar Leituras"** destrava com **um bico preenchido**,
+  com ou sem foto. Antes só destravava depois de um OCR bem-sucedido: o frentista digitava os
+  números na mão e descobria no fim que não conseguia enviar, **sem plano B nenhum**.
+- **Achado no teste do iPhone**, conferido no DOM de produção e não no screenshot — o botão
+  desabilitado usa `bg-indigo-600/40`, que sobre fundo escuro **parece aceso**. Régua: estado de
+  botão se confere com `disabled` no DOM, nunca por imagem.
+- Os litros por bico e o total estimado também aparecem enquanto se digita — antes ficavam
+  escondidos até a foto passar pelo OCR.
+- Cobertura em `App.test.tsx`: valor digitado libera o envio, **e** `0,000` continua travando
+  (a segunda asserção é o que impede alguém "simplificar" para `valores.length > 0`).
+
 ### ⛽ PWA — encerrante envia sem escolher frentista
 - **[02/08/2026]** A aba **Encerrante** abre e envia direto. Antes, sem frentista selecionado ela
   mostrava "Selecione um frentista primeiro" e nem deixava fotografar o papel.
