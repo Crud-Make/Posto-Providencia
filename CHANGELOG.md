@@ -2,6 +2,45 @@
 
 ## [Não Lançado]
 
+### 💰 Janeiro/2026 completo em produção — despesa, fechamento por frentista e lucro
+- **[02/08/2026]** A `Leitura` de janeiro já estava carregada, mas o resto do mês não existia em
+  produção: `Fechamento`, `FechamentoFrentista` e `Compra` estavam **zeradas** e `Despesa` só tinha
+  julho. Agora janeiro fecha ponta a ponta contra a planilha.
+- **Despesa** (`scripts/carga-historico-despesa.py`): 21 lançamentos, **R$ 35.523,58**. Fonte é a
+  tabela **trimestral**, não a mensal — as duas existem e divergem (35.523,58 vs 22.158,46 só em
+  janeiro). O script exclui a categoria `__TOTAL__` das linhas e a usa como conferência: se a soma
+  das categorias não reconstruir o total escrito pela planilha, aborta. Somar a coluna crua devolve
+  o **dobro** — é a armadilha que essa checagem fecha.
+- **Fechamento por frentista** (`scripts/carga-historico-fechamento.py`): 31 dias e **180 linhas**,
+  cada uma com as 7 formas de pagamento. `valor_conferido` usa a fórmula canônica de
+  `packages/utils/src/fechamento.ts` (`dinheiro + moedas + pix + crédito + débito + nota + baratão`)
+  — conferido em produção: as 180 linhas têm o gravado idêntico ao recomputado a partir das colunas,
+  e o total (**R$ 289.881,60**) bate por três caminhos independentes.
+- ⚠️ **O Leandro voltou.** Todos os `scripts/import-january-*.js` legados hardcodam 7 frentistas em
+  colunas fixas `D..J` e **perdiam as 18 linhas do Leandro** (R$ 4.647,35, dias 29–31). O mapa novo
+  é por nome → id, com os 8 frentistas, e aborta se aparecer nome fora do cadastro.
+- ⚠️ **Fórmula quebrada na planilha, dia 29/01.** As células de total do bloco de caixa não incluem
+  a coluna da Barbra — cada forma está exatamente menos o valor dela, e `Moeda` (onde a Barbra é
+  vazia) é a única correta. A grade por frentista é auto-consistente e **manda**; o total virou
+  aviso do script. Efeito: a planilha registra **sobra de R$ 95,85** naquele dia, quando a soma real
+  dá **falta de R$ 4,20**. Sinal invertido — divergência documentada, não "corrigida".
+- **Lucro** (`scripts/auditoria-lucro-mes.py`): `fechamento.service.ts` lê `custo_combustiveis`,
+  `lucro_bruto` e `lucro_liquido` como **colunas gravadas** de `Fechamento`, não recalcula na
+  leitura — carregar o mês sem elas exibiria lucro R$ 0,00. Gravado o canônico de
+  `packages/utils/src/lucro.ts`: **R$ 13.272,16**, margem líquida **4,58%**.
+- ⚠️ **A planilha superestima o lucro de janeiro em +118%** (declara R$ 28.974,97). Duas causas
+  somadas, ambas medidas: (1) `compra_mensal.valor_venda` é `media_lt + 0,473` — o **mesmo**
+  acréscimo nos 4 combustíveis, isto é, custo operacional **fixo hardcoded**, que o §6 proíbe; o
+  real de janeiro é 35.523,58 ÷ 46.843,062 = **0,7584/L**. (2) O resumo mensal aplica preço único
+  aos 31 dias, mas 6 dias tiveram preço menor (gasolina 6,28 vs 6,48; etanol 4,58 vs 4,98) — R$
+  2.337,67 de venda que não existiu.
+- **`Compra`** carregada com o consolidado mensal (4 linhas, 47.000 L, R$ 241.195,00). Estava vazia,
+  e `Combustivel.preco_custo` guardava os preços de **julho** — usá-los em janeiro erraria o etanol
+  em R$ 0,87/L.
+- Todos os 3 scripts seguem o contrato do estágio 3: **não escrevem no banco**, emitem SQL
+  idempotente e abortam quando a conferência independente não fecha. Golden master: **308 pass, 0
+  fail**.
+
 ### 📊 Histórico carregado em produção — estágio 3 do ETL
 - **[02/08/2026]** Produção tinha **47 dias** de leitura contra 206 validados na planilha. Agora tem
   **200 dias / 1.200 linhas / 275.686,369 L**. Os estágios 1 e 2 (extração e conferência contra o
