@@ -2,6 +2,33 @@
 
 ## [Não Lançado]
 
+### 👀 Painel — "Trabalhando agora": quem está com o app aberto
+- **[02/08/2026]** Bloco novo no dashboard mostrando os frentistas que abriram o PWA e
+  escolheram o próprio nome, com **"No app agora" / "Parado" / "Saiu"** e o tempo desde o último
+  sinal ("agora mesmo", "há 14 min", "há 2 h"). Resolve a pergunta das 23h: quem está no posto
+  prestes a fechar o caixa.
+- ⚠️ **NÃO é presença ao vivo, e isso foi decisão de projeto.** No iPhone, o Safari suspende a aba
+  assim que a tela bloqueia e qualquer websocket cai em segundos — uma presença ao vivo mostraria
+  o frentista *offline* às 23h, com ele em pé na bomba. Um carimbo de tempo sobrevive ao bolso e
+  diz só o que se sabe: quando o app dele deu sinal pela última vez.
+- ⚠️ **NÃO é controle de ponto, e o rodapé do bloco diz isso na tela.** O PWA não autentica
+  ninguém (decisão de 29/07): quem abre o link escolhe o nome que quiser. Sem o aviso, o bloco
+  parece provar presença física.
+- **O sinal só bate com o app aberto.** O frentista escolhido fica no `localStorage`, mas ler esse
+  valor não prova nada sobre agora — se o sinal viesse de lá, todo celular que um dia usou o app
+  apareceria trabalhando para sempre. O gatilho é um efeito montado, com `visibilitychange` para
+  bater de novo quando o celular sai do bolso.
+- **`visto_em` é carimbado por trigger no banco**, nunca pelo celular: relógio errado (ou `curl`)
+  colocaria alguém no futuro e ele ficaria online para sempre.
+- **Uma linha por frentista** (`PresencaFrentista`, upsert), não um log: a tabela nunca passa da
+  quantidade de frentistas. Um log cresceria ~700 linhas/frentista/dia para responder uma pergunta
+  que só olha a última.
+- Regra pura em `packages/utils/src/presenca.ts` com 11 testes — inclui relógio do painel
+  atrasado, que sem tratamento colocaria o frentista no futuro.
+- **Efeito colateral necessário:** `reset.service.ts` estourava o limite de profundidade do
+  TypeScript ao ganhar a 39ª tabela. Corrigido com uma interface mínima do query builder, o que
+  também eliminou um `@ts-ignore`.
+
 ### 💰 Caixa Geral — o auto-preencher somava a nota duas vezes e perdia moedas e baratão
 - **[02/08/2026]** O botão **"⚡ Auto-preencher dos Frentistas"** devolvia um total errado.
   Medido no dia **15/06/2026**: o painel fechava em **R$ 15.681,58** onde o conferido real é

@@ -1,7 +1,7 @@
 import { DatabaseEnums } from './enums';
 import { PostoTable, TurnoTable, ConfiguracaoTable, UsuarioTable, UsuarioPostoTable } from './tables/infraestrutura';
 import { CombustivelTable, BombaTable, BicoTable, TanqueTable, HistoricoTanqueTable, EstoqueTable } from './tables/combustiveis';
-import { FrentistaTable, LeituraTable, FechamentoTable, FechamentoFrentistaTable, RecebimentoTable, EscalaTable } from './tables/operacoes';
+import { FrentistaTable, LeituraTable, FechamentoTable, FechamentoFrentistaTable, RecebimentoTable, EscalaTable, PresencaFrentistaTable } from './tables/operacoes';
 import { FormaPagamentoTable, MaquininhaTable } from './tables/pagamentos';
 import { EmprestimoTable, ParcelaTable, DividaTable, DespesaTable, ReceitaTable, CategoriaFinanceiraTable } from './tables/financeiro';
 import { CompraTable, FornecedorTable } from './tables/compras';
@@ -35,6 +35,7 @@ export interface Database {
       FechamentoFrentista: FechamentoFrentistaTable
       Recebimento: RecebimentoTable
       Escala: EscalaTable
+      PresencaFrentista: PresencaFrentistaTable
 
       // Pagamentos
       FormaPagamento: FormaPagamentoTable

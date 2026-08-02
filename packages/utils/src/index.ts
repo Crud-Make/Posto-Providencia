@@ -10,3 +10,4 @@ export * from './lucro';
 export * from './despesa';
 export * from './despesa-fixa';
 export * from './encerrante-mensal';
+export * from './presenca';

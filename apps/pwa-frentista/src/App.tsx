@@ -12,7 +12,10 @@ import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
 import EncerranteScreen from './screens/EncerranteScreen';
 import ReloadPrompt from './components/ReloadPrompt';
+import { useSinalDeVida } from './lib/use-sinal-de-vida';
 import { hojeIso } from '@posto/utils';
+
+const POSTO_ID = 1;
 
 type TabType = 'registro' | 'vendas' | 'historico' | 'encerrante' | 'perfil';
 
@@ -92,6 +95,10 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   useEffect(() => {
     try { localStorage.setItem('pwa.activeTab', activeTab); } catch { /* ignora */ }
   }, [activeTab]);
+
+  // Aparece como "trabalhando agora" no painel do dono enquanto o app estiver
+  // aberto com um frentista escolhido.
+  useSinalDeVida(selectedFrentista?.id ?? null, POSTO_ID);
 
   const [totalVendido, setTotalVendido] = useState('');
   const [payments, setPayments] = useState({

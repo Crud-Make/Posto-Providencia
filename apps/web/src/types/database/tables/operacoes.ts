@@ -400,3 +400,37 @@ export interface EscalaTable {
     }
   ]
 }
+
+/**
+ * Último sinal de vida do PWA por frentista — bloco "Trabalhando agora".
+ *
+ * @remarks
+ * `visto_em` é carimbado por trigger no banco: mandar valor daqui não tem
+ * efeito, por isso ele é opcional em `Insert`/`Update`. Ver a migração
+ * `20260802_presenca_frentista.sql`.
+ */
+export interface PresencaFrentistaTable {
+  Row: {
+    frentista_id: number
+    posto_id: number | null
+    visto_em: string
+  }
+  Insert: {
+    frentista_id: number
+    posto_id?: number | null
+    visto_em?: string
+  }
+  Update: {
+    frentista_id?: number
+    posto_id?: number | null
+    visto_em?: string
+  }
+  Relationships: [
+    {
+      foreignKeyName: "PresencaFrentista_frentista_id_fkey"
+      columns: ["frentista_id"]
+      referencedRelation: "Frentista"
+      referencedColumns: ["id"]
+    }
+  ]
+}

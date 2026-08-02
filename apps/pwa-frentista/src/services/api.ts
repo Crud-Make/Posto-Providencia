@@ -148,6 +148,25 @@ export const api = {
     },
 
     /**
+     * Sinal de vida: registra que o app está aberto com este frentista selecionado.
+     *
+     * @remarks
+     * `visto_em` **não** é enviado de propósito — um trigger no banco carimba com
+     * o relógio do servidor. O celular do frentista com a hora errada colocaria
+     * ele no futuro e o painel o mostraria online para sempre.
+     *
+     * Falha em silêncio: presença é conveniência, e um erro de rede aqui não pode
+     * atrapalhar o frentista que está tentando fechar o caixa.
+     */
+    async marcarPresenca(frentistaId: number, postoId: number): Promise<void> {
+        const { error } = await supabase
+            .from('PresencaFrentista')
+            .upsert({ frentista_id: frentistaId, posto_id: postoId }, { onConflict: 'frentista_id' });
+
+        if (error) console.warn('[presenca] sinal não registrado:', error.message);
+    },
+
+    /**
      * OCR do papel de encerrantes via Edge Function (Gemini). Devolve [{ bico, numero }].
      * Tenta 2x: se a 1ª cai numa function fria e falha/expira, a 2ª já pega ela quente.
      */
