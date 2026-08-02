@@ -2,9 +2,27 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/pwa-192x192.png" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0f172a" />
+    <meta name="description" content="Fechamento de caixa do frentista — Posto Providência" />
+
+    <!-- iOS ignora quase tudo do manifest e exige estas metas próprias. Sem
+         `apple-mobile-web-app-capable` o atalho abre dentro do Safari, com
+         barra de endereço — ou seja, não parece aplicativo. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- `black`, e NÃO `black-translucent`: o layout não trata área segura em
+         lugar nenhum (nenhum `env(safe-area-inset-*)` fora do convite), então
+         com a barra translúcida o cabeçalho e o aviso de atualização passariam
+         por baixo do notch. Ir de ponta a ponta exige acertar o layout antes.
+         Mesmo motivo para não ligar `viewport-fit=cover`: a barra inferior tem
+         `pb-6` (24px) e o indicador de home ocupa 34px. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Fechamento" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <title>Fechamento Frentista</title>
   </head>
   <body>

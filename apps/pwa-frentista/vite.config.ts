@@ -21,22 +21,45 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Posto Providência - PWA',
+        // `id` fixa a identidade do app: sem ele o navegador usa a start_url, e
+        // mudar a rota inicial faria o aparelho tratar como um app NOVO,
+        // deixando o antigo instalado do lado.
+        id: '/',
+        name: 'Posto Providência - Fechamento',
         short_name: 'Fechamento',
-        description: 'Fechamento de Caixa PWA para Posto Providência',
+        description: 'Fechamento de caixa do frentista — Posto Providência',
+        lang: 'pt-BR',
+        dir: 'ltr',
+        start_url: '/',
+        scope: '/',
         theme_color: '#0f172a', // slate-900 (Dark Mode Base)
         background_color: '#0f172a',
         display: 'standalone',
+        // O frentista usa de pé, com o celular na mão; girar a tela no meio do
+        // lançamento só atrapalha.
+        orientation: 'portrait',
+        categories: ['business', 'productivity'],
         icons: [
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
+          },
+          // Sem um ícone `maskable` o Android encaixa o quadrado dentro de um
+          // círculo branco, com moldura — é o detalhe que mais denuncia "isto
+          // é um site". O conteúdo deste cabe na zona segura de 80%.
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
