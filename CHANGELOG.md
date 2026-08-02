@@ -2,6 +2,36 @@
 
 ## [Não Lançado]
 
+### 📱 PWA do frentista instala como aplicativo no celular
+- **[02/08/2026]** O app já era PWA (manifest, service worker, ícones 192/512), mas faltavam as
+  peças que fazem o aparelho tratá-lo como aplicativo. Nada foi reconstruído — só as lacunas.
+- **Convite de instalação** (`components/convite-instalacao.tsx`) com três caminhos, porque os
+  sistemas não oferecem o mesmo:
+  - **Android/Chrome:** botão que dispara o prompt nativo (`beforeinstallprompt`).
+  - **Safari no iOS:** passo a passo, porque **o iOS nunca dispara `beforeinstallprompt`** — um
+    convite que espera esse evento simplesmente nunca aparece em iPhone.
+  - **iOS fora do Safari** (Chrome/`CriOS`, webview do WhatsApp): pede para abrir no Safari. Sem
+    isso o frentista que chega por link do WhatsApp recebe instrução impossível de cumprir.
+- **Decisão de o que mostrar é lógica pura** em `lib/instalacao.ts`, com **20 testes** cobrindo
+  iPhone, iPad que se declara Macintosh, webview do WhatsApp, Android e desktop. A View só desenha.
+- **Ícone `maskable`** gerado com o logo na zona segura de 80%: sem ele o Android encaixa o quadrado
+  num círculo branco com moldura — o detalhe que mais denuncia "isto é um site".
+- **`apple-touch-icon` era 144×144**, e o iOS quer 180×180: estava sendo ampliado borrado na tela
+  inicial. Regerado.
+- **Metas de iOS** que faltavam no `index.html` (`apple-mobile-web-app-capable` e companhia) — sem
+  elas o atalho abre dentro do Safari, com barra de endereço.
+- **O favicon ainda era `/vite.svg`**, o logo padrão do Vite. Trocado pelo ícone do posto.
+- **`id: '/'` no manifest:** sem ele a identidade do app é a `start_url`, e mudar a rota inicial
+  faria o aparelho instalar um app NOVO ao lado do antigo.
+- ⚠️ **Barra de status do iOS ficou `black`, não `black-translucent`,** e `viewport-fit=cover` NÃO
+  foi ligado: o layout do PWA não trata área segura em lugar nenhum, então o modo ponta-a-ponta
+  jogaria o cabeçalho por baixo do notch e a barra inferior (`pb-6`, 24px) por baixo do indicador
+  de home (34px). Ir de ponta a ponta é trabalho de layout, à parte.
+- ⚠️ **Pendência conhecida:** a feature nasceu em `components/` + `lib/`, e não numa fatia FSD
+  (`features/instalar-app/`) como manda o §2 do `CLAUDE.md`. O PWA inteiro é organizado por tipo
+  técnico e o §2 proíbe reorganização em massa — criar uma fatia isolada aqui destoaria de tudo.
+  Decisão consciente, a revisitar quando o PWA for migrado.
+
 ### 🔧 Tipos do Supabase regenerados — e o arquivo errado estava sendo culpado
 - **[02/08/2026]** O aviso registrado na entrada da RLS abaixo apontava
   `packages/types/src/database.types.ts` como fora de sincronia. Está mesmo — mas **esse arquivo é
