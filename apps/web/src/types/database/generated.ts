@@ -464,6 +464,7 @@ export type Database = {
           id: number
           observacoes: string | null
           posto_id: number | null
+          recorrente: boolean
           status: string | null
           valor: number
         }
@@ -477,6 +478,7 @@ export type Database = {
           id?: number
           observacoes?: string | null
           posto_id?: number | null
+          recorrente?: boolean
           status?: string | null
           valor: number
         }
@@ -490,6 +492,7 @@ export type Database = {
           id?: number
           observacoes?: string | null
           posto_id?: number | null
+          recorrente?: boolean
           status?: string | null
           valor?: number
         }

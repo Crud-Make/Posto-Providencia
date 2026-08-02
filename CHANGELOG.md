@@ -2,6 +2,35 @@
 
 ## [Não Lançado]
 
+### 🔁 Despesa fixa — lançar num clique o que se repete todo mês
+- **[02/08/2026]** Botão **"Despesas Fixas"** na aba Receitas e Despesas: abre a lista do que
+  ainda falta lançar no mês, **com o valor do último lançamento já preenchido**, e o dono revisa
+  antes de confirmar. Cada linha mostra **de que mês veio a sugestão** e destaca em âmbar a que
+  estiver defasada mais de um mês.
+- ⚠️ **"Fixa" significa RECORRENTE, não valor constante — e isso definiu o desenho.** Medido nos
+  7 meses carregados: "Paulo" (salário) teve **3 valores distintos** no ano, de R$ 1.626 a
+  R$ 2.200, por reajuste; "Luz" teve **6**, de R$ 280 a R$ 850. O que se repete é a **descrição**,
+  não o número. Por isso o valor é **sugerido e editável**, e não lançado automaticamente: um
+  molde com valor fixo envelheceria e passaria a divergir do que foi pago — e aqui despesa errada
+  vira lucro errado.
+- **Coluna `recorrente` na `Despesa`, não tabela de modelos**, pela mesma razão: o modelo de uma
+  fixa É o último lançamento dela, então o valor sugerido acompanha o reajuste sozinho.
+- **Backfill marcou 13** despesas que aparecem em 4+ meses (Net, Contador, Luz, Embasa, Sistema,
+  Frete, taxas de cartão, Alvará/IPTU, Imposto, ibamentro e 3 salários). Reversível por clique.
+- **A regra fica em `packages/utils/src/despesa-fixa.ts`**, pura e com 16 testes — não em SQL
+  espalhado. Casos travados: reconhecer "Sistema." e "sistema" como a mesma conta (a planilha é
+  digitada à mão e lançar duas vezes dobraria a despesa do mês), **não** fundir "Paulo = 20" com
+  "Paulo = 10" (dias de pagamento distintos, escritos de propósito), e ignorar molde do próprio
+  mês alvo ou posterior.
+- **Conferido no navegador:** 13 fixas listadas, R$ 21.740,76, lançadas como `pendente` (quem
+  lança em bloco no início do mês ainda não pagou), e o segundo clique respondeu *"Nenhuma despesa
+  fixa pendente"* em vez de duplicar. Os lançamentos de teste foram removidos depois.
+- 🔍 **Correção de rumo registrada:** cheguei a "corrigir" um float que não existia. O snapshot de
+  acessibilidade do Chrome exibia `4315.759765625` no campo do Contador, e tratei como bug — mas é
+  a representação **float32** do protocolo de a11y; o DOM tinha `4315.76` exato. A quantização
+  ficou por ser defensiva e barata, com o comentário e o teste reescritos para dizer a verdade:
+  **proteção, não regressão observada.** Explicação errada gravada no código é pior que nenhuma.
+
 ### 🧹 Removida a tela órfã `/despesas` — e destravado o caminho que sobrou
 - **[02/08/2026]** `/despesas` existia, funcionava e **nunca esteve no menu**: só se chegava
   digitando a URL. O caminho oficial é **Fechamento de Caixa → aba "💵 Receitas e Despesas"**,

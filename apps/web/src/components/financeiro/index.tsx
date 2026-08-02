@@ -7,11 +7,17 @@ import { FiltrosFinanceiros } from './components/FiltrosFinanceiros';
 import { ResumoFinanceiro } from './components/ResumoFinanceiro';
 import { GraficoFluxoCaixa } from './components/GraficoFluxoCaixa';
 import { DespesasPorCategoria } from './components/DespesasPorCategoria';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Repeat } from 'lucide-react';
+import { toast } from 'sonner';
+import type { FixaPendente } from '@posto/utils';
 import FormDespesa from '../despesas/components/FormDespesa';
 import { DespesaFormData } from '../despesas/types';
 import { despesaService, receitaService } from '../../services/api';
+import { isSuccess } from '../../types/ui/response-types';
+import { despesaFixaService, type LancamentoFixa } from '../../services/api/despesa-fixa.service';
+import { hojeIso, mesAtualIso, ultimoDiaDoMes, deIsoLocal } from '../../utils/periodo';
 import { FormReceita, ReceitaFormData } from './components/FormReceita';
+import { ModalFixasPendentes } from './components/ModalFixasPendentes';
 // [01/02 11:22] Integrado FormReceita e lógica de salvamento de receitas extras.
 
 /**
@@ -35,6 +41,8 @@ export const PainelReceitasDespesas: React.FC = () => {
   const { postoAtivoId } = usePosto();
   const [showFormDespesa, setShowFormDespesa] = React.useState(false);
   const [showFormReceita, setShowFormReceita] = React.useState(false);
+  const [fixasPendentes, setFixasPendentes] = React.useState<FixaPendente[] | null>(null);
+  const [buscandoFixas, setBuscandoFixas] = React.useState(false);
 
   const { filtros, atualizar, resetar, aplicarPreset } = useFiltrosFinanceiros(postoAtivoId || undefined);
   const { dados, carregando, erro, recarregar } = useFinanceiro(filtros);
@@ -49,6 +57,56 @@ export const PainelReceitasDespesas: React.FC = () => {
       }
     }
     return false;
+  };
+
+  /**
+   * Mês em que as fixas serão lançadas: o do filtro de período, não "hoje".
+   *
+   * @remarks Se o dono está olhando junho e manda lançar as fixas, elas têm de cair
+   *          em junho. Usar `hojeIso()` aqui jogaria tudo no mês corrente e sujaria
+   *          o mês errado — do tipo de erro que só aparece quando o lucro já saiu.
+   */
+  const mesDoFiltro = filtros.dataInicio?.slice(0, 7) || mesAtualIso();
+
+  const abrirFixas = async () => {
+    if (!postoAtivoId) return;
+    setBuscandoFixas(true);
+    try {
+      const res = await despesaFixaService.pendentesDoMes(mesDoFiltro, postoAtivoId);
+      if (!isSuccess(res)) {
+        toast.error(res.error);
+        return;
+      }
+      if (res.data.length === 0) {
+        toast.info('Nenhuma despesa fixa pendente neste mês — todas já foram lançadas.');
+        return;
+      }
+      setFixasPendentes(res.data);
+    } finally {
+      setBuscandoFixas(false);
+    }
+  };
+
+  const handleLancarFixas = async (lancamentos: LancamentoFixa[]) => {
+    if (!postoAtivoId) return;
+
+    // Lança no último dia do mês exibido — mesma convenção da carga histórica, em que
+    // a despesa mensal é do mês inteiro e não de um dia específico. No mês corrente
+    // usa hoje, porque lançar no futuro deixaria a despesa fora de qualquer relatório
+    // até o mês virar.
+    const ultimoDia = ultimoDiaDoMes(deIsoLocal(`${mesDoFiltro}-01`));
+    const hoje = hojeIso();
+    const data = ultimoDia > hoje ? hoje : ultimoDia;
+
+    const res = await despesaFixaService.lancar(lancamentos, data, postoAtivoId);
+    if (!isSuccess(res)) {
+      toast.error(res.error);
+      return;
+    }
+
+    toast.success(`${res.data} despesa(s) fixa(s) lançada(s) em ${data.split('-').reverse().join('/')}.`);
+    setFixasPendentes(null);
+    await recarregar();
   };
 
   const handleSaveReceita = async (data: ReceitaFormData): Promise<boolean> => {
@@ -72,6 +130,16 @@ export const PainelReceitasDespesas: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={abrirFixas}
+            disabled={!postoAtivoId || buscandoFixas}
+            title="Lança de uma vez as despesas que se repetem todo mês, com o valor do último mês para você revisar"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {buscandoFixas ? <Loader2 size={18} className="animate-spin" /> : <Repeat size={18} />}
+            Despesas Fixas
+          </button>
+
           <button
             onClick={() => setShowFormReceita(true)}
             disabled={!postoAtivoId}
@@ -122,6 +190,15 @@ export const PainelReceitasDespesas: React.FC = () => {
             <DespesasPorCategoria dados={dados} />
           </div>
         </div>
+      )}
+
+      {fixasPendentes && (
+        <ModalFixasPendentes
+          mes={mesDoFiltro}
+          pendentes={fixasPendentes}
+          onCancelar={() => setFixasPendentes(null)}
+          onLancar={handleLancarFixas}
+        />
       )}
 
       {showFormDespesa && postoAtivoId && (
