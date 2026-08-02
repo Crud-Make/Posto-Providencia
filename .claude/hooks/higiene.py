@@ -20,7 +20,6 @@ lido. Só fala quando tem o que dizer.
 """
 import json
 import subprocess
-import time
 from pathlib import Path
 
 CASA = Path.home()
@@ -32,6 +31,12 @@ GRAFO = RAIZ / "graphify-out/graph.html"
 
 # Órfão pequeno não paga o ruído do aviso; 50 MB é onde passa a valer a limpeza.
 LIMITE_ORFAO_MB = 50
+
+# O rebuild do grafo roda em background depois do commit e leva de segundos a minutos.
+# Sem folga, QUALQUER commit recente dispara o aviso — o hook reclamaria toda sessão e
+# viraria ruído, que é o oposto do que ele existe para fazer. Achado testando em 02/08,
+# logo após um rebase: "grafo 0h mais velho que o último commit".
+TOLERANCIA_GRAFO_H = 2
 
 
 def caches_orfaos() -> list[str]:
@@ -72,10 +77,10 @@ def grafo_velho() -> str | None:
     except (OSError, subprocess.SubprocessError, ValueError):
         return None
 
-    atraso = commit - GRAFO.stat().st_mtime
-    if atraso <= 0:
+    horas = (commit - GRAFO.stat().st_mtime) / 3600
+    if horas < TOLERANCIA_GRAFO_H:
         return None
-    return f"grafo {int(atraso // 3600)}h mais velho que o último commit"
+    return f"grafo está {int(horas)}h mais velho que o último commit"
 
 
 def symlinks_quebrados() -> list[str]:
