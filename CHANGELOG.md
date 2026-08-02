@@ -2,6 +2,44 @@
 
 ## [Não Lançado]
 
+### 💰 Caixa Geral — o auto-preencher somava a nota duas vezes e perdia moedas e baratão
+- **[02/08/2026]** O botão **"⚡ Auto-preencher dos Frentistas"** devolvia um total errado.
+  Medido no dia **15/06/2026**: o painel fechava em **R$ 15.681,58** onde o conferido real é
+  **R$ 14.119,81** — **R$ 1.561,77** de erro, todo dia em que se clicasse no botão.
+- **As duas causas, somadas:** a cadeia de `includes` casava **"Vale/Check"** no mesmo ramo do
+  `nota` (o teste era `includes('vale')`, e "Vale/Check" contém "vale"), lançando a nota **duas
+  vezes** — **+R$ 2.242,00**. E **moedas** e **baratão** não casavam com forma nenhuma, porque não
+  existia forma cadastrada para eles — **−R$ 680,23** que sumiam da tela.
+- **O conserto:** o mapeamento forma → balde canônico saiu da cadeia de `if/else` e virou
+  `baldeDaForma`/`totaisPorBalde` em `apps/web/src/utils/fechamentoMeios.ts`, ao lado do adaptador
+  que já traduzia a UI para `@posto/utils`. Forma sem coluna de origem ("Vale/Check", "APP") agora
+  devolve `null` em vez de chutar um balde.
+- **A invariante que o teste trava:** a soma dos baldes é **exatamente** `conferido()` das mesmas
+  sessões. Era isso que o bug violava, e é o que impede a regressão voltar por outro caminho.
+- **`tipo` saiu da comparação:** as 7 formas cadastradas têm `tipo` `'venda'`, então ele nunca
+  desempatou nada — só ampliava a chance de falso positivo.
+- **Migração `20260802_formas_pagamento_moedas_baratao.sql`** cadastra **Moedas** e **Baratão**,
+  fechando os 7 baldes da fórmula canônica no cadastro. Idempotente por nome + posto.
+- 8 testes novos em `apps/web/src/utils/fechamentoMeios.test.ts`, escritos vermelhos antes do
+  conserto, reproduzindo o 15/06 balde a balde.
+- ⚠️ **Continua pendente e é maior que isto:** o Caixa Geral **abre vazio** em todo dia histórico,
+  porque lê só a tabela `Recebimento` — que tem **4 linhas no ano inteiro**, por decisão consciente
+  do ETL (`scripts/carga-historico-fechamento.py:25`). O dado existe em `FechamentoFrentista`. Com
+  o painel vazio, a tela acusa uma **"SOBRA DE CAIXA" igual à venda do dia inteiro** — R$ 14.119,81
+  no 15/06 — em **31/31 dias de março** e **30/30 de junho**.
+
+### ⛽ PWA — encerrante aceita digitação manual, sem depender da foto
+- **[02/08/2026]** O botão **"Confirmar e Enviar Leituras"** destrava com **um bico preenchido**,
+  com ou sem foto. Antes só destravava depois de um OCR bem-sucedido: o frentista digitava os
+  números na mão e descobria no fim que não conseguia enviar, **sem plano B nenhum**.
+- **Achado no teste do iPhone**, conferido no DOM de produção e não no screenshot — o botão
+  desabilitado usa `bg-indigo-600/40`, que sobre fundo escuro **parece aceso**. Régua: estado de
+  botão se confere com `disabled` no DOM, nunca por imagem.
+- Os litros por bico e o total estimado também aparecem enquanto se digita — antes ficavam
+  escondidos até a foto passar pelo OCR.
+- Cobertura em `App.test.tsx`: valor digitado libera o envio, **e** `0,000` continua travando
+  (a segunda asserção é o que impede alguém "simplificar" para `valores.length > 0`).
+
 ### ⛽ PWA — encerrante envia sem escolher frentista
 - **[02/08/2026]** A aba **Encerrante** abre e envia direto. Antes, sem frentista selecionado ela
   mostrava "Selecione um frentista primeiro" e nem deixava fotografar o papel.

@@ -21,6 +21,7 @@ import type { Recebimento } from '../../../types/database/aliases';
 import { formaPagamentoService } from '../../../services/api';
 import { fechamentoService } from '../../../services/api/fechamento.service';
 import { analisarValor, formatarValorSimples, formatarValorAoSair, paraReais } from '../../../utils/formatters';
+import { baldeDaForma, totaisPorBalde } from '../../../utils/fechamentoMeios';
 import { isSuccess } from '../../../types/ui/response-types';
 
 /**
@@ -154,46 +155,27 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
    * Sincroniza pagamentos com o valor total dos frentistas
    */
   const sincronizarComSessoes = useCallback((sessoes: import('../../../types/fechamento').SessaoFrentista[]) => {
+    // Uma passada só sobre as sessões, consolidando nos baldes canônicos. A versão
+    // anterior era uma cadeia de `includes` sobre `nome + tipo` que reduzia as sessões
+    // de novo em cada ramo — e errava dinheiro em dois pontos: "Vale/Check" caía no
+    // ramo do `nota` (por conter "vale") e lançava a nota duas vezes, enquanto moedas
+    // e baratão não achavam forma nenhuma e sumiam. Ver `fechamentoMeios.test.ts`.
+    //
+    // `tipo` saiu da comparação de propósito: as 7 formas cadastradas têm `tipo`
+    // 'venda', então ele nunca desempatou nada e só criava chance de falso positivo.
+    const totais = totaisPorBalde(sessoes);
+
     setPagamentos(prev => prev.map(p => {
-      let sum = 0;
-      const t = (p.nome + ' ' + (p.tipo || '')).toLowerCase();
+      const balde = baldeDaForma(p.nome);
+      if (!balde) return p; // "Vale/Check", "APP": sem coluna de origem, não se inventa valor
 
-      let matched = false;
-      if (t.includes('dinheiro')) {
-        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_dinheiro), 0);
-        matched = true;
-      } else if (t.includes('crédito') || t.includes('credito')) {
-        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_cartao_credito), 0);
-        matched = true;
-      } else if (t.includes('débito') || t.includes('debito')) {
-        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_cartao_debito) + analisarValor(s.valor_cartao), 0);
-        matched = true;
-      } else if (t.includes('pix')) {
-        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_pix), 0);
-        matched = true;
-      } else if (t.includes('nota') || t.includes('convênio') || t.includes('convenio') || t.includes('vale')) {
-        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_nota), 0);
-        matched = true;
-      } else if (t.includes('baratao') || t.includes('baratão') || t.includes('baratão')) {
-        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_baratao), 0);
-        matched = true;
-      } else if (t.includes('moeda')) {
-        sum = sessoes.reduce((acc, s) => acc + analisarValor(s.valor_moedas), 0);
-        matched = true;
-      }
-
-      if (matched) {
-        return {
-          ...p,
-          // `sum` JÁ é o valor em reais somado das sessões — formate direto.
-          // Não passe por `formatarValorAoSair`: ela chama `analisarValor`, que é parser de
-          // ENCERRANTE DE BOMBA e assume os últimos 3 dígitos como decimais quando não há
-          // vírgula (litros têm 3 casas). Em dinheiro isso divide por mil: o auto-preencher
-          // trazia R$ 2,44 no lugar de R$ 2.436,00.
-          valor: sum > 0 ? paraReais(sum) : ''
-        };
-      }
-      return p;
+      const sum = totais[balde];
+      // `sum` JÁ é o valor em reais somado das sessões — formate direto.
+      // Não passe por `formatarValorAoSair`: ela chama `analisarValor`, que é parser de
+      // ENCERRANTE DE BOMBA e assume os últimos 3 dígitos como decimais quando não há
+      // vírgula (litros têm 3 casas). Em dinheiro isso divide por mil: o auto-preencher
+      // trazia R$ 2,44 no lugar de R$ 2.436,00.
+      return { ...p, valor: sum > 0 ? paraReais(sum) : '' };
     }));
   }, []);
   /**
