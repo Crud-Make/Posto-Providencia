@@ -2,6 +2,34 @@
 
 ## [Não Lançado]
 
+### 🗓️ Seletor de mês na Visão do Proprietário
+- **[02/08/2026]** O painel só sabia mostrar o mês corrente (`inicioDoMes` derivava de `hoje`).
+  Agora tem um seletor com os **12 últimos meses**, e o mês escolhido governa todo o período.
+- **Mês fechado consulta o mês inteiro; mês corrente para em hoje.** O corte não é cosmético:
+  incluir dias futuros não muda a soma, mas divide a despesa do mês por litros que ainda não
+  existem e afunda o rateio por litro.
+- **A aba "Hoje" some em mês histórico** — hoje não pertence ao período exibido, e o número
+  apareceria ao lado de um mês a que não pertence. O alerta de "prejuízo hoje" também só vale no
+  mês corrente; em mês fechado virou "o mês fechou no prejuízo".
+- **Removida a aba "7 Dias".** Ela nunca buscou sete dias: caía no `else` e exibia o **mês inteiro**
+  sob rótulo de semana. Rótulo que mente sobre o período é pior que aba faltando.
+- 9 testes novos em `periodo.test.ts`, incluindo a regressão de fuso (31/07 às 21h em GMT-3 continua
+  sendo julho, não agosto). Suíte: **100 Vitest**, lint e type-check limpos.
+
+### ⚠️ ACHADO — o lucro de mês histórico sai errado (a RPC não tem custo histórico)
+- **[02/08/2026]** Com o seletor no ar, janeiro ficou visível — e mostra **prejuízo de R$ 3.712,30**
+  quando o real é **lucro de R$ 13.272,18**. Sinal invertido no número principal da tela.
+- **Causa**, em uma linha de `get_dashboard_proprietario`:
+  `SUM(l.litros_vendidos * (l.preco_litro - c.preco_custo))` com `JOIN "Combustivel" c`.
+  `Combustivel.preco_custo` é **um valor único por combustível, sem histórico** — hoje guarda os
+  preços de julho. Sobre as vendas de janeiro ele aplica o custo de julho (etanol 3,706 em vez de
+  4,10; gasolina 5,802 em vez de 5,3452), e o lucro bruto sai R$ 16.984,48 menor que o real.
+- **Por isso o golden de julho passa**: para o mês corrente o custo do cadastro *é* o custo da época.
+  O erro cresce quanto mais antigo o mês — e sem seletor de mês ninguém tinha como ver.
+- **Não corrigido nesta branch**: mudar isso é mudar fórmula de dinheiro em todas as telas e meses,
+  o que exige golden master e decisão explícita (§0.6, §11). A tabela `Compra` já foi carregada com
+  o custo real de janeiro e é a fonte para o conserto.
+
 ### 💰 Janeiro/2026 completo em produção — despesa, fechamento por frentista e lucro
 - **[02/08/2026]** A `Leitura` de janeiro já estava carregada, mas o resto do mês não existia em
   produção: `Fechamento`, `FechamentoFrentista` e `Compra` estavam **zeradas** e `Despesa` só tinha

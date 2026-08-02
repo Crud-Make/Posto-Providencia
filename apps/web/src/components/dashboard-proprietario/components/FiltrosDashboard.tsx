@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, RefreshCw } from 'lucide-react';
 import { PeriodoFiltro } from '../types';
+import { formatarMesBR } from '../../../utils/periodo';
 
 interface FiltrosDashboardProps {
   periodo: PeriodoFiltro;
@@ -8,6 +9,13 @@ interface FiltrosDashboardProps {
   onRefresh: () => void;
   loading: boolean;
   nomePosto?: string;
+  /** Mês exibido, ISO local `aaaa-mm`. */
+  mesSelecionado: string;
+  onMesChange: (mes: string) => void;
+  /** Meses oferecidos no seletor, do mais recente para o mais antigo. */
+  mesesDisponiveis: readonly string[];
+  /** `false` esconde a aba "Hoje" — ela não existe em mês histórico. */
+  ehMesCorrente: boolean;
 }
 
 export const FiltrosDashboard: React.FC<FiltrosDashboardProps> = ({
@@ -15,8 +23,15 @@ export const FiltrosDashboard: React.FC<FiltrosDashboardProps> = ({
   onPeriodoChange,
   onRefresh,
   loading,
-  nomePosto
+  nomePosto,
+  mesSelecionado,
+  onMesChange,
+  mesesDisponiveis,
+  ehMesCorrente
 }) => {
+  // Em mês fechado só existe a visão do mês; "Hoje" cai fora do período exibido.
+  const abas = ehMesCorrente ? (['hoje', 'mes'] as const) : (['mes'] as const);
+
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
       <div>
@@ -32,7 +47,22 @@ export const FiltrosDashboard: React.FC<FiltrosDashboardProps> = ({
       </div>
 
       <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-        {(['hoje', 'semana', 'mes'] as const).map((p) => (
+        <select
+          value={mesSelecionado}
+          onChange={(e) => onMesChange(e.target.value)}
+          aria-label="Mês exibido"
+          className="px-3 py-2 rounded-lg text-sm font-medium bg-transparent text-gray-700 dark:text-gray-200 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+        >
+          {mesesDisponiveis.map((m) => (
+            <option key={m} value={m} className="dark:bg-gray-800">
+              {formatarMesBR(m)}
+            </option>
+          ))}
+        </select>
+
+        <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+        {abas.map((p) => (
           <button
             key={p}
             onClick={() => onPeriodoChange(p)}
@@ -42,7 +72,7 @@ export const FiltrosDashboard: React.FC<FiltrosDashboardProps> = ({
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            {p === 'hoje' ? 'Hoje' : p === 'semana' ? '7 Dias' : 'Este Mês'}
+            {p === 'hoje' ? 'Hoje' : ehMesCorrente ? 'Este Mês' : 'Mês Fechado'}
           </button>
         ))}
 

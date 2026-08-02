@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
+import { hojeIso, mesAtualIso, mesesRecentes, formatarMesBR } from '../../utils/periodo';
 import { useDashboardProprietario } from './hooks/useDashboardProprietario';
 import { FiltrosDashboard } from './components/FiltrosDashboard';
 import { ResumoExecutivo } from './components/ResumoExecutivo';
@@ -7,13 +8,22 @@ import { DemonstrativoFinanceiro } from './components/DemonstrativoFinanceiro';
 import { AlertasGerenciais } from './components/AlertasGerenciais';
 import { PeriodoFiltro } from './types';
 
+/** Quantos meses o seletor oferece para trás. 12 cobre o ano corrente inteiro. */
+const MESES_NO_SELETOR = 12;
+
 const TelaDashboardProprietario: React.FC = () => {
-  const { dados, loading, recarregar } = useDashboardProprietario();
+  const [mesSelecionado, setMesSelecionado] = useState<string>(mesAtualIso);
+  const { dados, loading, recarregar } = useDashboardProprietario(mesSelecionado);
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('hoje');
 
-  // Seleciona os dados com base no filtro
-  // Nota: 'semana' fallback para 'mes' temporariamente, pois o backend não retorna semana separada ainda
-  const dadosAtuais = periodo === 'hoje' ? dados?.hoje : dados?.mes;
+  const mesesDisponiveis = useMemo(() => mesesRecentes(hojeIso(), MESES_NO_SELETOR), []);
+
+  // Trocar para um mês fechado tira "Hoje" do ar — a aba deixaria de existir na barra e o
+  // painel ficaria preso num período que não é mais oferecido.
+  const ehMesCorrente = dados?.ehMesCorrente ?? true;
+  const periodoEfetivo: PeriodoFiltro = ehMesCorrente ? periodo : 'mes';
+
+  const dadosAtuais = periodoEfetivo === 'hoje' ? dados?.hoje : dados?.mes;
 
   if (loading) {
     return (
@@ -45,11 +55,15 @@ const TelaDashboardProprietario: React.FC = () => {
   return (
     <div className="p-6 w-full space-y-8 animate-in fade-in duration-500">
       <FiltrosDashboard
-        periodo={periodo}
+        periodo={periodoEfetivo}
         onPeriodoChange={setPeriodo}
         onRefresh={recarregar}
         loading={loading}
         nomePosto={dados.posto?.nome}
+        mesSelecionado={mesSelecionado}
+        onMesChange={setMesSelecionado}
+        mesesDisponiveis={mesesDisponiveis}
+        ehMesCorrente={ehMesCorrente}
       />
 
       {/* Cards Principais */}
@@ -66,7 +80,14 @@ const TelaDashboardProprietario: React.FC = () => {
       {/* Footer Info */}
       <div className="text-center text-sm text-gray-400 dark:text-gray-500 py-4 border-t border-gray-100 dark:border-gray-800">
         <p>
-          💡 Visualizando dados de: <strong>{periodo === 'hoje' ? 'Hoje' : 'Mês Corrente'}</strong>.
+          💡 Visualizando dados de:{' '}
+          <strong>
+            {periodoEfetivo === 'hoje'
+              ? 'Hoje'
+              : ehMesCorrente
+                ? `${formatarMesBR(mesSelecionado)} (até hoje)`
+                : `${formatarMesBR(mesSelecionado)} (mês fechado)`}
+          </strong>.
           {/* [31/07] A frase antiga dizia "estimativas baseadas na margem média cadastrada". */}
           {/* Não era verdade: o lucro sai da receita real menos o custo de compra real. */}
           {' '}Lucro apurado da receita real menos o custo de compra e as despesas lançadas.

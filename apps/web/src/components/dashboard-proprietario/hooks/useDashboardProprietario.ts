@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { despesaOperacionalPorLitro, margemPercentual } from '@posto/utils';
-import { hojeIso } from '../../../utils/periodo';
+import { hojeIso, mesAtualIso, intervaloDoMes, ehMesCorrente, type Periodo } from '../../../utils/periodo';
 import { supabase } from '../../../services/supabase';
 import { postoService, frentistaService } from '../../../services/api';
 import { DadosDashboard, PostoSummary, AlertaDashboard, ResumoFinanceiro } from '../types';
@@ -30,6 +30,10 @@ const RESUMO_VAZIO: ResumoFinanceiro = {
 /**
  * Hook do painel do proprietário: apura o LUCRO REAL do posto.
  *
+ * @param mesSelecionado - Mês a exibir, ISO local `aaaa-mm`. Padrão: mês corrente.
+ *                         Em mês histórico o intervalo é o mês fechado e a aba "Hoje"
+ *                         vem zerada — ver {@link DadosDashboard.ehMesCorrente}.
+ *
  * @remarks
  * Fórmula (canônica, `@posto/utils/lucro`):
  *
@@ -50,7 +54,7 @@ const RESUMO_VAZIO: ResumoFinanceiro = {
  * Validado contra o golden `lucro-real.golden.spec.ts`: julho até o dia 24 dá
  * R$ 18.272,33 aqui contra R$ 18.272,31 no golden — 2 centavos de arredondamento.
  */
-export function useDashboardProprietario(): UseDashboardReturn {
+export function useDashboardProprietario(mesSelecionado: string = mesAtualIso()): UseDashboardReturn {
   const [dados, setDados] = useState<DadosDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -80,20 +84,21 @@ export function useDashboardProprietario(): UseDashboardReturn {
       // consultava 01/08 às 21h de 31/07 — e as DUAS abas zeravam, porque `inicioDoMes`
       // também saltava para o mês novo. Todo dia, das 21h à meia-noite, o painel apagava.
       const hoje = hojeIso();
-      const inicioDoMes = `${hoje.slice(0, 7)}-01`;
+      const periodo = intervaloDoMes(mesSelecionado, hoje);
+      const mesCorrente = ehMesCorrente(mesSelecionado, hoje);
 
       const summaries = await Promise.all(
-        postos.map((posto) => processarPosto(posto, hoje, inicioDoMes))
+        postos.map((posto) => processarPosto(posto, periodo, hoje, mesCorrente))
       );
 
-      setDados(consolidarDados(summaries, postos[0]));
+      setDados(consolidarDados(summaries, postos[0], mesSelecionado, mesCorrente));
     } catch (err) {
       console.error('Erro ao carregar dashboard:', err);
       setErro('Falha ao carregar dados do dashboard.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mesSelecionado]);
 
   useEffect(() => {
     carregarDados();
@@ -205,17 +210,26 @@ export function montarResumoDoDia(
   };
 }
 
-async function processarPosto(posto: Posto, hoje: string, inicioDoMes: string): Promise<PostoSummary> {
+async function processarPosto(
+  posto: Posto,
+  periodo: Periodo,
+  hoje: string,
+  mesCorrente: boolean
+): Promise<PostoSummary> {
   const resFrentistas = await frentistaService.getAll(posto.id);
   const frentistas = isSuccess(resFrentistas) ? resFrentistas.data : [];
   const frentistasAtivos = frentistas.filter((f) => f.ativo).length;
 
   const [vendaHoje, vendaMes, despesasMes, pendentes, ultimoFech] = await Promise.all([
-    buscarVendas(posto.id, hoje, hoje),
-    buscarVendas(posto.id, inicioDoMes, hoje),
+    // Em mês histórico não se consulta "hoje": a data cai fora do período exibido, e o
+    // número apareceria ao lado de um mês a que não pertence.
+    mesCorrente
+      ? buscarVendas(posto.id, hoje, hoje)
+      : Promise.resolve({ vendas: 0, litros: 0, lucroBruto: 0 }),
+    buscarVendas(posto.id, periodo.inicio, periodo.fim),
     // Só as despesas do MÊS são buscadas: o dia recebe a fatia rateada, não os
     // lançamentos daquela data — ver `montarResumoDoDia`.
-    buscarDespesas(posto.id, inicioDoMes, hoje),
+    buscarDespesas(posto.id, periodo.inicio, periodo.fim),
     supabase.from('Despesa').select('valor').eq('posto_id', posto.id).eq('status', 'pendente'),
     supabase
       .from('Fechamento')
@@ -261,18 +275,25 @@ function somarResumos(resumos: ResumoFinanceiro[]): ResumoFinanceiro {
   };
 }
 
-function consolidarDados(summaries: PostoSummary[], postoPrincipal: Posto): DadosDashboard {
+function consolidarDados(
+  summaries: PostoSummary[],
+  postoPrincipal: Posto,
+  mesSelecionado: string,
+  mesCorrente: boolean
+): DadosDashboard {
   return {
     hoje: somarResumos(summaries.map((s) => s.hoje)),
     mes: somarResumos(summaries.map((s) => s.mes)),
     posto: postoPrincipal,
     postosSummary: summaries,
-    alertas: gerarAlertas(summaries),
+    alertas: gerarAlertas(summaries, mesCorrente),
+    mesSelecionado,
+    ehMesCorrente: mesCorrente,
     ultimaAtualizacao: new Date().toISOString(),
   };
 }
 
-function gerarAlertas(summaries: PostoSummary[]): AlertaDashboard[] {
+function gerarAlertas(summaries: PostoSummary[], mesCorrente: boolean): AlertaDashboard[] {
   const alerts: AlertaDashboard[] = [];
 
   summaries.forEach((s) => {
@@ -293,11 +314,21 @@ function gerarAlertas(summaries: PostoSummary[]): AlertaDashboard[] {
       });
     }
 
-    if (s.hoje.lucroReal < 0) {
+    // Só no mês corrente: em mês histórico a aba "Hoje" vem zerada de propósito, e o
+    // alerta apontaria prejuízo num dia que nem pertence ao período exibido.
+    if (mesCorrente && s.hoje.lucroReal < 0) {
       alerts.push({
         type: 'danger',
         posto: s.posto.nome,
         message: 'Prejuízo operacional hoje',
+      });
+    }
+
+    if (!mesCorrente && s.mes.lucroReal < 0) {
+      alerts.push({
+        type: 'danger',
+        posto: s.posto.nome,
+        message: 'O mês fechou no prejuízo depois das despesas.',
       });
     }
   });
