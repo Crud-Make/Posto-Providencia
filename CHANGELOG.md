@@ -2,6 +2,12 @@
 
 ## [Não Lançado]
 
+### 🔧 `actions/checkout` sobe para v5
+- **[02/08/2026]** O CI vinha avisando em toda execução: `actions/checkout@v4` declara Node 20, que
+  o GitHub depreciou, e o runner já estava **forçando Node 24** por cima. O aviso não quebrava o
+  build, mas ia virar quebra quando o runner parar de fazer essa ponte. A v5 declara Node 24 nativo.
+- Único step afetado em `.github/workflows/ci.yml`; `oven-sh/setup-bun@v2` não emite o aviso.
+
 ### 🔒 INSERT anônimo nas tabelas de dinheiro ganha janela de 7 dias
 - **[02/08/2026]** Probe com a anon key do bundle publicado mediu `INSERT` anônimo **aberto em 10
   tabelas**, incluindo as 4 que sustentam o fechamento: `Leitura`, `Fechamento`,
