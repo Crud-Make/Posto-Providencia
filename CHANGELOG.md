@@ -2,6 +2,26 @@
 
 ## [Não Lançado]
 
+### 🐛 Pagamentos salvos voltavam 100× maiores ao reabrir o fechamento
+- **[31/07/2026]** `usePagamentos.carregarPagamentos` formatava com
+  `formatarValorSimples(Recebimento.valor.toFixed(2))`. O `toFixed` produz **ponto decimal**
+  (`"2436.00"`) e `formatarValorSimples` trata **todo ponto como separador de milhar** — apagava o
+  ponto, relia `"243600"` e devolvia **R$ 243.600** onde havia R$ 2.436,00 salvos.
+- **Correção:** `paraReais(valor)`, que já recebe `number` e não passa por parser de texto digitado.
+- **Mesma família do bug do auto-preencher**, pelo outro lado: lá um número virava texto e era lido
+  como litro; aqui um número virava texto e era lido como milhar. A regra que fecha os dois: valor
+  que **já é `number`** se formata com `paraReais`, nunca via parser de string.
+- **Coberto por teste:** `apps/web/src/utils/formatters.test.ts` trava as duas convenções que
+  convivem no sistema — encerrante (litro, 3 casas) e dinheiro (real, 2 casas).
+
+### 🐛 Caixa Geral reabria zerado quando havia rascunho salvo
+- **[31/07/2026]** O efeito que restaura o rascunho não chamava `carregarPagamentos`, e o outro
+  efeito que chama é barrado por `!rascunhoRestaurado`. Como o rascunho é gravado automaticamente,
+  na prática **quase sempre havia um** — então os `Recebimento` salvos nunca voltavam: o bloco
+  reabria zerado e a tela **acusava sobra de caixa igual ao total do dia**.
+- **Conferido que não há sobrescrita:** o rascunho nunca guardou pagamentos (`RascunhoFechamento`
+  só tem `leituras` e `sessoesFrentistas`), então recarregar do banco não descarta nada digitado.
+
 ### ♻️ "Gestão Financeira" saiu da barra lateral e virou aba do Fechamento de Caixa
 - **[31/07/2026]** Reorganização de navegação. Lançar receita e despesa é operação de caixa, mas
   vivia numa rota própria (`/financeiro`), a dois cliques de onde o caixa é conferido.

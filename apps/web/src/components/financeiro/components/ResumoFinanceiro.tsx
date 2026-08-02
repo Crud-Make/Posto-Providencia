@@ -1,5 +1,6 @@
 import React from 'react';
 import { DadosFinanceiros } from '../hooks/useFinanceiro';
+import { paraReais } from '../../../utils/formatters';
 import { DollarSign, TrendingUp, TrendingDown, Wallet, LucideIcon } from 'lucide-react';
 
 /**
@@ -66,9 +67,8 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
     );
   }
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
+  // `paraReais` no lugar de um `Intl.NumberFormat` local: mesma saída para número válido
+  // (mesmas opções), e devolve string vazia em vez de "R$ NaN" quando o valor não é número.
   const formatPercent = (val: number) => `${val.toFixed(1)}%`;
 
   return (
@@ -77,7 +77,7 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
       {/* anterior, o cartão só repetia a frase com o valor de comparação sempre vazio. */}
       <CartaoIndicador
         titulo="Receita Total"
-        valor={formatCurrency(dados.receitas.total)}
+        valor={paraReais(dados.receitas.total)}
         Icone={DollarSign}
         corFundoIcone="bg-green-500/15"
         corIcone="text-green-400"
@@ -85,7 +85,7 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
 
       <CartaoIndicador
         titulo="Despesas Totais"
-        valor={formatCurrency(dados.despesas.total)}
+        valor={paraReais(dados.despesas.total)}
         Icone={TrendingDown}
         corFundoIcone="bg-red-500/15"
         corIcone="text-red-400"
@@ -93,7 +93,7 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
 
       <CartaoIndicador
         titulo="Lucro Líquido"
-        valor={formatCurrency(dados.lucro.liquido)}
+        valor={paraReais(dados.lucro.liquido)}
         legenda={`Margem líquida: ${formatPercent(dados.lucro.margem)}`}
         negativo={dados.lucro.liquido < 0}
         Icone={Wallet}

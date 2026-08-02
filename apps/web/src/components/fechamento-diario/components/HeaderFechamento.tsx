@@ -14,12 +14,12 @@ import { Turno } from '../../../types/database/index';
  *          lançamentos por período, herdado da antiga rota `/financeiro`.
  */
 const ABAS = [
-    { chave: 'leituras', rotulo: '⛽ Leituras de Bomba', ativa: 'border-blue-500 text-blue-400' },
-    { chave: 'financeiro', rotulo: '💰 Fechamento Financeiro', ativa: 'border-emerald-500 text-emerald-400' },
-    { chave: 'detalhamento', rotulo: '👥 Detalhamento Frentistas', ativa: 'border-purple-500 text-purple-400' },
-    { chave: 'gestao-bicos', rotulo: '🚀 Gestão de Bicos', ativa: 'border-indigo-500 text-indigo-400' },
-    { chave: 'receitas-despesas', rotulo: '💵 Receitas e Despesas', ativa: 'border-cyan-500 text-cyan-400' },
-    { chave: 'fechamento-mensal', rotulo: '📅 Fechamento Mensal', ativa: 'border-yellow-500 text-yellow-400' }
+    { chave: 'leituras', rotulo: '⛽ Leituras de Bomba', classeAtiva: 'border-blue-500 text-blue-400' },
+    { chave: 'financeiro', rotulo: '💰 Fechamento Financeiro', classeAtiva: 'border-emerald-500 text-emerald-400' },
+    { chave: 'detalhamento', rotulo: '👥 Detalhamento Frentistas', classeAtiva: 'border-purple-500 text-purple-400' },
+    { chave: 'gestao-bicos', rotulo: '🚀 Gestão de Bicos', classeAtiva: 'border-indigo-500 text-indigo-400' },
+    { chave: 'receitas-despesas', rotulo: '💵 Receitas e Despesas', classeAtiva: 'border-cyan-500 text-cyan-400' },
+    { chave: 'fechamento-mensal', rotulo: '📅 Fechamento Mensal', classeAtiva: 'border-yellow-500 text-yellow-400' }
 ] as const;
 
 export type AbaFechamento = (typeof ABAS)[number]['chave'];
@@ -110,13 +110,13 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
             {/* [31/07] Os 6 botões viraram um map sobre ABAS: eram blocos idênticos a menos */}
             {/* do rótulo e da cor, e a sexta aba tornaria a repetição cara de manter. */}
             <div className="w-full px-4 sm:px-6 lg:px-10 flex gap-2 mt-2 pb-0 overflow-x-auto">
-                {ABAS.map(({ chave, rotulo, ativa }) => (
+                {ABAS.map(({ chave, rotulo, classeAtiva }) => (
                     <button
                         key={chave}
                         onClick={() => setActiveTab(chave)}
                         aria-current={activeTab === chave ? 'page' : undefined}
                         className={`flex-1 md:flex-none whitespace-nowrap px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === chave
-                            ? ativa
+                            ? classeAtiva
                             : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
                             }`}
                     >
