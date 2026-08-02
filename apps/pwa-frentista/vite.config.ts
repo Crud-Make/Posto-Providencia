@@ -35,9 +35,6 @@ export default defineConfig({
         theme_color: '#0f172a', // slate-900 (Dark Mode Base)
         background_color: '#0f172a',
         display: 'standalone',
-        // O frentista usa de pé, com o celular na mão; girar a tela no meio do
-        // lançamento só atrapalha.
-        orientation: 'portrait',
         categories: ['business', 'productivity'],
         icons: [
           {

@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { type Convite, decidirConvite, detectarPlataforma, jaInstalado } from './instalacao';
+import {
+  type Convite,
+  decidirConvite,
+  detectarPlataforma,
+  ehSafari,
+  jaInstalado,
+} from './instalacao';
+
+const MEDIA_APP_INSTALADO = '(display-mode: standalone)';
 
 /**
  * `beforeinstallprompt` não existe no lib.dom do TypeScript porque não é padrão
@@ -37,10 +45,12 @@ export function useConviteInstalacao() {
   const [dispensado, setDispensado] = useState(leuDispensa);
 
   useEffect(() => {
+    const media = window.matchMedia(MEDIA_APP_INSTALADO);
+
     const conferirInstalado = () =>
       setInstalado(
         jaInstalado({
-          standalonePorMedia: window.matchMedia('(display-mode: standalone)').matches,
+          standalonePorMedia: media.matches,
           standalonePorNavigator: (navigator as NavegadorComStandalone).standalone === true,
         }),
       );
@@ -58,8 +68,6 @@ export function useConviteInstalacao() {
       setInstalado(true);
       setPromptNativo(null);
     };
-
-    const media = window.matchMedia('(display-mode: standalone)');
 
     window.addEventListener('beforeinstallprompt', aoOferecerInstalacao);
     window.addEventListener('appinstalled', aoInstalar);
@@ -85,16 +93,20 @@ export function useConviteInstalacao() {
     if (!promptNativo) return;
 
     await promptNativo.prompt();
-    const { outcome } = await promptNativo.userChoice;
+    await promptNativo.userChoice;
 
     // O evento é de uso único: depois de chamado, o navegador não deixa
-    // reaproveitar. Descartar evita um segundo clique que não faz nada.
+    // reaproveitar. Descartar o evento já esconde o convite nesta sessão.
+    //
+    // Cancelar o diálogo do sistema NÃO grava dispensa permanente: quem toca
+    // "Instalar agora" e desiste quer decidir depois, não sumir com o convite
+    // para sempre. Só o X explícito persiste.
     setPromptNativo(null);
-    if (outcome === 'dismissed') dispensar();
-  }, [promptNativo, dispensar]);
+  }, [promptNativo]);
 
   const convite: Convite = decidirConvite({
     plataforma: detectarPlataforma(navigator.userAgent, navigator.maxTouchPoints),
+    safariNoIos: ehSafari(navigator.userAgent),
     instalado,
     temPromptNativo: promptNativo !== null,
     dispensado,

@@ -9,7 +9,7 @@
 export const PLATAFORMA = ['ios', 'android', 'outra'] as const;
 export type Plataforma = (typeof PLATAFORMA)[number];
 
-export const CONVITE = ['oculto', 'botao', 'instrucoes-ios'] as const;
+export const CONVITE = ['oculto', 'botao', 'instrucoes-ios', 'abrir-no-safari'] as const;
 export type Convite = (typeof CONVITE)[number];
 
 /**
@@ -28,6 +28,19 @@ export function detectarPlataforma(userAgent: string, pontosDeToque: number): Pl
   if (/android/.test(ua)) return 'android';
 
   return 'outra';
+}
+
+/**
+ * @remarks "Adicionar à Tela de Início" só existe no Safari. Chrome e Firefox
+ *          no iPhone declaram `CriOS`/`FxiOS`; navegador embutido (WhatsApp,
+ *          Instagram) nem traz o token `Safari`. Nos dois casos o passo a passo
+ *          é impossível de cumprir.
+ */
+export function ehSafari(userAgent: string): boolean {
+  const ua = userAgent.toLowerCase();
+  const outroNavegador = /crios|fxios|edgios|opios/.test(ua);
+
+  return !outroNavegador && /safari/.test(ua);
 }
 
 interface SinaisDeInstalacao {
@@ -51,6 +64,8 @@ export function jaInstalado({
 
 interface EstadoDoConvite {
   readonly plataforma: Plataforma;
+  /** Só faz sentido no iOS; ignorado nas demais plataformas. */
+  readonly safariNoIos: boolean;
   readonly instalado: boolean;
   /** O navegador disparou `beforeinstallprompt` e guardamos o evento. */
   readonly temPromptNativo: boolean;
@@ -59,20 +74,22 @@ interface EstadoDoConvite {
 
 /**
  * @returns `'botao'` chama o prompt nativo; `'instrucoes-ios'` ensina o caminho
- *          manual; `'oculto'` não mostra nada.
+ *          manual; `'abrir-no-safari'` pede a troca de navegador antes;
+ *          `'oculto'` não mostra nada.
  * @remarks O iOS **nunca** dispara `beforeinstallprompt`. Um convite que espera
  *          por esse evento simplesmente nunca aparece em iPhone — por isso o
  *          caso do iOS é decidido antes, e não como fallback do prompt.
  */
 export function decidirConvite({
   plataforma,
+  safariNoIos,
   instalado,
   temPromptNativo,
   dispensado,
 }: EstadoDoConvite): Convite {
   if (instalado || dispensado) return 'oculto';
   if (temPromptNativo) return 'botao';
-  if (plataforma === 'ios') return 'instrucoes-ios';
+  if (plataforma === 'ios') return safariNoIos ? 'instrucoes-ios' : 'abrir-no-safari';
 
   return 'oculto';
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectarPlataforma, jaInstalado, decidirConvite } from './instalacao';
+import { detectarPlataforma, ehSafari, jaInstalado, decidirConvite } from './instalacao';
 
 // User agents reais, copiados de aparelhos, não inventados. Se algum dia um
 // frentista aparecer com aparelho que não casa, o certo é somar o UA dele aqui.
@@ -12,6 +12,11 @@ const UA = {
     'Mozilla/5.0 (Linux; Android 13; SM-A235M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
   desktopChrome:
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  chromeNoIphone:
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0.0.0 Mobile/15E148 Safari/604.1',
+  // Navegador embutido do WhatsApp no iPhone: não traz o token "Safari".
+  webviewWhatsApp:
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
 } as const;
 
 describe('detectarPlataforma', () => {
@@ -39,6 +44,23 @@ describe('detectarPlataforma', () => {
   });
 });
 
+// "Adicionar à Tela de Início" só existe no Safari. O frentista costuma abrir
+// link pelo WhatsApp, que usa navegador embutido — lá o passo a passo do iOS é
+// impossível de cumprir, e mandá-lo tentar é pior que não mostrar nada.
+describe('ehSafari', () => {
+  it('reconhece o Safari do iPhone', () => {
+    expect(ehSafari(UA.iphoneSafari)).toBe(true);
+  });
+
+  it('não confunde Chrome no iPhone com Safari (CriOS)', () => {
+    expect(ehSafari(UA.chromeNoIphone)).toBe(false);
+  });
+
+  it('não confunde o navegador embutido do WhatsApp com Safari', () => {
+    expect(ehSafari(UA.webviewWhatsApp)).toBe(false);
+  });
+});
+
 describe('jaInstalado', () => {
   it('detecta app aberto em janela própria pelo display-mode', () => {
     expect(jaInstalado({ standalonePorMedia: true })).toBe(true);
@@ -61,6 +83,7 @@ describe('jaInstalado', () => {
 describe('decidirConvite', () => {
   const base = {
     plataforma: 'android' as const,
+    safariNoIos: false,
     instalado: false,
     temPromptNativo: false,
     dispensado: false,
@@ -80,12 +103,24 @@ describe('decidirConvite', () => {
 
   // O iOS nunca dispara beforeinstallprompt. Esperar por ele é o erro clássico
   // que faz o convite nunca aparecer em iPhone — lá só resta ensinar o caminho.
-  it('ensina o passo a passo no iOS, que não tem prompt nativo', () => {
-    expect(decidirConvite({ ...base, plataforma: 'ios' })).toBe('instrucoes-ios');
+  it('ensina o passo a passo no Safari do iOS, que não tem prompt nativo', () => {
+    expect(decidirConvite({ ...base, plataforma: 'ios', safariNoIos: true })).toBe(
+      'instrucoes-ios',
+    );
+  });
+
+  // Ensinar "toque em Compartilhar" dentro da webview do WhatsApp manda o
+  // frentista procurar um botão que não existe ali.
+  it('manda abrir no Safari quando o iOS está fora do Safari', () => {
+    expect(decidirConvite({ ...base, plataforma: 'ios', safariNoIos: false })).toBe(
+      'abrir-no-safari',
+    );
   });
 
   it('não ensina passo a passo de iOS se o app já está instalado', () => {
-    expect(decidirConvite({ ...base, plataforma: 'ios', instalado: true })).toBe('oculto');
+    expect(
+      decidirConvite({ ...base, plataforma: 'ios', safariNoIos: true, instalado: true }),
+    ).toBe('oculto');
   });
 
   it('fica oculto no Android enquanto o prompt não chegou', () => {
