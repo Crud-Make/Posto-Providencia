@@ -40,12 +40,24 @@ ANO = 2026
 USUARIO_ID, TURNO_ID, POSTO_ID = 1, 1, 1
 
 # Nome na planilha -> id em produção. Conferido em 02/08/2026 contra a tabela
-# Frentista: os 8 nomes da planilha existem no cadastro, com grafia idêntica.
-# Leandro é 239 (cadastrado depois dos 7 primeiros) — os scripts legados de
-# importação hardcodavam 7 colunas fixas e PERDIAM as 18 linhas dele.
+# Frentista. Leandro é 239 (cadastrado depois dos 7 primeiros) — os scripts
+# legados de importação hardcodavam 7 colunas fixas e PERDIAM as 18 linhas dele.
+#
+# 'Felip' e 'Filip' são A MESMA PESSOA (id 1), confirmado pelo dono em 02/08.
+# A evidência é dupla e não deixa margem:
+#   - nas VENDAS, 'Filip' aparece de jan a jun e zera em julho; 'Felip' aparece
+#     só em julho. Nunca coexistem num mesmo mês;
+#   - na FOLHA DE PAGAMENTO o nome sempre foi 'Felip', de janeiro em diante.
+#     Ou seja: a tabela de vendas grafava 'Filip' e a de despesas 'Felip' para a
+#     mesma pessoa o tempo todo, até julho alinhar as duas.
+# Mapear as duas grafias para o id 1 mantém o histórico contínuo; tratá-las como
+# pessoas distintas partiria o histórico dele em duas em julho.
 FRENTISTAS = {
-    'Filip': 1, 'Paulo': 2, 'Barbra': 3, 'Rosimeire': 4,
+    'Filip': 1, 'Felip': 1,
+    'Paulo': 2, 'Barbra': 3, 'Rosimeire': 4,
     'Sinho': 5, 'Nayla': 6, 'Elyon': 7, 'Leandro': 239,
+    # Entraram no posto ao longo de 2026 e não estavam no cadastro até 02/08.
+    'Meiri': 244, 'Viviane': 245, 'Venicius': 246,
 }
 
 # Rótulo da forma na planilha -> coluna de FechamentoFrentista.
@@ -100,13 +112,37 @@ def carregar(mes):
 
     # Cabeçalho do dia: venda dos bicos (rollup dos encerrantes) e o total que a
     # planilha escreveu no bloco de caixa.
+    #
+    # `dado_incompleto=0` é OBRIGATÓRIO aqui — é o bug nº 2 da skill de ETL.
+    # Quando falta o encerrante inicial OU o final de um dia, a planilha subtrai
+    # com o lado vazio como zero e produz lixo de magnitude absurda. Em fev/2026
+    # (lacuna dos dias 09–14) isso vale −R$ 20.121.163,55 em três dias e
+    # +R$ 20.178.034,18 no dia 15. Sem este filtro a venda do mês saía
+    # −R$ 40 milhões, e o número entraria calado no banco.
+    #
+    # Esses dias ficam FORA da carga, não entram com venda zero: zero afirmaria
+    # que a bomba não vendeu, o que é falso — o que existe é ausência de leitura.
+    # `Fechamento.total_vendas` e `diferenca` são NOT NULL, então não há como
+    # gravar "desconhecido". Excluir mantém o Fechamento cobrindo exatamente os
+    # mesmos dias que a `Leitura` já carregada, que aplicou o mesmo corte.
     dias = {
         d: {'venda_bicos': vb or 0.0, 'total_do_bloco': tb}
         for d, vb, tb in cur.execute(
             """SELECT dia, venda_concentrador_total, caixa_venda_frentista
-               FROM fechamento_diario WHERE ano=? AND mes=? AND dia<=?""",
+               FROM fechamento_diario
+               WHERE ano=? AND mes=? AND dia<=? AND dado_incompleto=0""",
             (ANO, mes, dias_reais))
     }
+
+    # O que a lacuna leva junto: venda de frentista REAL, que existe na planilha
+    # mas fica sem contrapartida de encerrante. Reportado, nunca silenciado.
+    dias_sem_encerrante = sorted({d for (d, _) in grade if d not in dias})
+    linhas_fora = sum(
+        1 for (d, _) in grade if d in dias_sem_encerrante
+    )
+    valor_fora = round(sum(
+        sum(b.values()) for (d, _), b in grade.items() if d in dias_sem_encerrante
+    ), 2)
 
     fechamentos, frentistas_linhas, avisos = [], [], []
     for dia in sorted(dias):
@@ -154,19 +190,23 @@ def carregar(mes):
             'diferenca': round(venda_bicos - conferido_dia, 2),
         })
 
-    # Conferência independente: o conferido do mês tem de reconstruir a soma
-    # crua da referência, sem passar por nenhum total da planilha.
+    # Conferência independente: o que entra MAIS o que a lacuna levou tem de
+    # reconstruir a soma crua da referência, sem passar por nenhum total da
+    # planilha. É o mesmo portão do carregador de `Leitura`.
     total_ref = cur.execute(
         'SELECT ROUND(SUM(valor),2) FROM venda_frentista_diaria WHERE ano=? AND mes=? AND dia<=?',
         (ANO, mes, dias_reais)).fetchone()[0]
     total_carga = round(sum(f['total_recebido'] for f in fechamentos), 2)
-    if abs(total_carga - total_ref) > 0.01:
-        erro(f'conferido não fecha: carga {total_carga} != referência {total_ref}')
+    if abs((total_carga + valor_fora) - total_ref) > 0.01:
+        erro(f'conferido não fecha: entram {total_carga} + fora {valor_fora} '
+             f'!= referência {total_ref}')
 
     return fechamentos, frentistas_linhas, {
         'mes': mes, 'dias': len(fechamentos), 'linhas': len(frentistas_linhas),
         'total_ref': total_ref, 'total_carga': total_carga,
         'venda_bicos': round(sum(f['total_vendas'] for f in fechamentos), 2),
+        'dias_sem_encerrante': dias_sem_encerrante,
+        'linhas_fora': linhas_fora, 'valor_fora': valor_fora,
         'avisos': avisos,
     }
 
@@ -235,7 +275,13 @@ if __name__ == '__main__':
         print(f"  linhas de frentista ....... {resumo['linhas']}")
         print(f"  venda pelos bicos ......... {resumo['venda_bicos']}")
         print(f"  conferido da carga ........ {resumo['total_carga']}")
-        print(f"  conferido na referência ... {resumo['total_ref']}  (confere)")
+        if resumo['dias_sem_encerrante']:
+            dias_txt = ', '.join(f'{d:02d}' for d in resumo['dias_sem_encerrante'])
+            print(f"  conferido DESCARTADO ...... {resumo['valor_fora']} "
+                  f"({resumo['linhas_fora']} linhas)")
+            print(f"    dias sem encerrante ..... {dias_txt}")
+        print(f"  conferido na referência ... {resumo['total_ref']}  "
+              f"(carga + descartado confere)")
         print(f"  diferença do mês .......... "
               f"{round(resumo['venda_bicos'] - resumo['total_carga'], 2):+} "
               f"(positivo = FALTA)")
