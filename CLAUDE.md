@@ -261,6 +261,8 @@ Já mentiu com confiança total uma vez; ver anexo.
 - **Não use aqui:** `claude-mem:learn-codebase`, `:smart-explore`, `:pathfinder`. As três leem arquivo
   para entender base desconhecida; este repo já responde isso pelo grafo (§12). Valem em repo sem grafo.
 - `find-skills`, `prompt`, `dataviz`: sob demanda, quando eu pedir pelo nome.
+- **As 3 primeiras linhas de agente desta tabela são automáticas desde 02/08**: o hook
+  `roteia-consulta` encaminha sozinho (§14). A tabela vira conferência, não memória.
 
 **Quando vale abrir um subagente:** só quando ele **lê muito e devolve pouco**. O `grafo` carrega um
 grafo de 2,5 MB e greps em 305 arquivos para devolver 10 linhas com `arquivo:linha` — aí o ganho é
@@ -273,17 +275,36 @@ abaixo do ponto de equilíbrio. Todo agente novo carrega a regra anti-alucinaç�
 
 ## 14. Travas automáticas
 
-Três regras deste arquivo deixaram de depender de eu lembrar delas. Rodam como hooks
-`PreToolUse` (`.claude/settings.json` → `.claude/hooks/`), executados pelo harness:
+Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como hooks
+(`.claude/settings.json` → `.claude/hooks/`), executados pelo harness.
+
+**Travas — impedem o erro** (`PreToolUse`):
 
 - Escrita em `docs/data/` — **negada** (§6), tanto por `Write`/`Edit` quanto por shell
   (`>`, `rm`, `sed -i`, `DELETE`…). Leitura segue livre. Para consultar, agente `planilha`.
 - `git push --force` — **negado** (§9).
 - `git commit` na `main` — **pergunta** antes (§0.3), em vez de bloquear: commit de
   emergência continua possível, mas consciente.
+- `git commit` com pendência do checklist — **pergunta** antes: fórmula no commit sem
+  golden master (§0.6) ou código sem `CHANGELOG.md` (§9). Inspeciona o índice do git,
+  nunca a mensagem — é o que o imuniza contra o falso positivo que mordeu o `protege-git`.
+
+**Encaminhamentos — evitam o desperdício** (`UserPromptSubmit`, `PostToolUse`, `SessionStart`):
+
+- Pergunta de localização, de valor real ou de exposição do banco → **encaminhada ao agente**
+  `grafo`/`planilha`/`rls`. Existe por uma assimetria: *skill se oferece, agente não*. Skill
+  carrega sozinha pelo casamento com a `description`; agente precisa ser chamado pelo nome,
+  e por isso o `grafo` passou de 29/07 a 02/08 instalado e nunca usado. Casamento **forte** de
+  propósito — termo solto do domínio não dispara, porque a skill de fechamento já cobre.
+- Edição em arquivo de fórmula (`packages/utils/src/*.ts`, `aggregator.service.ts`) → lembra
+  do golden master (§0.6) **na hora da edição**, não no fim da tarefa. Erra para o lado do
+  aviso a mais: aviso sobrando é uma linha, aviso faltando é fórmula mudando calada.
+- Início de sessão → confere cache órfão de plugin, grafo desatualizado e symlink de skill
+  quebrado. **Silencioso quando está tudo ok** — aviso que aparece sempre deixa de ser lido.
 
 Instrução é forte; hook é garantia. Regra cara demais para depender de memória vira hook.
-Para revisar ou desligar: `/hooks`.
+Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 53 casos, e os negativos
+valem tanto quanto os positivos. Para revisar ou desligar: `/hooks`.
 
 ---
 

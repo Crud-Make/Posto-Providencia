@@ -2,6 +2,37 @@
 
 ## [Não Lançado]
 
+### 🪝 Quatro hooks novos: o ferramental passa a se cobrar sozinho
+- **[02/08/2026]** Auditoria das skills instaladas revelou uma assimetria que ninguém tinha
+  nomeado: **skill se oferece, agente não**. Uma skill carrega sozinha porque o harness casa a
+  frase do dono com o campo `description`; um agente só roda se alguém o chamar pelo nome. Efeito
+  medido: o agente `grafo` ficou instalado **de 29/07 a 02/08 sem uma única execução**, reconstruindo
+  o índice a cada commit, enquanto as mesmas perguntas eram respondidas com grep dentro da sessão —
+  exatamente o gasto que o §13 tenta evitar.
+- **`roteia-consulta` (`UserPromptSubmit`)** — encaminha pergunta de localização → `grafo`, de valor
+  real → `planilha`, de exposição do banco → `rls`. **Casamento forte de propósito:** termo solto do
+  domínio ("conferido", "diferença") *não* dispara, porque a skill de fechamento já cobre sozinha e
+  injetar ali seria pagar token por lembrete duplicado. 5 dos 14 casos de teste são negativos.
+- **`portao-golden` (`PostToolUse`)** — edição em `packages/utils/src/*.ts` ou no `aggregator.service.ts`
+  lembra do golden master (§0.6) **na hora da edição**, não no fim da tarefa, que é quando o contexto
+  já rolou pra longe. Erra para o lado do aviso a mais (até `formatters.ts` dispara): aviso sobrando é
+  uma linha, aviso faltando é fórmula de dinheiro mudando calada — foi assim que a dupla contagem de
+  despesa passou. Mesma escolha de lado seguro do `_comum.segmentos`.
+- **`checklist-commit` (`PreToolUse`)** — pergunta antes de commitar fórmula sem golden master ou
+  código sem `CHANGELOG.md`. **Pergunta, não nega**, porque os dois têm exceção legítima (refatoração
+  estrutural, WIP em branch) — mesmo desenho da trava de commit na `main`. Inspeciona o índice do git
+  e nunca a mensagem: é o que o imuniza contra o falso positivo que mordeu o `protege-git` duas vezes.
+- **`higiene` (`SessionStart`)** — confere cache órfão de plugin, grafo mais velho que o último commit
+  e symlink de skill quebrado. **Silencioso quando está tudo ok**, porque aviso que aparece toda sessão
+  deixa de ser lido. Na primeira execução já achou sozinho **474 MB** de cache órfão do claude-mem
+  13.12.1, parado desde a atualização de 24/07 e descoberto na mão só hoje, 9 dias depois.
+- **`testa-hooks.py` estendido de 24 para 53 casos**, cobrindo os 4 novos. Ganhou `carrega()` por
+  `importlib` — nome de arquivo com hífen não é módulo Python importável.
+- ⚠️ **Nota de calibragem sobre custo de contexto:** a suspeita de que as skills gastavam muito token
+  foi **medida e não se confirmou** — as ~50 descrições somam ~4.000 tokens por requisição (~0,4% da
+  janela), e o claude-mem sozinho, ~1.189. O desperdício real está em pergunta larga e em não usar os
+  agentes que leem muito e devolvem pouco; daí o `roteia-consulta` ser a resposta certa, e não podar skill.
+
 ### 📱 PWA do frentista instala como aplicativo no celular
 - **[02/08/2026]** O app já era PWA (manifest, service worker, ícones 192/512), mas faltavam as
   peças que fazem o aparelho tratá-lo como aplicativo. Nada foi reconstruído — só as lacunas.
