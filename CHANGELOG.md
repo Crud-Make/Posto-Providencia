@@ -2,6 +2,36 @@
 
 ## [Não Lançado]
 
+### 📊 Histórico carregado em produção — estágio 3 do ETL
+- **[02/08/2026]** Produção tinha **47 dias** de leitura contra 206 validados na planilha. Agora tem
+  **200 dias / 1.200 linhas / 275.686,369 L**. Os estágios 1 e 2 (extração e conferência contra o
+  resumo mensal) já estavam feitos em `docs/data/posto_jorro_2026.sqlite`; faltava levar o validado
+  para o banco.
+- **`scripts/carga-historico-leitura.py`** gera SQL idempotente
+  (`ON CONFLICT (bico_id, data) DO NOTHING`, sobre o índice único de 31/07) e **não escreve no
+  banco**. As regras da skill de ETL estão no código, não na disciplina de quem roda: linha
+  `dado_incompleto` nunca entra; slot além do calendário real (`calendar.monthrange`) é ignorado; e
+  o total de litros do que entra + do que fica de fora tem de reconstruir a referência, senão aborta.
+- **Preço ausente é derivado com conferência cruzada.** `valor_lt` vem nulo numa linha por dia (o
+  Bico 06). O derivado (`venda ÷ litros`) só é aceito se bater com o preço de **outro bico do mesmo
+  combustível no mesmo dia** — senão aborta em vez de chutar. Bateu 6,28 em todos.
+- **Carregados e conferidos:** jan (186 · 46.843,062 L), mar (186 · 41.060,781), abr (180 ·
+  42.900,019), mai (186 · 41.224,482), jun (180 · 41.929,977). Todos **idênticos** à referência.
+  Janeiro passou também no portão independente (`validacao_mensal`): 6 bicos, `dif 0.0`.
+- **Fevereiro já estava certo** e não foi tocado: 126 linhas contra 168 na referência, e as 42 de
+  diferença são exatamente as `dado_incompleto` da lacuna 09–14.
+- ⚠️ **Julho é o único mês SEM portão, e continua incompleto.** A planilha de origem não foi
+  atualizada: ela cobre os dias 1–24 (o 25 está marcado incompleto), e produção tem 1–24 mais os
+  dias **26 e 27 lançados pelo app** — que não existem em fonte externa nenhuma. Os 32.353,512 L de
+  julho **não batem com a referência e não deveriam**: é mês pela metade, não divergência a
+  investigar. Fecha quando a planilha atualizada chegar; o script é idempotente e carrega só o que
+  faltar.
+- **Desvio conhecido de R$ 0,02/mês** na venda: cada linha é arredondada em 2 casas, a referência
+  soma o float cru. Mesmo desvio já registrado na carga de julho.
+- ⚠️ **A carga exige `service_role`** (foi aplicada pelo MCP do Supabase). As travas de hoje fazem
+  `INSERT` com data antiga devolver `42501` pelo caminho anônimo — é o desenho funcionando, mas
+  precisa ser sabido antes de tentar carregar pelo app.
+
 ### 🪝 Quatro hooks novos: o ferramental passa a se cobrar sozinho
 - **[02/08/2026]** Auditoria das skills instaladas revelou uma assimetria que ninguém tinha
   nomeado: **skill se oferece, agente não**. Uma skill carrega sozinha porque o harness casa a
