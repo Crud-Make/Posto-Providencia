@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { notaFrentistaService } from '../../../services/api';
 import { PagamentoFormData } from '../types';
+import { hojeIso } from '@posto/utils';
 
 /**
  * Hook para gerenciar pagamentos de notas.
@@ -11,7 +12,7 @@ export function usePagamento(onSuccess: () => void) {
     const [isOpen, setIsOpen] = useState(false);
     const [formData, setFormData] = useState<PagamentoFormData>({
         notaId: 0,
-        data: new Date().toISOString().split('T')[0],
+        data: hojeIso(),
         formaPagamento: 'DINHEIRO',
         observacoes: ''
     });
@@ -19,7 +20,7 @@ export function usePagamento(onSuccess: () => void) {
     const openModal = (notaId: number) => {
         setFormData({
             notaId,
-            data: new Date().toISOString().split('T')[0],
+            data: hojeIso(),
             formaPagamento: 'DINHEIRO',
             observacoes: ''
         });

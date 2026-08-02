@@ -19,6 +19,7 @@ import {
 import type { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance, FuelSummary, NozzleData, InventoryAlert, InventoryTransaction } from '../../types/ui/dashboard';
 import type { ClosingAttendant } from '../../types/ui/closing';
 import type { AttendantProfile, AttendantHistoryEntry } from '../../types/ui/attendants';
+import { hojeIso, paraIsoLocal } from '@posto/utils';
 
 /**
  * Helper para extrair dados de ApiResponse com tratamento de erro
@@ -509,7 +510,7 @@ export const aggregatorService = {
       const combustiveis = extractData(combustiveisRes);
       const bicos = extractData(bicosRes);
 
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = hojeIso();
       const vendasRes = await leituraService.getSalesSummaryByDate(hoje, postoId);
       const vendas = extractData(vendasRes);
 
@@ -639,7 +640,7 @@ export const aggregatorService = {
       ];
 
       // Buscar caixas abertos hoje
-      const hojeStr = new Date().toISOString().split('T')[0];
+      const hojeStr = hojeIso();
       const { data: caixasAbertos } = await supabase
         .from('FechamentoFrentista')
         .select('frentista_id, fechamento:Fechamento!inner(status, data)')
@@ -729,7 +730,7 @@ export const aggregatorService = {
       let leiturasQuery = supabase
         .from('Leitura')
         .select('*, bico:Bico(combustivel_id), combustivel:Bico(Combustivel(nome))')
-        .gte('data', dataInicioAnalise.toISOString().split('T')[0])
+        .gte('data', paraIsoLocal(dataInicioAnalise))
         .order('data', { ascending: false })
         .limit(100);
 
@@ -739,7 +740,7 @@ export const aggregatorService = {
 
       const [estoqueRes, comprasRes, leiturasRecentes] = await Promise.all([
         estoqueService.getAll(postoId),
-        compraService.getAll(postoId, dataInicioAnalise.toISOString().split('T')[0]),
+        compraService.getAll(postoId, paraIsoLocal(dataInicioAnalise)),
         leiturasQuery
       ]);
 
@@ -769,7 +770,7 @@ export const aggregatorService = {
       const last7Days = [...Array(7)].map((_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const dayStr = d.toISOString().split('T')[0];
+        const dayStr = paraIsoLocal(d);
         const dayLabel = d.toLocaleDateString('pt-BR', { weekday: 'short' });
 
         const salesDay = leituras.filter(l => l.data === dayStr).reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
@@ -797,7 +798,7 @@ export const aggregatorService = {
         const comprasComb = compras.filter(c => c.combustivel_id === e.combustivel_id);
 
         const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-        const volumeComprado = comprasComb.filter(c => c.data >= dataInicioAnalise.toISOString().split('T')[0]).reduce((acc, c) => acc + c.quantidade_litros, 0);
+        const volumeComprado = comprasComb.filter(c => c.data >= paraIsoLocal(dataInicioAnalise)).reduce((acc, c) => acc + c.quantidade_litros, 0);
 
         const mediaDiaria = volumeVendido / 7;
         const custoMedio = e.custo_medio || comprasComb[0]?.custo_por_litro || 0;

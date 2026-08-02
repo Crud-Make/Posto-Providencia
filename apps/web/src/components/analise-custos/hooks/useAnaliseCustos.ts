@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchProfitabilityData } from '../../../services/api';
 import { usePosto } from '../../../contexts/usePosto';
 import { ProfitabilityItem, Margins } from '../types';
+import { paraMesLocal } from '@posto/utils';
 
 export const useAnaliseCustos = () => {
     const { postoAtivoId } = usePosto();
@@ -69,7 +70,9 @@ export const useAnaliseCustos = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `analise-custo-${currentDate.toISOString().slice(0, 7)}.csv`);
+        // `paraMesLocal`: com `toISOString()` o arquivo saía nomeado com o mês seguinte
+        // quando exportado depois das 21h.
+        link.setAttribute("download", `analise-custo-${paraMesLocal(currentDate)}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();

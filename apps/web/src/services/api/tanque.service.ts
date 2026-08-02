@@ -5,6 +5,7 @@ import {
     createSuccessResponse,
     createErrorResponse
 } from '../../types/ui/response-types';
+import { paraIsoLocal } from '@posto/utils';
 
 // [14/01 19:05] Alinhando tipos de Tanque e histórico com aliases/helpers
 export type Tanque = TanqueRow & {
@@ -173,7 +174,7 @@ export const tanqueService = {
                 .from('HistoricoTanque')
                 .select('*')
                 .eq('tanque_id', tanqueId)
-                .gte('data', startDate.toISOString().split('T')[0])
+                .gte('data', paraIsoLocal(startDate))
                 .order('data', { ascending: true });
 
             if (error) return createErrorResponse(error.message, 'FETCH_ERROR');

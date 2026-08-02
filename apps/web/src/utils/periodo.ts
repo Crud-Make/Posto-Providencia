@@ -1,35 +1,32 @@
 /**
- * Período de datas dos filtros de tela e conversões ISO local.
+ * Período de datas dos filtros de tela.
  *
  * @remarks
+ * [31/07] As primitivas de data local mudaram-se para `@posto/utils/data-local`: o
+ * `pwa-frentista` sofria do mesmo bug de fuso e não pode importar de `apps/web` (§2).
+ * Este módulo passa a reexportá-las e fica com o que é de apresentação.
+ *
  * Tudo aqui trabalha com ISO **local** (`aaaa-mm-dd`) e nunca com `toISOString()`:
  * o posto está em GMT-3, então `new Date().toISOString()` devolve o dia seguinte a partir
  * das 21h local — um filtro montado assim pula um dia à noite.
  */
+import { deIsoLocal } from '@posto/utils';
+
+export {
+  paraIsoLocal,
+  paraMesLocal,
+  deIsoLocal,
+  hojeIso,
+  mesAtualIso,
+  primeiroDiaDoMes,
+  ultimoDiaDoMes,
+  somarDias,
+} from '@posto/utils';
 
 /** Período selecionado, em ISO local `aaaa-mm-dd`. */
 export interface Periodo {
   readonly inicio: string;
   readonly fim: string;
-}
-
-/** Converte um `Date` para ISO local `aaaa-mm-dd`, sem passar pelo UTC. */
-export function paraIsoLocal(data: Date): string {
-  const ano = data.getFullYear();
-  const mes = String(data.getMonth() + 1).padStart(2, '0');
-  const dia = String(data.getDate()).padStart(2, '0');
-  return `${ano}-${mes}-${dia}`;
-}
-
-/** Lê um ISO local `aaaa-mm-dd` como data local (o construtor com string trataria como UTC). */
-export function deIsoLocal(iso: string): Date {
-  const [ano, mes, dia] = iso.split('-').map(Number);
-  return new Date(ano, mes - 1, dia);
-}
-
-/** Data de hoje em ISO local. */
-export function hojeIso(): string {
-  return paraIsoLocal(new Date());
 }
 
 /** Formata um ISO local como `dd/mm/aaaa`. */

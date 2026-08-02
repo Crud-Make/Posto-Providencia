@@ -11,6 +11,7 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { hojeIso } from '@posto/utils';
 
 // [14/01 10:30] Refatoração para usar tipos do Supabase e WithRelations
 export type NotaFrentista = NotaFrentistaDomain;
@@ -157,7 +158,7 @@ export const notaFrentistaService = {
         .from('NotaFrentista')
         .insert({
           ...nota,
-          data: nota.data || new Date().toISOString().split('T')[0],
+          data: nota.data || hojeIso(),
           status: nota.status || 'pendente'
         })
         .select()
@@ -183,7 +184,7 @@ export const notaFrentistaService = {
         .from('NotaFrentista')
         .update({
           status: 'pago',
-          data_pagamento: dataPagamento || new Date().toISOString().split('T')[0],
+          data_pagamento: dataPagamento || hojeIso(),
           forma_pagamento: formaPagamento,
           observacoes
         })

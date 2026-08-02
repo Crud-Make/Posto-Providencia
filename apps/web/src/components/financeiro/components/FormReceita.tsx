@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
 // [01/02 11:30] Criado formulário de receitas extras com suporte a categorias dinâmicas.
 import { categoriaService, CategoriaFinanceira } from '../../../services/api/categoria.service';
+import { hojeIso } from '@posto/utils';
 
 /**
  * Interface para os dados do formulário de receita.
@@ -38,7 +39,7 @@ export const FormReceita: React.FC<FormReceitaProps> = ({
     const [formData, setFormData] = useState<ReceitaFormData>({
         descricao: '',
         valor: 0,
-        data: new Date().toISOString().split('T')[0],
+        data: hojeIso(),
         categoria_id: null,
         status: 'recebido',
         observacoes: '',

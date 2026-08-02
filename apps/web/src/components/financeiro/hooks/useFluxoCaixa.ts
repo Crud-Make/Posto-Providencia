@@ -6,6 +6,7 @@
  */
 import { useMemo } from 'react';
 import { DadosFinanceiros } from './useFinanceiro';
+import { deIsoLocal, paraIsoLocal } from '@posto/utils';
 
 /**
  * Interface representando um ponto de dados no gráfico de fluxo de caixa.
@@ -57,12 +58,14 @@ export function useFluxoCaixa(
       if (granularidade === 'mensal') {
         dataKey = dataKey.substring(0, 7); // YYYY-MM
       } else if (granularidade === 'semanal') {
-        // Calcular inicio da semana
-        const date = new Date(dataKey);
+        // `deIsoLocal`, não `new Date(dataKey)`: o construtor com string lê a data como
+        // meia-noite UTC, que em GMT-3 é 21h do dia ANTERIOR. Então `getDay()`/`getDate()`
+        // saíam deslocados um dia e a semana era montada errada — 31/07 caía na semana do 30.
+        const date = deIsoLocal(dataKey);
         const day = date.getDay();
-        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is sunday
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // ajuste quando é domingo
         const monday = new Date(date.setDate(diff));
-        dataKey = monday.toISOString().split('T')[0];
+        dataKey = paraIsoLocal(monday);
       }
 
       if (!mapa.has(dataKey)) {

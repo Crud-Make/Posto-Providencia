@@ -12,6 +12,7 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { paraIsoLocal } from '@posto/utils';
 
 export const estoqueService = {
   /**
@@ -114,7 +115,7 @@ export const estoqueService = {
           bico:Bico!inner(combustivel_id)
         `)
         .eq('bico.combustivel_id', combustivelId)
-        .gte('data', dataInicio.toISOString().split('T')[0]);
+        .gte('data', paraIsoLocal(dataInicio));
 
       if (error) return createErrorResponse(error.message, 'ANALYSIS_ERROR');
 

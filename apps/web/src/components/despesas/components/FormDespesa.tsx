@@ -12,6 +12,7 @@ import { X, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
 import { Despesa, DespesaFormData, CATEGORIAS_DESPESA } from '../types';
 // [01/02 11:15] Integração com categorias dinâmicas e remoção de casting 'any' para conformidade.
 import { categoriaService, CategoriaFinanceira } from '../../../services/api/categoria.service';
+import { hojeIso } from '@posto/utils';
 
 /**
  * Propriedades do componente FormDespesa.
@@ -47,7 +48,7 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
         descricao: '',
         categoria: 'Outros',
         valor: 0,
-        data: new Date().toISOString().split('T')[0],
+        data: hojeIso(),
         status: 'pendente',
         data_pagamento: null,
         observacoes: '',
@@ -222,7 +223,7 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })}
+                                    onClick={() => setFormData({ ...formData, status: 'pago', data_pagamento: hojeIso() })}
                                     className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${formData.status === 'pago'
                                         ? 'bg-green-500 text-white shadow-sm'
                                         : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'

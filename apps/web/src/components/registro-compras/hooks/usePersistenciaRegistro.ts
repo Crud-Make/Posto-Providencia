@@ -4,6 +4,7 @@ import { combustivelService, compraService, tanqueService } from '../../../servi
 import { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
 import { isSuccess, ErrorResponse } from '../../../types/ui/response-types';
+import { hojeIso } from '@posto/utils';
 
 /**
  * Hook responsável pela persistência dos dados de registro de compras e estoque.
@@ -40,7 +41,7 @@ export const usePersistenciaRegistro = (
 
         try {
             setSaving(true);
-            const hoje = new Date().toISOString().split('T')[0];
+            const hoje = hojeIso();
 
             // [25/01 Debug] Log dos valores recebidos
             console.log('[Compras] Iniciando salvamento:', {

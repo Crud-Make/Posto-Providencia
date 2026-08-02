@@ -5,6 +5,7 @@
  * opções de filtro da tela financeira.
  */
 import { useState, useCallback, useMemo } from 'react';
+import { paraIsoLocal, primeiroDiaDoMes, ultimoDiaDoMes } from '@posto/utils';
 
 /**
  * Interface que define os filtros disponíveis para o painel financeiro.
@@ -43,16 +44,10 @@ interface UseFiltrosFinanceirosReturn {
  * @returns Objeto com estado dos filtros e funções de manipulação
  */
 export function useFiltrosFinanceiros(initialPostoId?: number): UseFiltrosFinanceirosReturn {
-  const getInitialDates = () => {
-    const hoje = new Date();
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-
-    return {
-      dataInicio: inicioMes.toISOString().split('T')[0],
-      dataFim: fimMes.toISOString().split('T')[0]
-    };
-  };
+  const getInitialDates = () => ({
+    dataInicio: primeiroDiaDoMes(),
+    dataFim: ultimoDiaDoMes()
+  });
 
   const [filtrosBase, setFiltrosBase] = useState<FiltrosFinanceiros>({
     ...getInitialDates(),
@@ -103,10 +98,13 @@ export function useFiltrosFinanceiros(initialPostoId?: number): UseFiltrosFinanc
         break;
     }
 
+    // `paraIsoLocal`, não `toISOString()`: nos presets `hoje` e `semana` estas datas
+    // carregam a hora de agora, então depois das 21h o UTC já é o dia seguinte e o
+    // filtro pulava um dia — inclusive o "hoje", que passava a não trazer nada.
     setFiltrosBase(prev => ({
       ...prev,
-      dataInicio: inicio.toISOString().split('T')[0],
-      dataFim: fim.toISOString().split('T')[0]
+      dataInicio: paraIsoLocal(inicio),
+      dataFim: paraIsoLocal(fim)
     }));
   }, []);
 

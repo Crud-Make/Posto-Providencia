@@ -7,6 +7,7 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { hojeIso } from '@posto/utils';
 
 /**
  * Serviço de Dashboard
@@ -26,7 +27,7 @@ export const dashboardService = {
     estoque: { percentual: number; status: string }[];
   }>> {
     try {
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = hojeIso();
 
       // Vendas do dia
       const vendasResponse = await leituraService.getSalesSummaryByDate(hoje, postoId);

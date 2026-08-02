@@ -16,6 +16,7 @@ import { ShiftData, DailyTotals, ExpenseData } from '../types';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { DBDespesa } from '../../../types/database/index';
+import { hojeIso } from '@posto/utils';
 
 /**
  * Fechamento com os campos necessários para o relatório diário.
@@ -83,7 +84,7 @@ function mapDbDespesaToUi(despesa: DBDespesa): ExpenseData {
 
 export const useRelatorioDiario = () => {
     const { postoAtivoId } = usePosto();
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(hojeIso());
     const [loading, setLoading] = useState(false);
     const [shiftsData, setShiftsData] = useState<ShiftData[]>([]);
     const [totals, setTotals] = useState<DailyTotals>({

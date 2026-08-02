@@ -6,6 +6,7 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { paraIsoLocal } from '@posto/utils';
 
 // [14/01 16:05] Alinhando Escala com tipos do Supabase e relacionamentos
 export type Escala = WithRelations<
@@ -57,8 +58,8 @@ export const escalaService = {
    * @param postoId - ID do posto (opcional)
    */
   async getByMonth(month: number, year: number, postoId?: number): Promise<ApiResponse<Escala[]>> {
-    const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+    const startDate = paraIsoLocal(new Date(year, month - 1, 1));
+    const endDate = paraIsoLocal(new Date(year, month, 0));
 
     try {
       let query = supabase

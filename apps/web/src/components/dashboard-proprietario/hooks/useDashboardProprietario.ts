@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { despesaOperacionalPorLitro, margemPercentual } from '@posto/utils';
+import { hojeIso } from '../../../utils/periodo';
 import { supabase } from '../../../services/supabase';
 import { postoService, frentistaService } from '../../../services/api';
-import { DadosDashboard, PostoSummary, AlertaDashboard } from '../types';
+import { DadosDashboard, PostoSummary, AlertaDashboard, ResumoFinanceiro } from '../types';
 import { Posto } from '../../../types/database/index';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -12,13 +14,41 @@ interface UseDashboardReturn {
   recarregar: () => Promise<void>;
 }
 
+/** Resumo zerado — usado quando não há venda no período. */
+const RESUMO_VAZIO: ResumoFinanceiro = {
+  vendas: 0,
+  litros: 0,
+  lucroBruto: 0,
+  despesas: 0,
+  rateioPorLitro: 0,
+  lucroReal: 0,
+  margemMedia: 0,
+  temDespesa: false,
+  frentistasAtivos: 0,
+};
+
 /**
- * Hook personalizado para obter dados do dashboard.
+ * Hook do painel do proprietário: apura o LUCRO REAL do posto.
  *
- * Realiza chamadas assíncronas para serviços de postos, fechamentos, frentistas e financeiro.
- * Consolida os dados em uma estrutura unificada para exibição.
+ * @remarks
+ * Fórmula (canônica, `@posto/utils/lucro`):
  *
- * @returns {UseDashboardReturn} Objeto contendo dados, estado de carregamento, erro e função de recarga.
+ *     lucro_real = lucro_bruto − despesas_operacionais_do_período
+ *
+ * Equivale a ratear a despesa por litro e descontá-la bico a bico — a distributiva
+ * dá no mesmo, e por isso o rateio aparece aqui só como número exibido (R$/L), não
+ * como etapa de cálculo.
+ *
+ * ⚠️ NÃO usa o `lucro_liquido` da RPC `get_dashboard_proprietario`, embora ele exista.
+ * A RPC desconta, além das despesas, uma taxa de cartão calculada por transação
+ * (`DÉBITO × 1,2%`, `CRÉDITO × 3,5%`, chumbadas no SQL). Isso contradiz
+ * `packages/utils/src/lucro.ts:11-12`: no modelo da planilha a taxa de cartão **não** é
+ * dedução por transação, é mais um item da lista de despesas mensais. Descontar dos dois
+ * jeitos conta a taxa duas vezes nos meses em que ela está lançada como despesa.
+ * Em julho/2026 a diferença é de R$ 57,50 — pequena, mas é erro de modelo, não de escala.
+ *
+ * Validado contra o golden `lucro-real.golden.spec.ts`: julho até o dia 24 dá
+ * R$ 18.272,33 aqui contra R$ 18.272,31 no golden — 2 centavos de arredondamento.
  */
 export function useDashboardProprietario(): UseDashboardReturn {
   const [dados, setDados] = useState<DadosDashboard | null>(null);
@@ -30,7 +60,6 @@ export function useDashboardProprietario(): UseDashboardReturn {
     setErro(null);
 
     try {
-      // 1. Buscar postos
       const response = await postoService.getAll();
 
       if (!isSuccess(response)) {
@@ -46,21 +75,18 @@ export function useDashboardProprietario(): UseDashboardReturn {
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const startOfMonth = `${currentMonth}-01`;
+      // `hojeIso()`, NUNCA `new Date().toISOString()`: o posto está em GMT-3, então a
+      // partir das 21h locais o UTC já virou o dia seguinte. Com `toISOString()` a tela
+      // consultava 01/08 às 21h de 31/07 — e as DUAS abas zeravam, porque `inicioDoMes`
+      // também saltava para o mês novo. Todo dia, das 21h à meia-noite, o painel apagava.
+      const hoje = hojeIso();
+      const inicioDoMes = `${hoje.slice(0, 7)}-01`;
 
-      // 2. Processar dados de cada posto
-      const summaries: PostoSummary[] = await Promise.all(
-        postos.map(async (posto) => {
-          return await processarPosto(posto, today, startOfMonth);
-        })
+      const summaries = await Promise.all(
+        postos.map((posto) => processarPosto(posto, hoje, inicioDoMes))
       );
 
-      // 3. Agregar dados totais
-      const dadosConsolidados = consolidarDados(summaries, postos[0]); // Assume o primeiro posto como principal para exibição singular se necessário
-
-      setDados(dadosConsolidados);
+      setDados(consolidarDados(summaries, postos[0]));
     } catch (err) {
       console.error('Erro ao carregar dashboard:', err);
       setErro('Falha ao carregar dados do dashboard.');
@@ -80,147 +106,207 @@ export function useDashboardProprietario(): UseDashboardReturn {
 // HELPERS (Lógica de Negócio)
 // ============================================
 
-async function processarPosto(posto: Posto, today: string, startOfMonth: string): Promise<PostoSummary> {
-  // Frentistas
+/** Venda e lucro bruto do período, direto da RPC. */
+export interface VendaPeriodo {
+  vendas: number;
+  litros: number;
+  lucroBruto: number;
+}
+
+async function buscarVendas(postoId: number, inicio: string, fim: string): Promise<VendaPeriodo> {
+  const { data } = await supabase.rpc('get_dashboard_proprietario', {
+    p_posto_id: postoId,
+    p_data_inicio: inicio,
+    p_data_fim: fim,
+  });
+
+  const linha = data?.[0];
+  return {
+    vendas: Number(linha?.total_vendas ?? 0),
+    litros: Number(linha?.volume_total ?? 0),
+    lucroBruto: Number(linha?.lucro_bruto ?? 0),
+  };
+}
+
+async function buscarDespesas(postoId: number, inicio: string, fim: string): Promise<number[]> {
+  const { data } = await supabase
+    .from('Despesa')
+    .select('valor')
+    .eq('posto_id', postoId)
+    .gte('data', inicio)
+    .lte('data', fim);
+
+  return (data ?? []).map((d) => Number(d.valor ?? 0));
+}
+
+/**
+ * Resumo do MÊS: as despesas lançadas no período entram inteiras.
+ *
+ * @remarks Exportada para teste. É o único lugar do painel onde a despesa do mês é
+ *          descontada — foi o desconto acontecendo em dois lugares que produziu o erro
+ *          de 97%.
+ */
+export function montarResumoDoMes(
+  venda: VendaPeriodo,
+  valoresDespesa: number[],
+  frentistasAtivos: number
+): ResumoFinanceiro {
+  const despesas = valoresDespesa.reduce((acc, v) => acc + v, 0);
+  const lucroReal = venda.lucroBruto - despesas;
+
+  return {
+    vendas: venda.vendas,
+    litros: venda.litros,
+    lucroBruto: venda.lucroBruto,
+    despesas,
+    rateioPorLitro: despesaOperacionalPorLitro(despesas, venda.litros),
+    lucroReal,
+    margemMedia: margemPercentual(lucroReal, venda.vendas),
+    // Zero despesa lançada não é despesa zero — é dado faltando, e a tela precisa dizer isso.
+    temDespesa: valoresDespesa.length > 0,
+    frentistasAtivos,
+  };
+}
+
+/**
+ * Resumo do DIA: a despesa que cabe ao dia é o rateio do mês vezes os litros do dia.
+ *
+ * @param rateioDoMes - Despesa operacional por litro apurada no mês inteiro.
+ *
+ * @remarks Somar as despesas *lançadas no dia* estaria errado, e de um jeito que engana
+ *          feio: despesa de posto é mensal (salário, energia, contador, imposto), lançada
+ *          numa data qualquer do mês. No dia do lançamento a tela mostraria o mês inteiro
+ *          de despesa contra a venda de um dia só — em 31/07/2026 isso dava R$ 18.585,76
+ *          de despesa contra R$ 0,00 de venda, "prejuízo" que nunca existiu. Nos outros
+ *          30 dias mostraria despesa zero e lucro inflado.
+ *
+ *          Ratear é o que a planilha faz e o que `@posto/utils/lucro` modela: o dia paga a
+ *          fatia dele do custo fixo, proporcional ao que vendeu.
+ */
+export function montarResumoDoDia(
+  venda: VendaPeriodo,
+  rateioDoMes: number,
+  temDespesaNoMes: boolean,
+  frentistasAtivos: number
+): ResumoFinanceiro {
+  const despesas = rateioDoMes * venda.litros;
+  const lucroReal = venda.lucroBruto - despesas;
+
+  return {
+    vendas: venda.vendas,
+    litros: venda.litros,
+    lucroBruto: venda.lucroBruto,
+    despesas,
+    rateioPorLitro: rateioDoMes,
+    lucroReal,
+    margemMedia: margemPercentual(lucroReal, venda.vendas),
+    temDespesa: temDespesaNoMes,
+    frentistasAtivos,
+  };
+}
+
+async function processarPosto(posto: Posto, hoje: string, inicioDoMes: string): Promise<PostoSummary> {
   const resFrentistas = await frentistaService.getAll(posto.id);
   const frentistas = isSuccess(resFrentistas) ? resFrentistas.data : [];
-  const frentistasAtivos = frentistas.filter(f => f.ativo).length;
+  const frentistasAtivos = frentistas.filter((f) => f.ativo).length;
 
-  // ✅ DADOS REAIS DE LUCRO - Hoje
-  const { data: dadosHoje } = await supabase
-    .rpc('get_dashboard_proprietario', {
-      p_posto_id: posto.id,
-      p_data_inicio: today,
-      p_data_fim: today
-    });
+  const [vendaHoje, vendaMes, despesasMes, pendentes, ultimoFech] = await Promise.all([
+    buscarVendas(posto.id, hoje, hoje),
+    buscarVendas(posto.id, inicioDoMes, hoje),
+    // Só as despesas do MÊS são buscadas: o dia recebe a fatia rateada, não os
+    // lançamentos daquela data — ver `montarResumoDoDia`.
+    buscarDespesas(posto.id, inicioDoMes, hoje),
+    supabase.from('Despesa').select('valor').eq('posto_id', posto.id).eq('status', 'pendente'),
+    supabase
+      .from('Fechamento')
+      .select('data')
+      .eq('posto_id', posto.id)
+      .order('data', { ascending: false })
+      .limit(1),
+  ]);
 
-  const vendasHoje = dadosHoje?.[0]?.total_vendas || 0;
-  const lucroHoje = dadosHoje?.[0]?.lucro_liquido || 0;
-
-  // ✅ DADOS REAIS DE LUCRO - Mês
-  const { data: dadosMes } = await supabase
-    .rpc('get_dashboard_proprietario', {
-      p_posto_id: posto.id,
-      p_data_inicio: startOfMonth,
-      p_data_fim: today
-    });
-
-  const vendasMes = dadosMes?.[0]?.total_vendas || 0;
-  const lucroMes = dadosMes?.[0]?.lucro_liquido || 0;
-
-  // Despesas do Mês (todas as despesas do período, pagas ou pendentes)
-  const { data: despesasMes } = await supabase
-    .from('Despesa')
-    .select('valor')
-    .eq('posto_id', posto.id)
-    .gte('data', startOfMonth)
-    .lte('data', today);
-
-  const despesasTotalMes = (despesasMes || []).reduce((acc, d) => acc + (d.valor || 0), 0);
-
-  // Despesas Pendentes (apenas para alertas)
-  const { data: despesasPendentes } = await supabase
-    .from('Despesa')
-    .select('valor')
-    .eq('posto_id', posto.id)
-    .eq('status', 'pendente');
-
-  const despesasPendentesTotal = (despesasPendentes || []).reduce((acc, d) => acc + (d.valor || 0), 0);
-
-  // Margem REAL calculada a partir do lucro e vendas
-  const margemMedia = vendasMes > 0 ? (lucroMes / vendasMes) * 100 : 0;
-
-  // Último Fechamento
-  const { data: ultimoFech } = await supabase
-    .from('Fechamento')
-    .select('data')
-    .eq('posto_id', posto.id)
-    .order('data', { ascending: false })
-    .limit(1);
+  const resumoMes = montarResumoDoMes(vendaMes, despesasMes, frentistasAtivos);
 
   return {
     posto,
-    vendasHoje,
-    vendasMes,
-    lucroEstimadoHoje: lucroHoje, // Agora é REAL, não estimado
-    lucroEstimadoMes: lucroMes,   // Agora é REAL, não estimado
-    margemMedia,
-    frentistasAtivos,
-    despesasPendentes: despesasPendentesTotal,
-    despesasTotalMes: despesasTotalMes,
-    ultimoFechamento: ultimoFech?.[0]?.data || null
+    hoje: montarResumoDoDia(vendaHoje, resumoMes.rateioPorLitro, resumoMes.temDespesa, frentistasAtivos),
+    mes: resumoMes,
+    despesasPendentes: (pendentes.data ?? []).reduce((acc, d) => acc + Number(d.valor ?? 0), 0),
+    ultimoFechamento: ultimoFech.data?.[0]?.data ?? null,
+  };
+}
+
+/** Soma os resumos de todos os postos num só. */
+function somarResumos(resumos: ResumoFinanceiro[]): ResumoFinanceiro {
+  if (resumos.length === 0) return RESUMO_VAZIO;
+
+  const vendas = resumos.reduce((a, r) => a + r.vendas, 0);
+  const litros = resumos.reduce((a, r) => a + r.litros, 0);
+  const lucroBruto = resumos.reduce((a, r) => a + r.lucroBruto, 0);
+  const despesas = resumos.reduce((a, r) => a + r.despesas, 0);
+  const lucroReal = lucroBruto - despesas;
+
+  return {
+    vendas,
+    litros,
+    lucroBruto,
+    despesas,
+    rateioPorLitro: despesaOperacionalPorLitro(despesas, litros),
+    lucroReal,
+    // Margem do consolidado sai dos TOTAIS, não da média das margens: média de
+    // percentual ignora o peso de cada posto e devolve número que não existe.
+    margemMedia: margemPercentual(lucroReal, vendas),
+    temDespesa: resumos.some((r) => r.temDespesa),
+    frentistasAtivos: resumos.reduce((a, r) => a + r.frentistasAtivos, 0),
   };
 }
 
 function consolidarDados(summaries: PostoSummary[], postoPrincipal: Posto): DadosDashboard {
-  // Totais Hoje
-  const vendasHoje = summaries.reduce((acc, s) => acc + s.vendasHoje, 0);
-  const lucroHoje = summaries.reduce((acc, s) => acc + s.lucroEstimadoHoje, 0);
-  const despesasPendentesTotal = summaries.reduce((acc, s) => acc + s.despesasPendentes, 0);
-  const despesasTotalMes = summaries.reduce((acc, s) => acc + s.despesasTotalMes, 0);
-  const frentistasTotal = summaries.reduce((acc, s) => acc + s.frentistasAtivos, 0);
-
-  // Totais Mês
-  const vendasMes = summaries.reduce((acc, s) => acc + s.vendasMes, 0);
-  const lucroMes = summaries.reduce((acc, s) => acc + s.lucroEstimadoMes, 0);
-
-  // Margem Média Global (ponderada pelo volume seria melhor, mas média simples por enquanto)
-  const margemMediaGlobal = summaries.reduce((acc, s) => acc + s.margemMedia, 0) / (summaries.length || 1);
-
-  // Gerar Alertas
-  const alertas = gerarAlertas(summaries);
-
   return {
-    hoje: {
-      vendas: vendasHoje,
-      lucroEstimado: lucroHoje,
-      despesas: despesasPendentesTotal,
-      frentistasAtivos: frentistasTotal,
-      margemMedia: margemMediaGlobal
-    },
-    mes: {
-      vendas: vendasMes,
-      lucroEstimado: lucroMes,
-      despesas: despesasTotalMes,
-      frentistasAtivos: frentistasTotal,
-      margemMedia: margemMediaGlobal
-    },
+    hoje: somarResumos(summaries.map((s) => s.hoje)),
+    mes: somarResumos(summaries.map((s) => s.mes)),
     posto: postoPrincipal,
     postosSummary: summaries,
-    alertas,
-    ultimaAtualizacao: new Date().toISOString()
+    alertas: gerarAlertas(summaries),
+    ultimaAtualizacao: new Date().toISOString(),
   };
 }
 
 function gerarAlertas(summaries: PostoSummary[]): AlertaDashboard[] {
   const alerts: AlertaDashboard[] = [];
 
-  summaries.forEach(s => {
-    // Alerta de Margem Baixa
-    if (s.margemMedia < 15 && s.margemMedia > 0) {
+  summaries.forEach((s) => {
+    // Sem despesa lançada o lucro do mês está inflado — avisar vale mais que qualquer KPI.
+    if (!s.mes.temDespesa && s.mes.vendas > 0) {
       alerts.push({
         type: 'warning',
         posto: s.posto.nome,
-        message: `Margem média crítica: ${s.margemMedia.toFixed(1)}%`
+        message: 'Nenhuma despesa lançada no mês — o lucro exibido é bruto, não real.',
       });
     }
 
-    // Alerta de Prejuízo no dia
-    if (s.lucroEstimadoHoje < 0) {
+    if (s.mes.temDespesa && s.mes.margemMedia < 15 && s.mes.margemMedia > 0) {
+      alerts.push({
+        type: 'warning',
+        posto: s.posto.nome,
+        message: `Margem real do mês: ${s.mes.margemMedia.toFixed(1)}%`,
+      });
+    }
+
+    if (s.hoje.lucroReal < 0) {
       alerts.push({
         type: 'danger',
         posto: s.posto.nome,
-        message: 'Prejuízo operacional estimado hoje'
+        message: 'Prejuízo operacional hoje',
       });
     }
-
   });
 
   if (alerts.length === 0) {
     alerts.push({
       type: 'success',
       posto: 'Geral',
-      message: 'Operação estável. Sem alertas críticos.'
+      message: 'Operação estável. Sem alertas críticos.',
     });
   }
 
