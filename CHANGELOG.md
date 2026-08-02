@@ -62,6 +62,37 @@
   foi **medida e não se confirmou** — as ~50 descrições somam ~4.000 tokens por requisição (~0,4% da
   janela), e o claude-mem sozinho, ~1.189. O desperdício real está em pergunta larga e em não usar os
   agentes que leem muito e devolvem pouco; daí o `roteia-consulta` ser a resposta certa, e não podar skill.
+### 🔒 UPDATE anônimo travado à janela "mês corrente + mês anterior"
+- **[02/08/2026]** Terceira e última trava do passado. As de 31/07 (`DELETE`) e de hoje de manhã
+  (`INSERT`) fecharam criar e apagar no passado; **alterar linha já gravada continuava aberto** — um
+  `curl` mudava o valor de um fechamento de fevereiro, e a divergência apareceria como falta do
+  frentista. Com as três juntas, **o passado apurado está congelado**.
+- **Como foi medido, já que 204 não distingue negado de permitido:** o probe manda `NULL` numa
+  coluna `NOT NULL`, filtrado por um id real. Se a RLS deixa passar, o Postgres recusa com **23502**
+  e aborta — o 23502 **é** a prova de que a policy permitiu o `UPDATE` chegar à tabela. Se barra,
+  volta 204 vazio. Nada é gravado em nenhum dos dois casos.
+- **Janela maior que a do `INSERT`/`DELETE` (7 dias), de propósito:** criar ou apagar no passado
+  nunca é legítimo, **alterar é** — o gerente corrige o fechamento do mês anterior pela tela
+  (`fechamento-diario` abre em hoje, mas `selectedDate` é livre). E a regra é *início do mês
+  anterior*, não "45 dias": 45 dias fixos entregariam isso em 02/08 e **falhariam em 31/08**, quando
+  já não alcançariam 01/07.
+- ⚠️ **Corrigido de passagem um defeito da trava de INSERT aplicada hoje de manhã:**
+  `dentro_da_janela_de_escrita` foi criada `IMMUTABLE` e usa `CURRENT_DATE`. `IMMUTABLE` promete ao
+  planejador que a mesma entrada devolve o mesmo resultado para sempre, o que autoriza dobrar a
+  chamada em plano em cache — e o PostgREST usa *prepared statements* sobre pool de conexão. A
+  janela poderia **parar de andar** na virada do dia, travando escrita legítima ou liberando escrita
+  antiga, sem aviso. Agora é `STABLE` nas duas funções.
+- **Verificador:** `supabase/migrations/verifica-rls-update.sh`. Ele **não** testa "tudo bloqueado" —
+  isso também passaria se a policy quebrasse o painel. Testa a **regra**, nos três lados: linha
+  anterior à janela barrada, linha dentro da janela ainda gravável, e *backdating* barrado (mover
+  uma linha da janela para fora dela desarmaria a própria trava). ANTES de aplicar: 1 falha; DEPOIS:
+  8 verdes.
+- ⚠️ **Limitação do teste, hoje:** só `Leitura` tem linha anterior a julho em produção. Para
+  `Fechamento`, `Recebimento` e `FechamentoFrentista` o lado "barrado" fica inverificável com dado
+  real até o histórico ser carregado — o script diz isso na saída em vez de passar em silêncio.
+- **Não resolve:** mês corrente e anterior seguem graváveis por quem tiver a anon key, que é pública
+  por definição (vai no bundle). Fechar o vetor de escrita de vez exige auth real no painel ou Edge
+  Function — decisão adiada conscientemente.
 
 ### 📱 PWA do frentista instala como aplicativo no celular
 - **[02/08/2026]** O app já era PWA (manifest, service worker, ícones 192/512), mas faltavam as
