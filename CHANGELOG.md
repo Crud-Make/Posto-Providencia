@@ -29,6 +29,19 @@
 - **Não corrigido nesta branch**: mudar isso é mudar fórmula de dinheiro em todas as telas e meses,
   o que exige golden master e decisão explícita (§0.6, §11). A tabela `Compra` já foi carregada com
   o custo real de janeiro e é a fonte para o conserto.
+- **A revisão da planilha confirmou QUAL campo usar.** `compra_mensal` tem dois: `media_lt` (custo
+  de aquisição puro) e `valor_venda` (`media_lt` + despesa rateada). A RPC deve usar o **custo de
+  aquisição** e devolver lucro **bruto** — é o que `montarResumoDoMes` espera, porque o hook desconta
+  a despesa depois. Usar `valor_venda` contaria a despesa **duas vezes**, que é exatamente o erro de
+  97,7% já corrigido em 31/07. `Compra.custo_por_litro` carregado em janeiro é o `media_lt`, correto.
+- ⚠️ **Fragilidade herdada da planilha, medida:** o custo de um mês vem só das **compras daquele
+  mês**, sem valorizar estoque. Em fevereiro o Diesel teve compra de **1 litro por R$ 5,00**, e
+  esse R$ 5,00/L virou o custo de 1.768,27 L vendidos. Não há custo médio ponderado em lugar nenhum
+  da planilha — o estoque é controlado só em litros.
+- ⚠️ **Perda de estoque não entra no lucro.** Janeiro fechou com **−3.565,94 L** de perca/sobra
+  (G. Comum sozinha: −3.712,21 L). A planilha calcula o número em litros e **não o converte em
+  reais nem o desconta de nada**. A ~`media_lt` isso seria ordem de R$ 19 mil em janeiro — número
+  que **não existe na planilha**, derivação a confirmar com o dono antes de qualquer uso.
 
 ### 💰 Janeiro/2026 completo em produção — despesa, fechamento por frentista e lucro
 - **[02/08/2026]** A `Leitura` de janeiro já estava carregada, mas o resto do mês não existia em
@@ -56,12 +69,19 @@
   `lucro_bruto` e `lucro_liquido` como **colunas gravadas** de `Fechamento`, não recalcula na
   leitura — carregar o mês sem elas exibiria lucro R$ 0,00. Gravado o canônico de
   `packages/utils/src/lucro.ts`: **R$ 13.272,16**, margem líquida **4,58%**.
-- ⚠️ **A planilha superestima o lucro de janeiro em +118%** (declara R$ 28.974,97). Duas causas
-  somadas, ambas medidas: (1) `compra_mensal.valor_venda` é `media_lt + 0,473` — o **mesmo**
-  acréscimo nos 4 combustíveis, isto é, custo operacional **fixo hardcoded**, que o §6 proíbe; o
-  real de janeiro é 35.523,58 ÷ 46.843,062 = **0,7584/L**. (2) O resumo mensal aplica preço único
-  aos 31 dias, mas 6 dias tiveram preço menor (gasolina 6,28 vs 6,48; etanol 4,58 vs 4,98) — R$
-  2.337,67 de venda que não existiu.
+- **Por que o número difere dos R$ 28.974,97 que a planilha declara.** Duas causas, medidas:
+  (1) **fonte de despesa** — a planilha calcula com a lista **mensal** (R$ 22.158,46); a carga usou
+  a **trimestral** (R$ 35.523,58), que é a mais completa. Diferença: R$ 13.365,12. Decisão de
+  premissa, não erro de fórmula. (2) **preço** — o resumo mensal aplica preço único aos 31 dias,
+  mas 6 dias tiveram preço menor (gasolina 6,28 vs 6,48; etanol 4,58 vs 4,98): R$ 2.337,67 de
+  venda que não existiu.
+- ✅ **CORREÇÃO de uma afirmação anterior desta sessão.** Escrevi aqui que `compra_mensal.valor_venda`
+  embutia um custo operacional **fixo hardcoded** de 0,473/L, violando o §6. **Falso** — revisado
+  contra as fórmulas do `.xlsx`. `valor_venda = media_lt + I19`, e `I19 = despesa_do_mês ÷ litros
+  vendidos_do_mês` (rótulo "Custo do LT R$"). O valor **varia por mês** — 0,473 / 0,469 / 0,639 /
+  0,469 / 0,458 / 0,502 / 0,450 — e é igual entre os 4 produtos só porque todos referenciam a mesma
+  célula. A planilha faz exatamente o rateio que o §6 exige. O `0,45/L` chumbado que existe no
+  código vem de **outro lugar**: o bloco histórico 2017–2025, onde esse custo era digitado à mão.
 - **`Compra`** carregada com o consolidado mensal (4 linhas, 47.000 L, R$ 241.195,00). Estava vazia,
   e `Combustivel.preco_custo` guardava os preços de **julho** — usá-los em janeiro erraria o etanol
   em R$ 0,87/L.
