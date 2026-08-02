@@ -2,6 +2,29 @@
 
 ## [Não Lançado]
 
+### 🔒 INSERT anônimo nas tabelas de dinheiro ganha janela de 7 dias
+- **[02/08/2026]** Probe com a anon key do bundle publicado mediu `INSERT` anônimo **aberto em 10
+  tabelas**, incluindo as 4 que sustentam o fechamento: `Leitura`, `Fechamento`,
+  `FechamentoFrentista` e `Recebimento`. A trava de 31/07 fechou o `DELETE` do histórico, mas o
+  `INSERT` ficou de fora — dava pra **sujar o passado sem apagar nada**, e a divergência apareceria
+  como "falta do frentista".
+- **Migração `20260802_trava_insert_janela_tabelas_dinheiro.sql`**, mesmo padrão da de 31/07: a RLS
+  não sabe contar, então o corte é por data. Janela de 7 dias no passado e 2 dias no futuro (folga
+  de fuso).
+- **Escopo deliberadamente estreito — só `INSERT`.** Não cria nem derruba policy de
+  `SELECT`/`UPDATE`/`DELETE`, porque o estado dessas era desconhecido: o PostgREST devolve 204 tanto
+  para "permitido, 0 linhas" quanto para "negado", então o probe por HTTP **não distingue os dois**.
+  Recriar às cegas poderia ABRIR um `DELETE` hoje fechado. Uma policy `FOR ALL` existente é
+  rebaixada para SELECT/UPDATE/DELETE com o mesmo predicado, para que só o `INSERT` mude.
+- **`Recebimento` não tem coluna `data`** — herda do `Fechamento` pai por `fechamento_id`, igual a
+  `FechamentoFrentista`. Conferido contra a API real, não contra os tipos.
+- ⚠️ **`packages/types/src/database.types.ts` está fora de sincronia com o banco:** declara
+  `Recebimento.data` e `Recebimento.created_at`, que não existem, e não declara `valor_conferido`,
+  `baratencia` e `data_hora_envio` de `FechamentoFrentista`, que existem. Regerar pela CLI.
+- **Verificação:** `scripts/verifica-rls-janela-insert.sh` — não escreve nada (payload incompleto:
+  RLS barra com 42501, RLS permite morre em 23502 antes de gravar). Rodado ANTES de aplicar: 4
+  falhas, exatamente os casos que a migração deve fechar.
+
 ### 🔴 A suíte agora roda no fuso do posto — e 3 testes de fuso deixam de ser pulados no CI
 - **[02/08/2026]** O CI ficou vermelho no merge da varredura de fuso. O teste
   `useDashboardProprietario.test.ts` finge o relógio em `2026-08-01T00:37Z` e exige que `hojeIso()`
