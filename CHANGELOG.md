@@ -2,6 +2,17 @@
 
 ## [Não Lançado]
 
+### ⛽ PWA — encerrante envia sem escolher frentista
+- **[02/08/2026]** A aba **Encerrante** abre e envia direto. Antes, sem frentista selecionado ela
+  mostrava "Selecione um frentista primeiro" e nem deixava fotografar o papel.
+- **Por que a regra não fazia sentido:** o encerrante é a leitura da bomba, não o caixa de alguém.
+  `api.salvarLeituras` grava na tabela `Leitura`, que **não tem coluna de frentista** — o
+  `frentistaId` chegava à tela e era descartado. A trava era cerimônia de UI, sem efeito no dado.
+- **As outras abas não mudaram:** Vendas, Histórico e o "Enviar Registro" continuam exigindo
+  frentista — ali o dado é por pessoa (`FechamentoFrentista.frentista_id`).
+- Teste de regressão em `apps/pwa-frentista/src/App.test.tsx` cobre os dois lados: encerrante abre
+  sem frentista **e** as demais abas continuam barrando.
+
 ### 🔁 Despesa fixa — lançar num clique o que se repete todo mês
 - **[02/08/2026]** Botão **"Despesas Fixas"** na aba Receitas e Despesas: abre a lista do que
   ainda falta lançar no mês, **com o valor do último lançamento já preenchido**, e o dono revisa

@@ -4,8 +4,8 @@ import { api } from '../services/api';
 import { hojeIso } from '@posto/utils';
 
 interface EncerranteProps {
-    frentistaId: number;
-    frentistaNome: string;
+    /** Só rótulo: quem fotografou não é gravado — `Leitura` não tem frentista. */
+    frentistaNome?: string;
     onVoltar: () => void;
 }
 
@@ -275,7 +275,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-white leading-tight">Enviar Encerrante</h1>
-                        <p className="text-sm text-slate-400">{frentistaNome}</p>
+                        <p className="text-sm text-slate-400">{frentistaNome ?? 'Leitura das bombas'}</p>
                     </div>
                 </div>
             </div>

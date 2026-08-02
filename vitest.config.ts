@@ -16,6 +16,8 @@ export default defineConfig({
             '@posto/types': path.resolve(__dirname, './packages/types/src/index.ts'),
             '@posto/utils': path.resolve(__dirname, './packages/utils/src/index.ts'),
             '@posto/api-core': path.resolve(__dirname, './packages/api-core/src/index.ts'),
+            // Módulo virtual do vite-plugin-pwa: só existe no build do PWA.
+            'virtual:pwa-register/react': path.resolve(__dirname, './apps/pwa-frentista/src/test/pwa-register-stub.ts'),
         },
     },
 });
