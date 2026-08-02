@@ -16,6 +16,7 @@ export { bombaService } from './bomba.service';
 export { bicoService } from './bico.service';
 export { estoqueService } from './estoque.service';
 export { frentistaService } from './frentista.service';
+export { presencaService } from './presenca.service';
 export { leituraService } from './leitura.service';
 export type { SalesSummary, VendaPorCombustivel } from './leitura.service';
 export { fechamentoService } from './fechamento.service';

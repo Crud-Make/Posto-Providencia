@@ -20,9 +20,12 @@ import {
 import KPICard from './components/KPICard';
 import ClosingsTable from './components/ClosingsTable';
 import PerformanceSidebar from './components/PerformanceSidebar';
+import PresencaFrentistas from './components/PresencaFrentistas';
 import FilterDropdown from './components/filter-dropdown';
 import DateRangePicker from './components/date-range-picker';
 import { useDashboard } from './hooks/useDashboard';
+import { usePresencaFrentistas } from './hooks/usePresencaFrentistas';
+import { usePosto } from '../../contexts/usePosto';
 import { useNavigate } from 'react-router-dom';
 
 // [14/01 07:00] Refatorado para usar useNavigate em vez de prop callback.
@@ -57,6 +60,13 @@ const TelaDashboard: React.FC = () => {
     clearFilters,
     getFrentistaLabel
   } = useDashboard();
+
+  const { postoAtivoId } = usePosto();
+  const {
+    presencas,
+    agora: agoraPresenca,
+    carregando: carregandoPresenca,
+  } = usePresencaFrentistas(postoAtivoId);
 
   if (loading && !data) {
     return (
@@ -175,7 +185,12 @@ const TelaDashboard: React.FC = () => {
             <FuelVolumeChart data={data.fuelData} />
           </React.Suspense>
         </div>
-        <div className="lg:col-span-1 h-full">
+        <div className="lg:col-span-1 h-full flex flex-col gap-6">
+          <PresencaFrentistas
+            presencas={presencas}
+            agora={agoraPresenca}
+            carregando={carregandoPresenca}
+          />
           <PerformanceSidebar data={data.performanceData} />
         </div>
       </div>

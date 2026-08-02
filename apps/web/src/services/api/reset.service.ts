@@ -8,6 +8,27 @@ import {
 
 type TableName = keyof Database['public']['Tables'];
 
+/**
+ * Só o que `deleteTable` usa do query builder do Supabase.
+ *
+ * @remarks
+ * Existe para o TypeScript não expandir a união de TODAS as tabelas dentro de
+ * `supabase.from(tableName)`. Com a união inteira ele estoura o limite de
+ * profundidade de instanciação ("excessively deep and possibly infinite") — o
+ * erro não aparece em quem escreveu o código, e sim na próxima pessoa que
+ * adicionar uma tabela ao schema. Foi exatamente o que aconteceu ao entrar
+ * `PresencaFrentista`.
+ *
+ * O `unknown` no valor é de propósito: este helper apaga por `posto_id`
+ * (number) e por `id` (number), e não precisa saber mais que isso.
+ */
+interface ConstrutorDeExclusao {
+  delete(): ConstrutorDeExclusao;
+  eq(coluna: string, valor: unknown): ConstrutorDeExclusao;
+  neq(coluna: string, valor: unknown): ConstrutorDeExclusao;
+  select(): Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+}
+
 interface ResetResult {
   message: string;
   deletedCounts: Record<string, number>;
@@ -46,7 +67,8 @@ export const resetService = {
 
       // Helper para deletar com filtro opcional de posto
       const deleteTable = async (tableName: TableName, postoFilter: boolean = true) => {
-        let query = supabase.from(tableName).delete();
+        // Cast único e deliberado — ver `ConstrutorDeExclusao`.
+        let query = (supabase.from(tableName) as unknown as ConstrutorDeExclusao).delete();
 
         if (postoFilter && postoId) {
           if (tableName === 'Leitura' ||
@@ -60,8 +82,6 @@ export const resetService = {
             tableName === 'Compra' ||
             tableName === 'MovimentacaoEstoque' ||
             tableName === 'Notificacao') {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore - Garantimos que essas tabelas têm posto_id
             query = query.eq('posto_id', postoId);
           }
         } else if (!postoFilter) {
