@@ -69,7 +69,15 @@ CONTEXT.md
 docs/
 agentes-docs/
 plans/
-scripts/
+# `scripts/*`, e não `scripts/`: excluir o DIRETÓRIO faz o git não descer nele, e
+# aí a exceção `!` abaixo nunca chega a ser avaliada. Excluindo o conteúdo, ela vale.
+scripts/*
+# Exceção consciente: o carregador do estágio 3 do ETL não guarda dado nenhum —
+# só o mapeamento bico->id e a lógica de validação; todo valor vem do sqlite em
+# `docs/data/` em tempo de execução, e esse sim segue fora do git. Ele precisa
+# ser versionado porque o CHANGELOG o referencia como a forma de refazer a carga
+# quando a planilha atualizada chegar.
+!scripts/carga-historico-leitura.py
 .claude/*
 !.claude/skills/
 !.claude/agents/
