@@ -2,6 +2,71 @@
 
 ## [Não Lançado]
 
+### 🔁 Despesa fixa — lançar num clique o que se repete todo mês
+- **[02/08/2026]** Botão **"Despesas Fixas"** na aba Receitas e Despesas: abre a lista do que
+  ainda falta lançar no mês, **com o valor do último lançamento já preenchido**, e o dono revisa
+  antes de confirmar. Cada linha mostra **de que mês veio a sugestão** e destaca em âmbar a que
+  estiver defasada mais de um mês.
+- ⚠️ **"Fixa" significa RECORRENTE, não valor constante — e isso definiu o desenho.** Medido nos
+  7 meses carregados: "Paulo" (salário) teve **3 valores distintos** no ano, de R$ 1.626 a
+  R$ 2.200, por reajuste; "Luz" teve **6**, de R$ 280 a R$ 850. O que se repete é a **descrição**,
+  não o número. Por isso o valor é **sugerido e editável**, e não lançado automaticamente: um
+  molde com valor fixo envelheceria e passaria a divergir do que foi pago — e aqui despesa errada
+  vira lucro errado.
+- **Coluna `recorrente` na `Despesa`, não tabela de modelos**, pela mesma razão: o modelo de uma
+  fixa É o último lançamento dela, então o valor sugerido acompanha o reajuste sozinho.
+- **Backfill marcou 13** despesas que aparecem em 4+ meses (Net, Contador, Luz, Embasa, Sistema,
+  Frete, taxas de cartão, Alvará/IPTU, Imposto, ibamentro e 3 salários). Reversível por clique.
+- **A regra fica em `packages/utils/src/despesa-fixa.ts`**, pura e com 16 testes — não em SQL
+  espalhado. Casos travados: reconhecer "Sistema." e "sistema" como a mesma conta (a planilha é
+  digitada à mão e lançar duas vezes dobraria a despesa do mês), **não** fundir "Paulo = 20" com
+  "Paulo = 10" (dias de pagamento distintos, escritos de propósito), e ignorar molde do próprio
+  mês alvo ou posterior.
+- **Conferido no navegador:** 13 fixas listadas, R$ 21.740,76, lançadas como `pendente` (quem
+  lança em bloco no início do mês ainda não pagou), e o segundo clique respondeu *"Nenhuma despesa
+  fixa pendente"* em vez de duplicar. Os lançamentos de teste foram removidos depois.
+- 🔍 **Correção de rumo registrada:** cheguei a "corrigir" um float que não existia. O snapshot de
+  acessibilidade do Chrome exibia `4315.759765625` no campo do Contador, e tratei como bug — mas é
+  a representação **float32** do protocolo de a11y; o DOM tinha `4315.76` exato. A quantização
+  ficou por ser defensiva e barata, com o comentário e o teste reescritos para dizer a verdade:
+  **proteção, não regressão observada.** Explicação errada gravada no código é pior que nenhuma.
+- 🎨 **Corrigido o modal que saía claro no modo escuro.** As linhas usavam `dark:bg-gray-750`, e
+  **`gray-750` não existe** — a escala do Tailwind pula de 700 para 800, e o app web não tem
+  `tailwind.config` que estenda isso (só o PWA tem). Classe inexistente é descartada **em
+  silêncio**, então o `bg-gray-50` sobrevivia e a linha ficava clara dentro do painel escuro.
+  Varri o app inteiro atrás do mesmo defeito: havia mais uma, num hover de
+  `escalas/ObservacaoModal.tsx`, corrigida junto. Medido depois no navegador: painel em
+  `rgb(31,41,55)` e linha em `rgb(55,65,81)` — as duas escuras, com contraste entre si.
+
+- 💰 **Valores do modal agora em padrão monetário.** Os campos mostravam o número cru do
+  JavaScript — `2725` e `850.4` no lugar de `2.725,00` e `850,40`. Causa: `type="number"`, que
+  **não aceita separador de milhar nem vírgula decimal**; pior, ele *rejeita* o que o dono digita
+  em formato brasileiro — teste comprovou que escrever `3.100,55` zerava o campo, porque o DOM
+  considera a string inválida e devolve `""`.
+- O campo virou **texto com máscara de centavos**: todo dígito entra pela direita, então não
+  existe estado intermediário inválido e o valor no estado já sai quantizado. Colar `3.100,55` dá
+  o mesmo que digitar `310055`.
+- A leitura ficou em `analisarMoedaDigitada()` (`packages/utils/src/formatters.ts`), **com teste**,
+  porque parsing de dinheiro já causou incidente aqui: `analisarValor` é parser de **litro** e
+  divide por mil sobre dinheiro (R$ 7.436,00 virou R$ 7,44 em produção). O teste trava as duas
+  convenções lado a lado para que ninguém mais as troque.
+- **5 testes de componente** novos em `ModalFixasPendentes.test.tsx` — renderizam o modal de
+  verdade e afirmam o que aparece na tela, não o que a função devolve. Foram escritos antes do
+  conserto e falharam nos 5.
+
+- 🧩 **`FormDespesa` e `FormReceita` consertados junto**, pelo mesmo defeito. Com 3 pontos de uso
+  idênticos, a máscara virou um componente só — `shared/ui/campo-moeda.tsx` — em vez de ser
+  copiada três vezes: campo de dinheiro copiado é campo que diverge, e divergência aqui é valor
+  errado no banco. Os dois formulários ganharam `aria-label="Valor"` de quebra (o `<label>` deles
+  nunca foi associado por `htmlFor`).
+- 🚫 **Zero virou campo vazio, nos três.** O estado nasce em `valor: 0` e o campo controlado
+  escrevia esse zero na tela — o que escondia o `placeholder` e, pior, **satisfazia o `required`**:
+  um lançamento de R$ 0,00 passava pela validação do navegador sem ninguém ver. Vazio, o campo
+  obrigatório volta a barrar, e digitar por cima continua igual (a máscara ignora zero à esquerda).
+- **10 testes de componente no total**, todos escritos antes do conserto e vermelhos nos 10. Os
+  dos formulários vão até o fim do caminho: digitam `3.100,55`, submetem e afirmam que o `onSave`
+  recebeu `3100.55` — o que prova que o valor certo chega ao banco, não só que a tela ficou bonita.
+
 ### 🧹 Removida a tela órfã `/despesas` — e destravado o caminho que sobrou
 - **[02/08/2026]** `/despesas` existia, funcionava e **nunca esteve no menu**: só se chegava
   digitando a URL. O caminho oficial é **Fechamento de Caixa → aba "💵 Receitas e Despesas"**,

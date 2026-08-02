@@ -261,6 +261,14 @@ export interface DespesaTable {
     data_pagamento: string | null
     observacoes: string | null
     categoria_id: number | null
+    /**
+     * Despesa fixa: repete todo mês.
+     *
+     * @remarks NÃO significa valor constante — salário, luz e contador mudam ao
+     *          longo do ano. Serve para o painel oferecer o lançamento do mês com
+     *          o valor do mais recente como sugestão, que o dono revisa.
+     */
+    recorrente: boolean
   }
   Insert: {
     id?: number
@@ -274,6 +282,7 @@ export interface DespesaTable {
     data_pagamento?: string | null
     observacoes?: string | null
     categoria_id?: number | null
+    recorrente?: boolean
   }
   Update: {
     id?: number
@@ -287,6 +296,7 @@ export interface DespesaTable {
     data_pagamento?: string | null
     observacoes?: string | null
     categoria_id?: number | null
+    recorrente?: boolean
   }
   Relationships: [
     {
