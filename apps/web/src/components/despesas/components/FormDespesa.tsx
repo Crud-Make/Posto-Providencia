@@ -12,6 +12,7 @@ import { X, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
 import { Despesa, DespesaFormData, CATEGORIAS_DESPESA } from '../types';
 // [01/02 11:15] Integração com categorias dinâmicas e remoção de casting 'any' para conformidade.
 import { categoriaService, CategoriaFinanceira } from '../../../services/api/categoria.service';
+import { CampoMoeda } from '@shared/ui/campo-moeda';
 import { hojeIso } from '@posto/utils';
 
 /**
@@ -155,13 +156,11 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Valor *</label>
                             <div className="relative">
                                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
+                                <CampoMoeda
                                     required
-                                    value={formData.valor}
-                                    onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })}
+                                    aria-label="Valor"
+                                    valor={formData.valor}
+                                    onChange={(valor) => setFormData({ ...formData, valor })}
                                     className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="0,00"
                                 />

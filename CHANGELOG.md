@@ -38,12 +38,34 @@
   `escalas/ObservacaoModal.tsx`, corrigida junto. Medido depois no navegador: painel em
   `rgb(31,41,55)` e linha em `rgb(55,65,81)` — as duas escuras, com contraste entre si.
 
-> **Pendente para a próxima sessão:** formatar os valores do modal de despesas fixas como moeda
-> (hoje aparecem `2725` e `280`, deveriam ser `2.725,00` e `280,00`). O `FormDespesa` tem o mesmo
-> comportamento — não existe campo de dinheiro formatado no projeto, então a solução deve nascer
-> em `packages/utils` **com teste**: parsing de dinheiro já causou incidente aqui (`analisarValor`,
-> que é parser de LITRO e divide por mil). Atenção ao caso `2.725,50` vs `2725.50`: com vírgula, o
-> ponto é separador de milhar; sem vírgula, é decimal.
+- 💰 **Valores do modal agora em padrão monetário.** Os campos mostravam o número cru do
+  JavaScript — `2725` e `850.4` no lugar de `2.725,00` e `850,40`. Causa: `type="number"`, que
+  **não aceita separador de milhar nem vírgula decimal**; pior, ele *rejeita* o que o dono digita
+  em formato brasileiro — teste comprovou que escrever `3.100,55` zerava o campo, porque o DOM
+  considera a string inválida e devolve `""`.
+- O campo virou **texto com máscara de centavos**: todo dígito entra pela direita, então não
+  existe estado intermediário inválido e o valor no estado já sai quantizado. Colar `3.100,55` dá
+  o mesmo que digitar `310055`.
+- A leitura ficou em `analisarMoedaDigitada()` (`packages/utils/src/formatters.ts`), **com teste**,
+  porque parsing de dinheiro já causou incidente aqui: `analisarValor` é parser de **litro** e
+  divide por mil sobre dinheiro (R$ 7.436,00 virou R$ 7,44 em produção). O teste trava as duas
+  convenções lado a lado para que ninguém mais as troque.
+- **5 testes de componente** novos em `ModalFixasPendentes.test.tsx` — renderizam o modal de
+  verdade e afirmam o que aparece na tela, não o que a função devolve. Foram escritos antes do
+  conserto e falharam nos 5.
+
+- 🧩 **`FormDespesa` e `FormReceita` consertados junto**, pelo mesmo defeito. Com 3 pontos de uso
+  idênticos, a máscara virou um componente só — `shared/ui/campo-moeda.tsx` — em vez de ser
+  copiada três vezes: campo de dinheiro copiado é campo que diverge, e divergência aqui é valor
+  errado no banco. Os dois formulários ganharam `aria-label="Valor"` de quebra (o `<label>` deles
+  nunca foi associado por `htmlFor`).
+- 🚫 **Zero virou campo vazio, nos três.** O estado nasce em `valor: 0` e o campo controlado
+  escrevia esse zero na tela — o que escondia o `placeholder` e, pior, **satisfazia o `required`**:
+  um lançamento de R$ 0,00 passava pela validação do navegador sem ninguém ver. Vazio, o campo
+  obrigatório volta a barrar, e digitar por cima continua igual (a máscara ignora zero à esquerda).
+- **10 testes de componente no total**, todos escritos antes do conserto e vermelhos nos 10. Os
+  dos formulários vão até o fim do caminho: digitam `3.100,55`, submetem e afirmam que o `onSave`
+  recebeu `3100.55` — o que prova que o valor certo chega ao banco, não só que a tela ficou bonita.
 
 ### 🧹 Removida a tela órfã `/despesas` — e destravado o caminho que sobrou
 - **[02/08/2026]** `/despesas` existia, funcionava e **nunca esteve no menu**: só se chegava

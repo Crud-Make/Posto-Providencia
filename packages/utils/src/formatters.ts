@@ -73,3 +73,27 @@ export function formatCurrencyInput(value: string): string {
     // Formata
     return formatBR(amount, 2);
 }
+
+/**
+ * Lê o que o dono digitou num campo de moeda e devolve o valor em reais.
+ *
+ * @param texto - O conteúdo cru do campo (ex.: "3.100,55", "310055", "R$ 12").
+ * @returns Valor em reais, sempre com no máximo 2 casas.
+ *
+ * @remarks
+ * Par numérico de {@link formatCurrencyInput}: **todo dígito digitado é centavo**,
+ * preenchendo da direita para a esquerda. É o que torna a máscara previsível — não
+ * existe estado intermediário inválido, e colar "3.100,55" dá o mesmo 3100,55 que
+ * digitar "310055".
+ *
+ * Não confunda com {@link parseValue}, que lê um valor **já formatado** ("R$ 7.436,00"),
+ * nem com o `analisarValor` de `apps/web/src/utils/formatters.ts`, que é o parser de
+ * *encerrante*: sem vírgula ele assume os 3 últimos dígitos como decimais e, sobre
+ * dinheiro, divide por mil (R$ 7.436,00 já virou R$ 7,44 em produção por causa disso).
+ */
+export function analisarMoedaDigitada(texto: string): number {
+    const digitos = (texto ?? '').replace(/\D/g, '');
+    if (!digitos) return 0;
+
+    return parseInt(digitos, 10) / 100;
+}

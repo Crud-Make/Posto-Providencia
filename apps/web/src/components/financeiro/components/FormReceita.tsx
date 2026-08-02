@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
 // [01/02 11:30] Criado formulário de receitas extras com suporte a categorias dinâmicas.
 import { categoriaService, CategoriaFinanceira } from '../../../services/api/categoria.service';
+import { CampoMoeda } from '@shared/ui/campo-moeda';
 import { hojeIso } from '@posto/utils';
 
 /**
@@ -114,13 +115,11 @@ export const FormReceita: React.FC<FormReceitaProps> = ({
                             <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Valor *</label>
                             <div className="relative">
                                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
+                                <CampoMoeda
                                     required
-                                    value={formData.valor}
-                                    onChange={(e) => setFormData({ ...formData, valor: Number(e.target.value) })}
+                                    aria-label="Valor"
+                                    valor={formData.valor}
+                                    onChange={(valor) => setFormData({ ...formData, valor })}
                                     className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
                                     placeholder="0,00"
                                 />

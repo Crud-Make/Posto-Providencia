@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Repeat, Loader2, AlertTriangle } from 'lucide-react';
 import { formatCurrency, totalSugerido, type FixaPendente } from '@posto/utils';
+import { CampoMoeda } from '@shared/ui/campo-moeda';
 import { formatarMesBR } from '../../../utils/periodo';
 import type { LancamentoFixa } from '../../../services/api/despesa-fixa.service';
 
@@ -136,19 +137,11 @@ export const ModalFixasPendentes: React.FC<ModalFixasPendentesProps> = ({
 
                 <div className="flex items-center gap-1 shrink-0">
                   <span className="text-sm text-gray-500">R$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={l.valor}
+                  <CampoMoeda
+                    valor={l.valor}
                     disabled={!l.incluir}
-                    onChange={(e) =>
-                      alterar(l.descricao, {
-                        // Quantiza também o que o dono digita: `type="number"` aceita
-                        // 12.999 e isso viraria 12,999 no banco, que não é dinheiro.
-                        valor: Math.round((Number(e.target.value) || 0) * 100) / 100,
-                      })
-                    }
+                    placeholder="0,00"
+                    onChange={(valor) => alterar(l.descricao, { valor })}
                     className="w-28 px-2 py-1 text-right font-finance rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 disabled:opacity-50"
                     aria-label={`Valor de ${l.descricao}`}
                   />
