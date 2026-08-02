@@ -25,6 +25,12 @@ const TelaDashboardProprietario: React.FC = () => {
 
   const dadosAtuais = periodoEfetivo === 'hoje' ? dados?.hoje : dados?.mes;
 
+  // Um rótulo só, usado nos cartões e no rodapé — para os dois nunca divergirem.
+  const periodoLabel =
+    periodoEfetivo === 'hoje'
+      ? 'Hoje'
+      : `${formatarMesBR(mesSelecionado)}${ehMesCorrente ? ' (até hoje)' : ''}`;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -67,7 +73,7 @@ const TelaDashboardProprietario: React.FC = () => {
       />
 
       {/* Cards Principais */}
-      <ResumoExecutivo dados={dadosAtuais} />
+      <ResumoExecutivo dados={dadosAtuais} periodoLabel={periodoLabel} />
 
       {/* Demonstrativo (Entradas - Saídas = Resultado) */}
       <DemonstrativoFinanceiro dados={dadosAtuais} />
@@ -80,14 +86,8 @@ const TelaDashboardProprietario: React.FC = () => {
       {/* Footer Info */}
       <div className="text-center text-sm text-gray-400 dark:text-gray-500 py-4 border-t border-gray-100 dark:border-gray-800">
         <p>
-          💡 Visualizando dados de:{' '}
-          <strong>
-            {periodoEfetivo === 'hoje'
-              ? 'Hoje'
-              : ehMesCorrente
-                ? `${formatarMesBR(mesSelecionado)} (até hoje)`
-                : `${formatarMesBR(mesSelecionado)} (mês fechado)`}
-          </strong>.
+          💡 Visualizando dados de: <strong>{periodoLabel}</strong>
+          {periodoEfetivo === 'mes' && !ehMesCorrente ? ' (mês fechado)' : ''}.
           {/* [31/07] A frase antiga dizia "estimativas baseadas na margem média cadastrada". */}
           {/* Não era verdade: o lucro sai da receita real menos o custo de compra real. */}
           {' '}Lucro apurado da receita real menos o custo de compra e as despesas lançadas.
