@@ -85,7 +85,7 @@ const ObservacaoModal: React.FC<ObservacaoModalProps> = ({
                 <div className="px-8 py-6 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 px-6 py-3.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-black rounded-xl hover:bg-gray-100 dark:hover:bg-gray-750 transition-all border border-gray-200 dark:border-gray-700 active:scale-95"
+                        className="flex-1 px-6 py-3.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-black rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-700 active:scale-95"
                     >
                         Cancelar
                     </button>

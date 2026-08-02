@@ -102,9 +102,13 @@ export const ModalFixasPendentes: React.FC<ModalFixasPendentesProps> = ({
             return (
               <div
                 key={l.descricao}
+                // `dark:bg-gray-700`, NUNCA `gray-750`: a escala do Tailwind pula de
+                // 700 para 800 e este app não tem `tailwind.config` que estenda isso
+                // (só o PWA tem). Classe inexistente é descartada em silêncio — o
+                // `bg-gray-50` sobrevivia e a linha ficava clara dentro do modal escuro.
                 className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
                   l.incluir
-                    ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750'
+                    ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700'
                     : 'border-dashed border-gray-300 dark:border-gray-600 opacity-50'
                 }`}
               >

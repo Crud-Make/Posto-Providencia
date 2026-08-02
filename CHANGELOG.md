@@ -30,6 +30,20 @@
   a representação **float32** do protocolo de a11y; o DOM tinha `4315.76` exato. A quantização
   ficou por ser defensiva e barata, com o comentário e o teste reescritos para dizer a verdade:
   **proteção, não regressão observada.** Explicação errada gravada no código é pior que nenhuma.
+- 🎨 **Corrigido o modal que saía claro no modo escuro.** As linhas usavam `dark:bg-gray-750`, e
+  **`gray-750` não existe** — a escala do Tailwind pula de 700 para 800, e o app web não tem
+  `tailwind.config` que estenda isso (só o PWA tem). Classe inexistente é descartada **em
+  silêncio**, então o `bg-gray-50` sobrevivia e a linha ficava clara dentro do painel escuro.
+  Varri o app inteiro atrás do mesmo defeito: havia mais uma, num hover de
+  `escalas/ObservacaoModal.tsx`, corrigida junto. Medido depois no navegador: painel em
+  `rgb(31,41,55)` e linha em `rgb(55,65,81)` — as duas escuras, com contraste entre si.
+
+> **Pendente para a próxima sessão:** formatar os valores do modal de despesas fixas como moeda
+> (hoje aparecem `2725` e `280`, deveriam ser `2.725,00` e `280,00`). O `FormDespesa` tem o mesmo
+> comportamento — não existe campo de dinheiro formatado no projeto, então a solução deve nascer
+> em `packages/utils` **com teste**: parsing de dinheiro já causou incidente aqui (`analisarValor`,
+> que é parser de LITRO e divide por mil). Atenção ao caso `2.725,50` vs `2725.50`: com vírgula, o
+> ponto é separador de milhar; sem vírgula, é decimal.
 
 ### 🧹 Removida a tela órfã `/despesas` — e destravado o caminho que sobrou
 - **[02/08/2026]** `/despesas` existia, funcionava e **nunca esteve no menu**: só se chegava
