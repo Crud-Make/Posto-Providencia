@@ -75,17 +75,56 @@ const PRODUTO_COMBUSTIVEL: Readonly<Record<string, number>> = {
 };
 
 /**
+ * CORREÇÃO DE DIGITAÇÃO DA PLANILHA — 14/03/2026.
+ *
+ * Naquele dia a gasolina (comum e aditivada) está lançada a **R$ 9,98/L**. O
+ * preço correto é **6,98** — 9 digitado no lugar de 6. Três evidências
+ * independentes, e nenhuma delas depende das outras:
+ *
+ *   1. PREÇO. Dias 15 a 18 seguem em 6,98. E o dia 14 JÁ traz o resto da troca
+ *      de preço: etanol caiu 5,38 -> 5,28 e diesel 8,18 -> 7,48, valores que
+ *      permanecem nos dias seguintes. Só a gasolina saiu fora.
+ *   2. MARGEM. A 9,98 o dia rende 39,98% de margem bruta, contra 16-20% em todo
+ *      o resto do mês. Combustível não tem essa margem.
+ *   3. CAIXA. A 9,98 o dia 14 acusa FALTA de R$ 3.949,95 — a maior de março, e
+ *      fora de qualquer padrão. A 6,98 vira sobra de R$ 126,08, igual aos
+ *      vizinhos. Esta terceira evidência é a mais forte: o preço foi corrigido
+ *      olhando só os preços, e a diferença de caixa entrou na normalidade
+ *      sozinha. A "falta" nunca existiu.
+ *
+ * A correção foi aplicada em PRODUÇÃO em 02/08/2026. O sqlite de referência
+ * **mantém o 9,98**, de propósito: `docs/data/` é fonte auditável e espelha a
+ * planilha como ela é, erro incluído (§6). Por isso o ajuste entra aqui, no
+ * ponto de leitura, e não no dado.
+ *
+ * Se a planilha for corrigida na origem, este bloco quebra o teste — que é o
+ * comportamento desejado: alguém revisa em vez de o ajuste ficar aplicado duas
+ * vezes em silêncio.
+ */
+const CORRECAO_14_03 = {
+    mes: 3,
+    dia: 14,
+    combustiveis: [1, 2],
+    precoErrado: 9.98,
+    precoCorreto: 6.98,
+} as const;
+
+/**
  * Lucro bruto esperado por mês: receita real dos encerrantes menos os litros
  * vendidos ao custo de aquisição DAQUELE mês.
  *
  * @remarks Julho (36.858,07) confere com os 36.858,09 já fixados em
  *          `useDashboardProprietario.test.ts` — 2 centavos de arredondamento, e a
  *          prova de que a correção não mexe no mês que já estava certo.
+ *
+ *          Março traz a correção de 14/03 já aplicada (ver {@link CORRECAO_14_03}):
+ *          receita 284.174,93 contra os 288.250,96 crus da planilha — R$ 4.076,03
+ *          de venda que o dígito trocado inventou.
  */
 const ESPERADO: Readonly<Record<number, { receita: number; custo: number; lucroBruto: number }>> = {
     1: { receita: 290062.92, custo: 241267.16, lucroBruto: 48795.76 },
     2: { receita: 184195.77, custo: 149401.25, lucroBruto: 34794.53 },
-    3: { receita: 288250.96, custo: 233419.28, lucroBruto: 54831.68 },
+    3: { receita: 284174.93, custo: 233419.28, lucroBruto: 50755.65 },
     4: { receita: 314514.15, custo: 251816.70, lucroBruto: 62697.45 },
     5: { receita: 289030.33, custo: 233778.67, lucroBruto: 55251.66 },
     6: { receita: 287036.32, custo: 233513.58, lucroBruto: 53522.74 },
@@ -108,6 +147,47 @@ interface LinhaEncerrante {
     bico: string;
     litros: number;
     venda_bico: number;
+    dia: number;
+    valor_lt: number | null;
+}
+
+/**
+ * Preço efetivo da linha.
+ *
+ * @remarks O **Bico 06 não tem preço próprio** na planilha: `valor_lt` vem NULL
+ *          e a venda sai de `litros × preço do Bico 05` (`H10 = F10*G9`). Derivar
+ *          de `venda ÷ litros` recupera o preço que de fato foi aplicado — é o
+ *          mesmo caminho que `carga-historico-leitura.py` usa para gravar a
+ *          `Leitura` desse bico. Sem isso, o Bico 06 escapa de qualquer regra
+ *          que compare preço, e foi exatamente o que aconteceu aqui: os R$ 116,23
+ *          dele ficaram de fora da correção de 14/03 na primeira tentativa.
+ */
+function precoEfetivo(linha: LinhaEncerrante): number | null {
+    if (linha.valor_lt !== null) return linha.valor_lt;
+    if (!linha.litros) return null;
+    return Number(((linha.venda_bico ?? 0) / linha.litros).toFixed(2));
+}
+
+/**
+ * Receita da linha, com a correção de 14/03 aplicada na leitura.
+ *
+ * @remarks Recalcula `litros × preço_correto` só nas linhas que casam com
+ *          {@link CORRECAO_14_03}; qualquer outra passa direto pelo `venda_bico`
+ *          da referência. Se o preço na planilha deixar de ser o errado, o `if`
+ *          não casa mais e o teste quebra — de propósito.
+ */
+function receitaCorrigida(mes: number, linha: LinhaEncerrante): number {
+    const c = CORRECAO_14_03;
+    const combustivel = BICO_COMBUSTIVEL[linha.bico];
+    if (
+        mes === c.mes &&
+        linha.dia === c.dia &&
+        c.combustiveis.includes(combustivel as 1 | 2) &&
+        precoEfetivo(linha) === c.precoErrado
+    ) {
+        return linha.litros * c.precoCorreto;
+    }
+    return linha.venda_bico ?? 0;
 }
 
 function custoDoMes(mes: number): Record<number, number> {
@@ -128,7 +208,7 @@ function apurar(mes: number): { receita: number; custo: number; lucroBruto: numb
     const custo = custoDoMes(mes);
     const linhas = db
         .query(
-            `SELECT bico, litros, venda_bico FROM encerrante_diario
+            `SELECT bico, litros, venda_bico, dia, valor_lt FROM encerrante_diario
              WHERE ano = 2026 AND mes = ? AND dado_incompleto = 0 AND litros IS NOT NULL`
         )
         .all(mes) as LinhaEncerrante[];
@@ -138,7 +218,7 @@ function apurar(mes: number): { receita: number; custo: number; lucroBruto: numb
     for (const linha of linhas) {
         const combustivel = BICO_COMBUSTIVEL[linha.bico];
         if (combustivel === undefined) throw new Error(`bico sem mapeamento: ${linha.bico}`);
-        receita += linha.venda_bico ?? 0;
+        receita += receitaCorrigida(mes, linha);
         custoTotal += linha.litros * custo[combustivel];
     }
     return { receita, custo: custoTotal, lucroBruto: receita - custoTotal };

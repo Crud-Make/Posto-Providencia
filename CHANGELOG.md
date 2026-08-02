@@ -2,6 +2,32 @@
 
 ## [Não Lançado]
 
+### 🧾 Corrigido em produção o preço digitado errado em 14/03/2026
+- **[02/08/2026]** Naquele dia a gasolina (comum e aditivada) estava lançada a **R$ 9,98/L**. O preço
+  correto é **6,98** — 9 digitado no lugar de 6. Corrigidas **4 linhas** de `Leitura` (bicos 7, 8, 11
+  e 12); etanol e diesel do mesmo dia estavam certos e **não** foram tocados.
+- **Três evidências independentes**, nenhuma derivada das outras:
+  1. **Preço** — dias 15 a 18 seguem em 6,98. E o dia 14 já traz o resto da troca de preço: etanol
+     caiu 5,38 → 5,28 e diesel 8,18 → 7,48, valores que permanecem nos dias seguintes. Só a gasolina
+     saiu fora.
+  2. **Margem** — a 9,98 o dia rende 39,98% de margem bruta, contra 16–20% no resto do mês.
+  3. **Caixa** — a 9,98 o dia acusava **FALTA de R$ 3.949,95**, a maior de março e fora de qualquer
+     padrão. A 6,98 vira **sobra de R$ 126,08**, igual aos vizinhos. Esta é a mais forte: o preço foi
+     corrigido olhando **só** os preços, e a diferença de caixa entrou na normalidade sozinha. Aquela
+     falta nunca existiu — era o dígito trocado.
+- **Efeito em março:** receita 288.250,96 → **284.174,93** (R$ 4.076,03 de venda que não existiu);
+  lucro bruto 54.831,68 → **50.755,65**; lucro real **23.960,73**.
+- **O sqlite de referência MANTÉM o 9,98**, de propósito: `docs/data/` é fonte auditável e espelha a
+  planilha como ela é, erro incluído (§6). O ajuste entra no **ponto de leitura** do golden
+  `custo-historico.golden.spec.ts`, nunca no dado. Se a planilha for corrigida na origem, o `if` não
+  casa mais e o teste quebra — que é o comportamento desejado, para ninguém aplicar a correção duas
+  vezes em silêncio.
+- ⚠️ **Detalhe da planilha que quase escapou:** o **Bico 06 não tem preço próprio** — `valor_lt` vem
+  NULL e a venda sai de `litros × preço do Bico 05` (`H10 = F10*G9`). Na primeira tentativa a regra
+  do golden comparava `valor_lt` direto e o Bico 06 escapou, deixando R$ 116,23 fora. O golden agora
+  deriva o preço de `venda ÷ litros` quando `valor_lt` é NULL — mesmo caminho que
+  `carga-historico-leitura.py` já usava.
+
 ### 🔒 A correção acima só passou a valer na tela depois do `SECURITY DEFINER`
 - **[02/08/2026]** A migração do custo histórico foi validada por SQL e dava certo nos 7 meses —
   **mas no navegador janeiro continuava em R$ 31.811,28**, o valor do bug. Achado ao abrir a tela
