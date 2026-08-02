@@ -2,6 +2,23 @@
 
 ## [Não Lançado]
 
+### 🔴 A suíte agora roda no fuso do posto — e 3 testes de fuso deixam de ser pulados no CI
+- **[02/08/2026]** O CI ficou vermelho no merge da varredura de fuso. O teste
+  `useDashboardProprietario.test.ts` finge o relógio em `2026-08-01T00:37Z` e exige que `hojeIso()`
+  devolva `2026-07-31` — verdade em GMT-3, **falso no runner do GitHub, que roda em UTC**. Passava
+  na minha máquina e só na minha máquina.
+- **O achado maior estava escondido atrás disso:** `data-local.test.ts` já se protegia com
+  `it.skipIf(!fusoDeslocaODia)`. Não quebrava — **pulava**. Os 3 testes que travam a regressão do
+  painel que apagava às 21h37 vinham sendo **silenciosamente ignorados no CI**: proteção zero
+  exatamente no bug que motivou a varredura.
+- **Correção:** `TZ=America/Sao_Paulo` nos scripts `test`, `test:watch` e `test:golden`. O sistema é
+  de um posto em GMT-3; testar no fuso do negócio é o padrão certo, e fixar no script (não no
+  workflow) faz valer igual na máquina e no CI, sem depender de ninguém lembrar.
+- **Verificado reproduzindo o CI localmente:** `TZ=UTC` sem o fix → 1 falha e 3 pulados; `TZ=UTC`
+  com o fix → **71 passam, 0 pulados**. Os `skipIf` ficam como rede para quem rodar fora do fuso.
+- **Regra que fica:** teste que depende de fuso precisa do fuso fixado, não de `skip` condicional —
+  skip condicional não falha, e por isso não protege.
+
 ### 🕒 Varredura de fuso: 41 lugares convertiam data de calendário via UTC
 - **[31/07/2026]** Depois de o painel do proprietário ser encontrado apagado às 21h37, varri o
   monorepo inteiro. O padrão `toISOString().split('T')[0]` (e `.slice(0,7)`) aparecia em **41
