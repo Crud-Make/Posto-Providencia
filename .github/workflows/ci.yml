@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Toolchain é Bun (Regra Zero do CLAUDE.md). O script `build` chama `bun -e`
       # internamente, então o runner Node+npm anterior nunca conseguiria completar.

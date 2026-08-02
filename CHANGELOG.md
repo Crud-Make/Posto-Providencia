@@ -2,6 +2,12 @@
 
 ## [Não Lançado]
 
+### 🔧 `actions/checkout` sobe para v5
+- **[02/08/2026]** O CI vinha avisando em toda execução: `actions/checkout@v4` declara Node 20, que
+  o GitHub depreciou, e o runner já estava **forçando Node 24** por cima. O aviso não quebrava o
+  build, mas ia virar quebra quando o runner parar de fazer essa ponte. A v5 declara Node 24 nativo.
+- Único step afetado em `.github/workflows/ci.yml`; `oven-sh/setup-bun@v2` não emite o aviso.
+
 ### 🔒 INSERT anônimo nas tabelas de dinheiro ganha janela de 7 dias
 - **[02/08/2026]** Probe com a anon key do bundle publicado mediu `INSERT` anônimo **aberto em 10
   tabelas**, incluindo as 4 que sustentam o fechamento: `Leitura`, `Fechamento`,
@@ -21,9 +27,18 @@
 - ⚠️ **`packages/types/src/database.types.ts` está fora de sincronia com o banco:** declara
   `Recebimento.data` e `Recebimento.created_at`, que não existem, e não declara `valor_conferido`,
   `baratencia` e `data_hora_envio` de `FechamentoFrentista`, que existem. Regerar pela CLI.
-- **Verificação:** `scripts/verifica-rls-janela-insert.sh` — não escreve nada (payload incompleto:
-  RLS barra com 42501, RLS permite morre em 23502 antes de gravar). Rodado ANTES de aplicar: 4
+- **Verificação:** `supabase/migrations/verifica-rls-janela-insert.sh` — não escreve nada (payload
+  incompleto: RLS barra com 42501, RLS permite morre em 23502 antes de gravar). ANTES de aplicar: 4
   falhas, exatamente os casos que a migração deve fechar.
+- ✅ **Aplicada em produção em 02/08**, pelo MCP do Supabase. Verificador **6/6 verde** depois: data
+  antiga dá 42501 nas 4 tabelas, dia corrente segue gravável (morre em 23502). Ao aplicar por MCP,
+  tire o `BEGIN;`/`COMMIT;` — ele já roda em transação própria; o arquivo os mantém porque é escrito
+  para o SQL Editor.
+- ⚠️ **O que a migração NÃO fecha, agora medido em `pg_policies` em vez de suposto:** o
+  rebaixamento das policies `FOR ALL` tornou explícito que `UPDATE` anônimo segue `WITH CHECK (true)`
+  nas 4 tabelas, e que `DELETE` anônimo continua aberto em `FechamentoFrentista` e `Recebimento` (só
+  `Leitura` tem janela de `DELETE`, desde 31/07). Não é regressão — era o mesmo poder embutido na
+  policy `ALL`. Fechar esses vetores exige auth real ou Edge Function, não mais uma policy.
 
 ### 🔴 A suíte agora roda no fuso do posto — e 3 testes de fuso deixam de ser pulados no CI
 - **[02/08/2026]** O CI ficou vermelho no merge da varredura de fuso. O teste
