@@ -10,7 +10,7 @@
  * o posto está em GMT-3, então `new Date().toISOString()` devolve o dia seguinte a partir
  * das 21h local — um filtro montado assim pula um dia à noite.
  */
-import { deIsoLocal } from '@posto/utils';
+import { deIsoLocal, paraMesLocal, ultimoDiaDoMes } from '@posto/utils';
 
 export {
   paraIsoLocal,
@@ -27,6 +27,53 @@ export {
 export interface Periodo {
   readonly inicio: string;
   readonly fim: string;
+}
+
+/**
+ * Intervalo de consulta de um mês, em ISO local.
+ *
+ * @param mesIso - Mês desejado, `aaaa-mm`.
+ * @param hoje - Hoje em ISO local (`hojeIso()`), injetado para o cálculo ser puro.
+ * @returns `inicio` no dia 1; `fim` no último dia do mês, **ou em `hoje`** quando o mês
+ *          pedido é o corrente.
+ *
+ * @remarks O corte em `hoje` no mês corrente não é detalhe: incluir dias futuros não muda
+ *          a soma (não há venda neles), mas faz o rateio de despesa por litro e a média
+ *          diária mentirem para baixo — o mês inteiro de despesa dividido por uma fração
+ *          dos litros. Em mês passado o intervalo é o mês fechado.
+ */
+export function intervaloDoMes(mesIso: string, hoje: string): Periodo {
+  const inicio = `${mesIso}-01`;
+  const ultimoDia = ultimoDiaDoMes(deIsoLocal(inicio));
+  const ehMesCorrente = inicio <= hoje && hoje <= ultimoDia;
+  return { inicio, fim: ehMesCorrente ? hoje : ultimoDia };
+}
+
+/** `true` quando `mesIso` (`aaaa-mm`) é o mês em que `hoje` cai. */
+export function ehMesCorrente(mesIso: string, hoje: string): boolean {
+  return mesIso === hoje.slice(0, 7);
+}
+
+/**
+ * Últimos `quantidade` meses até o mês de `hoje`, do mais recente para o mais antigo.
+ *
+ * @returns ISO local `aaaa-mm`.
+ */
+export function mesesRecentes(hoje: string, quantidade: number): string[] {
+  const base = deIsoLocal(`${hoje.slice(0, 7)}-01`);
+  return Array.from({ length: quantidade }, (_, i) =>
+    paraMesLocal(new Date(base.getFullYear(), base.getMonth() - i, 1))
+  );
+}
+
+/** Rótulo de mês para exibição: `2026-01` → `Janeiro/2026`. */
+export function formatarMesBR(mesIso: string): string {
+  const NOMES = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ];
+  const [ano, mes] = mesIso.split('-');
+  return `${NOMES[Number(mes) - 1]}/${ano}`;
 }
 
 /** Formata um ISO local como `dd/mm/aaaa`. */

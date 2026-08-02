@@ -5,30 +5,41 @@ import { ResumoFinanceiro } from '../types';
 
 interface ResumoExecutivoProps {
   dados: ResumoFinanceiro;
+  /**
+   * Nome do período exibido — "Hoje", "Janeiro/2026"…
+   *
+   * @remarks Era literal `"Hoje"` nos três cartões. Com o seletor de mês o painel
+   *          passou a mostrar mês fechado nos mesmos cartões, e o rótulo dizia
+   *          "Vendas Hoje" sobre o valor do mês inteiro. Rótulo que mente sobre o
+   *          período é o mesmo defeito da aba "7 Dias" que exibia o mês.
+   */
+  periodoLabel: string;
 }
 
-export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados }) => {
+export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados, periodoLabel }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* Vendas Hoje */}
+      {/* Vendas do período */}
       <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white animate-in fade-in zoom-in duration-300">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-blue-100 text-sm font-medium font-display uppercase tracking-wider">Vendas Hoje</span>
+          <span className="text-blue-100 text-sm font-medium font-display uppercase tracking-wider">
+            Vendas · {periodoLabel}
+          </span>
           <div className="p-2 bg-white/20 rounded-lg">
             <DollarSign className="w-5 h-5" />
           </div>
         </div>
         <p className="text-3xl font-bold font-finance tracking-tight">{formatCurrency(dados.vendas)}</p>
         <p className="text-blue-200 text-sm mt-1">
-          Performance de hoje
+          Receita de {periodoLabel}
         </p>
       </div>
 
-      {/* Lucro Estimado */}
+      {/* Lucro do período */}
       <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white animate-in fade-in zoom-in duration-300 delay-100">
         <div className="flex items-center justify-between mb-3">
           <span className="text-green-100 text-sm font-medium font-display uppercase tracking-wider">
-            {dados.temDespesa ? 'Lucro Real Hoje' : 'Lucro Bruto Hoje'}
+            {dados.temDespesa ? 'Lucro Real' : 'Lucro Bruto'} · {periodoLabel}
           </span>
           <div className="p-2 bg-white/20 rounded-lg">
             <TrendingUp className="w-5 h-5" />

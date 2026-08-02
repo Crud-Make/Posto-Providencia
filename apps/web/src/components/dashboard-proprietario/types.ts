@@ -38,11 +38,22 @@ export interface ResumoFinanceiro {
  * Estrutura completa de dados do dashboard.
  */
 export interface DadosDashboard {
+  /**
+   * Resumo do dia de hoje.
+   *
+   * @remarks Vem **zerado** quando `ehMesCorrente` é `false`: hoje não pertence ao mês
+   *          histórico exibido, e mostrar o número ali confundiria os dois períodos.
+   */
   hoje: ResumoFinanceiro;
+  /** Resumo do mês selecionado — fechado se histórico, até hoje se corrente. */
   mes: ResumoFinanceiro;
   posto: Posto;
   postosSummary: PostoSummary[];
   alertas: AlertaDashboard[];
+  /** Mês exibido, ISO local `aaaa-mm`. */
+  mesSelecionado: string;
+  /** `true` quando o mês exibido é o mês em curso. */
+  ehMesCorrente: boolean;
   ultimaAtualizacao: string;
 }
 
@@ -66,4 +77,11 @@ export interface AlertaDashboard {
   message: string;
 }
 
-export type PeriodoFiltro = 'hoje' | 'semana' | 'mes';
+/**
+ * Aba de período do painel.
+ *
+ * @remarks [02/08] `'semana'` saiu. Ela existia na barra como "7 Dias", mas o hook não
+ *          buscava sete dias: caía no `else` e exibia o **mês inteiro** sob rótulo de
+ *          semana. Rótulo que mente sobre o período é pior que aba faltando.
+ */
+export type PeriodoFiltro = 'hoje' | 'mes';

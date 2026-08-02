@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tag, CheckCircle2, Clock, Edit, Trash2, FileText, Loader2 } from 'lucide-react';
+import { formatarDataBR } from '../../../utils/periodo';
 import { Despesa } from '../types';
 
 interface TabelaDespesasProps {
@@ -49,12 +50,16 @@ const TabelaDespesas: React.FC<TabelaDespesasProps> = ({
                                 <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors group">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex flex-col">
+                                            {/* `formatarDataBR`, NUNCA `new Date(iso).toLocaleDateString()`:
+                                                a string `aaaa-mm-dd` é lida como UTC meia-noite e, em
+                                                GMT-3, volta um dia. Toda despesa lançada no último dia
+                                                do mês aparecia no penúltimo (31/01 exibia 30/01). */}
                                             <span className="font-bold text-gray-900 dark:text-gray-100">
-                                                {new Date(expense.data).toLocaleDateString('pt-BR')}
+                                                {formatarDataBR(expense.data)}
                                             </span>
                                             {expense.data_pagamento && (
                                                 <span className="text-[10px] text-green-500 font-medium">
-                                                    Pago em {new Date(expense.data_pagamento).toLocaleDateString('pt-BR')}
+                                                    Pago em {formatarDataBR(expense.data_pagamento)}
                                                 </span>
                                             )}
                                         </div>

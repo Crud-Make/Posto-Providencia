@@ -2,6 +2,170 @@
 
 ## [Não Lançado]
 
+### 🧾 Corrigido em produção o preço digitado errado em 14/03/2026
+- **[02/08/2026]** Naquele dia a gasolina (comum e aditivada) estava lançada a **R$ 9,98/L**. O preço
+  correto é **6,98** — 9 digitado no lugar de 6. Corrigidas **4 linhas** de `Leitura` (bicos 7, 8, 11
+  e 12); etanol e diesel do mesmo dia estavam certos e **não** foram tocados.
+- **Três evidências independentes**, nenhuma derivada das outras:
+  1. **Preço** — dias 15 a 18 seguem em 6,98. E o dia 14 já traz o resto da troca de preço: etanol
+     caiu 5,38 → 5,28 e diesel 8,18 → 7,48, valores que permanecem nos dias seguintes. Só a gasolina
+     saiu fora.
+  2. **Margem** — a 9,98 o dia rende 39,98% de margem bruta, contra 16–20% no resto do mês.
+  3. **Caixa** — a 9,98 o dia acusava **FALTA de R$ 3.949,95**, a maior de março e fora de qualquer
+     padrão. A 6,98 vira **sobra de R$ 126,08**, igual aos vizinhos. Esta é a mais forte: o preço foi
+     corrigido olhando **só** os preços, e a diferença de caixa entrou na normalidade sozinha. Aquela
+     falta nunca existiu — era o dígito trocado.
+- **Efeito em março:** receita 288.250,96 → **284.174,93** (R$ 4.076,03 de venda que não existiu);
+  lucro bruto 54.831,68 → **50.755,65**; lucro real **23.960,73**.
+- **O sqlite de referência MANTÉM o 9,98**, de propósito: `docs/data/` é fonte auditável e espelha a
+  planilha como ela é, erro incluído (§6). O ajuste entra no **ponto de leitura** do golden
+  `custo-historico.golden.spec.ts`, nunca no dado. Se a planilha for corrigida na origem, o `if` não
+  casa mais e o teste quebra — que é o comportamento desejado, para ninguém aplicar a correção duas
+  vezes em silêncio.
+- ⚠️ **Detalhe da planilha que quase escapou:** o **Bico 06 não tem preço próprio** — `valor_lt` vem
+  NULL e a venda sai de `litros × preço do Bico 05` (`H10 = F10*G9`). Na primeira tentativa a regra
+  do golden comparava `valor_lt` direto e o Bico 06 escapou, deixando R$ 116,23 fora. O golden agora
+  deriva o preço de `venda ÷ litros` quando `valor_lt` é NULL — mesmo caminho que
+  `carga-historico-leitura.py` já usava.
+
+### 🔒 A correção acima só passou a valer na tela depois do `SECURITY DEFINER`
+- **[02/08/2026]** A migração do custo histórico foi validada por SQL e dava certo nos 7 meses —
+  **mas no navegador janeiro continuava em R$ 31.811,28**, o valor do bug. Achado ao abrir a tela
+  pelo Chrome DevTools, não pelo SQL.
+- **Causa:** `Compra` tem uma única policy, `auth.role() = 'authenticated'`, e o painel fala com o
+  banco como **`anon`** (o login do web foi removido em 29/07). A função era `SECURITY INVOKER`
+  (padrão), então rodava com as permissões do chamador: o `LATERAL` sobre `Compra` voltava vazio, o
+  `COALESCE` caía no fallback, e o número exibido era o de antes da correção.
+- ⚠️ **A lição vale mais que o patch.** O fallback existe para o caso legítimo "mês sem compra
+  lançada". Sob RLS ele passou a significar **também** "sem permissão de ler", e as duas situações
+  ficaram indistinguíveis — **falha silenciosa num número de dinheiro**. Validar por `service_role`
+  (MCP/SQL) **não pega isso**: aquele papel enxerga tudo. Toda RPC que passa a ler uma tabela nova
+  precisa ser conferida **pela tela**, como `anon`, não só pelo SQL.
+- **Escolhido `SECURITY DEFINER` em vez de abrir a `Compra` ao `anon`**: a função devolve 5
+  agregados, nunca linhas de compra. Uma policy de SELECT para `anon` exporia fornecedor, nota
+  fiscal e custo de cada carga, ampliando o P0 de 31/07. Vai com `SET search_path = public, pg_temp`,
+  obrigatório para a função não ser sequestrada por schema malicioso no search_path do chamador.
+- **Conferido no navegador, como `anon`:** Janeiro bruto R$ 48.795,76 · real R$ 13.272,18 · margem
+  4,58%. Julho bruto R$ 37.669,98, **idêntico** ao de antes — a correção não mexe no mês que já
+  estava certo, como o golden previa.
+
+### 🔧 CORRIGIDO — a RPC do painel agora apura o custo pela compra da época
+- **[02/08/2026]** `get_dashboard_proprietario` calculava o lucro com
+  `Combustivel.preco_custo` — **um valor por combustível, sem histórico**, que guarda o custo do
+  último mês carregado. Sobre as vendas de janeiro aplicava o custo de julho. Agora lê o custo de
+  `Compra` **do mesmo mês da leitura**, com fallback para o cadastro quando o mês não tem compra.
+- **Erro que isso corrige**, medido antes e depois, por mês:
+  jan −16.983,35 · fev −13.386,16 · mar +3.626,69 · abr +14.401,34 · mai +6.366,91 · jun +2.028,21
+  · **jul 0,00**. Julho dava zero porque o cadastro guardava exatamente os preços de julho — o mês
+  corrente sempre acertou, e foi isso que manteve o defeito invisível até a tela ganhar seletor de
+  mês. O erro **troca de sinal**: jan/fev exibiam lucro menor que o real, mar–jun exibiam maior.
+- **Validação: 7 de 7 meses batem exatamente** contra o golden novo
+  `packages/utils/src/custo-historico.golden.spec.ts` (diferença 0,00 em todos). Julho confere no
+  escopo da referência (até o dia 25); os R$ 811,91 que sobram no mês cheio são os dias 26–27,
+  lançados pelo app e inexistentes na planilha.
+- **Campo usado: `media_lt`** (aquisição pura), não `valor_venda` (que embute a despesa rateada).
+  A RPC devolve lucro **bruto** e quem desconta a despesa é `montarResumoDoMes` — usar `valor_venda`
+  contaria a despesa duas vezes, o mesmo erro de 97,7% corrigido em 31/07.
+- **Carregado o que faltava**: `Compra` de fev–jul (24 linhas, `scripts/carga-historico-compra.py`)
+  e `Despesa` de fev–jun (76 linhas). Antes só jan e jul tinham despesa, então fev–jun exibiam o
+  lucro **bruto** como se fosse líquido.
+- **Lucro real de 2026 agora no painel** (fonte trimestral, decisão do dono): jan R$ 13.272,18
+  (4,58%) · fev R$ 10.106,51 (5,49%) · mar R$ 28.036,81 (9,73%) · abr R$ 29.329,10 (9,33%) ·
+  mai R$ 25.057,84 (8,67%) · jun R$ 27.446,74 (9,56%) · jul R$ 19.026,72.
+- ⚠️ **Duas distorções herdadas da planilha, NÃO corrigidas e travadas no golden de propósito:**
+  (1) o custo do mês vem só das compras daquele mês, sem ponderar estoque — em fev o Diesel tem
+  compra de **1 litro por R$ 5,00** que vira o custo de ~1.515 L vendidos; (2) a perda de estoque
+  nunca vira custo — jan fechou com **−3.565,94 L** de perca e a planilha não converte isso em
+  reais em lugar nenhum. O golden reproduz a planilha **com** as distorções: se um dia forem
+  corrigidas, o teste quebra e a decisão é tomada de novo.
+
+### 🗓️ Seletor de mês na Visão do Proprietário
+- **[02/08/2026]** O painel só sabia mostrar o mês corrente (`inicioDoMes` derivava de `hoje`).
+  Agora tem um seletor com os **12 últimos meses**, e o mês escolhido governa todo o período.
+- **Mês fechado consulta o mês inteiro; mês corrente para em hoje.** O corte não é cosmético:
+  incluir dias futuros não muda a soma, mas divide a despesa do mês por litros que ainda não
+  existem e afunda o rateio por litro.
+- **A aba "Hoje" some em mês histórico** — hoje não pertence ao período exibido, e o número
+  apareceria ao lado de um mês a que não pertence. O alerta de "prejuízo hoje" também só vale no
+  mês corrente; em mês fechado virou "o mês fechou no prejuízo".
+- **Removida a aba "7 Dias".** Ela nunca buscou sete dias: caía no `else` e exibia o **mês inteiro**
+  sob rótulo de semana. Rótulo que mente sobre o período é pior que aba faltando.
+- 9 testes novos em `periodo.test.ts`, incluindo a regressão de fuso (31/07 às 21h em GMT-3 continua
+  sendo julho, não agosto). Suíte: **100 Vitest**, lint e type-check limpos.
+
+### ⚠️ ACHADO — o lucro de mês histórico sai errado (a RPC não tem custo histórico)
+- **[02/08/2026]** Com o seletor no ar, janeiro ficou visível — e mostra **prejuízo de R$ 3.712,30**
+  quando o real é **lucro de R$ 13.272,18**. Sinal invertido no número principal da tela.
+- **Causa**, em uma linha de `get_dashboard_proprietario`:
+  `SUM(l.litros_vendidos * (l.preco_litro - c.preco_custo))` com `JOIN "Combustivel" c`.
+  `Combustivel.preco_custo` é **um valor único por combustível, sem histórico** — hoje guarda os
+  preços de julho. Sobre as vendas de janeiro ele aplica o custo de julho (etanol 3,706 em vez de
+  4,10; gasolina 5,802 em vez de 5,3452), e o lucro bruto sai R$ 16.984,48 menor que o real.
+- **Por isso o golden de julho passa**: para o mês corrente o custo do cadastro *é* o custo da época.
+  O erro cresce quanto mais antigo o mês — e sem seletor de mês ninguém tinha como ver.
+- **Não corrigido nesta branch**: mudar isso é mudar fórmula de dinheiro em todas as telas e meses,
+  o que exige golden master e decisão explícita (§0.6, §11). A tabela `Compra` já foi carregada com
+  o custo real de janeiro e é a fonte para o conserto.
+- **A revisão da planilha confirmou QUAL campo usar.** `compra_mensal` tem dois: `media_lt` (custo
+  de aquisição puro) e `valor_venda` (`media_lt` + despesa rateada). A RPC deve usar o **custo de
+  aquisição** e devolver lucro **bruto** — é o que `montarResumoDoMes` espera, porque o hook desconta
+  a despesa depois. Usar `valor_venda` contaria a despesa **duas vezes**, que é exatamente o erro de
+  97,7% já corrigido em 31/07. `Compra.custo_por_litro` carregado em janeiro é o `media_lt`, correto.
+- ⚠️ **Fragilidade herdada da planilha, medida:** o custo de um mês vem só das **compras daquele
+  mês**, sem valorizar estoque. Em fevereiro o Diesel teve compra de **1 litro por R$ 5,00**, e
+  esse R$ 5,00/L virou o custo de 1.768,27 L vendidos. Não há custo médio ponderado em lugar nenhum
+  da planilha — o estoque é controlado só em litros.
+- ⚠️ **Perda de estoque não entra no lucro.** Janeiro fechou com **−3.565,94 L** de perca/sobra
+  (G. Comum sozinha: −3.712,21 L). A planilha calcula o número em litros e **não o converte em
+  reais nem o desconta de nada**. A ~`media_lt` isso seria ordem de R$ 19 mil em janeiro — número
+  que **não existe na planilha**, derivação a confirmar com o dono antes de qualquer uso.
+
+### 💰 Janeiro/2026 completo em produção — despesa, fechamento por frentista e lucro
+- **[02/08/2026]** A `Leitura` de janeiro já estava carregada, mas o resto do mês não existia em
+  produção: `Fechamento`, `FechamentoFrentista` e `Compra` estavam **zeradas** e `Despesa` só tinha
+  julho. Agora janeiro fecha ponta a ponta contra a planilha.
+- **Despesa** (`scripts/carga-historico-despesa.py`): 21 lançamentos, **R$ 35.523,58**. Fonte é a
+  tabela **trimestral**, não a mensal — as duas existem e divergem (35.523,58 vs 22.158,46 só em
+  janeiro). O script exclui a categoria `__TOTAL__` das linhas e a usa como conferência: se a soma
+  das categorias não reconstruir o total escrito pela planilha, aborta. Somar a coluna crua devolve
+  o **dobro** — é a armadilha que essa checagem fecha.
+- **Fechamento por frentista** (`scripts/carga-historico-fechamento.py`): 31 dias e **180 linhas**,
+  cada uma com as 7 formas de pagamento. `valor_conferido` usa a fórmula canônica de
+  `packages/utils/src/fechamento.ts` (`dinheiro + moedas + pix + crédito + débito + nota + baratão`)
+  — conferido em produção: as 180 linhas têm o gravado idêntico ao recomputado a partir das colunas,
+  e o total (**R$ 289.881,60**) bate por três caminhos independentes.
+- ⚠️ **O Leandro voltou.** Todos os `scripts/import-january-*.js` legados hardcodam 7 frentistas em
+  colunas fixas `D..J` e **perdiam as 18 linhas do Leandro** (R$ 4.647,35, dias 29–31). O mapa novo
+  é por nome → id, com os 8 frentistas, e aborta se aparecer nome fora do cadastro.
+- ⚠️ **Fórmula quebrada na planilha, dia 29/01.** As células de total do bloco de caixa não incluem
+  a coluna da Barbra — cada forma está exatamente menos o valor dela, e `Moeda` (onde a Barbra é
+  vazia) é a única correta. A grade por frentista é auto-consistente e **manda**; o total virou
+  aviso do script. Efeito: a planilha registra **sobra de R$ 95,85** naquele dia, quando a soma real
+  dá **falta de R$ 4,20**. Sinal invertido — divergência documentada, não "corrigida".
+- **Lucro** (`scripts/auditoria-lucro-mes.py`): `fechamento.service.ts` lê `custo_combustiveis`,
+  `lucro_bruto` e `lucro_liquido` como **colunas gravadas** de `Fechamento`, não recalcula na
+  leitura — carregar o mês sem elas exibiria lucro R$ 0,00. Gravado o canônico de
+  `packages/utils/src/lucro.ts`: **R$ 13.272,16**, margem líquida **4,58%**.
+- **Por que o número difere dos R$ 28.974,97 que a planilha declara.** Duas causas, medidas:
+  (1) **fonte de despesa** — a planilha calcula com a lista **mensal** (R$ 22.158,46); a carga usou
+  a **trimestral** (R$ 35.523,58), que é a mais completa. Diferença: R$ 13.365,12. Decisão de
+  premissa, não erro de fórmula. (2) **preço** — o resumo mensal aplica preço único aos 31 dias,
+  mas 6 dias tiveram preço menor (gasolina 6,28 vs 6,48; etanol 4,58 vs 4,98): R$ 2.337,67 de
+  venda que não existiu.
+- ✅ **CORREÇÃO de uma afirmação anterior desta sessão.** Escrevi aqui que `compra_mensal.valor_venda`
+  embutia um custo operacional **fixo hardcoded** de 0,473/L, violando o §6. **Falso** — revisado
+  contra as fórmulas do `.xlsx`. `valor_venda = media_lt + I19`, e `I19 = despesa_do_mês ÷ litros
+  vendidos_do_mês` (rótulo "Custo do LT R$"). O valor **varia por mês** — 0,473 / 0,469 / 0,639 /
+  0,469 / 0,458 / 0,502 / 0,450 — e é igual entre os 4 produtos só porque todos referenciam a mesma
+  célula. A planilha faz exatamente o rateio que o §6 exige. O `0,45/L` chumbado que existe no
+  código vem de **outro lugar**: o bloco histórico 2017–2025, onde esse custo era digitado à mão.
+- **`Compra`** carregada com o consolidado mensal (4 linhas, 47.000 L, R$ 241.195,00). Estava vazia,
+  e `Combustivel.preco_custo` guardava os preços de **julho** — usá-los em janeiro erraria o etanol
+  em R$ 0,87/L.
+- Todos os 3 scripts seguem o contrato do estágio 3: **não escrevem no banco**, emitem SQL
+  idempotente e abortam quando a conferência independente não fecha. Golden master: **308 pass, 0
+  fail**.
+
 ### 📊 Histórico carregado em produção — estágio 3 do ETL
 - **[02/08/2026]** Produção tinha **47 dias** de leitura contra 206 validados na planilha. Agora tem
   **200 dias / 1.200 linhas / 275.686,369 L**. Os estágios 1 e 2 (extração e conferência contra o
