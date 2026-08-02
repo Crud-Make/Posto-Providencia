@@ -81,6 +81,7 @@ scripts/*
 !scripts/carga-historico-despesa.py
 !scripts/carga-historico-fechamento.py
 !scripts/auditoria-lucro-mes.py
+!scripts/carga-historico-compra.py
 .claude/*
 !.claude/skills/
 !.claude/agents/

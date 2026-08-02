@@ -2,6 +2,36 @@
 
 ## [Não Lançado]
 
+### 🔧 CORRIGIDO — a RPC do painel agora apura o custo pela compra da época
+- **[02/08/2026]** `get_dashboard_proprietario` calculava o lucro com
+  `Combustivel.preco_custo` — **um valor por combustível, sem histórico**, que guarda o custo do
+  último mês carregado. Sobre as vendas de janeiro aplicava o custo de julho. Agora lê o custo de
+  `Compra` **do mesmo mês da leitura**, com fallback para o cadastro quando o mês não tem compra.
+- **Erro que isso corrige**, medido antes e depois, por mês:
+  jan −16.983,35 · fev −13.386,16 · mar +3.626,69 · abr +14.401,34 · mai +6.366,91 · jun +2.028,21
+  · **jul 0,00**. Julho dava zero porque o cadastro guardava exatamente os preços de julho — o mês
+  corrente sempre acertou, e foi isso que manteve o defeito invisível até a tela ganhar seletor de
+  mês. O erro **troca de sinal**: jan/fev exibiam lucro menor que o real, mar–jun exibiam maior.
+- **Validação: 7 de 7 meses batem exatamente** contra o golden novo
+  `packages/utils/src/custo-historico.golden.spec.ts` (diferença 0,00 em todos). Julho confere no
+  escopo da referência (até o dia 25); os R$ 811,91 que sobram no mês cheio são os dias 26–27,
+  lançados pelo app e inexistentes na planilha.
+- **Campo usado: `media_lt`** (aquisição pura), não `valor_venda` (que embute a despesa rateada).
+  A RPC devolve lucro **bruto** e quem desconta a despesa é `montarResumoDoMes` — usar `valor_venda`
+  contaria a despesa duas vezes, o mesmo erro de 97,7% corrigido em 31/07.
+- **Carregado o que faltava**: `Compra` de fev–jul (24 linhas, `scripts/carga-historico-compra.py`)
+  e `Despesa` de fev–jun (76 linhas). Antes só jan e jul tinham despesa, então fev–jun exibiam o
+  lucro **bruto** como se fosse líquido.
+- **Lucro real de 2026 agora no painel** (fonte trimestral, decisão do dono): jan R$ 13.272,18
+  (4,58%) · fev R$ 10.106,51 (5,49%) · mar R$ 28.036,81 (9,73%) · abr R$ 29.329,10 (9,33%) ·
+  mai R$ 25.057,84 (8,67%) · jun R$ 27.446,74 (9,56%) · jul R$ 19.026,72.
+- ⚠️ **Duas distorções herdadas da planilha, NÃO corrigidas e travadas no golden de propósito:**
+  (1) o custo do mês vem só das compras daquele mês, sem ponderar estoque — em fev o Diesel tem
+  compra de **1 litro por R$ 5,00** que vira o custo de ~1.515 L vendidos; (2) a perda de estoque
+  nunca vira custo — jan fechou com **−3.565,94 L** de perca e a planilha não converte isso em
+  reais em lugar nenhum. O golden reproduz a planilha **com** as distorções: se um dia forem
+  corrigidas, o teste quebra e a decisão é tomada de novo.
+
 ### 🗓️ Seletor de mês na Visão do Proprietário
 - **[02/08/2026]** O painel só sabia mostrar o mês corrente (`inicioDoMes` derivava de `hoje`).
   Agora tem um seletor com os **12 últimos meses**, e o mês escolhido governa todo o período.
