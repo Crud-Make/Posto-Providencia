@@ -2,6 +2,27 @@
 
 ## [Não Lançado]
 
+### 🔒 A correção acima só passou a valer na tela depois do `SECURITY DEFINER`
+- **[02/08/2026]** A migração do custo histórico foi validada por SQL e dava certo nos 7 meses —
+  **mas no navegador janeiro continuava em R$ 31.811,28**, o valor do bug. Achado ao abrir a tela
+  pelo Chrome DevTools, não pelo SQL.
+- **Causa:** `Compra` tem uma única policy, `auth.role() = 'authenticated'`, e o painel fala com o
+  banco como **`anon`** (o login do web foi removido em 29/07). A função era `SECURITY INVOKER`
+  (padrão), então rodava com as permissões do chamador: o `LATERAL` sobre `Compra` voltava vazio, o
+  `COALESCE` caía no fallback, e o número exibido era o de antes da correção.
+- ⚠️ **A lição vale mais que o patch.** O fallback existe para o caso legítimo "mês sem compra
+  lançada". Sob RLS ele passou a significar **também** "sem permissão de ler", e as duas situações
+  ficaram indistinguíveis — **falha silenciosa num número de dinheiro**. Validar por `service_role`
+  (MCP/SQL) **não pega isso**: aquele papel enxerga tudo. Toda RPC que passa a ler uma tabela nova
+  precisa ser conferida **pela tela**, como `anon`, não só pelo SQL.
+- **Escolhido `SECURITY DEFINER` em vez de abrir a `Compra` ao `anon`**: a função devolve 5
+  agregados, nunca linhas de compra. Uma policy de SELECT para `anon` exporia fornecedor, nota
+  fiscal e custo de cada carga, ampliando o P0 de 31/07. Vai com `SET search_path = public, pg_temp`,
+  obrigatório para a função não ser sequestrada por schema malicioso no search_path do chamador.
+- **Conferido no navegador, como `anon`:** Janeiro bruto R$ 48.795,76 · real R$ 13.272,18 · margem
+  4,58%. Julho bruto R$ 37.669,98, **idêntico** ao de antes — a correção não mexe no mês que já
+  estava certo, como o golden previa.
+
 ### 🔧 CORRIGIDO — a RPC do painel agora apura o custo pela compra da época
 - **[02/08/2026]** `get_dashboard_proprietario` calculava o lucro com
   `Combustivel.preco_custo` — **um valor por combustível, sem histórico**, que guarda o custo do
