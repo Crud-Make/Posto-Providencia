@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { chaveRascunhoFechamento } from '../../../utils/rascunho-fechamento';
 
 /**
  * Estrutura do rascunho salvo no localStorage
@@ -84,11 +85,10 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
   const [restaurado, setRestaurado] = useState(false);
   const [rascunhoRestaurado, setRascunhoRestaurado] = useState<RascunhoFechamento | null>(null);
 
-  // Gera chave única do localStorage baseada no posto
-  const CHAVE_AUTOSAVE = useMemo(
-    () => `rascunho_fechamento_diario_v1_${postoId}`,
-    [postoId]
-  );
+  // A chave mora em `utils/rascunho-fechamento` porque Configurações também
+  // precisa dela para limpar o rascunho ao apagar um mês. Duplicar a string
+  // faria um lado parar de limpar em silêncio no dia em que ela mudasse.
+  const CHAVE_AUTOSAVE = useMemo(() => chaveRascunhoFechamento(postoId), [postoId]);
 
   /**
    * Reseta estado de restauração quando troca de posto

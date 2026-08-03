@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { limpezaMesService, type ContagemDoMes, type ResultadoLimpeza } from '../../../services/api';
 import { isSuccess } from '../../../types/ui/response-types';
+import { limparRascunhoDoMes } from '../../../utils/rascunho-fechamento';
 
 interface EstadoApagarMes {
   readonly mes: string;
@@ -70,6 +71,10 @@ export function useApagarMes(postoId: number | undefined, aberto: boolean): Esta
 
     const resposta = await limpezaMesService.apagarMes(mes, postoId);
     if (isSuccess(resposta)) {
+      // O rascunho vive no navegador: nenhum DELETE no banco o alcanca, e sem
+      // isto a tela de Fechamento reabre com os valores do mes recem-apagado.
+      if (postoId) limparRascunhoDoMes(postoId, mes);
+
       setResultado(resposta.data);
       setContagem(resposta.data.depois);
     } else {

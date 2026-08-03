@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### 🧹 Apagar o mês agora limpa também o rascunho do navegador
+- **[02/08/2026]** Achado na validação: com agosto zerado no banco, a tela de Fechamento **ainda
+  reabria com valores**. Causa: o rascunho da tela vive no `localStorage`, e nenhum `DELETE` no
+  banco alcança o navegador.
+- O botão "Apagar um mês" passa a descartar o rascunho **quando ele é daquele mês**. Rascunho de
+  outro mês fica intacto — apagar junho não pode jogar fora o que o dono está digitando hoje.
+- **A chave do rascunho mudou de dono:** saiu de dentro de `useAutoSave` e virou
+  `utils/rascunho-fechamento.ts`. Configurações precisa dela, e uma fatia importar da outra seria
+  import lateral (§2); duplicar a string faria um dos lados parar de limpar em silêncio no dia em
+  que ela mudasse.
+- 6 testes, incluindo rascunho corrompido e posto diferente.
+- ⚠️ **O que a tela mostra como "leitura inicial" NÃO é sobra** — é o fechamento de 27/07, a
+  última leitura do banco. O totalizador da bomba não zera quando se apaga um mês; inicial zerada
+  faria o cálculo dar o odômetro inteiro.
+
 ### 💳 O cartão entrava DUAS VEZES no histórico inteiro — R$ 421.808,29 de venda que não existiu
 - **[02/08/2026]** `FechamentoFrentista.valor_cartao` é o **"lump"**: o total de cartão que o dono
   lança quando não separa débito de crédito. `cartao()` soma os três campos porque no desenho eles
