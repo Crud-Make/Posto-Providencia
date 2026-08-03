@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### 🗑️ Configurações — apagar um mês de movimento
+- **[02/08/2026]** Botão novo na **Zona de Perigo**, acima do "Resetar Sistema Completo": apaga
+  leituras, fechamentos, fechamentos de frentista e recebimentos de **um mês escolhido**. Existe
+  para limpar dado de teste na implantação, quando o posto ainda está aprendendo o fluxo.
+- **Mostra a contagem ANTES de confirmar** e exige digitar `APAGAR`. Confirmar sem saber quantas
+  linhas vão embora é assinar papel em branco.
+- ⚠️ **Reconta DEPOIS, e isso é o item mais importante.** O painel fala com o banco como `anon`, e
+  a RLS só permite apagar `Leitura` dos **últimos 7 dias** (migração de 31/07). O PostgREST
+  devolve **204 tanto para "apagou" quanto para "a RLS barrou"** — sem a recontagem, o botão
+  anunciaria sucesso sem ter apagado nada. Sobrando linha, a tela avisa em âmbar e explica.
+- Cadastros não são tocados: frentistas, bicos, combustíveis, preços e configurações ficam.
+- **Conferido contra o banco real**, sem apagar: julho conta 156 leituras, 26 fechamentos, 123
+  fechamentos de frentista e 4 recebimentos; agosto (já zerado) conta 0 e deixa o botão
+  desabilitado.
+
 ### ⛽ Segundo envio de encerrante no mesmo dia apagava a manhã
 - **[02/08/2026]** O posto trabalha com **3 envios por dia**: 5h abre, 13h fecha a manhã, 23h
   fecha a noite. Como `salvarLeituras` apaga e regrava o dia inteiro (1 linha por bico por dia), o

@@ -1,7 +1,7 @@
 // [10/01 17:46] Criado durante refatoração Issue #16
 // [10/01 17:55] Fix: Passando postoAtivoId para useResetSistema
 import React from 'react';
-import { Settings, AlertTriangle, RotateCcw, Save } from 'lucide-react';
+import { Settings, AlertTriangle, RotateCcw, Save, CalendarX } from 'lucide-react';
 import { usePosto } from '../../contexts/usePosto';
 import {
     useConfiguracoesData,
@@ -15,7 +15,8 @@ import {
     GestaoFormasPagamento,
     ParametrosFechamento,
     ParametrosEstoque,
-    ModalResetSistema
+    ModalResetSistema,
+    ModalApagarMes
 } from './components/index';
 
 /**
@@ -24,6 +25,7 @@ import {
  */
 const TelaConfiguracoes: React.FC = () => {
     const { postoAtivoId } = usePosto();
+    const [apagarMesAberto, setApagarMesAberto] = React.useState(false);
 
     // Hooks de Dados e Controle
     const {
@@ -141,6 +143,15 @@ const TelaConfiguracoes: React.FC = () => {
                                     <p className="text-sm text-red-600 dark:text-red-300 mb-4">
                                         Ações destrutivas que não podem ser desfeitas.
                                     </p>
+                                    {/* Menos destrutivo primeiro: apagar um mês é a ação de rotina
+                                        na implantação; resetar tudo é a exceção. */}
+                                    <button
+                                        onClick={() => setApagarMesAberto(true)}
+                                        className="w-full py-3 mb-3 bg-white dark:bg-gray-800 text-red-700 dark:text-red-400 font-bold rounded-lg border-2 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <CalendarX size={18} />
+                                        APAGAR UM MÊS DE MOVIMENTO
+                                    </button>
                                     <button
                                         onClick={openResetModal}
                                         className="w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20 flex items-center justify-center gap-2"
@@ -153,6 +164,12 @@ const TelaConfiguracoes: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                <ModalApagarMes
+                    isOpen={apagarMesAberto}
+                    postoId={postoAtivoId}
+                    onClose={() => setApagarMesAberto(false)}
+                />
 
                 <ModalResetSistema
                     isOpen={isResetModalOpen}
