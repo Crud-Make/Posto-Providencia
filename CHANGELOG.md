@@ -20,6 +20,22 @@
   legítimo — aquele em que o dono informou só o total — tem débito e crédito zerados, não casa, e
   fica intacto. Idempotente. **Já aplicada em produção**, com 0 linhas restantes.
 
+### 🧾 Caixa Geral — abria zerado em 200 dos 204 dias e acusava sobra do tamanho da venda
+- **[02/08/2026]** O bloco lia só a tabela `Recebimento`, que o ETL do histórico **não carrega de
+  propósito** (as formas eletrônicas já entram em `FechamentoFrentista`; carregar as duas contaria
+  em dobro). Resultado: o dia abria em branco e a tela acusava **sobra de caixa do tamanho da
+  venda inteira** — R$ 14.119,81 no 15/06/2026, e o mesmo em 31/31 dias de março e 30/30 de junho.
+- Agora, dia **sem `Recebimento` salvo** é preenchido com o que os frentistas declararam. É o que
+  o botão "Auto-preencher" já fazia num clique; a diferença é não depender de o dono saber clicar.
+- ⚠️ **Não grava nada — só sugere na tela.** O `Recebimento` só nasce se o dono salvar, o que
+  preserva a decisão do ETL de não ter as duas fontes no banco ao mesmo tempo. Valor já salvo
+  também não é sobrescrito.
+- **Visão do MÊS do Caixa Geral** (`useCaixaGeralMes`), somente leitura por regra: um total de mês
+  não tem onde ser salvo, porque `Recebimento` pendura num `Fechamento`, que é de um dia — gravar
+  o mês num dia inventaria movimento e estouraria a conferência daquela data.
+- O gráfico de combustível da visão mensal recebe o volume já agregado: a conta padrão
+  (`fechamento − inicial` por bico) só existe **num dia** e não generaliza para o mês.
+
 ### 🗑️ Configurações — apagar um mês de movimento
 - **[02/08/2026]** Botão novo na **Zona de Perigo**, acima do "Resetar Sistema Completo": apaga
   leituras, fechamentos, fechamentos de frentista e recebimentos de **um mês escolhido**. Existe
