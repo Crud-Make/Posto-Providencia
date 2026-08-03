@@ -188,12 +188,30 @@ export const api = {
         throw ultimoErro instanceof Error ? ultimoErro : new Error('Falha ao ler a foto');
     },
 
-    /** Mapa bico_id -> última leitura_final registrada (vira a leitura_inicial do dia). */
+    /**
+     * Mapa `bico_id` -> última `leitura_final` de ANTES de hoje (vira a
+     * `leitura_inicial` do dia).
+     *
+     * @remarks
+     * **O recorte `data < hoje` é o que segura o segundo envio do dia.** O encerrante
+     * é o totalizador da bomba, cumulativo, e `salvarLeituras` apaga e regrava o dia
+     * inteiro — então o último envio do dia precisa cobrir o dia TODO, partindo do
+     * fechamento de ontem.
+     *
+     * Sem o recorte, esta busca devolvia a leitura do próprio dia como se fosse "a
+     * anterior". No 02/08/2026 isso ia custar caro: o turno das 13h às 21h fechou com
+     * 9.515,710 L gravados, e o envio das 23h teria partido daí — apagando as linhas
+     * do primeiro turno e deixando no dia só o que rodou das 21h às 23h.
+     *
+     * Vale igual para reenvio de correção: fotografar de novo no mesmo dia partia da
+     * própria foto anterior, e o dia encolhia a cada tentativa.
+     */
     async getUltimasLeiturasPorBico(postoId: number): Promise<Map<number, number>> {
         const { data, error } = await supabase
             .from('Leitura')
             .select('bico_id, leitura_final, data, id')
             .eq('posto_id', postoId)
+            .lt('data', hojeIso())
             .order('data', { ascending: false })
             .order('id', { ascending: false })
             .limit(200);
