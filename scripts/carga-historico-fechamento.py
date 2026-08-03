@@ -237,7 +237,20 @@ def sql(fechamentos, frentistas_linhas):
     linhas_filho = []
     for r in frentistas_linhas:
         vals = ','.join(f"{r['buckets'][c]:.2f}" for c in colunas)
-        cartao = r['buckets']['valor_cartao_credito'] + r['buckets']['valor_cartao_debito']
+        # `valor_cartao` SEMPRE 0 nesta carga — e isso é correção, não descuido.
+        #
+        # A coluna é o "lump" de cartão que o painel web usa quando o dono lança um
+        # total sem separar débito de crédito. `cartao()` em packages/utils soma os
+        # três campos (lump + débito + crédito), porque no desenho eles são
+        # alternativos: ou se lança o lump, ou se lançam os dois detalhados.
+        #
+        # Esta carga preenchia o lump com `credito + debito`, ou seja, repetia o que
+        # já estava detalhado. O cartão entrava DUAS VEZES em tudo que usa
+        # `conferido()`. Medido em 02/08/2026 contra a planilha: junho fechava em
+        # R$ 360.250,06 onde a planilha diz R$ 284.807,47, e o ano inteiro inflava
+        # R$ 421.808,29 (+22,8%). Confirmado por outro caminho: o `valor_conferido`
+        # já gravado bate com a planilha, era só a soma do lump que sobrava.
+        cartao = 0.0
         dif = 'NULL' if r['diferenca'] is None else f"{r['diferenca']:.2f}"
         enc = 'NULL' if r['encerrante'] is None else f"{r['encerrante']:.2f}"
         linhas_filho.append(
