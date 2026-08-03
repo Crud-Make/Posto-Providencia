@@ -1,4 +1,4 @@
-import { Download, Share, SquarePlus, X } from 'lucide-react';
+import { Download, MoreHorizontal, Share, SquarePlus, X } from 'lucide-react';
 import { useConviteInstalacao } from '../lib/use-convite-instalacao';
 
 /**
@@ -32,11 +32,31 @@ function ConviteInstalacao() {
             </h3>
             <p className="text-slate-400 text-xs mt-0.5">
               {convite === 'abrir-no-safari'
-                ? 'Neste navegador o iPhone não deixa instalar. Toque nos três pontos e escolha "Abrir no Safari".'
+                // "É só uma vez" não é enfeite: no posto ninguém usa Safari, e sem
+                // isso o convite parece exigir troca de navegador para sempre —
+                // motivo suficiente para o frentista dispensar e nunca instalar.
+                ? 'No iPhone só o Safari instala. É só uma vez neste celular: depois você abre pelo ícone, sem navegador nenhum.'
                 : 'Abre como aplicativo, sem barra do navegador, e funciona sem internet.'}
             </p>
 
-            {convite === 'abrir-no-safari' ? null : convite === 'instrucoes-ios' ? (
+            {convite === 'abrir-no-safari' ? (
+              <ol className="mt-3 space-y-1.5 text-xs text-slate-300">
+                <li className="flex items-center gap-2">
+                  <span className="w-4 shrink-0 text-slate-500">1.</span>
+                  Toque em
+                  <MoreHorizontal size={14} className="text-sky-400 shrink-0" aria-label="Mais opções" />
+                  no canto do navegador
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-4 shrink-0 text-slate-500">2.</span>
+                  Escolha <strong className="font-semibold text-white">Abrir no Safari</strong>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-4 shrink-0 text-slate-500">3.</span>
+                  Lá, siga o passo que aparecer aqui de novo
+                </li>
+              </ol>
+            ) : convite === 'instrucoes-ios' ? (
               // O iOS não tem prompt: o único caminho é o menu Compartilhar.
               // Por isso aqui são instruções, e não um botão que não existiria.
               <ol className="mt-3 space-y-1.5 text-xs text-slate-300">
