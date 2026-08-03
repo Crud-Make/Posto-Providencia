@@ -2,6 +2,40 @@
 
 ## [Não Lançado]
 
+### 💳 O cartão entrava DUAS VEZES no histórico inteiro — R$ 421.808,29 de venda que não existiu
+- **[02/08/2026]** `FechamentoFrentista.valor_cartao` é o **"lump"**: o total de cartão que o dono
+  lança quando não separa débito de crédito. `cartao()` soma os três campos porque no desenho eles
+  são **alternativos** — ou o lump, ou os dois detalhados.
+- **A carga do histórico preenchia o lump com `crédito + débito`**, repetindo o que já estava
+  detalhado. Todo cálculo que passa por `conferido()` contava o cartão duas vezes.
+- **Medido contra a planilha:** junho fechava em **R$ 360.250,06** onde o real é
+  **R$ 284.807,47** (+26,5%); o ano inflava **R$ 421.808,29** (+22,8%).
+- **Confirmado por um segundo caminho independente:** a coluna `valor_conferido` já gravada bate
+  com a planilha em **967 das 991** linhas — o dado detalhado sempre esteve certo, sobrava só a
+  soma do lump.
+- Corrigido nos dois lados: `scripts/carga-historico-fechamento.py` passa a gravar o lump como
+  `0.0`, e a migração `20260802_zera_valor_cartao_redundante.sql` limpa o que já estava no banco.
+- **A migração é conservadora de propósito:** o `WHERE` só alcança linha em que o lump é
+  *exatamente* `débito + crédito` (tolerância de meio centavo) **e** o detalhado não é zero. Lump
+  legítimo — aquele em que o dono informou só o total — tem débito e crédito zerados, não casa, e
+  fica intacto. Idempotente. **Já aplicada em produção**, com 0 linhas restantes.
+
+### 🧾 Caixa Geral — abria zerado em 200 dos 204 dias e acusava sobra do tamanho da venda
+- **[02/08/2026]** O bloco lia só a tabela `Recebimento`, que o ETL do histórico **não carrega de
+  propósito** (as formas eletrônicas já entram em `FechamentoFrentista`; carregar as duas contaria
+  em dobro). Resultado: o dia abria em branco e a tela acusava **sobra de caixa do tamanho da
+  venda inteira** — R$ 14.119,81 no 15/06/2026, e o mesmo em 31/31 dias de março e 30/30 de junho.
+- Agora, dia **sem `Recebimento` salvo** é preenchido com o que os frentistas declararam. É o que
+  o botão "Auto-preencher" já fazia num clique; a diferença é não depender de o dono saber clicar.
+- ⚠️ **Não grava nada — só sugere na tela.** O `Recebimento` só nasce se o dono salvar, o que
+  preserva a decisão do ETL de não ter as duas fontes no banco ao mesmo tempo. Valor já salvo
+  também não é sobrescrito.
+- **Visão do MÊS do Caixa Geral** (`useCaixaGeralMes`), somente leitura por regra: um total de mês
+  não tem onde ser salvo, porque `Recebimento` pendura num `Fechamento`, que é de um dia — gravar
+  o mês num dia inventaria movimento e estouraria a conferência daquela data.
+- O gráfico de combustível da visão mensal recebe o volume já agregado: a conta padrão
+  (`fechamento − inicial` por bico) só existe **num dia** e não generaliza para o mês.
+
 ### 🗑️ Configurações — apagar um mês de movimento
 - **[02/08/2026]** Botão novo na **Zona de Perigo**, acima do "Resetar Sistema Completo": apaga
   leituras, fechamentos, fechamentos de frentista e recebimentos de **um mês escolhido**. Existe

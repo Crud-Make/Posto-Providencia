@@ -9,6 +9,18 @@ interface SecaoPagamentosProps {
   onAutoFill?: () => void;
   totalPagamentos: number;
   isLoading?: boolean;
+  /**
+   * Trava a edição dos campos. Usado pela visão do mês: um total de mês não tem
+   * onde ser salvo (`Recebimento` pendura num `Fechamento`, que é de um dia), então
+   * campo editável ali seria um convite a gravar movimento na data errada.
+   */
+  somenteLeitura?: boolean;
+  /** Controle exibido no cabeçalho — hoje, o seletor Dia/Mês. */
+  controleCabecalho?: React.ReactNode;
+  /** Rótulo do rodapé. A visão do mês troca por "Total do mês". */
+  rotuloTotal?: string;
+  /** Linha de contexto sob o título (período, origem do dado). */
+  legenda?: React.ReactNode;
 }
 
 export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
@@ -17,17 +29,26 @@ export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
   onPagamentoBlur,
   onAutoFill,
   totalPagamentos,
-  isLoading = false
+  isLoading = false,
+  somenteLeitura = false,
+  controleCabecalho,
+  rotuloTotal = 'Total em Pagamentos:',
+  legenda
 }) => {
   return (
     <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700/50 p-6 mb-6">
-      <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-slate-100">
-        <div className="p-2 bg-emerald-500/20 rounded-lg">
-          <span className="text-xl">💰</span>
-        </div>
-        Formas de Pagamento (Caixa Geral)
-      </h2>
-      {onAutoFill && (
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+        <h2 className="text-xl font-bold flex items-center gap-3 text-slate-100">
+          <div className="p-2 bg-emerald-500/20 rounded-lg">
+            <span className="text-xl">💰</span>
+          </div>
+          Formas de Pagamento (Caixa Geral)
+        </h2>
+        {controleCabecalho}
+      </div>
+      {legenda && <p className="text-sm text-slate-400 mb-6">{legenda}</p>}
+      {!legenda && <div className="mb-4" />}
+      {onAutoFill && !somenteLeitura && (
         <div className="mb-6 flex justify-end">
           <button
             onClick={onAutoFill}
@@ -61,8 +82,11 @@ export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
                 onChange={(e) => onPagamentoChange(index, e.target.value)}
                 onBlur={() => onPagamentoBlur(index)}
                 disabled={isLoading}
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xl text-white placeholder-slate-600 transition-all hover:bg-slate-800/80 disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="0,00"
+                readOnly={somenteLeitura}
+                aria-label={pagamento.nome}
+                aria-readonly={somenteLeitura || undefined}
+                className={`w-full pl-10 pr-4 py-3 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xl text-white placeholder-slate-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${somenteLeitura ? 'bg-slate-900 cursor-default' : 'bg-slate-800 hover:bg-slate-800/80'}`}
+                placeholder={somenteLeitura ? '—' : '0,00'}
               />
             </div>
           </div>
@@ -72,7 +96,7 @@ export const SecaoPagamentos: React.FC<SecaoPagamentosProps> = ({
       <div className="border-t border-slate-700 pt-6">
         <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
           <span className="text-xl font-bold text-slate-300">
-            Total em Pagamentos:
+            {rotuloTotal}
           </span>
           <span className="text-3xl font-black font-mono text-emerald-400">
             {paraReais(totalPagamentos)}
