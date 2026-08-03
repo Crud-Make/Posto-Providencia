@@ -330,6 +330,54 @@ export const fechamentoFrentistaService = {
   },
 
   /**
+   * Busca fechamentos de frentistas de um intervalo de datas.
+   *
+   * @param dataInicio - Primeiro dia, ISO local `aaaa-mm-dd`.
+   * @param dataFim - Último dia, ISO local `aaaa-mm-dd` (incluído).
+   * @param postoId - ID do posto (opcional)
+   *
+   * @remarks
+   * Mesmo desenho de {@link getByDate}, com intervalo no lugar de um dia: duas
+   * consultas, porque `FechamentoFrentista` não tem data própria — a data mora no
+   * `Fechamento` pai. O recorte usa `T00:00:00`/`T23:59:59` porque `Fechamento.data`
+   * é timestamp, não date: comparar com a data crua deixaria o último dia de fora.
+   */
+  async getByPeriodo(dataInicio: string, dataFim: string, postoId?: number): Promise<ApiResponse<FechamentoFrentistaComRelacoes[]>> {
+    try {
+      let fechamentoQuery = supabase
+        .from('Fechamento')
+        .select('id')
+        .gte('data', `${dataInicio}T00:00:00`)
+        .lte('data', `${dataFim}T23:59:59`);
+
+      if (postoId) {
+        fechamentoQuery = fechamentoQuery.eq('posto_id', postoId);
+      }
+
+      const { data: fechamentos, error: fechError } = await fechamentoQuery;
+      if (fechError) return createErrorResponse(fechError.message, 'FETCH_ERROR');
+
+      if (!fechamentos || fechamentos.length === 0) {
+        return createSuccessResponse([]);
+      }
+
+      const { data, error } = await supabase
+        .from('FechamentoFrentista')
+        .select(`
+          *,
+          frentista:Frentista(*),
+          fechamento:Fechamento(data, turno_id, turno:Turno(*), posto_id)
+        `)
+        .in('fechamento_id', fechamentos.map(f => f.id));
+
+      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
+      return createSuccessResponse((data || []) as FechamentoFrentistaComRelacoes[]);
+    } catch (err) {
+      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
+    }
+  },
+
+  /**
    * Busca fechamentos de frentistas por data e turno
    * @param dataStr - Data no formato YYYY-MM-DD
    * @param turnoId - ID do turno

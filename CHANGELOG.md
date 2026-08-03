@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 💳 O cartão entrava DUAS VEZES no histórico inteiro — R$ 421.808,29 de venda que não existiu
+- **[02/08/2026]** `FechamentoFrentista.valor_cartao` é o **"lump"**: o total de cartão que o dono
+  lança quando não separa débito de crédito. `cartao()` soma os três campos porque no desenho eles
+  são **alternativos** — ou o lump, ou os dois detalhados.
+- **A carga do histórico preenchia o lump com `crédito + débito`**, repetindo o que já estava
+  detalhado. Todo cálculo que passa por `conferido()` contava o cartão duas vezes.
+- **Medido contra a planilha:** junho fechava em **R$ 360.250,06** onde o real é
+  **R$ 284.807,47** (+26,5%); o ano inflava **R$ 421.808,29** (+22,8%).
+- **Confirmado por um segundo caminho independente:** a coluna `valor_conferido` já gravada bate
+  com a planilha em **967 das 991** linhas — o dado detalhado sempre esteve certo, sobrava só a
+  soma do lump.
+- Corrigido nos dois lados: `scripts/carga-historico-fechamento.py` passa a gravar o lump como
+  `0.0`, e a migração `20260802_zera_valor_cartao_redundante.sql` limpa o que já estava no banco.
+- **A migração é conservadora de propósito:** o `WHERE` só alcança linha em que o lump é
+  *exatamente* `débito + crédito` (tolerância de meio centavo) **e** o detalhado não é zero. Lump
+  legítimo — aquele em que o dono informou só o total — tem débito e crédito zerados, não casa, e
+  fica intacto. Idempotente. **Já aplicada em produção**, com 0 linhas restantes.
+
 ### 🗑️ Configurações — apagar um mês de movimento
 - **[02/08/2026]** Botão novo na **Zona de Perigo**, acima do "Resetar Sistema Completo": apaga
   leituras, fechamentos, fechamentos de frentista e recebimentos de **um mês escolhido**. Existe

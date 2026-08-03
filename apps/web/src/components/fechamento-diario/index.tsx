@@ -47,7 +47,9 @@ import FechamentoMensal from '../fechamento-mensal';
 import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
-import { hojeIso } from '@posto/utils';
+import { hojeIso, conferido } from '@posto/utils';
+import { meiosDaSessao } from '../../utils/fechamentoMeios';
+import { parseValue } from '../../utils/formatters';
 
 const TelaFechamentoDiario: React.FC = () => {
    const { postoAtivoId, postoAtivo } = usePosto();
@@ -196,6 +198,41 @@ const TelaFechamentoDiario: React.FC = () => {
       }
    }, [selectedDate, selectedTurno, restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos]);
 
+   // Dia sem `Recebimento` salvo: preenche o Caixa Geral com o que os frentistas
+   // declararam, em vez de deixar em branco.
+   //
+   // POR QUÊ. O painel lê só a tabela `Recebimento`, e o ETL do histórico não a carrega
+   // de propósito — as formas eletrônicas já entram em `FechamentoFrentista`, e carregar
+   // as duas contaria em dobro (scripts/carga-historico-fechamento.py). Resultado: em
+   // 200 dos 204 dias com movimento o bloco abria zerado e a tela acusava uma SOBRA DE
+   // CAIXA do tamanho da venda do dia inteiro — R$ 14.119,81 no 15/06/2026, e o mesmo em
+   // 31/31 dias de março e 30/30 de junho. É exatamente o que o botão "Auto-preencher"
+   // já fazia com um clique; a diferença é não depender de o dono saber clicar nele.
+   //
+   // NÃO grava nada: só sugere na tela. O `Recebimento` só nasce se o dono salvar, o que
+   // preserva a decisão do ETL de não ter as duas fontes no banco ao mesmo tempo.
+   const derivacaoFeita = React.useRef<string | null>(null);
+   useEffect(() => {
+      if (!selectedDate || !selectedTurno || saving || success) return;
+      if (loadingPagamentos || loadingSessoes || payments.length === 0) return;
+
+      const chave = `${selectedDate}|${selectedTurno}`;
+      if (derivacaoFeita.current === chave) return;
+
+      // Já veio valor do banco: respeita o que está salvo, não sobrescreve.
+      if (payments.some(p => parseValue(p.valor) > 0)) {
+         derivacaoFeita.current = chave;
+         return;
+      }
+
+      // Sem movimento declarado ainda: não marca a chave, porque as sessões podem
+      // chegar depois (realtime do PWA) e aí a derivação ainda deve acontecer.
+      if (!frentistaSessions.some(s => conferido(meiosDaSessao(s)) > 0)) return;
+
+      derivacaoFeita.current = chave;
+      sincronizarComSessoes(frentistaSessions);
+   }, [selectedDate, selectedTurno, saving, success, loadingPagamentos, loadingSessoes, payments, frentistaSessions, sincronizarComSessoes]);
+
    // --- Render ---
    return (
       // [31/07] `pb-24` removido: era a reserva manual de espaço para a barra `fixed` do
@@ -231,6 +268,7 @@ const TelaFechamentoDiario: React.FC = () => {
                   <TabFinanceiro
                      payments={payments} totalPagamentos={totalPagamentos} totalLitros={totalLitros} totalFrentistas={totalFrentistas}
                      leituras={leituras} bicos={bicos} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
+                     dataSelecionada={selectedDate} postoId={postoAtivoId}
                      onRefreshSessoes={() => {
                         if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno, true);
                      }}
