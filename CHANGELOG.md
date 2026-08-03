@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### 📲 Convite de instalação — o caminho do Chrome no iPhone deixa de ser um beco sem saída
+- **[02/08/2026]** Quando o PWA abre em navegador que não é o Safari, o iOS **não instala** e o
+  convite só dizia isso: uma frase de aviso, com o ramo `abrir-no-safari` renderizando `null`
+  logo abaixo. O frentista lia que não dava e fechava.
+- Agora esse ramo mostra o passo a passo de 3 etapas — o ícone de menu, "Abrir no Safari", e o
+  aviso de que as instruções reaparecem lá.
+- **"É só uma vez neste celular" não é enfeite:** no posto ninguém usa Safari, e sem essa frase o
+  convite parece exigir troca de navegador para sempre — motivo suficiente para dispensar e nunca
+  instalar.
+- ⚠️ Vale para o link aberto pelo WhatsApp, que cai no navegador embutido — o caminho mais
+  provável de o frentista receber o app.
+
 ### 🧹 Apagar o mês agora limpa também o rascunho do navegador
 - **[02/08/2026]** Achado na validação: com agosto zerado no banco, a tela de Fechamento **ainda
   reabria com valores**. Causa: o rascunho da tela vive no `localStorage`, e nenhum `DELETE` no
