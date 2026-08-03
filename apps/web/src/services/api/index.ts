@@ -17,6 +17,8 @@ export { bicoService } from './bico.service';
 export { estoqueService } from './estoque.service';
 export { frentistaService } from './frentista.service';
 export { presencaService } from './presenca.service';
+export { limpezaMesService } from './limpezaMes.service';
+export type { ContagemDoMes, ResultadoLimpeza } from './limpezaMes.service';
 export { leituraService } from './leitura.service';
 export type { SalesSummary, VendaPorCombustivel } from './leitura.service';
 export { fechamentoService } from './fechamento.service';
