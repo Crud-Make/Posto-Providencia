@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### ⛽ Segundo envio de encerrante no mesmo dia apagava a manhã
+- **[02/08/2026]** O posto trabalha com **3 envios por dia**: 5h abre, 13h fecha a manhã, 23h
+  fecha a noite. Como `salvarLeituras` apaga e regrava o dia inteiro (1 linha por bico por dia), o
+  último envio precisa cobrir o dia TODO — mas `getUltimasLeiturasPorBico` devolvia a leitura **do
+  próprio dia** como se fosse a anterior.
+- **O estrago, com o fluxo real:** o envio das 13h partia do das 5h, e o das 23h partia do das 13h.
+  O dia terminava valendo só das 13h às 23h — **a manhã inteira sumia** dos litros e do lucro.
+- **Medido no teste de hoje:** o turno das 13h às 21h fechou com **9.515,710 L** gravados. O envio
+  das 23h teria partido daí e deixado no dia só o que rodou das 21h às 23h.
+- Corrigido com um recorte `data < hoje`: os três envios partem sempre do fechamento do dia
+  anterior. Conferido contra o banco real — a base volta a ser 27/07 (1.862.111,422 no bico 1),
+  exatamente a que o primeiro envio do dia usou.
+- **Vale igual para reenvio de correção:** fotografar de novo no mesmo dia partia da própria foto
+  anterior, e o dia encolhia a cada tentativa.
+
 ### 👀 Painel — "Trabalhando agora": quem está com o app aberto
 - **[02/08/2026]** Bloco novo no dashboard mostrando os frentistas que abriram o PWA e
   escolheram o próprio nome, com **"No app agora" / "Parado" / "Saiu"** e o tempo desde o último
