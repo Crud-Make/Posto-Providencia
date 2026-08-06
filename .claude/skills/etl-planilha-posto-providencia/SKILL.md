@@ -13,10 +13,12 @@ description: >-
 
 # etl-planilha-posto-providencia
 
-Esta planilha é artesanal (ver `planilha-jorro`/`fechamento-posto-providencia`
-skills) — layout muda entre meses, tem lacunas de dado reais, e tem mais de
-uma tabela pra "a mesma coisa" que podem divergir. Um script de importação
-que assume estrutura fixa **vai** produzir números errados silenciosamente.
+Esta planilha é artesanal (ver a skill `fechamento-posto-providencia` para a
+nomenclatura e as fórmulas do domínio; para consultar valor já extraído, o
+agente `planilha`) — layout muda entre meses, tem lacunas de dado reais, e
+tem mais de uma tabela pra "a mesma coisa" que podem divergir. Um script de
+importação que assume estrutura fixa **vai** produzir números errados
+silenciosamente.
 Regra de ouro: **nunca confie no que extraiu até validar contra um total
 independente.**
 
@@ -105,8 +107,11 @@ desse número**, mesmo que ele pareça ter dado dentro.
       confirmado com o usuário/dono qual é a fonte de verdade antes de
       escolher (achado real: duas tabelas de despesa mensal divergiam até
       4x entre si)
-- [ ] Planilha original (`.xlsx`) mantida versionada em `docs/data/`, nunca
-      descartada após a importação
+- [ ] Planilha original (`.xlsx`) preservada em `docs/data/` **no disco e fora
+      do git**, nunca descartada após a importação. `docs/data/` está no
+      `.gitignore` desde o incidente de dado real de 29/07/2026 (CLAUDE.md §6):
+      é fonte auditável local, e commitá-la reabre o incidente. O `.xlsx`
+      original também não se edita
 - [ ] Script idempotente — pode ser rodado de novo quando uma planilha
       atualizada chegar, sem duplicar ou corromper o que já foi importado
 

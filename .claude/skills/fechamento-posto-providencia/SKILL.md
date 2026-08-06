@@ -8,7 +8,7 @@ description: >-
   valor/nome", "qual é a fórmula certa"), ao mexer em qualquer lugar que
   calcule `valor_conferido`/`diferenca` (PWA, hooks do web, services,
   aggregator), ou ao mexer no módulo canônico packages/utils/src/fechamento.ts
-  e nos 11 arquivos que o consomem. Em conflito entre intuição e
+  e nos arquivos de apps/ que o consomem. Em conflito entre intuição e
   o dado real de janeiro (docs/data/janeiro_referencia.sqlite), o dado real
   decide. Toda fórmula aplicada exige teste golden master correspondente
   antes de a tarefa ser considerada pronta — e NUNCA consolide as
@@ -26,33 +26,31 @@ que cada frentista arrecadou por forma de pagamento vs. o que os bicos
 `../ProvControl`) — projetos e codebases diferentes, mesmo domínio de
 negócio.
 
-## O problema real que esta skill existe para resolver
+## Estado da consolidação — concluída
 
-`valor_conferido`/`diferenca` estava **duplicado em ~6 implementações**
-espalhadas entre `apps/pwa-frentista`, hooks de `apps/web`, services e um
-aggregator. Dead code já confirmado e removido
-(`packages/utils/src/calculators.ts`, `dates.ts`); `type-check` passou.
+`valor_conferido`/`diferenca` já esteve **duplicado em ~6 implementações**
+espalhadas entre `apps/pwa-frentista`, hooks de `apps/web`, services e o
+aggregator. Hoje o cálculo é único, em `packages/utils/src/fechamento.ts`.
+Dead code removido: `packages/utils/src/calculators.ts` e `dates.ts` não
+existem mais.
 
-**A consolidação em `packages/utils/src/fechamento.ts` FOI CONCLUÍDA** —
-verificado em 2026-07-29: 11 arquivos de `apps/web` e `apps/pwa-frentista`
-importam o módulo canônico.
+Os **dois últimos pontos** que somavam buckets à mão foram fechados em
+02/08/2026 — `aggregator.service.ts` e
+`components/frentistas/hooks/useHistoricoFrentista.ts` passaram a ler
+`diferenca_calculada` (a diferença canônica gravada no envio do fechamento)
+em vez de recomputar. Antes disso omitiam moedas/baratão e acusavam
+`'Divergente'` em sessão correta. **Os dois arquivos carregam comentário
+explicando a decisão — não os "conserte" de volta para soma manual.**
 
-Restam **dois** pontos que ainda somam buckets na mão, ambos calculando
-`soma_manual − valor_conferido` e rotulando `'OK'`/`'Divergente'`:
+> Contagem de consumidores conferida em 06/08/2026: 13 arquivos de produção
+> em `apps/` (+1 de teste) importam o módulo canônico. Esse número envelhece
+> a cada feature — para recontar, cruze `grep -rl "@posto/utils" apps` com os
+> símbolos de fechamento, não confie nesta linha.
 
-1. `apps/web/src/services/api/aggregator.service.ts:658,703,704` — 6 buckets,
-   **omite moedas**. O MESMO arquivo usa o canônico corretamente na linha 400
-   (`conferido(meiosFromFechamentoRow(fechamento))`). Inconsistência interna
-   de um arquivo só.
-2. `apps/web/src/components/frentistas/hooks/useHistoricoFrentista.ts:42-43` —
-   4 buckets, **omite moedas, débito e crédito**.
-
-Efeito: sessão com `valor_moedas > 0` aparece como `'Divergente'` estando
-correta. Esta skill define como consolidar esses dois **sem quebrar o que já
-funciona pro dono do posto**.
-
-**Regra inegociável: nunca consolide antes de ter teste. Nunca escreva o
-teste depois de consolidar.** Ordem obrigatória:
+**A regra que sobrevive à consolidação:** o modo de falha recorrente desta
+base é uma cópia NOVA da fórmula nascer num hook ou service. Se você
+encontrar uma, **nunca consolide antes de ter teste; nunca escreva o teste
+depois de consolidar.** Ordem obrigatória:
 
 1. Escreva teste golden master contra `docs/data/janeiro_referencia.sqlite`
    rodando **cada uma das implementações existentes** (o máximo que der pra
@@ -61,11 +59,9 @@ teste depois de consolidar.** Ordem obrigatória:
    confirmado por dado real.
 3. Onde divergirem entre si → **pare e confirme com o usuário** qual está
    certa antes de escolher — pode ser bug em uma delas, não assuma.
-4. Só então extraia para `packages/utils` uma implementação única (nome
-   sugerido: `packages/utils/src/fechamento.ts`, evitando colidir com o
-   `calculators.ts` já removido), e troque os 6 call sites **um de cada
-   vez**, rodando o mesmo teste golden master a cada substituição — nunca em
-   lote.
+4. Só então aponte todo mundo para `packages/utils/src/fechamento.ts`,
+   trocando os call sites **um de cada vez** e rodando o mesmo golden master
+   a cada substituição — nunca em lote.
 
 ## Arquitetura de cálculo
 
@@ -73,16 +69,29 @@ O cálculo do fechamento roda **no front-end**, não no backend/Edge Function.
 A lógica deve ser **pura e sem I/O** para ser testável isoladamente:
 
 ```
-packages/utils/src/fechamento.ts   ← funções puras: litros(), valorConferido(),
-                                       diferenca(), etc. Sem fetch, sem cliente
-                                       Supabase, sem side effect.
-packages/utils/src/fechamento.test.ts  ← bun:test cobrindo fechamento.ts isolado
+packages/utils/src/fechamento.ts    ← funções puras. A API real, hoje:
+                                        cartao(), conferido(), diferenca(),
+                                        isFalta(), isSobra(), breakdown(),
+                                        meiosFromFechamentoRow(),
+                                        meiosFromPwaPayments().
+                                        Sem fetch, sem cliente Supabase,
+                                        sem side effect.
+packages/utils/src/fechamento.test.ts         ← vitest, unitário
+packages/utils/src/fechamento.golden.spec.ts  ← bun:test contra dado real
 ```
 
+⚠️ **Não existe `valorConferido()` nem `litros()`** — o nome da soma dos 7
+buckets é **`conferido()`**. Confira a assinatura no arquivo antes de
+escrever a chamada.
+
+**Os dois runners não se misturam** (CLAUDE.md §7): o unitário `.test.ts` é
+vitest e roda em `bun run test`; o golden `.golden.spec.ts` é `bun:test` e
+roda em `bun run test:golden`. **Nunca `bun test` puro** — ele varre o repo,
+tenta executar os arquivos de vitest e produz falhas que não são bugs.
+
 Componentes de `apps/web` e `apps/pwa-frentista` **chamam** essas funções —
-nunca reimplementam a fórmula localmente. Se isso já está acontecendo (é o
-caso hoje, daí as 6 cópias), é exatamente o que a consolidação do passo 4
-acima resolve.
+nunca reimplementam a fórmula localmente. Fórmula dentro de componente, hook
+ou service é dívida: sinalize antes de replicar.
 
 ## Golden master com bun:sqlite
 
@@ -93,7 +102,7 @@ valores esperados dentro do teste:
 ```ts
 import { Database } from "bun:sqlite";
 import { test, expect } from "bun:test";
-import { diferenca, valorConferido } from "./fechamento";
+import { conferido, diferenca } from "./fechamento";
 
 const db = new Database("docs/data/janeiro_referencia.sqlite", { readonly: true });
 
@@ -172,11 +181,11 @@ master.
       não assumi por intuição
 - [ ] A lógica está em `packages/utils`, pura, sem I/O — não duplicada em
       PWA/web/service/aggregator
-- [ ] Escrevi teste `bun:test` golden master comparando com janeiro (quando
-      aplicável)
-- [ ] Se estou consolidando um dos 2 pontos restantes (aggregator ou
-      useHistoricoFrentista): rodei o teste ANTES e DEPOIS da troca de cada
-      call site, nunca troquei em lote
+- [ ] Escrevi teste `bun:test` golden master (`*.golden.spec.ts`) comparando
+      com janeiro (quando aplicável), e rodei com `bun run test:golden` —
+      nunca `bun test` puro
+- [ ] Se encontrei uma cópia nova da fórmula e estou consolidando: rodei o
+      teste ANTES e DEPOIS da troca de cada call site, nunca troquei em lote
 - [ ] Testes usam valores escalados/inteiros onde há dinheiro ou litro, não
       `number` fracionário cru
 - [ ] Textos e nomes de domínio em PT-BR, consistentes com o vocabulário

@@ -58,5 +58,5 @@ Não promova um candidato "Worth exploring" pra "Strong" só por impaciência; e
 ## Referências relacionadas
 
 - `fechamento-posto-providencia` — regras de golden master, fórmulas de `valor_conferido`/`diferenca`, onde ficam os testes.
-- `etl-planilha-posto-providencia` — fonte de verdade das fórmulas reais quando a dúvida é "de onde vem esse número".
+- `etl-planilha-posto-providencia` — regras de extração e importação a partir do `.xlsx`. É sobre como o dado ENTRA no banco, não sobre a fórmula: quando a dúvida for "qual é o cálculo certo", a fonte é `fechamento-posto-providencia`; quando for "quanto deu esse número no real", é o agente `planilha`.
 - `CLAUDE.md` do monorepo — regras estruturais gerais (FSD, cálculo de domínio em `packages/utils`, convenções de nomenclatura). Esta skill assume essas regras mas não as substitui; em caso de conflito, o `CLAUDE.md` do repo decide.

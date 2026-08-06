@@ -2,6 +2,31 @@
 
 ## [Não Lançado]
 
+### 🧭 Skills de domínio — o ETL mandava versionar o `.xlsx` que causou o incidente de 29/07
+- **[06/08/2026]** Auditoria das 3 skills do projeto, conferindo **cada afirmação factual contra o
+  código atual**. Duas carregavam informação apodrecida; a terceira estava íntegra.
+- **O achado grave, em `etl-planilha`:** o checklist de importação pedia a planilha original
+  "mantida **versionada** em `docs/data/`" — o oposto do §6, que existe justamente porque dado
+  financeiro real foi commitado num repo público e exigiu reescrita de histórico. Seguir o
+  checklist ao pé da letra reabria o incidente. Agora diz **no disco e fora do git**, com o
+  motivo junto.
+- **`fechamento` instruía um trabalho que já não existe:** a seção central listava dois pontos
+  "que ainda somam buckets na mão" (`aggregator.service.ts` e `useHistoricoFrentista.ts`) —
+  ambos consolidados em 02/08. A skill virou estado da consolidação **concluída**, preservando a
+  regra que sobrevive a ela: cópia nova da fórmula exige golden master rodando contra todas as
+  implementações **antes** de consolidar.
+- **O exemplo de código não compilava:** importava `valorConferido()`, que nunca existiu — a
+  função é `conferido()`. `litros()` também não existe. Corrigido, com a API real listada e um
+  aviso explícito contra os dois nomes fantasma.
+- Também corrigido: a skill dizia que `fechamento.test.ts` é `bun:test` (é **vitest**) e não
+  mencionava o padrão `*.golden.spec.ts`; a referência morta à skill `planilha-jorro`, que não
+  existe em lugar nenhum; e o mis-pointer da skill de refatoração, que apontava o ETL como fonte
+  de fórmula quando o §13 roteia isso para `fechamento`.
+- ⚠️ **Contagem de consumidores agora vem datada e com o comando de recontar.** Era "11 arquivos"
+  de 29/07; hoje são 13 de produção. Número em skill envelhece a cada feature — o que não pode
+  envelhecer é saber como remedi-lo.
+- Nada de código tocado: só markdown de `.claude/skills/`. Nenhuma fórmula mudou.
+
 ### 📲 Convite de instalação — o caminho do Chrome no iPhone deixa de ser um beco sem saída
 - **[02/08/2026]** Quando o PWA abre em navegador que não é o Safari, o iOS **não instala** e o
   convite só dizia isso: uma frase de aviso, com o ramo `abrir-no-safari` renderizando `null`
