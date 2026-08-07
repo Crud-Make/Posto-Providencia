@@ -29,11 +29,39 @@
   chamada (o diretório de trabalho volta pra pasta pai entre comandos), o `cd` falhava e o agente
   seguia no diretório errado. 3 ocorrências corrigidas: `grafo.md:13`, `planilha.md:10` e `:69`.
 - A auditoria de 06/08 varreu as **skills** e não os **agentes** — mesma podridão, pasta vizinha.
-- ⚠️ **Achado à parte, não corrigido aqui:** o `graphify` sumiu inteiro desta máquina — binário
-  fora do `~/.local/bin`, `graphify-out/` inexistente e os hooks `post-commit`/`post-checkout`
-  ausentes de `.git/hooks/`. O §12 do `CLAUDE.md` e o agente `grafo` descrevem infraestrutura que
-  hoje não existe; o agente ainda responde, mas caindo em grep puro. Decidir entre reinstalar ou
-  reescrever §12 + `grafo.md` para o que de fato existe.
+- ⚠️ **Achado à parte:** o `graphify` tinha sumido inteiro desta máquina — binário fora do
+  `~/.local/bin`, `graphify-out/` inexistente e os hooks `post-commit`/`post-checkout` ausentes de
+  `.git/hooks/`. O §12 e o agente `grafo` descreviam infraestrutura que não existia mais.
+  **Resolvido no mesmo dia — ver a entrada de reinstalação abaixo.**
+
+### 🕸️ graphify reinstalado, e o §12 passa a carregar o comando de reinstalar
+- **[06/08/2026]** `uv` (repo oficial do Arch) + `uv tool install "graphifyy[sql]"`. Não havia
+  `pip`, `pipx` nem `uv` na máquina; o Python do sistema é 3.14 e é externally-managed, então o
+  `uv tool` é o caminho que não encosta nele — mesma lógica do fnm para Node.
+- **Confusão de nome conferida antes de instalar:** o pacote no PyPI é **`graphifyy`** (dois "y"),
+  o comando é **`graphify`** (um "y"). O nome de um "y" só **não existe no PyPI** (404), então o
+  `pip install graphify` que circula em blogs falha em vez de instalar outra coisa — mas o nome
+  está livre, e isso é risco de typosquat no futuro. Versão instalada: **0.9.34**, de 05/08/2026.
+- **O extra `[sql]` importa aqui.** Sem ele, a primeira extração avisou que **47 arquivos `.sql`
+  não contribuíram nada** por falta do `tree_sitter_sql` — ou seja, migrations e policies de RLS
+  ficariam fora do grafo em silêncio. Com o extra: 1901 → **2087 nós**, 4456 arestas.
+- **Extração `--code-only`, sem LLM e sem rede:** não há chave de API no ambiente, e o §12 exige
+  AST puro. 24 segundos para 422 arquivos.
+- **Conferido que nada sensível entrou no grafo:** zero ocorrências de `docs/data` em
+  `graph.json`, nenhum segredo, e `graphify-out/` já estava no `.gitignore`. O `.gitattributes`
+  com o driver de merge já estava versionado; o `hook install` só registrou o driver no
+  `.git/config`.
+- ✅ **Validado contra a verdade conhecida:** `graphify affected "conferido()"` — a consulta que
+  mentiu com confiança total em 29/07 — agora devolve exatamente os **11 consumidores de
+  `conferido()`** confirmados por grep hoje, com o número de linha certo, mais os 3 arquivos de
+  teste. `fechamentoMeios.ts` corretamente ausente (importa `meiosFromFechamentoRow`, não
+  `conferido`). O que aparece além disso é relação transitiva de profundidade 2, como o anexo
+  previa. **O §12 continua valendo mesmo assim:** o grafo acertar uma vez não o promove de
+  hipótese a resposta.
+- **§12 ganhou o comando de reinstalar**, com dois avisos: o extra `[sql]` não é opcional, e
+  **`graphify install`/`graphify claude install` são proibidos** — os dois escrevem uma seção
+  dentro do `CLAUDE.md` mantido à mão e instalam um `PreToolUse` próprio, cuja instrução
+  ("responda direto do grafo") é exatamente a que o §12 revoga.
 
 ### 🧭 Skills de domínio — o ETL mandava versionar o `.xlsx` que causou o incidente de 29/07
 - **[06/08/2026]** Auditoria das 3 skills do projeto, conferindo **cada afirmação factual contra o

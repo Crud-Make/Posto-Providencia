@@ -234,6 +234,19 @@ Já mentiu com confiança total uma vez; ver anexo.
 - **Nunca** indexe sub-pastas separado e junte com `merge-graphs`. Rebuild é da raiz, numa passada:
   `graphify update . --force`.
 - Nome de comunidade só vale logo após um `graphify label` — apodrece a cada rebuild. Sem isso, ignore.
+- **Se o `graphify` sumir da máquina** (já aconteceu; ver anexo), reinstalar é:
+  ```bash
+  sudo -A pacman -S --needed uv          # uv vem do repo oficial; sem pip/pipx aqui
+  uv tool install "graphifyy[sql]"       # PyPI: graphifyy (2 "y"); CLI: graphify (1 "y")
+  graphify extract . --code-only         # só AST, local, sem chave de LLM
+  graphify cluster-only . --no-label     # gera GRAPH_REPORT.md + graph.html
+  graphify hook install                  # post-commit/post-checkout + driver de merge
+  ```
+  O extra `[sql]` não é opcional: sem ele os ~47 arquivos `.sql` (migrations e policies de RLS)
+  ficam de fora do grafo em silêncio. `--code-only` é o que garante o "sem LLM" desta seção.
+  **Nunca** rode `graphify install` nem `graphify claude install`: os dois escrevem uma seção
+  dentro deste `CLAUDE.md` e instalam um hook `PreToolUse` próprio — este arquivo é mantido à mão,
+  e a instrução que eles injetam ("responda direto do grafo") é exatamente a que o §12 revoga.
 
 ---
 
