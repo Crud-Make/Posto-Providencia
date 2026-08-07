@@ -1,0 +1,14 @@
+# Memória dos 6 agentes (`memory: project` no frontmatter de cada um).
+#
+# Este arquivo existe para o diretório ser versionado antes do primeiro uso: o
+# git não guarda diretório vazio, então a exceção `!.claude/agent-memory/` do
+# .gitignore não valia nada enquanto não houvesse conteúdo — e a memória nasceria
+# fora do git, que é exatamente o acidente do `docs/` (commit d4491b2 prometeu
+# "continua em disco"; um `git clean -fdx` levou tudo).
+#
+# Regra, igual nos 6 agentes: grava-se o COMANDO, nunca o resultado dele.
+# Contagem, total e "X de Y" são verdadeiros quando escritos e mentira quando
+# lidos. Toda entrada é datada.
+#
+# A escrita aqui é a única permitida a um agente com memória — o hook
+# `memoria-somente.py` nega qualquer caminho fora deste diretório.
