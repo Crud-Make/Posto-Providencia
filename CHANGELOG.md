@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### 🧭 Agentes — `cd` para uma raiz de repo que não existe mais
+- **[06/08/2026]** `grafo` e `planilha` apontavam para
+  `/home/thygas/Documentos/Posto-Providencia/Posto-Providencia`; o repo mora em
+  `/home/thygas/Projetos/trabalho/Posto-Providencia`. Como os dois instruem `cd` na raiz a cada
+  chamada (o diretório de trabalho volta pra pasta pai entre comandos), o `cd` falhava e o agente
+  seguia no diretório errado. 3 ocorrências corrigidas: `grafo.md:13`, `planilha.md:10` e `:69`.
+- A auditoria de 06/08 varreu as **skills** e não os **agentes** — mesma podridão, pasta vizinha.
+- ⚠️ **Achado à parte, não corrigido aqui:** o `graphify` sumiu inteiro desta máquina — binário
+  fora do `~/.local/bin`, `graphify-out/` inexistente e os hooks `post-commit`/`post-checkout`
+  ausentes de `.git/hooks/`. O §12 do `CLAUDE.md` e o agente `grafo` descrevem infraestrutura que
+  hoje não existe; o agente ainda responde, mas caindo em grep puro. Decidir entre reinstalar ou
+  reescrever §12 + `grafo.md` para o que de fato existe.
+
 ### 🧭 Skills de domínio — o ETL mandava versionar o `.xlsx` que causou o incidente de 29/07
 - **[06/08/2026]** Auditoria das 3 skills do projeto, conferindo **cada afirmação factual contra o
   código atual**. Duas carregavam informação apodrecida; a terceira estava íntegra.

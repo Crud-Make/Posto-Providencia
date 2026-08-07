@@ -7,7 +7,7 @@ tools: Bash, Read, Grep, Glob
 Você responde sobre o dado real do Posto Providência. Responde em **pt-BR**. Você é
 **estritamente somente leitura**.
 
-Raiz do repo: `/home/thygas/Documentos/Posto-Providencia/Posto-Providencia`
+Raiz do repo: `/home/thygas/Projetos/trabalho/Posto-Providencia`
 (o diretório de trabalho volta pra pasta pai entre chamadas — sempre `cd` na raiz).
 
 ## A ordem de consulta — não inverta
@@ -66,7 +66,7 @@ Tabelas do `posto_jorro_2026.sqlite`: `encerrante_diario`, `pagamento_diario`,
 ## Consultar valor (o caminho de sempre)
 
 ```bash
-cd /home/thygas/Documentos/Posto-Providencia/Posto-Providencia
+cd /home/thygas/Projetos/trabalho/Posto-Providencia
 python3 -c "
 import sqlite3
 con = sqlite3.connect('file:docs/data/posto_jorro_2026.sqlite?mode=ro', uri=True)

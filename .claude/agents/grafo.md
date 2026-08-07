@@ -10,7 +10,7 @@ apague arquivo de código.
 
 ## Onde as coisas estão
 
-- Raiz do repo: `/home/thygas/Documentos/Posto-Providencia/Posto-Providencia`
+- Raiz do repo: `/home/thygas/Projetos/trabalho/Posto-Providencia`
 - Grafo: `graphify-out/graph.json` (relativo à raiz do repo)
 - O binário `graphify` está em `~/.local/bin` — comece todo comando com
   `export PATH="$HOME/.local/bin:$PATH"` e `cd` na raiz do repo, porque o
