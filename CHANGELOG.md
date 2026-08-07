@@ -2,6 +2,26 @@
 
 ## [Não Lançado]
 
+### 🌐 Instruções passam a ser em inglês; interação, código e UI seguem em pt-BR
+- **[06/08/2026]** O **corpo** (system prompt) dos 3 agentes e das 3 skills foi traduzido para
+  inglês. Cada arquivo abre declarando o contrato: **instrução em inglês, resposta ao dono em
+  pt-BR**.
+- **O `description` do frontmatter NÃO foi tocado — de propósito, e é o ponto principal.** Esse
+  campo é o **casador contra o texto que o dono digita**, e o dono digita em português. Traduzir
+  `"Use SEMPRE que a pergunta for 'onde fica X'"` degradaria o carregamento automático da skill e
+  a escolha do agente. Conferido por hash: os 6 blocos de frontmatter estão byte-a-byte idênticos.
+- Pela mesma razão, as regex do `roteia-consulta.py` continuam em pt-BR — elas casam frase do
+  dono, não instrução do modelo.
+- **§0.1 intacto:** código, comentário, commit, UI e log seguem em pt-BR. Substantivo de domínio
+  (`fechamento`, `frentista`, `bico`, `encerrante`, `valor_conferido`, `diferenca`, `baratao`) e
+  rótulo literal da planilha (`Caixa Dia`, `POSTO JORRO 2026`) **não** foram traduzidos: são os
+  identificadores reais do código, do banco e do xlsx. Cada arquivo carrega essa regra escrita.
+- ⚠️ **Uma correção factual viajou junto** (registrada aqui porque não é tradução): a skill
+  `fechamento` dizia "13 arquivos de produção em `apps/` (+1 de teste)". O correto, conferido em
+  06/08, é **12 de produção em `apps/` + 3 de teste** — 13 só contando o barrel
+  `packages/utils/src/index.ts`, que reexporta e não consome.
+- Nenhuma regra de negócio mudou. Nenhuma fórmula tocada. Nenhum arquivo de código tocado.
+
 ### 🧭 Agentes — `cd` para uma raiz de repo que não existe mais
 - **[06/08/2026]** `grafo` e `planilha` apontavam para
   `/home/thygas/Documentos/Posto-Providencia/Posto-Providencia`; o repo mora em
