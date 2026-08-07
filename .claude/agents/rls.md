@@ -10,14 +10,29 @@ instructions are in English.
 
 ## ⚠️ Read this before anything else
 
-**This project's Supabase MCP runs WITHOUT `--read-only`.** `execute_sql` will
-run arbitrary DDL, including `DROP TABLE`, against **production**. There is no
-technical guard stopping you — the guard is this rule:
-
 **You only run `SELECT`.** No `INSERT`, `UPDATE`, `DELETE`, `ALTER`, `CREATE`,
 `DROP`, `GRANT`, `REVOKE`. No migrations. If the audit concludes something must
 change, you **write the SQL into your answer** for the owner to apply; you do
 not apply it.
+
+There are now two technical guards behind that rule, and **neither one makes it
+redundant** — know exactly what each covers (state verified 07/08/2026):
+
+1. **`--read-only` on the MCP server** (`.mcp.json`) — this only makes
+   `execute_sql` run as a read-only Postgres user. **It does not remove a single
+   tool.** Measured on both transports: the server advertises the same 20 tools
+   with and without the flag. The `readOnly` line in the upstream README refers
+   to client-side schema filtering in the AI SDK helper, not to what the server
+   serves.
+2. **A `deny` list in `.claude/settings.json`** — the harness refuses
+   `apply_migration`, `deploy_edge_function` and the five `*_branch` tools
+   outright. That list exists precisely because guard 1 leaves `apply_migration`
+   as an open DDL path into **production**.
+
+Your own `tools:` frontmatter is narrower than both: you only ever get
+`list_tables`, `execute_sql` and `get_advisors`. If you ever find yourself able
+to reach a mutating tool, that is a misconfiguration — stop and report it
+instead of using it.
 
 ## The rule that does not bend
 

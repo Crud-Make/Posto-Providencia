@@ -301,6 +301,12 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
 - `git commit` com pendência do checklist — **pergunta** antes: fórmula no commit sem
   golden master (§0.6) ou código sem `CHANGELOG.md` (§9). Inspeciona o índice do git,
   nunca a mensagem — é o que o imuniza contra o falso positivo que mordeu o `protege-git`.
+- **Ferramenta mutante do MCP do Supabase — negada** por lista `deny` em
+  `.claude/settings.json`: `apply_migration`, `deploy_edge_function` e os cinco `*_branch`.
+  Não é redundância com o `--read-only` do `.mcp.json`: **medido em 07/08, o flag não remove
+  nenhuma ferramenta** (as mesmas 20 com e sem ele), só restringe a execução do `execute_sql`.
+  Sem a `deny`, o `apply_migration` seria um caminho de DDL aberto contra produção — que é
+  exatamente o risco que o agente `rls` documentava como "sem trava técnica".
 
 **Encaminhamentos — evitam o desperdício** (`UserPromptSubmit`, `PostToolUse`, `SessionStart`):
 

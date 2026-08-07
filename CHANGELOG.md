@@ -2,6 +2,32 @@
 
 ## [Não Lançado]
 
+### 🔌 MCP do Supabase reinstalado — e o `--read-only` não faz o que o nome promete
+- **[07/08/2026]** O MCP do Supabase tinha sumido da máquina. O agente `rls` referenciava
+  `mcp__supabase__list_tables`, `execute_sql` e `get_advisors` — **nenhuma das três existia**.
+  Mesmo padrão do graphify: a instrução sobreviveu à ferramenta.
+- Configurado em **escopo de projeto** (`.mcp.json`, versionado) com `--read-only` e
+  `--project-ref`. O token pessoal fica em `.claude/settings.local.json`, que o `.gitignore:85`
+  cobre; o `.mcp.json` só carrega `${SUPABASE_ACCESS_TOKEN}`. Conferido: zero segredo no arquivo
+  versionado.
+- ⚠️ **O achado que mudou o desenho: `--read-only` não remove ferramenta nenhuma.** Medido nos
+  dois transportes (npx local e `mcp.supabase.com` hospedado), com e sem o flag: **as mesmas 20
+  ferramentas**, incluindo `apply_migration`, `deploy_edge_function` e os cinco `*_branch`. O
+  flag restringe a execução do `execute_sql` a um usuário Postgres somente-leitura e nada além.
+  A linha `readOnly` do README upstream descreve o helper `createToolSchemas` do AI SDK — filtro
+  no **cliente** —, não o que o servidor entrega.
+- **Trava real:** lista `deny` em `.claude/settings.json` para as 7 ferramentas mutantes. Sem
+  ela, `apply_migration` seria um caminho de DDL aberto contra produção — exatamente o risco que
+  o `rls.md` descrevia como "sem trava técnica". Registrado no §14.
+- `rls.md` reescrito: em vez de afirmar "o MCP está SEM `--read-only`", agora descreve **as duas
+  travas e o que cada uma não cobre**, com a data da medição. A regra "você só roda SELECT"
+  continua — nenhuma das travas a torna redundante.
+- **Identidade do projeto conferida antes de ligar:** a conta tem um único projeto, de nome
+  `MAY-DAY`, que não lembra "Posto Providência". É o banco certo — 44 tabelas em `public`, com
+  `Bico`, `Bomba`, `Combustivel`, `Despesa`. E **as 44 estão com RLS ligada**, contra as 42 com
+  18 invisíveis do incidente de 29/07. RLS ligada ainda não é o mesmo que protegida: política
+  `USING (true)` não segura nada, e essa auditoria é do agente `rls`.
+
 ### 🌐 Instruções passam a ser em inglês; interação, código e UI seguem em pt-BR
 - **[06/08/2026]** O **corpo** (system prompt) dos 3 agentes e das 3 skills foi traduzido para
   inglês. Cada arquivo abre declarando o contrato: **instrução em inglês, resposta ao dono em
