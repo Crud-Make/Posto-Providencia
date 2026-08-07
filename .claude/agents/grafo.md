@@ -62,7 +62,17 @@ litro). Ela é a fonte de verdade; sua intuição não é.
 
 Dois fatos úteis pra orientar a busca:
 - A aritmética canônica do fechamento vive em `packages/utils/src/fechamento.ts`
-  e é importada por 11 arquivos dos apps.
+  e é importada por **12 arquivos de produção + 3 de teste** (conferido em
+  06/08/2026). Número em instrução envelhece; o comando de recontar é:
+  ```bash
+  SIMB='conferido|cartao|diferenca|isFalta|isSobra|breakdown|meiosFromFechamentoRow|meiosFromPwaPayments|MeiosPagamento|FechamentoRowNumerico|BreakdownPagamentos'
+  PAT="import\s+(?:type\s+)?\{[^}]*\b(?:$SIMB)\b[^}]*\}\s+from\s+'(?:@posto/utils|\./fechamento)'"
+  rg -Ul -g '*.ts' -g '*.tsx' -g '!*.test.*' -g '!*.spec.*' "$PAT" apps packages | wc -l
+  ```
+  O `-U` é obrigatório (há imports quebrados em várias linhas) e o `-l` também
+  (sem ele o `rg` conta linhas, não arquivos). Filtrar por símbolo também é
+  obrigatório: `@posto/utils` é barrel de 8 módulos, e existe um
+  `apps/web/src/types/fechamento.ts` homônimo que infla a conta em mais de 2x.
 - Ainda existem somas manuais de buckets de pagamento fora do módulo canônico.
   Se topar com uma, reporte — o padrão a procurar é `(h.valor_algo || 0) + ...`
   somado à mão em vez de `conferido(meiosFromFechamentoRow(...))`.
