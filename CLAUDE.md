@@ -5,7 +5,7 @@
 > **Regra de domínio** (fórmula, nomenclatura da planilha, ETL) não fica aqui: fica nas skills, §13.
 > **O porquê das regras** — estado datado, histórias de incidente — fica em
 > [`.claude/docs/estado-e-incidentes.md`](.claude/docs/estado-e-incidentes.md). Leia sob demanda.
-> **Versão:** 3.2 · **Idioma:** pt-BR · **Toolchain:** Bun
+> **Versão:** 3.3 · **Idioma:** pt-BR · **Toolchain:** Bun
 
 ---
 
@@ -260,22 +260,59 @@ Já mentiu com confiança total uma vez; ver anexo.
 | "Onde fica X", "quem usa Y", raio de impacto | agente `grafo` (§12)                                      |
 | "Quanto deu X?", conferir número contra o real | agente `planilha`                                       |
 | "Essa tabela está protegida?", exposição do banco | agente `rls`                                         |
-| Bug difícil                                  | `mattpocock-skills:diagnosing-bugs`                       |
-| Feature test-first                           | `mattpocock-skills:tdd`                                   |
-| Revisar o diff da branch                     | `mattpocock-skills:code-review`                           |
-| Desenhar módulo ou domínio                   | `mattpocock-skills:codebase-design`, `:domain-modeling`   |
-| Planejar trabalho em fases                   | `claude-mem:make-plan` + `:do`                            |
-| Recall de sessão anterior                    | `claude-mem:mem-search`                                   |
+| "Isso está no padrão?", tamanho da dívida    | agente `conformidade`                                     |
+| "O tipo bate com o banco?", `.sql` vs catálogo | agente `schema`                                         |
+| "Alguém já mexeu nisso?", "dá pra recuperar?" | agente `historico`                                       |
+| Revisar o diff da branch                     | `/code-review` (embutido)                                 |
+| Limpar o que já escrevi, sem caçar bug       | `/simplify` (embutido)                                    |
+| Varrer a branch por risco de segurança       | `/security-review` (embutido)                             |
 | Mexer no código sem gerar dívida             | `karpathy-guidelines`                                     |
+| Buscar em base de notas indexada             | `engraph:engraph` (plugin, instalado 05/08)               |
+| Gráfico ou dashboard                         | `dataviz` (embutido), sob demanda                         |
 
-- **Um pipeline por tarefa, nunca dois.** `claude-mem:make-plan`+`do` e o fluxo do mattpocock são
-  ambos pipelines completos de "planeje em fases e execute com subagents" — rodar os dois duplica
-  plano e queima token.
-- **Não use aqui:** `claude-mem:learn-codebase`, `:smart-explore`, `:pathfinder`. As três leem arquivo
-  para entender base desconhecida; este repo já responde isso pelo grafo (§12). Valem em repo sem grafo.
-- `find-skills`, `prompt`, `dataviz`: sob demanda, quando eu pedir pelo nome.
-- **As 3 primeiras linhas de agente desta tabela são automáticas desde 02/08**: o hook
-  `roteia-consulta` encaminha sozinho (§14). A tabela vira conferência, não memória.
+**Conferido em 07/08/2026: `claude-mem` e `mattpocock-skills` NÃO estão instalados.** Não há
+rastro em `~/.claude/plugins/`, e nenhum marketplace configurado. Seis linhas desta tabela
+apontavam para eles — `:diagnosing-bugs`, `:tdd`, `:code-review`, `:codebase-design`,
+`:domain-modeling`, `:make-plan`+`:do`, `:mem-search` —, e foram removidas. É a mesma falha do
+§12 e do MCP do Supabase: **a instrução sobreviveu à ferramenta**. Reconferir com
+`python3 .claude/hooks/testa-hooks.py`, que passou a cobrar isso (§14).
+
+- Sem eles, o substituto de cada um: bug difícil e feature test-first vão no fluxo normal, com o
+  golden master (§7) fazendo o papel do test-first; revisão de diff é `/code-review`; desenho de
+  módulo é a skill `refatoracao-posto-providencia` mais o agente `grafo`. Se você quiser os
+  originais de volta, instale o marketplace e **reponha a linha aqui no mesmo commit** — tabela
+  que cita ferramenta ausente é pior que tabela sem a linha.
+- **Um pipeline por tarefa, nunca dois.** A regra continua valendo para o dia em que houver dois
+  pipelines completos de "planeje em fases e execute com subagents" instalados ao mesmo tempo:
+  rodar os dois duplica plano e queima token.
+- **Não use, se um dia forem instaladas:** skills que leem arquivo para entender base
+  desconhecida (`learn-codebase`, `smart-explore`, `pathfinder` e equivalentes). Este repo já
+  responde isso pelo grafo (§12). Valem em repo sem grafo.
+- **As 6 linhas de agente desta tabela são automáticas**: o hook `roteia-consulta`
+  encaminha sozinho (§14) — as 3 primeiras desde 02/08, as 3 últimas desde 07/08. A tabela
+  vira conferência, não memória. Agente novo sem rota é reprovado por
+  `testa-hooks.py`, que lê `.claude/agents/` do disco e cobra rota para cada um.
+- **Os 6 têm memória versionada** (`memory: project` → `.claude/agent-memory/<nome>/`,
+  liberada no `.gitignore`). A regra é a mesma em todos: **grava-se o comando, nunca o
+  resultado dele.** Contagem, total e "X de Y" em memória são a armadilha do §12 com
+  endereço novo — verdadeiros quando escritos, mentira quando lidos. Toda entrada é datada.
+- **A memória automática da sessão mora em `.claude/memoria/`**, versionada, e
+  `~/.claude/projects/<slug>/memory` é um **symlink** para lá (desde 07/08/2026). É a
+  memória que o harness carrega sozinho a cada início — antes vivia só naquele caminho,
+  fora do repo: sem git, sem blame, sem backup. Terceira repetição do acidente do `docs/`,
+  e a mais silenciosa, porque perder a máquina perderia onde está a planilha fonte e o
+  estado do ETL. Um lugar só, versionado, carregamento automático intacto.
+  **Clone novo precisa refazer o symlink** — sem ele a memória não carrega, e nada avisa.
+  Valor novo do posto não entra aí: para isso vale o §6, e `docs/data/` segue fora do git.
+- **Ligar `memory:` habilita `Write`/`Edit` à revelia do campo `tools:`** — é como a
+  Anthropic implementa, e não se desliga omitindo a ferramenta. Sem trava, o "somente
+  leitura" dos 6 vira promessa vazia; quem devolve a garantia é o hook `memoria-somente`
+  (§14), que confina a escrita ao diretório de memória do próprio agente.
+- **A skill de domínio vai no frontmatter, não no corpo.** Subagente **não herda** skill
+  invocada na sessão nem nada que já foi lido — só `CLAUDE.md`, git status e o próprio
+  prompt. `skills:` injeta a skill inteira e é o que transforma "consulte a skill" (torcer)
+  em "a skill está no contexto" (garantia). O `rls` fica de fora de propósito: fechamento
+  não decide pergunta de exposição, e carregar seria token gasto em ruído.
 
 **Quando vale abrir um subagente:** só quando ele **lê muito e devolve pouco**. O `grafo` carrega um
 grafo de 2,5 MB e greps em 305 arquivos para devolver 10 linhas com `arquivo:linha` — aí o ganho é
@@ -301,6 +338,10 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
 - `git commit` com pendência do checklist — **pergunta** antes: fórmula no commit sem
   golden master (§0.6) ou código sem `CHANGELOG.md` (§9). Inspeciona o índice do git,
   nunca a mensagem — é o que o imuniza contra o falso positivo que mordeu o `protege-git`.
+- Escrita fora de `.claude/agent-memory/<nome>/` **vinda de um agente com memória** —
+  **negada** pelo hook `memoria-somente`, declarado no frontmatter de cada agente (não
+  no `settings.json`: vale só para quem o declara). Devolve o "somente leitura" que
+  `memory:` tinha furado. Conclusão que exige mudar arquivo vira **patch na resposta**.
 - **Ferramenta mutante do MCP do Supabase — negada** por lista `deny` em
   `.claude/settings.json`: `apply_migration`, `deploy_edge_function` e os cinco `*_branch`.
   Não é redundância com o `--read-only` do `.mcp.json`: **medido em 07/08, o flag não remove
@@ -310,19 +351,36 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
 
 **Encaminhamentos — evitam o desperdício** (`UserPromptSubmit`, `PostToolUse`, `SessionStart`):
 
-- Pergunta de localização, de valor real ou de exposição do banco → **encaminhada ao agente**
-  `grafo`/`planilha`/`rls`. Existe por uma assimetria: *skill se oferece, agente não*. Skill
+- Pergunta de localização, de valor real, de exposição do banco, de conformidade com as
+  convenções, de drift de esquema ou de história do git → **encaminhada ao agente**
+  `grafo`/`planilha`/`rls`/`conformidade`/`schema`/`historico`. Existe por uma
+  assimetria: *skill se oferece, agente não*. Skill
   carrega sozinha pelo casamento com a `description`; agente precisa ser chamado pelo nome,
   e por isso o `grafo` passou de 29/07 a 02/08 instalado e nunca usado. Casamento **forte** de
   propósito — termo solto do domínio não dispara, porque a skill de fechamento já cobre.
 - Edição em arquivo de fórmula (`packages/utils/src/*.ts`, `aggregator.service.ts`) → lembra
   do golden master (§0.6) **na hora da edição**, não no fim da tarefa. Erra para o lado do
   aviso a mais: aviso sobrando é uma linha, aviso faltando é fórmula mudando calada.
-- Início de sessão → confere cache órfão de plugin, grafo desatualizado e symlink de skill
-  quebrado. **Silencioso quando está tudo ok** — aviso que aparece sempre deixa de ser lido.
+- Início de sessão → confere cache órfão de plugin, grafo desatualizado, symlink de skill
+  quebrado, **fonte auditável ausente**, **plugin fantasma** e **MCP sem `--read-only`**.
+  **Silencioso quando está tudo ok** — aviso que aparece sempre deixa de ser lido.
+
+  As três últimas entraram em 07/08, e as três pelo mesmo motivo — **a instrução sobrevive
+  à ferramenta, e o sumiço é silencioso**:
+  - `docs/data/` sumiu do disco e nada avisou; como é gitignored, o `git status` fica limpo
+    enquanto os 5 golden masters estouram e o §0.6 bloqueia toda fórmula.
+  - `claude-mem` e `mattpocock-skills` sumiram e **6 linhas do §13 seguiram apontando** para
+    elas. Skill ausente não dá erro: só não carrega. O detector considera plugin todo
+    `` `prefixo-com-hifen:algo` `` citado neste arquivo — o hífen separa nome de plugin de
+    palavra solta em pt-BR, sem lista negra para caçar. Plugin de nome sem hífen escapa, e
+    isso é escolha: aqui o aviso guarda documentação, não dinheiro, então erra para o
+    silêncio. No `portao-golden`, que guarda dinheiro, a escolha é a oposta.
+  - o `--read-only` do `.mcp.json` sai à mão para uma janela de escrita e **o passo de
+    devolver é o que se esquece**. Enquanto está fora, `execute_sql` escreve em produção, e
+    o arquivo é versionado — não commitar nesse estado.
 
 Instrução é forte; hook é garantia. Regra cara demais para depender de memória vira hook.
-Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 53 casos, e os negativos
+Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 89 casos, e os negativos
 valem tanto quanto os positivos. Para revisar ou desligar: `/hooks`.
 
 ---
