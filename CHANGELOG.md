@@ -2,6 +2,34 @@
 
 ## [Não Lançado]
 
+### 🧪 ETL: o estágio 1 passa a ler a aba de resumo, e acha um bloco de rascunho no caminho
+- **[12/08/2026] O estágio 1 só lia os blocos de dia.** Isso cobria `encerrante_diario` e mais
+  nada — as outras sete famílias de tabela que os golden masters consultam (`resumo_mensal_bico`,
+  `compra_mensal`, `estoque_mensal`, `despesa_mensal`, `despesa_categoria_mensal`, custo
+  histórico) moram na aba `POSTO JORRO 2026`, que o estágio 1 abria só para pegar um total de
+  litros. Era por isso que 4 dos 5 goldens não tinham como voltar a rodar. Extração crua desses
+  blocos adicionada, com cabeçalho **verbatim**: batizar coluna é interpretação, e interpretação
+  é estágio 2.
+- **⚠️ Achado: a planilha tem um bloco de RASCUNHO que se parece com um mês.** `Posto Jorro,
+  mês 0.` (L426) repete inicial, fechamento e litros de janeiro — 46.843,062 idênticos — mas com
+  lucro/litro inflado (1,1135 contra os 0,6618 do janeiro real) e `Desp,Mês.` chapado em
+  1.000,00. Carregá-lo como mês injetaria um janeiro fantasma com lucro ~68% maior. É o caso que
+  a skill de ETL avisa: mais de uma tabela para a mesma coisa, discordando. Fica **registrado
+  em `secoes_ignoradas`**, não descartado em silêncio — junto de `Posto Jorro, Ano 26.` (a
+  consolidação do ano, que também não é mês).
+- **O bug que a validação pegou, e por que ele existia.** A primeira versão delimitava a seção de
+  cada mês pelo rótulo do mês SEGUINTE. Como o mês 07 (L188) só tem outro rótulo de mês lá na
+  L426, a seção dele engolia o bloco anual, a matriz de despesa e o histórico — e o total do mês
+  saía 268.501,711 no lugar de 31.038,922. É a guarda 1 da skill (fim de bloco vem do rótulo
+  seguinte, nunca de deslocamento) mordendo por eu ter escolhido o rótulo errado como fronteira.
+  Fronteira passou a ser **toda** linha com rótulo na coluna B.
+- **Conferido contra total independente**, como a skill exige: os 7 meses fecham ao mililitro
+  contra a linha `Total e Media ->` de cada seção, e a matriz de despesa soma **140.456,27** —
+  o mesmo valor travado em `lucro-real.golden.spec.ts` — com os 7 meses batendo um a um.
+- **Ainda impossível: `despesa_trimestral`.** Não está em nenhuma das 12 abas; veio de fonte
+  externa. Enquanto for assim, `lucro-real.golden.spec.ts` não tem como ser restaurado a partir
+  do `.xlsx`, e `bun run test:golden` seguirá vermelho nesse arquivo.
+
 ### 🧹 Ferramental organizado: o aviso que mentia, a memória fora do git e a janela aberta
 - **[07/08/2026] Janela de escrita do Supabase fechada.** Os 2 UPDATEs que a abriram em 07/08
   **nunca tinham sido aplicados** — a janela ficou aberta com produção gravável e o motivo dela

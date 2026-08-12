@@ -368,6 +368,190 @@ def totais_conciliacao(pl: Planilha) -> dict[int, dict]:
     return fora
 
 
+def _bloco_tabular(grade, cab: int, fim: int) -> list[dict]:
+    """Linhas de um bloco `Produtos | ...` até o rótulo de total ou o fim.
+
+    Devolve o rótulo da primeira coluna e um dicionário `cabeçalho -> valor` com
+    o texto do cabeçalho **verbatim**. Não renomeia nada: batizar coluna é
+    interpretação, e interpretação é estágio 2. O que se perde aqui não volta.
+    """
+    colunas = {c: str(v).strip() for c, v in grade.get(cab, {}).items()
+               if isinstance(v, str) and str(v).strip()}
+    primeira = min(colunas) if colunas else "C"
+
+    linhas = []
+    for n in range(cab + 1, fim):
+        celulas = grade.get(n, {})
+        if not celulas:
+            continue
+        rotulo = celulas.get(primeira)
+        if not isinstance(rotulo, str) or not rotulo.strip():
+            continue
+        norm = normaliza(rotulo)
+        if norm.startswith("total") or norm.startswith("%"):
+            break
+        linhas.append({
+            "rotulo": rotulo.strip(),
+            "linha": n,
+            "valores": {titulo: celulas.get(col)
+                        for col, titulo in colunas.items() if col != primeira},
+        })
+    return linhas
+
+
+def _linha_total(grade, cab: int, fim: int) -> dict | None:
+    """A linha `Total...` do bloco, com os mesmos cabeçalhos verbatim."""
+    tot = acha_prefixo(grade, cab + 1, fim, "total")
+    if tot is None:
+        return None
+    colunas = {c: str(v).strip() for c, v in grade.get(cab, {}).items()
+               if isinstance(v, str) and str(v).strip()}
+    primeira = min(colunas) if colunas else "C"
+    celulas = grade.get(tot, {})
+    return {
+        "linha": tot,
+        "valores": {titulo: celulas.get(col)
+                    for col, titulo in colunas.items() if col != primeira},
+    }
+
+
+def extrai_resumo(pl: Planilha) -> dict:
+    """Aba `POSTO JORRO 2026` crua: venda, compra e estoque por mês, a matriz de
+    despesa por categoria e o histórico ano a ano.
+
+    Estes blocos ficaram de fora da primeira versão do estágio 1, que só lia os
+    blocos de dia — e é por isso que 4 dos 5 golden masters não tinham fonte.
+    A `despesa_trimestral` NÃO está aqui nem em nenhuma outra aba: ela vem de
+    fonte externa, e nenhuma extração desta planilha a produz.
+
+    Cada bloco é delimitado pelo rótulo SEGUINTE, nunca por deslocamento fixo
+    (guarda 1 da skill). Os rótulos de bico divergem entre esta aba e os blocos
+    de dia (`Ds:.500,Bico 04` contra `DS:.10,Bico 04`); os dois ficam crus e o
+    casamento é decisão do estágio 2.
+    """
+    alvo = next((c for n, c in pl.abas() if "POSTO JORRO" in n.upper()), None)
+    if not alvo:
+        return {}
+    grade = pl.grade(alvo)
+    ultima = max(grade) if grade else 0
+
+    # Fronteira de seção é TODA linha com rótulo na coluna B, não só a de mês.
+    # Usar o rótulo de mês seguinte como limite faz a seção do mês 07 (L188) ir
+    # até o próximo mês (L426) e engolir o bloco anual, a matriz de despesa e o
+    # histórico — guarda 1 da skill, com outra roupa: o fim vem do rótulo
+    # SEGUINTE, e o seguinte aqui é `Posto Jorro, Ano 26.` na L221.
+    cabecas: list[tuple[int, str]] = sorted(
+        (n, linha["B"].strip()) for n, linha in grade.items()
+        if isinstance(linha.get("B"), str) and linha["B"].strip()
+    )
+    limites_todos = [n for n, _ in cabecas] + [ultima + 1]
+
+    secoes: list[tuple[int, int, int]] = []      # (linha_ini, linha_fim, mes)
+    ignoradas: list[dict] = []
+    for i, (ini, rotulo) in enumerate(cabecas):
+        fim = limites_todos[i + 1]
+        m = SECAO_MES_CONCILIACAO.search(rotulo)
+        mes = int(m.group(1)) if m else None
+        if mes is not None and 1 <= mes <= 12:
+            secoes.append((ini, fim, mes))
+            continue
+        # `Posto Jorro, mês 0.` é bloco de RASCUNHO: repete inicial/fechamento/
+        # litros de janeiro com lucro/litro inflado (1,1135 contra 0,6618) e
+        # `Desp,Mês.` chapado em 1.000,00. Carregá-lo como mês injeta um janeiro
+        # fantasma. `Posto Jorro, Ano 26.` é a consolidação do ano, não um mês.
+        ignoradas.append({
+            "linha": ini, "rotulo": rotulo,
+            "motivo": ("mês fora de 1–12 (bloco de rascunho)" if mes is not None
+                       else "não é seção de mês"),
+        })
+
+    meses: list[dict] = []
+    for ini, fim, mes in secoes:
+        # Marcadores do bloco dentro da seção; o fim de cada um é o início do próximo.
+        marcas: list[tuple[int, str]] = []
+        for n in range(ini, fim):
+            for valor in grade.get(n, {}).values():
+                if isinstance(valor, str) and normaliza(valor) in ("venda", "compra", "estoque"):
+                    marcas.append((n, normaliza(valor)))
+                    break
+        marcas.sort()
+        bordas = [n for n, _ in marcas] + [fim]
+
+        bloco: dict[str, object] = {"mes": mes, "linha_secao": ini}
+        for j, (marca_lin, nome) in enumerate(marcas):
+            borda = bordas[j + 1]
+            cab = acha_rotulo(grade, marca_lin, borda, "produtos")
+            if cab is None:
+                continue
+            bloco[nome] = {
+                "linha_cabecalho": cab,
+                "itens": _bloco_tabular(grade, cab, borda),
+                "total": _linha_total(grade, cab, borda),
+            }
+        meses.append(bloco)
+
+    return {
+        "aba": alvo,
+        "meses": meses,
+        "secoes_ignoradas": ignoradas,
+        "despesa": _matriz_despesa(grade, ultima),
+        "custo_historico": _custo_historico(grade, ultima),
+    }
+
+
+def _matriz_despesa(grade, ultima: int) -> dict:
+    """Matriz `categoria × mês` da seção `Despeza, 2026.` (categorias na coluna C,
+    meses nas colunas seguintes, total por categoria na última).
+
+    O rótulo do painel é abreviado — `Desp,Mês.` —, e procurar a palavra
+    "despesa" inteira é o que já fez esta matriz "não existir" numa varredura.
+    Aqui a âncora é a seção, não a palavra.
+    """
+    ini = None
+    for n, linha in grade.items():
+        for valor in linha.values():
+            if isinstance(valor, str) and normaliza(valor).startswith("despeza, 2026"):
+                ini = n
+                break
+        if ini is not None:
+            break
+    if ini is None:
+        return {}
+
+    cab = acha_rotulo(grade, ini, ultima + 1, "mes")
+    if cab is None:
+        return {}
+    return {
+        "linha_secao": ini,
+        "linha_cabecalho": cab,
+        "categorias": _bloco_tabular(grade, cab, ultima + 1),
+        "total": _linha_total(grade, cab, ultima + 1),
+    }
+
+
+def _custo_historico(grade, ultima: int) -> dict:
+    """Bloco ano a ano (2017 em diante) da seção de histórico."""
+    ini = None
+    for n, linha in grade.items():
+        for valor in linha.values():
+            if isinstance(valor, str) and normaliza(valor).startswith("posto providencia"):
+                ini = n
+                break
+        if ini is not None:
+            break
+    if ini is None:
+        return {}
+
+    cab = acha_rotulo(grade, ini, ultima + 1, "anos")
+    if cab is None:
+        return {}
+    return {
+        "linha_secao": ini,
+        "linha_cabecalho": cab,
+        "anos": _bloco_tabular(grade, cab, ultima + 1),
+    }
+
+
 def janelas_sem_leitura(mes: dict) -> list[dict]:
     """Sequências de dias incompletos que, juntas, formam UM período de leitura.
 
@@ -518,6 +702,19 @@ def main() -> int:
             print(f"       └─ dias {dias_j[0]}–{dias_j[-1]} sem leitura intermediária: "
                   f"{j['litros_nao_atribuiveis_a_um_dia']:,.3f} L reais, sem dia a que "
                   f"pertencer")
+
+    resumo = extrai_resumo(pl)
+    (args.saida / "resumo.json").write_text(
+        json.dumps(resumo, ensure_ascii=False, indent=2))
+    manifesto["resumo"] = {
+        "arquivo": "resumo.json",
+        "meses_com_blocos": [m["mes"] for m in resumo.get("meses", [])],
+        "categorias_de_despesa": len(resumo.get("despesa", {}).get("categorias", [])),
+        "anos_de_historico": len(resumo.get("custo_historico", {}).get("anos", [])),
+    }
+    print(f"\nresumo: {len(resumo.get('meses', []))} meses com blocos de venda/compra/"
+          f"estoque, {manifesto['resumo']['categorias_de_despesa']} categorias de "
+          f"despesa, {manifesto['resumo']['anos_de_historico']} anos de histórico")
 
     (args.saida / "manifesto.json").write_text(
         json.dumps(manifesto, ensure_ascii=False, indent=2))
