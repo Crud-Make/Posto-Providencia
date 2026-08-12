@@ -2,6 +2,37 @@
 
 ## [Não Lançado]
 
+### 🧪 ETL estágio 2: a carga validada, e 4 dos 5 golden masters de volta
+- **[12/08/2026] `scripts/etl-estagio2-carga.py`.** Mapeia o staging cru do estágio 1 para as
+  tabelas do contrato e grava em **staging**, nunca em `docs/data/`: `posto_jorro_2026.sqlite`
+  (1.236 linhas de `encerrante_diario`, 42 de `resumo_mensal_bico`, 42 de `validacao_mensal`,
+  28 de `compra_mensal`, 28 de `estoque_mensal`, 264 de `despesa_categoria_mensal`, 12 de
+  `despesa_mensal`), `janeiro_referencia.sqlite` e `fixture_lucro_custo_mes01.json`. Promover
+  é ato do dono — e o hook `protege-dados` nega a promoção vinda de agente, o que torna a
+  garantia estrutural em vez de combinada.
+- **Resultado contra os golden masters: 382 passam, 11 falham — e as 11 são `despesa_trimestral`.**
+  `custo-historico`, `fechamento` e `lucro` ficam **inteiramente verdes**; `encerrante-mensal`
+  também. Só `lucro-real` fica vermelho, e por falta de fonte, não por defeito de carga.
+- **O defeito que os goldens pegaram, e que nenhuma outra conferência pegaria.** A primeira
+  versão derivava `litros_em_lacuna` somando as janelas de dias incompletos. Parece equivalente
+  à definição do domínio e não é: `encerrante-mensal.ts` define a lacuna como **resíduo do mês**
+  — `(fechamento − inicial) − litros lançados` — e opera em mililitro inteiro. Em fevereiro o
+  bico 03 divergia em **3 mL** contra uma tolerância de 2 mL. Um erro de 3 mL não aparece em
+  nenhuma reconciliação de total; só um golden por bico o encontra. Quem se ajustou foi o ETL,
+  não o teste.
+- **Cada tabela carrega o rótulo de bico da SUA aba, verbatim.** O mesmo bico é `DS:.10,Bico 04`
+  no bloco de dia e `Ds:.500,Bico 04` na aba de resumo. Uniformizar quebraria os dois de lados
+  opostos: o `BICO_COMBUSTIVEL` do golden do custo histórico chaveia pelo rótulo do dia, e o
+  `custoDoBico` do fixture do lucro casa por `startsWith('Ds')`, que o `DS:` maiúsculo não
+  satisfaz.
+- **⚠️ A baseline nova NÃO é idêntica à antiga.** A suíte golden saiu de 287 para **393 testes**
+  — os goldens geram um teste por linha de dado, então mais testes significa mais linhas em
+  janeiro do que a referência de 26/07 tinha. É coerente com a decisão de 07/08 de a baseline
+  nascer **marcada como não-validada**, e é mais uma razão para a promoção ser conferida à mão.
+- **`.gitignore`: o estágio 2 quase nasceu fora do git.** A regra é `scripts/*` com exceções
+  nomeadas uma a uma, e sem a linha nova o script seria ignorado em silêncio — o mesmo mecanismo
+  pelo qual os dois estágios originais se perderam em 07/08.
+
 ### 🧪 ETL: o estágio 1 passa a ler a aba de resumo, e acha um bloco de rascunho no caminho
 - **[12/08/2026] O estágio 1 só lia os blocos de dia.** Isso cobria `encerrante_diario` e mais
   nada — as outras sete famílias de tabela que os golden masters consultam (`resumo_mensal_bico`,

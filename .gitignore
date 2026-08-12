@@ -87,6 +87,11 @@ scripts/*
 # perderam junto com ela em 07/08. Código versionado, dado fora. Este script não
 # guarda valor nenhum: recebe o xlsx e o destino por parâmetro.
 !scripts/etl-estagio1-staging.py
+# O estágio 2 pelo mesmo motivo, e com a mesma garantia: recebe staging e destino
+# por parâmetro, não embute caminho de dado real nem valor do posto. Sem esta
+# linha ele nasceria fora do git — que é literalmente como os dois estágios
+# originais se perderam.
+!scripts/etl-estagio2-carga.py
 .claude/*
 !.claude/skills/
 !.claude/agents/
