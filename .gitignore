@@ -69,34 +69,17 @@ CONTEXT.md
 docs/
 agentes-docs/
 plans/
-# `scripts/*`, e não `scripts/`: excluir o DIRETÓRIO faz o git não descer nele, e
-# aí a exceção `!` abaixo nunca chega a ser avaliada. Excluindo o conteúdo, ela vale.
-scripts/*
-# Exceção consciente: o carregador do estágio 3 do ETL não guarda dado nenhum —
-# só o mapeamento bico->id e a lógica de validação; todo valor vem do sqlite em
-# `docs/data/` em tempo de execução, e esse sim segue fora do git. Ele precisa
-# ser versionado porque o CHANGELOG o referencia como a forma de refazer a carga
-# quando a planilha atualizada chegar.
-!scripts/carga-historico-leitura.py
-!scripts/carga-historico-despesa.py
-!scripts/carga-historico-fechamento.py
-!scripts/auditoria-lucro-mes.py
-!scripts/carga-historico-compra.py
-# O estágio 1 do ETL mora aqui, e não em `docs/data/` como os antigos moravam.
-# Foi por estarem dentro da pasta de dado que os estágios 1 e 2 originais se
-# perderam junto com ela em 07/08. Código versionado, dado fora. Este script não
-# guarda valor nenhum: recebe o xlsx e o destino por parâmetro.
-!scripts/etl-estagio1-staging.py
-# O estágio 2 e o export de despesa do banco, pelo mesmo motivo: recebem staging e
-# destino por parâmetro, não embutem caminho de dado real nem valor do posto. O
-# export lê o token do `settings.local.json`, que segue fora do git.
-!scripts/etl-estagio2-carga.py
-!scripts/etl-despesa-banco.py
-# O estágio 2 pelo mesmo motivo, e com a mesma garantia: recebe staging e destino
-# por parâmetro, não embute caminho de dado real nem valor do posto. Sem esta
-# linha ele nasceria fora do git — que é literalmente como os dois estágios
-# originais se perderam.
-!scripts/etl-estagio2-carga.py
+# `scripts/` é VERSIONADO por inteiro. A regra anterior era o inverso — `scripts/*`
+# ignorado, com uma exceção `!` nomeada por arquivo — e ela falhou duas vezes em
+# uma semana: o estágio 2 e o export de despesa nasceram fora do git em silêncio,
+# e só apareceram porque o `git status` saiu limpo quando não devia. É o mesmo
+# mecanismo que perdeu os dois estágios originais do ETL em 29/07: pasta ignorada,
+# `git status` limpo, código sumindo sem aviso.
+#
+# Invertido, o padrão passa a ser seguro: script novo entra versionado por
+# omissão. Nenhum deles guarda valor do posto — todos recebem entrada e destino
+# por parâmetro, e o dado continua em `docs/data/`, fora do git. O `__pycache__/`
+# já é coberto pela regra geral mais abaixo; não precisa de linha própria aqui.
 .claude/*
 !.claude/skills/
 !.claude/agents/

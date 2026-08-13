@@ -2,6 +2,26 @@
 
 ## [Não Lançado]
 
+### 🧹 `scripts/` arrumado: a regra do git invertida, um script aposentado, uma lacuna achada
+- **[12/08/2026] `.gitignore` invertido para `scripts/`.** A regra era `scripts/*` ignorado com
+  uma exceção `!` nomeada **por arquivo** — e falhou **duas vezes nesta mesma semana**: o estágio 2
+  e o export de despesa nasceram fora do git em silêncio. É o mecanismo exato que perdeu os dois
+  estágios originais do ETL em 29/07: pasta ignorada, `git status` limpo, código sumindo sem
+  aviso. Agora `scripts/` é versionado por inteiro e o padrão passa a ser seguro — script novo
+  entra por omissão, em vez de sumir por omissão. Conferido com um arquivo de teste.
+- **`carga-historico-despesa.py` aposentado.** Ele levava a despesa do sqlite **para** a tabela
+  `Despesa` de produção. Como a `Despesa` virou a **origem** da despesa (via
+  `etl-despesa-banco.py`), o script ficou circular: leria de onde escreve. Já cumpriu o papel —
+  a carga que ele fez é justamente a que hoje lemos de volta. Sai do disco, fica no git.
+- **`auditoria-lucro-mes.py` repontado** para `despesa_lancada`, com o porquê escrito no lugar
+  onde a consulta acontece: é a lista completa que manda no rateio (§6), não a parcial da planilha.
+- ⚠️ **Lacuna encontrada, não corrigida: `carga-historico-fechamento.py` lê três tabelas que o
+  estágio 2 não produz** — `fechamento_diario`, `frentista_dia_total` e `venda_frentista_diaria`.
+  O dado existe no staging do estágio 1 (venda por frentista e forma, venda do concentrador,
+  totais do bloco de caixa); falta o mapeamento. Ficou de fora de propósito: é caminho que grava
+  **fechamento em produção**, mexe com `valor_conferido` e `diferenca`, e merece tarefa própria
+  com a skill de fechamento aberta — não um apêndice de arrumação de pasta.
+
 ### ✅ A despesa "trimestral" era real — só mora no banco, não na planilha. Suíte em 393/0
 - **[12/08/2026] Conferido contra produção: R$ 195.230,40 em 108 lançamentos, meses 01–07, ao
   centavo.** A tabela `Despesa` do app tem Embasa (250,00), Net (400,00), Luz (650,00), extintor
