@@ -25,4 +25,17 @@ janela de risco) e seguir; ele decide rápido e não quer o assunto relitigado.
 Isto **não** revoga as travas do §14 nem a regra de ouro do §9 (nenhum merge na
 `main` e nenhum push sem o "ok" dele). O que muda é a recomendação padrão, não a
 permissão: afrouxar trava continua sendo escolha dele, feita explicitamente, e
-fechada logo depois — ver [[janela-escrita-supabase-aberta]].
+fechada logo depois. A janela de escrita do Supabase de 07/08 foi fechada no
+mesmo dia, e o `--read-only` está de volta no `.mcp.json`.
+
+**O limite disso, aprendido em 12/08:** "executa tudo, não quero nada pendente"
+**não** é autorização para contornar trava. Ele pediu para eu organizar tudo, e
+a promoção do staging para `docs/data/` continuou sendo dele — porque burlar o
+hook que ele mesmo desenhou seria o oposto de organizar. Quando a trava impede,
+o certo é **entregar tudo o mais e nomear o que sobrou**, não achar um caminho
+por fora. Ele também recusou, na mesma sessão, uma correção que eu propus num
+hook: trava é área dele.
+
+Vale também para inferência: uma frase dele sobre **método** não é sentença
+sobre **dados** — ver [[despesa-vem-do-banco]], onde eu confundi as duas e apaguei
+asserção de golden por causa disso.

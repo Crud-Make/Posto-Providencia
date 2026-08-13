@@ -1,73 +1,55 @@
 ---
 name: estado-etl-estagio2
-description: Estágio 2 do ETL e a baseline nova de golden master estão pendentes; o bloqueio é achar as duas listas de despesa na planilha
+description: O ETL fechou — estágios 1, 2 e o export de despesa do banco rodam e os 5 golden masters passam; falta só a promoção do staging para docs/data/
 metadata: 
   node_type: memory
   type: project
   originSessionId: b0cf8b27-0b49-44da-a82c-3a0c96c8839f
-  modified: 2026-08-07T11:08:14.355Z
+  modified: 2026-08-12T21:40:00.000Z
 ---
 
-Em 07/08/2026, na branch `feat/time-de-agentes` (nada commitado ainda):
+Estado em **12/08/2026**, branch `feat/etl-estagio2` (empurrada para o origin).
 
-**Pronto:** estágio 1 (`scripts/etl-estagio1-staging.py`) extrai os 7 meses e
-concilia contra a aba `POSTO JORRO 2026`. Todos fecham; fevereiro fecha com a
-janela dos dias 09–15 (9.134,560 L reais sem dia a que pertencer).
+**O pipeline está completo e roda de ponta a ponta:**
 
-**Pendente:** estágio 2 (carga no sqlite) e a baseline nova. Decisão do dono: a
-baseline nasce **marcada como não-validada**, porque vem de uma export de 07/08
-e não da de 26/07 contra a qual janeiro foi conferido linha a linha.
+```bash
+python3 scripts/etl-estagio1-staging.py --xlsx ~/Downloads/"Posto,Jorro, 2026.xlsx" --saida docs/data-staging/estagio1
+python3 scripts/etl-despesa-banco.py --saida docs/data-staging/estagio1
+python3 scripts/etl-estagio2-carga.py --staging docs/data-staging/estagio1 --saida docs/data-staging/estagio2
+```
 
-**O nó a desatar — corrigido em 07/08/2026.** A versão anterior desta memória
-dizia que as DUAS listas de despesa estavam fora da planilha. **Estava errado, e
-o erro era meu, de busca:** o rótulo no painel é abreviado — `Desp,Mês.` — e a
-varredura procurava a palavra "despesa" inteira.
+Estágio 1 lê a planilha (blocos de dia + aba `POSTO JORRO 2026`); o export lê a
+tabela `Despesa` do Supabase; o estágio 2 monta os três artefatos. **Cada fonte
+no que ela é autoridade: planilha manda em venda e encerrante, banco manda em
+despesa** — ver [[despesa-vem-do-banco]].
 
-Onde cada coisa está, conferido célula a célula na aba `POSTO JORRO 2026`:
+**O único pendente é a promoção**, que é ato do dono por desenho: o hook
+`protege-dados` nega `cp`/`mv` para `docs/data/` vindo de agente. Enquanto não
+promover, `docs/data/` não existe e o §0.6 bloqueia mexer em fórmula.
 
-- `despesa_categoria_mensal` → **existe**, linhas 258–285, categorias na coluna C
-  (Frete, taxa de cartão, Contador, Sistema, Energia, IRPJ, CSLL, AVCB, Meio
-  Ambiente, Alvará/IPTU, salários) × meses nas colunas D–O, total por categoria
-  em P. A linha 286 fecha por mês, e os 7 meses somam **140.456,27 exato** — o
-  mesmo número travado no spec.
-- `despesa_mensal` → linha 286 (o total mensal daquela matriz).
-- `compra_mensal` e `estoque_mensal` → **existem**, nos blocos "Compra" e
-  "Estoque" de cada mês (a cada 31 linhas: 14, 45, 76…).
-- custo histórico ano a ano → linha 292+, anos 2017 a 2026.
-- `despesa_trimestral` (195.230,40) → **essa sim não está** em nenhuma das 12
-  abas, nem o total nem os rótulos exclusivos dela (Embasa, extintor, Net, Luz,
-  conserto de bomba). Veio de outra fonte.
+```bash
+mkdir -p docs/data && cp docs/data-staging/estagio2/*.{sqlite,json} docs/data/
+```
 
-Isso importa porque o `lucro-real.golden.spec.ts` registra decisão do dono de
-31/07/2026: **a fonte de verdade do lucro real é a trimestral**, a maior. Usar a
-mensal no lugar ignora 54.774,13 de despesa e superestima o lucro dos 7 meses em
-~25%. Em 07/08 o dono mandou desconsiderar a trimestral por ora.
+**Como conferir se está tudo de pé** (nunca confie na contagem escrita aqui —
+ela envelhece; rode e compare):
 
-Contrato completo, lido dos 5 `*.golden.spec.ts`: `encerrante_diario`,
-`resumo_mensal_bico`, `validacao_mensal`, `compra_mensal`, `despesa_mensal`,
-`despesa_categoria_mensal`, `despesa_trimestral`, `estoque_mensal`, mais
-`janeiro_referencia.sqlite` (`jan_frentista`, `jan_encerrante`) e
-`docs/data/fixture_lucro_custo_mes01.json`.
+```bash
+bun run test:golden      # 393 pass, 0 fail em 12/08
+bun run test             # 171 pass em 12/08
+```
 
-Dois sinais de que a extração nova reproduz a antiga: soma dos 7 meses deu
-283.506,342 contra os 283.506,34 travados no spec, e a lacuna de fevereiro deu
-9.134,560 contra 9.134,563.
+**Armadilhas já pagas, que não se redescobrem de graça:**
 
-Escrever em `docs/data/` é negado pelo hook `protege-dados` — a criação dos
-arquivos é feita à mão pelo dono. Fonte em [[planilha-fonte-onde-esta]].
+- O bloco `Posto Jorro, mês 0.` (L426 da aba de resumo) é RASCUNHO: repete os
+  litros de janeiro com lucro inflado. Fica em `secoes_ignoradas`.
+- Fronteira de seção vem de **toda** linha com rótulo na coluna B. Usar o rótulo
+  de mês seguinte fazia o mês 07 engolir o bloco anual.
+- `litros_em_lacuna` é **resíduo do mês** em mililitro inteiro, não soma de
+  janelas — a diferença é de 3 mL e a tolerância do golden é 2 mL.
+- Rótulo de bico diverge entre abas (`DS:.10` no dia, `Ds:.500` no resumo) e
+  cada tabela carrega o da sua. Uniformizar quebra dois goldens de lados opostos.
+- `Venda Concentrador` aparece junto das formas de pagamento em 116 dias e não é
+  forma: é encerrante atribuído.
 
-**Existe um SEGUNDO ETL, em `~/Downloads` (visto em 07/08/2026):** `etl_jorro.py`
-gera `jorro.db` num star schema (`dim_mes`, `dim_bico`, `dim_frentista`,
-`dim_produto`, `dim_forma_pagto`, `fact_venda_bico`, `fact_venda_frentista`,
-`fact_conferencia_dia`, `fact_frentista_mes`, `fact_pagamento`), 7 meses.
-**Não é o `posto_jorro_2026.sqlite`**: nenhum nome de tabela do contrato dos
-goldens aparece nele, então copiar/renomear não faz spec nenhum passar. Ele
-também mistura extração com interpretação, o que a skill de ETL proíbe —
-diferente do estágio 1 do repo, que só copia célula.
-
-Ele também **não produz nenhuma tabela de despesa, compra ou estoque** — o único
-campo com "despesa" no nome é `fact_pagamento.taxa_despesa`, que é taxa de meio
-de pagamento. Cheguei a ler isso como corroboração de que as listas não existiam
-na planilha; **não é**. O `etl_jorro.py` só varre as abas de mês e ignora a
-`POSTO JORRO 2026`, que é justamente onde compra, estoque e despesa moram. Duas
-buscas falhas não somam evidência: é a mesma falha duas vezes.
+Fonte da planilha em [[planilha-fonte-onde-esta]].

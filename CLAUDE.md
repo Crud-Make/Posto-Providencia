@@ -148,7 +148,10 @@ Detalhe nas skills (§13). O que nunca se reescreve de cabeça:
 - **Nunca rode `bun test` puro.** O runner nativo do Bun varre o repo inteiro e tenta executar os
   arquivos de Vitest, onde `vi` não existe — saem 4 falhas e 2 erros que **não são bugs**. Isso já
   custou uma "baseline de falhas pré-existentes" imaginária, carregada por várias sessões. Suíte
-  saudável hoje: 287 golden + 30 vitest, **zero falhas**.
+  saudável em **12/08/2026: 393 golden + 171 vitest, zero falhas**. Os números
+  anteriores (287 + 30) ficaram nesta linha até apodrecerem — **a contagem vem
+  datada por isso**. O golden gera um teste por linha de dado, então ele muda
+  sozinho quando o ETL roda: divergiu, reconte antes de chamar de regressão.
 - **Nunca consolide implementações duplicadas sem antes ter um teste rodando contra todas elas.**
   Consolidar primeiro e testar depois é como divergência silenciosa entra em produção.
 - Divergência conhecida entre planilha e código se **documenta no teste** — não se "conserta" no
@@ -311,8 +314,11 @@ apontavam para eles — `:diagnosing-bugs`, `:tdd`, `:code-review`, `:codebase-d
 - **A skill de domínio vai no frontmatter, não no corpo.** Subagente **não herda** skill
   invocada na sessão nem nada que já foi lido — só `CLAUDE.md`, git status e o próprio
   prompt. `skills:` injeta a skill inteira e é o que transforma "consulte a skill" (torcer)
-  em "a skill está no contexto" (garantia). O `rls` fica de fora de propósito: fechamento
-  não decide pergunta de exposição, e carregar seria token gasto em ruído.
+  em "a skill está no contexto" (garantia). **Dois ficam sem `skills:`, e os dois de
+  propósito** — a ausência é decisão, não esquecimento, e está escrita aqui para ninguém
+  "consertar" depois: o `rls` porque fechamento não decide pergunta de exposição de banco,
+  e o `historico` porque a pergunta dele é sobre o **git**, não sobre o domínio: quem mexeu,
+  quando entrou, dá pra recuperar. Nos dois, carregar a skill seria token gasto em ruído.
 
 **Quando vale abrir um subagente:** só quando ele **lê muito e devolve pouco**. O `grafo` carrega um
 grafo de 2,5 MB e greps em 305 arquivos para devolver 10 linhas com `arquivo:linha` — aí o ganho é
