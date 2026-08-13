@@ -87,6 +87,11 @@ scripts/*
 # perderam junto com ela em 07/08. Código versionado, dado fora. Este script não
 # guarda valor nenhum: recebe o xlsx e o destino por parâmetro.
 !scripts/etl-estagio1-staging.py
+# O estágio 2 e o export de despesa do banco, pelo mesmo motivo: recebem staging e
+# destino por parâmetro, não embutem caminho de dado real nem valor do posto. O
+# export lê o token do `settings.local.json`, que segue fora do git.
+!scripts/etl-estagio2-carga.py
+!scripts/etl-despesa-banco.py
 # O estágio 2 pelo mesmo motivo, e com a mesma garantia: recebe staging e destino
 # por parâmetro, não embute caminho de dado real nem valor do posto. Sem esta
 # linha ele nasceria fora do git — que é literalmente como os dois estágios

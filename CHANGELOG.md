@@ -2,6 +2,33 @@
 
 ## [Não Lançado]
 
+### ✅ A despesa "trimestral" era real — só mora no banco, não na planilha. Suíte em 393/0
+- **[12/08/2026] Conferido contra produção: R$ 195.230,40 em 108 lançamentos, meses 01–07, ao
+  centavo.** A tabela `Despesa` do app tem Embasa (250,00), Net (400,00), Luz (650,00), extintor
+  (800,00), Concerto da Bomba (3.300,00), Bombeiro AVCB (3.418,00) e salários a R$ 2.100. A
+  diferença contra a planilha bate exata: **R$ 54.774,13**.
+- **O erro era de nome, não de número.** Não existe apuração trimestral no posto — o dono
+  confirmou, e a varredura de toda célula das 12 abas comprovou. Mas a lista existe: mora na
+  tabela `Despesa`, não em aba de planilha. Alguém batizou de `despesa_trimestral` o que é
+  simplesmente **a despesa completa**. Renomeada para **`despesa_lancada`**.
+- **O quase-acidente que isso causou.** Na leitura de que a lista era fictícia, cheguei a remover
+  as 11 asserções do `lucro-real.golden.spec.ts` e a suíte "fechou verde" em 384/0. Era verde
+  falso: obtido apagando o que incomodava. Revertido em `7740858` assim que o dono corrigiu.
+  **Suíte verde por remoção de asserção é pior que suíte vermelha**, porque a vermelha avisa.
+- **Passo novo de ETL: `scripts/etl-despesa-banco.py`.** Exporta a `Despesa` do Supabase para o
+  staging; o estágio 2 a carrega em `despesa_lancada`. **Cada fonte no que ela é autoridade:**
+  planilha manda em venda e encerrante, banco manda em despesa. O estágio 2 agora REPROVA a carga
+  se a despesa do banco faltar — sem ela o custo por litro sairia da lista parcial, contra o §6.
+- **Duas asserções corrigidas porque descreviam a tabela antiga, não a real:** a que exigia 12
+  meses (produção tem 7, nada em agosto–dezembro) e a que exigia soma crua = dobro (a do banco
+  são lançamentos individuais, sem linha de total — só a da planilha tem essa armadilha).
+- **Suíte golden: 393 passam, 0 falham** — os cinco arquivos verdes pela primeira vez desde 29/07.
+  Vitest 171/171, `type-check` limpo.
+- **O número que fica:** o lucro real dos 7 meses é **R$ 165.785,32, margem 8,63%** — não os
+  R$ 220.559,42 / 11,48% da planilha, que não enxerga R$ 54.774,13 dos gastos.
+- **A lição que fica:** *dado sem procedência escrita é dado que alguém vai apagar por engano.*
+  O número estava certo desde 31/07; o que faltava era dizer de onde ele vinha.
+
 ### 🧪 ETL estágio 2: a carga validada, e 4 dos 5 golden masters de volta
 - **[12/08/2026] `scripts/etl-estagio2-carga.py`.** Mapeia o staging cru do estágio 1 para as
   tabelas do contrato e grava em **staging**, nunca em `docs/data/`: `posto_jorro_2026.sqlite`

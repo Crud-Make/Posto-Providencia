@@ -27,10 +27,18 @@ aqui quebraria os dois de lados opostos.
 golden trava que somar a coluna crua devolve exatamente o dobro. Quem soma
 despesa passa por `somarDespesas`, no domínio. Ver `packages/utils/src/despesa.ts`.
 
-**`despesa_trimestral` nasce VAZIA.** Ela não está em nenhuma das 12 abas da
-planilha — veio de fonte externa que não temos. A tabela é criada com o esquema
-certo para que a falha do golden do lucro real seja "sem dado" e não "sem
-tabela", que é uma mensagem que manda investigar a coisa errada.
+**A despesa vem do BANCO, não da planilha.** A matriz `Despeza, 2026.` da
+planilha soma R$ 140.456,27 nos 7 meses; a tabela `Despesa` do app soma
+R$ 195.230,40 nos mesmos meses. A diferença de R$ 54.774,13 são gastos reais que
+a planilha não registra — Embasa, Net, Luz, extintor, conserto de bomba. Pelo §6
+("toda despesa entra no rateio"), é a lista do banco que manda no custo por
+litro. `scripts/etl-despesa-banco.py` a exporta para o staging; aqui ela vira
+`despesa_lancada`. A da planilha continua carregada, como `despesa_categoria_mensal`,
+porque é ela que reproduz o lucro que a planilha exibe.
+
+Entre 31/07 e 12/08 essa lista se chamou `despesa_trimestral` e era descrita como
+uma segunda aba da planilha. Nunca foi — não existe apuração trimestral, e o nome
+errado quase custou a remoção de um golden master correto.
 
 Idempotente: recria as tabelas a cada execução.
 """
@@ -96,8 +104,10 @@ CREATE TABLE despesa_mensal (
     ano INTEGER NOT NULL, mes INTEGER NOT NULL, valor REAL
 );
 DROP TABLE IF EXISTS despesa_trimestral;
-CREATE TABLE despesa_trimestral (
-    ano INTEGER NOT NULL, mes INTEGER NOT NULL, categoria TEXT, valor REAL
+DROP TABLE IF EXISTS despesa_lancada;
+CREATE TABLE despesa_lancada (
+    ano INTEGER NOT NULL, mes INTEGER NOT NULL, data TEXT,
+    descricao TEXT, categoria TEXT, valor REAL, status TEXT
 );
 """
 
@@ -175,7 +185,8 @@ def lacunas_por_bico(mes: dict) -> dict[str, float]:
     return fora
 
 
-def carrega_principal(con: sqlite3.Connection, meses: dict[int, dict], resumo: dict) -> dict:
+def carrega_principal(con: sqlite3.Connection, meses: dict[int, dict], resumo: dict,
+                      staging: Path) -> dict:
     con.executescript(ESQUEMA)
     contagem: dict[str, int] = {}
 
@@ -288,7 +299,21 @@ def carrega_principal(con: sqlite3.Connection, meses: dict[int, dict], resumo: d
         "INSERT INTO despesa_mensal (ano,mes,valor) VALUES (?,?,?)", linhas_m)
     contagem["despesa_categoria_mensal"] = len(linhas_d)
     contagem["despesa_mensal"] = len(linhas_m)
-    contagem["despesa_trimestral"] = 0
+    # ── despesa_lancada — vem do BANCO, não da planilha (ver etl-despesa-banco.py)
+    arquivo = staging / "despesa_lancada.json"
+    if arquivo.is_file():
+        banco = json.loads(arquivo.read_text())
+        con.executemany(
+            "INSERT INTO despesa_lancada (ano,mes,data,descricao,categoria,valor,"
+            "status) VALUES (?,?,?,?,?,?,?)",
+            [(l["ano"], l["mes"], l.get("data"), l.get("descricao"),
+              l.get("categoria"), num(l.get("valor")), l.get("status"))
+             for l in banco["linhas"]])
+        contagem["despesa_lancada"] = len(banco["linhas"])
+    else:
+        # Ausência importa: sem o export do banco, o custo por litro sairia da
+        # lista PARCIAL da planilha, contra o §6. `confere()` reprova por isso.
+        contagem["despesa_lancada"] = 0
 
     con.commit()
     return contagem
@@ -412,6 +437,18 @@ def confere(con: sqlite3.Connection, meses: dict[int, dict]) -> list[str]:
     if abs(cru - limpo * 2) > 0.05:
         problemas.append(f"despesa crua {cru:,.2f} não é o dobro de {limpo:,.2f}")
 
+    # A despesa do BANCO é a que manda no custo por litro (§6). Sem ela, a carga
+    # está incompleta de um jeito que não aparece em nenhum outro número.
+    lancada = cur.execute(
+        "SELECT COALESCE(SUM(valor),0) FROM despesa_lancada "
+        "WHERE ano=? AND mes BETWEEN 1 AND 7", (ANO,)).fetchone()[0]
+    if not lancada:
+        problemas.append(
+            "despesa_lancada vazia — rode `scripts/etl-despesa-banco.py --saida <staging>` "
+            "antes: sem ela o custo por litro sai da lista PARCIAL da planilha")
+    elif abs(lancada - 195230.40) > 0.05:
+        problemas.append(f"despesa lançada {lancada:,.2f} ≠ 195.230,40 (conferido em 12/08)")
+
     for mes, dados in sorted(meses.items()):
         ref = dados["conciliacao"].get("litros_referencia")
         resumo_lt = cur.execute(
@@ -452,7 +489,7 @@ def main() -> int:
     alvo = args.saida / "posto_jorro_2026.sqlite"
     alvo.unlink(missing_ok=True)
     con = sqlite3.connect(alvo)
-    contagem = carrega_principal(con, meses, resumo)
+    contagem = carrega_principal(con, meses, resumo, args.staging)
 
     alvo_jan = args.saida / "janeiro_referencia.sqlite"
     alvo_jan.unlink(missing_ok=True)
@@ -464,7 +501,7 @@ def main() -> int:
 
     print(f"{'tabela':<28} linhas")
     for nome, n in contagem.items():
-        marca = "  ← vazia: fonte externa" if nome == "despesa_trimestral" else ""
+        marca = "  ← do banco, não da planilha" if nome == "despesa_lancada" else ""
         print(f"  {nome:<26} {n:>6}{marca}")
 
     problemas = confere(con, meses)
