@@ -421,10 +421,8 @@ def extrai_resumo(pl: Planilha) -> dict:
 
     Estes blocos ficaram de fora da primeira versão do estágio 1, que só lia os
     blocos de dia — e é por isso que 4 dos 5 golden masters não tinham fonte.
-    Não existe `despesa_trimestral` — em 12/08 o dono confirmou que nunca houve
-    segunda lista de despesa, e a varredura de toda célula das 12 abas não achou
-    nem os totais nem os rótulos exclusivos que o repo lhe atribuía. A lista
-    mensal é a única. Ver o topo de `packages/utils/src/lucro-real.golden.spec.ts`.
+    A `despesa_trimestral` NÃO está aqui nem em nenhuma outra aba: ela vem de
+    fonte externa, e nenhuma extração desta planilha a produz.
 
     Cada bloco é delimitado pelo rótulo SEGUINTE, nunca por deslocamento fixo
     (guarda 1 da skill). Os rótulos de bico divergem entre esta aba e os blocos

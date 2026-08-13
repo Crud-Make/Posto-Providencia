@@ -2,42 +2,6 @@
 
 ## [Não Lançado]
 
-### 🔴 A despesa trimestral nunca existiu — retratação, e a suíte golden fecha em 384/0
-- **[12/08/2026] O dono confirmou que o posto nunca teve lista trimestral de despesa: o único
-  cálculo sempre foi o lucro mensal.** Entre 31/07 e 12/08 o repo travou o contrário. O
-  `lucro-real.golden.spec.ts` afirmava que a planilha tinha **duas** listas concorrentes, que
-  a segunda somava R$ 195.230,40, e que o lucro REAL dos 7 meses era **R$ 165.785,32 (margem
-  8,63%)** em vez dos **R$ 220.559,42 (11,48%)** que a planilha exibe — R$ 54.774,13 de despesa
-  que não existe. Pior: o commit `18614b2` atribuía a decisão ao dono, com data.
-- **A planilha concorda com ele.** Varredura de toda célula de texto das 12 abas por substring
-  sem acento, mais busca numérica pelos três totais (195.230,40 · 54.774,13 · 31.710,88): zero
-  ocorrências. Os rótulos exclusivos que o texto citava — Embasa, Net, Luz, extintor, conserto
-  de bomba — não existem em aba nenhuma. As 4 abas que ninguém tinha aberto (`-26`, `Plan1`,
-  `Planilha1`, `AFERICAO`) são empréstimos do Herculis e cópias de rascunho de janeiro.
-- **O que não fecha, e a leitura que reconcilia.** Em 31/07 a suíte passou com 308 goldens e
-  zero falhas, e teste que consulta tabela inexistente estoura em vez de passar — logo a tabela
-  existia no sqlite daquela época. A explicação provável: **golden construído a partir da saída
-  do ETL valida a fórmula, não o dado.** Se o ETL de 31/07 leu algum bloco como se fosse um
-  segundo livro-caixa, o golden travou o engano com fidelidade perfeita e passou verde para
-  sempre. O `atualizado.xlsx` daquela extração se perdeu com o `docs/data/` em 29/07.
-- **A lição, que vale mais que o número:** golden master prova que o cálculo é **estável**, não
-  que a entrada é **verdadeira**. Dado novo que vira referência precisa ser conferido contra a
-  fonte — nunca contra o próprio ETL que o produziu. É a mesma família do §12: ferramenta que
-  afirma com confiança total e está errada.
-- **O que foi removido:** as 11 asserções que dependiam de `despesa_trimestral`. **O que ficou:**
-  a metade que valida a fórmula contra a lista mensal nos 7 meses × 42 bicos, mais um teste novo
-  de agregados travando litros (283.506,34), receita (R$ 1.921.455,03), despesa (R$ 140.456,27),
-  lucro (R$ 220.559,42) e margem (11,48%).
-- **Suíte golden: 384 passam, 0 falham** — verde pela primeira vez desde 29/07. Vitest 171/171,
-  `type-check` limpo.
-- ⚠️ **Consequência não resolvida:** `scripts/carga-historico-despesa.py` e
-  `scripts/auditoria-lucro-mes.py` ainda consultam `despesa_trimestral` e vão estourar com
-  "no such table" — falha alta, não silenciosa. Mais sério: o `carga-historico-despesa.py` é o
-  que leva despesa para **produção**, e o commit `290114b` diz "janeiro/2026 completo em
-  producao — despesa". Se aquela carga saiu da trimestral, **a tabela `Despesa` de produção pode
-  conter lançamentos que nunca existiram**. Não dá para conferir enquanto o token do Supabase
-  estiver inválido.
-
 ### 🧪 ETL estágio 2: a carga validada, e 4 dos 5 golden masters de volta
 - **[12/08/2026] `scripts/etl-estagio2-carga.py`.** Mapeia o staging cru do estágio 1 para as
   tabelas do contrato e grava em **staging**, nunca em `docs/data/`: `posto_jorro_2026.sqlite`

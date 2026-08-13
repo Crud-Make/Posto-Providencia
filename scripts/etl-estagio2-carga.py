@@ -27,12 +27,10 @@ aqui quebraria os dois de lados opostos.
 golden trava que somar a coluna crua devolve exatamente o dobro. Quem soma
 despesa passa por `somarDespesas`, no domínio. Ver `packages/utils/src/despesa.ts`.
 
-**Não existe `despesa_trimestral`, e a tabela é apagada se sobrar de uma carga
-antiga.** Entre 31/07 e 12/08 o repo travou um segundo livro-caixa de despesa,
-de R$ 195.230,40, que declarava o lucro do posto ~25% menor. O dono confirmou em
-12/08 que nunca houve lista trimestral — só o lucro mensal —, e a varredura de
-toda célula das 12 abas não achou nem os totais nem os rótulos exclusivos dela.
-Ver o topo de `packages/utils/src/lucro-real.golden.spec.ts`.
+**`despesa_trimestral` nasce VAZIA.** Ela não está em nenhuma das 12 abas da
+planilha — veio de fonte externa que não temos. A tabela é criada com o esquema
+certo para que a falha do golden do lucro real seja "sem dado" e não "sem
+tabela", que é uma mensagem que manda investigar a coisa errada.
 
 Idempotente: recria as tabelas a cada execução.
 """
@@ -98,6 +96,9 @@ CREATE TABLE despesa_mensal (
     ano INTEGER NOT NULL, mes INTEGER NOT NULL, valor REAL
 );
 DROP TABLE IF EXISTS despesa_trimestral;
+CREATE TABLE despesa_trimestral (
+    ano INTEGER NOT NULL, mes INTEGER NOT NULL, categoria TEXT, valor REAL
+);
 """
 
 ESQUEMA_JANEIRO = """
@@ -287,8 +288,7 @@ def carrega_principal(con: sqlite3.Connection, meses: dict[int, dict], resumo: d
         "INSERT INTO despesa_mensal (ano,mes,valor) VALUES (?,?,?)", linhas_m)
     contagem["despesa_categoria_mensal"] = len(linhas_d)
     contagem["despesa_mensal"] = len(linhas_m)
-    # `despesa_trimestral` deixou de existir em 12/08: a fonte nunca existiu.
-    # Ver o topo de `lucro-real.golden.spec.ts`.
+    contagem["despesa_trimestral"] = 0
 
     con.commit()
     return contagem
@@ -464,7 +464,8 @@ def main() -> int:
 
     print(f"{'tabela':<28} linhas")
     for nome, n in contagem.items():
-        print(f"  {nome:<26} {n:>6}")
+        marca = "  ← vazia: fonte externa" if nome == "despesa_trimestral" else ""
+        print(f"  {nome:<26} {n:>6}{marca}")
 
     problemas = confere(con, meses)
     con.close()
