@@ -1,11 +1,11 @@
 ---
 name: estado-etl-estagio2
-description: O ETL fechou — estágios 1, 2 e o export de despesa do banco rodam e os 5 golden masters passam; falta só a promoção do staging para docs/data/
+description: O ETL fechou e foi promovido — estágios 1, 2 e o export de despesa rodam, docs/data/ está no disco e os 5 golden masters passam; nada pendente
 metadata: 
   node_type: memory
   type: project
   originSessionId: b0cf8b27-0b49-44da-a82c-3a0c96c8839f
-  modified: 2026-08-12T21:40:00.000Z
+  modified: 2026-08-13T00:56:16.558Z
 ---
 
 Estado em **12/08/2026**, branch `feat/etl-estagio2` (empurrada para o origin).
@@ -23,9 +23,14 @@ tabela `Despesa` do Supabase; o estágio 2 monta os três artefatos. **Cada font
 no que ela é autoridade: planilha manda em venda e encerrante, banco manda em
 despesa** — ver [[despesa-vem-do-banco]].
 
-**O único pendente é a promoção**, que é ato do dono por desenho: o hook
-`protege-dados` nega `cp`/`mv` para `docs/data/` vindo de agente. Enquanto não
-promover, `docs/data/` não existe e o §0.6 bloqueia mexer em fórmula.
+**A promoção foi feita** (conferido em 12/08/2026, fim do dia): `docs/data/`
+está no disco com os três artefatos byte a byte idênticos aos do estágio 2, e os
+goldens passam contra ela. Nada pendente no pipeline.
+
+Promover é ato do dono por desenho — o hook `protege-dados` nega `cp`/`mv` para
+`docs/data/` vindo de agente. Se um dia a pasta sumir de novo (já sumiu uma vez,
+e como é gitignored o `git status` fica limpo enquanto os 5 goldens estouram),
+quem repõe é o dono:
 
 ```bash
 mkdir -p docs/data && cp docs/data-staging/estagio2/*.{sqlite,json} docs/data/
