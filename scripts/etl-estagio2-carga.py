@@ -65,6 +65,19 @@ FORMA_COLUNA = {
     "Dinheiro": "dinheiro",
 }
 
+# As 7 formas que compõem o `conferido` (skill fechamento-posto-providencia:
+# `conferido = pix + credito + debito + moeda + notas + baratao + dinheiro`).
+#
+# Só estas entram em `venda_frentista_diaria`. O bloco de caixa do mês 07 traz
+# uma linha `Venda Concentrador` junto das formas, e ela NÃO é forma de
+# pagamento: é o encerrante atribuído ao frentista, que tem casa própria em
+# `frentista_dia_total.venda_concentrador`. Carregá-la como forma faria o
+# `carga-historico-fechamento.py` abortar ("forma de pagamento desconhecida") —
+# e, se não abortasse, contaria a venda duas vezes dentro do conferido.
+#
+# Rótulo fora desta lista não é descartado em silêncio: vai para o relatório.
+FORMAS_DE_PAGAMENTO = frozenset(FORMA_COLUNA)
+
 ESQUEMA = """
 DROP TABLE IF EXISTS encerrante_diario;
 CREATE TABLE encerrante_diario (
@@ -102,6 +115,23 @@ CREATE TABLE despesa_categoria_mensal (
 DROP TABLE IF EXISTS despesa_mensal;
 CREATE TABLE despesa_mensal (
     ano INTEGER NOT NULL, mes INTEGER NOT NULL, valor REAL
+);
+DROP TABLE IF EXISTS venda_frentista_diaria;
+CREATE TABLE venda_frentista_diaria (
+    ano INTEGER NOT NULL, mes INTEGER NOT NULL, dia INTEGER NOT NULL,
+    frentista TEXT NOT NULL, forma TEXT NOT NULL, valor REAL
+);
+DROP TABLE IF EXISTS frentista_dia_total;
+CREATE TABLE frentista_dia_total (
+    ano INTEGER NOT NULL, mes INTEGER NOT NULL, dia INTEGER NOT NULL,
+    frentista TEXT NOT NULL,
+    venda_frentistas REAL, venda_concentrador REAL, falta REAL
+);
+DROP TABLE IF EXISTS fechamento_diario;
+CREATE TABLE fechamento_diario (
+    ano INTEGER NOT NULL, mes INTEGER NOT NULL, dia INTEGER NOT NULL,
+    venda_concentrador_total REAL, caixa_venda_concentrador REAL,
+    caixa_venda_frentista REAL, dado_incompleto INTEGER NOT NULL DEFAULT 0
 );
 DROP TABLE IF EXISTS despesa_trimestral;
 DROP TABLE IF EXISTS despesa_lancada;
@@ -299,6 +329,63 @@ def carrega_principal(con: sqlite3.Connection, meses: dict[int, dict], resumo: d
         "INSERT INTO despesa_mensal (ano,mes,valor) VALUES (?,?,?)", linhas_m)
     contagem["despesa_categoria_mensal"] = len(linhas_d)
     contagem["despesa_mensal"] = len(linhas_m)
+    # ── o trio do fechamento, consumido por `carga-historico-fechamento.py`
+    #
+    # `venda_concentrador_total` é o ROLLUP dos encerrantes (soma dos bicos do
+    # dia) e `caixa_venda_concentrador` é o total escrito no bloco de caixa. Os
+    # dois existem porque DIVERGEM em janeiro, e o carregador usa o rollup de
+    # propósito — é o mesmo número que já está na tabela `Leitura` em produção.
+    # Colapsar os dois num só apagaria a divergência que alguém precisa ver.
+    linhas_vf, linhas_ft, linhas_fd = [], [], []
+    formas_ignoradas: dict[str, int] = {}
+    for mes, dados in sorted(meses.items()):
+        for dia in dados["dias"]:
+            d = dia["dia"]
+            totais = dia.get("totais", {})
+            vend_f = totais.get("venda_frentistas", {})
+            vend_c = totais.get("venda_concentrador", {})
+            falta = totais.get("falta", {})
+
+            for forma, por_frentista in dia["venda_frentista"].items():
+                if forma not in FORMAS_DE_PAGAMENTO:
+                    formas_ignoradas[forma] = formas_ignoradas.get(forma, 0) + 1
+                    continue
+                for frentista, valor in (por_frentista or {}).items():
+                    linhas_vf.append((ANO, mes, d, frentista, forma, num(valor)))
+
+            for frentista in dia["frentistas"]:
+                linhas_ft.append((
+                    ANO, mes, d, frentista,
+                    num(vend_f.get(frentista)), num(vend_c.get(frentista)),
+                    num(falta.get(frentista)),
+                ))
+
+            soma = lambda m: (  # noqa: E731 — só agrega o que existe; None ≠ 0
+                sum(v for v in m.values() if isinstance(v, (int, float)))
+                if m else None)
+            linhas_fd.append((
+                ANO, mes, d,
+                sum(num(b.get("venda_bico")) or 0.0 for b in dia["bicos"]),
+                soma(vend_c), soma(vend_f),
+                1 if dia["dado_incompleto"] else 0,
+            ))
+
+    con.executemany(
+        "INSERT INTO venda_frentista_diaria (ano,mes,dia,frentista,forma,valor) "
+        "VALUES (?,?,?,?,?,?)", linhas_vf)
+    con.executemany(
+        "INSERT INTO frentista_dia_total (ano,mes,dia,frentista,venda_frentistas,"
+        "venda_concentrador,falta) VALUES (?,?,?,?,?,?,?)", linhas_ft)
+    con.executemany(
+        "INSERT INTO fechamento_diario (ano,mes,dia,venda_concentrador_total,"
+        "caixa_venda_concentrador,caixa_venda_frentista,dado_incompleto) "
+        "VALUES (?,?,?,?,?,?,?)", linhas_fd)
+    contagem["venda_frentista_diaria"] = len(linhas_vf)
+    contagem["frentista_dia_total"] = len(linhas_ft)
+    contagem["fechamento_diario"] = len(linhas_fd)
+    if formas_ignoradas:
+        contagem["__formas_ignoradas__"] = formas_ignoradas
+
     # ── despesa_lancada — vem do BANCO, não da planilha (ver etl-despesa-banco.py)
     arquivo = staging / "despesa_lancada.json"
     if arquivo.is_file():
@@ -449,6 +536,31 @@ def confere(con: sqlite3.Connection, meses: dict[int, dict]) -> list[str]:
     elif abs(lancada - 195230.40) > 0.05:
         problemas.append(f"despesa lançada {lancada:,.2f} ≠ 195.230,40 (conferido em 12/08)")
 
+    # A regra canônica do conferido (skill fechamento-posto-providencia):
+    # `conferido = pix + credito + debito + moeda + notas + baratao + dinheiro`.
+    # A linha "Venda Frentistas" da planilha É essa soma, então as duas têm de
+    # bater por (dia, frentista). Divergir aqui significa que uma forma ficou de
+    # fora da carga — exatamente o defeito que a consolidação de 02/08 corrigiu
+    # no produto, e que o ETL não pode reintroduzir pela porta dos fundos.
+    divergentes = cur.execute("""
+        SELECT t.mes, t.dia, t.frentista, t.venda_frentistas,
+               COALESCE(SUM(v.valor), 0) AS somado
+          FROM frentista_dia_total t
+          LEFT JOIN venda_frentista_diaria v
+                 ON v.ano=t.ano AND v.mes=t.mes AND v.dia=t.dia
+                AND v.frentista=t.frentista
+         WHERE t.ano=? AND t.venda_frentistas IS NOT NULL
+         GROUP BY t.mes, t.dia, t.frentista, t.venda_frentistas
+        HAVING ABS(t.venda_frentistas - COALESCE(SUM(v.valor), 0)) > 0.005
+    """, (ANO,)).fetchall()
+    if divergentes:
+        amostra = "; ".join(
+            f"{m:02d}/{d:02d} {f}: bloco {vf:,.2f} × formas {s:,.2f}"
+            for m, d, f, vf, s in divergentes[:3])
+        problemas.append(
+            f"{len(divergentes)} linha(s) em que a soma das 7 formas não "
+            f"reproduz a 'Venda Frentistas' da planilha — {amostra}")
+
     for mes, dados in sorted(meses.items()):
         ref = dados["conciliacao"].get("litros_referencia")
         resumo_lt = cur.execute(
@@ -499,10 +611,19 @@ def main() -> int:
     (args.saida / "fixture_lucro_custo_mes01.json").write_text(
         json.dumps(monta_fixture(resumo), ensure_ascii=False, indent=2))
 
+    ignoradas = contagem.pop("__formas_ignoradas__", None)
     print(f"{'tabela':<28} linhas")
     for nome, n in contagem.items():
         marca = "  ← do banco, não da planilha" if nome == "despesa_lancada" else ""
         print(f"  {nome:<26} {n:>6}{marca}")
+
+    if ignoradas:
+        # Rótulo que não é forma de pagamento não entra no conferido — mas some
+        # do relatório nunca. Ver FORMAS_DE_PAGAMENTO.
+        print("\nrótulos fora das 7 formas de pagamento, mantidos fora do "
+              "`venda_frentista_diaria`:")
+        for rotulo, n in sorted(ignoradas.items()):
+            print(f"  {rotulo!r} em {n} dia(s)")
 
     problemas = confere(con, meses)
     con.close()
