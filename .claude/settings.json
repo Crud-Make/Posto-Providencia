@@ -2,7 +2,6 @@
   "permissions": {
     "allow": [],
     "deny": [
-      "mcp__supabase__apply_migration",
       "mcp__supabase__deploy_edge_function",
       "mcp__supabase__create_branch",
       "mcp__supabase__delete_branch",
