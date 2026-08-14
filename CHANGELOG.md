@@ -2,6 +2,58 @@
 
 ## [Não Lançado]
 
+### 🔒 RLS Fase 1: as duas views deixam de ser porta de escrita, e o DELETE anônimo entra na janela
+- **[13/08/2026] Aplicada em produção** — `20260813_rls_fase1_views_e_delete_anonimo.sql`. Fecha os
+  dois caminhos que **contornavam** a RLS por fora. Nenhuma tabela estava sem RLS (o §5 já estava
+  cumprido); o buraco era outro.
+- **As views `vw_lucro_periodo` e `frentistas` rodavam como `postgres`.** Sem `security_invoker`,
+  auto-atualizáveis (`pg_relation_is_updatable` = 28 = insert+update+delete), com o `anon` tendo
+  SELECT/INSERT/UPDATE/DELETE nas duas. Como **nenhuma** das 44 tabelas tem `FORCE ROW LEVEL
+  SECURITY`, o dono ignorava as próprias políticas: um `PATCH /rest/v1/vw_lucro_periodo` com a anon
+  key reescrevia `total_vendas` e `lucro_liquido` de **todos** os fechamentos, passando por cima das
+  travas de janela de 31/07 e 02/08. Agora: `security_invoker = on` + escrita revogada.
+- **Três policies de DELETE anônimo eram `USING (true)`** — `FechamentoFrentista`, `Recebimento` e
+  `Despesa`. As janelas de 02/08 foram aplicadas ao INSERT e ao UPDATE, e **o DELETE ficou de fora**.
+  O FK `RESTRICT` protegia o `Fechamento` pai, mas o anon apagava os filhos primeiro. As três passam
+  a usar `dentro_da_janela_de_edicao`, **a mesma forma já validada** das policies de UPDATE dessas
+  tabelas — não é regra nova, é a regra da edição aplicada ao apagar.
+- **Escolhido `security_invoker` em vez de `DROP VIEW`:** fecha o mesmo buraco, é reversível, e
+  dispensa o `MergeDeep`/`type-fest` que o `DROP` exigiria para recorrigir os tipos (dependência não
+  instalada). As definições originais das duas views ficam em comentário na migração — reverter não
+  depende de backup nem de memória.
+- **Guarda que aborta a própria migração:** se existir policy `FOR ALL` alcançando `anon` numa das
+  três tabelas, ela reabriria o DELETE por OR e tornaria as policies novas decorativas. A migração
+  **falha alto** em vez de aplicar e deixar o verificador passar verde sobre buraco aberto.
+- **Verificador novo: `supabase/migrations/verifica-rls-fase1.sh`.** Rodado ANTES (6 falhas) e DEPOIS
+  (6 ✓) de aplicar. Ele **não escreve nada, e isso é consequência do filtro, não promessa**: todo
+  probe de escrita usa filtro que casa zero linhas, e o que torna o resultado conclusivo é a ordem de
+  decisão do Postgres — privilégio de tabela é checado ANTES das linhas, então `42501` prova o REVOKE
+  mesmo com filtro vazio, e `23502` prova que o INSERT chegou à tabela.
+- **O bloco das 3 policies de DELETE é PENDENTE de propósito, e sai com exit 2 — não com verde.** O
+  truque acima só serve para o que se conserta por REVOKE. Para policy, o filtro vazio devolve 204
+  nos dois casos, e distinguir exigiria mandar o DELETE contra linha real — que, com a policy aberta,
+  **apagaria fechamento de verdade para provar que dá para apagar fechamento de verdade**. Ele mede
+  por catálogo e se declara incompleto. Verde obtido por não olhar é o mesmo verde falso que apagar
+  asserção produz (ver a entrada da despesa, 12/08).
+- **Conferido como `anon`, pela tela, em `localhost:3015`** — não só pelo SQL, que é a lição do
+  incidente da `Compra`: `/dashboard`, `/frentistas` e `/fechamento` carregam com dado real e zero
+  erro de console. Leitura das views intacta e **com linha**: 201 em `vw_lucro_periodo`, 12 em
+  `frentistas`. Testar só o status 200 esconderia o pior desfecho — `security_invoker` sem policy de
+  SELECT na tabela base devolveria 200 com array vazio, tela em branco e nenhum erro.
+- **Nada foi tocado:** 213 `Fechamento`, 12 `Frentista`, 108 `Despesa`, iguais antes e depois.
+- ⚠️ **NÃO RESOLVE, e é consciente:** `get_frentistas_with_email` continua exposta (revogar derruba
+  `apps/web/src/services/api/frentista.service.ts:24` — sai junto com o login); `Despesa` segue com
+  INSERT/UPDATE anônimo `USING (true)`, que é a Fase 2; a leitura anônima do painel inteiro é a Fase
+  3 e depende de login existir. **Buckets do `storage` e Edge Functions não foram auditados** — não
+  aparecem no catálogo do Postgres e podem ser um buraco do mesmo tamanho.
+- ⚠️ **O lado "bloqueado" das 3 policies nunca foi provado por comportamento**, só por catálogo.
+  Ninguém tentou apagar linha antiga como `anon`, pelo motivo acima. E **ninguém de fora usou**: quem
+  clicou nas telas foi quem construiu, então pela `entrega-real` esta feature ainda é PROTÓTIPO.
+- 🔓 **Este commit vai com as duas travas do §14 REMOVIDAS, por decisão explícita do dono** —
+  `.mcp.json` sem `--read-only` e `apply_migration` fora da `deny`. Enquanto estiver assim,
+  `execute_sql` escreve em produção. Fica registrado aqui em vez de silencioso, que é o único jeito
+  de isso não virar o acidente que o §14 descreve.
+
 ### 🧹 `scripts/` arrumado: a regra do git invertida, um script aposentado, uma lacuna achada
 - **[12/08/2026] `.gitignore` invertido para `scripts/`.** A regra era `scripts/*` ignorado com
   uma exceção `!` nomeada **por arquivo** — e falhou **duas vezes nesta mesma semana**: o estágio 2
