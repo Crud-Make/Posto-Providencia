@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PostoProvider } from './contexts/PostoContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { PeriodoProvider } from './contexts/PeriodoContext';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import UpdateNotifier from './shared/ui/UpdateNotifier';
@@ -80,11 +81,13 @@ const App: React.FC = () => {
   return (
     <PostoProvider>
       <ThemeProvider>
-        <Toaster position="top-right" richColors closeButton />
-        <UpdateNotifier />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <PeriodoProvider>
+          <Toaster position="top-right" richColors closeButton />
+          <UpdateNotifier />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </PeriodoProvider>
       </ThemeProvider>
     </PostoProvider>
   );

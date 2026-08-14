@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePosto } from '../../contexts/usePosto';
 import { fechamentoMensalService, FechamentoMensalResumo, EncerranteMensalConsolidado } from '../../services/api/fechamentoMensal.service';
 import { leituraService } from '../../services/api';
-import { TrendingUp, Calendar, DollarSign, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { TrendingUp, DollarSign, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Calendario, modoMes } from '@shared/ui/calendario';
+import { usePeriodo } from '../../contexts/usePeriodo';
 import { useNavigate } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell, PieChart, Pie } from 'recharts';
-import { mesAtualIso } from '@posto/utils';
 
 interface FechamentoMensalProps {
     isEmbedded?: boolean;
@@ -49,9 +50,10 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
     const [, setError] = useState<string | null>(null);
     const [temDadosPendentes, setTemDadosPendentes] = useState(false);
 
-    // `mesAtualIso()`: `toISOString().slice(0,7)` pulava o MÊS inteiro na virada — às 21h
-    // de 31/07 a tela abria já em agosto, vazia.
-    const [selectedMonth, setSelectedMonth] = useState(mesAtualIso());
+    // O mês vem do contexto: é o mesmo período das demais telas de análise.
+    // O padrão dele é `hojeIso()`, e não `toISOString()` — este pulava o MÊS inteiro na
+    // virada, e às 21h de 31/07 a tela abria já em agosto, vazia.
+    const { mes: selectedMonth, definirMes: setSelectedMonth } = usePeriodo();
 
     // Stats calculations
     const totalizers = useMemo(() => {
@@ -193,17 +195,14 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                         Atualizar
                     </button>
-                    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-1.5 pr-4 shadow-xl shadow-black/20 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
-                        <div className="p-2 bg-slate-800 rounded-lg mr-3 text-blue-400 shadow-sm">
-                            <Calendar size={18} />
-                        </div>
-                        <input
-                            type="month"
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value)}
-                            className="bg-transparent border-none outline-none text-sm font-bold text-slate-200 uppercase tracking-wide cursor-pointer"
-                        />
-                    </div>
+                    <Calendario
+                        modo={modoMes}
+                        tom="escuro"
+                        valor={selectedMonth}
+                        aoMudar={setSelectedMonth}
+                        alinhamento="direita"
+                        className="rounded-xl shadow-xl shadow-black/20"
+                    />
                 </div>
             </div>
 

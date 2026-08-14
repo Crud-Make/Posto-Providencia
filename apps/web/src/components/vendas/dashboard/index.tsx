@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Calendar,
   Download,
   Printer,
   RefreshCw,
   AlertTriangle,
   Loader2
 } from 'lucide-react';
+import { Calendario, modoMes } from '@shared/ui/calendario';
 import { useDashboardVendas } from './hooks/useDashboardVendas';
 import CardsKpi from './components/CardsKpi';
 import GraficoEvolucao from './components/GraficoEvolucao';
@@ -58,15 +58,7 @@ const TelaDashboardVendas: React.FC = () => {
           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 dark:text-white">Dashboard de Vendas</h1>
           <div className="flex items-center gap-2 mt-3">
             <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Período de Análise:</span>
-            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg shadow-sm">
-              <Calendar size={18} className="text-blue-600" />
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="font-bold text-gray-900 dark:text-white text-sm outline-none border-none bg-transparent"
-              />
-            </div>
+            <Calendario modo={modoMes} valor={selectedMonth} aoMudar={setSelectedMonth} />
             <button
               onClick={loadData}
               className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

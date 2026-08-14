@@ -2,6 +2,56 @@
 
 ## [Não Lançado]
 
+### 🗓️ A data era 10 estados independentes — trocar o mês numa tela não mexia nas outras
+- **[14/08/2026] Achado pelo dono:** escolheu maio no dashboard geral, foi para a Visão do
+  Proprietário e ela continuava em agosto. E ao sair de uma tela e voltar, a data escolhida
+  sumia e voltava para hoje.
+- **A causa:** cada uma das 10 telas com filtro de data guardava o seu próprio `useState`
+  inicializado em `hojeIso()`/`mesAtualIso()`. Nenhuma conversava com as outras, e desmontar o
+  componente ao trocar de rota apagava a escolha. Duas queixas, uma raiz só.
+- **A correção:** `PeriodoContext` no nível do app é o dono único dessa data. Guarda **um**
+  `Periodo { inicio, fim }` e cada tela projeta o que precisa — intervalo lê direto, tela de mês
+  lê o mês de `fim` e escreve `intervaloDoMes`, tela de dia lê `fim` e escreve um dia só.
+  Persistido em `sessionStorage` via o novo `useEstadoPersistido`.
+- **`sessionStorage`, não `localStorage`, e é decisão:** a escolha precisa durar a sessão de
+  trabalho, mas **não** o dia seguinte — um painel de posto que abre pela manhã na data de ontem
+  parece atual e não está.
+- **Compartilham (6):** dashboard geral, Visão do Proprietário, relatório diário, fechamento
+  mensal, dashboard de vendas, análise de vendas e análise de custos.
+- **NÃO compartilham, de propósito (2):** fechamento diário e leituras diárias. São as telas
+  onde se lança e se salva dinheiro, e herdar a data de uma navegação de relatório abriria o
+  fechamento num dia que o usuário não escolheu ali. Elas lembram a **própria** data, com chave
+  própria, então também não resetam mais — só não herdam. Decisão do dono; não ligar ao contexto.
+  Fora também a barra do painel financeiro, que por decisão de 31/07 é um segundo eixo de tempo.
+
+### 📅 Um calendário só para o sistema — mudar o comportamento deixa de ser 13 edições
+- **[14/08/2026] O problema:** havia **16 seletores de data em 13 arquivos**. Um único era
+  calendário de verdade (`dashboard/components/date-range-picker.tsx`, usado numa tela só); todo o
+  resto era `<input type="date">` ou `type="month"` nativo, com a aparência decidida pelo
+  navegador e o formato pelo locale da máquina. Travar data futura, mudar cor de seleção ou
+  corrigir formato exigia editar cada um deles — e esquecer um era o normal.
+- **A solução, sob Open/Closed:** o calendário foi promovido para `shared/ui/calendario/` e
+  partido em núcleo fechado + dois parâmetros abertos. `calendario.tsx` desenha grade, navegação,
+  popover, `minimo`/`maximo` e `Esc`, e **não sabe** o que é dia, mês ou intervalo. Quem sabe é
+  o **modo** (`modos.ts`: `modoDia`, `modoMes`, `modoIntervalo`) e o **tom** (`tons.ts`). Modo ou
+  tom novo é objeto novo nesses arquivos — o núcleo não se altera.
+- **Por que dois tons e não um:** o sistema tem duas realidades visuais. `auto` segue o
+  `ThemeContext`; `escuro` é para as telas pintadas de slate na unha (fechamento diário,
+  fechamento mensal, financeiro), onde as variantes `dark:` não disparam e um calendário `auto`
+  apareceria branco dentro de um header escuro.
+- **Migrados nesta fase (10 seletores):** `dashboard` (intervalo), `relatorio-diario`,
+  `fechamento-diario` e `leituras-diarias` (dia), `financeiro` (os dois inputs viraram um
+  intervalo só), `vendas/dashboard`, `vendas/analise` (os dois `select` de mês e ano viraram um
+  calendário), `fechamento-mensal`, `dashboard-proprietario` (o `select` de 12 meses) e
+  `configuracoes/ModalApagarMes` (mês). O `date-range-picker.tsx` foi removido.
+- **Deliberadamente fora desta fase:** os 8 `type="date"` **dentro de formulário**
+  (`FormDespesa`, `ModalNovaNota`, `ModalPagamento`, `FormFrentista`, `FormReceita`) — ali o
+  nativo entrega validação de form e teclado de graça, e trocar é decisão à parte; e o
+  **PWA frentista**, que por §2 não pode importar de `apps/web` e exigiria criar um
+  `packages/ui` com React dentro.
+- **Sem toque em fórmula:** é UI pura. Cobertura: 15 testes novos sobre os modos
+  (`modos.test.ts`), que é onde mora a regra de seleção.
+
 ### 💰 Dia passado era avaliado a preço de hoje — o bug do "preço único"
 - **[14/08/2026] Achado pelo dono na auditoria real:** janeiro aparecia a R$ 6,98/L (preço de
   agosto no cadastro), quando o preço real do mês era R$ 6,28–6,48. O preço oscila mês a mês (março

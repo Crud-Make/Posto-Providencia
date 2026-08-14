@@ -1,0 +1,58 @@
+/**
+ * Estado de React que sobrevive à troca de tela.
+ *
+ * @remarks
+ * Existe porque toda tela do painel guardava a data num `useState` inicializado em `hojeIso()`.
+ * Sair da tela desmonta o componente, o estado morre, e voltar recomeça em hoje — o usuário
+ * escolhia maio, ia conferir outra coisa, voltava e estava em agosto de novo.
+ *
+ * **`sessionStorage`, não `localStorage`, e isso é decisão.** A escolha precisa durar a sessão
+ * de trabalho (é o que o usuário pediu), mas **não** o dia seguinte: um painel de posto que abre
+ * pela manhã na data de ontem é armadilha, porque a tela parece atual e não está. Fechar a aba
+ * zera; trocar de tela, não.
+ */
+import { useState, useCallback } from 'react';
+
+/** Prefixo das chaves, para não colidir com o que outra coisa guarde na sessão. */
+const PREFIXO = 'posto:';
+
+function ler<T>(chave: string): T | undefined {
+  try {
+    const bruto = sessionStorage.getItem(PREFIXO + chave);
+    return bruto === null ? undefined : (JSON.parse(bruto) as T);
+  } catch {
+    // Sessão indisponível (modo privado, cota) ou JSON corrompido: cai no valor inicial.
+    return undefined;
+  }
+}
+
+function gravar<T>(chave: string, valor: T): void {
+  try {
+    sessionStorage.setItem(PREFIXO + chave, JSON.stringify(valor));
+  } catch {
+    // Não poder gravar degrada a lembrança, não quebra a tela.
+  }
+}
+
+/**
+ * Como `useState`, mas lembra o valor entre montagens da mesma sessão.
+ *
+ * @param chave - Identidade do estado. Chave compartilhada = estado compartilhado entre telas.
+ * @param inicial - Só é chamado quando não há nada guardado.
+ */
+export function useEstadoPersistido<T>(
+  chave: string,
+  inicial: () => T
+): [T, (valor: T) => void] {
+  const [valor, definirValor] = useState<T>(() => ler<T>(chave) ?? inicial());
+
+  const definir = useCallback(
+    (novo: T) => {
+      definirValor(novo);
+      gravar(chave, novo);
+    },
+    [chave]
+  );
+
+  return [valor, definir];
+}

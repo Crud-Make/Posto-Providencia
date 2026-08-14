@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
+import { usePeriodo } from '../../../contexts/usePeriodo';
 import {
     fechamentoService,
     leituraService,
@@ -16,7 +17,7 @@ import { ShiftData, DailyTotals, ExpenseData } from '../types';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { DBDespesa } from '../../../types/database/index';
-import { hojeIso, semLancamento } from '@posto/utils';
+import { semLancamento } from '@posto/utils';
 
 /**
  * Fechamento com os campos necessários para o relatório diário.
@@ -124,7 +125,8 @@ function mapDbDespesaToUi(despesa: DBDespesa): ExpenseData {
 
 export const useRelatorioDiario = () => {
     const { postoAtivoId } = usePosto();
-    const [selectedDate, setSelectedDate] = useState(hojeIso());
+    // O dia vem do contexto: o relatório é tela de leitura, e acompanha o período de análise.
+    const { dia: selectedDate, definirDia: setSelectedDate } = usePeriodo();
     const [loading, setLoading] = useState(false);
     const [shiftsData, setShiftsData] = useState<ShiftData[]>([]);
     const [totals, setTotals] = useState<DailyTotals>({

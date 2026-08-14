@@ -6,6 +6,7 @@ import { isSuccess } from '../../../types/ui/response-types';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import type { PumpGroup } from '../types';
 import { hojeIso } from '@posto/utils';
+import { useEstadoPersistido } from '@shared/lib/estado-persistido';
 
 /**
  * Hook para gerenciar a lógica de registro de leituras diárias.
@@ -16,7 +17,9 @@ import { hojeIso } from '@posto/utils';
 export function useLeiturasDiarias(postoAtivoId: number | null) {
     // State
     const [bicos, setBicos] = useState<BicoComDetalhes[]>([]);
-    const [selectedDate, setSelectedDate] = useState<string>(hojeIso());
+    // Data própria, **fora** do `PeriodoContext` — mesma razão do fechamento diário: aqui se
+    // grava leitura. Persistida só para não voltar a hoje ao trocar de tela.
+    const [selectedDate, setSelectedDate] = useEstadoPersistido<string>('data-leituras', hojeIso);
     const [loadingBicos, setLoadingBicos] = useState(true);
     const [saving, setSaving] = useState(false);
     const [msgErro, setMsgErro] = useState<string | null>(null);

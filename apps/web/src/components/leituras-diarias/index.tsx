@@ -8,13 +8,13 @@
  */
 import React from 'react';
 import {
-  Calendar,
   Loader2,
   RefreshCw,
   AlertCircle,
   CheckCircle2,
   Save
 } from 'lucide-react';
+import { Calendario, modoDia } from '@shared/ui/calendario';
 import { usePosto } from '../../contexts/usePosto';
 import { useLeiturasDiarias } from './hooks/useLeiturasDiarias';
 import { TabelaLeituras } from './components/TabelaLeituras';
@@ -70,15 +70,12 @@ const TelaLeituras: React.FC = () => {
           {/* Date Picker */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Data</span>
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden h-[42px]">
-              <Calendar size={18} className="text-gray-400 ml-4" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-2 text-sm font-semibold text-gray-900 outline-none border-none bg-transparent"
-              />
-            </div>
+            <Calendario
+              modo={modoDia}
+              valor={selectedDate}
+              aoMudar={setSelectedDate}
+              className="h-[42px]"
+            />
           </div>
 
           {/* Refresh Button */}

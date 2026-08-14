@@ -1,5 +1,6 @@
 import React from 'react';
-import { TrendingUp, Calendar, MapPin } from 'lucide-react';
+import { TrendingUp, MapPin } from 'lucide-react';
+import { Calendario, modoDia } from '@shared/ui/calendario';
 import { Turno } from '../../../types/database/index';
 
 /**
@@ -75,15 +76,13 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
                 <div className="flex items-center gap-4">
                     {/* Seletores de Contexto Modernizados */}
                     <div className="flex items-center gap-3 bg-slate-800/50 p-1.5 rounded-xl border border-slate-700/50">
-                        <div className="flex items-center px-4 py-2 bg-slate-800 rounded-lg border border-slate-600/50 hover:border-slate-500 transition-colors group cursor-pointer">
-                            <Calendar size={16} className="text-blue-400 mr-3 group-hover:text-blue-300" />
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
-                                className="text-sm bg-transparent border-none focus:ring-0 p-0 text-slate-200 cursor-pointer font-medium"
-                            />
-                        </div>
+                        <Calendario
+                            modo={modoDia}
+                            valor={selectedDate}
+                            aoMudar={setSelectedDate}
+                            tom="escuro"
+                            className="py-2"
+                        />
                         <select
                             value={selectedTurno || ''}
                             onChange={(e) => setSelectedTurno(Number(e.target.value))}

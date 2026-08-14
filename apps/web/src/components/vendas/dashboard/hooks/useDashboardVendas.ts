@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../../contexts/usePosto';
+import { usePeriodo } from '../../../../contexts/usePeriodo';
 import { leituraService, estoqueService } from '../../../../services/api';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
@@ -20,10 +21,8 @@ export const useDashboardVendas = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+  // O mês vem do contexto: é o mesmo período das demais telas de análise.
+  const { mes: selectedMonth, definirMes: setSelectedMonth } = usePeriodo();
 
   const [salesSummary, setSalesSummary] = useState<SalesSummary>({
     totalLitros: 0,

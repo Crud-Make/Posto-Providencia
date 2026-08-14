@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, RefreshCw } from 'lucide-react';
+import { Calendario, modoMes } from '@shared/ui/calendario';
 import { PeriodoFiltro } from '../types';
-import { formatarMesBR } from '../../../utils/periodo';
 
 interface FiltrosDashboardProps {
   periodo: PeriodoFiltro;
@@ -12,8 +12,8 @@ interface FiltrosDashboardProps {
   /** Mês exibido, ISO local `aaaa-mm`. */
   mesSelecionado: string;
   onMesChange: (mes: string) => void;
-  /** Meses oferecidos no seletor, do mais recente para o mais antigo. */
-  mesesDisponiveis: readonly string[];
+  /** Mês mais recente selecionável — trava o calendário no presente, sem mês futuro. */
+  mesLimite: string;
   /** `false` esconde a aba "Hoje" — ela não existe em mês histórico. */
   ehMesCorrente: boolean;
 }
@@ -26,7 +26,7 @@ export const FiltrosDashboard: React.FC<FiltrosDashboardProps> = ({
   nomePosto,
   mesSelecionado,
   onMesChange,
-  mesesDisponiveis,
+  mesLimite,
   ehMesCorrente
 }) => {
   // Em mês fechado só existe a visão do mês; "Hoje" cai fora do período exibido.
@@ -47,18 +47,13 @@ export const FiltrosDashboard: React.FC<FiltrosDashboardProps> = ({
       </div>
 
       <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-        <select
-          value={mesSelecionado}
-          onChange={(e) => onMesChange(e.target.value)}
-          aria-label="Mês exibido"
-          className="px-3 py-2 rounded-lg text-sm font-medium bg-transparent text-gray-700 dark:text-gray-200 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-        >
-          {mesesDisponiveis.map((m) => (
-            <option key={m} value={m} className="dark:bg-gray-800">
-              {formatarMesBR(m)}
-            </option>
-          ))}
-        </select>
+        <Calendario
+          modo={modoMes}
+          valor={mesSelecionado}
+          aoMudar={onMesChange}
+          maximo={mesLimite}
+          className="border-0 shadow-none"
+        />
 
         <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1" />
 

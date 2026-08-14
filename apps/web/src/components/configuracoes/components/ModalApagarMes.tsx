@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, CalendarX, Loader2, Check } from 'lucide-react';
+import { Calendario, modoMes } from '@shared/ui/calendario';
 import { useApagarMes } from '../hooks/useApagarMes';
 
 interface ModalApagarMesProps {
@@ -54,13 +55,13 @@ export const ModalApagarMes: React.FC<ModalApagarMesProps> = ({ isOpen, postoId,
                         <label htmlFor="mes-apagar" className="block text-sm font-bold text-gray-900 dark:text-white">
                             Mês do movimento
                         </label>
-                        <input
+                        <Calendario
                             id="mes-apagar"
-                            type="month"
-                            value={mes}
-                            onChange={e => { definirMes(e.target.value); setConfirmacao(''); }}
-                            disabled={apagando}
-                            className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-bold"
+                            modo={modoMes}
+                            valor={mes}
+                            aoMudar={novo => { definirMes(novo); setConfirmacao(''); }}
+                            desabilitado={apagando}
+                            className="w-full py-3"
                         />
                     </div>
 

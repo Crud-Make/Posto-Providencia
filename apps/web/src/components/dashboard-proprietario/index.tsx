@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
-import { hojeIso, mesAtualIso, mesesRecentes, formatarMesBR } from '../../utils/periodo';
+import { hojeIso, formatarMesBR } from '../../utils/periodo';
+import { usePeriodo } from '../../contexts/usePeriodo';
 import { useDashboardProprietario } from './hooks/useDashboardProprietario';
 import { FiltrosDashboard } from './components/FiltrosDashboard';
 import { ResumoExecutivo } from './components/ResumoExecutivo';
@@ -8,15 +9,14 @@ import { DemonstrativoFinanceiro } from './components/DemonstrativoFinanceiro';
 import { AlertasGerenciais } from './components/AlertasGerenciais';
 import { PeriodoFiltro } from './types';
 
-/** Quantos meses o seletor oferece para trás. 12 cobre o ano corrente inteiro. */
-const MESES_NO_SELETOR = 12;
-
 const TelaDashboardProprietario: React.FC = () => {
-  const [mesSelecionado, setMesSelecionado] = useState<string>(mesAtualIso);
+  // O mês vem do contexto: é o mesmo período das demais telas de análise.
+  const { mes: mesSelecionado, definirMes: setMesSelecionado } = usePeriodo();
   const { dados, loading, recarregar } = useDashboardProprietario(mesSelecionado);
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('hoje');
 
-  const mesesDisponiveis = useMemo(() => mesesRecentes(hojeIso(), MESES_NO_SELETOR), []);
+  // Trava o calendário no mês corrente: mês futuro não tem dado, só confundiria.
+  const mesLimite = useMemo(() => hojeIso().slice(0, 7), []);
 
   // Trocar para um mês fechado tira "Hoje" do ar — a aba deixaria de existir na barra e o
   // painel ficaria preso num período que não é mais oferecido.
@@ -68,7 +68,7 @@ const TelaDashboardProprietario: React.FC = () => {
         nomePosto={dados.posto?.nome}
         mesSelecionado={mesSelecionado}
         onMesChange={setMesSelecionado}
-        mesesDisponiveis={mesesDisponiveis}
+        mesLimite={mesLimite}
         ehMesCorrente={ehMesCorrente}
       />
 

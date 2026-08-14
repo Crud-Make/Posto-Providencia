@@ -7,10 +7,11 @@
  */
 import { useState, useEffect } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
+import { usePeriodo } from '../../../contexts/usePeriodo';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
 import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
-import { hojeIso, type Periodo } from '../../../utils/periodo';
+import { hojeIso } from '../../../utils/periodo';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -51,11 +52,8 @@ export const useDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
 
-  // Filters state
-  const [periodo, setPeriodo] = useState<Periodo>(() => {
-    const hoje = hojeIso();
-    return { inicio: hoje, fim: hoje };
-  });
+  // Filters state — o período vem do contexto: é o mesmo das demais telas de análise.
+  const { periodo, definirPeriodo: setPeriodo } = usePeriodo();
   const [selectedFrentista, setSelectedFrentista] = useState<number | null>(null);
 
   // Options lists

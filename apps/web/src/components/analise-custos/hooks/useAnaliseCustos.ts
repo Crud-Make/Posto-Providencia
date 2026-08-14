@@ -1,15 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchProfitabilityData } from '../../../services/api';
 import { usePosto } from '../../../contexts/usePosto';
+import { usePeriodo } from '../../../contexts/usePeriodo';
 import { ProfitabilityItem, Margins } from '../types';
-import { paraMesLocal } from '@posto/utils';
+import { paraMesLocal, deIsoLocal } from '@posto/utils';
 
 export const useAnaliseCustos = () => {
     const { postoAtivoId } = usePosto();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<ProfitabilityItem[]>([]);
     const [margins, setMargins] = useState<Margins>({});
-    const [currentDate, setCurrentDate] = useState(new Date());
+    // O mês vem do contexto: é o mesmo período das demais telas de análise. A tela pensa em
+    // `Date`, então ele é derivado do mês compartilhado — sempre pelo dia 1, em hora local.
+    const { mes, definirMes } = usePeriodo();
+    const currentDate = useMemo(() => deIsoLocal(`${mes}-01`), [mes]);
 
     const loadData = useCallback(async (date: Date) => {
         try {
@@ -37,17 +41,12 @@ export const useAnaliseCustos = () => {
         loadData(currentDate);
     }, [currentDate, loadData]);
 
-    const handlePrevMonth = () => {
-        const newDate = new Date(currentDate);
-        newDate.setMonth(newDate.getMonth() - 1);
-        setCurrentDate(newDate);
-    };
+    /** Anda `passo` meses a partir do mês atual, escrevendo no período compartilhado. */
+    const andarMes = (passo: number) =>
+        definirMes(paraMesLocal(new Date(currentDate.getFullYear(), currentDate.getMonth() + passo, 1)));
 
-    const handleNextMonth = () => {
-        const newDate = new Date(currentDate);
-        newDate.setMonth(newDate.getMonth() + 1);
-        setCurrentDate(newDate);
-    };
+    const handlePrevMonth = () => andarMes(-1);
+    const handleNextMonth = () => andarMes(1);
 
     const exportToCSV = () => {
         if (!data.length) return;

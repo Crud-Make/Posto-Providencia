@@ -48,6 +48,7 @@ import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
 import { hojeIso, conferido } from '@posto/utils';
+import { useEstadoPersistido } from '@shared/lib/estado-persistido';
 import { meiosDaSessao } from '../../utils/fechamentoMeios';
 import { parseValue } from '../../utils/formatters';
 
@@ -55,7 +56,10 @@ const TelaFechamentoDiario: React.FC = () => {
    const { postoAtivoId, postoAtivo } = usePosto();
 
    // --- Estados de Contexto da Tela ---
-   const [selectedDate, setSelectedDate] = useState<string>(hojeIso());
+   // Data própria, **fora** do `PeriodoContext` de propósito: esta é a tela onde se lança e se
+   // salva dinheiro, e herdar a data de uma navegação de relatório abriria o fechamento num dia
+   // que o usuário não escolheu aqui. Persistida só para não voltar a hoje ao trocar de tela.
+   const [selectedDate, setSelectedDate] = useEstadoPersistido<string>('data-fechamento', hojeIso);
    const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
    const [activeTab, setActiveTab] = useState<AbaFechamento>('leituras');
    const [observacoes] = useState<string>('');
