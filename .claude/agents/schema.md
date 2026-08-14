@@ -92,13 +92,19 @@ them**, with the command that follows each.
   shared types live in `packages/types`. The duplicate under `apps/web` is
   therefore the suspect, but **confirm who imports which** before recommending a
   deletion: `grep -rn "types/database/generated" apps packages | grep -v node_modules`
-- **47 `.sql` files sit in two different folders** (07/08/2026): `supabase/` and
-  `supabase_migrations/`, with names like `create_notifications_table.sql` — no
-  timestamp, no ordering, no applied/not-applied record. §5 requires schema
-  migrations to be versioned files rather than panel clicks, and this does not
-  satisfy it: nothing here says which of the 47 ever ran.
+- **The `.sql` files were consolidated into one folder** (13/08/2026). They used to
+  sit in three — `supabase/migrations/`, `supabase_migrations/` at the repo root,
+  and loose files under `supabase/` — so each reader found a third of the SQL and
+  reached a different conclusion about the database. They now all live under
+  `supabase/migrations/`, and the 12 undated ones under `supabase/migrations/legado/`.
+  **Read `supabase/migrations/README.md` before answering anything about migration
+  history** — it records which of the 12 appear in the database's own history (four)
+  and which were applied outside it but exist in the catalog anyway (eight).
   Recount: `find . -name '*.sql' -not -path './node_modules/*' | wc -l`
   Cross-check what the database actually has: `list_migrations`.
+  Careful with the name: `supabase_migrations.schema_migrations` **with a dot** is
+  the Postgres schema holding the real history, and it still exists. Only the
+  repo folder of that name is gone.
 - **The `.sql` in the repo is not evidence that it ran.** Trust `list_migrations`
   and the catalog over the file tree, always, and say which one you used.
 
