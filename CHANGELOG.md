@@ -2,6 +2,25 @@
 
 ## [Não Lançado]
 
+### 💰 Dia passado era avaliado a preço de hoje — o bug do "preço único"
+- **[14/08/2026] Achado pelo dono na auditoria real:** janeiro aparecia a R$ 6,98/L (preço de
+  agosto no cadastro), quando o preço real do mês era R$ 6,28–6,48. O preço oscila mês a mês (março
+  teve 8 preços distintos na gasolina), mas `Combustivel.preco_venda` guarda **um preço só, o de
+  hoje** — e vários pontos do painel liam ele para dias passados, inflando venda e lucro históricos
+  em ~8–11%.
+- **O dado certo sempre existiu:** `Leitura.preco_litro` e `valor_total` são carimbados na
+  submissão com o preço vigente do dia (auditados contra a planilha em janeiro, linha a linha).
+  O defeito era só de leitura.
+- **Corrigido em dois pontos:** o relatório diário (`useRelatorioDiario`) passa a calcular venda e
+  lucro pelo preço carimbado na leitura (`vendaLucroDaLeitura`, com teste ao lado usando o dia
+  01/01 real), com cadastro apenas como fallback de linha antiga sem preço; e reabrir um dia salvo
+  na tela de fechamento (`useLeituras` → `updateBicoPrice`) restaura o preço do dia no estado da
+  tela, em vez de recalcular tudo com o preço atual.
+- **Fora do escopo, registrado como dívida:** as margens do `aggregator.service.ts` (dashboard)
+  ainda usam `preco_venda`/`preco_custo` do cadastro em agregações históricas, e o **custo** por
+  litro não é carimbado na leitura (o custo histórico correto vive na RPC
+  `get_dashboard_proprietario`). Mexer ali exige golden próprio antes.
+
 ### 🚨 12 dias nunca foram fechados — e a tela mostrava "FECHADO, R$ 0,00" para todos eles
 - **[13/08/2026] Achado ao investigar por que o relatório diário mostrava R$ 0,00 de venda com
   1.288 L na bomba.** Não era erro de cálculo: **12 fechamentos estão com `status = 'ABERTO'`**,

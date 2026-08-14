@@ -66,7 +66,7 @@ const TelaFechamentoDiario: React.FC = () => {
    const {
       leituras, carregando: loadingLeituras, carregarLeituras,
       alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros
-   } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
+   } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos, updateBicoPrice);
 
    const {
       sessoes: frentistaSessions, carregando: loadingSessoes,

@@ -50,12 +50,39 @@ interface LeituraDiaria {
     turno_id: number;
     leitura_inicial: number;
     leitura_final: number;
+    /** Preço do litro NO DIA da leitura, carimbado na submissão. */
+    preco_litro?: number | null;
+    /** Venda do bico no dia, gravada na submissão (`litros × preco_litro`). */
+    valor_total?: number | null;
     bico?: {
         combustivel?: {
             preco_venda?: number | null;
             preco_custo?: number | null;
         } | null;
     } | null;
+}
+
+/**
+ * Venda e lucro de uma leitura, a preço DO DIA.
+ *
+ * @remarks
+ * O preço vem do que foi carimbado na própria leitura (`preco_litro`/
+ * `valor_total`); o `preco_venda` do cadastro é só fallback para linha antiga
+ * sem preço gravado. Era daqui que saía o bug do "preço único": dia de janeiro
+ * (R$ 6,28) exibido a preço de agosto (R$ 6,98) — o cadastro guarda um preço
+ * só, o de hoje. O custo segue vindo do cadastro por falta de custo carimbado
+ * na leitura (o custo histórico correto vive na RPC `get_dashboard_proprietario`);
+ * o lucro daqui é aproximação de tela, não fórmula canônica.
+ */
+export function vendaLucroDaLeitura(l: LeituraDiaria): { volume: number; venda: number; lucro: number } {
+    const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
+    if (volume <= 0) return { volume: 0, venda: 0, lucro: 0 };
+
+    const precoDoDia = Number(l.preco_litro ?? l.bico?.combustivel?.preco_venda ?? 0);
+    const precoCusto = Number(l.bico?.combustivel?.preco_custo ?? 0);
+    const venda = l.valor_total != null ? Number(l.valor_total) : volume * precoDoDia;
+
+    return { volume, venda, lucro: volume * (precoDoDia - precoCusto) };
 }
 
 /**
@@ -169,16 +196,10 @@ export const useRelatorioDiario = () => {
                     let vendasLeituras = 0;
 
                     leiturasTurno.forEach(l => {
-                        const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
-                        if (volume > 0) {
-                            litrosTurno += volume;
-                            const precoVenda = Number(l.bico?.combustivel?.preco_venda || 0);
-                            const precoCusto = Number(l.bico?.combustivel?.preco_custo || 0);
-                            const lucroUnitario = precoVenda - precoCusto;
-
-                            vendasLeituras += volume * precoVenda;
-                            lucroTurno += volume * lucroUnitario;
-                        }
+                        const { volume, venda, lucro } = vendaLucroDaLeitura(l);
+                        litrosTurno += volume;
+                        vendasLeituras += venda;
+                        lucroTurno += lucro;
                     });
 
                     // O total do `Fechamento` só vale depois que o dia foi CONSOLIDADO pelo

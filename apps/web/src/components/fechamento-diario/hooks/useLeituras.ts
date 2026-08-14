@@ -203,7 +203,17 @@ export const useLeituras = (
   postoId: number | null,
   dataSelecionada: string,
   turnoSelecionado: number | null,
-  bicos: BicoComDetalhes[]
+  bicos: BicoComDetalhes[],
+  /**
+   * Devolve à tela o preço carimbado em cada leitura salva (`preco_litro`).
+   *
+   * @remarks
+   * Sem isso, reabrir um dia já salvo recalculava venda e resumo com o
+   * `preco_venda` de HOJE do cadastro — um dia de janeiro (R$ 6,28) aparecia
+   * a preço de agosto (R$ 6,98). O receptor esperado é o `updateBicoPrice`
+   * de `useCarregamentoDados`, que só altera o preço em memória da tela.
+   */
+  aoRestaurarPrecoDoDia?: (bicoId: number, precoDoDia: number) => void
 ): RetornoLeituras => {
   const [leituras, setLeituras] = useState<Record<number, Leitura>>({});
   const [carregando, setCarregando] = useState(false);
@@ -285,6 +295,11 @@ export const useLeituras = (
             inicial: formatarParaBR(l.leitura_inicial, 3),
             fechamento: (!aindaSemFechamento && l.leitura_final > 0) ? formatarParaBR(l.leitura_final, 3) : ''
           };
+          // Preço do DIA, carimbado na leitura salva — volta para a tela, senão
+          // o dia reaberto é recalculado com o preço de hoje do cadastro.
+          if (Number(l.preco_litro) > 0) {
+            aoRestaurarPrecoDoDia?.(l.bico_id, Number(l.preco_litro));
+          }
           return acc;
         }, {} as Record<number, Leitura>);
         setLeituras(mapeado);
@@ -325,7 +340,7 @@ export const useLeituras = (
     } finally {
       setCarregando(false);
     }
-  }, [postoId, dataSelecionada, turnoSelecionado, bicos]);
+  }, [postoId, dataSelecionada, turnoSelecionado, bicos, aoRestaurarPrecoDoDia]);
 
   /**
    * Handler para mudança de leitura inicial
