@@ -91,6 +91,57 @@ export function isSobra(diferencaValor: number): boolean {
 }
 
 /**
+ * Recupera o valor conferido a partir do que está gravado numa linha agregada de
+ * `Fechamento`, que guarda `total_vendas` e `diferenca` mas não o conferido.
+ *
+ * @param encerrante - `total_vendas` da linha (venda do concentrador).
+ * @param diferencaGravada - coluna `diferenca` da mesma linha.
+ * @returns `encerrante − diferencaGravada`, em precisão de centavos.
+ * @remarks Álgebra exata, não estimativa: é a inversa de {@link diferenca}.
+ *          Conferida contra produção em 13/08/2026 — nas 12 linhas de maior
+ *          |diferença| do histórico, `diferenca` gravada é idêntica a
+ *          `total_vendas − soma dos meios dos filhos`, ao centavo.
+ */
+export function conferidoImplicito(encerrante: number, diferencaGravada: number): number {
+    return emCentavos(encerrante - diferencaGravada);
+}
+
+/**
+ * `true` quando o fechamento registrou venda mas **nenhum** meio de pagamento.
+ *
+ * @param encerrante - `total_vendas` da linha.
+ * @param diferencaGravada - coluna `diferenca` da mesma linha.
+ * @param toleranciaEmReais - folga para ruído de centavo. Padrão: R$ 0,05.
+ * @returns `true` se houve venda e o conferido implícito é ~zero.
+ *
+ * @remarks
+ * Existe para substituir uma heurística que vivia em
+ * `apps/web/.../useRelatorioDiario.ts` e **zerava a diferença de caixa na tela**
+ * quando `|diferenca + total_vendas| < 5`. Duas coisas estavam erradas ali:
+ *
+ * 1. **O sinal.** Com `diferenca = encerrante − conferido` (§6, e confirmado no
+ *    dado real), "nada lançado" dá `diferenca = +total_vendas`, então a condição
+ *    testava `|2 × total_vendas| < 5` — impossível com venda acima de R$ 100.
+ *    Medido: **0 de 201** fechamentos do histórico a satisfaziam, e o caso que
+ *    ela dizia cobrir (`conferido = 0`) nunca ocorreu em 213 fechamentos. Ela
+ *    só dispararia com `conferido ≈ 2 × encerrante` — lançamento em dobro, o
+ *    oposto do que o comentário afirmava.
+ * 2. **Zerar o número.** Mesmo com o sinal certo, apagar a diferença esconde
+ *    exatamente o que o sistema existe para acusar. Aqui a pergunta é só de
+ *    *estado* — quem chama decide como sinalizar, e nenhum valor é reescrito.
+ */
+export function semLancamento(
+    encerrante: number,
+    diferencaGravada: number,
+    toleranciaEmReais = 0.05
+): boolean {
+    return (
+        encerrante > 0 &&
+        Math.abs(conferidoImplicito(encerrante, diferencaGravada)) <= toleranciaEmReais
+    );
+}
+
+/**
  * Detalhamento por meio de pagamento + total conferido.
  *
  * @remarks

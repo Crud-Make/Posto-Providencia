@@ -2,6 +2,530 @@
 
 ## [Não Lançado]
 
+### 🚨 A diferença de caixa parava de ser zerada na tela — e a heurística que fazia isso estava invertida
+- **[13/08/2026]** `useRelatorioDiario.ts` continha uma "proteção visual" que **zerava a diferença
+  de caixa** quando `|diferenca + totalVendas| < 5`, com o comentário "assume erro de
+  lançamento/pendência para não mostrar quebra gigante". Ela estava errada **duas vezes**.
+- **Errada no sinal.** Com `diferenca = encerrante − conferido` (§6, e confirmado pela skill contra
+  janeiro), "não lançou nada" produz `diferenca = +totalVendas` — então a condição pedia
+  `|2 × totalVendas| < 5`, impossível para qualquer venda acima de R$ 100. **Medido em produção: 0
+  de 201** fechamentos com venda > R$ 100 a satisfaziam, e o caso que ela dizia cobrir
+  (`conferido = 0`) **nunca ocorreu em 213 fechamentos**. Ela só dispararia com
+  `conferido ≈ 2 × encerrante` — lançamento em dobro, o oposto do que o comentário afirmava.
+- **Errada no ato.** Mesmo com o sinal certo, zerar apaga da tela exatamente o número que o sistema
+  existe para acusar. É a falha silenciosa do §V5: número errado sem aviso, pior que travar.
+- **O sinal do banco foi conferido antes de mexer, não presumido.** Nas 12 linhas de maior
+  |diferença| do histórico, a coluna `diferenca` é **idêntica** a `total_vendas − soma dos meios dos
+  filhos`, ao centavo. O banco segue o §6; era a heurística que estava invertida.
+- **Duas funções novas em `packages/utils/src/fechamento.ts`**, onde cálculo de domínio deve morar:
+  `conferidoImplicito(encerrante, diferencaGravada)` (a inversa exata de `diferenca`, porque a linha
+  agregada de `Fechamento` não guarda o conferido) e `semLancamento(...)`, que responde **estado**
+  sem reescrever valor nenhum. Quem chama decide como sinalizar.
+- **O status `Pendente` continua existindo, e agora com significado.** Antes era inalcançável na
+  prática; agora sai de um fato (`conferido ≈ 0` com venda > 0), e a quebra vai para a tela **como
+  está gravada**, em vez de virar `R$ 0,00`.
+- **Testes: 180 vitest (eram 171) e 454 golden (eram 393), zero falhas.** Os unitários usam os
+  números reais de produção — fechamento 517 (falta de R$ 1.996,87 sobre R$ 8.057,14) e 582 (sobra
+  de R$ 469,98) —, incluindo um teste que **prova o bug de sinal** mostrando que a condição antiga
+  era insatisfazível. O golden cruza `jan_encerrante` × `jan_frentista` dia a dia e verifica que o
+  conferido é recuperável ao centavo e que nenhum dia real de janeiro é "sem lançamento".
+- ⚠️ **O que NÃO foi provado:** a tela foi conferida quanto a **não-regressão** (`/relatorio-diario`
+  carrega como `anon`, zero erro de console), mas **não** com um dia de falta grande — não consegui
+  dirigir o seletor de data por script, e o dia corrente tem diferença zero. Falta o teste do §V3:
+  o dono abrir 16/02/2026 e ver R$ 1.996,87 aparecer onde antes poderia sumir.
+- **Lição, e é a mesma de sempre aqui:** o teste verde não viu isso porque **não havia teste
+  nenhum** em `relatorio-diario/`. Fórmula que nasce dentro de um hook não é coberta por nada — é o
+  modo de falha recorrente que a skill de fechamento descreve, com endereço novo.
+
+### 🔒 RLS Fase 1: as duas views deixam de ser porta de escrita, e o DELETE anônimo entra na janela
+- **[13/08/2026] Aplicada em produção** — `20260813_rls_fase1_views_e_delete_anonimo.sql`. Fecha os
+  dois caminhos que **contornavam** a RLS por fora. Nenhuma tabela estava sem RLS (o §5 já estava
+  cumprido); o buraco era outro.
+- **As views `vw_lucro_periodo` e `frentistas` rodavam como `postgres`.** Sem `security_invoker`,
+  auto-atualizáveis (`pg_relation_is_updatable` = 28 = insert+update+delete), com o `anon` tendo
+  SELECT/INSERT/UPDATE/DELETE nas duas. Como **nenhuma** das 44 tabelas tem `FORCE ROW LEVEL
+  SECURITY`, o dono ignorava as próprias políticas: um `PATCH /rest/v1/vw_lucro_periodo` com a anon
+  key reescrevia `total_vendas` e `lucro_liquido` de **todos** os fechamentos, passando por cima das
+  travas de janela de 31/07 e 02/08. Agora: `security_invoker = on` + escrita revogada.
+- **Três policies de DELETE anônimo eram `USING (true)`** — `FechamentoFrentista`, `Recebimento` e
+  `Despesa`. As janelas de 02/08 foram aplicadas ao INSERT e ao UPDATE, e **o DELETE ficou de fora**.
+  O FK `RESTRICT` protegia o `Fechamento` pai, mas o anon apagava os filhos primeiro. As três passam
+  a usar `dentro_da_janela_de_edicao`, **a mesma forma já validada** das policies de UPDATE dessas
+  tabelas — não é regra nova, é a regra da edição aplicada ao apagar.
+- **Escolhido `security_invoker` em vez de `DROP VIEW`:** fecha o mesmo buraco, é reversível, e
+  dispensa o `MergeDeep`/`type-fest` que o `DROP` exigiria para recorrigir os tipos (dependência não
+  instalada). As definições originais das duas views ficam em comentário na migração — reverter não
+  depende de backup nem de memória.
+- **Guarda que aborta a própria migração:** se existir policy `FOR ALL` alcançando `anon` numa das
+  três tabelas, ela reabriria o DELETE por OR e tornaria as policies novas decorativas. A migração
+  **falha alto** em vez de aplicar e deixar o verificador passar verde sobre buraco aberto.
+- **Verificador novo: `supabase/migrations/verifica-rls-fase1.sh`.** Rodado ANTES (6 falhas) e DEPOIS
+  (6 ✓) de aplicar. Ele **não escreve nada, e isso é consequência do filtro, não promessa**: todo
+  probe de escrita usa filtro que casa zero linhas, e o que torna o resultado conclusivo é a ordem de
+  decisão do Postgres — privilégio de tabela é checado ANTES das linhas, então `42501` prova o REVOKE
+  mesmo com filtro vazio, e `23502` prova que o INSERT chegou à tabela.
+- **O bloco das 3 policies de DELETE é PENDENTE de propósito, e sai com exit 2 — não com verde.** O
+  truque acima só serve para o que se conserta por REVOKE. Para policy, o filtro vazio devolve 204
+  nos dois casos, e distinguir exigiria mandar o DELETE contra linha real — que, com a policy aberta,
+  **apagaria fechamento de verdade para provar que dá para apagar fechamento de verdade**. Ele mede
+  por catálogo e se declara incompleto. Verde obtido por não olhar é o mesmo verde falso que apagar
+  asserção produz (ver a entrada da despesa, 12/08).
+- **Conferido como `anon`, pela tela, em `localhost:3015`** — não só pelo SQL, que é a lição do
+  incidente da `Compra`: `/dashboard`, `/frentistas` e `/fechamento` carregam com dado real e zero
+  erro de console. Leitura das views intacta e **com linha**: 201 em `vw_lucro_periodo`, 12 em
+  `frentistas`. Testar só o status 200 esconderia o pior desfecho — `security_invoker` sem policy de
+  SELECT na tabela base devolveria 200 com array vazio, tela em branco e nenhum erro.
+- **Nada foi tocado:** 213 `Fechamento`, 12 `Frentista`, 108 `Despesa`, iguais antes e depois.
+- ⚠️ **NÃO RESOLVE, e é consciente:** `get_frentistas_with_email` continua exposta (revogar derruba
+  `apps/web/src/services/api/frentista.service.ts:24` — sai junto com o login); `Despesa` segue com
+  INSERT/UPDATE anônimo `USING (true)`, que é a Fase 2; a leitura anônima do painel inteiro é a Fase
+  3 e depende de login existir. **Buckets do `storage` e Edge Functions não foram auditados** — não
+  aparecem no catálogo do Postgres e podem ser um buraco do mesmo tamanho.
+- ⚠️ **O lado "bloqueado" das 3 policies nunca foi provado por comportamento**, só por catálogo.
+  Ninguém tentou apagar linha antiga como `anon`, pelo motivo acima. E **ninguém de fora usou**: quem
+  clicou nas telas foi quem construiu, então pela `entrega-real` esta feature ainda é PROTÓTIPO.
+- 🔓 **Este commit vai com as duas travas do §14 REMOVIDAS, por decisão explícita do dono** —
+  `.mcp.json` sem `--read-only` e `apply_migration` fora da `deny`. Enquanto estiver assim,
+  `execute_sql` escreve em produção. Fica registrado aqui em vez de silencioso, que é o único jeito
+  de isso não virar o acidente que o §14 descreve.
+
+### 🧹 `scripts/` arrumado: a regra do git invertida, um script aposentado, uma lacuna achada
+- **[12/08/2026] `.gitignore` invertido para `scripts/`.** A regra era `scripts/*` ignorado com
+  uma exceção `!` nomeada **por arquivo** — e falhou **duas vezes nesta mesma semana**: o estágio 2
+  e o export de despesa nasceram fora do git em silêncio. É o mecanismo exato que perdeu os dois
+  estágios originais do ETL em 29/07: pasta ignorada, `git status` limpo, código sumindo sem
+  aviso. Agora `scripts/` é versionado por inteiro e o padrão passa a ser seguro — script novo
+  entra por omissão, em vez de sumir por omissão. Conferido com um arquivo de teste.
+- **`carga-historico-despesa.py` aposentado.** Ele levava a despesa do sqlite **para** a tabela
+  `Despesa` de produção. Como a `Despesa` virou a **origem** da despesa (via
+  `etl-despesa-banco.py`), o script ficou circular: leria de onde escreve. Já cumpriu o papel —
+  a carga que ele fez é justamente a que hoje lemos de volta. Sai do disco, fica no git.
+- **`auditoria-lucro-mes.py` repontado** para `despesa_lancada`, com o porquê escrito no lugar
+  onde a consulta acontece: é a lista completa que manda no rateio (§6), não a parcial da planilha.
+- ⚠️ **Lacuna encontrada, não corrigida: `carga-historico-fechamento.py` lê três tabelas que o
+  estágio 2 não produz** — `fechamento_diario`, `frentista_dia_total` e `venda_frentista_diaria`.
+  O dado existe no staging do estágio 1 (venda por frentista e forma, venda do concentrador,
+  totais do bloco de caixa); falta o mapeamento. Ficou de fora de propósito: é caminho que grava
+  **fechamento em produção**, mexe com `valor_conferido` e `diferenca`, e merece tarefa própria
+  com a skill de fechamento aberta — não um apêndice de arrumação de pasta.
+
+### ✅ A despesa "trimestral" era real — só mora no banco, não na planilha. Suíte em 393/0
+- **[12/08/2026] Conferido contra produção: R$ 195.230,40 em 108 lançamentos, meses 01–07, ao
+  centavo.** A tabela `Despesa` do app tem Embasa (250,00), Net (400,00), Luz (650,00), extintor
+  (800,00), Concerto da Bomba (3.300,00), Bombeiro AVCB (3.418,00) e salários a R$ 2.100. A
+  diferença contra a planilha bate exata: **R$ 54.774,13**.
+- **O erro era de nome, não de número.** Não existe apuração trimestral no posto — o dono
+  confirmou, e a varredura de toda célula das 12 abas comprovou. Mas a lista existe: mora na
+  tabela `Despesa`, não em aba de planilha. Alguém batizou de `despesa_trimestral` o que é
+  simplesmente **a despesa completa**. Renomeada para **`despesa_lancada`**.
+- **O quase-acidente que isso causou.** Na leitura de que a lista era fictícia, cheguei a remover
+  as 11 asserções do `lucro-real.golden.spec.ts` e a suíte "fechou verde" em 384/0. Era verde
+  falso: obtido apagando o que incomodava. Revertido em `7740858` assim que o dono corrigiu.
+  **Suíte verde por remoção de asserção é pior que suíte vermelha**, porque a vermelha avisa.
+- **Passo novo de ETL: `scripts/etl-despesa-banco.py`.** Exporta a `Despesa` do Supabase para o
+  staging; o estágio 2 a carrega em `despesa_lancada`. **Cada fonte no que ela é autoridade:**
+  planilha manda em venda e encerrante, banco manda em despesa. O estágio 2 agora REPROVA a carga
+  se a despesa do banco faltar — sem ela o custo por litro sairia da lista parcial, contra o §6.
+- **Duas asserções corrigidas porque descreviam a tabela antiga, não a real:** a que exigia 12
+  meses (produção tem 7, nada em agosto–dezembro) e a que exigia soma crua = dobro (a do banco
+  são lançamentos individuais, sem linha de total — só a da planilha tem essa armadilha).
+- **Suíte golden: 393 passam, 0 falham** — os cinco arquivos verdes pela primeira vez desde 29/07.
+  Vitest 171/171, `type-check` limpo.
+- **O número que fica:** o lucro real dos 7 meses é **R$ 165.785,32, margem 8,63%** — não os
+  R$ 220.559,42 / 11,48% da planilha, que não enxerga R$ 54.774,13 dos gastos.
+- **A lição que fica:** *dado sem procedência escrita é dado que alguém vai apagar por engano.*
+  O número estava certo desde 31/07; o que faltava era dizer de onde ele vinha.
+
+### 🧪 ETL estágio 2: a carga validada, e 4 dos 5 golden masters de volta
+- **[12/08/2026] `scripts/etl-estagio2-carga.py`.** Mapeia o staging cru do estágio 1 para as
+  tabelas do contrato e grava em **staging**, nunca em `docs/data/`: `posto_jorro_2026.sqlite`
+  (1.236 linhas de `encerrante_diario`, 42 de `resumo_mensal_bico`, 42 de `validacao_mensal`,
+  28 de `compra_mensal`, 28 de `estoque_mensal`, 264 de `despesa_categoria_mensal`, 12 de
+  `despesa_mensal`), `janeiro_referencia.sqlite` e `fixture_lucro_custo_mes01.json`. Promover
+  é ato do dono — e o hook `protege-dados` nega a promoção vinda de agente, o que torna a
+  garantia estrutural em vez de combinada.
+- **Resultado contra os golden masters: 382 passam, 11 falham — e as 11 são `despesa_trimestral`.**
+  `custo-historico`, `fechamento` e `lucro` ficam **inteiramente verdes**; `encerrante-mensal`
+  também. Só `lucro-real` fica vermelho, e por falta de fonte, não por defeito de carga.
+- **O defeito que os goldens pegaram, e que nenhuma outra conferência pegaria.** A primeira
+  versão derivava `litros_em_lacuna` somando as janelas de dias incompletos. Parece equivalente
+  à definição do domínio e não é: `encerrante-mensal.ts` define a lacuna como **resíduo do mês**
+  — `(fechamento − inicial) − litros lançados` — e opera em mililitro inteiro. Em fevereiro o
+  bico 03 divergia em **3 mL** contra uma tolerância de 2 mL. Um erro de 3 mL não aparece em
+  nenhuma reconciliação de total; só um golden por bico o encontra. Quem se ajustou foi o ETL,
+  não o teste.
+- **Cada tabela carrega o rótulo de bico da SUA aba, verbatim.** O mesmo bico é `DS:.10,Bico 04`
+  no bloco de dia e `Ds:.500,Bico 04` na aba de resumo. Uniformizar quebraria os dois de lados
+  opostos: o `BICO_COMBUSTIVEL` do golden do custo histórico chaveia pelo rótulo do dia, e o
+  `custoDoBico` do fixture do lucro casa por `startsWith('Ds')`, que o `DS:` maiúsculo não
+  satisfaz.
+- **⚠️ A baseline nova NÃO é idêntica à antiga.** A suíte golden saiu de 287 para **393 testes**
+  — os goldens geram um teste por linha de dado, então mais testes significa mais linhas em
+  janeiro do que a referência de 26/07 tinha. É coerente com a decisão de 07/08 de a baseline
+  nascer **marcada como não-validada**, e é mais uma razão para a promoção ser conferida à mão.
+- **`.gitignore`: o estágio 2 quase nasceu fora do git.** A regra é `scripts/*` com exceções
+  nomeadas uma a uma, e sem a linha nova o script seria ignorado em silêncio — o mesmo mecanismo
+  pelo qual os dois estágios originais se perderam em 07/08.
+
+### 🧪 ETL: o estágio 1 passa a ler a aba de resumo, e acha um bloco de rascunho no caminho
+- **[12/08/2026] O estágio 1 só lia os blocos de dia.** Isso cobria `encerrante_diario` e mais
+  nada — as outras sete famílias de tabela que os golden masters consultam (`resumo_mensal_bico`,
+  `compra_mensal`, `estoque_mensal`, `despesa_mensal`, `despesa_categoria_mensal`, custo
+  histórico) moram na aba `POSTO JORRO 2026`, que o estágio 1 abria só para pegar um total de
+  litros. Era por isso que 4 dos 5 goldens não tinham como voltar a rodar. Extração crua desses
+  blocos adicionada, com cabeçalho **verbatim**: batizar coluna é interpretação, e interpretação
+  é estágio 2.
+- **⚠️ Achado: a planilha tem um bloco de RASCUNHO que se parece com um mês.** `Posto Jorro,
+  mês 0.` (L426) repete inicial, fechamento e litros de janeiro — 46.843,062 idênticos — mas com
+  lucro/litro inflado (1,1135 contra os 0,6618 do janeiro real) e `Desp,Mês.` chapado em
+  1.000,00. Carregá-lo como mês injetaria um janeiro fantasma com lucro ~68% maior. É o caso que
+  a skill de ETL avisa: mais de uma tabela para a mesma coisa, discordando. Fica **registrado
+  em `secoes_ignoradas`**, não descartado em silêncio — junto de `Posto Jorro, Ano 26.` (a
+  consolidação do ano, que também não é mês).
+- **O bug que a validação pegou, e por que ele existia.** A primeira versão delimitava a seção de
+  cada mês pelo rótulo do mês SEGUINTE. Como o mês 07 (L188) só tem outro rótulo de mês lá na
+  L426, a seção dele engolia o bloco anual, a matriz de despesa e o histórico — e o total do mês
+  saía 268.501,711 no lugar de 31.038,922. É a guarda 1 da skill (fim de bloco vem do rótulo
+  seguinte, nunca de deslocamento) mordendo por eu ter escolhido o rótulo errado como fronteira.
+  Fronteira passou a ser **toda** linha com rótulo na coluna B.
+- **Conferido contra total independente**, como a skill exige: os 7 meses fecham ao mililitro
+  contra a linha `Total e Media ->` de cada seção, e a matriz de despesa soma **140.456,27** —
+  o mesmo valor travado em `lucro-real.golden.spec.ts` — com os 7 meses batendo um a um.
+- **Ainda impossível: `despesa_trimestral`.** Não está em nenhuma das 12 abas; veio de fonte
+  externa. Enquanto for assim, `lucro-real.golden.spec.ts` não tem como ser restaurado a partir
+  do `.xlsx`, e `bun run test:golden` seguirá vermelho nesse arquivo.
+
+### 🧹 Ferramental organizado: o aviso que mentia, a memória fora do git e a janela aberta
+- **[07/08/2026] Janela de escrita do Supabase fechada.** Os 2 UPDATEs que a abriram em 07/08
+  **nunca tinham sido aplicados** — a janela ficou aberta com produção gravável e o motivo dela
+  ainda de pé. Aplicados (`Leitura` id 1887 e 1893: um `8` digitado no lugar de `6`, que
+  propagava `litros_vendidos` 200.105,230 e `valor_total` 1.396.734,51 numa linha só). Bico 2
+  conferido de 02/08 a 06/08: saltos entre leituras zerados, `final − inicial − litros = 0` e
+  `valor − litros × preço = 0` nas 5 linhas. `--read-only` devolvido ao `.mcp.json`.
+- **[07/08/2026] O detector de plugin fantasma acusava o próprio exemplo.** O §14 documenta o
+  hook com `` `prefixo-com-hifen:algo` ``, e o regex lia esse texto como um plugin de verdade:
+  falso positivo auto-referencial, disparando em **toda sessão**. Pior que não avisar — o §14
+  diz que aviso que aparece sempre deixa de ser lido, e este treinava exatamente esse reflexo.
+  Span de crase dupla passou a ser tratado como o que é: exemplo literal, nunca citação de uso.
+- **Por que os 89 testes não pegaram:** cada caso **sobrescreve** o `CLAUDE.md` com texto de
+  laboratório e restaura no fim, então o arquivo real nunca era testado. Suíte foi para **92**,
+  e o caso novo roda contra o `CLAUDE.md` de verdade. Mesma família dos 4 incidentes de
+  "instrução que sobrevive à ferramenta": o teste passava enquanto a vida real falhava.
+- **[07/08/2026] A memória automática da sessão vivia fora do repo.** Ficava só em
+  `~/.claude/projects/<slug>/memory/` — sem git, sem blame, sem backup. Terceira repetição do
+  acidente do `docs/`, e a mais silenciosa: perder a máquina perderia onde está a planilha
+  fonte, o estado do ETL e o porquê dos timestamps em UTC. Os arquivos passaram a morar em
+  `.claude/memoria/`, versionados, e aquele caminho virou **symlink** para cá — um lugar só,
+  carregamento automático intacto. Auditado antes: repo privado, sem credencial, sem nome de
+  pessoa, e os 2 agregados citados já estavam em `lucro-real.golden.spec.ts`.
+- **`.claude/agent-memory/` não existia.** O `.gitignore` abria exceção para ele e o §13 o
+  descrevia funcionando, mas o diretório nunca foi criado — e git não versiona diretório vazio.
+  A memória dos 6 agentes nasceria fora do git. Materializado com `.gitkeep`.
+- **Allowlist de permissões limpa.** O `settings.json` versionado tinha uma única regra,
+  `Bash(./gradlew:*)` — resíduo de template num projeto Bun. O `settings.local.json` acumulava
+  4 mensagens de commit específicas, um `tee` para o scratchpad de uma sessão morta e um `awk`
+  de dois arquivos. Trocado por regras de leitura reaproveitáveis (git de consulta, `ls`/`find`,
+  `sqlite3`, MCP de leitura do Supabase).
+- ⚠️ **Não corrigido, decisão sua:** `settings.local.json` guarda o `SUPABASE_ACCESS_TOKEN` em
+  texto plano. Está gitignored e **nunca foi commitado** (conferido em todo o histórico), mas um
+  PAT `sbp_` alcança a API de management. Alternativa: exportá-lo no `~/.bashrc` e deixar o
+  `.mcp.json` expandir do ambiente, que é o que ele já faz.
+
+### 📊 A despesa estava na planilha o tempo todo — o rótulo é abreviado
+- **[07/08/2026]** A memória do ETL afirmava que as duas listas de despesa **não estavam em
+  nenhuma das 12 abas**. Errado, e o erro era de busca: o rótulo no painel é `Desp,Mês.`, e a
+  varredura procurava a palavra "despesa" inteira.
+- **Onde está, conferido célula a célula** na aba `POSTO JORRO 2026`: `despesa_categoria_mensal`
+  nas linhas 258–285 (categorias em C × meses em D–O, total por categoria em P), com a linha 286
+  fechando por mês e somando **140.456,27 exato** nos 7 meses — o mesmo número travado no spec.
+  `compra_mensal` e `estoque_mensal` nos blocos "Compra"/"Estoque" de cada mês; custo histórico
+  ano a ano a partir da linha 292 (2017→2026).
+- **`despesa_trimestral` (195.230,40) segue ausente** — nem o total nem os rótulos exclusivos
+  dela (Embasa, extintor, Net, Luz, conserto de bomba). Veio de outra fonte. Importa porque o
+  `lucro-real.golden.spec.ts` registra decisão de 31/07 de que **ela** é a fonte de verdade do
+  lucro real; a mensal ignora 54.774,13 e superestima o lucro em ~25%. Desconsiderada por ora,
+  a pedido do dono.
+- **Lição de método:** o `etl_jorro.py` de `~/Downloads` também não extrai despesa, e cheguei a
+  ler isso como corroboração de que a lista não existia. Não era — ele só varre as abas de mês
+  e ignora a `POSTO JORRO 2026`, justamente onde despesa, compra e estoque moram. **Duas buscas
+  falhas não somam evidência: é a mesma falha duas vezes.**
+
+### 🔴 `docs/data/` sumiu do disco — golden master 5/5 quebrado, e não dá pra recuperar
+- **[07/08/2026]** `bun run test:golden`: **0 pass, 5 fail, 5 errors**. Todos os cinco specs
+  estouram no `new Database()` — `docs/data/` não existe mais nesta máquina. O §7 do
+  `CLAUDE.md` afirmava "287 golden + 30 vitest, zero falhas"; estava desatualizado.
+- **Cadeia reconstruída:** o commit `d4491b2` (29/07) desversionou `docs/` inteiro — 150
+  arquivos, 51.774 linhas — com a mensagem *"Tudo continua em disco, só não vai mais pro
+  GitHub"*. Em 07/08 não continuava. Lixeira vazia, nenhuma cópia em `/home/thygas` nem em
+  `/mnt/dados`. Um `git clean -fdx` depois daquele commit explica exatamente o quadro: é o
+  `-x` que apaga arquivo ignorado, e desversionar foi justamente o que tornou `docs/`
+  ignorado.
+- **Irrecuperável:** `atualizado.xlsx`, `janeiro_referencia.sqlite`, `posto_jorro_2026.sqlite`
+  e `fixture_lucro_custo_mes01.json`. Nunca estiveram em commit nenhum (`.gitignore:35`), então
+  o git não tem o que devolver.
+- **Recuperável de `d4491b2^`:** `docs/data/xlsx_to_csv.py` (159 l.), `docs/data/migrate_frentista.py`
+  (282 l.) e os 150 arquivos versionados de `docs/`. Comando:
+  `git show d4491b2^:docs/data/xlsx_to_csv.py > destino.py`
+- **Único caminho de volta:** o `.xlsx` original do posto. Com ele os dois scripts saem do git e
+  a cadeia se refaz. Até lá, o §0.6 bloqueia mexer em **qualquer** fórmula.
+- **Lição que virou trava:** o `higiene.py` (SessionStart) passou a conferir os três caminhos que
+  os golden masters abrem. Sumiu de novo, a sessão avisa na primeira linha. Antes disso nada
+  avisava — diretório gitignored deixa o `git status` limpo enquanto a prova de auditoria não
+  existe.
+- ⚠️ Achado de brinde, **não corrigido**: o §0.5 aponta o ProvControl em `../ProvControl`, que
+  também não existe nesta máquina. Decisão sua se o caminho mudou ou se o repo se foi junto.
+
+### 🕳️ Quatro instruções que sobreviveram às ferramentas — e o hook que fecha o padrão
+- **[07/08/2026]** `claude-mem` e `mattpocock-skills` **não estão instalados** (zero rastro em
+  `~/.claude/plugins/`, nenhum marketplace configurado), e mesmo assim **6 das 9 linhas da tabela
+  do §13** apontavam para eles. Removidas e substituídas pelo que existe de fato: `/code-review`,
+  `/simplify` e `/security-review` embutidos, mais o `engraph:engraph` (instalado em 05/08 e
+  citado em lugar nenhum até hoje).
+- **O padrão é sempre o mesmo, e sempre silencioso** — skill ausente não dá erro, só não carrega:
+  1. graphify sumiu da máquina, o §12 seguiu mandando usá-lo;
+  2. MCP do Supabase sumiu, o agente `rls` seguiu citando 3 ferramentas inexistentes;
+  3. `claude-mem`/`mattpocock-skills` sumiram, 6 linhas do §13 seguiram apontando;
+  4. o `higiene` conferia symlink em `~/Projetos/trabalho/.claude/skills`, **que também não
+     existe** — a checagem devolvia lista vazia em silêncio.
+- **Virou hook** (`higiene`, SessionStart): considera plugin todo `` `prefixo-com-hifen:algo` ``
+  citado no `CLAUDE.md` e cobra que esteja em `installed_plugins.json`. O hífen é o que separa
+  nome de plugin de palavra solta em pt-BR — sem ele, `bun:test` e o placeholder `arquivo:linha`
+  virariam falso positivo, e o primeiro rascunho acusou exatamente esse `arquivo`. Plugin sem
+  hífen escapa, de propósito: este aviso guarda documentação, não dinheiro, e aviso ruidoso
+  deixa de ser lido.
+- **Segundo hook**: aviso quando o `--read-only` está fora do `.mcp.json`. Tirar o flag é uma
+  janela que se abre à mão e se fecha à mão, e fechar é o passo que se esquece.
+- **`testa-hooks.py`: 82 → 89 casos**, todos passando. Os 7 novos cobrem o detector de fantasma,
+  e os negativos (`bun:test`, `arquivo:linha`, `engraph:engraph`, `feat/#12-nome`) carregam o
+  desenho. O teste reescreve o `CLAUDE.md` para exercitar o detector e restaura em `finally` —
+  teste que morre no meio não pode deixar a fonte de verdade truncada em disco.
+
+### 🔎 O banco confere com a planilha; o que não confere são 2 linhas de agosto
+- **[07/08/2026]** Cruzamento de `Leitura` (1.230 linhas) contra o staging do estágio 1:
+  **199 dos 206 dias batem ao mililitro**. O banco é fiel à planilha em janeiro–julho.
+- ⚠️ **Correção de um diagnóstico errado meu, registrada de propósito.** Na primeira passada
+  reportei que o banco inteiro estava deslocado um dia, com uma tabela de 7 meses divergentes.
+  Era artefato da consulta: converti `data` para `America/Sao_Paulo` e, como **as 1.230 leituras
+  estão gravadas em `00:00 UTC`**, cada uma caiu às 21h do dia anterior. Em UTC, tudo fecha.
+- **A armadilha continua armada, e é do produto, não da consulta:** timestamp em meia-noite UTC
+  mais `TZ=America/Sao_Paulo` (que o `package.json` usa nas duas suítes) faz qualquer
+  `getDate()`/`toLocaleDateString` sobre `Leitura.data` escorregar o mês inteiro um dia — e jogar
+  1º de janeiro para 2025. **Não conferido:** se algum agregador do painel faz essa conversão.
+  Ao consultar por dia/mês, usar sempre `AT TIME ZONE 'UTC'`.
+- **Erro real de digitação, `Leitura` id 1887** (04/08 UTC, bico 2): `leitura_final` gravado como
+  `896.720,293` quando a sequência exige `696`.720,293 — um `8` no lugar de um `6`, mesma classe
+  do 9,98/6,98 que o `custo-historico.golden.spec.ts` já documenta. Rende **+200.105,230 L** e
+  **+R$ 1.396.734,51** de receita fantasma, e o valor errado propagou para o `leitura_inicial` da
+  id 1893, que por isso registrou 0 litros em vez de 396,849. SQL de correção com guarda no
+  `WHERE` está pronto; **não aplicado** — o MCP recusou (`cannot execute UPDATE in a read-only
+  transaction`), que é a trava funcionando.
+- **Em aberto, não tocado:** 26 e 27 de julho existem na `Leitura` e não na planilha. O 27 traz
+  300 / 150 / 200 / 400 / 100 / 50 — redondos demais para operação real.
+
+### 🔧 ETL estágio 1 reescrito — 7 meses extraídos e conciliados contra a planilha
+- **[07/08/2026]** A planilha original apareceu (`~/Downloads/Posto,Jorro, 2026.xlsx`,
+  965.079 B, `sha256 abecc283…`), o que reabre o caminho para `docs/data/`. Mas os estágios
+  1 e 2 **nunca foram versionados** e se perderam com a pasta: só sobreviveram o estágio 3
+  (`scripts/carga-historico-*.py`) e, no histórico, `xlsx_to_csv.py` e `migrate_frentista.py`.
+- **`scripts/etl-estagio1-staging.py`** — extração crua e fiel dos 7 meses para JSON, com as
+  3 guardas da skill. Mora em `scripts/`, versionado: código junto do dado foi o que matou os
+  estágios antigos. Lê xlsx pela stdlib (`openpyxl` não está instalado, §0.2). Idempotente,
+  conferido por hash da saída.
+- **Conciliação contra a aba `POSTO JORRO 2026`, mês a mês:**
+
+  | mês | dias c/ dados | litros extraídos | referência | status |
+  |----:|--------------:|-----------------:|-----------:|--------|
+  | 01 | 31 | 46.843,062 | 46.843,062 | confere |
+  | 02 | 28 | 29.374,536 | 38.509,099 | confere com janela |
+  | 03 | 31 | 41.060,781 | 41.060,781 | confere |
+  | 04 | 30 | 42.900,019 | 42.900,019 | confere |
+  | 05 | 31 | 41.224,482 | 41.224,482 | confere |
+  | 06 | 30 | 41.929,977 | 41.929,977 | confere |
+  | 07 | 25 | 31.038,922 | 31.038,922 | confere |
+
+- **3 bugs de extração encontrados e corrigidos no caminho** — os três silenciosos, nenhum
+  levantava erro:
+  1. **Célula auto-fechada engolindo as vizinhas.** `<c r="C2" s="1047"/>` sem alternativa no
+     regex fazia o `.*?</c>` avançar até o próximo `</c>`. Escondia **30 dos 31** blocos de dia.
+     Primeira leitura reportou "1 bloco por mês" e a planilha parecia quebrada — era o parser.
+  2. **Duas colunas chamadas `Litros`.** F é por bico, I é por produto agregado, e a célula do
+     bico 05 na coluna I guarda o total do dia inteiro. Um dict comprehension deixava I vencer
+     e a soma saía **exatamente 2×** a real (93.686,124 contra 46.843,062). Dobro exato é o
+     disfarce perfeito: parece total plausível. Corrigido com `mapa_colunas`, primeira ocorrência
+     vencendo.
+  3. **Rótulo `Total` de outra seção cortando a tabela de bicos.** Do mês 03 em diante a seção
+     de pagamentos migrou para as colunas K–N, e o `Total` dela em K10 fazia a tabela de bicos
+     parecer terminar uma linha antes. **O bico 06 sumia inteiro dos meses 03 a 07** — e o
+     valor dele era exatamente o delta de cada mês (mês 03: 1.673,552; mês 07: 1.082,561).
+     Corrigido ancorando toda busca de marco na coluna dos rótulos.
+- **Achado de dado real, mês 02:** entre **09 e 15/02 ninguém anotou encerrante intermediário**.
+  O dia 09 tem `Inicial` sem `Fechamento`, os dias 10–14 não têm nada, o 15 tem `Fechamento` sem
+  `Inicial`. A planilha subtrai com um lado ausente e produz **−3.207.817 L em cada um** dos dias
+  9, 10 e 11 e **+3.216.952 L** no dia 15 — o bug 2 da skill, na forma pura. São **9.134,560 L
+  reais** que correram e não têm dia a que pertencer. O total do mês continua certo porque a
+  planilha o calcula de ponta a ponta. O estágio 1 marca a janela e **não atribui** esses litros
+  a dia nenhum: inventar leitura que ninguém fez seria pior que a lacuna.
+- **Divergência de nomenclatura a decidir:** o bico 04 é `DS:.10,Bico 04` nos blocos de dia e
+  `Ds:.500,Bico 04` na aba de conciliação. Mesmos valores, nomes diferentes — o estágio 2 precisa
+  de um mapa explícito, não de casamento por string.
+- ⚠️ **Ainda não feito:** o estágio 2 (carga no sqlite) e a nova baseline de golden master. Por
+  decisão do dono, a baseline nasce **marcada como não-validada** — ela vem de uma export de
+  07/08, não da de 26/07 contra a qual janeiro foi conferido linha a linha, e teste verde não
+  prova nada sobre o passado até a conferência ser refeita.
+
+### 🤖 Time de agentes: 3 novos, 6 no total, e o frontmatter que ninguém estava usando
+- **[07/08/2026]** Três agentes novos, cada um passando o critério do §13 (**lê muito, devolve
+  pouco**) — e três candidatos recusados por não passarem: agente de testes (o §13 já vetava),
+  agente de review de diff (duplica `/code-review` e o pipeline do mattpocock) e agente de PWA.
+  - **`conformidade`** — varre os 331 arquivos contra as convenções invioláveis e devolve
+    lista rankeada por leverage. Regra que não dobra: *acerto de regex é candidato, não
+    violação* — os dois arquivos de tipo gerado (4.128 linhas somadas) são excluídos por
+    princípio, porque §4 diz que ninguém os escreve à mão.
+  - **`schema`** — drift entre os 47 `.sql`, os tipos gerados e o catálogo vivo. Regra que não
+    dobra: *diff, nunca olhômetro*. Já nasce com dois achados datados para conferir — existem
+    **dois** arquivos de tipo gerado (`packages/types/src/database.types.ts` e
+    `apps/web/src/types/database/generated.ts`), e os 47 `.sql` estão espalhados em
+    `supabase/` e `supabase_migrations/` sem timestamp nem registro de aplicação.
+  - **`historico`** — arqueologia de git, automatizando a checagem do §9 que já custou 20
+    commits de retrabalho. Carrega o incidente de hoje como âncora: *"continua em disco" na
+    mensagem do commit não é evidência de que continua em disco*, e caminho gitignored não
+    volta do git nunca.
+- **Os 6 ganharam o frontmatter que estava sobrando na mesa:**
+  - **`skills:`** — a skill de domínio agora é **injetada** no contexto do agente. Subagente
+    não herda skill invocada na sessão; o `grafo.md` só *pedia* pra consultar a de fechamento
+    e torcia. Uma linha de YAML trocou torcida por garantia. O `rls` fica fora de propósito:
+    fechamento não decide pergunta de exposição.
+  - **`memory: project`** — memória versionada em `.claude/agent-memory/<nome>/`, com a mesma
+    regra nos seis: **grava-se o comando, nunca o resultado**. Total em memória é a armadilha
+    do §12 com endereço novo. O `planilha` tem a versão dura: nenhum valor, nunca.
+  - **`model: inherit`**, **`color:`** para separar no painel.
+- **Trava nova, `memoria-somente.py`:** ligar `memory:` **habilita `Write`/`Edit` à revelia do
+  campo `tools:`** — é como a Anthropic implementa e não se desliga omitindo a ferramenta. Sem
+  trava, o "somente leitura" dos seis viraria promessa vazia. O hook é declarado no frontmatter
+  de cada agente (não no `settings.json`, então só vale pra quem declara) e confina a escrita ao
+  diretório de memória. Conclusão que exige mudar arquivo vira **patch na resposta**.
+- **`.gitignore`:** exceção `!.claude/agent-memory/`. Sem ela a memória cairia no `.claude/*` e
+  viveria só em disco — exatamente o modo de falha do `docs/` documentado acima. Não guarda
+  valor do posto, por construção.
+- **Roteamento:** os três novos entraram no `roteia-consulta.py`, com casamento forte. Verbo de
+  ação não dispara (`"remove o any desse arquivo"` não roteia; `"quantas violações de any
+  existem?"` roteia). Sem rota, agente novo repete o destino do `grafo` entre 29/07 e 02/08:
+  instalado, reconstruindo índice a cada commit, nunca chamado.
+- **`testa-hooks.py`: 53 → 82 casos**, todos passando. A bateria agora **lê `.claude/agents/` do
+  disco** e reprova agente sem rota — a regra deixou de depender de alguém lembrar dela.
+
+### 🔌 MCP do Supabase reinstalado — e o `--read-only` não faz o que o nome promete
+- **[07/08/2026]** O MCP do Supabase tinha sumido da máquina. O agente `rls` referenciava
+  `mcp__supabase__list_tables`, `execute_sql` e `get_advisors` — **nenhuma das três existia**.
+  Mesmo padrão do graphify: a instrução sobreviveu à ferramenta.
+- Configurado em **escopo de projeto** (`.mcp.json`, versionado) com `--read-only` e
+  `--project-ref`. O token pessoal fica em `.claude/settings.local.json`, que o `.gitignore:85`
+  cobre; o `.mcp.json` só carrega `${SUPABASE_ACCESS_TOKEN}`. Conferido: zero segredo no arquivo
+  versionado.
+- ⚠️ **O achado que mudou o desenho: `--read-only` não remove ferramenta nenhuma.** Medido nos
+  dois transportes (npx local e `mcp.supabase.com` hospedado), com e sem o flag: **as mesmas 20
+  ferramentas**, incluindo `apply_migration`, `deploy_edge_function` e os cinco `*_branch`. O
+  flag restringe a execução do `execute_sql` a um usuário Postgres somente-leitura e nada além.
+  A linha `readOnly` do README upstream descreve o helper `createToolSchemas` do AI SDK — filtro
+  no **cliente** —, não o que o servidor entrega.
+- **Trava real:** lista `deny` em `.claude/settings.json` para as 7 ferramentas mutantes. Sem
+  ela, `apply_migration` seria um caminho de DDL aberto contra produção — exatamente o risco que
+  o `rls.md` descrevia como "sem trava técnica". Registrado no §14.
+- `rls.md` reescrito: em vez de afirmar "o MCP está SEM `--read-only`", agora descreve **as duas
+  travas e o que cada uma não cobre**, com a data da medição. A regra "você só roda SELECT"
+  continua — nenhuma das travas a torna redundante.
+- **Identidade do projeto conferida antes de ligar:** a conta tem um único projeto, de nome
+  `MAY-DAY`, que não lembra "Posto Providência". É o banco certo — 44 tabelas em `public`, com
+  `Bico`, `Bomba`, `Combustivel`, `Despesa`. E **as 44 estão com RLS ligada**, contra as 42 com
+  18 invisíveis do incidente de 29/07. RLS ligada ainda não é o mesmo que protegida: política
+  `USING (true)` não segura nada, e essa auditoria é do agente `rls`.
+
+### 🌐 Instruções passam a ser em inglês; interação, código e UI seguem em pt-BR
+- **[06/08/2026]** O **corpo** (system prompt) dos 3 agentes e das 3 skills foi traduzido para
+  inglês. Cada arquivo abre declarando o contrato: **instrução em inglês, resposta ao dono em
+  pt-BR**.
+- **O `description` do frontmatter NÃO foi tocado — de propósito, e é o ponto principal.** Esse
+  campo é o **casador contra o texto que o dono digita**, e o dono digita em português. Traduzir
+  `"Use SEMPRE que a pergunta for 'onde fica X'"` degradaria o carregamento automático da skill e
+  a escolha do agente. Conferido por hash: os 6 blocos de frontmatter estão byte-a-byte idênticos.
+- Pela mesma razão, as regex do `roteia-consulta.py` continuam em pt-BR — elas casam frase do
+  dono, não instrução do modelo.
+- **§0.1 intacto:** código, comentário, commit, UI e log seguem em pt-BR. Substantivo de domínio
+  (`fechamento`, `frentista`, `bico`, `encerrante`, `valor_conferido`, `diferenca`, `baratao`) e
+  rótulo literal da planilha (`Caixa Dia`, `POSTO JORRO 2026`) **não** foram traduzidos: são os
+  identificadores reais do código, do banco e do xlsx. Cada arquivo carrega essa regra escrita.
+- ⚠️ **Uma correção factual viajou junto** (registrada aqui porque não é tradução): a skill
+  `fechamento` dizia "13 arquivos de produção em `apps/` (+1 de teste)". O correto, conferido em
+  06/08, é **12 de produção em `apps/` + 3 de teste** — 13 só contando o barrel
+  `packages/utils/src/index.ts`, que reexporta e não consome.
+- Nenhuma regra de negócio mudou. Nenhuma fórmula tocada. Nenhum arquivo de código tocado.
+
+### 🧭 Agentes — `cd` para uma raiz de repo que não existe mais
+- **[06/08/2026]** `grafo` e `planilha` apontavam para
+  `/home/thygas/Documentos/Posto-Providencia/Posto-Providencia`; o repo mora em
+  `/home/thygas/Projetos/trabalho/Posto-Providencia`. Como os dois instruem `cd` na raiz a cada
+  chamada (o diretório de trabalho volta pra pasta pai entre comandos), o `cd` falhava e o agente
+  seguia no diretório errado. 3 ocorrências corrigidas: `grafo.md:13`, `planilha.md:10` e `:69`.
+- A auditoria de 06/08 varreu as **skills** e não os **agentes** — mesma podridão, pasta vizinha.
+- ⚠️ **Achado à parte:** o `graphify` tinha sumido inteiro desta máquina — binário fora do
+  `~/.local/bin`, `graphify-out/` inexistente e os hooks `post-commit`/`post-checkout` ausentes de
+  `.git/hooks/`. O §12 e o agente `grafo` descreviam infraestrutura que não existia mais.
+  **Resolvido no mesmo dia — ver a entrada de reinstalação abaixo.**
+
+### 🕸️ graphify reinstalado, e o §12 passa a carregar o comando de reinstalar
+- **[06/08/2026]** `uv` (repo oficial do Arch) + `uv tool install "graphifyy[sql]"`. Não havia
+  `pip`, `pipx` nem `uv` na máquina; o Python do sistema é 3.14 e é externally-managed, então o
+  `uv tool` é o caminho que não encosta nele — mesma lógica do fnm para Node.
+- **Confusão de nome conferida antes de instalar:** o pacote no PyPI é **`graphifyy`** (dois "y"),
+  o comando é **`graphify`** (um "y"). O nome de um "y" só **não existe no PyPI** (404), então o
+  `pip install graphify` que circula em blogs falha em vez de instalar outra coisa — mas o nome
+  está livre, e isso é risco de typosquat no futuro. Versão instalada: **0.9.34**, de 05/08/2026.
+- **O extra `[sql]` importa aqui.** Sem ele, a primeira extração avisou que **47 arquivos `.sql`
+  não contribuíram nada** por falta do `tree_sitter_sql` — ou seja, migrations e policies de RLS
+  ficariam fora do grafo em silêncio. Com o extra: 1901 → **2087 nós**, 4456 arestas.
+- **Extração `--code-only`, sem LLM e sem rede:** não há chave de API no ambiente, e o §12 exige
+  AST puro. 24 segundos para 422 arquivos.
+- **Conferido que nada sensível entrou no grafo:** zero ocorrências de `docs/data` em
+  `graph.json`, nenhum segredo, e `graphify-out/` já estava no `.gitignore`. O `.gitattributes`
+  com o driver de merge já estava versionado; o `hook install` só registrou o driver no
+  `.git/config`.
+- ✅ **Validado contra a verdade conhecida:** `graphify affected "conferido()"` — a consulta que
+  mentiu com confiança total em 29/07 — agora devolve exatamente os **11 consumidores de
+  `conferido()`** confirmados por grep hoje, com o número de linha certo, mais os 3 arquivos de
+  teste. `fechamentoMeios.ts` corretamente ausente (importa `meiosFromFechamentoRow`, não
+  `conferido`). O que aparece além disso é relação transitiva de profundidade 2, como o anexo
+  previa. **O §12 continua valendo mesmo assim:** o grafo acertar uma vez não o promove de
+  hipótese a resposta.
+- **§12 ganhou o comando de reinstalar**, com dois avisos: o extra `[sql]` não é opcional, e
+  **`graphify install`/`graphify claude install` são proibidos** — os dois escrevem uma seção
+  dentro do `CLAUDE.md` mantido à mão e instalam um `PreToolUse` próprio, cuja instrução
+  ("responda direto do grafo") é exatamente a que o §12 revoga.
+
+### 🧭 Skills de domínio — o ETL mandava versionar o `.xlsx` que causou o incidente de 29/07
+- **[06/08/2026]** Auditoria das 3 skills do projeto, conferindo **cada afirmação factual contra o
+  código atual**. Duas carregavam informação apodrecida; a terceira estava íntegra.
+- **O achado grave, em `etl-planilha`:** o checklist de importação pedia a planilha original
+  "mantida **versionada** em `docs/data/`" — o oposto do §6, que existe justamente porque dado
+  financeiro real foi commitado num repo público e exigiu reescrita de histórico. Seguir o
+  checklist ao pé da letra reabria o incidente. Agora diz **no disco e fora do git**, com o
+  motivo junto.
+- **`fechamento` instruía um trabalho que já não existe:** a seção central listava dois pontos
+  "que ainda somam buckets na mão" (`aggregator.service.ts` e `useHistoricoFrentista.ts`) —
+  ambos consolidados em 02/08. A skill virou estado da consolidação **concluída**, preservando a
+  regra que sobrevive a ela: cópia nova da fórmula exige golden master rodando contra todas as
+  implementações **antes** de consolidar.
+- **O exemplo de código não compilava:** importava `valorConferido()`, que nunca existiu — a
+  função é `conferido()`. `litros()` também não existe. Corrigido, com a API real listada e um
+  aviso explícito contra os dois nomes fantasma.
+- Também corrigido: a skill dizia que `fechamento.test.ts` é `bun:test` (é **vitest**) e não
+  mencionava o padrão `*.golden.spec.ts`; a referência morta à skill `planilha-jorro`, que não
+  existe em lugar nenhum; e o mis-pointer da skill de refatoração, que apontava o ETL como fonte
+  de fórmula quando o §13 roteia isso para `fechamento`.
+- ⚠️ **Contagem de consumidores agora vem datada e com o comando de recontar.** Era "11 arquivos"
+  de 29/07; hoje são 13 de produção. Número em skill envelhece a cada feature — o que não pode
+  envelhecer é saber como remedi-lo.
+- Nada de código tocado: só markdown de `.claude/skills/`. Nenhuma fórmula mudou.
+
 ### 📲 Convite de instalação — o caminho do Chrome no iPhone deixa de ser um beco sem saída
 - **[02/08/2026]** Quando o PWA abre em navegador que não é o Safari, o iOS **não instala** e o
   convite só dizia isso: uma frase de aviso, com o ramo `abrir-no-safari` renderizando `null`

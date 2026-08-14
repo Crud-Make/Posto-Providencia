@@ -1,38 +1,41 @@
 /**
  * Golden master do LUCRO REAL contra os 7 meses de 2026.
  *
- * Fonte: `docs/data/posto_jorro_2026.sqlite` — extração crua da planilha
- * `atualizado.xlsx`. Roda sob `bun test`; vitest ignora (`*.spec.ts`).
+ * Fonte: `docs/data/posto_jorro_2026.sqlite`, montado pelo estágio 2 do ETL.
+ * Roda sob `bun test`; vitest ignora (`*.spec.ts`).
  *
  * Complementa `lucro.golden.spec.ts`, que cobre só o mês 01 pelo fixture JSON.
  * Aqui a granularidade é a mesma (mensal), mas a cobertura vai a 7 meses × 42 bicos.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * A PLANILHA TEM DUAS LISTAS DE DESPESA, E ELAS NÃO BATEM.
+ * DUAS LISTAS DE DESPESA, EM LUGARES DIFERENTES — E SÓ UMA É COMPLETA.
  *
- * Apurado em 31/07/2026. Não é erro de extração — são dois livros-caixa
- * concorrentes na própria planilha, e nenhum é superconjunto do outro:
+ *   `despesa_categoria_mensal` .. R$ 140.456,27 — o que a PLANILHA acompanha
+ *   `despesa_lancada` ........... R$ 195.230,40 — o que o posto REALMENTE gasta
  *
- *   `despesa_mensal` / `despesa_categoria_mensal` .. R$ 140.456,27 nos 7 meses
- *   `despesa_trimestral` ......................... R$ 195.230,40 nos 7 meses
+ * A segunda não sai da planilha: vem da tabela `Despesa` do app, exportada por
+ * `scripts/etl-despesa-banco.py`. São 108 lançamentos nos 7 meses de 2026,
+ * conferidos contra produção em 12/08/2026. A diferença de R$ 54.774,13 são
+ * gastos que a planilha simplesmente não registra: Embasa, Net, Luz, extintor,
+ * conserto de bomba, Bombeiro AVCB, e salários lançados a R$ 2.100.
  *
- * No mês 01 a trimestral tem FGTS, Luz, Net, Embasa, Alvará/IPTU, Bombeiro AVCB,
- * extintor, conserto de bomba e dois funcionários a mais (Leandro, Rosimeire), com
- * salários maiores (R$ 2.100 contra R$ 600/1.506/1.500). A mensal tem Barbra, CSLL,
- * Mery Pousada e Sinho Pousada, que a trimestral não tem.
+ * O BLOCO DE LUCRO DA PLANILHA USA A LISTA DELA — a menor. Logo o lucro que ela
+ * exibe (R$ 220.559,42 / 11,48%) ignora R$ 54.774,13 de despesa real e
+ * superestima o resultado dos 7 meses em ~25%. Pelo CLAUDE.md §6 — "toda despesa
+ * do posto entra no rateio, sem exceção" — o lucro real é R$ 165.785,32 / 8,63%.
  *
- * O BLOCO DE LUCRO DA PLANILHA USA A LISTA MENSAL — a menor. Logo o lucro que a
- * planilha exibe **ignora R$ 54.774,13 de despesa** que ela mesma registra na outra
- * aba, e superestima o resultado dos 7 meses em ~25%.
- *
- * DECISÃO DO DONO DO POSTO, 31/07/2026: a fonte de verdade para o lucro real é a
- * **trimestral**, a mais completa — coerente com o CLAUDE.md §6 ("toda despesa do
- * posto entra no rateio, sem exceção").
+ * ⚠️ O NOME ERRADO QUE CUSTOU CARO. Entre 31/07 e 12/08 esta lista se chamava
+ * `despesa_trimestral` e era descrita como "uma segunda aba da planilha". Nunca
+ * foi: não existe apuração trimestral no posto, e nenhuma das 12 abas a contém —
+ * varredura de toda célula, por rótulo e por valor, em 12/08. O nome errado levou
+ * a suíte a ser lida como quebrada e quase custou a remoção deste golden inteiro,
+ * que estava CERTO no número e errado só na etiqueta. Dado sem procedência escrita
+ * é dado que alguém vai apagar por engano.
  *
  * Este golden trava as DUAS coisas de propósito:
- *   1. que a fórmula reproduz a planilha quando alimentada com a lista MENSAL
+ *   1. que a fórmula reproduz a planilha quando alimentada com a lista DELA
  *      (prova que o cálculo está certo — o que muda é a entrada, não a fórmula);
- *   2. que o lucro real, com a lista TRIMESTRAL, é o valor em `LUCRO_REAL_ESPERADO`.
+ *   2. que o lucro real, com a despesa lançada, é o de `LUCRO_REAL_ESPERADO`.
  *
  * Se qualquer um dos dois se mexer, o teste quebra e alguém decide de novo, em vez
  * de o número escorregar em silêncio.
@@ -94,12 +97,12 @@ const custosDoMes = (mes: number): Record<string, number> => {
 const despesaMensal = (mes: number): number =>
     db.query<{ v: number }, [number]>('SELECT valor v FROM despesa_mensal WHERE ano=2026 AND mes=?').get(mes)?.v ?? 0;
 
-/** Lista TRIMESTRAL — a fonte de verdade decidida para o lucro real. */
-const despesaTrimestral = (mes: number): number =>
+/** Despesa REALMENTE lançada, vinda da tabela `Despesa` do app. */
+const despesaLancada = (mes: number): number =>
     somarDespesas(
         db
             .query<{ categoria: string | null; valor: number | null }, [number]>(
-                'SELECT categoria, valor FROM despesa_trimestral WHERE ano=2026 AND mes=?'
+                'SELECT categoria, valor FROM despesa_lancada WHERE ano=2026 AND mes=?'
             )
             .all(mes)
     );
@@ -148,10 +151,14 @@ test('7 meses: fórmula reproduz o lucro total da planilha (despesa mensal)', ()
 });
 
 // ─── 2. O LUCRO REAL ────────────────────────────────────────────────────────
-// Mesma fórmula, alimentada com a lista TRIMESTRAL (a decisão do dono).
-// Estes números são a nova referência do negócio.
+// Mesma fórmula, alimentada com a despesa que o posto de fato lançou.
+// Estes números são a referência do negócio.
 
-/** Lucro real por mês, com a despesa trimestral. Apurado em 31/07/2026. */
+/**
+ * Lucro real por mês, com a despesa lançada. Apurado em 31/07/2026 e reconferido
+ * contra a tabela `Despesa` de produção em 12/08/2026 — os R$ 195.230,40 dos 7
+ * meses batem ao centavo, em 108 lançamentos.
+ */
 const LUCRO_REAL_ESPERADO: Record<number, number> = {
     1: 15_609.86,
     2: 20_774.17,
@@ -163,8 +170,8 @@ const LUCRO_REAL_ESPERADO: Record<number, number> = {
 };
 
 for (const mes of MESES) {
-    test(`mês ${String(mes).padStart(2, '0')}: lucro REAL com despesa trimestral`, () => {
-        const real = lucroDoMes(mes, despesaTrimestral(mes));
+    test(`mês ${String(mes).padStart(2, '0')}: lucro REAL com a despesa lançada`, () => {
+        const real = lucroDoMes(mes, despesaLancada(mes));
         expect(Math.abs(real - LUCRO_REAL_ESPERADO[mes])).toBeLessThan(TOL);
     });
 }
@@ -172,24 +179,24 @@ for (const mes of MESES) {
 test('7 meses: lucro real, despesa total e margem', () => {
     const litros = MESES.reduce((s, m) => s + bicosDoMes(m).reduce((a, b) => a + b.litros, 0), 0);
     const receita = MESES.reduce((s, m) => s + bicosDoMes(m).reduce((a, b) => a + b.venda, 0), 0);
-    const despTri = MESES.reduce((s, m) => s + despesaTrimestral(m), 0);
+    const despLanc = MESES.reduce((s, m) => s + despesaLancada(m), 0);
     const despMen = MESES.reduce((s, m) => s + despesaMensal(m), 0);
-    const lucroReal = MESES.reduce((s, m) => s + lucroDoMes(m, despesaTrimestral(m)), 0);
+    const lucroReal = MESES.reduce((s, m) => s + lucroDoMes(m, despesaLancada(m)), 0);
 
     expect(Math.abs(litros - 283_506.34)).toBeLessThan(0.01);
     expect(Math.abs(receita - 1_921_455.03)).toBeLessThan(TOL);
     expect(Math.abs(despMen - 140_456.27)).toBeLessThan(TOL);
-    expect(Math.abs(despTri - 195_230.40)).toBeLessThan(TOL);
+    expect(Math.abs(despLanc - 195_230.40)).toBeLessThan(TOL);
     expect(Math.abs(lucroReal - 165_785.32)).toBeLessThan(TOL);
 
     // A margem real é ~8,6%, não os ~11,5% que a planilha exibe.
     expect(margemPercentual(lucroReal, receita)).toBeCloseTo(8.63, 1);
 });
 
-test('a despesa trimestral supera a mensal em R$ 54.774,13 nos 7 meses', () => {
-    const despTri = MESES.reduce((s, m) => s + despesaTrimestral(m), 0);
+test('a despesa lançada supera a da planilha em R$ 54.774,13 nos 7 meses', () => {
+    const despLanc = MESES.reduce((s, m) => s + despesaLancada(m), 0);
     const despMen = MESES.reduce((s, m) => s + despesaMensal(m), 0);
-    expect(Math.abs(despTri - despMen - 54_774.13)).toBeLessThan(TOL);
+    expect(Math.abs(despLanc - despMen - 54_774.13)).toBeLessThan(TOL);
 });
 
 // ─── 3. A ARMADILHA DA LINHA DE TOTAL ───────────────────────────────────────
@@ -210,42 +217,53 @@ test('somar a coluna crua de despesa_categoria_mensal devolve o DOBRO', () => {
 });
 
 /**
- * A aba trimestral cobre os 12 MESES do ano; a de venda, só os 7 já realizados.
+ * `despesa_lancada` cobre exatamente os meses já lançados no app — hoje, 7.
  *
- * @remarks Agosto a novembro já têm despesa recorrente lançada à frente (dezembro está
- *          zerado). Somar a tabela inteira contra receita de 7 meses infla a despesa em
- *          R$ 31.710,88 e afunda o lucro sem motivo. Todo consumo de despesa trimestral
- *          precisa filtrar o mês — este teste existe para que isso não seja esquecido.
+ * @remarks Conferido contra produção em 12/08/2026: 108 lançamentos, meses 01 a 07,
+ *          nada em agosto–dezembro. A versão anterior deste teste exigia 12 meses e um
+ *          excedente de R$ 31.710,88 lançado à frente; isso descrevia a tabela antiga
+ *          (`despesa_trimestral`), não a `Despesa` do app, e nunca foi verdade aqui.
+ *          O teste continua existindo para que o dia em que alguém lançar despesa de
+ *          agosto o excedente apareça — em vez de entrar calado no rateio de 7 meses.
  */
-test('despesa_trimestral tem os 12 meses — filtrar por mês é obrigatório', () => {
+test('despesa_lancada cobre só os meses lançados — filtrar por mês é obrigatório', () => {
     const meses = db
-        .query<{ mes: number }, []>('SELECT DISTINCT mes FROM despesa_trimestral WHERE ano=2026 ORDER BY mes')
+        .query<{ mes: number }, []>('SELECT DISTINCT mes FROM despesa_lancada WHERE ano=2026 ORDER BY mes')
         .all()
         .map((r) => r.mes);
-    expect(meses).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(meses).toEqual([...MESES]);
 
     const todosOsMeses = somarDespesas(
         db
             .query<{ categoria: string | null; valor: number | null }, []>(
-                'SELECT categoria, valor FROM despesa_trimestral WHERE ano=2026'
+                'SELECT categoria, valor FROM despesa_lancada WHERE ano=2026'
             )
             .all()
     );
-    const seteMeses = MESES.reduce((s, m) => s + despesaTrimestral(m), 0);
-    expect(Math.abs(todosOsMeses - seteMeses - 31_710.88)).toBeLessThan(TOL);
+    const seteMeses = MESES.reduce((s, m) => s + despesaLancada(m), 0);
+    expect(Math.abs(todosOsMeses - seteMeses)).toBeLessThan(TOL);
 });
 
-test('somar a coluna crua de despesa_trimestral devolve o DOBRO', () => {
+/**
+ * `despesa_lancada` NÃO tem linha de total — e é por isso que ela não cai na armadilha
+ * que `despesa_categoria_mensal` tem.
+ *
+ * @remarks A da planilha carrega a linha `Total.` no meio das categorias, porque a
+ *          planilha a tem e o ETL é fiel à fonte; somar a coluna crua lá devolve o dobro.
+ *          A do banco são lançamentos individuais, sem consolidação. Travar a diferença
+ *          aqui evita que alguém "conserte" uma na direção da outra.
+ */
+test('somar a coluna crua de despesa_lancada NÃO dobra — não há linha de total', () => {
     const linhas = db
         .query<{ categoria: string | null; valor: number | null }, []>(
-            'SELECT categoria, valor FROM despesa_trimestral WHERE ano=2026 AND mes BETWEEN 1 AND 7'
+            'SELECT categoria, valor FROM despesa_lancada WHERE ano=2026 AND mes BETWEEN 1 AND 7'
         )
         .all();
     const cru = linhas.reduce((s, l) => s + (l.valor ?? 0), 0);
     const limpo = somarDespesas(linhas);
 
     expect(Math.abs(limpo - 195_230.40)).toBeLessThan(TOL);
-    expect(Math.abs(cru - limpo * 2)).toBeLessThan(TOL);
+    expect(Math.abs(cru - limpo)).toBeLessThan(TOL);
 });
 
 test('despesa_mensal e despesa_categoria_mensal são a MESMA lista', () => {

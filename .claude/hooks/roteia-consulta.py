@@ -64,13 +64,51 @@ ROTAS: list[tuple[str, str, re.Pattern[str]]] = [
             r"|esta (tabela |view )?exposta"
         ),
     ),
+    (
+        "conformidade",
+        "conformidade com as convencoes do CLAUDE.md",
+        re.compile(
+            r"quantas? (violacoes|ocorrencias) de\b"
+            r"|(isso|isto|esse codigo|este codigo) (esta|ta) (dentro do|no) padrao"
+            r"|(quanto|qual o tamanho) (de|da) divida"
+            r"|(quantos|quantas) (any|enum|import relativo)\b"
+            r"|(auditar|audita|auditoria d[ae]) (convencao|convencoes|padrao|padroes)"
+            r"|onde (o codigo )?(fere|viola|quebra) (o|a|as|os) (regra|convencao|fsd)"
+        ),
+    ),
+    (
+        "schema",
+        "drift entre .sql, tipos gerados e o banco vivo",
+        re.compile(
+            r"(o )?tipo (gerado )?(esta|ta) (em dia|atualizado|sincronizado)"
+            r"|essa coluna existe (mesmo|de verdade|no banco)"
+            r"|qual migration (criou|adicionou|mudou)"
+            r"|(drift|divergencia) (entre|de|do) (tipo|esquema|schema|banco)"
+            r"|(o )?(esquema|schema) (bate|confere) com (o banco|os tipos)"
+            r"|regenerar (os )?tipos do supabase"
+        ),
+    ),
+    (
+        "historico",
+        "arqueologia de git — quem ja mexeu, quando entrou, da pra recuperar",
+        re.compile(
+            r"(alguem|outra branch|alguma branch) ja (mexeu|mexe|toca|tocou|alterou)"
+            r"|de quando e (essa|esta|o|a) (decisao|regra|mudanca|linha)"
+            r"|por que (isso|esse arquivo|este arquivo|essa linha) (esta|ta) assim"
+            r"|(isso|esse arquivo|este arquivo) existia antes"
+            r"|(sumiu|apagou|apagaram|foi apagado|perdi).{0,40}(da pra |consigo |tem como )?recuperar"
+            r"|(quem|qual commit) (apagou|removeu|deletou)"
+            r"|(isso|essa ideia|esse caminho) ja foi tentad[oa]"
+        ),
+    ),
 ]
 
 MOLDE = (
     "[hook roteia-consulta] Esta pergunta é de {assunto}. Use o agente `{agente}` "
     "(Agent tool, subagent_type=\"{agente}\") em vez de grep/leitura direta: ele lê "
     "muito e devolve pouco, que é o critério do CLAUDE.md §13. Vale a regra do §12 — "
-    "o que ele devolver é hipótese até o grep confirmar."
+    "o que ele devolver é hipótese até a evidência que ele mesmo cita fechar: grep no "
+    "arquivo, hash do commit, linha do diff, saída da consulta."
 )
 
 

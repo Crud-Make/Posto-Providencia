@@ -65,10 +65,19 @@ def auditar(mes):
     if not custo_medio:
         erro(f'compra_mensal não tem o mês {mes}')
 
-    # Despesa do mês — fonte trimestral, excluindo a linha de total.
+    # Despesa do mês — a REALMENTE lançada, que vem da tabela `Despesa` do app
+    # (`scripts/etl-despesa-banco.py`), não a matriz parcial da planilha. São
+    # R$ 195.230,40 nos 7 meses contra R$ 140.456,27 da planilha; a diferença de
+    # R$ 54.774,13 são gastos que a planilha não registra, e o §6 manda todos
+    # entrarem no rateio.
+    #
+    # A tabela se chamou `despesa_trimestral` até 12/08/2026, quando se descobriu
+    # que não existe apuração trimestral nenhuma — o nome era errado, o número não.
+    # Sem linha de total aqui: lançamento individual do app não tem consolidação,
+    # diferente de `despesa_categoria_mensal`, que carrega o `Total.` da planilha.
     despesas = cur.execute(
-        """SELECT ROUND(SUM(valor),2) FROM despesa_trimestral
-           WHERE ano=? AND mes=? AND categoria<>'__TOTAL__'""", (ANO, mes)
+        """SELECT ROUND(SUM(valor),2) FROM despesa_lancada
+           WHERE ano=? AND mes=?""", (ANO, mes)
     ).fetchone()[0]
     if not despesas:
         erro(f'sem despesa lançada para o mês {mes} — o rateio ficaria zerado')

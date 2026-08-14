@@ -69,25 +69,44 @@ CONTEXT.md
 docs/
 agentes-docs/
 plans/
-# `scripts/*`, e não `scripts/`: excluir o DIRETÓRIO faz o git não descer nele, e
-# aí a exceção `!` abaixo nunca chega a ser avaliada. Excluindo o conteúdo, ela vale.
-scripts/*
-# Exceção consciente: o carregador do estágio 3 do ETL não guarda dado nenhum —
-# só o mapeamento bico->id e a lógica de validação; todo valor vem do sqlite em
-# `docs/data/` em tempo de execução, e esse sim segue fora do git. Ele precisa
-# ser versionado porque o CHANGELOG o referencia como a forma de refazer a carga
-# quando a planilha atualizada chegar.
-!scripts/carga-historico-leitura.py
-!scripts/carga-historico-despesa.py
-!scripts/carga-historico-fechamento.py
-!scripts/auditoria-lucro-mes.py
-!scripts/carga-historico-compra.py
+# `scripts/` é VERSIONADO por inteiro. A regra anterior era o inverso — `scripts/*`
+# ignorado, com uma exceção `!` nomeada por arquivo — e ela falhou duas vezes em
+# uma semana: o estágio 2 e o export de despesa nasceram fora do git em silêncio,
+# e só apareceram porque o `git status` saiu limpo quando não devia. É o mesmo
+# mecanismo que perdeu os dois estágios originais do ETL em 29/07: pasta ignorada,
+# `git status` limpo, código sumindo sem aviso.
+#
+# Invertido, o padrão passa a ser seguro: script novo entra versionado por
+# omissão. Nenhum deles guarda valor do posto — todos recebem entrada e destino
+# por parâmetro, e o dado continua em `docs/data/`, fora do git. O `__pycache__/`
+# já é coberto pela regra geral mais abaixo; não precisa de linha própria aqui.
 .claude/*
 !.claude/skills/
 !.claude/agents/
 !.claude/docs/
 !.claude/hooks/
 !.claude/settings.json
+# A memória dos agentes é versionada de propósito (`memory: project` nos
+# .claude/agents/*.md). Sem esta exceção ela cairia no `.claude/*` acima e
+# viveria só em disco — que é literalmente o que aconteceu com `docs/`: o
+# commit d4491b2 prometeu "continua em disco" e um `git clean -fdx` levou 150
+# arquivos junto. Memória de agente sem histórico é a mesma armadilha de novo.
+# Ela não guarda valor do posto: as instruções mandam gravar a CONSULTA, nunca
+# o resultado dela.
+!.claude/agent-memory/
+# A memória AUTOMÁTICA da sessão (a que o harness carrega sozinho a cada início)
+# morava só em `~/.claude/projects/<slug>/memory/`, fora do repo: sem git, sem
+# blame, sem backup. Era a terceira cópia do mesmo acidente do `docs/` — perder a
+# máquina perderia onde está a planilha fonte, o estado do ETL e o porquê dos
+# timestamps em UTC. Os arquivos passaram a morar AQUI em 07/08/2026, e aquele
+# caminho virou symlink para cá: um lugar só, versionado, e o carregamento
+# automático segue funcionando.
+#
+# Conferido antes de versionar: repo privado, nenhuma credencial, nenhum nome de
+# pessoa, e os dois únicos agregados citados (140.456,27 e 195.230,40) já estavam
+# em `lucro-real.golden.spec.ts`, versionado desde antes. Valor NOVO do posto não
+# entra aqui — para isso vale o §6, e `docs/data/` segue fora do git.
+!.claude/memoria/
 .trae/
 
 # Bytecode dos hooks — artefato de execução, nunca fonte.

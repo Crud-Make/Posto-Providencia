@@ -8,96 +8,118 @@ description: >-
   valor/nome", "qual é a fórmula certa"), ao mexer em qualquer lugar que
   calcule `valor_conferido`/`diferenca` (PWA, hooks do web, services,
   aggregator), ou ao mexer no módulo canônico packages/utils/src/fechamento.ts
-  e nos 11 arquivos que o consomem. Em conflito entre intuição e
+  e nos arquivos de apps/ que o consomem. Em conflito entre intuição e
   o dado real de janeiro (docs/data/janeiro_referencia.sqlite), o dado real
   decide. Toda fórmula aplicada exige teste golden master correspondente
   antes de a tarefa ser considerada pronta — e NUNCA consolide as
   implementações duplicadas sem antes ter o teste rodando contra todas elas.
 ---
 
-# fechamento-posto-providencia — domínio + regra de refatoração segura
+# fechamento-posto-providencia — domain + safe-refactoring rule
 
-Posto Providência é sistema real de gestão de posto de combustível (uso do
-dono, dado real). O núcleo é o **fechamento de caixa diário**: conferência do
-que cada frentista arrecadou por forma de pagamento vs. o que os bicos
-(encerrantes) indicam, apurando `diferenca` (sobra/falta) e `valor_conferido`.
+> **Language:** these instructions are in English; **all output to the owner is
+> in Brazilian Portuguese (pt-BR)**, as is all code, comment, commit and UI text
+> (CLAUDE.md §0.1). Domain nouns stay in Portuguese because they are the real
+> identifiers in the code, the database and the spreadsheet: `fechamento`,
+> `frentista`, `bico`, `encerrante`, `concentrador`, `valor_conferido`,
+> `diferenca`, `baratao`. Never translate them.
 
-⚠️ Não confundir com o **ProvControl** (Laravel, pausado, vive em
-`../ProvControl`) — projetos e codebases diferentes, mesmo domínio de
-negócio.
+Posto Providência is a real fuel-station management system (owner's own use,
+real data). Its core is the **daily cash closing** (`fechamento de caixa`):
+reconciling what each `frentista` collected per payment method against what the
+`bicos` (pump nozzles, via their `encerrante` readings) indicate, producing
+`diferenca` (sobra/falta) and `valor_conferido`.
 
-## O problema real que esta skill existe para resolver
+⚠️ Do not confuse this with **ProvControl** (Laravel, paused, lives in
+`../ProvControl`) — different projects and codebases, same business domain.
 
-`valor_conferido`/`diferenca` estava **duplicado em ~6 implementações**
-espalhadas entre `apps/pwa-frentista`, hooks de `apps/web`, services e um
-aggregator. Dead code já confirmado e removido
-(`packages/utils/src/calculators.ts`, `dates.ts`); `type-check` passou.
+## Consolidation status — done
 
-**A consolidação em `packages/utils/src/fechamento.ts` FOI CONCLUÍDA** —
-verificado em 2026-07-29: 11 arquivos de `apps/web` e `apps/pwa-frentista`
-importam o módulo canônico.
+`valor_conferido`/`diferenca` was once **duplicated across ~6 implementations**
+scattered over `apps/pwa-frentista`, `apps/web` hooks, services and the
+aggregator. Today the calculation is single, in
+`packages/utils/src/fechamento.ts`. Dead code removed:
+`packages/utils/src/calculators.ts` and `dates.ts` no longer exist.
 
-Restam **dois** pontos que ainda somam buckets na mão, ambos calculando
-`soma_manual − valor_conferido` e rotulando `'OK'`/`'Divergente'`:
+The **last two places** that summed buckets by hand were closed on 02/08/2026 —
+`aggregator.service.ts` and
+`components/frentistas/hooks/useHistoricoFrentista.ts` now read
+`diferenca_calculada` (the canonical difference stored when the fechamento is
+submitted) instead of recomputing. Before that they omitted moedas/baratão and
+flagged `'Divergente'` on correct sessions. **Both files carry a comment
+explaining the decision — do not "fix" them back into manual sums.**
 
-1. `apps/web/src/services/api/aggregator.service.ts:658,703,704` — 6 buckets,
-   **omite moedas**. O MESMO arquivo usa o canônico corretamente na linha 400
-   (`conferido(meiosFromFechamentoRow(fechamento))`). Inconsistência interna
-   de um arquivo só.
-2. `apps/web/src/components/frentistas/hooks/useHistoricoFrentista.ts:42-43` —
-   4 buckets, **omite moedas, débito e crédito**.
+> Consumer count verified on 06/08/2026: **12 production files under `apps/`**
+> import the canonical module, plus **3 test files**. (Counting the
+> `packages/utils/src/index.ts` barrel that re-exports it, 13 production files
+> repo-wide.) This number ages with every feature — recount with the command in
+> `.claude/agents/grafo.md`, and do not trust this line on its own. Filtering by
+> symbol is mandatory: `@posto/utils` is a barrel over 8 modules, and there is
+> an unrelated `apps/web/src/types/fechamento.ts` that inflates a naive count by
+> more than 2x.
 
-Efeito: sessão com `valor_moedas > 0` aparece como `'Divergente'` estando
-correta. Esta skill define como consolidar esses dois **sem quebrar o que já
-funciona pro dono do posto**.
+**The rule that outlives the consolidation:** this codebase's recurring failure
+mode is a NEW copy of the formula being born inside a hook or a service. If you
+find one, **never consolidate before you have a test; never write the test after
+consolidating.** Mandatory order:
 
-**Regra inegociável: nunca consolide antes de ter teste. Nunca escreva o
-teste depois de consolidar.** Ordem obrigatória:
+1. Write a golden master test against `docs/data/janeiro_referencia.sqlite`
+   exercising **each existing implementation** (as far as you can isolate them
+   without rewriting anything yet) over the same January days.
+2. Where they all match the reference → that is the correct behaviour, confirmed
+   by real data.
+3. Where they disagree with each other → **stop and confirm with the owner**
+   which one is right before choosing — one of them may be a bug, do not assume.
+4. Only then point everyone at `packages/utils/src/fechamento.ts`, swapping call
+   sites **one at a time** and running the same golden master after each swap —
+   never in bulk.
 
-1. Escreva teste golden master contra `docs/data/janeiro_referencia.sqlite`
-   rodando **cada uma das implementações existentes** (o máximo que der pra
-   isolar sem reescrever nada ainda) contra os mesmos dias de janeiro.
-2. Onde todas baterem com a referência → esse é o comportamento correto,
-   confirmado por dado real.
-3. Onde divergirem entre si → **pare e confirme com o usuário** qual está
-   certa antes de escolher — pode ser bug em uma delas, não assuma.
-4. Só então extraia para `packages/utils` uma implementação única (nome
-   sugerido: `packages/utils/src/fechamento.ts`, evitando colidir com o
-   `calculators.ts` já removido), e troque os 6 call sites **um de cada
-   vez**, rodando o mesmo teste golden master a cada substituição — nunca em
-   lote.
+## Calculation architecture
 
-## Arquitetura de cálculo
-
-O cálculo do fechamento roda **no front-end**, não no backend/Edge Function.
-A lógica deve ser **pura e sem I/O** para ser testável isoladamente:
+The fechamento calculation runs **on the front-end**, not in the backend/Edge
+Function. The logic must be **pure and I/O-free** so it can be tested in
+isolation:
 
 ```
-packages/utils/src/fechamento.ts   ← funções puras: litros(), valorConferido(),
-                                       diferenca(), etc. Sem fetch, sem cliente
-                                       Supabase, sem side effect.
-packages/utils/src/fechamento.test.ts  ← bun:test cobrindo fechamento.ts isolado
+packages/utils/src/fechamento.ts    ← pure functions. The real API today:
+                                        cartao(), conferido(), diferenca(),
+                                        isFalta(), isSobra(), breakdown(),
+                                        meiosFromFechamentoRow(),
+                                        meiosFromPwaPayments().
+                                        No fetch, no Supabase client,
+                                        no side effects.
+packages/utils/src/fechamento.test.ts         ← vitest, unit
+packages/utils/src/fechamento.golden.spec.ts  ← bun:test against real data
 ```
 
-Componentes de `apps/web` e `apps/pwa-frentista` **chamam** essas funções —
-nunca reimplementam a fórmula localmente. Se isso já está acontecendo (é o
-caso hoje, daí as 6 cópias), é exatamente o que a consolidação do passo 4
-acima resolve.
+⚠️ **There is no `valorConferido()` and no `litros()`** — the name of the
+7-bucket sum is **`conferido()`**. Check the signature in the file before
+writing the call.
 
-## Golden master com bun:sqlite
+**The two runners do not mix** (CLAUDE.md §7): the unit `.test.ts` files are
+vitest and run under `bun run test`; the golden `.golden.spec.ts` files are
+`bun:test` and run under `bun run test:golden`. **Never plain `bun test`** — it
+sweeps the whole repo, tries to execute the vitest files and produces failures
+that are not bugs.
 
-`docs/data/janeiro_referencia.sqlite` é a fonte de verdade validada com dado
-real de janeiro. Use `bun:sqlite` (nativo, sem dependência nova) pra ler os
-valores esperados dentro do teste:
+Components in `apps/web` and `apps/pwa-frentista` **call** these functions —
+they never reimplement the formula locally. A formula inside a component, hook
+or service is debt: flag it before replicating it.
+
+## Golden master with bun:sqlite
+
+`docs/data/janeiro_referencia.sqlite` is the source of truth validated against
+real January data. Use `bun:sqlite` (built in, no new dependency) to read the
+expected values inside the test:
 
 ```ts
 import { Database } from "bun:sqlite";
 import { test, expect } from "bun:test";
-import { diferenca, valorConferido } from "./fechamento";
+import { conferido, diferenca } from "./fechamento";
 
 const db = new Database("docs/data/janeiro_referencia.sqlite", { readonly: true });
 
-// ajuste a query ao schema real do sqlite de referência
+// adjust the query to the reference sqlite's real schema
 const dias = db.query("SELECT * FROM fechamentos_janeiro").all();
 
 for (const dia of dias) {
@@ -108,76 +130,75 @@ for (const dia of dias) {
 }
 ```
 
-Se o schema do sqlite de referência for diferente do que a query acima
-assume, **confira a estrutura real do arquivo antes de escrever o teste** —
-não adivinhe nomes de coluna.
+If the reference sqlite's schema differs from what the query above assumes,
+**check the file's real structure before writing the test** — do not guess
+column names.
 
-## Fórmula canônica do fechamento
+## Canonical fechamento formula
 
-- O **total informado** pelos frentistas é declaratório e fica **separado**
-  do **valor conferido** (o que realmente entrou no caixa).
-- **Recebimentos eletrônicos já compõem o valor conferido — não some de
-  novo.**
-- `diferenca = total_concentrador − total_conferido` (nessa ordem — **FALTA é
-  positivo, SOBRA é negativo**). Confirmado empiricamente com dado real de
-  janeiro (dias 1–3): quando o conferido é maior que o concentrador, sobrou
-  dinheiro no caixa (diferença negativa); quando o conferido é menor, faltou
-  (diferença positiva). `isFalta = diferenca > 0` é a implementação correta.
-- Por bico: `litros = encerrante_final − encerrante_inicial`;
-  `valor = litros × preço_litro`. O encerrante inicial de um dia é o final do
-  dia anterior no mesmo bico.
-- **Bico** = ponto de abastecimento; **concentrador** = leitura eletrônica
-  das bombas (venda "oficial"); **frentista** = funcionário; **encerrante** =
-  leitura acumulada do bico.
-- **Composição do valor conferido — confirmado empiricamente** contra
-  `janeiro_referencia.sqlite` (136 de 142 linhas batem exato, tolerância meio
-  centavo): `conferido = pix + credito + debito + moeda + notas + baratao +
-  dinheiro`. Inclui moedas, baratão e nota a prazo — não é só
-  dinheiro+cartão+pix.
-- **Exceção conhecida — dia 31 de cada mês**: 6 linhas onde o total é ≈1,8×
-  a soma esperada. Parecem ser linhas de fechamento mensal (consolidação),
-  não fechamento diário. **Ficam de fora do golden master por enquanto** —
-  não modele essas linhas como bug do dia normal; investigue separadamente
-  antes de incluir no teste.
+- The **total declared** by the frentistas is declaratory and stays **separate**
+  from the **valor conferido** (what actually landed in the till).
+- **Electronic receipts already make up the valor conferido — do not add them
+  again.**
+- `diferenca = total_concentrador − total_conferido` (in that order — **FALTA is
+  positive, SOBRA is negative**). Confirmed empirically against real January
+  data (days 1–3): when conferido exceeds concentrador, there is surplus cash in
+  the till (negative difference); when conferido is lower, cash is missing
+  (positive difference). `isFalta = diferenca > 0` is the correct
+  implementation.
+- Per bico: `litros = encerrante_final − encerrante_inicial`;
+  `valor = litros × preço_litro`. A day's opening encerrante is the previous
+  day's closing encerrante on the same bico.
+- **Glossary:** `bico` = fuelling point; `concentrador` = electronic reading
+  from the pumps (the "official" sale); `frentista` = the attendant;
+  `encerrante` = the bico's cumulative meter reading.
+- **Composition of the valor conferido — empirically confirmed** against
+  `janeiro_referencia.sqlite` (136 of 142 rows match exactly, half-centavo
+  tolerance): `conferido = pix + credito + debito + moeda + notas + baratao +
+  dinheiro`. It includes moedas, baratão and nota a prazo — it is not just
+  cash + card + pix.
+- **Known exception — the 31st of each month**: 6 rows where the total is ≈1.8×
+  the expected sum. They appear to be monthly consolidation rows, not daily
+  fechamentos. **They stay out of the golden master for now** — do not model
+  them as a bug in the normal day; investigate separately before including them
+  in the test.
 
-Se qualquer um desses nomes ou fórmulas aparecer diferente no código atual,
-**o dado real de janeiro decide, não a intuição** — investigue a divergência
-antes de "corrigir" qualquer lado.
+If any of these names or formulas shows up differently in the current code,
+**the real January data decides, not intuition** — investigate the divergence
+before "fixing" either side.
 
-## Números: cuidado com float
+## Numbers: mind the float
 
-Dinheiro e litros não devem ser somados/subtraídos como `number` fracionário
-puro em JS — arredondamento de ponto flutuante é a causa mais comum de
-`diferenca` "quase certa, mas não bate". **Testado contra os 142 dias de
-janeiro: float não causou erro prático nessa escala (136/136 exatos com
-tolerância de meio centavo)** — mas escale para inteiro (centavos,
-mililitros) mesmo assim antes de operar, e só desescale na exibição. Não é
-sobre o bug de hoje, é sobre o bug que vai aparecer quando o volume ou a
-precisão mudarem.
+Money and litres should not be added/subtracted as raw fractional `number` in
+JS — floating-point rounding is the most common cause of a `diferenca` that is
+"almost right but does not match". **Tested against all 142 January days: float
+caused no practical error at this scale (136/136 exact within half a centavo)**
+— but scale to integers (centavos, millilitres) before operating anyway, and
+only scale back for display. This is not about today's bug, it is about the bug
+that shows up when volume or precision changes.
 
-## Spike de OCR "encerrante" (branch `ocr`) — contexto relacionado
+## "Encerrante" OCR spike (branch `ocr`) — related context
 
-Edge Function `ler-encerrante` usa Gemini Vision como proxy stateless pra ler
-o papel de encerrante impresso: é um relatório com os 6 bicos de uma vez, em
-ordem fixa 1→6 — **uma foto = 6 leituras posicionais**, não leitura de
-display individual. Backend deployado; falta UI no PWA e foto real de
-amostra pra ajustar o prompt. Isso alimenta os mesmos `encerrante_inicial`/
-`encerrante_final` usados na fórmula de litros acima — ao integrar, valide o
-valor lido contra a mesma fórmula e, se possível, contra o mesmo golden
-master.
+The `ler-encerrante` Edge Function uses Gemini Vision as a stateless proxy to
+read the printed encerrante slip: it is a report covering all 6 bicos at once,
+in fixed order 1→6 — **one photo = 6 positional readings**, not a reading of an
+individual display. Backend deployed; still missing the PWA UI and a real sample
+photo to tune the prompt. This feeds the same `encerrante_inicial`/
+`encerrante_final` used in the litres formula above — when integrating, validate
+the read value against that same formula and, if possible, against the same
+golden master.
 
-## Checklist antes de fechar qualquer tarefa nesta área
+## Checklist before closing any task in this area
 
-- [ ] Conferi a fórmula contra `janeiro_referencia.sqlite` (ou esta skill),
-      não assumi por intuição
-- [ ] A lógica está em `packages/utils`, pura, sem I/O — não duplicada em
+- [ ] I checked the formula against `janeiro_referencia.sqlite` (or this skill),
+      instead of assuming from intuition
+- [ ] The logic lives in `packages/utils`, pure, I/O-free — not duplicated in
       PWA/web/service/aggregator
-- [ ] Escrevi teste `bun:test` golden master comparando com janeiro (quando
-      aplicável)
-- [ ] Se estou consolidando um dos 2 pontos restantes (aggregator ou
-      useHistoricoFrentista): rodei o teste ANTES e DEPOIS da troca de cada
-      call site, nunca troquei em lote
-- [ ] Testes usam valores escalados/inteiros onde há dinheiro ou litro, não
-      `number` fracionário cru
-- [ ] Textos e nomes de domínio em PT-BR, consistentes com o vocabulário
-      acima
+- [ ] I wrote a `bun:test` golden master (`*.golden.spec.ts`) comparing against
+      January (where applicable), and ran it with `bun run test:golden` — never
+      plain `bun test`
+- [ ] If I found a new copy of the formula and I am consolidating: I ran the
+      test BEFORE and AFTER swapping each call site, never swapped in bulk
+- [ ] Tests use scaled/integer values wherever money or litres are involved, not
+      raw fractional `number`
+- [ ] Domain text and names are in pt-BR, consistent with the vocabulary above

@@ -70,6 +70,11 @@ CASOS_SHELL = [
 
 # Roteamento: frase do dono → agentes que devem ser sugeridos. Os negativos importam
 # tanto quanto os positivos: hook que fala demais deixa de ser lido (§14).
+#
+# Lido do disco em vez de escrito à mão: agente novo que entre em `.claude/agents/`
+# sem rota aqui vira o problema de 29/07 — instalado e nunca chamado.
+AGENTES = sorted(p.stem for p in (RAIZ / ".claude/agents").glob("*.md"))
+
 CASOS_ROTA = [
     ("onde fica o cálculo do lucro?", ["grafo"]),
     ("quem usa o fechamento.ts?", ["grafo"]),
@@ -80,12 +85,41 @@ CASOS_ROTA = [
     ("qual a fórmula da planilha pro rateio", ["planilha"]),
     ("a tabela Leitura está protegida?", ["rls"]),
     ("o que um anônimo consegue ler?", ["rls"]),
+    ("quantas violações de any existem?", ["conformidade"]),
+    ("isso está dentro do padrão?", ["conformidade"]),
+    ("qual o tamanho da dívida técnica hoje", ["conformidade"]),
+    ("o tipo gerado está em dia com o banco?", ["schema"]),
+    ("essa coluna existe mesmo no banco?", ["schema"]),
+    ("qual migration criou a tabela de notas", ["schema"]),
+    ("alguém já mexeu nesse arquivo?", ["historico"]),
+    ("de quando é essa decisão de usar centavos", ["historico"]),
+    ("sumiu a pasta docs, dá pra recuperar?", ["historico"]),
+    ("qual commit apagou o CONTEXT.md", ["historico"]),
     # Termo solto do domínio NÃO dispara: a skill de fechamento já cobre sozinha.
     ("como calcula o valor conferido?", []),
     ("a diferença está errada no dia 10", []),
     ("de onde vem esse valor?", []),
     ("vamos refatorar o dashboard", []),
     ("arruma esse bug do gráfico", []),
+    # Negativos dos agentes novos: verbo de ação não é pergunta de auditoria.
+    ("remove o any desse arquivo", []),
+    ("cria uma migration pra tabela nova", []),
+    ("faz o commit disso", []),
+]
+
+# memoria-somente: escrita só dentro de .claude/agent-memory/. Nasceu porque
+# `memory:` habilita Write/Edit à revelia do campo `tools:` — sem esta trava, o
+# "somente leitura" dos seis agentes vira promessa vazia.
+CASOS_MEMORIA = [
+    (".claude/agent-memory/grafo/MEMORY.md", None),
+    (f"{RAIZ}/.claude/agent-memory/schema/drift.md", None),
+    ("packages/utils/src/fechamento.ts", "deny"),
+    ("CLAUDE.md", "deny"),
+    (".claude/agents/grafo.md", "deny"),
+    # Travessia: o `..` sai do diretório de memória e não pode ser aceito.
+    (".claude/agent-memory/../../packages/utils/src/lucro.ts", "deny"),
+    # Nome parecido não é o diretório: agent-memory-local é o escopo `local`.
+    (".claude/agent-memory-local/grafo/x.md", "deny"),
 ]
 
 # Golden master: True = tem de avisar. Teste e spec nunca avisam (não são fórmula).
@@ -112,6 +146,25 @@ CASOS_CHECKLIST = [
     (["docs/notas.md"], 0),
     ([".claude/hooks/roteia-consulta.py"], 0),
     ([], 0),
+]
+
+
+# Detector de plugin fantasma: texto do CLAUDE.md -> prefixos que devem ser
+# acusados. Os negativos carregam o desenho: `bun:test` e o placeholder
+# `arquivo:linha` existem no CLAUDE.md real e não podem virar aviso.
+CASOS_FANTASMA = [
+    ("use `claude-mem:make-plan`", ["claude-mem"]),
+    ("use `mattpocock-skills:tdd` e `claude-mem:do`", ["claude-mem", "mattpocock-skills"]),
+    ("roda sob `bun:test`, nunca `bun test` puro", []),
+    ("devolve `arquivo:linha` com evidência", []),
+    ("o plugin `engraph:engraph` está instalado", []),
+    ("`mcp__supabase__execute_sql` é somente leitura", []),
+    ("branch `feat/#12-nome`", []),
+    # Crase DUPLA é exemplo literal, não citação de uso. O §14 documenta o
+    # detector com este exato texto, e ele acusava a si mesmo até 07/08/2026.
+    ("considera plugin todo `` `prefixo-com-hifen:algo` `` citado aqui", []),
+    # E o exemplo literal não pode cegar uma citação real na mesma linha.
+    ("`` `exemplo-do:doc` `` mas use `claude-mem:do`", ["claude-mem"]),
 ]
 
 
@@ -164,10 +217,24 @@ def main() -> int:
     print("── roteia-consulta ──")
     for prompt, esperado in CASOS_ROTA:
         ctx = roda_contexto("roteia-consulta.py", {"prompt": prompt})
-        obtido = sorted(a for a in ("grafo", "planilha", "rls") if f"`{a}`" in ctx)
+        obtido = sorted(a for a in AGENTES if f"`{a}`" in ctx)
         ok = obtido == sorted(esperado)
         falhas += not ok
         print(f"  {'✓' if ok else '✗'} {prompt[:58]:60} {', '.join(obtido) or 'nao roteia'}")
+
+    print("── memoria-somente ──")
+    for alvo, esperado in CASOS_MEMORIA:
+        obtido = roda("memoria-somente.py", {"tool_input": {"file_path": alvo}})
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {alvo.replace(f'{RAIZ}/', '')[:58]:60} {obtido or 'passa'}")
+
+    print("── cobertura de rota por agente ──")
+    for agente in AGENTES:
+        coberto = any(agente in esperado for _, esperado in CASOS_ROTA)
+        falhas += not coberto
+        print(f"  {'✓' if coberto else '✗'} {agente:60} "
+              f"{'tem rota' if coberto else 'SEM ROTA — nasce e nunca e chamado'}")
 
     print("── portao-golden ──")
     for alvo, esperado in CASOS_GOLDEN:
@@ -185,6 +252,32 @@ def main() -> int:
         falhas += not ok
         rotulo = ", ".join(arquivos) or "(commit vazio)"
         print(f"  {'✓' if ok else '✗'} {rotulo[:58]:60} {obtido} pendencia(s)")
+
+    print("── higiene · plugin fantasma ──")
+    higiene = carrega("higiene.py")
+    original = (RAIZ / "CLAUDE.md").read_text()
+    try:
+        for texto, esperado in CASOS_FANTASMA:
+            (RAIZ / "CLAUDE.md").write_text(texto)
+            obtido = higiene.plugins_citados_ausentes()
+            ok = obtido == esperado
+            falhas += not ok
+            print(f"  {'✓' if ok else '✗'} {texto[:58]:60} {', '.join(obtido) or 'nenhum'}")
+    finally:
+        # Restaurar SEMPRE: o CLAUDE.md é a fonte de verdade do processo, e um
+        # teste que morre no meio não pode deixá-lo truncado no disco.
+        (RAIZ / "CLAUDE.md").write_text(original)
+
+    # O caso que faltava. Os 7 sintéticos acima sempre passaram enquanto o
+    # detector acusava o CLAUDE.md REAL em toda sessão, porque cada um
+    # SOBRESCREVE o arquivo com texto de laboratório. Testar o artefato de
+    # verdade é o que fecha a brecha: todo plugin citado nele tem de estar
+    # instalado, e o que não estiver é falha aqui, não ruído no SessionStart.
+    obtido = higiene.plugins_citados_ausentes()
+    ok = obtido == []
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'CLAUDE.md REAL não acusa fantasma':60} "
+          f"{', '.join(obtido) or 'nenhum'}")
 
     print("── higiene (fumaça) ──")
     r = subprocess.run(

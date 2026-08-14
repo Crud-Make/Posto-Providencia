@@ -3,60 +3,121 @@ name: refatoracao-posto-providencia
 description: Use esta skill sempre que for propor, avaliar ou planejar uma refatoração de código no monorepo do Posto Providência — arquivos grandes demais, lógica duplicada, componente misturando fetch/cálculo/view, ou qualquer pedido do tipo "isso tá certo?", "como organizar isso melhor", "vale a pena refatorar X". Ela define o vocabulário de diagnóstico (seam, leverage, locality, deletion test), a escala de confiança (Strong / Worth exploring / Speculative), e a regra mais importante do processo: refatoração estrutural (organização) e mudança de fórmula (cálculo de dinheiro) são categorias separadas e NUNCA devem ser misturadas na mesma tarefa sem golden master. Consulte também fechamento-posto-providencia e etl-planilha-posto-providencia para regras de domínio financeiro.
 ---
 
-# Refatoração — Posto Providência
+# Refactoring — Posto Providência
 
-## Regra central: organização ≠ correção
+> **Language:** these instructions are in English; **all output to the owner is
+> in Brazilian Portuguese (pt-BR)**, as is all code, comment, commit and UI text
+> (CLAUDE.md §0.1). Domain nouns stay in Portuguese — `valor_conferido`,
+> `diferenca`, `fechamento`, `frentista`, `bico`. The diagnostic vocabulary
+> below (seam, leverage, locality, deletion test) stays in English on purpose:
+> those are the terms the owner already uses.
 
-Toda refatoração se encaixa em uma de duas categorias, e a categoria decide o processo:
+## Central rule: organising ≠ correcting
 
-1. **Estrutural (organização/manutenção)** — mover código de lugar, separar responsabilidades, extrair componente/hook, sem mudar nenhum output ou fórmula. Critério de pronto: type-check limpo + valores exibidos idênticos a antes.
-2. **De domínio (fórmula/cálculo de dinheiro)** — qualquer mudança que toque em `valor_conferido`, `diferenca`, `projectedProfit`, `totalizers`, lucro, custo, metas, ou qualquer aritmética de negócio. Exige golden master (teste contra dado real, ver `fechamento-posto-providencia`) ANTES de a tarefa ser considerada pronta — nunca depois.
+Every refactor falls into one of two categories, and the category decides the
+process:
 
-**Nunca misture as duas na mesma tarefa.** Se uma refatoração estrutural expõe uma fórmula sem teste (ex.: promovendo `projectedProfit` pra `packages/utils` pra reuso), isso automaticamente vira categoria 2 e precisa de golden master antes do merge — mesmo que a intenção original fosse só organizar.
+1. **Structural (organisation/maintenance)** — moving code around, separating
+   responsibilities, extracting a component/hook, without changing any output or
+   formula. Done criterion: clean type-check + displayed values identical to
+   before.
+2. **Domain (formula/money calculation)** — any change touching
+   `valor_conferido`, `diferenca`, `projectedProfit`, `totalizers`, lucro,
+   custo, metas, or any business arithmetic. Requires a golden master (a test
+   against real data, see `fechamento-posto-providencia`) BEFORE the task counts
+   as done — never after.
 
-Quando o pedido for ambíguo ("vamos organizar esse componente"), pergunte ou confirme explicitamente: "isso é só mover código de lugar, ou vamos mudar/expor alguma fórmula também?" — a resposta muda o processo inteiro.
+**Never mix the two in the same task.** If a structural refactor exposes an
+untested formula (e.g. promoting `projectedProfit` into `packages/utils` for
+reuse), it automatically becomes category 2 and needs a golden master before
+merge — even if the original intent was only to organise.
 
-## Vocabulário de diagnóstico
+When the request is ambiguous ("let's tidy up this component"), ask or confirm
+explicitly: "is this only moving code around, or are we changing/exposing a
+formula too?" — the answer changes the entire process.
 
-Ao investigar um arquivo/módulo candidato a refatoração, descreva o problema usando estes termos (não invente outros):
+## Diagnostic vocabulary
 
-- **Seam (costura)**: um ponto de separação testável entre partes do código. Falta de seam = não dá pra testar uma parte sem montar/rodar as outras.
-- **Leverage (alavancagem)**: quantos lugares uma mudança afeta. Alta leverage = 1 correção resolve N call sites (bom motivo pra extrair).
-- **Locality (localidade)**: onde uma mudança futura provável vai precisar acontecer. Baixa locality = mudar uma regra de negócio hoje exige tocar em vários arquivos.
-- **Deletion test (teste de deleção)**: pergunte "se eu apagar este código, o que quebra e onde a lógica vai reaparecer?". Se a resposta é "vai ser reescrita em outro lugar", é sinal de que o código já merece virar módulo compartilhado.
-- **Módulo profundo vs. raso**: módulo profundo = interface pequena escondendo implementação grande (bom). Módulo raso = interface ≈ implementação, não vale a abstração.
-- **Vazamento (leak)**: quando uma responsabilidade (fetch, cálculo, formatação) vaza pra dentro de uma camada que não deveria carregá-la (ex.: fórmula de lucro dentro de um componente React).
+When investigating a file/module as a refactor candidate, describe the problem
+using these terms (do not invent others):
 
-## Escala de confiança dos candidatos
+- **Seam**: a testable separation point between parts of the code. No seam = you
+  cannot test one part without assembling/running the others.
+- **Leverage**: how many places a change affects. High leverage = one fix
+  resolves N call sites (a good reason to extract).
+- **Locality**: where a likely future change will need to happen. Low locality =
+  changing one business rule today requires touching several files.
+- **Deletion test**: ask "if I delete this code, what breaks and where will the
+  logic reappear?". If the answer is "it will be rewritten somewhere else", that
+  is a sign the code already deserves to become a shared module.
+- **Deep vs. shallow module**: a deep module has a small interface hiding a
+  large implementation (good). A shallow module has interface ≈ implementation —
+  the abstraction is not worth it.
+- **Leak**: when a responsibility (fetching, calculation, formatting) leaks into
+  a layer that should not carry it (e.g. a profit formula inside a React
+  component).
 
-Classifique cada candidato de refatoração em uma dessas três, e ordene o trabalho pela confiança, não pela vontade:
+## Confidence scale for candidates
 
-- **Strong**: segue um padrão já validado em produção no mesmo domínio (tem "irmãos" que já fizeram a mesma extração), baixo risco, ganho imediato e claro.
-- **Worth exploring**: ganho real, mas escopo maior, mais arquivos afetados, ou depende de confirmar algo (ex.: dois adaptadores visuais parecidos que podem ou não ser o mesmo conceito).
-- **Speculative**: unificação ou abstração hipotética — só uma instância existe hoje, não force generalização antes de haver um segundo caso real.
+Classify every refactor candidate into one of these three, and order the work by
+confidence, not by appetite:
 
-Não promova um candidato "Worth exploring" pra "Strong" só por impaciência; e não bloqueie um "Strong" esperando decidir os outros.
+- **Strong**: follows a pattern already validated in production in the same
+  domain (it has "siblings" that already did the same extraction), low risk,
+  immediate and clear gain.
+- **Worth exploring**: real gain, but larger scope, more affected files, or
+  dependent on confirming something (e.g. two similar-looking visual adapters
+  that may or may not be the same concept).
+- **Speculative**: a hypothetical unification or abstraction — only one instance
+  exists today; do not force generalisation before a second real case appears.
 
-## Processo passo a passo
+Do not promote a "Worth exploring" candidate to "Strong" out of impatience; and
+do not block a "Strong" one while waiting to decide the others.
 
-1. **Diagnosticar** o arquivo/módulo usando o vocabulário acima — nomear o vazamento específico, não só dizer "tá bagunçado".
-2. **Achar os "irmãos"** — módulos do mesmo domínio que já passaram pelo mesmo tipo de refatoração. Copiar a forma validada é sempre Strong; inventar uma forma nova é Worth exploring pra baixo, no mínimo.
-3. **Separar candidatos por categoria** (estrutural vs. domínio) antes de ordenar por prioridade.
-4. **Ordenar**: Strong estrutural primeiro (menor risco, ganho imediato) → Worth exploring estrutural → qualquer candidato de domínio só depois de golden master escrito → Speculative fica registrado mas não vira tarefa até haver um segundo caso real.
-5. **Escopo por PR**: uma extração de hook/componente = uma PR. Trocar formatadores ou consolidar lógica duplicada que toca em 10+ arquivos é sempre uma PR separada — nunca side-quest dentro de uma refatoração menor.
-6. **Critério de pronto**:
-   - Estrutural: type-check limpo, output/render idêntico, arquivo reduzido de tamanho de forma mensurável.
-   - Domínio: golden master passando antes do merge, não depois.
+## Step-by-step process
 
-## Erros a evitar (observados em sessões reais)
+1. **Diagnose** the file/module using the vocabulary above — name the specific
+   leak, do not just say "it is messy".
+2. **Find the "siblings"** — modules in the same domain that already went
+   through the same kind of refactor. Copying a validated shape is always
+   Strong; inventing a new shape is Worth exploring at best.
+3. **Split candidates by category** (structural vs. domain) before ordering by
+   priority.
+4. **Order**: Strong structural first (lowest risk, immediate gain) → Worth
+   exploring structural → any domain candidate only after the golden master is
+   written → Speculative gets recorded but does not become a task until a second
+   real case exists.
+5. **Scope per PR**: one hook/component extraction = one PR. Swapping formatters
+   or consolidating duplicated logic that touches 10+ files is always a separate
+   PR — never a side-quest inside a smaller refactor.
+6. **Done criterion**:
+   - Structural: clean type-check, identical output/render, file measurably
+     smaller.
+   - Domain: golden master passing before the merge, not after.
 
-- Mover uma fórmula de dinheiro pra dentro de um hook/módulo novo achando que "só reorganizou", quando na verdade só mudou a fórmula de endereço sem testá-la (ainda sem golden master, o risco financeiro continua).
-- Unificar dois componentes visuais parecidos (ex.: dois "cards de estatística") só porque parecem duplicados — se representam conceitos diferentes ou só existe uma instância de cada, é Speculative, não Strong.
-- Misturar uma refatoração estrutural pequena com uma troca de escopo grande (ex.: trocar formatador local por um canônico que afeta 13 arquivos) na mesma tarefa.
-- Escrever golden master DEPOIS de mover a fórmula, em vez de antes — a ordem importa porque o teste serve pra provar que a extração não mudou o número, não só que o número "parece certo" hoje.
+## Mistakes to avoid (observed in real sessions)
 
-## Referências relacionadas
+- Moving a money formula into a new hook/module believing it was "just
+  reorganised", when in fact the formula only changed address without being
+  tested (with no golden master, the financial risk remains).
+- Unifying two similar-looking visual components (e.g. two "stat cards") just
+  because they look duplicated — if they represent different concepts, or only
+  one instance of each exists, that is Speculative, not Strong.
+- Mixing a small structural refactor with a large scope change (e.g. swapping a
+  local formatter for a canonical one that affects 13 files) in the same task.
+- Writing the golden master AFTER moving the formula instead of before — the
+  order matters because the test exists to prove the extraction did not change
+  the number, not merely that the number "looks right" today.
 
-- `fechamento-posto-providencia` — regras de golden master, fórmulas de `valor_conferido`/`diferenca`, onde ficam os testes.
-- `etl-planilha-posto-providencia` — fonte de verdade das fórmulas reais quando a dúvida é "de onde vem esse número".
-- `CLAUDE.md` do monorepo — regras estruturais gerais (FSD, cálculo de domínio em `packages/utils`, convenções de nomenclatura). Esta skill assume essas regras mas não as substitui; em caso de conflito, o `CLAUDE.md` do repo decide.
+## Related references
+
+- `fechamento-posto-providencia` — golden master rules, the `valor_conferido`/
+  `diferenca` formulas, where the tests live.
+- `etl-planilha-posto-providencia` — extraction and import rules from the
+  `.xlsx`. It is about how data ENTERS the database, not about the formula: when
+  the question is "which calculation is correct", the source is
+  `fechamento-posto-providencia`; when it is "what was this number in reality",
+  it is the `planilha` agent.
+- The monorepo's `CLAUDE.md` — general structural rules (FSD, domain calculation
+  in `packages/utils`, naming conventions). This skill assumes those rules but
+  does not replace them; in case of conflict, the repo's `CLAUDE.md` decides.
