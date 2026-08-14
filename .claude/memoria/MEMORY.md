@@ -1,5 +1,7 @@
 # Memória — Posto Providência
 
+- [⚠️ 12 dias nunca fechados](doze-dias-nunca-fechados.md) — `status = ABERTO` desde 26/07, somem do lucro (view devolve 201 de 213); fechar é operação do dono pelo painel, nunca por SQL
+
 - [⚠️ Travas do MCP destravadas](travas-mcp-destravadas.md) — PENDENTE e **commitado assim** em 13/08 por decisão do dono: `execute_sql` escreve em produção até alguém repor
 - [RLS Fase 1 aplicada](rls-fase1-em-andamento.md) — aplicada em 13/08 e medida; o lado "bloqueado" das 3 policies de DELETE segue sem prova de comportamento
 - [Quem tipa o client do Supabase](quem-tipa-o-client-supabase.md) — o `database.types.ts` gerado tem zero importadores; quem vale é um schema escrito à mão
