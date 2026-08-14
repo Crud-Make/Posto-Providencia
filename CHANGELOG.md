@@ -2,6 +2,41 @@
 
 ## [Não Lançado]
 
+### 🚨 12 dias nunca foram fechados — e a tela mostrava "FECHADO, R$ 0,00" para todos eles
+- **[13/08/2026] Achado ao investigar por que o relatório diário mostrava R$ 0,00 de venda com
+  1.288 L na bomba.** Não era erro de cálculo: **12 fechamentos estão com `status = 'ABERTO'`**,
+  desde **26/07/2026**, e nenhum deles foi consolidado pelo painel.
+- **A correlação é perfeita, medida no catálogo:** dos 213 fechamentos, os **201 `FECHADO` têm
+  `total_vendas` preenchido** (01/01 a 10/08) e os **12 `ABERTO` têm `total_vendas = 0`** (26/07 a
+  13/08). Não há um único contraexemplo dos dois lados.
+- **O mecanismo, confirmado no código dos dois clientes.** `apps/pwa-frentista/src/services/api.ts`
+  (`getOrCreateFechamento`) cria o `Fechamento` pai com `total_vendas`, `total_recebido` e
+  `diferenca` **zerados** e status `'ABERTO'`, e depois insere só o filho — **nunca atualiza o
+  pai**. Quem preenche os totais é o passo 5 de `useSubmissaoFechamento.ts`, que só roda ao salvar
+  pelo painel. Dia lançado pelo celular e nunca fechado no web fica zerado para sempre. Não há
+  trigger no banco que faça isso: os únicos em `Fechamento`/`FechamentoFrentista`/`Leitura` são de
+  auditoria.
+- **O que a tela mostrava, e por quê.** O `useRelatorioDiario` decidia o status por
+  `fechamentosTurno.length > 0 ? 'Fechado' : 'Aberto'` — ou seja, olhava se **existe** fechamento,
+  nunca o campo `status`, que `getByDate` já traz no `select('*')`. Resultado: um dia sem nenhuma
+  conferência aparecia com a mesma cara de um dia conferido e batido.
+- **Corrigido.** O hook passa a ler o `status` real. `Pendente` deixa de ser rótulo inalcançável e
+  passa a significar "o frentista lançou, falta fechar o dia". E enquanto o dia não está
+  consolidado, a venda vem das **leituras** — a mesma fonte do dashboard — em vez do zero do
+  fechamento.
+- **Conferido na tela, em `localhost:3015`, no dia 13/08 (um dos 12 afetados):**
+  antes `Manhã · FECHADO · R$ 0,00`; depois **`Manhã · PENDENTE · R$ 8.759,48`**, com os mesmos
+  1.288 L. 180 vitest e 454 golden verdes, `type-check` limpo.
+- ⚠️ **O que isto NÃO resolve, e é o mais importante:** os 12 dias continuam abertos no banco.
+  Enquanto estiverem, **somem dos relatórios de lucro** — `vw_lucro_periodo` e o `getResumo` do
+  `fechamento.service` filtram `total_vendas > 0`, e é por isso que a view devolve 201 linhas e não
+  213. Nesses dias há **R$ 56.609,70** de conferido lançado por frentista sem contrapartida
+  registrada. Fechá-los é operação do dono, pelo painel, dia a dia — não é conserto de código, e
+  ninguém deve fazer isso por SQL.
+- ⚠️ **E nada avisa.** Um dia parado há 18 dias não gera alerta em lugar nenhum. Com o status agora
+  correto na tela, ele ao menos aparece como `PENDENTE` — mas só para quem abrir aquele dia
+  específico no relatório diário. Um aviso de "dias em aberto" é tarefa própria.
+
 ### 🚨 A diferença de caixa parava de ser zerada na tela — e a heurística que fazia isso estava invertida
 - **[13/08/2026]** `useRelatorioDiario.ts` continha uma "proteção visual" que **zerava a diferença
   de caixa** quando `|diferenca + totalVendas| < 5`, com o comentário "assume erro de

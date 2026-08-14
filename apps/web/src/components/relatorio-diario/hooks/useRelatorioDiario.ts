@@ -25,6 +25,19 @@ interface FechamentoDiario {
     turno_id: number;
     total_vendas?: number | null;
     diferenca?: number | null;
+    /**
+     * `'ABERTO'` enquanto o dia não foi consolidado pelo painel, `'FECHADO'` depois.
+     *
+     * @remarks
+     * Campo decisivo, e que este hook ignorava. O PWA cria o `Fechamento` pai com
+     * `total_vendas`, `total_recebido` e `diferenca` zerados (`getOrCreateFechamento`)
+     * e nunca os atualiza — quem preenche é o passo 5 de `useSubmissaoFechamento`,
+     * ao salvar pelo painel. Sem olhar o status, um dia só lançado pelo celular
+     * aparecia como "FECHADO" com R$ 0,00 de venda. Medido em 13/08/2026:
+     * `status = 'ABERTO'` ⟺ `total_vendas = 0`, em 12 de 12 casos; os 201 FECHADO
+     * têm todos o valor preenchido.
+     */
+    status?: string | null;
     usuario?: {
         nome?: string | null;
     } | null;
@@ -168,8 +181,15 @@ export const useRelatorioDiario = () => {
                         }
                     });
 
-                    // Prioriza vendas do fechamento se existir, senão usa das leituras
-                    const totalVendas = fechamentosTurno.length > 0 ? totalVendasFechamento : vendasLeituras;
+                    // O total do `Fechamento` só vale depois que o dia foi CONSOLIDADO pelo
+                    // painel — antes disso ele é zero por construção, e usá-lo mostrava
+                    // "R$ 0,00 vendidos" num dia com 1.288 L na bomba. Enquanto o dia está
+                    // aberto, a venda real vem das leituras, que é a mesma fonte do dashboard.
+                    const consolidado =
+                        fechamentosTurno.length > 0 &&
+                        fechamentosTurno.every(f => f.status === 'FECHADO');
+
+                    const totalVendas = consolidado ? totalVendasFechamento : vendasLeituras;
 
                     // A diferença de caixa vai para a tela como está gravada, sempre.
                     // [13/08/2026] Aqui existia uma heurística que a ZERAVA quando
@@ -181,10 +201,17 @@ export const useRelatorioDiario = () => {
                     // sistema existe para acusar. O estado agora é pergunta, não reescrita.
                     const diferencaFinal = totalDiferencaFechamento;
 
+                    // 'Aberto'   = o turno nem começou (nenhum fechamento criado).
+                    // 'Pendente' = o frentista lançou pelo PWA, mas ninguém fechou o dia no
+                    //              painel. É o estado dos 12 dias achados em 13/08/2026, o mais
+                    //              antigo parado desde 26/07 — e que a tela mostrava como
+                    //              "FECHADO, R$ 0,00", ou seja, um dia sem conferência nenhuma
+                    //              com cara de dia conferido e batido.
+                    // 'Fechado'  = consolidado pelo painel, com os totais gravados.
                     const statusLabel: 'Aberto' | 'Fechado' | 'Pendente' =
                         fechamentosTurno.length === 0
                             ? 'Aberto'
-                            : semLancamento(totalVendas, totalDiferencaFechamento)
+                            : !consolidado || semLancamento(totalVendas, totalDiferencaFechamento)
                                 ? 'Pendente'
                                 : 'Fechado';
 
