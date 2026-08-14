@@ -25,7 +25,32 @@ despesa** — ver [[despesa-vem-do-banco]].
 
 **A promoção foi feita** (conferido em 12/08/2026, fim do dia): `docs/data/`
 está no disco com os três artefatos byte a byte idênticos aos do estágio 2, e os
-goldens passam contra ela. Nada pendente no pipeline.
+goldens passam contra ela.
+
+**Pendência achada em 12/08/2026 — o mês 07 aborta a carga de fechamento.**
+`python3 scripts/carga-historico-fechamento.py 7` para com
+`ABORTADO: frentista fora do cadastro: 'Posto - Jorro' (dia 1)`. Meses 01–06
+carregam e reconciliam normalmente. Causa: a lista de rótulos ignorados do estágio 1
+(`scripts/etl-estagio1-staging.py:268`) é `{"caixa", "%", "posto - p - jorro"}`, e o
+mês 07 grafa **`Posto - Jorro`**, sem o `- P -`; `normaliza()` tira acento e
+pontuação de borda, não colapsa o miolo. São 175 linhas em `venda_frentista_diaria`
+e 25 em `frentista_dia_total`, R$ 162,99, todas em `Dinheiro`.
+
+**O abort é o comportamento certo — o conserto óbvio é o errado.** Adicionar
+`'Posto - Jorro'` ao dict `FRENTISTAS` de `carga-historico-fechamento.py:55-61`
+faria R$ 162,99 virarem venda de um frentista inexistente em produção. Corrigir é na
+linha 268 do estágio 1.
+
+**A reconciliação do estágio 2 passa verde nessas linhas** e é estruturalmente
+incapaz de ver o defeito: a linha "Venda Frentistas" da planilha também soma essa
+coluna, então `venda_frentistas == Σ das formas` bate. Quem pegaria é uma asserção
+de **domínio fechado de `frentista`** — que não existe: **nenhum dos 5 goldens toca
+`fechamento_diario`, `frentista_dia_total` nem `venda_frentista_diaria`**.
+
+O trio existe desde `da26b5b` e está populado (212 / 1.452 / 10.164 linhas). O
+`CHANGELOG.md` afirmava a lacuna como aberta porque o commit que a fechou não
+voltou para corrigir o texto — **a documentação sobreviveu à ferramenta, com o sinal
+invertido**.
 
 Promover é ato do dono por desenho — o hook `protege-dados` nega `cp`/`mv` para
 `docs/data/` vindo de agente. Se um dia a pasta sumir de novo (já sumiu uma vez,
