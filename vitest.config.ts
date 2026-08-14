@@ -6,6 +6,13 @@ export default defineConfig({
         environment: 'jsdom',
         globals: true,
         include: ['**/*.test.{ts,tsx}'],
+        // [14/08] Um worktree em `.claude/worktrees/<branch>/` é uma cópia INTEIRA do repo, com
+        // os mesmos testes e o seu próprio `node_modules`. Sem esta linha o vitest roda os
+        // testes de OUTRA branch junto com os desta: a suíte saltou de 25 arquivos/200 testes
+        // para 49/401, com 14 falhas que não eram deste código. É a armadilha do §7 do
+        // CLAUDE.md com endereço novo — "baseline de falhas pré-existentes" imaginária.
+        // `node_modules` já é excluído por padrão, mas o default some ao declarar `exclude`.
+        exclude: ['**/node_modules/**', '**/dist/**', '.claude/worktrees/**'],
     },
     resolve: {
         alias: {
