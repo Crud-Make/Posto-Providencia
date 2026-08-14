@@ -16,7 +16,7 @@ import { ShiftData, DailyTotals, ExpenseData } from '../types';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { DBDespesa } from '../../../types/database/index';
-import { hojeIso } from '@posto/utils';
+import { hojeIso, semLancamento } from '@posto/utils';
 
 /**
  * Fechamento com os campos necessários para o relatório diário.
@@ -171,18 +171,22 @@ export const useRelatorioDiario = () => {
                     // Prioriza vendas do fechamento se existir, senão usa das leituras
                     const totalVendas = fechamentosTurno.length > 0 ? totalVendasFechamento : vendasLeituras;
 
-                    // Lógica de proteção visual para Diferenca de Caixa
-                    // Se a diferença for negativa e quase igual às vendas, provavel que não lançou pagamentos
-                    let diferencaFinal = totalDiferencaFechamento;
+                    // A diferença de caixa vai para a tela como está gravada, sempre.
+                    // [13/08/2026] Aqui existia uma heurística que a ZERAVA quando
+                    // `|diferenca + totalVendas| < 5`, para "não mostrar quebra gigante".
+                    // Ela estava errada duas vezes: o sinal (com `diferenca = encerrante −
+                    // conferido`, "nada lançado" dá +totalVendas, então a condição pedia
+                    // 2×totalVendas < 5 — 0 de 201 fechamentos do histórico a satisfaziam),
+                    // e o próprio ato de zerar, que apaga da tela justamente o número que o
+                    // sistema existe para acusar. O estado agora é pergunta, não reescrita.
+                    const diferencaFinal = totalDiferencaFechamento;
 
-                    // Se tiver vendas significativas e a diferença for exatamente o negativo das vendas (margem de R$ 5)
-                    // Isso indica que o total pago foi 0, ou seja, provavelmente não lançaram os pagamentos ainda.
-                    let statusLabel: 'Aberto' | 'Fechado' | 'Pendente' = fechamentosTurno.length > 0 ? 'Fechado' : 'Aberto';
-
-                    if (totalVendas > 100 && Math.abs(diferencaFinal + totalVendas) < 5) {
-                        diferencaFinal = 0; // Assume erro de lançamento/pendência para não mostrar quebra gigante
-                        statusLabel = 'Pendente'; // Muda status visualmente
-                    }
+                    const statusLabel: 'Aberto' | 'Fechado' | 'Pendente' =
+                        fechamentosTurno.length === 0
+                            ? 'Aberto'
+                            : semLancamento(totalVendas, totalDiferencaFechamento)
+                                ? 'Pendente'
+                                : 'Fechado';
 
                     const frentistasNomes = fechamentosTurno
                         .map(f => f.usuario?.nome)

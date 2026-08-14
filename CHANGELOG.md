@@ -2,6 +2,41 @@
 
 ## [Não Lançado]
 
+### 🚨 A diferença de caixa parava de ser zerada na tela — e a heurística que fazia isso estava invertida
+- **[13/08/2026]** `useRelatorioDiario.ts` continha uma "proteção visual" que **zerava a diferença
+  de caixa** quando `|diferenca + totalVendas| < 5`, com o comentário "assume erro de
+  lançamento/pendência para não mostrar quebra gigante". Ela estava errada **duas vezes**.
+- **Errada no sinal.** Com `diferenca = encerrante − conferido` (§6, e confirmado pela skill contra
+  janeiro), "não lançou nada" produz `diferenca = +totalVendas` — então a condição pedia
+  `|2 × totalVendas| < 5`, impossível para qualquer venda acima de R$ 100. **Medido em produção: 0
+  de 201** fechamentos com venda > R$ 100 a satisfaziam, e o caso que ela dizia cobrir
+  (`conferido = 0`) **nunca ocorreu em 213 fechamentos**. Ela só dispararia com
+  `conferido ≈ 2 × encerrante` — lançamento em dobro, o oposto do que o comentário afirmava.
+- **Errada no ato.** Mesmo com o sinal certo, zerar apaga da tela exatamente o número que o sistema
+  existe para acusar. É a falha silenciosa do §V5: número errado sem aviso, pior que travar.
+- **O sinal do banco foi conferido antes de mexer, não presumido.** Nas 12 linhas de maior
+  |diferença| do histórico, a coluna `diferenca` é **idêntica** a `total_vendas − soma dos meios dos
+  filhos`, ao centavo. O banco segue o §6; era a heurística que estava invertida.
+- **Duas funções novas em `packages/utils/src/fechamento.ts`**, onde cálculo de domínio deve morar:
+  `conferidoImplicito(encerrante, diferencaGravada)` (a inversa exata de `diferenca`, porque a linha
+  agregada de `Fechamento` não guarda o conferido) e `semLancamento(...)`, que responde **estado**
+  sem reescrever valor nenhum. Quem chama decide como sinalizar.
+- **O status `Pendente` continua existindo, e agora com significado.** Antes era inalcançável na
+  prática; agora sai de um fato (`conferido ≈ 0` com venda > 0), e a quebra vai para a tela **como
+  está gravada**, em vez de virar `R$ 0,00`.
+- **Testes: 180 vitest (eram 171) e 454 golden (eram 393), zero falhas.** Os unitários usam os
+  números reais de produção — fechamento 517 (falta de R$ 1.996,87 sobre R$ 8.057,14) e 582 (sobra
+  de R$ 469,98) —, incluindo um teste que **prova o bug de sinal** mostrando que a condição antiga
+  era insatisfazível. O golden cruza `jan_encerrante` × `jan_frentista` dia a dia e verifica que o
+  conferido é recuperável ao centavo e que nenhum dia real de janeiro é "sem lançamento".
+- ⚠️ **O que NÃO foi provado:** a tela foi conferida quanto a **não-regressão** (`/relatorio-diario`
+  carrega como `anon`, zero erro de console), mas **não** com um dia de falta grande — não consegui
+  dirigir o seletor de data por script, e o dia corrente tem diferença zero. Falta o teste do §V3:
+  o dono abrir 16/02/2026 e ver R$ 1.996,87 aparecer onde antes poderia sumir.
+- **Lição, e é a mesma de sempre aqui:** o teste verde não viu isso porque **não havia teste
+  nenhum** em `relatorio-diario/`. Fórmula que nasce dentro de um hook não é coberta por nada — é o
+  modo de falha recorrente que a skill de fechamento descreve, com endereço novo.
+
 ### 🔒 RLS Fase 1: as duas views deixam de ser porta de escrita, e o DELETE anônimo entra na janela
 - **[13/08/2026] Aplicada em produção** — `20260813_rls_fase1_views_e_delete_anonimo.sql`. Fecha os
   dois caminhos que **contornavam** a RLS por fora. Nenhuma tabela estava sem RLS (o §5 já estava

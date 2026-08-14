@@ -14,7 +14,13 @@
  */
 import { Database } from 'bun:sqlite';
 import { test, expect } from 'bun:test';
-import { conferido, meiosFromFechamentoRow } from './fechamento';
+import {
+    conferido,
+    conferidoImplicito,
+    diferenca,
+    semLancamento,
+    meiosFromFechamentoRow,
+} from './fechamento';
 
 const DB_PATH = `${import.meta.dir}/../../../docs/data/janeiro_referencia.sqlite`;
 const db = new Database(DB_PATH, { readonly: true });
@@ -56,5 +62,54 @@ for (const l of linhas) {
             valor_baratao: l.baratao,
         });
         expect(centavos(conferido(meios))).toBe(centavos(l.total));
+    });
+}
+
+/**
+ * Golden do estado "sem lançamento", contra os mesmos dias reais de janeiro.
+ *
+ * @remarks
+ * Prova duas coisas sobre `conferidoImplicito`/`semLancamento`, que existem para
+ * substituir a heurística que zerava a diferença na tela do relatório diário:
+ *
+ * 1. A recuperação do conferido a partir de (encerrante, diferença) é EXATA no
+ *    dado real — não é estimativa.
+ * 2. `semLancamento` é falso em todo dia de janeiro: nenhum dia real ficou sem
+ *    meio de pagamento lançado. É o mesmo que a produção mostra hoje (0 de 213
+ *    fechamentos com conferido zerado), medido aqui contra a referência.
+ */
+interface DiaJaneiro {
+    dia: number;
+    concentrador: number;
+    conferido: number;
+}
+
+const dias = db
+    .query(
+        `SELECT e.dia                       AS dia,
+                SUM(e.venda_bico)           AS concentrador,
+                (SELECT SUM(f.total) FROM jan_frentista f WHERE f.dia = e.dia) AS conferido
+           FROM jan_encerrante e
+          WHERE e.dia <> 31
+          GROUP BY e.dia
+          HAVING conferido IS NOT NULL
+          ORDER BY e.dia`
+    )
+    .all() as unknown as DiaJaneiro[];
+
+test('há dias de janeiro com encerrante E frentista para cruzar', () => {
+    expect(dias.length).toBeGreaterThan(20);
+});
+
+for (const d of dias) {
+    const diferencaDoDia = diferenca(d.concentrador, d.conferido);
+
+    test(`conferido é recuperável a partir da diferença — dia ${d.dia}`, () => {
+        expect(centavos(conferidoImplicito(d.concentrador, diferencaDoDia)))
+            .toBe(centavos(d.conferido));
+    });
+
+    test(`dia real de janeiro não é "sem lançamento" — dia ${d.dia}`, () => {
+        expect(semLancamento(d.concentrador, diferencaDoDia)).toBe(false);
     });
 }
