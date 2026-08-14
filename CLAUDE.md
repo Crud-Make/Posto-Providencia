@@ -260,6 +260,7 @@ Já mentiu com confiança total uma vez; ver anexo.
 | Regra de negócio, fórmula, nomenclatura      | `fechamento-posto-providencia`                            |
 | Importar/atualizar a partir do `.xlsx`       | `etl-planilha-posto-providencia`                          |
 | Avaliar ou planejar refatoração              | `refatoracao-posto-providencia`                           |
+| "Está pronto?", "pode entregar?", "falta o quê?" | `entrega-real-posto-providencia`                      |
 | "Onde fica X", "quem usa Y", raio de impacto | agente `grafo` (§12)                                      |
 | "Quanto deu X?", conferir número contra o real | agente `planilha`                                       |
 | "Essa tabela está protegida?", exposição do banco | agente `rls`                                         |
