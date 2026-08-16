@@ -1,18 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { formatBR, formatCurrency } from '@posto/utils';
 import { usePlanilhaDoBanco } from '../model/use-planilha-do-banco';
-import {
-    geometriaVenda,
-    geometriaEstoque,
-    geometriaEntregas,
-} from '../model/geometria-series';
 import { ESTILOS_PLANILHA } from './estilos';
 import { Sinteses } from './sinteses';
 import { TabelaVenda } from './tabela-venda';
 import { TabelaCompra } from './tabela-compra';
 import { TabelaEstoque } from './tabela-estoque';
-import { GraficoAcumulado } from './grafico-acumulado';
-import { GraficoEntregas } from './grafico-entregas';
+import { corDoSinal } from './sinal';
+import { textoDoCampo } from '../model/campo-numerico';
 
 interface PlanilhaDoMesProps {
     readonly postoId: number | null;
@@ -20,6 +15,23 @@ interface PlanilhaDoMesProps {
     readonly mesIso: string;
     /** Mês por extenso, para o cabeçalho. */
     readonly mesReferencia: string;
+    /**
+     * Seletor de mês, renderizado no meio do cabeçalho.
+     *
+     * @remarks Entra como nó, e não como `aoMudarMes`, porque quem é dono do
+     *          período é a página — o `PeriodoContext` é compartilhado com as
+     *          outras telas de análise, e o widget só empresta o lugar. Assim a
+     *          direção do FSD continua de cima para baixo.
+     */
+    readonly seletorDeMes?: React.ReactNode;
+}
+
+/** Uma pendência do mês: rótulo curto na tela, motivo inteiro no `title`. */
+interface Alerta {
+    readonly rotulo: string;
+    readonly detalhe: string;
+    /** `true` pinta de vermelho — reservado ao que invalida um número. */
+    readonly grave?: boolean;
 }
 
 interface Kpi {
@@ -49,19 +61,23 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
     postoId,
     mesIso,
     mesReferencia,
+    seletorDeMes,
 }) => {
     const {
         produtos,
         bicos,
         apurado,
-        series,
         procedencia,
         produtosSemAbertura,
         carregando,
         erro,
         temPendencia,
         salvando,
+        despesaTexto,
         editarMedicao,
+        editarDespesa,
+        editarCustoPorLitro,
+        editarCompra,
         salvarMedicoes,
         descartarMedicoes,
     } = usePlanilhaDoBanco(postoId, mesIso);
@@ -77,14 +93,26 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
      */
     const [resultado, setResultado] = useState<{ texto: string; falhou: boolean } | null>(null);
 
+    /**
+     * O texto do campo `Custo do LT` enquanto ele está sendo digitado.
+     *
+     * @remarks Precisa existir separado do valor apurado porque o campo é uma
+     *          **vista** da despesa, não um dado próprio: sem ele, digitar
+     *          "0," viraria 0 na conversão, voltaria como "0" e comeria o que a
+     *          pessoa acabou de teclar. `null` = mostrar o valor calculado.
+     */
+    const [custoDigitado, setCustoDigitado] = useState<string | null>(null);
+
     const { venda, compra, estoque, custoPorLitro, margemBruta, lucroLiquido, lucroPorLitro } =
         apurado;
 
-    // Sem o React Compiler neste app, a geometria dos três gráficos seria
-    // recalculada a cada tecla digitada numa medição.
-    const geoVenda = useMemo(() => geometriaVenda(series.venda), [series.venda]);
-    const geoEstoque = useMemo(() => geometriaEstoque(series.estoque), [series.estoque]);
-    const geoEntregas = useMemo(() => geometriaEntregas(series.entregas), [series.entregas]);
+    /**
+     * Quatro casas FIXAS: o custo do litro é multiplicado pelos litros do mês
+     * inteiro, então a fração de centavo não é enfeite. Em janeiro, 0,4730 ×
+     * 46.843 L reproduz a despesa de R$ 22.158,46; 0,47 daria R$ 142,25 a menos.
+     */
+    const custoTexto = custoDigitado ?? textoDoCampo(custoPorLitro, 4, 4);
+
 
     const kpis: readonly Kpi[] = [
         {
@@ -96,38 +124,102 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
             rotulo: 'Margem bruta',
             valor: formatCurrency(margemBruta),
             nota: 'venda − custo de compra',
+            cor: corDoSinal(margemBruta),
         },
         {
             rotulo: 'Despesas do mês',
             valor: formatCurrency(apurado.despesasDoMes),
-            nota: `${formatCurrency(custoPorLitro)} por litro`,
+            // Quatro casas, e não `formatCurrency`: com duas, este KPI dizia
+            // "R$ 0,47" enquanto o campo do custo mostrava 0,4730 — o mesmo
+            // número aparecendo diferente em dois lugares da mesma tela.
+            nota: `R$ ${formatBR(custoPorLitro, 4)} por litro`,
         },
         {
             rotulo: 'Lucro líquido',
             valor: `${formatCurrency(lucroLiquido)}${venda.apurado ? '' : ' *'}`,
             nota: 'margem bruta − despesas',
-            cor: lucroLiquido < 0 ? 'var(--neg)' : 'var(--pos)',
+            cor: corDoSinal(lucroLiquido),
         },
         {
             rotulo: 'Margem média',
             valor: `${formatBR(venda.totais.margem, 2)}%`,
             nota: `${lucroPorLitro === null ? '—' : formatCurrency(lucroPorLitro)} por litro`,
+            cor: corDoSinal(venda.totais.margem),
         },
         {
             rotulo: 'Perca e sobra',
-            valor:
-                estoque.totais.estoqueMedido === null
-                    ? '—'
-                    : `${formatBR(apurado.percaTotal, 0)} L`,
+            valor: apurado.percaTotal === null ? '—' : `${formatBR(apurado.percaTotal, 0)} L`,
             nota:
-                estoque.totais.estoqueMedido === null
-                    ? 'tanque não medido'
-                    : `${apurado.percaPercentual === null ? '—' : `${formatBR(apurado.percaPercentual, 2)}%`} do volume vendido`,
-            cor: apurado.percaTotal < 0 ? 'var(--neg)' : 'var(--pos)',
+                apurado.produtosComEstoqueImpossivel.length > 0
+                    ? 'falta compra lançada'
+                    : apurado.percaTotal === null
+                      ? 'tanque não medido'
+                      : `${apurado.percaPercentual === null ? '—' : `${formatBR(apurado.percaPercentual, 2)}%`} do volume vendido`,
+            cor: corDoSinal(apurado.percaTotal),
         },
     ];
 
+    /** Nome do produto a partir da chave que o cálculo usa. */
+    const nomeDoProduto = (chave: string) =>
+        produtos.find((p) => String(p.id) === chave)?.nome ?? chave;
+
+    /**
+     * O que o mês tem de incompleto, em uma etiqueta cada.
+     *
+     * @remarks Rótulo curto na tela, motivo inteiro no `title`. O que **não**
+     *          pode acontecer é o aviso sumir: cada um destes marca um número
+     *          que está menor, maior ou ausente por falta de lançamento, e um
+     *          mês incompleto com cara de mês fechado é o erro mais caro que
+     *          esta tela pode cometer.
+     */
+    const alertas: readonly Alerta[] = ([
+        procedencia.leituras === 0 && {
+            rotulo: 'sem leitura',
+            detalhe:
+                `Nenhuma leitura lançada em ${mesReferencia}. Sem o encerrante diário não há litro ` +
+                'vendido, e sem litro vendido não há rateio de despesa nem lucro a apurar. O ' +
+                'lançamento entra pelo Fechamento de Caixa.',
+        },
+        procedencia.leituras > 0 &&
+            procedencia.despesas === 0 && {
+                rotulo: 'sem despesa',
+                detalhe:
+                    'Nenhuma despesa lançada neste mês. O custo do litro fica em zero e o lucro ' +
+                    'exibido é bruto — está maior do que a realidade.',
+            },
+        !venda.apurado &&
+            procedencia.leituras > 0 && {
+                rotulo: 'sem compra',
+                detalhe:
+                    'Há produto vendido sem compra lançada no mês. Sem custo não há lucro a ' +
+                    'apurar: esses bicos aparecem como “—” e o lucro total (marcado com *) soma só ' +
+                    'o que deu para apurar. O preço de custo do cadastro NÃO é usado como ' +
+                    'substituto — ele guarda só o valor de hoje.',
+            },
+        apurado.produtosComEstoqueImpossivel.length > 0 && {
+            rotulo: 'estoque teórico negativo',
+            grave: true,
+            detalhe:
+                'Estoque teórico negativo em ' +
+                apurado.produtosComEstoqueImpossivel.map(nomeDoProduto).join(', ') +
+                '. Isso é impossível: ninguém vende mais do que tinha somado ao que comprou. O que ' +
+                'falta é entrada — compra não lançada no mês, ou compra que este acesso não pode ' +
+                'ler (a tabela de Compras não abre para visitante). A perda fica como “—” até a ' +
+                'compra aparecer; exibi-la agora anunciaria uma sobra enorme.',
+        },
+        produtosSemAbertura.length > 0 && {
+            rotulo: 'sem medição de abertura',
+            detalhe:
+                `Sem medição de abertura para ${produtosSemAbertura.join(', ')}. Sem ela o estoque ` +
+                'teórico partiria do zero e acusaria uma perda que nunca existiu — a perda desses ' +
+                'produtos fica como “—” até a abertura ser preenchida.',
+        },
+    ] as (Alerta | false)[]).filter((a): a is Alerta => a !== false);
+
     const gravar = async () => {
+        // Solta o texto em edição: o campo volta a espelhar o valor apurado, que
+        // é o que o banco passou a ter.
+        setCustoDigitado(null);
         const falha = await salvarMedicoes();
         setResultado(
             falha === null
@@ -164,6 +256,11 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                     <div className="pm-topo__etiqueta">Controle de combustíveis</div>
                     <div className="pm-topo__titulo">Fechamento de pista</div>
                 </div>
+                {/* No meio, entre o título e a procedência: o seletor tinha uma
+                    faixa só para ele acima da planilha, que custava 62px de
+                    altura e empurrava o título para 82px abaixo do topo — numa
+                    página que é toda tabela. */}
+                {seletorDeMes && <div className="pm-topo__seletor">{seletorDeMes}</div>}
                 <div className="pm-topo__lado pm__mono">
                     <div>
                         Referência: <strong>{mesReferencia}</strong>
@@ -175,46 +272,23 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                 </div>
             </div>
 
-            {/* Mês sem lançamento nenhum não é mês sem movimento — é mês que
-                ninguém lançou. A tela precisa dizer qual dos dois é. */}
-            {procedencia.leituras === 0 && (
-                <div className="pm__faixa pm-aviso">
-                    <span>
-                        <strong>Nenhuma leitura lançada em {mesReferencia}.</strong> Sem o encerrante
-                        diário não há litro vendido, e sem litro vendido não há rateio de despesa nem
-                        lucro a apurar. O lançamento entra pelo <strong>Fechamento de Caixa</strong>.
-                    </span>
-                </div>
-            )}
-
-            {procedencia.leituras > 0 && procedencia.despesas === 0 && (
-                <div className="pm__faixa pm-aviso">
-                    <span>
-                        <strong>Nenhuma despesa lançada neste mês.</strong> O custo do litro fica em
-                        zero e o lucro abaixo é <strong>bruto</strong> — está maior do que a
-                        realidade.
-                    </span>
-                </div>
-            )}
-
-            {!venda.apurado && procedencia.leituras > 0 && (
-                <div className="pm__faixa pm-aviso">
-                    <span>
-                        <strong>Há produto vendido sem compra lançada no mês.</strong> Sem custo não
-                        há lucro a apurar: esses bicos aparecem como “—” e o lucro total (marcado com
-                        *) soma só o que deu para apurar. O preço de custo do cadastro{' '}
-                        <strong>não</strong> é usado como substituto — ele guarda só o valor de hoje.
-                    </span>
-                </div>
-            )}
-
-            {produtosSemAbertura.length > 0 && (
-                <div className="pm__faixa pm-aviso">
-                    <span>
-                        <strong>Sem medição de abertura para {produtosSemAbertura.join(', ')}.</strong>{' '}
-                        Sem ela o estoque teórico partiria do zero e acusaria uma perda que nunca
-                        existiu — a perda desses produtos fica como “—” até a abertura ser preenchida.
-                    </span>
+            {/* Uma tira de etiquetas, não quatro parágrafos: o texto longo
+                empurrava as tabelas para fora da tela, e tabela é o que esta
+                página existe para mostrar. A explicação inteira mora no `title`
+                de cada etiqueta, e o motivo continua marcado onde ele importa —
+                o `—` na célula, o `sem compra` ao lado da perda, o `*` no lucro
+                que só somou o que deu para apurar. */}
+            {alertas.length > 0 && (
+                <div className="pm__faixa pm-alertas">
+                    {alertas.map((a) => (
+                        <span
+                            key={a.rotulo}
+                            className={`pm-alerta${a.grave ? ' pm-alerta--grave' : ''}`}
+                            title={a.detalhe}
+                        >
+                            {a.rotulo}
+                        </span>
+                    ))}
                 </div>
             )}
 
@@ -250,24 +324,9 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                     lucroPorLitro={lucroPorLitro}
                 />
 
-                <GraficoAcumulado
-                    titulo="Venda diária"
-                    geometria={geoVenda}
-                    cor="var(--venda-barra)"
-                    legendaBarra="litros/dia"
-                    legendaLinha="acumulado do mês"
-                    resumo={`média ${formatBR(series.venda.mediaDiaria, 0)} L em ${series.venda.diasComVenda} dias lançados`}
-                    picoRotulo={`${formatBR(series.venda.pico, 0)} L/dia`}
-                    tooltipBarra={(l, dia) => `Dia ${dia}: ${formatBR(l, 0)} L`}
-                    vazio={
-                        series.venda.diasComVenda === 0
-                            ? 'Nenhum dia com leitura lançada neste mês.'
-                            : undefined
-                    }
-                />
             </section>
 
-            {/* ── Compra + o custo do litro ───────────────────────────────── */}
+            {/* ── Compra e, abaixo dela, o custo do litro ─────────────────── */}
             <div className="pm__faixa pm-dupla">
                 <section className="pm-secao">
                     <div className="pm-secao__faixa pm-secao__faixa--compra">
@@ -277,11 +336,13 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                         </span>
                     </div>
 
-                    <TabelaCompra produtos={produtos} compra={compra} />
-
-                    <GraficoEntregas
-                        geometria={geoEntregas}
-                        precoMedio={compra.totais.mediaLitro}
+                    <TabelaCompra
+                        produtos={produtos}
+                        compra={compra}
+                        editarCompra={(id, campo, valor) => {
+                            setResultado(null);
+                            editarCompra(id, campo, valor);
+                        }}
                     />
                 </section>
 
@@ -295,8 +356,20 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                     <div className="pm-custo__corpo">
                         <div>
                             <div className="pm-custo__rotulo">Despesas do mês</div>
-                            <div className="pm-custo__valor pm__mono">
-                                {formatCurrency(apurado.despesasDoMes)}
+                            <div className="pm-custo__caixa">
+                                <span className="pm-custo__moeda pm__mono">R$</span>
+                                <input
+                                    className="pm-custo__campo"
+                                    type="text"
+                                    inputMode="decimal"
+                                    aria-label="Total de despesa do mês"
+                                    value={despesaTexto}
+                                    onChange={(e) => {
+                                        setResultado(null);
+                                        setCustoDigitado(null);
+                                        editarDespesa(e.target.value);
+                                    }}
+                                />
                             </div>
                             <div className="pm-custo__nota">
                                 {procedencia.despesas} lançamento
@@ -306,11 +379,29 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
 
                         <div className="pm-custo__bloco">
                             <div className="pm-custo__rotulo">Custo do LT</div>
-                            <div className="pm-custo__valor pm__mono">
-                                {formatCurrency(custoPorLitro)}
+                            <div className="pm-custo__caixa">
+                                <span className="pm-custo__moeda pm__mono">R$</span>
+                                <input
+                                    className="pm-custo__campo"
+                                    type="text"
+                                    inputMode="decimal"
+                                    aria-label="Custo operacional por litro"
+                                    disabled={venda.totais.litros <= 0}
+                                    value={custoTexto}
+                                    onChange={(e) => {
+                                        setResultado(null);
+                                        setCustoDigitado(e.target.value);
+                                        editarCustoPorLitro(e.target.value);
+                                    }}
+                                />
                             </div>
+                            {/* Não é um número solto: digitar aqui grava a despesa
+                                equivalente, e é isso que mantém de pé o §6 —
+                                custo do litro é despesa ÷ litros, sempre. */}
                             <div className="pm-custo__nota">
-                                despesas ÷ {formatBR(venda.totais.litros, 0)} L vendidos
+                                {venda.totais.litros <= 0
+                                    ? 'sem litro vendido no mês — não há como converter'
+                                    : `despesas ÷ ${formatBR(venda.totais.litros, 0)} L vendidos · digitar aqui move a despesa`}
                             </div>
                         </div>
 
@@ -318,7 +409,7 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                             <div className="pm-custo__rotulo">Lucro líquido do mês</div>
                             <div
                                 className="pm-custo__valor pm__mono"
-                                style={{ color: lucroLiquido < 0 ? 'var(--neg)' : 'var(--pos)' }}
+                                style={{ color: corDoSinal(lucroLiquido) }}
                             >
                                 {formatCurrency(lucroLiquido)}
                             </div>
@@ -351,22 +442,6 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                     }}
                 />
 
-                <GraficoAcumulado
-                    titulo="Nível de estoque no mês"
-                    geometria={geoEstoque}
-                    cor="var(--estoque-barra)"
-                    corArea="var(--estoque-barra)"
-                    legendaBarra="saída diária (venda)"
-                    legendaLinha="estoque total, L"
-                    resumo={`nível final ${formatBR(series.estoque.nivelFinal, 0)} L`}
-                    picoRotulo={`${formatBR(series.estoque.pico, 0)} L`}
-                    tooltipBarra={(l, dia) => `Dia ${dia}: venda ${formatBR(l, 0)} L`}
-                    vazio={
-                        series.venda.diasComVenda === 0 && series.entregas.length === 0
-                            ? 'Sem venda nem compra lançada neste mês.'
-                            : undefined
-                    }
-                />
             </section>
 
             {/* ── Rodapé: gravar a régua ──────────────────────────────────── */}
@@ -390,6 +465,7 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                             className="pm-rodape__botao pm-rodape__botao--fantasma"
                             onClick={() => {
                                 setResultado(null);
+                                setCustoDigitado(null);
                                 descartarMedicoes();
                             }}
                             disabled={salvando}

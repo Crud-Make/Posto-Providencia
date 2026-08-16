@@ -18,6 +18,7 @@ import {
 import { supabase } from '@/services/supabase';
 import { tanqueService } from '@/services/api';
 import { isSuccess } from '@/types/ui/response-types';
+import { numeroDoCampo, textoDoCampo } from './campo-numerico';
 import { intervaloDoMes, hojeIso, type Periodo } from '@/utils/periodo';
 import { PALETA } from './estado-planilha';
 
@@ -29,6 +30,17 @@ export interface ProdutoDoBanco {
     readonly cor: string;
     /** Tanque que guarda este produto. `null` quando não há tanque cadastrado. */
     readonly tanqueId: number | null;
+    /**
+     * Litros que o tanque comporta cheio.
+     *
+     * @remarks `null` quando não há tanque, ou quando a capacidade cadastrada é
+     *          zero — sem denominador não há "quanto do tanque isso enche", e o
+     *          medidor da tela precisa sumir em vez de mostrar barra cheia.
+     */
+    readonly capacidadeTanque: number | null;
+    /** Compra do mês como texto de campo — o que está digitado, com vírgula e tudo. */
+    readonly compraLitrosTexto: string;
+    readonly compraValorTexto: string;
     /** Preço médio ponderado praticado no mês (R$/L). `null` sem venda. */
     readonly preco: number | null;
     readonly compraLitros: number;
@@ -89,6 +101,17 @@ interface RetornoHook {
         valor: string
     ) => void;
     /** @returns Mensagem de erro, ou `null` em caso de sucesso. */
+    /** Total de despesa do mês, como texto de campo. */
+    readonly despesaTexto: string;
+    readonly editarDespesa: (valor: string) => void;
+    /**
+     * Custo por litro digitado — gravado como a despesa equivalente.
+     *
+     * @remarks Ver `editarCustoPorLitro` no hook: o §6 não admite custo fixo, e
+     *          este campo é a mesma conta lida ao contrário.
+     */
+    readonly editarCustoPorLitro: (valor: string) => void;
+    readonly editarCompra: (produtoId: number, campo: 'litros' | 'valor', valor: string) => void;
     readonly salvarMedicoes: () => Promise<string | null>;
     readonly descartarMedicoes: () => void;
     readonly recarregar: () => Promise<void>;
@@ -113,6 +136,8 @@ interface LeituraRow {
     valor_total: number | string | null;
 }
 interface CompraRow {
+    id: number;
+    observacoes: string | null;
     data: string;
     combustivel_id: number | null;
     quantidade_litros: number | string | null;
@@ -121,6 +146,25 @@ interface CompraRow {
 interface TanqueRow {
     id: number;
     combustivel_id: number | null;
+    /** Litros que o tanque comporta cheio — a régua do medidor da tela. */
+    capacidade: number | string | null;
+}
+/**
+ * Rótulo que marca a linha criada pela digitação nesta tela.
+ *
+ * @remarks É por ele que a gravação **atualiza** o ajuste anterior em vez de
+ *          empilhar um novo a cada clique — sem isso, digitar três vezes o mesmo
+ *          total somaria três ajustes e o mês triplicaria em silêncio.
+ *
+ *          Também é o que separa, na tela de Despesas e na de Compras, o que foi
+ *          lançado nota a nota do que foi acertado pelo total da planilha.
+ */
+const MARCA_AJUSTE = 'Ajuste da planilha';
+
+interface DespesaRow {
+    id: number;
+    valor: number | string | null;
+    descricao: string | null;
 }
 interface MedicaoRow {
     tanque_id: number;
@@ -130,12 +174,109 @@ interface MedicaoRow {
 
 const num = (v: number | string | null | undefined): number => Number(v ?? 0);
 
-/** Texto de campo para número. Campo vazio vira `null`, nunca zero. */
-function numeroDoCampo(texto: string): number | null {
-    if (texto.trim() === '') return null;
-    const n = Number(texto.replace(',', '.'));
-    return Number.isFinite(n) ? n : null;
+/** Diferença pequena demais para virar lançamento — centavo de arredondamento. */
+const IRRELEVANTE = 0.005;
+
+/**
+ * Põe a despesa do mês no total digitado, sem apagar o que foi lançado item a item.
+ *
+ * @param diferenca Quanto falta somar para chegar ao total digitado. Negativo
+ *                  quando o dono declara MENOS do que já está lançado — o que é
+ *                  informação, não erro: significa que algum item lançado não
+ *                  pertence ao mês, e a linha de ajuste registra isso à vista.
+ * @returns Mensagem de erro, ou `null` se deu certo.
+ */
+async function gravarAjusteDespesa(args: {
+    postoId: number;
+    data: string;
+    diferenca: number;
+    linhaAtual: { id: number; valor: number } | null;
+}): Promise<string | null> {
+    const { postoId, data, diferenca, linhaAtual } = args;
+
+    // Zerou: o ajuste deixou de existir e a linha tem de sair. Deixá-la com
+    // valor 0 sujaria a tela de Despesas com um lançamento que não é nada.
+    if (Math.abs(diferenca) < IRRELEVANTE) {
+        if (!linhaAtual) return null;
+        const { error } = await supabase.from('Despesa').delete().eq('id', linhaAtual.id);
+        return error ? `Falha ao remover o ajuste de despesa: ${error.message}` : null;
+    }
+
+    if (linhaAtual) {
+        const { error } = await supabase
+            .from('Despesa')
+            .update({ valor: diferenca, data })
+            .eq('id', linhaAtual.id);
+        return error ? `Falha ao gravar a despesa do mês: ${error.message}` : null;
+    }
+
+    const { error } = await supabase.from('Despesa').insert({
+        descricao: MARCA_AJUSTE,
+        categoria: MARCA_AJUSTE,
+        valor: diferenca,
+        data,
+        status: 'pago',
+        posto_id: postoId,
+    });
+    return error ? `Falha ao gravar a despesa do mês: ${error.message}` : null;
 }
+
+/** O mesmo da despesa, para a compra de um produto no mês. */
+async function gravarAjusteCompra(args: {
+    postoId: number;
+    combustivelId: number;
+    data: string;
+    litros: number;
+    valor: number;
+    linhaAtual: { id: number } | undefined;
+}): Promise<string | null> {
+    const { postoId, combustivelId, data, litros, valor, linhaAtual } = args;
+
+    if (Math.abs(litros) < IRRELEVANTE && Math.abs(valor) < IRRELEVANTE) {
+        if (!linhaAtual) return null;
+        const { error } = await supabase.from('Compra').delete().eq('id', linhaAtual.id);
+        return error ? `Falha ao remover o ajuste de compra: ${error.message}` : null;
+    }
+
+    // `custo_por_litro` é NOT NULL no banco e tem de bater com valor ÷ litros:
+    // gravar um custo que não fecha com as duas outras colunas é semear
+    // divergência dentro da própria linha.
+    const custoPorLitro = Math.abs(litros) < IRRELEVANTE ? 0 : valor / litros;
+
+    if (linhaAtual) {
+        const { error } = await supabase
+            .from('Compra')
+            .update({ quantidade_litros: litros, valor_total: valor, custo_por_litro: custoPorLitro, data })
+            .eq('id', linhaAtual.id);
+        return error ? `Falha ao gravar a compra do mês: ${error.message}` : null;
+    }
+
+    // `fornecedor_id` é NOT NULL: um total digitado não sabe de quem veio, então
+    // herda o fornecedor já cadastrado. Sem nenhum, a gravação para e diz o que
+    // falta — inventar fornecedor daqui criaria cadastro pelas costas do dono.
+    const { data: fornecedores, error: erroFornecedor } = await supabase
+        .from('Fornecedor')
+        .select('id')
+        .limit(1);
+    if (erroFornecedor) return `Falha ao ler o fornecedor: ${erroFornecedor.message}`;
+    const fornecedorId = fornecedores?.[0]?.id;
+    if (fornecedorId === undefined) {
+        return 'Nenhum fornecedor cadastrado — a compra precisa de um para ser gravada. Cadastre em Compras e tente de novo.';
+    }
+
+    const { error } = await supabase.from('Compra').insert({
+        data,
+        combustivel_id: combustivelId,
+        fornecedor_id: fornecedorId,
+        quantidade_litros: litros,
+        valor_total: valor,
+        custo_por_litro: custoPorLitro,
+        observacoes: MARCA_AJUSTE,
+        posto_id: postoId,
+    });
+    return error ? `Falha ao gravar a compra do mês: ${error.message}` : null;
+}
+
 
 /**
  * Dia do mês a partir do timestamp do banco, **sem** passar por fuso.
@@ -204,6 +345,20 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
     const [vendasDiarias, setVendasDiarias] = useState<readonly VendaDoDia[]>([]);
     const [entregasDiarias, setEntregasDiarias] = useState<readonly EntregaDoDia[]>([]);
     const [despesasDoMes, setDespesasDoMes] = useState(0);
+    /**
+     * A linha de ajuste da despesa do mês, quando existe.
+     *
+     * @remarks Digitar o total do mês **não apaga os lançamentos itemizados** —
+     *          isso jogaria fora fornecedor, data e categoria de cada despesa
+     *          real. Em vez disso, uma única linha `Ajuste da planilha` guarda a
+     *          diferença entre o que foi lançado item a item e o total que o dono
+     *          digitou. O rastro fica inteiro e a diferença fica explícita.
+     */
+    const [ajusteDespesa, setAjusteDespesa] = useState<{ id: number; valor: number } | null>(null);
+    /** Mesma ideia da despesa, uma linha de ajuste por produto. */
+    const [ajusteCompra, setAjusteCompra] = useState<
+        Readonly<Record<number, { id: number; litros: number; valor: number }>>
+    >({});
     const [procedencia, setProcedencia] = useState<Procedencia>({
         leituras: 0,
         compras: 0,
@@ -217,6 +372,12 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
     /** Medições digitadas e ainda não gravadas, sobrepostas ao que veio do banco. */
     const [rascunho, setRascunho] = useState<
         Readonly<Record<number, { estoqueAnterior?: string; estoqueTanque?: string }>>
+    >({});
+    /** Total de despesa do mês digitado à mão, ainda não gravado. */
+    const [rascunhoDespesa, setRascunhoDespesa] = useState<string | null>(null);
+    /** Compra do mês digitada à mão, por produto, ainda não gravada. */
+    const [rascunhoCompra, setRascunhoCompra] = useState<
+        Readonly<Record<number, { litros?: string; valor?: string }>>
     >({});
 
     const periodo = useMemo(() => intervaloDoMes(mesIso, hojeIso()), [mesIso]);
@@ -256,24 +417,27 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
                         .lte('data', periodo.fim),
                     supabase
                         .from('Compra')
-                        .select('data, combustivel_id, quantidade_litros, valor_total')
+                        .select('id, data, combustivel_id, quantidade_litros, valor_total, observacoes')
                         .eq('posto_id', postoId)
                         .gte('data', periodo.inicio)
                         .lte('data', periodo.fim),
                     supabase
                         .from('Despesa')
-                        .select('valor')
+                        .select('id, valor, descricao')
                         .eq('posto_id', postoId)
                         .gte('data', periodo.inicio)
                         .lte('data', periodo.fim),
-                    supabase.from('Tanque').select('id, combustivel_id').eq('posto_id', postoId),
+                    supabase
+                        .from('Tanque')
+                        .select('id, combustivel_id, capacidade')
+                        .eq('posto_id', postoId),
                 ]);
 
             const bicosRows = (bicosRes.data ?? []) as BicoRow[];
             const combustiveis = (combustiveisRes.data ?? []) as CombustivelRow[];
             const leituras = (leiturasRes.data ?? []) as LeituraRow[];
             const compras = (comprasRes.data ?? []) as CompraRow[];
-            const despesas = (despesasRes.data ?? []) as { valor: number | string | null }[];
+            const despesas = (despesasRes.data ?? []) as DespesaRow[];
             const tanques = (tanquesRes.data ?? []) as TanqueRow[];
 
             // ── Medições de tanque ────────────────────────────────────────────
@@ -302,6 +466,16 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
             const produtoDoTanque = new Map(
                 tanques.filter((t) => t.combustivel_id !== null).map((t) => [t.id, t.combustivel_id as number])
             );
+            // Capacidade do tanque que atende o produto — denominador do medidor.
+            // `0` e `null` viram `null`: dividir por zero daria barra infinita.
+            const capacidadeDoProduto = new Map<number, number>();
+            for (const t of tanques) {
+                if (t.combustivel_id === null || t.capacidade === null) continue;
+                const litros = num(t.capacidade);
+                if (litros > 0 && !capacidadeDoProduto.has(t.combustivel_id)) {
+                    capacidadeDoProduto.set(t.combustivel_id, litros);
+                }
+            }
 
             const aberturaPorProduto = new Map<number, number>();
             const fechamentoPorProduto = new Map<number, number>();
@@ -336,7 +510,30 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
                 });
             }
 
-            const emTexto = (v: number | undefined): string => (v === undefined ? '' : String(v));
+            // A linha de ajuste de cada produto, para poder atualizá-la em vez de
+            // empilhar um ajuste novo a cada gravação.
+            const ajustes: Record<number, { id: number; litros: number; valor: number }> = {};
+            for (const c of compras) {
+                if (c.combustivel_id === null || c.observacoes !== MARCA_AJUSTE) continue;
+                ajustes[c.combustivel_id] = {
+                    id: c.id,
+                    litros: num(c.quantidade_litros),
+                    valor: num(c.valor_total),
+                };
+            }
+            setAjusteCompra(ajustes);
+
+            const linhaAjusteDespesa = despesas.find((d) => d.descricao === MARCA_AJUSTE);
+            setAjusteDespesa(
+                linhaAjusteDespesa
+                    ? { id: linhaAjusteDespesa.id, valor: num(linhaAjusteDespesa.valor) }
+                    : null
+            );
+
+            // Litro em milésimo: a régua do tanque é lida em L, mas a medição
+            // vem do banco com a precisão que o ETL gravou.
+            const emTexto = (v: number | undefined): string =>
+                v === undefined ? '' : textoDoCampo(v, 3);
 
             setProdutos(
                 combustiveis.map((c, i) => {
@@ -346,10 +543,14 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
                         nome: c.nome,
                         cor: c.cor ?? PALETA[i % PALETA.length],
                         tanqueId: tanqueDoProduto.get(c.id) ?? null,
+                        capacidadeTanque: capacidadeDoProduto.get(c.id) ?? null,
                         // Preenchido depois, a partir do agregado por produto.
                         preco: null,
                         compraLitros: compra?.litros ?? 0,
                         compraValor: compra?.valor ?? 0,
+                        // Sobrescritos pelo rascunho em `produtosComRascunho`.
+                        compraLitrosTexto: '',
+                        compraValorTexto: '',
                         estoqueAnterior: emTexto(aberturaPorProduto.get(c.id)),
                         estoqueTanque: emTexto(fechamentoPorProduto.get(c.id)),
                     };
@@ -397,6 +598,8 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
                 medicoes: medicoes.length,
             });
             setRascunho({});
+            setRascunhoDespesa(null);
+            setRascunhoCompra({});
         } catch (e) {
             console.error('Erro ao carregar a planilha do mês:', e);
             setErro('Falha ao carregar a planilha do mês.');
@@ -412,12 +615,28 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
     /** O que o produto mostra hoje: o rascunho quando existe, senão o banco. */
     const produtosComRascunho = useMemo(
         (): readonly ProdutoDoBanco[] =>
-            produtos.map((p) => ({
-                ...p,
-                estoqueAnterior: rascunho[p.id]?.estoqueAnterior ?? p.estoqueAnterior,
-                estoqueTanque: rascunho[p.id]?.estoqueTanque ?? p.estoqueTanque,
-            })),
-        [produtos, rascunho]
+            produtos.map((p) => {
+                const compraDigitada = rascunhoCompra[p.id];
+                return {
+                    ...p,
+                    estoqueAnterior: rascunho[p.id]?.estoqueAnterior ?? p.estoqueAnterior,
+                    estoqueTanque: rascunho[p.id]?.estoqueTanque ?? p.estoqueTanque,
+                    compraLitros: numeroDoCampo(compraDigitada?.litros) ?? p.compraLitros,
+                    compraValor: numeroDoCampo(compraDigitada?.valor) ?? p.compraValor,
+                    // Litro em milésimo, dinheiro em centavo. Enquanto há
+                    // rascunho vale o texto cru: reformatar a cada tecla comeria
+                    // a vírgula que a pessoa acabou de digitar.
+                    compraLitrosTexto: compraDigitada?.litros ?? textoDoCampo(p.compraLitros, 3),
+                    compraValorTexto: compraDigitada?.valor ?? textoDoCampo(p.compraValor, 2),
+                };
+            }),
+        [produtos, rascunho, rascunhoCompra]
+    );
+
+    /** Despesa que a tela está usando: o digitado quando há, senão o banco. */
+    const despesaEfetiva = useMemo(
+        () => numeroDoCampo(rascunhoDespesa ?? undefined) ?? despesasDoMes,
+        [rascunhoDespesa, despesasDoMes]
     );
 
     const apurado = useMemo(() => {
@@ -464,9 +683,9 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
                     estoqueTanque: abertura === null ? null : medido,
                 };
             }),
-            despesasDoMes,
+            despesasDoMes: despesaEfetiva,
         });
-    }, [bicos, produtosComRascunho, despesasDoMes]);
+    }, [bicos, produtosComRascunho, despesaEfetiva]);
 
     const series = useMemo((): SeriesReais => {
         const estoqueInicial = produtosComRascunho.reduce(
@@ -489,7 +708,47 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
         []
     );
 
-    const descartarMedicoes = useCallback(() => setRascunho({}), []);
+    const editarDespesa = useCallback((valor: string) => setRascunhoDespesa(valor), []);
+
+    const editarCompra = useCallback(
+        (produtoId: number, campo: 'litros' | 'valor', valor: string) => {
+            setRascunhoCompra((r) => ({ ...r, [produtoId]: { ...r[produtoId], [campo]: valor } }));
+        },
+        []
+    );
+
+    /**
+     * Digitar o custo do litro é digitar a despesa, lida ao contrário.
+     *
+     * @remarks O §6 do CLAUDE.md diz que o custo operacional por litro é
+     *          `despesas do mês ÷ litros vendidos` e **nunca** um valor fixo.
+     *          Guardar aqui o número digitado quebraria isso — o custo deixaria
+     *          de ser a conta e passaria a ser uma opinião, e ele é a origem do
+     *          piso de venda e do lucro de todo produto.
+     *
+     *          Então o campo existe e a fórmula fica de pé: o que se grava é a
+     *          **despesa equivalente** (`custo × litros vendidos`). Os dois
+     *          campos passam a ser duas vistas do mesmo número, e mexer num move
+     *          o outro — que é exatamente o que o dono espera de uma planilha.
+     *
+     *          Sem litro vendido no mês não há conversão possível: `0 × custo` é
+     *          zero para qualquer custo digitado. Nesse caso o campo se recusa.
+     */
+    const editarCustoPorLitro = useCallback(
+        (valor: string) => {
+            const litros = apurado.venda.totais.litros;
+            if (litros <= 0) return;
+            const custo = numeroDoCampo(valor);
+            setRascunhoDespesa(custo === null ? '' : textoDoCampo(custo * litros, 2));
+        },
+        [apurado.venda.totais.litros]
+    );
+
+    const descartarMedicoes = useCallback(() => {
+        setRascunho({});
+        setRascunhoDespesa(null);
+        setRascunhoCompra({});
+    }, []);
 
     /**
      * Grava as medições digitadas.
@@ -502,7 +761,9 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
      */
     const salvarMedicoes = useCallback(async (): Promise<string | null> => {
         const pendentes = Object.entries(rascunho);
-        if (pendentes.length === 0) return null;
+        const pendentesCompra = Object.entries(rascunhoCompra);
+        const temDespesa = rascunhoDespesa !== null;
+        if (pendentes.length === 0 && pendentesCompra.length === 0 && !temDespesa) return null;
 
         const semTanque = produtos.filter(
             (p) => rascunho[p.id] !== undefined && p.tanqueId === null
@@ -521,8 +782,10 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
 
                 for (const [campo, valor] of Object.entries(campos)) {
                     if (valor === undefined) continue;
-                    const volume = Number(String(valor).replace(',', '.'));
-                    if (!Number.isFinite(volume) || volume < 0) {
+                    // Mesmo parser do resto da tela: aqui havia uma terceira
+                    // cópia que não sabia ler "1.234,56" colado de planilha.
+                    const volume = numeroDoCampo(String(valor));
+                    if (volume === null || volume < 0) {
                         return `Medição inválida em ${produto.nome}: "${valor}".`;
                     }
 
@@ -536,12 +799,71 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
                 }
             }
 
+            const ultimoDia = periodo.fim.slice(0, 10);
+
+            // ── Despesa do mês ────────────────────────────────────────────────
+            if (temDespesa) {
+                const alvo = numeroDoCampo(rascunhoDespesa ?? undefined);
+                if (alvo === null || alvo < 0) {
+                    return `Despesa do mês inválida: "${rascunhoDespesa}".`;
+                }
+                // O que já está lançado item a item, sem contar o ajuste anterior —
+                // senão o ajuste entraria na própria base que ele corrige.
+                const itemizado = despesasDoMes - (ajusteDespesa?.valor ?? 0);
+                const diferenca = Math.round((alvo - itemizado) * 100) / 100;
+                const erroDespesa = await gravarAjusteDespesa({
+                    postoId: postoId as number,
+                    data: ultimoDia,
+                    diferenca,
+                    linhaAtual: ajusteDespesa,
+                });
+                if (erroDespesa) return erroDespesa;
+            }
+
+            // ── Compra do mês, por produto ────────────────────────────────────
+            for (const [id, campos] of pendentesCompra) {
+                const produtoId = Number(id);
+                const produto = produtos.find((p) => p.id === produtoId);
+                if (!produto) continue;
+
+                const litrosAlvo = numeroDoCampo(campos.litros) ?? produto.compraLitros;
+                const valorAlvo = numeroDoCampo(campos.valor) ?? produto.compraValor;
+                if (litrosAlvo < 0 || valorAlvo < 0) {
+                    return `Compra inválida em ${produto.nome}: litro e valor não podem ser negativos.`;
+                }
+
+                const anterior = ajusteCompra[produtoId];
+                const litrosItemizados = produto.compraLitros - (anterior?.litros ?? 0);
+                const valorItemizado = produto.compraValor - (anterior?.valor ?? 0);
+                const erroCompra = await gravarAjusteCompra({
+                    postoId: postoId as number,
+                    combustivelId: produtoId,
+                    data: ultimoDia,
+                    litros: Math.round((litrosAlvo - litrosItemizados) * 1000) / 1000,
+                    valor: Math.round((valorAlvo - valorItemizado) * 100) / 100,
+                    linhaAtual: anterior,
+                });
+                if (erroCompra) return erroCompra;
+            }
+
             await carregar();
             return null;
         } finally {
             setSalvando(false);
         }
-    }, [rascunho, produtos, dataAbertura, periodo.fim, carregar]);
+    }, [
+        rascunho,
+        rascunhoCompra,
+        rascunhoDespesa,
+        produtos,
+        despesasDoMes,
+        ajusteDespesa,
+        ajusteCompra,
+        postoId,
+        dataAbertura,
+        periodo.fim,
+        carregar,
+    ]);
 
     return {
         produtos: produtosComRascunho,
@@ -556,9 +878,16 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
         dataAbertura,
         carregando,
         erro,
-        temPendencia: Object.keys(rascunho).length > 0,
+        temPendencia:
+            Object.keys(rascunho).length > 0 ||
+            Object.keys(rascunhoCompra).length > 0 ||
+            rascunhoDespesa !== null,
         salvando,
+        despesaTexto: rascunhoDespesa ?? textoDoCampo(despesasDoMes, 2),
         editarMedicao,
+        editarDespesa,
+        editarCustoPorLitro,
+        editarCompra,
         salvarMedicoes,
         descartarMedicoes,
         recarregar: carregar,

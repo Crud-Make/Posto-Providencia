@@ -2,10 +2,12 @@ import React from 'react';
 import { formatBR, formatCurrency } from '@posto/utils';
 import type { PlanilhaMensal } from '@posto/utils';
 import type { ProdutoDoBanco } from '../model/use-planilha-do-banco';
+import { CelulaEditavel } from './celula-editavel';
 
 interface TabelaCompraProps {
     readonly produtos: readonly ProdutoDoBanco[];
     readonly compra: PlanilhaMensal['compra'];
+    readonly editarCompra: (produtoId: number, campo: 'litros' | 'valor', valor: string) => void;
 }
 
 const COLUNAS = 6;
@@ -16,16 +18,26 @@ const porLitro = (v: number | null) => (v === null ? '—' : formatCurrency(v));
 /**
  * O bloco `Compra`: quanto entrou de combustível e por quanto ele precisa sair.
  *
- * @remarks **Leitura.** `Compra, LT` e `Compra, R$` são a soma das notas do mês
- *          na tabela `Compra`. Não são editáveis aqui porque um total mensal
- *          digitado não sabe a qual nota pertence — perderia fornecedor, data e
- *          o rastro de cada entrega. Quem lança é a tela de **Compras**.
+ * @remarks `Compra, LT` e `Compra, R$` são a soma das notas do mês na tabela
+ *          `Compra`, e **aceitam digitação** desde 16/08/2026, a pedido do dono,
+ *          para o replay mês a mês.
+ *
+ *          O que se digita é o **total do mês**, e ele não sabe a qual nota
+ *          pertence. Por isso a gravação não reescreve as notas existentes: ela
+ *          mantém tudo que foi lançado com fornecedor, data e volume, e põe a
+ *          diferença numa única linha marcada como ajuste da planilha. O rastro
+ *          de cada entrega real continua inteiro; o que foi acertado pelo total
+ *          fica identificável. Quem lança nota a nota continua sendo a tela de
+ *          **Compras**.
+ *
+ *          `Média LT` e `Valor p/ venda` seguem calculados — são resultado, não
+ *          entrada.
  *
  *          ⚠️ `Valor p/ venda` é **piso, não preço sugerido**: cobre a compra e o
  *          rateio da despesa e para exatamente aí. Vender nele dá lucro zero. O
  *          preço de bomba é decisão do dono.
  */
-export const TabelaCompra: React.FC<TabelaCompraProps> = ({ produtos, compra }) => (
+export const TabelaCompra: React.FC<TabelaCompraProps> = ({ produtos, compra, editarCompra }) => (
     <div className="pm-rolagem">
         <table className="pm-tabela pm-tabela--compra">
             <thead>
@@ -57,8 +69,18 @@ export const TabelaCompra: React.FC<TabelaCompraProps> = ({ produtos, compra }) 
                             style={{ background: `color-mix(in srgb, ${produto.cor} 14%, var(--panel))` }}
                         >
                             <td style={{ borderLeft: `5px solid ${produto.cor}` }}>{produto.nome}</td>
-                            <td className="pm-tabela__num">{formatBR(linha.litros, 0)}</td>
-                            <td className="pm-tabela__num">{formatCurrency(linha.valor)}</td>
+                            <CelulaEditavel
+                                valor={produto.compraLitrosTexto}
+                                placeholder="litros"
+                                rotulo={`Compra de ${produto.nome} em litros`}
+                                aoMudar={(v) => editarCompra(produto.id, 'litros', v)}
+                            />
+                            <CelulaEditavel
+                                valor={produto.compraValorTexto}
+                                placeholder="R$"
+                                rotulo={`Compra de ${produto.nome} em reais`}
+                                aoMudar={(v) => editarCompra(produto.id, 'valor', v)}
+                            />
                             <td className="pm-tabela__num">{porLitro(linha.mediaLitro)}</td>
                             <td className="pm-tabela__num pm-tabela__forte">
                                 {porLitro(linha.valorParaVenda)}
