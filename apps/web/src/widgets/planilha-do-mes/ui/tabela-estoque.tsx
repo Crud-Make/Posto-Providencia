@@ -3,12 +3,14 @@ import { formatBR } from '@posto/utils';
 import type { PlanilhaMensal } from '@posto/utils';
 import type { ProdutoDoBanco } from '../model/use-planilha-do-banco';
 import { CelulaEditavel } from './celula-editavel';
+import { MedidorTanque } from './medidor-tanque';
+import { classeDoSinal } from './sinal';
 
 interface TabelaEstoqueProps {
     readonly produtos: readonly ProdutoDoBanco[];
     readonly estoque: PlanilhaMensal['estoque'];
     readonly percas: PlanilhaMensal['percas'];
-    readonly percaTotal: number;
+    readonly percaTotal: number | null;
     readonly percaPercentual: number | null;
     readonly editarMedicao: (
         produtoId: number,
@@ -79,7 +81,7 @@ export const TabelaEstoque: React.FC<TabelaEstoqueProps> = ({
                 {produtos.map((produto, i) => {
                     const linha = estoque.produtos[i];
                     const perca = percas[i];
-                    const cor = corDaPerca(perca.litros);
+                    const cor = perca.litros === null ? 'var(--muted)' : corDaPerca(perca.litros);
                     const semTanque = produto.tanqueId === null;
 
                     return (
@@ -100,28 +102,48 @@ export const TabelaEstoque: React.FC<TabelaEstoqueProps> = ({
                                 valor={produto.estoqueAnterior}
                                 placeholder="medir"
                                 desabilitado={semTanque}
+                                capacidade={produto.capacidadeTanque}
+                                cor={produto.cor}
                                 rotulo={`Estoque anterior de ${produto.nome}`}
                                 aoMudar={(v) => editarMedicao(produto.id, 'estoqueAnterior', v)}
                             />
 
                             <td className="pm-tabela__num">{litros(linha.compraEEstoque)}</td>
                             <td className="pm-tabela__num">{litros(linha.litrosVendidos)}</td>
-                            <td className="pm-tabela__num pm-tabela__forte">
+                            {/* O que a conta diz que deveria ter no tanque. */}
+                            <MedidorTanque
+                                litros={linha.estoqueTeorico}
+                                capacidade={produto.capacidadeTanque}
+                                cor={produto.cor}
+                                className="pm-tabela__num pm-tabela__forte"
+                            >
                                 {litros(linha.estoqueTeorico)}
-                            </td>
+                            </MedidorTanque>
 
                             <CelulaEditavel
                                 valor={produto.estoqueTanque}
                                 placeholder="medir"
                                 desabilitado={semTanque}
+                                capacidade={produto.capacidadeTanque}
+                                cor={produto.cor}
                                 rotulo={`Medição do tanque de ${produto.nome}`}
                                 aoMudar={(v) => editarMedicao(produto.id, 'estoqueTanque', v)}
                             />
 
                             {/* Sem medição de fechamento não há perda a apurar — e "não medi"
                                 não pode aparecer como "não perdi". */}
+                            {/* Estoque teórico negativo é impossível físico: falta
+                                entrada, não sobrou combustível. Mostrar o número
+                                aqui seria anunciar uma sobra enorme — a leitura
+                                mais tranquilizadora possível para o número que
+                                existe para acusar falta. */}
                             <td className="pm-tabela__num" style={{ color: cor, fontWeight: 700 }}>
-                                {linha.estoqueMedido === null ? '—' : litros(perca.litros)}
+                                {perca.litros === null ? '—' : litros(perca.litros)}
+                                {perca.impossivel && (
+                                    <span className="pm-tabela__aviso" title="Estoque teórico negativo — falta compra lançada ou legível">
+                                        sem compra
+                                    </span>
+                                )}
                             </td>
                             <td className="pm-tabela__num" style={{ color: cor }}>
                                 {percentual(perca.percentual)}
@@ -142,8 +164,16 @@ export const TabelaEstoque: React.FC<TabelaEstoqueProps> = ({
                                 ? '—'
                                 : litros(estoque.totais.estoqueMedido)}
                         </td>
-                        <td>{litros(percaTotal)}</td>
-                        <td>{percentual(percaPercentual)}</td>
+                        {/* O total de perca é o número mais importante do bloco
+                            e era o único sem cor de status: a regra da linha de
+                            total fixava a tinta e engolia o sinal que TODAS as
+                            linhas acima carregam. */}
+                        <td className={classeDoSinal(percaTotal)}>
+                            {percaTotal === null ? '—' : litros(percaTotal)}
+                        </td>
+                        <td className={classeDoSinal(percaPercentual)}>
+                            {percentual(percaPercentual)}
+                        </td>
                     </tr>
                 )}
             </tbody>

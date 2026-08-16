@@ -2,6 +2,7 @@ import React from 'react';
 import { formatBR, formatCurrency } from '@posto/utils';
 import type { PlanilhaMensal } from '@posto/utils';
 import type { BicoDoBanco, ProdutoDoBanco } from '../model/use-planilha-do-banco';
+import { classeDoSinal, classes } from './sinal';
 
 interface TabelaVendaProps {
     readonly bicos: readonly BicoDoBanco[];
@@ -82,8 +83,11 @@ export const TabelaVenda: React.FC<TabelaVendaProps> = ({
                         jaMostrado.add(chave);
 
                         const cor = corDoProduto(bico.produtoId);
-                        const corLucro =
-                            linha.lucroLitro !== null && linha.lucroLitro < 0 ? 'var(--neg)' : 'var(--ink)';
+                        // Lucro e margem são saldo: ganham o sinal em cor. Litro,
+                        // encerrante e faturamento não — ver `classeDoSinal`.
+                        const sinalLucro = classeDoSinal(linha.apurado ? linha.lucro : null);
+                        const sinalLucroLitro = classeDoSinal(linha.lucroLitro);
+                        const sinalMargem = classeDoSinal(linha.apurado ? linha.margem : null);
 
                         return (
                             <tr
@@ -101,13 +105,13 @@ export const TabelaVenda: React.FC<TabelaVendaProps> = ({
                                     {linha.precoMedio === null ? '—' : formatCurrency(linha.precoMedio)}
                                 </td>
                                 <td className="pm-tabela__num">{formatCurrency(linha.venda)}</td>
-                                <td className="pm-tabela__num" style={{ color: corLucro }}>
+                                <td className={classes('pm-tabela__num', sinalLucroLitro)}>
                                     {linha.lucroLitro === null ? '—' : formatCurrency(linha.lucroLitro)}
                                 </td>
-                                <td className="pm-tabela__num" style={{ color: corLucro }}>
+                                <td className={classes('pm-tabela__num', sinalLucro)}>
                                     {linha.apurado ? formatCurrency(linha.lucro) : '—'}
                                 </td>
-                                <td className="pm-tabela__num">
+                                <td className={classes('pm-tabela__num', sinalMargem)}>
                                     {linha.apurado ? percentual(linha.margem) : '—'}
                                 </td>
                                 <td className="pm-tabela__num pm-tabela__forte">
@@ -138,9 +142,15 @@ export const TabelaVenda: React.FC<TabelaVendaProps> = ({
                                     : formatCurrency(venda.totais.precoMedio)}
                             </td>
                             <td>{formatCurrency(venda.totais.venda)}</td>
-                            <td>{lucroPorLitro === null ? '—' : formatCurrency(lucroPorLitro)}</td>
-                            <td>{formatCurrency(venda.totais.lucro)}</td>
-                            <td>{percentual(venda.totais.margem)}</td>
+                            <td className={classeDoSinal(lucroPorLitro)}>
+                                {lucroPorLitro === null ? '—' : formatCurrency(lucroPorLitro)}
+                            </td>
+                            <td className={classeDoSinal(venda.totais.lucro)}>
+                                {formatCurrency(venda.totais.lucro)}
+                            </td>
+                            <td className={classeDoSinal(venda.totais.margem)}>
+                                {percentual(venda.totais.margem)}
+                            </td>
                             <td>{litros(venda.totais.litros)}</td>
                             <td>{percentual(venda.totais.litros > 0 ? 100 : 0)}</td>
                         </tr>
