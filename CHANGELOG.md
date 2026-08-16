@@ -2,6 +2,29 @@
 
 ## [Não Lançado]
 
+### 🧮 O fechamento do dia deixa de nascer zerado esperando o painel
+- **[16/08/2026]** O PWA gravava a linha do frentista e criava o **pai zerado**;
+  os totais do dia só apareciam quando alguém abria o painel. É o mecanismo que
+  produziu os **12 dias nunca fechados** da seção mais abaixo — a tela dizia
+  "FECHADO, R$ 0,00" para dias que tinham movimento.
+- Agora todo filho gravado chama `consolidarFechamento`, que **relê o banco** em
+  vez de somar o que acabou de ser enviado. O dia tem vários frentistas, cada um
+  mandando do seu celular, e quem envia por último não sabe o que os outros
+  mandaram: reler é o que torna o pai correto **em qualquer ordem de envio** — e
+  o que faz um reenvio **corrigir** em vez de somar de novo.
+- A conta é a canônica de `@posto/utils` (`totaisDoDia`), a mesma do painel:
+  `diferenca = concentrador − conferido`, positivo = FALTA (§6). Não é uma quinta
+  reimplementação da aritmética.
+- **Ausência de leitura não é venda zero.** Os frentistas mandam durante o dia; o
+  encerrante das bombas chega à noite. Quando o primeiro frentista envia ainda
+  não há leitura nenhuma, e tratar isso como concentrador = 0 faria a diferença
+  virar `0 − conferido` — uma **SOBRA gigante que nunca existiu**. Sem encerrante
+  grava só `total_recebido` e deixa venda e diferença intocadas até a noite.
+- **A consolidação não derruba o envio.** O dinheiro do frentista já está gravado
+  quando ela roda: deixar o pai desatualizado é ruim, perder a submissão por
+  causa dele é pior. Falha vai para o console e o pai continua reconciliável pelo
+  painel.
+
 ### 🇧🇷 Os campos digitáveis passam a falar português
 - **[16/08/2026]** Os campos que ficaram editáveis mostravam o número cru do
   JavaScript — `22158.46`, `0.473`, `31000` — com **ponto no lugar da vírgula**,
