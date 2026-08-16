@@ -7,6 +7,7 @@ import { FiltrosDashboard } from './components/FiltrosDashboard';
 import { ResumoExecutivo } from './components/ResumoExecutivo';
 import { DemonstrativoFinanceiro } from './components/DemonstrativoFinanceiro';
 import { AlertasGerenciais } from './components/AlertasGerenciais';
+import { CentroDoMesConectado } from '@/widgets/resumo-mensal';
 import { PeriodoFiltro } from './types';
 
 const TelaDashboardProprietario: React.FC = () => {
@@ -74,6 +75,12 @@ const TelaDashboardProprietario: React.FC = () => {
 
       {/* Cards Principais */}
       <ResumoExecutivo dados={dadosAtuais} periodoLabel={periodoLabel} />
+
+      {/* A corrente que decide o lucro: despesa → custo do litro → lucro. Sempre do
+          MÊS, mesmo com a aba "Hoje" ativa — custo por litro é rateio mensal, um dia
+          isolado não o sustenta. As três tabelas da planilha ficam em tela própria
+          ("Planilha do Mês"): são uma leitura densa, de outro tipo. */}
+      <CentroDoMesConectado postoId={dados.posto?.id ?? null} mesIso={mesSelecionado} />
 
       {/* Demonstrativo (Entradas - Saídas = Resultado) */}
       <DemonstrativoFinanceiro dados={dadosAtuais} />

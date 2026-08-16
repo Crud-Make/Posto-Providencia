@@ -2,6 +2,86 @@
 
 ## [Não Lançado]
 
+### ⛽ A aba de resumo da planilha vira tela — venda por produto, piso de venda e perda de tanque
+- **[16/08/2026] O pedido do dono:** trazer para a Visão do Proprietário o que ele lê na aba de
+  resumo da planilha. A tela mostrava só o **total** do mês (venda, litros, lucro real, margem);
+  a quebra por produto — a que responde *qual produto me dá dinheiro* e *sumiu combustível?* —
+  não existia em lugar nenhum do sistema.
+- **Três blocos, três módulos puros em `packages/utils`,** nenhuma fórmula em componente:
+  `resumo-produto.ts` (venda por bico e por produto), `resumo-compra.ts` (custo médio e piso de
+  venda) e `resumo-estoque.ts` (estoque teórico e perda). O bloco 1 **compõe** sobre o
+  `encerrante-mensal` e o `lucro` que já existiam, em vez de reimplementar — é o mesmo salto de
+  encerrante que a tela de fechamento mensal usa, então os dois não têm como divergir.
+- **Fórmulas derivadas do dado cru e confirmadas na aritmética**, não deduzidas de cabeça:
+  `valor_pra_venda = média_de_compra + despesa_por_litro` (5,34516 + 0,47304 = 5,81820);
+  `% = despesa_por_litro ÷ valor_pra_venda`; `estoque_teórico = abertura + comprado − vendido`
+  (38.392 − 29.007,79 = 9.384,21); `perda = medido − teórico` (5.672 − 9.384,21 = −3.712,21).
+  O `Custo do LT R$` da planilha **é** o `despesaOperacionalPorLitro` que já existia — mesma
+  conta, mesmo número.
+- **Golden master nos 7 meses reais, 42 linhas ao centavo.** `resumo-produto.golden.spec.ts`
+  alimenta a função com as mesmas entradas da planilha e confere o `Lucro,bico, R$.` de cada
+  bico: bate exato nos 7 meses, com o total divergindo no máximo 1 centavo por arredondamento.
+  `resumo-compra-estoque.golden.spec.ts` cobre custo médio, piso de venda, estoque teórico e
+  perda. Suíte em **16/08/2026: 675 golden + 208 vitest, zero falhas**.
+- **A participação é por PRODUTO, não por bico, e isso é o ponto.** Três bicos vendem Gasolina
+  Comum (01, 05 e 06). Calcular participação por bico daria três fatias de ~20% e esconderia que
+  a comum é **61,9%** do volume. O agrupamento vive no módulo e é coberto por teste.
+- **Custo desconhecido aparece como desconhecido.** Produto sem compra lançada no mês tem lucro
+  **não apurável** (`apurado: false`, exibido como “—”), e o total se declara incompleto. O
+  `preco_custo` do cadastro **não** é usado como substituto: ele guarda um preço só, o de hoje, e
+  aplicá-lo a mês passado é exatamente o bug do "preço único" que inflava a venda histórica em
+  8–11%. Mesma regra para o estoque: sem medição de tanque na abertura, o produto fica fora da
+  tabela em vez de aparecer com perda inventada do tamanho do estoque inteiro.
+- **Onde nasceu:** primeiro slice FSD de verdade do `apps/web` —
+  `widgets/resumo-mensal/{model,ui}`, com API pública por `index.ts`. Importado por `@/widgets/…`
+  e **não** por `@widgets/…`: o alias curto existe no `tsconfig.json` mas **não** no
+  `vite.config.ts`, então compilaria e quebraria em runtime. Dívida registrada, não corrigida
+  aqui.
+- **O centro do mês, que a planilha calcula mas não mostra.** Auditando as fórmulas célula a
+  célula da aba `POSTO JORRO 2026`, a cadeia inteira nasce de **uma** célula: `I16 = D286` (a
+  despesa do mês, puxada da matriz de despesas) → `I19 = I16 ÷ F11` (custo do litro, sobre litros
+  **vendidos**) → `G16..G19` (piso de venda por produto) → `I5..I9` (lucro por litro) → `J`
+  (lucro do bico) → `J11` (lucro do mês). Mudar a despesa move o lucro do posto inteiro. A
+  planilha deixa isso partido entre o bloco de compra e o de venda, e a corrente não aparece em
+  lugar nenhum — a seção **O centro do mês** mostra os quatro elos numa linha só, no topo da
+  Visão do Proprietário.
+- **Achado da auditoria: a planilha tem fórmula sobrescrita por valor colado.** Na aba oficial,
+  `H7`, `J7`, `K7`, `J8`, `K8`, `J9` e `K9` são valores fixos onde deveria haver fórmula. Hoje
+  eles batem (foram colados quando a despesa já era a atual), e é por isso que o golden fecha ao
+  centavo — mas **não recalculam**: corrigir a despesa do mês deixaria o lucro do etanol, do
+  diesel e do bico 05 para trás, em silêncio. A `Plan1` é a mesma aba com esse defeito já
+  materializado: despesa de 15.000 contra os 22.158,46 reais, e três lucros congelados de uma
+  versão anterior (`J7` −1,58, `J8` −0,71, `J9` −1,68 contra a própria fórmula dela). A tela não
+  herda o defeito: tudo deriva do dado.
+- **Confirmado com o dono:** o bico 04 é **Diesel S10**. O `Ds:.500` da aba de resumo é rótulo
+  errado digitado, não um segundo produto — registrado nos dois goldens.
+- **Os blocos ficaram preenchíveis, como na planilha.** A auditoria de fórmulas separou o que é
+  entrada do que é derivado: só `Compra, LT.`/`Compra, R$.`, `Ano passado.` e `Estoque Tanque.`
+  são digitados — o resto é fórmula. Entraram os dois formulários que faltavam
+  (`form-compra.tsx`, `form-medicao.tsx`, com `useActionState`), e **nenhum deles escreve na
+  tabela**: vão por `compraService.create` (que já calcula custo por litro e atualiza o custo
+  médio ponderado) e `tanqueService.saveHistory` (upsert por tanque + data). Criar um segundo
+  dono da mesma regra é como `valor_conferido` acabou duplicado em seis lugares.
+- **A medição tem duas datas, e a diferença importa:** a **abertura** grava no dia *anterior* ao
+  início do período — o estoque com que o mês começa é o que sobrou no fecho do mês passado, que
+  é o `Ano passado.` da planilha. O **fechamento** grava no fim do período. Como o service faz
+  upsert por tanque + data, gravar as duas na mesma data sobrescreveria uma com a outra.
+- **Número vai por `type="number"`, não por `parseValue`.** O parser brasileiro trata ponto como
+  separador de milhar e leria `5672.500` como 5.672.500 — erro de mil vezes em litros de tanque.
+- **Mês sem leitura continua mostrando os formulários.** Esconder o que falta preencher atrás de
+  um "nada aqui" é como o mês fica vazio em primeiro lugar.
+- **🔒 Achado de RLS, não corrigido aqui (exige decisão + migration):** o `apps/web` **não
+  autentica em lugar nenhum** — zero chamadas de `signIn`, ele acessa o banco como `anon`. E as
+  policies não combinam com isso: `Compra` e `Estoque` só liberam `authenticated`, então
+  **lançar compra pelo painel falha**; já `HistoricoTanque` tem uma policy `Public Access` com
+  `USING true` e `cmd = ALL`, ou seja **escrita e DELETE anônimos liberados** — a medição grava,
+  e qualquer um com a chave anônima também pode apagar o histórico inteiro. Enquanto não se
+  decide, a recusa da RLS aparece traduzida na tela ("o painel não tem permissão para gravar
+  esta tabela") em vez do jargão do Postgres, que faria o dono achar que o sistema quebrou.
+- **Ainda não validado com dado real:** o banco está zerado pelo replay, então a tela abre
+  vazia. A prova contra a planilha está nos goldens; a validação pela UI acontece quando
+  janeiro/2026 for relançado.
+
 ### 🗓️ A data era 10 estados independentes — trocar o mês numa tela não mexia nas outras
 - **[14/08/2026] Achado pelo dono:** escolheu maio no dashboard geral, foi para a Visão do
   Proprietário e ela continuava em agosto. E ao sair de uma tela e voltar, a data escolhida
