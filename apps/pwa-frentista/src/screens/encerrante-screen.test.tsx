@@ -78,11 +78,21 @@ const montar = async () => {
     });
 };
 
-/** Deixa as promises pendentes (FileReader, Image, OCR) resolverem. */
+/**
+ * Deixa as promises pendentes (FileReader → Image → OCR) resolverem.
+ *
+ * @remarks Escoa VÁRIAS voltas de propósito. A cadeia da foto tem três saltos
+ *          assíncronos encadeados, e uma volta só de macrotask basta na
+ *          máquina ociosa mas não sob carga — com a suíte inteira rodando em
+ *          paralelo, o teste virava intermitente. Esperar o suficiente é de
+ *          graça; falhar de vez em quando custa a confiança na suíte toda.
+ */
 const escoar = async () => {
-    await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0));
-    });
+    for (let volta = 0; volta < 5; volta++) {
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+    }
 };
 
 const digitar = (input: HTMLInputElement, texto: string) => {
