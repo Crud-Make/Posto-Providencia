@@ -1,6 +1,6 @@
 ---
 name: rls-fase1-em-andamento
-description: Auditoria de 12/08/2026 achou escrita anônima no dado financeiro; a Fase 1 está composta e conferida mas NÃO aplicada — falta reconectar o MCP
+description: Auditoria de 12/08 achou escrita anônima no dado financeiro; Fase 1 composta e NÃO aplicada. Em 16/08 apareceu um terceiro caminho, com prova de escrita: HistoricoTanque grava sem login
 metadata:
   node_type: memory
   type: project
@@ -36,6 +36,19 @@ RLS é **contornada por fora**, por dois caminhos que se compõem:
    mas o anon apaga os filhos primeiro.
 
 A `anon key` está no bundle publicado do painel.
+
+> **Terceiro caminho, achado em 16/08/2026 ao ligar a tela `/planilha` ao banco —
+> e este tem prova de escrita real, não só leitura de catálogo.** A tabela
+> `HistoricoTanque` tem a policy **`Public Access`: `ALL`, role `public`,
+> `USING (true)`, sem `WITH CHECK`**. Para INSERT o Postgres cai no `USING`, então
+> o `anon` grava. Comprovado pela UI em **modo visitante, sem login**: gravei
+> `volume_fisico = 1234` no tanque 1 (id 97, data 2026-06-30) e apaguei em
+> seguida — `HistoricoTanque` voltou a 0 linhas. `relrowsecurity` está **ligada**
+> na tabela; é a policy que não segura nada.
+>
+> Por que importa mais do que parece: a medição de tanque é o **único** insumo da
+> perda de combustível (`perca_sobra = medido − teórico`). Quem escreve nela sem
+> login escolhe se o posto aparece com perda ou sem.
 
 ## A correção do agente que estava errada
 
