@@ -61,6 +61,27 @@
   aqui". O foco antes usava a cor de texto encostada na borda de 1px da célula,
   e lia como borda dobrada.
 
+### 🔧 `forca-delegacao`: comando depois de `|` filtra, não lê
+- **[16/08/2026]** Falso positivo achado **no primeiro dia** do hook: um
+  `git diff -U0 | grep -E '^@@'` foi barrado como se abrisse arquivo. Aquele `grep`
+  não abre nada — filtra a saída do `git diff`, que já entrou no contexto e já foi
+  contada uma vez. Contar de novo é cobrar duas vezes pela mesma leitura.
+- A causa era usar `segmentos()` do `_comum`, que quebra em `|` porque o
+  `protege-dados` precisa olhar **toda** etapa (um `rm` perigoso no meio do pipe
+  ainda apaga). Para contar leitura a pergunta é outra.
+- Novo `primeiros_de_pipeline()` no `_comum`, ao lado de `segmentos()` e sem tocá-lo
+  — mexer no compartilhado arriscaria a trava de `docs/data/` para ganhar precisão
+  numa trava de ritmo. Ele quebra só em `;`, `&&`, `||` e nova linha, e devolve a
+  primeira etapa de cada pipeline. A regra que isso modela: **depois de um `|` o
+  comando filtra, antes dele ele busca.** `cat arquivo | head` conta uma vez, pelo
+  `cat`, não duas.
+- Limite consciente e documentado: `algo | xargs cat` lê arquivo e não é contado.
+  Cobrir `xargs` exigiria interpretar o comando de dentro do comando, e o preço do
+  erro aqui é uma barra a menos numa trava de ritmo.
+- Bateria: **119 → 131 casos**. Os 12 novos cobrem os dois lados — `git diff | grep`,
+  `ls | grep` e `bun run test | tail` não contam; `cat x | head`, `grep -rn x apps/`
+  e `find . | head` contam. E `||` não é confundido com pipe.
+
 ### 🛡️ A higiene deixa de ser lista de cicatrizes e vira invariante
 - **[16/08/2026]** Novo manifesto `.claude/ativos-criticos.json` + `ativos_criticos()`
   no `higiene.py`, substituindo a lista fixa de três caminhos de `docs/data/`.

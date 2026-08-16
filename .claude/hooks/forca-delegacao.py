@@ -41,12 +41,18 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _comum import segmentos  # noqa: E402  (precisa do sys.path acima)
+from _comum import primeiros_de_pipeline  # noqa: E402  (precisa do sys.path acima)
 
 TETO = int(os.environ.get("POSTO_TETO_LEITURAS", "15"))
 
 # Leitura por shell conta igual. É a mesma porta dos fundos que o `protege-dados`
 # teve de cobrir: negar `Read` e deixar `cat` passar só ensina a usar `cat`.
+#
+# Mas só a PRIMEIRA etapa de cada pipeline é olhada. O `grep` de
+# `git diff | grep '^@@'` não abre arquivo nenhum — filtra a saída do `git diff`,
+# que já entrou no contexto e já foi contada. Contá-lo de novo era o falso
+# positivo visto em 16/08/2026, no primeiro dia deste hook. Ver
+# `primeiros_de_pipeline` no `_comum`.
 LEITURA_SHELL = re.compile(
     r"^(cat|head|tail|less|more|grep|rg|ag|find|fd|awk|sed|jq|wc|nl|bat)\b"
 )
@@ -110,7 +116,7 @@ def e_leitura(tool: str, entrada: dict) -> bool:
     if tool != "Bash":
         return False
     cmd = str(entrada.get("tool_input", {}).get("command", ""))
-    return any(LEITURA_SHELL.match(s) for s in segmentos(cmd))
+    return any(LEITURA_SHELL.match(s) for s in primeiros_de_pipeline(cmd))
 
 
 def nega(motivo: str) -> None:

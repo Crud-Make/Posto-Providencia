@@ -196,6 +196,28 @@ CASOS_DELEGACAO = [
     ("Bash", {"command": 'echo "cat arquivo.ts"'}, None, False),
 ]
 
+# Refinamento do pipe: depois de um `|` o comando FILTRA o que ja entrou no
+# contexto; antes dele, BUSCA no disco. `True` = conta como leitura.
+# O primeiro caso e o falso positivo real de 16/08 — `git diff | grep '^@@'` foi
+# barrado como se abrisse arquivo, no primeiro dia do hook.
+CASOS_PIPE = [
+    ("git diff -U0 | grep -E '^@@'", False),
+    ("git log --oneline | head -20", False),
+    ("ls -la | grep claude", False),
+    ("bun run test | tail -5", False),
+    # Antes do pipe, le mesmo: conta uma vez, pelo primeiro.
+    ("cat packages/utils/src/fechamento.ts | head -40", True),
+    ("grep -rn valor_conferido apps/ | wc -l", True),
+    ("find . -name '*.sql' | head", True),
+    # `;` e `&&` iniciam comando NOVO: o primeiro de cada pipeline e olhado.
+    ("git status; cat CLAUDE.md", True),
+    ("bun install && rg encerrante packages/", True),
+    ("echo oi; git log | cat", False),
+    # `||` nao pode ser confundido com pipe.
+    ("test -f x || cat x", True),
+    ("cat x || echo vazio", True),
+]
+
 
 def roda(script: str, payload: dict) -> str | None:
     r = subprocess.run(
@@ -329,6 +351,14 @@ def main() -> int:
             rotulo = f"{'[sub] ' if agente else ''}{tool} {list(entrada.values())[0]}"
             print(f"  {'✓' if ok else '✗'} {rotulo[:58]:60} "
                   f"{'NEGA' if obtido else 'passa'}")
+
+    print("── forca-delegacao · pipe filtra, não lê ──")
+    for cmd, esperado in CASOS_PIPE:
+        obtido = delegacao.e_leitura("Bash", {"tool_input": {"command": cmd}})
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {cmd[:58]:60} "
+              f"{'conta' if obtido else 'nao conta'}")
 
     # Sem session_id não há contador possível: tem de passar, nunca travar.
     sem_sessao = delegacao.decide({"tool_name": "Read", "tool_input": {"file_path": "a"}})

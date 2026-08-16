@@ -33,6 +33,37 @@ def sem_mensagem(cmd: str) -> str:
     return MENSAGEM.sub("", cmd)
 
 
+# Separadores que iniciam um comando NOVO. O `|` fica de fora de propósito: ele
+# encadeia etapas do mesmo comando, e quem vem depois dele lê a saída de quem veio
+# antes, não o disco. Ver `primeiros_de_pipeline`.
+SEPARADOR_DE_COMANDO = re.compile(r"(?:\|\||&&|[;\n])")
+
+
+def primeiros_de_pipeline(cmd: str) -> list[str]:
+    """Só a PRIMEIRA etapa de cada pipeline — a única que pode ler do disco.
+
+    Existe para o `forca-delegacao`, que conta leitura. `segmentos()` quebra em
+    `|` também, e por isso o `grep` de `git diff | grep '^@@'` era contado como
+    leitura de arquivo — falso positivo real, visto em 16/08/2026. Aquele `grep`
+    não abre nada: ele filtra a saída do `git diff`, que já entrou no contexto e
+    já foi contada uma vez.
+
+    A regra que isto modela: **depois de um `|` o comando filtra, antes dele ele
+    busca.** `cat arquivo | head` conta uma vez (pelo `cat`), não duas.
+
+    Limite consciente: `algo | xargs cat` lê arquivo e não é contado. Fica de
+    fora porque o preço do erro aqui é uma barra a menos numa trava de ritmo, e
+    porque cobrir `xargs` exigiria interpretar o comando de dentro do comando.
+    """
+    partes = []
+    for comando in SEPARADOR_DE_COMANDO.split(sem_mensagem(cmd)):
+        primeiro = comando.split("|")[0]
+        limpo = PREFIXO_INOCUO.sub("", primeiro).strip()
+        if limpo:
+            partes.append(limpo)
+    return partes
+
+
 def segmentos(cmd: str) -> list[str]:
     """Quebra em segmentos de shell, já sem mensagem, e tira prefixo inócuo.
 

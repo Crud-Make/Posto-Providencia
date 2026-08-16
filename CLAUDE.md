@@ -380,7 +380,10 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
   `code-explorer` que o hook mandou chamar; o que separa os dois é o campo
   `agent_id`, presente só dentro de subagente. Leitura por shell (`cat`, `rg`,
   `grep`…) conta igual, pela mesma porta dos fundos que o `protege-dados` teve de
-  cobrir.
+  cobrir — mas **só a primeira etapa de cada pipeline**: depois de um `|` o comando
+  filtra o que já entrou no contexto, antes dele é que busca no disco. `git diff |
+  grep` não abre arquivo nenhum, e ser barrado por isso foi o falso positivo do
+  primeiro dia.
 - **Ferramenta mutante do MCP do Supabase — negada** por lista `deny` em
   `.claude/settings.json`: `apply_migration`, `deploy_edge_function` e os cinco `*_branch`.
   Não é redundância com o `--read-only` do `.mcp.json`: **medido em 07/08, o flag não remove
@@ -434,7 +437,7 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
     o arquivo é versionado — não commitar nesse estado.
 
 Instrução é forte; hook é garantia. Regra cara demais para depender de memória vira hook.
-Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 119 casos, e os negativos
+Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 131 casos, e os negativos
 valem tanto quanto os positivos. Para revisar ou desligar: `/hooks`.
 
 ---
