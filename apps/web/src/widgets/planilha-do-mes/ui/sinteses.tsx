@@ -117,10 +117,12 @@ export const Sinteses: React.FC<SintesesProps> = ({ produtos, bicos, apurado }) 
                         <div className="pm-painel__sub">Nenhum combustível cadastrado.</div>
                     )}
                     {estoque.produtos.map((p, i) => {
+                        const perca = percas[i];
                         const semMedicao = p.estoqueMedido === null;
-                        const litrosPerca = percas[i]?.litros ?? 0;
+                        const naoApuravel = perca?.litros === null;
+                        const litrosPerca = perca?.litros ?? 0;
                         const { nome, cor } = doProduto(p.produto);
-                        const corPerca = semMedicao
+                        const corPerca = semMedicao || naoApuravel
                             ? 'var(--muted)'
                             : litrosPerca < -0.5
                               ? 'var(--neg)'
@@ -133,9 +135,11 @@ export const Sinteses: React.FC<SintesesProps> = ({ produtos, bicos, apurado }) 
                                 <div className="pm-legenda">
                                     <span className="pm-legenda__nome">{nome}</span>
                                     <span className="pm__mono" style={{ color: corPerca }}>
-                                        {semMedicao
-                                            ? 'sem medição'
-                                            : `${litrosPerca > 0 ? '+' : ''}${formatBR(litrosPerca, 0)} L`}
+                                        {perca?.impossivel
+                                            ? 'sem compra'
+                                            : semMedicao || naoApuravel
+                                              ? 'sem medição'
+                                              : `${litrosPerca > 0 ? '+' : ''}${formatBR(litrosPerca, 0)} L`}
                                     </span>
                                 </div>
                                 <div className="pm-estoque-barra">

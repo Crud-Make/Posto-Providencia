@@ -95,8 +95,11 @@ export interface EntradaPlanilhaMensal {
 /** Perda apurada de um produto, com o sinal preservado. */
 export interface PercaProduto {
     readonly produto: string;
-    /** Negativo = PERDA (falta no tanque). Positivo = SOBRA. */
-    readonly litros: number;
+    /**
+     * Negativo = PERDA (falta no tanque). Positivo = SOBRA. `null` quando não é
+     * apurável — ver {@link impossivel} e o `estoqueMedido` ausente.
+     */
+    readonly litros: number | null;
     /**
      * `perca ÷ litros vendidos × 100`, **com sinal**.
      *
@@ -105,6 +108,22 @@ export interface PercaProduto {
      *          perda exibida como percentual positivo lê-se como sobra.
      */
     readonly percentual: number | null;
+    /**
+     * `true` quando o estoque teórico deu **negativo**.
+     *
+     * @remarks É um impossível físico, não um resultado: ninguém vende mais do
+     *          que tinha somado ao que comprou. Quando aparece, o que falta é
+     *          entrada — compra não lançada, ou compra que o papel em uso não
+     *          tem permissão de ler (a `Compra` não abre para visitante, e volta
+     *          vazia sem erro nenhum).
+     *
+     *          A perda vem `null` nesses casos porque a conta, ainda que
+     *          aritmeticamente válida, mediria a lacuna do cadastro e não o
+     *          tanque — e sairia como uma SOBRA enorme, que é a leitura mais
+     *          tranquilizadora possível para o número que existe justamente
+     *          para acusar combustível faltando.
+     */
+    readonly impossivel: boolean;
 }
 
 export interface PlanilhaMensal {
@@ -132,10 +151,22 @@ export interface PlanilhaMensal {
     readonly lucroPorLitro: number | null;
     /** Perda por produto, com sinal. */
     readonly percas: readonly PercaProduto[];
-    /** Soma das perdas, em litros. Negativo = PERDA. */
-    readonly percaTotal: number;
+    /**
+     * Soma das perdas, em litros. Negativo = PERDA.
+     *
+     * @remarks `null` quando **algum** produto não é apurável — total de perda
+     *          pela metade parece completo e não é.
+     */
+    readonly percaTotal: number | null;
     /** `perca_total ÷ litros_vendidos × 100`, com sinal. `null` sem venda. */
     readonly percaPercentual: number | null;
+    /**
+     * Produtos cujo estoque teórico deu negativo — ver {@link PercaProduto.impossivel}.
+     *
+     * @remarks Existe para a tela poder dizer **quais** e **por quê**, em vez de
+     *          só trocar o número por um travessão.
+     */
+    readonly produtosComEstoqueImpossivel: readonly string[];
 }
 
 /** Quantiza reais para centavos, evitando drift de float na soma. */
@@ -234,16 +265,26 @@ export function planilhaMensal(entrada: EntradaPlanilhaMensal): PlanilhaMensal {
         }, 0)
     );
 
-    const percas: PercaProduto[] = estoque.produtos.map((p) => ({
-        produto: p.produto,
-        litros: p.percaOuSobra ?? 0,
-        percentual:
-            p.percaOuSobra === null || p.litrosVendidos <= 0
-                ? null
-                : (p.percaOuSobra / p.litrosVendidos) * 100,
-    }));
+    const percas: PercaProduto[] = estoque.produtos.map((p) => {
+        const impossivel = p.estoqueTeorico < 0;
+        const apuravel = p.percaOuSobra !== null && !impossivel;
 
-    const percaTotal = estoque.totais.percaOuSobra ?? 0;
+        return {
+            produto: p.produto,
+            litros: apuravel ? (p.percaOuSobra as number) : null,
+            percentual:
+                apuravel && p.litrosVendidos > 0
+                    ? ((p.percaOuSobra as number) / p.litrosVendidos) * 100
+                    : null,
+            impossivel,
+        };
+    });
+
+    // O total só vale quando TODO produto é apurável. Somar os que deram e
+    // ignorar os que não deram produziria um total parcial com cara de
+    // completo — e um total de perda pela metade é pior que total nenhum.
+    const todosApuraveis = percas.length > 0 && percas.every((p) => p.litros !== null);
+    const percaTotal = todosApuraveis ? (estoque.totais.percaOuSobra ?? null) : null;
 
     return {
         venda,
@@ -256,7 +297,11 @@ export function planilhaMensal(entrada: EntradaPlanilhaMensal): PlanilhaMensal {
         lucroPorLitro: litrosVendidos > 0 ? venda.totais.lucro / litrosVendidos : null,
         percas,
         percaTotal,
-        percaPercentual: litrosVendidos > 0 ? (percaTotal / litrosVendidos) * 100 : null,
+        percaPercentual:
+            percaTotal !== null && litrosVendidos > 0
+                ? (percaTotal / litrosVendidos) * 100
+                : null,
+        produtosComEstoqueImpossivel: percas.filter((p) => p.impossivel).map((p) => p.produto),
     };
 }
 
