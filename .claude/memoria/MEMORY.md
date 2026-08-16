@@ -5,6 +5,7 @@
 - [Fix do preço único](fix-preco-litro-historico.md) — branch `fix/preco-litro-historico` (dbb38bb), dia passado deixou de ser avaliado a preço de hoje; falta validação do dono; aggregator e custo carimbado são dívida
 - [⚠️ 12 dias nunca fechados](doze-dias-nunca-fechados.md) — OBSOLETO pelo wipe de 14/08, mas o mecanismo (PWA cria pai zerado, só o painel consolida) segue no código
 
+- [📍 Validação final — onde parei](validacao-final-onde-parei.md) — 16/08: branch `test/validacao-final`, app do dono provado à mão pelo dono; 5 pendências, nenhuma de código; janeiro NÃO se reconstrói pelo app
 - [App do dono nasceu](app-do-dono-nasceu.md) — terceiro app: `apps/pwa-dono`, o encerrante por foto; a aba saiu do PWA do frentista; ainda SEM seletor de data
 - [Encerrante não tem turno](encerrante-nao-tem-turno.md) — `Leitura` é por dia e por bico; filtrar por `turno_id` já produziu 3 bugs de uma vez
 - [Portas servem árvores diferentes](portas-servem-arvores-diferentes.md) — 3015/3016/3017 podem ser worktrees distintas; confira o `cwd` do pid antes de concluir
