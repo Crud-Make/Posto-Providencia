@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabase';
-import { hojeIso, meiosFromFechamentoRow, totaisDoDia } from '@posto/utils';
+import {
+    hojeIso,
+    meiosFromFechamentoRow,
+    totaisDoDia,
+    litrosVendidos,
+    valorDaLeitura,
+} from '@posto/utils';
 
 /** Payload enviado por App.tsx ao fechar o turno do frentista (shape de FechamentoFrentista.Insert). */
 interface FechamentoFrentistaPayload {
@@ -367,16 +373,18 @@ export const api = {
         }
 
         const rows = linhas.map(l => {
-            const litros = Math.max(0, l.leitura_final - l.leitura_inicial);
+            // Fronteira: o banco fala `leitura_*`, o domínio fala
+            // `inicial`/`fechamento` (§4).
+            const leitura = { inicial: l.leitura_inicial, fechamento: l.leitura_final };
             return {
                 data: dataStr,
                 bico_id: l.bico_id,
                 combustivel_id: l.combustivel_id,
                 leitura_inicial: l.leitura_inicial,
                 leitura_final: l.leitura_final,
-                litros_vendidos: litros,
+                litros_vendidos: litrosVendidos(leitura),
                 preco_litro: l.preco_litro,
-                valor_total: litros * l.preco_litro,
+                valor_total: valorDaLeitura(leitura, l.preco_litro),
                 usuario_id: usuarioId,
                 turno_id: turnoId,
                 posto_id: postoId,
