@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PostoProvider } from './contexts/PostoContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { PeriodoProvider } from './contexts/PeriodoContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/useAuth';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import UpdateNotifier from './shared/ui/UpdateNotifier';
@@ -26,6 +28,7 @@ const TelaGestaoEscalas = React.lazy(() => import('./components/TelaGestaoEscala
 const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGestaoClientes'));
 const TelaFechamentoMensal = React.lazy(() => import('./components/fechamento-mensal'));
 const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
+const TelaLogin = React.lazy(() => import('./components/login'));
 const TelaPlanilhaMensal = React.lazy(() => import('./pages/planilha-mensal'));
 
 // Componente de Loading para Suspense
@@ -79,19 +82,48 @@ const AppRoutes = () => {
 // [14/01 07:05] Refatoração completa para React Router + Lazy Loading.
 // Implementado Suspense para carregamento sob demanda das rotas.
 
+/**
+ * Porta de entrada: sem sessão e sem escolha de modo visitante, só a tela de login.
+ *
+ * @remarks Não é enfeite de segurança. As policies de RLS distinguem `anon` de
+ *          `authenticated`, e como visitante o painel não lê `Fornecedor` nem
+ *          `Compra` e não grava em data histórica — e leitura barrada volta como
+ *          lista vazia, sem erro, o que faz a tela dizer "não há nada cadastrado"
+ *          quando o que falta é permissão.
+ */
+const PortaDeEntrada: React.FC = () => {
+  const { autenticado, modoVisitante, carregando } = useAuth();
+
+  if (carregando) return <LoadingFallback />;
+
+  if (!autenticado && !modoVisitante) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <TelaLogin />
+      </Suspense>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  );
+};
+
 const App: React.FC = () => {
   return (
-    <PostoProvider>
-      <ThemeProvider>
-        <PeriodoProvider>
-          <Toaster position="top-right" richColors closeButton />
-          <UpdateNotifier />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </PeriodoProvider>
-      </ThemeProvider>
-    </PostoProvider>
+    <AuthProvider>
+      <PostoProvider>
+        <ThemeProvider>
+          <PeriodoProvider>
+            <Toaster position="top-right" richColors closeButton />
+            <UpdateNotifier />
+            <PortaDeEntrada />
+          </PeriodoProvider>
+        </ThemeProvider>
+      </PostoProvider>
+    </AuthProvider>
   );
 };
 

@@ -46,6 +46,37 @@
   dependência nova). A tela ocupa a largura toda: o desenho travava em 1420px e deixava 236px de
   vazio num monitor de 1920, numa página que é toda tabela larga.
 
+### 🪧 A tela de login passa a ter a cara do posto
+- **[16/08/2026]** A entrada do painel era um cartão cinza genérico com um ícone de bomba num
+  quadrado azul — o azul padrão do sistema, não a marca. A versão final segue o molde dos
+  logins tidos como referência (Linear, Vercel — conferidos por print via Firecrawl):
+  **contenção** — coluna centrada de 360px, fundo papel-quente `#f7f4ef` quase liso com um
+  brilho âmbar quase imperceptível no alto, logo pequena, "Entrar no painel", dois campos, um
+  botão, rodapé mínimo. A identidade entra em **detalhe**, não em cenário: a **faixa dupla
+  amarela** de 7px colada no topo da página (a faixa da estrada), a logo numa **placa** branca
+  com filete e sombra suave, vermelho da marca só no botão e no erro, azul do arco no foco.
+- **Três direções foram descartadas antes** — placa branca com foto ao lado (logo minúscula,
+  coluna vazia), foto da estrada full-bleed com painel escuro (o dono achou horrível) e uma
+  cena Three.js do pátio (low-poly, escura; o dono não gostou). O `three` chegou a ser
+  instalado a pedido e **saiu no mesmo dia** — sem dependência morta. `logo-lisa.png` e
+  `logo-posto.png` seguem em `public/` sem uso.
+- **A marca real entra em vez do ícone**: `public/marca-posto@2x.png` (481×213) é o recorte da
+  `logo-rede.png` sem a moldura cinza, ampliado 2,6× com Lanczos + máscara de nitidez
+  (ImageMagick). É a única versão que existe e ainda é macia de perto. **Um vetor ou PNG
+  grande da logo melhora isso sem mexer em código**: basta trocar o arquivo.
+- **Cores viram token do Tailwind** (`index.html`): `marca-vermelho #EF3238`,
+  `marca-vermelho-escuro`, `marca-amarelo #F5C239`, `marca-azul #284384`, `asfalto #1C1917`,
+  amostradas da logo. Nada de `blue-600` nesta tela.
+- Comportamento intacto: mesmo `useActionState`, mesma lógica de e-mail lembrado (só o e-mail,
+  nunca a senha), mesmo modo visitante com o mesmo aviso. Ganhou `role="alert"` no erro,
+  **botão de mostrar/ocultar senha** (olho no campo, com `aria-pressed`), placeholders,
+  `Entrando…` durante o envio, e não tem variantes `dark:` — é uma tela só, iluminada.
+- **Skills de design instaladas** (fora do repo, `~/.claude/skills/`): `interface-design`
+  (dashboards/admin, com `/interface-design-design-review` e `-deslop`) e
+  `web-design-guidelines` (auditoria a11y/UX da Vercel). O `impeccable` foi lido e **não**
+  instalado: 18 mil linhas de script, hook `PostToolUse` próprio e modo `live` que edita fonte
+  por fora do `Edit` — pesado demais por ora.
+
 ### ⛽ A aba de resumo da planilha vira tela — venda por produto, piso de venda e perda de tanque
 - **[16/08/2026] O pedido do dono:** trazer para a Visão do Proprietário o que ele lê na aba de
   resumo da planilha. A tela mostrava só o **total** do mês (venda, litros, lucro real, margem);
