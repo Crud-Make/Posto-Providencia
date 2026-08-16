@@ -25,19 +25,18 @@ const TelaPlanilhaMensal: React.FC = () => {
 
     return (
         <div className="w-full">
-            <div className="flex justify-end px-5 pt-5">
-                <Calendario
-                    modo={modoMes}
-                    valor={mesSelecionado}
-                    aoMudar={definirMes}
-                    maximo={mesLimite}
-                />
-            </div>
-
             <PlanilhaDoMes
                 postoId={postoAtivoId}
                 mesIso={mesSelecionado}
                 mesReferencia={formatarMesBR(mesSelecionado)}
+                seletorDeMes={
+                    <Calendario
+                        modo={modoMes}
+                        valor={mesSelecionado}
+                        aoMudar={definirMes}
+                        maximo={mesLimite}
+                    />
+                }
             />
         </div>
     );
