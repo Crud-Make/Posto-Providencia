@@ -27,7 +27,20 @@ import {
     totaisDoDia,
 } from '@posto/utils';
 
-/** Turno canônico das leituras. O encerrante é por DIA e por bico, não por turno. */
+/**
+ * Turno usado para achar o `Fechamento` do dia e para carimbar a `Leitura`.
+ *
+ * @remarks **A `Leitura` NÃO é por turno**, e nada mais a filtra por ele: o
+ *          índice único de produção é `leitura_unica_bico_data (bico_id, data)`,
+ *          uma leitura por bico por dia. O valor continua sendo gravado só para
+ *          não deixar a coluna oscilando entre `1` e `NULL` conforme o app que
+ *          escreveu — o painel grava `NULL`, e foi a divergência entre os dois
+ *          que produziu `duplicate key` quando o delete filtrado não alcançava
+ *          a linha do outro.
+ *
+ *          Onde o turno ainda VALE é no `Fechamento`, que é por turno de
+ *          verdade: é por ele que se acha o pai a consolidar.
+ */
 const TURNO_CANONICO = 1;
 
 /**
@@ -301,22 +314,35 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
         }) {
             const { postoId, data: dataStr, usuarioId = 1, linhas } = params;
 
+            // SEM FILTRO DE TURNO, e é correção de bug real. O encerrante é por
+            // DIA e por bico — o índice único de produção diz isso na letra:
+            // `leitura_unica_bico_data (bico_id, data)`, sem turno.
+            //
+            // O painel grava `turno_id: null` e este caminho gravava
+            // `turno_id: 1`. Como `turno_id = 1` NÃO casa com NULL em SQL, o
+            // delete filtrado deixava viva a linha lançada pelo painel, e o
+            // insert seguinte batia no índice único: `duplicate key`. Ou seja,
+            // um encerrante lançado no painel impedia o app do dono de gravar
+            // aquele bico naquele dia, e vice-versa.
             const { error: delError } = await supabase
                 .from('Leitura')
                 .delete()
                 .eq('data', dataStr)
-                .eq('turno_id', TURNO_CANONICO)
                 .eq('posto_id', postoId);
             if (delError) throw new Error(delError.message);
 
             // Um DELETE barrado pela RLS (dia fora da janela de 7 dias) devolve
             // 204 SEM erro. Seguir daqui reinseriria as leituras por cima das
             // antigas e dobraria o dia — em silêncio.
+            //
+            // A conferência precisa do MESMO recorte do delete. Enquanto ela
+            // filtrava por turno, não enxergava a linha órfã do painel: a
+            // guarda que existe justamente para pegar delete silencioso passava
+            // em verde sobre a linha que ia causar o erro.
             const { count: sobraram, error: erroConferencia } = await supabase
                 .from('Leitura')
                 .select('id', { count: 'exact', head: true })
                 .eq('data', dataStr)
-                .eq('turno_id', TURNO_CANONICO)
                 .eq('posto_id', postoId);
             if (erroConferencia) throw new Error(erroConferencia.message);
             if ((sobraram ?? 0) > 0) {
@@ -401,12 +427,18 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                                 'valor_dinheiro, valor_moedas, valor_pix, valor_cartao, valor_cartao_debito, valor_cartao_credito, valor_nota, baratao'
                             )
                             .eq('fechamento_id', fechamentoId),
+                        // Sem filtro de turno, pelo mesmo motivo do
+                        // `salvarLeituras`: a leitura é por dia e por bico. Com
+                        // o filtro, o encerrante lançado pelo PAINEL
+                        // (`turno_id: null`) nunca chegava a
+                        // `Fechamento.total_vendas` — o dia era conferido
+                        // contra venda zero, e a diferença virava uma SOBRA que
+                        // nunca existiu.
                         supabase
                             .from('Leitura')
                             .select('valor_total')
                             .eq('posto_id', pai.posto_id)
-                            .eq('data', pai.data)
-                            .eq('turno_id', pai.turno_id),
+                            .eq('data', pai.data),
                     ]);
                 if (erroFilhos) throw new Error(erroFilhos.message);
                 if (erroLeituras) throw new Error(erroLeituras.message);
