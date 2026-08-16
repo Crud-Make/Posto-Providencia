@@ -2,6 +2,150 @@
 
 ## [Não Lançado]
 
+### 🇧🇷 Os campos digitáveis passam a falar português
+- **[16/08/2026]** Os campos que ficaram editáveis mostravam o número cru do
+  JavaScript — `22158.46`, `0.473`, `31000` — com **ponto no lugar da vírgula**,
+  numa planilha que o dono lê em pt-BR há anos. As células de leitura já estavam
+  certas; os campos não.
+- **Vírgula decimal, sem separador de milhar na entrada** — e a ausência do
+  milhar é decisão, não esquecimento. Em campo digitável, `31.000` e `0.473` têm
+  a mesma forma: ponto seguido de três dígitos. Nenhuma regra separa os dois sem
+  adivinhar, e adivinhar aqui **já custou caro**: o `analisarValor` de
+  `apps/web/src/utils/formatters.ts` assume os três últimos dígitos como decimais
+  e transformou **R$ 7.436,00 em R$ 7,44 em produção**. Sem milhar na entrada a
+  ambiguidade some. As células de **leitura** seguem com o milhar, onde ele só
+  ajuda e ninguém digita em cima.
+- Ainda assim o parser **aceita** valor colado com milhar (`1.234,56`), porque
+  com vírgula presente todo ponto só pode ser milhar — é leitura determinística,
+  não palpite.
+- **Custo do litro com 4 casas fixas (`0,4730`)**, e não 2. Ele é multiplicado
+  pelos litros do mês inteiro: em janeiro, `0,4730 × 46.843 L` reproduz a despesa
+  de R$ 22.158,46, e `0,47` daria R$ 22.016,21 — **R$ 142,25 a menos**. Exibir
+  `0,473` sugeriria que a quarta casa não existe.
+- O KPI `Despesas do mês` dizia `R$ 0,47 por litro` enquanto o campo mostrava
+  `0,4730` — o mesmo número aparecendo diferente em dois lugares da mesma tela.
+  Agora os dois mostram 4 casas.
+- Módulo novo `model/campo-numerico.ts` com `numeroDoCampo` e `textoDoCampo`,
+  **coberto por 12 testes** — inclusive o caso do R$ 7.436 e a volta completa
+  número → campo → número. Ele consolidou **três cópias do parser** que estavam
+  espalhadas (hook, célula editável e gravação da régua); a da gravação não sabia
+  ler valor com milhar.
+
+### ✍️ Despesa, custo do litro e compra passam a se digitar na `/planilha`
+- **[16/08/2026]** A pedido do dono, para o replay mês a mês: `Despesas do mês`,
+  `Custo do LT` e as colunas `Compra, LT` / `Compra, R$` aceitam digitação e
+  gravam no banco, pelo mesmo botão que já gravava a régua do tanque.
+- **O total digitado NÃO apaga o que foi lançado item a item.** A gravação mantém
+  cada despesa e cada nota com fornecedor, data e categoria, e põe a diferença
+  numa única linha marcada `Ajuste da planilha`. O rastro fica inteiro e o que
+  foi acertado por total fica identificável. É por essa marca que uma segunda
+  gravação **atualiza** o ajuste em vez de empilhar outro — sem ela, digitar três
+  vezes o mesmo total triplicaria o mês em silêncio.
+- **`Custo do LT` é a despesa lida ao contrário, não um valor fixo.** O §6 diz
+  que o custo operacional por litro é `despesas ÷ litros vendidos` e nunca um
+  número solto; guardar aqui o que foi digitado tiraria a fórmula do caminho e o
+  custo é a origem do piso de venda e do lucro de todo produto. Então digitar
+  R$ 0,7583 grava a **despesa equivalente** (`custo × litros`), e os dois campos
+  viram duas vistas do mesmo número — mexer num move o outro na hora. Sem litro
+  vendido no mês o campo se desabilita: `0 × custo` é zero para qualquer custo.
+- **`fornecedor_id` da `Compra` é NOT NULL**, e um total mensal digitado não sabe
+  de quem veio: a linha de ajuste herda o fornecedor já cadastrado. Sem nenhum
+  fornecedor, a gravação **para e diz o que falta** em vez de criar cadastro pelas
+  costas do dono.
+- Ajuste que zera é **apagado**, não gravado como zero — linha de valor nenhum
+  sujaria a tela de Despesas com um lançamento que não é nada.
+- ⚠️ **`Inicial`/`Fechamento` da Venda continuam somente leitura.** Não é
+  esquecimento: o encerrante mora na `Leitura`, que é por **dia e por bico**, e um
+  par inicial/fechamento do mês inteiro não diz em que dia o combustível saiu — o
+  Fechamento de Caixa concilia dia a dia contra o que os frentistas entregaram.
+  Falta decidir com o dono o que acontece com os dias antes de abrir esse campo.
+
+### 🔒 `Despesa` deixa de aceitar escrita anônima
+- **[16/08/2026]** As policies `Despesa: Permitir inserção para anon` e
+  `Despesa: Permitir atualização para anon` eram `WITH CHECK (true)` — **qualquer
+  um com a anon key inseria e alterava despesa**, e a anon key vai no bundle
+  publicado. Encontrado ao checar a RLS **antes** de ligar a digitação de despesa
+  na tela, não depois.
+- Mesma família do buraco do `HistoricoTanque` fechado hoje de manhã, com um
+  agravante: aqui mexe na corrente inteira do lucro. `custo por litro =
+  despesas ÷ litros vendidos`, `piso de venda = custo da compra + custo por
+  litro`, `lucro = venda − litros × piso`. Uma linha inventada de R$ 20.000 num
+  mês de ~46 mil litros desloca o custo do litro em ~R$ 0,43 e derruba o lucro na
+  mesma proporção — e a tela mostra isso como se fosse o resultado do negócio. O
+  caminho contrário também vale: zerar valor por UPDATE faz o posto parecer mais
+  lucrativo do que é, e **nada no sistema contradiz**, porque a `Despesa` é a
+  autoridade do rateio.
+- Migração versionada:
+  `supabase/migrations/20260816_rls_despesa_escrita_anonima.sql`, no mesmo molde
+  da de manhã — guarda no início (aborta se sobrar policy de escrita alcançando
+  `anon` fora das três previstas) e auto-verificação antes do `COMMIT`.
+  **Medido antes de escrever: 2 policies de escrita irrestritas alcançam o
+  anônimo hoje; a verificação exige 0.**
+- A verificação testa **papel e predicado juntos**. Testar só o papel reprovaria
+  a própria correção, que é `TO public` de propósito — a mesma forma que `Tanque`
+  e `HistoricoTanque` já usam. O que separa a policy nova das antigas é o
+  predicado: aqui exige `authenticated`, lá era `true`.
+- **O DELETE anônimo cai junto.** A `despesa_delete_janela_edicao` limitava o
+  anônimo a 7 dias, mas com INSERT e UPDATE fechados manter o DELETE deixaria de
+  pé o pior dos três verbos — o único que não deixa rastro do que havia.
+- **Sem janela de tempo**, como no `HistoricoTanque`: o replay grava despesa de
+  mês passado (janeiro entrou com data 31/01) e a digitação nova grava no último
+  dia do mês apurado. Janela de 7 dias bloquearia o trabalho em curso. A trava é
+  **quem** escreve, não **quando**.
+- Impacto conferido no código em 16/08: o **PWA do frentista não toca nesta
+  tabela**; o painel logado passa igual (sessão real `posto@providencia.com`
+  conferida na hora); o painel **em modo visitante** deixa de lançar e alterar
+  despesa — de propósito. Leitura anônima intacta (Fase 3).
+
+### 🛢️ A célula do Estoque vira o próprio tanque
+- **[16/08/2026]** `Estoque anterior`, `Estoque hoje` e `Estoque tanque` passam a
+  desenhar o **nível do tanque atrás do número**, com a cor do combustível:
+  preenchimento = `volume ÷ capacidade`, e o percentual exato no `title`. Um
+  volume em litro sozinho não diz nada — `5.672 L` é tranquilo num tanque de
+  30.000 e é véspera de faltar produto num de 6.000. A capacidade passou a ser
+  lida da `Tanque` (o hook trazia só `id` e `combustivel_id`).
+- **Dois casos em que o medidor se recusa a desenhar**, porque a barra mentiria:
+  capacidade ausente ou zero (sem denominador não há fração) e **volume
+  negativo** — estoque teórico negativo é impossível físico, e barra vazia leria
+  como "tanque no fim" em vez de "falta compra lançada".
+- Acima de 100% a barra trava na largura da célula e ganha um risco vermelho na
+  borda: passar da capacidade só acontece com cadastro errado ou lançamento a
+  mais, e nos dois casos o número não pode parecer normal.
+- Nas duas células digitáveis o medidor acompanha **o que está sendo digitado**,
+  não o que veio do banco — é o que faz um zero a mais na régua estourar a barra
+  na hora, antes de gravar.
+
+### 🔠 Fonte maior e saldo em cor na `/planilha`
+- **[16/08/2026]** A tela é lida todo dia e a escala estava pequena demais para
+  isso: tabela 14→**16px**, primeira coluna 15→**17px**, cabeçalho de coluna
+  12→**13px**, KPI 22→**30px**, valor do custo 26→**32px**, título 34→**38px**,
+  campo digitável 14→**16px**. O respiro das células subiu junto (7→9px), senão
+  a fonte maior só aperta.
+- **`font-variant-numeric: tabular-nums` na tabela inteira**: sem isso o Barlow
+  entrega dígito de largura variável fora do bloco monoespaçado, e a coluna
+  dança a cada mês.
+- **Saldo em cor, verde positivo e vermelho negativo**, em `Lucro LT`,
+  `Lucro bico`, `Margem`, `Perca e sobra` e nos KPIs de margem e lucro.
+  Faturamento, litro e despesa **não** entram: não têm sinal a comunicar, e
+  pintar tudo faria a cor deixar de significar onde ela precisa gritar. Zero fica
+  neutro — verde no zero leria como lucro que não existiu.
+- Dois defeitos de especificidade corrigidos de passagem: `Total e média` saía
+  **mais leve** que os números que totaliza, e o estado vazio das tabelas saía
+  alinhado à esquerda em negrito, com cara de linha de dado. Nos dois, a regra
+  de `td:first-child` vencia a da linha.
+- O botão do rodapé foi de 28px para **40px** de altura — são os dois únicos
+  controles reais da tela.
+
+### ✂️ Os três gráficos saem da `/planilha`
+- **[16/08/2026]** `Venda diária`, `Entregas no mês` e `Nível de estoque no mês`
+  foram removidos a pedido do dono: a tela tinha informação demais para o uso
+  dela, que é ler a planilha. `GraficoAcumulado`, `GraficoEntregas`,
+  `geometria-series.ts` e `serie-diaria.ts` **continuam no repo, sem uso** — não
+  apaguei porque a decisão é recente e o custo de voltar atrás é um import.
+- `Compra e custo` desceu para **baixo** da tabela de Compra, em vez da lateral
+  de 300px: a tabela ganhou a largura inteira e os três blocos de custo agora
+  ficam lado a lado, com número grande, em vez de empilhados num tubo estreito.
+
 ### 🗓️ O seletor de mês sai da ponta e vai para o meio do cabeçalho
 - **[16/08/2026]** O `Calendario` tinha uma faixa só para ele acima da planilha
   (`flex justify-end px-5 pt-5`): **62px de altura para segurar um botão**, que

@@ -51,3 +51,32 @@ bug nem perda**: é o replay.
   backup. O dono também queria testar o fluxo real de envio pelo PWA (porta
   3016) — envio cai no dia corrente, vira dado de teste a limpar depois.
   Ver [[reset-do-painel-apaga-em-silencio]] e [[fix-preco-litro-historico]].
+
+## 16/08/2026 — janeiro/2026 carregado (parcial)
+
+Primeiro mês do replay entrou, por SQL, **com ok do dono**, a partir de
+`docs/data/posto_jorro_2026.sqlite` (estágio 1/2 já promovidos):
+
+| Tabela | Linhas | Total | Confere com a referência |
+| --- | --- | --- | --- |
+| `Leitura` | 186 (31 dias × 6 bicos) | 46.843,062 L · R$ 290.062,94 | litros exatos; venda +R$ 0,02 de arredondamento por dia |
+| `Compra` | 4 (todas em 31/01, fornecedor 3) | 47.000 L · R$ 241.195,00 | sim |
+| `HistoricoTanque` | 8 (abertura 31/12/2025, fecho 31/01) | 15.683 → 12.274 L | sim |
+| `Despesa` | **0 — pendente** | — | decisão da fonte em aberto |
+
+Scripts usados: `carga-historico-leitura.py`, `carga-historico-compra.py` (já
+existiam) e `carga-historico-tanque.py` (**novo**, escrito nesta sessão). Todos
+emitem SQL idempotente e não escrevem sozinhos.
+
+**Como aplicar SQL grande sem colar no chat:** a API de management aceita o
+arquivo direto, e o `User-Agent` é **obrigatório** (o WAF devolve 403 code 1010
+sem ele). Token em `.claude/settings.local.json` → `env.SUPABASE_ACCESS_TOKEN`.
+
+**A despesa de janeiro ficou de fora de propósito**, porque as fontes discordam:
+`despesa_categoria_mensal` (15 itens) soma **R$ 22.158,46** e é o que faz o
+`lucro_bico` da planilha bater; `despesa_lancada` (21 itens, exportado da própria
+tabela `Despesa` do app antes do wipe) soma **R$ 35.523,58** e inclui gastos
+reais que a planilha não registra (Bombeiro AVCB, conserto de bomba, extintor,
+Luz, Net, Embasa). Pelo §6 — *toda despesa entra no rateio, sem exceção* — a
+lista do banco é a autoridade, e a planilha subregistra. Diferença: R$ 13.365,12
+em janeiro. **Decisão do dono ainda não tomada.**
