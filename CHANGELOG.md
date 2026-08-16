@@ -2,6 +2,37 @@
 
 ## [Não Lançado]
 
+### 🔔 O app do dono avisa os dias que ficaram sem encerrante
+- **[16/08/2026]** Consequência direta de o encerrante ter saído do PWA do
+  frentista: antes, três turnos davam três chances por dia de alguém lembrar.
+  Agora depende de uma pessoa, e esquecer um dia **não produzia sinal nenhum** —
+  o `total_vendas` daquele dia fica no valor de antes e o fechamento não
+  concilia, calado.
+- Lista os dias passados com menos leituras que bicos ativos, com a contagem à
+  vista (`1 de 6 bicos`). **Dia incompleto conta como falta**: é o estado que
+  derrubava a tela de Leituras do painel.
+- **Hoje não entra na lista.** O dia corrente não está em falta, está em
+  andamento — é o que a pessoa abriu o app para fazer. Cobrá-lo às 10h da manhã
+  tornaria o aviso ruído permanente.
+- **Sete dias**, porque é a largura da janela de escrita da RLS. Fora dela o
+  banco recusa o INSERT, e cobrar um dia que o app não consegue lançar seria
+  aviso sem saída.
+- `lerEncerrante` **deixou de repetir a chamada** quando a Edge Function recusa
+  por limite de taxa (429) ou tamanho (413). Repetir um 429 é bater de novo na
+  porta que acabou de pedir calma; repetir um 413 não encolhe a foto. As duas
+  recusas agora chegam à tela com o que fazer, lembrando que dá para digitar à
+  mão.
+
+### 🔒 `UPDATE` de `Fechamento` passa a valer só nas colunas que o sistema grava
+- **[16/08/2026]** `anon` e `authenticated` podiam reescrever **18 colunas** de
+  qualquer fechamento dentro da janela — inclusive `posto_id`, `usuario_id` e a
+  própria `data`, que é a coluna que a policy usa para decidir se a linha está
+  na janela. Poder mudá-la é poder arrastar a linha para dentro dela.
+- A migração deixa **5**: `total_vendas`, `total_recebido`, `diferenca`,
+  `status`, `observacoes` — as que os dois únicos call sites de UPDATE do
+  monorepo realmente escrevem.
+- ⚠️ **Não aplicada.** É arquivo versionado; aplicar é decisão do dono (§5).
+
 ### 📸 O encerrante vira app do dono, e sai da mão do frentista
 - **[16/08/2026]** Nasce o `apps/pwa-dono` — terceiro app do monorepo, uma tela
   só: fotografar o papel do encerrante e enviar a leitura das bombas. A aba

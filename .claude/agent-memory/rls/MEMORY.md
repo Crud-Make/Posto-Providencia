@@ -1,6 +1,9 @@
 # Memória — agente `rls`
 
 - [Consultas de enumeração](consultas-de-enumeracao.md) — catálogo de RLS/grants/views; `information_schema.role_table_grants` volta vazio sob o MCP read-only
-- [Views auto-atualizáveis furam a RLS](views-auto-atualizaveis-furam-rls.md) — view sem `security_invoker` roda como dono; com grant ao anon vira DELETE anônimo na tabela base
+- [Views auto-atualizáveis furam a RLS](views-auto-atualizaveis-furam-rls.md) — buraco fechado em 13/08, mas o padrão volta sozinho em view nova
 - [Políticas que não seguram nada](politicas-que-nao-seguram-nada.md) — `auth.role()='authenticated'`, `user_has_posto_access`, `TO public` e as janelas que de fato travam
-- [O anon e o painel](anon-e-o-painel.md) — os dois apps falam como anon sem login; revogar é correção que derruba tela
+- [O anon e o painel](anon-e-o-painel.md) — três apps falam como anon; o login do painel é opcional pelo modo visitante
+- [App novo não amplia privilégio](app-novo-nao-amplia-privilegio.md) — a exposição é do papel `anon`, não do app; medir no papel, nunca contando telas
+- [verify_jwt não protege Edge Function](edge-function-verify-jwt-nao-protege.md) — a anon key É um JWT válido; para cota de LLM isso é ausência total de trava
+- [Conferir as travas no arquivo](conferir-as-travas-no-arquivo.md) — ler `.mcp.json` e o `deny` do disco antes de afirmar que existe trava técnica
