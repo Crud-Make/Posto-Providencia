@@ -217,6 +217,50 @@ describe('EncerranteScreen — caminho da foto', () => {
     });
 
     /**
+     * A máscara: os 3 últimos dígitos são os mililitros, sempre. Quem lê o
+     * papel digita os dígitos na ordem e a vírgula se posiciona sozinha — sem
+     * ela, esquecer a vírgula produzia um número mil vezes maior (`1740317000`
+     * virava um bilhão e setecentos milhões de litros).
+     */
+    it('põe a vírgula sozinha nos três últimos dígitos', async () => {
+        await montar();
+
+        digitar(campos()[0], '1740317000');
+
+        expect(campos()[0].value).toBe('1.740.317,000');
+    });
+
+    it('aceita quem digita a vírgula também — o resultado é o mesmo', async () => {
+        await montar();
+
+        digitar(campos()[0], '1740317,000');
+
+        expect(campos()[0].value).toBe('1.740.317,000');
+    });
+
+    it('monta o número dígito a dígito enquanto se digita', async () => {
+        await montar();
+
+        digitar(campos()[0], '6');
+        expect(campos()[0].value).toBe('0,006');
+
+        digitar(campos()[0], '6550');
+        expect(campos()[0].value).toBe('6,550');
+
+        digitar(campos()[0], '6550000');
+        expect(campos()[0].value).toBe('6.550,000');
+    });
+
+    it('volta a vazio quando o campo é apagado', async () => {
+        await montar();
+        digitar(campos()[0], '6550000');
+
+        digitar(campos()[0], '');
+
+        expect(campos()[0].value).toBe('');
+    });
+
+    /**
      * O encerrante passou a depender de UMA pessoa. Antes, três turnos davam
      * três chances por dia de alguém lembrar; agora, esquecer um dia não
      * produz sinal nenhum — o `total_vendas` daquele dia fica no que estava e o

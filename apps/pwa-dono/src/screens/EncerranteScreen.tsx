@@ -55,6 +55,42 @@ const formatBR = (dotStr: string | null): string => {
     return dec ? `${intFmt},${dec}` : intFmt;
 };
 
+/**
+ * Máscara de digitação: os TRÊS ÚLTIMOS dígitos são sempre os mililitros.
+ *
+ * @remarks Digitar `1740317000` produz `1.740.317,000`. Quem digita a vírgula
+ *          também acerta — ela é descartada e a contagem de dígitos é a mesma.
+ *
+ *          Esta é a MESMA convenção do painel (`formatarEntradaEncerrante` em
+ *          `useLeituras.ts`), e a consistência aqui não é estética: é a mesma
+ *          pessoa lançando encerrante nos dois lugares.
+ *
+ *          ⚠️ **Esta heurística é proibida para dinheiro e correta para
+ *          encerrante**, e a diferença é o que impede alguém de copiá-la para o
+ *          lugar errado. Em dinheiro, o número de casas varia, e supor três
+ *          decimais já transformou **R$ 7.436,00 em R$ 7,44 em produção** (é o
+ *          `analisarValor` que o `campo-numerico.ts` da `/planilha` substituiu
+ *          justamente por isso). O encerrante é o odômetro da bomba: ele tem
+ *          três casas SEMPRE, impressas no papel, e é por isso que aqui não há
+ *          o que adivinhar.
+ *
+ *          O custo aceito: quem digitar só a parte inteira (`1740317`) recebe
+ *          `1.740,317`, mil vezes menor. É por isso que a tela mostra a leitura
+ *          anterior embaixo de cada campo e avisa em âmbar quando o número
+ *          retrocede — o erro fica visível antes de gravar.
+ */
+const mascaraEncerrante = (texto: string): string => {
+    const digitos = texto.replace(/\D/g, '');
+    if (digitos === '') return '';
+
+    const acolchoado = digitos.padStart(4, '0');
+    const decimais = acolchoado.slice(-3);
+    const inteiro = acolchoado.slice(0, -3).replace(/^0+(?=\d)/, '');
+    const comMilhar = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+    return `${comMilhar},${decimais}`;
+};
+
 // "1.861.796,633" -> 1861796.633
 const parseBR = (s: string): number => {
     const limpo = (s || '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '');
@@ -414,7 +450,8 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                                             inputMode="decimal"
                                             value={valores[b.id] || ''}
                                             onChange={e => {
-                                                setValores(prev => ({ ...prev, [b.id]: e.target.value }));
+                                                const comMascara = mascaraEncerrante(e.target.value);
+                                                setValores(prev => ({ ...prev, [b.id]: comMascara }));
                                                 setDuvidaOcr(prev => (prev[b.id] ? { ...prev, [b.id]: false } : prev));
                                             }}
                                             placeholder="0,000"
