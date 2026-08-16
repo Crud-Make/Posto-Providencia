@@ -3,21 +3,35 @@ import {
   User, Calendar, Gauge, Smartphone, Banknote,
   Coins, CircleDollarSign, FileText, CreditCard,
   ClipboardList, ShoppingBag, History, ChevronDown,
-  X, Check, AlertCircle, Camera
+  X, Check, AlertCircle
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
 import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
-import EncerranteScreen from './screens/EncerranteScreen';
 import ReloadPrompt from './components/ReloadPrompt';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
 import { hojeIso } from '@posto/utils';
 
 const POSTO_ID = 1;
 
-type TabType = 'registro' | 'vendas' | 'historico' | 'encerrante' | 'perfil';
+type TabType = 'registro' | 'vendas' | 'historico' | 'perfil';
+
+/**
+ * Abas que este app ainda tem.
+ *
+ * @remarks Existe por causa da saída do Encerrante para o app do dono. A aba
+ *          ficava salva em `localStorage` (`pwa.activeTab`), e o celular de
+ *          quem já usava o app guarda `'encerrante'` — um valor que não
+ *          corresponde mais a tela nenhuma. Sem esta conferência, o app abriria
+ *          no Registro com a barra inferior sem nada selecionado, e o frentista
+ *          veria o app "esquecido" numa aba fantasma.
+ */
+const ABAS_VALIDAS: readonly TabType[] = ['registro', 'vendas', 'historico', 'perfil'];
+
+const abaSalvaOuPadrao = (valor: string | null): TabType =>
+  ABAS_VALIDAS.includes(valor as TabType) ? (valor as TabType) : 'registro';
 
 interface DialogState {
   isOpen: boolean;
@@ -77,7 +91,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   const [frentistas, setFrentistas] = useState<{ id: number, nome: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>(() => {
-    try { return (localStorage.getItem('pwa.activeTab') as TabType) || 'registro'; } catch { return 'registro'; }
+    try { return abaSalvaOuPadrao(localStorage.getItem('pwa.activeTab')); } catch { return 'registro'; }
   });
 
   useEffect(() => {
@@ -207,12 +221,6 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         </div>
         <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Registro</span>
       </div>
-      <div onClick={() => setActiveTab('encerrante')} className="flex flex-col items-center gap-1 cursor-pointer">
-        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'encerrante' ? 'bg-[#FF756B]/10' : ''}`}>
-          <Camera size={20} className={activeTab === 'encerrante' ? 'text-[#FF756B]' : 'text-slate-400'} />
-        </div>
-        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'encerrante' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Encerrante</span>
-      </div>
       <div onClick={() => setActiveTab('vendas')} className="flex flex-col items-center gap-1 cursor-pointer">
         <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'vendas' ? 'bg-emerald-500/10' : ''}`}>
           <ShoppingBag size={20} className={activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'} />
@@ -250,19 +258,15 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     );
   }
 
-  // Tela de Encerrante (OCR do papel de leituras).
-  // Não exige frentista: o encerrante é a leitura da bomba, não pertence a
-  // ninguém — `Leitura` não tem coluna de frentista. Exigir a seleção era só
-  // cerimônia travando o envio (pedido do dono, 02/08).
-  if (activeTab === 'encerrante') {
-    return (
-      <>
-        <ReloadPrompt />
-        <EncerranteScreen frentistaNome={selectedFrentista?.nome} onVoltar={() => setActiveTab('registro')} />
-        {renderBottomNav()}
-      </>
-    );
-  }
+  // A tela de Encerrante saiu daqui para o `apps/pwa-dono`. Ela nunca foi do
+  // frentista: `Leitura` é a leitura da BOMBA e não tem coluna de frentista —
+  // foi o que o commit 635a6f2 já tinha constatado ao remover a exigência de
+  // seleção, e o que o plano original do OCR dizia desde o começo
+  // (`.claude/docs/ocr-encerrante-plano-original.md`: "apps/web (dono) +
+  // apps/pwa-frentista (frentista)").
+  //
+  // O campo `encerrante` do FechamentoFrentista CONTINUA aqui, e não é o mesmo
+  // assunto: aquele é o total em R$ que o frentista declara do concentrador.
 
   // Tela de Vendas
   if (activeTab === 'vendas') {

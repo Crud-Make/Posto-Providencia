@@ -207,6 +207,32 @@ describe('EncerranteScreen — caminho da foto', () => {
     });
 
     /**
+     * Migrado do `App.test.tsx` do PWA do frentista, junto com a tela.
+     *
+     * f000f9a: antes, o botão só destravava depois de um OCR bem-sucedido, e
+     * quem estava na bomba digitava as seis leituras à mão para descobrir no
+     * fim que não dava para enviar. O caminho manual é a saída quando a foto
+     * sai tremida ou a rede do posto cai — sem passar por foto nenhuma.
+     */
+    it('libera o envio com valor digitado à mão, sem foto alguma', async () => {
+        await montar();
+        expect(botaoEnviar().disabled).toBe(true);
+
+        digitar(campos()[0], '1.862.500,000');
+
+        expect(botaoEnviar().disabled).toBe(false);
+    });
+
+    /** Migrado do `App.test.tsx` do frentista: zero não é valor para enviar. */
+    it('mantém o envio travado enquanto nenhum bico tem valor', async () => {
+        await montar();
+
+        digitar(campos()[0], '0,000');
+
+        expect(botaoEnviar().disabled).toBe(true);
+    });
+
+    /**
      * A bomba não anda para trás. Quando anda, é dígito trocado — e o commit
      * a7f495d anotou o risco irmão: `Math.max(0, final − inicial)` faz o dia
      * valer venda ZERO em silêncio se o número vier pequeno demais.
