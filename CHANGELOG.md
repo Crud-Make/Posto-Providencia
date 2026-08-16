@@ -2,6 +2,44 @@
 
 ## [Não Lançado]
 
+### 🔢 O encerrante do Bico 01 era gravado mil vezes menor
+- **[16/08/2026]** Na tela de Leituras Diárias, o encerrante digitado era lido
+  com `replace('.', '')` **sem a flag `/g`** — saía só o primeiro separador de
+  milhar. `1.861.796,633` virava `1861.796` e ia para o banco assim.
+- **Só o Bico 01 (Gasolina Comum) era atingido**, porque é o único que passa de
+  1 milhão na operação real e por isso o único cujo número tem **dois** pontos.
+  Os outros cinco ficam abaixo de 700 mil. Foi o que manteve o bug invisível.
+- **O pior não era o valor errado, era a divergência.** O cálculo de exibição já
+  lia certo: a tela mostrava **348,487 L enquanto o banco recebia 0,349 L** —
+  mesmo hook, dois números.
+- Segundo efeito, mais silencioso ainda: com o final deslocado e o inicial
+  correto, o filtro `final > inicial` **derrubava a linha sem erro visível**.
+  Digitava-se a leitura, salvava, e nada era gravado.
+- **Nenhum dado no banco foi contaminado** — conferido antes da correção: 186
+  linhas em `Leitura`, as 31 do Bico 01 todas em milhões, e a cadeia diária sem
+  quebra (o inicial de cada dia bate com o final do anterior, 0 quebras em 186).
+  As linhas vieram de carga em lote, não do formulário: o dado está limpo porque
+  não passou por esta tela, não porque ela estivesse certa.
+- A correção usa a **mesma normalização da exibição**, extraída para
+  `model/encerrante-digitado.ts` com 7 testes — aquele diretório não tinha
+  nenhum.
+
+### 📏 Litros e valor de uma leitura passam a ter uma função só
+- **[16/08/2026]** A aritmética do encerrante vivia em dois lugares com
+  convenções **diferentes**: o PWA aplicava piso de zero, o painel não. A mesma
+  leitura invertida gravava 0 L por um caminho e litros **negativos** pelo outro
+  — e `valor_total` alimenta `total_vendas` e daí a `diferenca` do frentista.
+- Fica o **piso de zero**: litro negativo não existe fisicamente, e negativo
+  contamina o total do dia em silêncio. O piso **não substitui o aviso** —
+  `motivoImplausivel` aponta encerrante que retrocede e salto acima de 3.000 L
+  no turno, para a tela avisar antes de gravar.
+- Conferido contra as **1.188 leituras reais de 2026**: litros batem 1188/1188 e
+  a venda bate 990/990 nas linhas que têm preço. E **0 linhas têm o encerrante
+  retrocedendo** — ou seja, adotar o piso não altera nenhum número histórico.
+- ⚠️ **Lacuna da fonte, travada em teste:** o Bico 06 sai do ETL sem `valor_lt`
+  nas suas 198 linhas, embora tenha litros e venda. O preço é recuperável
+  (`venda ÷ litros`), mas é conserto de ETL.
+
 ### 🧮 O fechamento do dia deixa de nascer zerado esperando o painel
 - **[16/08/2026]** O PWA gravava a linha do frentista e criava o **pai zerado**;
   os totais do dia só apareciam quando alguém abria o painel. É o mecanismo que

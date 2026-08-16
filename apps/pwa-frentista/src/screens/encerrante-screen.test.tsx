@@ -24,8 +24,8 @@ let ultimasLeituras = new Map<number, number>();
 let respostaOcr: LeituraOcr[] = [];
 let erroOcr: Error | null = null;
 
-const salvarLeituras = vi.fn(async () => []);
-const lerEncerrante = vi.fn(async () => {
+const salvarLeituras = vi.fn(async (_payload: unknown) => []);
+const lerEncerrante = vi.fn(async (_base64: string, _mimeType: string) => {
     if (erroOcr) throw erroOcr;
     return respostaOcr;
 });
