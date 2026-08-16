@@ -10,7 +10,9 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-        "@posto/types": "workspace:*"
+        "@posto/types": "workspace:*",
+        "@posto/utils": "workspace:*",
+        "@supabase/supabase-js": "^2.97.0"
     },
     "devDependencies": {
         "typescript": "~5.8.2"

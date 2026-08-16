@@ -56,3 +56,5 @@ export function isSuccessResponse<T>(response: ApiResponse<T>): response is ApiR
 export function isErrorResponse<T>(response: ApiResponse<T>): response is ApiResponse<T> & { error: ApiError } {
     return !response.success && response.error !== null;
 }
+
+export * from './encerrante';
