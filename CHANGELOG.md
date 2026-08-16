@@ -2,6 +2,164 @@
 
 ## [Não Lançado]
 
+### 🗓️ O seletor de mês sai da ponta e vai para o meio do cabeçalho
+- **[16/08/2026]** O `Calendario` tinha uma faixa só para ele acima da planilha
+  (`flex justify-end px-5 pt-5`): **62px de altura para segurar um botão**, que
+  somados aos 20px de recuo do widget empurravam o título para **82px abaixo do
+  topo** — numa página que é toda tabela. A faixa foi removida e o seletor virou
+  o filho do meio do `.pm-topo`, entre o título e a procedência.
+- Entra no widget como **nó** (`seletorDeMes`), não como `aoMudarMes`: quem é
+  dono do período é a página, porque o `PeriodoContext` é compartilhado com as
+  outras telas de análise. O widget só empresta o lugar, e a direção do FSD
+  continua de cima para baixo.
+- Centralizado, o painel deixou de precisar do `alinhamento="direita"`: ele abre
+  a 288px do meio da tela e não alcança mais borda nenhuma.
+
+### 🗓️ Quatro meses do ano eram inalcançáveis no seletor da `/planilha`
+- **[16/08/2026]** O painel do `Calendario` tem 288px e abria ancorado à
+  **esquerda** de um botão colado na borda direita da janela: a terceira coluna
+  da grade vazava para fora da tela e **março, junho, setembro e dezembro
+  simplesmente não existiam** para quem clicasse — junto com as setas de ano e o
+  atalho "Hoje". Não havia sinal nenhum de que estavam ali. Corrigido com
+  `alinhamento="direita"` em `pages/planilha-mensal/index.tsx`.
+- Achado abrindo a tela no navegador, não lendo código — e é o tipo de defeito
+  que teste nenhum pegaria. ⚠️ **Outras 10 telas usam o mesmo componente e só o
+  `fechamento-mensal` passa o alinhamento**; o padrão continua sendo o que
+  quebrou aqui.
+
+### 🎨 O tema escuro da `/planilha` deixa de disputar a hierarquia
+- **[16/08/2026]** As cores de bloco (`--venda`, `--compra`, `--custo`,
+  `--estoque` e suas linhas/tintas) eram declaradas **só** em `.pm`, e o
+  `.dark .pm` redefinia apenas fundo, tinta, linhas e os verdes/vermelhos.
+  Resultado no escuro: as três faixas de seção e as três linhas de total ficavam
+  com o pastel do tema claro em saturação plena sobre um painel `#1c211d` —
+  **os seis objetos mais claros da página**, mais claros que o Lucro líquido. O
+  olho ia para o rótulo "Venda", que nunca é a resposta que a tela existe para
+  dar. Agora cada bloco tem par escuro (fundo escurece, tinta clareia), e as
+  cores de **barra** ficaram como estavam, porque são marca de dado sobre
+  trilho, não fundo.
+- Duas cores cravadas (`color: #141715` na faixa de seção e na linha de total)
+  passaram a `var(--ink)`: elas ignoravam o tema por definição.
+- Herdado do desenho aprovado, que é um mock de tema único — o toggle veio
+  depois. Herdar o defeito não o ratifica.
+
+### ♿ Botão de gravar legível parado, e a célula digitável parecendo digitável
+- **[16/08/2026]** `Gravar medições` usava `opacity: .35`, que compõe fundo
+  **e** texto contra a página: **2,14:1** no tema claro, abaixo até do piso de
+  3:1 de elemento não textual. E não é estado de canto — o botão **nasce
+  desabilitado toda vez que a página abre**, com a régua ainda não digitada.
+  Agora é fundo de 10% + tinta forte (`--muted2`, 7,12:1 no claro / 8,70:1 no
+  escuro) e a regra vem **depois** da variante fantasma, senão o fundo
+  transparente dela venceria e o estado sumiria de novo.
+- As **duas** células digitáveis da tela viviam no meio de ~140 de leitura, e o
+  único sinal de que aceitavam a régua era a **ausência** do tom do produto —
+  diferença de poucos por cento de luminância no escuro. Ganharam filete de
+  acento no pé da célula, `:hover` e anel de foco próprio.
+- Novo token `--acento` (`#0b6b8f` / `#63b3d1`), portado do desenho e até aqui
+  esquecido: é a única matiz que não pertence a nenhum produto nem a nenhum
+  bloco, então só ela consegue significar "aqui se digita" e "o teclado está
+  aqui". O foco antes usava a cor de texto encostada na borda de 1px da célula,
+  e lia como borda dobrada.
+
+### 📗 Skill `xlsx` instalada — e barrada para a planilha do posto
+- **[16/08/2026]** `document-skills@anthropic-agent-skills` (docx, pdf, pptx, xlsx),
+  ~1.028 tok always-on, sendo ~330 do `xlsx`.
+- **Não se aplica à nossa planilha, e o §13 passou a dizer isso.** A skill dispara
+  por descrição em qualquer arquivo de planilha — o exemplo literal dela é *"the
+  xlsx in my downloads"*, que é o nosso caminho exato. Mas: a postura padrão dela é
+  **editar e recalcular** o workbook, contra o §6; ela não conhece as 3 guardas que
+  o nosso ETL tirou de bug real; e o nosso estágio 1 lê o `.xlsx` com **`zipfile` da
+  stdlib**, enquanto ela pressupõe `openpyxl`, `pandas`, `markitdown` e LibreOffice —
+  **nenhum dos quatro instalado nesta máquina**. Serve para planilha de fora.
+
+### 🧩 `/feature-dev` instalado — e o CLAUDE.md corrigido sobre o marketplace
+- **[16/08/2026]** O marketplace `claude-plugins-official` estava **auto-instalado
+  desde sempre** nesta máquina, com 60+ plugins no catálogo e **zero** instalado.
+  O §13 afirmava "nenhum marketplace configurado": verdade em 07/08, falsa desde
+  então. Corrigido com data e com o porquê — é o §14 ao contrário, a ferramenta
+  chegou e a instrução não soube.
+- Instalado `feature-dev@claude-plugins-official`: 3 agentes (`code-explorer`,
+  `code-architect`, `code-reviewer`) e 1 skill, ~238 tok always-on. Fases 2 e 4
+  lançam 2-3 agentes **em paralelo** — exploração e desenho de arquitetura com
+  trade-off explícito, que é o §11 virado código.
+- `mattpocock-skills` está no mesmo catálogo: as 6 linhas removidas do §13 em
+  07/08 podem voltar quando o dono quiser. Quem repuser, repõe a linha da tabela
+  no mesmo commit.
+- A regra "um pipeline por tarefa, nunca dois" saiu da hipótese: `/feature-dev` é
+  o pipeline desta máquina, e o `superpowers` seria o segundo.
+
+### 🔒 `HistoricoTanque` deixa de aceitar escrita anônima
+- **[16/08/2026]** A policy `Public Access` era `ALL` / role `public` /
+  `USING (true)` / sem `WITH CHECK`. Em policy sem `WITH CHECK` o Postgres usa o
+  `USING` como verificação do INSERT, então **qualquer um com a anon key gravava**
+  — e a anon key vai no bundle publicado. **Medido, não deduzido:** gravei
+  `volume_fisico = 1234` pela tela em modo visitante, sem login, e apaguei em
+  seguida. Depois da correção, a mesma sequência é recusada e a tabela fica em 0.
+- Migração versionada: `supabase/migrations/20260816_rls_historico_tanque_escrita_anonima.sql`,
+  com guarda no início (aborta se sobrar outra policy de escrita alcançando `anon`)
+  e auto-verificação antes do `COMMIT` — "rodou sem erro" não é o mesmo que
+  "fechou o buraco". A escrita agora copia a forma que a tabela-mãe `Tanque` já
+  usava: `ALL` restrito a `(SELECT auth.role()) = 'authenticated'`.
+- **Sem janela de tempo aqui, ao contrário das tabelas de dinheiro**: o replay em
+  curso grava medição de mês passado, e a abertura de um período é gravada na
+  véspera dele — uma janela de 7 dias bloquearia o trabalho em andamento. A trava
+  é **quem** escreve, não **quando**.
+- Por que esta tabela e não outra: `volume_fisico` é o único insumo da perda de
+  combustível (`perca = medido − teórico`), e nada no sistema o contradiz. Quem
+  escreve nela sem login escolhe se o posto aparece com perda ou sem.
+
+### 📥 Janeiro/2026 entra no banco — primeiro mês do replay
+- **[16/08/2026]** Carregado de `docs/data/posto_jorro_2026.sqlite` (estágios 1 e 2
+  já promovidos), mês a mês como a skill de ETL exige, com reconciliação contra a
+  referência antes de qualquer escrita:
+
+  | Tabela | Linhas | Total |
+  | --- | --- | --- |
+  | `Leitura` | 186 (31 dias × 6 bicos) | 46.843,062 L · R$ 290.062,94 |
+  | `Compra` | 4 (31/01, fornecedor 3) | 47.000 L · R$ 241.195,00 |
+  | `Despesa` | 15 itens | R$ 22.158,46 |
+  | `HistoricoTanque` | 8 (abertura 31/12/2025, fecho 31/01) | 15.683 → 12.274 L |
+
+  A corrente fecha no banco: **custo do litro R$ 0,4730361** — o mesmo número que
+  `resumo-compra.ts` documenta — e perda de **−3.565,938 L**. Litros exatos ao
+  mililitro; a venda fica R$ 0,02 acima da referência por arredondamento a
+  centavos em cada um dos 186 dias.
+- Dois scripts novos, no padrão dos que já existiam (emitem SQL idempotente, não
+  escrevem sozinhos, conferem antes de emitir): `carga-historico-tanque.py` e
+  `carga-historico-despesa.py`.
+- **`--fonte` é obrigatório no de despesa, sem padrão.** A referência tem duas
+  listas que discordam: a da planilha (15 itens, R$ 22.158,46, o total que faz o
+  `lucro_bico` da planilha fechar) e a do app (21 itens, R$ 35.523,58, que inclui
+  Bombeiro AVCB, conserto de bomba, extintor, Luz, Net e Embasa — gastos reais que
+  a planilha não registra). A escolha move o custo do litro de R$ 0,4730 para
+  R$ 0,7583 e o lucro de janeiro em R$ 13.365,12. Escolher calado é o erro que a
+  skill manda evitar, então o script se recusa a rodar sem a fonte declarada.
+  **Janeiro entrou com `--fonte planilha`, por escolha do dono; pelo §6 a lista do
+  app é a mais defensável e a troca segue em aberto.**
+
+### 🧮 Estoque teórico negativo deixa de virar "sobra enorme"
+- **[16/08/2026]** Com a `Compra` invisível (ela não abre para visitante e volta
+  vazia **sem erro**), o estoque teórico de janeiro dava **−31.160 L** e a tela
+  anunciava **sobra de 43.434 L** — 92,72% do volume vendido. Número fabricado, na
+  coluna que existe para acusar combustível faltando.
+- `planilha-mensal.ts` passa a tratar estoque teórico negativo como **impossível
+  físico**: ninguém vende mais do que tinha somado ao que comprou. A perda desses
+  produtos vem `null`, o total de perda vem `null` quando **algum** produto não é
+  apurável, e a tela diz quais e por quê. `percaTotal` virou `number | null` e
+  `PercaProduto.litros` também.
+- Mesma família do "não medi ≠ não perdi" que `resumo-estoque` já protegia: o
+  perigo aqui não era o cálculo, era a direção do erro — a lacuna de cadastro
+  saía como a leitura mais tranquilizadora possível.
+
+### 🪧 Os avisos da planilha viram uma tira de etiquetas
+- **[16/08/2026]** Eram até quatro parágrafos de largura inteira empilhados acima
+  dos KPIs, e empurravam as tabelas para fora da tela — numa página que existe
+  para mostrar tabela. Agora é **uma linha de etiquetas** (`sem leitura`,
+  `sem despesa`, `sem compra`, `estoque teórico negativo`,
+  `sem medição de abertura`), com o texto inteiro no `title`. O motivo continua
+  marcado onde importa: o `—` na célula, o `sem compra` ao lado da perda, o `*` no
+  lucro que só somou o que deu para apurar. O aviso encolheu; nenhum sumiu.
+
 ### 🧾 A tela `/planilha` vira a planilha de verdade, ligada ao banco
 - **[16/08/2026]** `/planilha` foi refeita no desenho aprovado (`Fechamento Posto.html`): três
   blocos coloridos — **Venda**, **Compra**, **Estoque** —, seis KPIs no topo, três painéis de

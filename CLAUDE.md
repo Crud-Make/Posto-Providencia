@@ -259,7 +259,7 @@ Já mentiu com confiança total uma vez; ver anexo.
 | -------------------------------------------- | ------------------------------------------------------- |
 | Regra de negócio, fórmula, nomenclatura      | `fechamento-posto-providencia`                            |
 | Tela/hook/módulo novo: onde nasce, o que segura | `implementar-feature-posto-providencia`                |
-| Importar/atualizar a partir do `.xlsx`       | `etl-planilha-posto-providencia`                          |
+| Importar/atualizar a partir do `.xlsx`       | `etl-planilha-posto-providencia` — **nunca** a `xlsx`      |
 | Avaliar ou planejar refatoração              | `refatoracao-posto-providencia`                           |
 | "Está pronto?", "pode entregar?", "falta o quê?" | `entrega-real-posto-providencia`                      |
 | "Onde fica X", "quem usa Y", raio de impacto | agente `grafo` (§12)                                      |
@@ -271,12 +271,21 @@ Já mentiu com confiança total uma vez; ver anexo.
 | Revisar o diff da branch                     | `/code-review` (embutido)                                 |
 | Limpar o que já escrevi, sem caçar bug       | `/simplify` (embutido)                                    |
 | Varrer a branch por risco de segurança       | `/security-review` (embutido)                             |
+| Feature nova inteira, do zero ao review      | `/feature-dev` (plugin oficial, instalado 16/08)          |
 | Mexer no código sem gerar dívida             | `karpathy-guidelines`                                     |
 | Buscar em base de notas indexada             | `engraph:engraph` (plugin, instalado 05/08)               |
 | Gráfico ou dashboard                         | `dataviz` (embutido), sob demanda                         |
 
 **Conferido em 07/08/2026: `claude-mem` e `mattpocock-skills` NÃO estão instalados.** Não há
-rastro em `~/.claude/plugins/`, e nenhum marketplace configurado. Seis linhas desta tabela
+rastro em `~/.claude/plugins/`, e nenhum marketplace configurado.
+
+> **Corrigido em 16/08/2026 — a segunda metade desta frase apodreceu.** O marketplace
+> `claude-plugins-official` se auto-instalou (`officialMarketplaceAutoInstalled: true` no
+> `~/.claude.json`) com 60+ plugins no catálogo, e ficou com **zero** deles instalado. É o §14 ao
+> contrário: lá a instrução sobrevive à ferramenta que sumiu; aqui a ferramenta chegou e a
+> instrução não soube. `mattpocock-skills` está nesse catálogo — as 6 linhas removidas acima podem
+> voltar com um `claude plugin install`, e quem repuser **repõe a linha na tabela no mesmo commit**.
+> Instalado dele até agora: só `/feature-dev` (3 agentes, ~238 tok always-on). Seis linhas desta tabela
 apontavam para eles — `:diagnosing-bugs`, `:tdd`, `:code-review`, `:codebase-design`,
 `:domain-modeling`, `:make-plan`+`:do`, `:mem-search` —, e foram removidas. É a mesma falha do
 §12 e do MCP do Supabase: **a instrução sobreviveu à ferramenta**. Reconferir com
@@ -287,9 +296,19 @@ apontavam para eles — `:diagnosing-bugs`, `:tdd`, `:code-review`, `:codebase-d
   módulo é a skill `refatoracao-posto-providencia` mais o agente `grafo`. Se você quiser os
   originais de volta, instale o marketplace e **reponha a linha aqui no mesmo commit** — tabela
   que cita ferramenta ausente é pior que tabela sem a linha.
-- **Um pipeline por tarefa, nunca dois.** A regra continua valendo para o dia em que houver dois
-  pipelines completos de "planeje em fases e execute com subagents" instalados ao mesmo tempo:
-  rodar os dois duplica plano e queima token.
+- **Um pipeline por tarefa, nunca dois.** Deixou de ser hipótese em 16/08: `/feature-dev` é o
+  pipeline completo de "planeje em fases e execute com subagents" desta máquina, e é o único.
+  O `superpowers`, no mesmo catálogo oficial, é um segundo — instalar os dois duplica plano e
+  queima token. Escolher outro significa **desinstalar este**, não somar.
+- **A skill `xlsx` (instalada 16/08) não vale para a planilha do posto.** Ela dispara por
+  descrição em "qualquer arquivo de planilha", inclusive no exemplo literal *"the xlsx in my
+  downloads"* — que é o caminho exato da nossa. Três motivos para a precedência ser da
+  `etl-planilha-posto-providencia`, sempre: (1) a postura padrão dela é **editar e recalcular** o
+  workbook, e o §6 diz que o xlsx original não se edita; (2) as 3 guardas do nosso ETL vieram de
+  bug real nesta planilha e ela não as conhece; (3) o nosso estágio 1 lê o `.xlsx` com **`zipfile`
+  da stdlib**, sem dependência alguma, enquanto a `xlsx` pressupõe `openpyxl`, `pandas`,
+  `markitdown` e LibreOffice — **nenhum dos quatro existe nesta máquina** (conferido 16/08). Ela
+  serve para planilha de fora do posto; para a nossa, é a skill errada com a ferramenta ausente.
 - **Não use, se um dia forem instaladas:** skills que leem arquivo para entender base
   desconhecida (`learn-codebase`, `smart-explore`, `pathfinder` e equivalentes). Este repo já
   responde isso pelo grafo (§12). Valem em repo sem grafo.
