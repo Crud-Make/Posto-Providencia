@@ -13,6 +13,22 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { litrosVendidos, valorDaLeitura, type LeituraDeBico } from '@posto/utils';
+
+/**
+ * Traduz a linha do banco para o contrato de domínio de `@posto/utils`.
+ *
+ * @remarks O banco fala `leitura_inicial`/`leitura_final`, o domínio fala
+ *          `inicial`/`fechamento` (§4: a tradução acontece na fronteira, uma
+ *          vez). Este service é a fronteira das leituras no painel.
+ */
+const comoLeitura = (l: {
+  leitura_inicial: number;
+  leitura_final: number;
+}): LeituraDeBico => ({
+  inicial: l.leitura_inicial,
+  fechamento: l.leitura_final,
+});
 
 export interface VendaPorCombustivel {
   combustivel: Combustivel;
@@ -242,9 +258,8 @@ export const leituraService = {
    */
   async create(leitura: InsertTables<'Leitura'>): Promise<ApiResponse<Leitura>> {
     try {
-      // Calcula litros vendidos e valor venda
-      const litros_vendidos = leitura.leitura_final - leitura.leitura_inicial;
-      const valor_total = litros_vendidos * leitura.preco_litro;
+      const litros_vendidos = litrosVendidos(comoLeitura(leitura));
+      const valor_total = valorDaLeitura(comoLeitura(leitura), leitura.preco_litro);
 
       const { data, error } = await supabase
         .from('Leitura')
@@ -292,8 +307,12 @@ export const leituraService = {
       // Recalcula se necessário
       let updates = { ...leitura };
       if (leitura.leitura_final !== undefined && leitura.leitura_inicial !== undefined && leitura.preco_litro !== undefined) {
-        updates.litros_vendidos = leitura.leitura_final - leitura.leitura_inicial;
-        updates.valor_total = updates.litros_vendidos * leitura.preco_litro;
+        const alvo = comoLeitura({
+          leitura_inicial: leitura.leitura_inicial,
+          leitura_final: leitura.leitura_final,
+        });
+        updates.litros_vendidos = litrosVendidos(alvo);
+        updates.valor_total = valorDaLeitura(alvo, leitura.preco_litro);
       }
 
       const { data, error } = await supabase
@@ -319,8 +338,8 @@ export const leituraService = {
     try {
       const leiturasWithCalc = leituras.map(l => ({
         ...l,
-        litros_vendidos: l.leitura_final - l.leitura_inicial,
-        valor_total: (l.leitura_final - l.leitura_inicial) * l.preco_litro,
+        litros_vendidos: litrosVendidos(comoLeitura(l)),
+        valor_total: valorDaLeitura(comoLeitura(l), l.preco_litro),
       }));
 
       const { data, error } = await supabase
