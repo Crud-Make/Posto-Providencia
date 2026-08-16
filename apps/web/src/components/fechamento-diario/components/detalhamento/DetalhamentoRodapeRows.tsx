@@ -56,7 +56,10 @@ export const DetalhamentoParticipacaoRow: React.FC<BaseRowProps> = ({ sessoes, t
 const CellDiferenca: React.FC<{ sessao: SessaoFrentista; totalVendasPosto: number }> = ({ sessao, totalVendasPosto }) => {
   const { diferenca } = useDetalhamentoFrentista(sessao, totalVendasPosto);
   // Consistência com o resto do app (FooterAcoes/relatórios): falta (negativo) = vermelho, sobra (positivo) = verde.
-  const colorClass = diferenca < 0 ? 'text-red-400 font-bold' : diferenca > 0 ? 'text-emerald-400 font-bold' : 'text-slate-500';
+  // Falta é diferença POSITIVA (§6: concentrador − conferido) — vermelho nela.
+  // A condição estava trocada porque o cálculo vinha invertido; virou junto com
+  // o sinal em 16/08/2026. Zero continua neutro.
+  const colorClass = diferenca > 0 ? 'text-red-400 font-bold' : diferenca < 0 ? 'text-emerald-400 font-bold' : 'text-slate-500';
 
   return (
     <td className={`px-4 py-3 text-center border border-slate-700/50 ${colorClass}`}>

@@ -7,7 +7,7 @@
 import { useMemo } from 'react';
 import { SessaoFrentista } from '../../../types/fechamento';
 import { analisarValor } from '../../../utils/formatters';
-import { cartao as cartaoModulo, conferido } from '@posto/utils';
+import { cartao as cartaoModulo, conferido, diferenca as diferencaCanonica } from '@posto/utils';
 import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
 /**
@@ -62,12 +62,12 @@ export const useDetalhamentoFrentista = (
     // Total arrecadado (conferido: inclui moedas)
     const totalVenda = conferido(meios);
 
-    // Comparativo com concentrador.
-    // NOTA (consolidação): o sinal aqui segue a convenção antiga de exibição
-    // (totalVenda − concentrador). A convenção canônica é concentrador −
-    // conferido (falta positivo); flip pendente com QA visual dos rótulos.
+    // Comparativo com o concentrador, na convenção canônica do §6:
+    // concentrador − conferido, positivo = FALTA. O flip que a nota anterior
+    // deixava pendente foi feito em 16/08/2026, junto com o do `useFechamento` —
+    // manter os dois sinais na MESMA tela era pior que qualquer um dos dois.
     const vendaConcentrador = analisarValor(sessao.valor_encerrante);
-    const diferenca = totalVenda - vendaConcentrador;
+    const diferenca = diferencaCanonica(vendaConcentrador, totalVenda);
     
     // Cálculo de participação percentual
     const participacao = totalVendasPosto > 0 
