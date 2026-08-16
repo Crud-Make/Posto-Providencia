@@ -302,6 +302,34 @@ export const useLeituras = (
           }
           return acc;
         }, {} as Record<number, Leitura>);
+
+        // Dia salvo PARCIALMENTE (lança-se uns bicos, volta-se depois para os
+        // outros) deixava os bicos restantes SEM ENTRADA no estado — não com
+        // valor vazio, inexistentes. O `0,000` que aparecia neles era
+        // placeholder do input, não dado. Digitar num desses bicos criava
+        // `{ ...undefined, fechamento }`, um objeto sem `inicial`, e a tela
+        // inteira caía em branco no `calcLitros`.
+        //
+        // Pior que o crash seria o crash não acontecer: com `inicial` ausente
+        // a gravação levaria 0, e os litros do dia virariam o odômetro
+        // inteiro da bomba — centenas de milhares de litros de venda que não
+        // existiram.
+        //
+        // Completa os que faltam com a última leitura anterior, exatamente
+        // como o modo criação faz logo abaixo.
+        const semEntrada = bicos.filter(bico => !(bico.id in mapeado));
+        if (semEntrada.length > 0) {
+          const ultimasRes = await leituraService.getLastReading(postoId);
+          const ultimas = isSuccess(ultimasRes) ? ultimasRes.data : [];
+          for (const bico of semEntrada) {
+            const ultima = ultimas.find(l => l.bico_id === bico.id);
+            mapeado[bico.id] = {
+              inicial: ultima ? formatarParaBR(ultima.leitura_final, 3) : '0,000',
+              fechamento: ''
+            };
+          }
+        }
+
         setLeituras(mapeado);
         console.log('[29/01 13:40] Leituras mapeadas para estado:', Object.keys(mapeado).length, 'bicos');
 
@@ -403,8 +431,13 @@ export const useLeituras = (
     const leitura = leituras[bicoId];
     if (!leitura) return { value: 0, display: '-' };
 
-    const inicial = parseFloat(leitura.inicial.replace(/\./g, '').replace(',', '.')) || 0;
-    const fechamento = parseFloat(leitura.fechamento.replace(/\./g, '').replace(',', '.')) || 0;
+    // `?? ''` não é paranoia: o guarda acima só cobre a entrada AUSENTE, e o
+    // que derrubava a tela era a entrada PRESENTE com `inicial` indefinido —
+    // criada ao digitar num bico que a carga tinha deixado de fora. A carga
+    // foi corrigida acima; isto impede que o próximo caminho que monte um
+    // objeto pela metade volte a apagar a tela do gerente.
+    const inicial = parseFloat((leitura.inicial ?? '').replace(/\./g, '').replace(',', '.')) || 0;
+    const fechamento = parseFloat((leitura.fechamento ?? '').replace(/\./g, '').replace(',', '.')) || 0;
 
     if (fechamento <= inicial || fechamento === 0) {
       return { value: 0, display: '-' };
