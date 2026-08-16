@@ -61,6 +61,18 @@
   aqui". O foco antes usava a cor de texto encostada na borda de 1px da célula,
   e lia como borda dobrada.
 
+### 🚨 A planilha fonte estava na lixeira — recuperada
+- **[16/08/2026]** `Posto,Jorro, 2026.xlsx` foi apagada de `~/Downloads` às
+  **08:38** e nada avisou. É a fonte auditável de tudo, **nunca esteve em commit
+  nenhum** e não é recuperável do git. Achada por acaso na lixeira do KDE, horas
+  depois, procurando outra coisa.
+- Restaurada com identidade conferida: 965.079 bytes e
+  `sha256 abecc283…fc952`, batendo com o registro da memória `planilha-fonte-onde-esta`.
+- **Cópia fria nova em `/mnt/dados/backups-posto/`**, mesmo hash. `~/Downloads` é
+  onde se apaga coisa; a tabela de discos manda arquivo grande e frio para o SSD.
+- O `higiene.py` já confere "fonte auditável ausente", mas olha `docs/data/` — que
+  estava intacto. O `.xlsx` de origem não era conferido por ninguém.
+
 ### 📗 Skill `xlsx` instalada — e barrada para a planilha do posto
 - **[16/08/2026]** `document-skills@anthropic-agent-skills` (docx, pdf, pptx, xlsx),
   ~1.028 tok always-on, sendo ~330 do `xlsx`.
