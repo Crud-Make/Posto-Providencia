@@ -262,6 +262,7 @@ Já mentiu com confiança total uma vez; ver anexo.
 | Importar/atualizar a partir do `.xlsx`       | `etl-planilha-posto-providencia` — **nunca** a `xlsx`      |
 | Avaliar ou planejar refatoração              | `refatoracao-posto-providencia`                           |
 | "Está pronto?", "pode entregar?", "falta o quê?" | `entrega-real-posto-providencia`                      |
+| Validar UMA feature: tela × banco, antes do dono | `validar-feature-posto-providencia`                    |
 | "Onde fica X", "quem usa Y", raio de impacto | agente `grafo` (§12)                                      |
 | "Quanto deu X?", conferir número contra o real | agente `planilha`                                       |
 | "Essa tabela está protegida?", exposição do banco | agente `rls`                                         |
