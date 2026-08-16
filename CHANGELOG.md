@@ -2,6 +2,43 @@
 
 ## [Não Lançado]
 
+### 💸 A Edge Function do encerrante deixa de ser uma torneira aberta de custo
+- **[16/08/2026]** `supabase/functions/ler-encerrante` estava pública e sem nenhum
+  limite: CORS `*`, sem teto de tamanho de imagem, sem limite de taxa. Cada foto
+  processada dispara **duas** chamadas ao Gemini (a auto-conferência roda
+  `temperature 0` e `0.3` em paralelo), então um laço `for` contra a URL
+  multiplicava a fatura do dono por 2 a cada requisição. A função está viva:
+  `{"ping":true}` responde `{"pong":true}` em 0,25s.
+- **`verify_jwt` não protegia nada** — a `anon key` **é** um JWT válido e vai no
+  bundle de três apps. Quem abre o DevTools tem a credencial.
+- **Limite de taxa por cliente** é a única trava que vale contra custo: 6
+  leituras/min e 40/h no caminho caro, 30 pings/min, 60 pedidos/min no geral.
+  Responde `429` com `Retry-After`. **É por isolate, não global** — a Supabase
+  pode manter mais de um vivo, e o teto efetivo se multiplica por eles. Um limite
+  global exigiria estado no Postgres a cada pedido, latência no caminho quente e
+  uma migração. Isto não zera o abuso; corta a ordem de grandeza dele.
+- **Teto de tamanho** em duas camadas: `Content-Length` conferido **antes** do
+  `req.json()` (depois de bufferizar, banda e memória já foram gastas) e o
+  `imagemBase64` limitado a **2 MiB** depois do parse. O número é medido: o
+  cliente já comprime (lado maior a 1000px, JPEG 0.82), as fotos reais do spike
+  **sem** essa redução dão 582 mil e 551 mil caracteres, e a que o OCR acertou
+  6/6 dá 160 mil. Folga deliberada porque **ninguém testou num aparelho real
+  ainda** — errar apertado rejeita a foto do dono na hora H, errar folgado só
+  deixa passar banda, e a fatura já está protegida pelo limite de taxa.
+- **CORS por lista** (`ORIGENS_PERMITIDAS`), com `Vary: Origin`. Sem a variável
+  configurada segue `*`, que é o comportamento de hoje — os domínios reais ainda
+  não existem, e travar em domínio inventado quebraria os três apps sem proteger
+  nada. E **CORS não é trava de custo**: só existe dentro do navegador, `curl`
+  ignora.
+- **Segredo em cabeçalho** (`SEGREDO_ENCERRANTE`) é **obstáculo, não autenticação**
+  — está escrito assim no código para ninguém confundir depois. Ele viaja no
+  bundle. Serve contra varredura que acha a URL sem ler o JavaScript da página.
+- A lógica de OCR **não foi tocada**. As guardas moram em `guardas.ts`, puras e
+  sem Deno, cobertas por 23 testes — o `index.ts` chama `Deno.serve` no topo, e
+  importá-lo num teste subiria um servidor.
+- **Não foi feito deploy.** `deploy_edge_function` está na lista `deny` e a
+  decisão é do dono. Enquanto não subir, a função em produção continua aberta.
+
 ### 🧮 O fechamento do dia deixa de nascer zerado esperando o painel
 - **[16/08/2026]** O PWA gravava a linha do frentista e criava o **pai zerado**;
   os totais do dia só apareciam quando alguém abria o painel. É o mecanismo que
