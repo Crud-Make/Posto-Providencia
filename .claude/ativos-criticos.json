@@ -1,0 +1,48 @@
+{
+  "_porque_existe": [
+    "Manifesto dos arquivos de que o projeto depende e que o git NÃO protege.",
+    "Lido pelo hook higiene.py no SessionStart. Antes dele, cada checagem do hook",
+    "era uma cicatriz: existia porque aquela coisa específica tinha quebrado uma vez.",
+    "Em 16/08/2026 três ativos se perderam em silêncio no mesmo dia — a planilha",
+    "fonte para a lixeira às 08:38, o settings.json global mutilado por volta das",
+    "10:46 levando junto as travas de sudo/rm/dd, e o engraph desligado de carona.",
+    "As três invisíveis ao `git status`, as três achadas por acaso. O manifesto",
+    "fecha a classe do erro em vez do caso: ativo novo entra aqui, não no código."
+  ],
+  "_campos": {
+    "caminho": "relativo = raiz do repo; começando com ~ ou / = absoluto",
+    "porque": "o que se perde quando este arquivo some — aparece no aviso",
+    "sha256": "opcional. Só para conteúdo que NÃO deve mudar sozinho",
+    "bytes_minimos": "opcional. Pega 'encolheu' sem exigir conteúdo imutável"
+  },
+
+  "ativos": [
+    {
+      "caminho": "~/Downloads/Posto,Jorro, 2026.xlsx",
+      "sha256": "abecc283c2398a9cf66184730066a3de82482b4f2f57bc8c3e66932ad67fc952",
+      "porque": "a fonte auditável de tudo. Nunca esteve em commit nenhum e o git não a devolve; sem ela não há como refazer a cadeia do ETL nem conferir uma fórmula contra o real"
+    },
+    {
+      "caminho": "/mnt/dados/backups-posto/Posto,Jorro, 2026.xlsx",
+      "sha256": "abecc283c2398a9cf66184730066a3de82482b4f2f57bc8c3e66932ad67fc952",
+      "porque": "a cópia fria da planilha, criada depois do incidente da lixeira. Se ela divergir da de ~/Downloads, uma das duas foi corrompida ou substituída"
+    },
+    {
+      "caminho": "~/.claude/settings.json",
+      "bytes_minimos": 2000,
+      "porque": "as travas da máquina inteira — ask em sudo/rm/mv/dd/git push, deny em rm -rf e mkfs — mais enabledPlugins e o marketplace. Encolheu = as travas caíram e nada avisa"
+    },
+    {
+      "caminho": "docs/data/janeiro_referencia.sqlite",
+      "porque": "os golden masters abrem este caminho direto e estouram no new Database(); sem ele o §0.6 proíbe mexer em qualquer fórmula"
+    },
+    {
+      "caminho": "docs/data/posto_jorro_2026.sqlite",
+      "porque": "base de referência do ETL promovido; é o que o agente `planilha` consulta para dar número com procedência"
+    },
+    {
+      "caminho": "docs/data/fixture_lucro_custo_mes01.json",
+      "porque": "fixture do golden master de lucro e custo operacional"
+    }
+  ]
+}

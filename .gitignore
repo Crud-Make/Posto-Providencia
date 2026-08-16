@@ -107,6 +107,15 @@ plans/
 # em `lucro-real.golden.spec.ts`, versionado desde antes. Valor NOVO do posto não
 # entra aqui — para isso vale o §6, e `docs/data/` segue fora do git.
 !.claude/memoria/
+# O manifesto dos ativos críticos (o que o `higiene.py` confere no SessionStart).
+# Ele declara CAMINHO e HASH de arquivos que o git não guarda — a planilha fonte,
+# o settings.json global, os .sqlite de `docs/data/`. Nenhum dado do posto entra
+# aqui: hash não é conteúdo, e o §6 segue valendo para `docs/data/`.
+#
+# Precisa ser versionado pelo motivo mais óbvio possível: manifesto de ativo
+# desprotegido que não está no git é ele próprio um ativo desprotegido. Caiu no
+# `.claude/*` acima e passou batido no primeiro commit — o `git add` avisou.
+!.claude/ativos-criticos.json
 .trae/
 
 # Bytecode dos hooks — artefato de execução, nunca fonte.

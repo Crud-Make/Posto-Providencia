@@ -401,7 +401,22 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
   do golden master (§0.6) **na hora da edição**, não no fim da tarefa. Erra para o lado do
   aviso a mais: aviso sobrando é uma linha, aviso faltando é fórmula mudando calada.
 - Início de sessão → confere cache órfão de plugin, grafo desatualizado, symlink de skill
-  quebrado, **fonte auditável ausente**, **plugin fantasma** e **MCP sem `--read-only`**.
+  quebrado, **ativo crítico fora do git**, **plugin fantasma** e **MCP sem `--read-only`**.
+
+  **A checagem de ativo crítico é a única que não é uma cicatriz** — e virou isso em
+  16/08. Ela era uma lista fixa de três caminhos de `docs/data/`, escrita depois que
+  aquela pasta sumiu em 07/08. Funcionava, e mesmo assim não pegou nada no dia em que
+  três ativos se perderam: `docs/data/` estava intacto, e o que foi para a lixeira às
+  08:38 foi a **planilha fonte**, que ninguém tinha pensado em conferir. Uma lista de
+  cicatrizes nunca cobre a próxima ferida.
+  Agora o hook sabe **como** conferir e o manifesto `.claude/ativos-criticos.json`
+  declara **o que** importa — ativo novo entra no JSON, não no código. Ele pega as três
+  formas silenciosas de perder arquivo: **sumiu** (apagado, movido, lixeira),
+  **encolheu** (`bytes_minimos`, que é como o `settings.json` global caiu de 3.694 para
+  22 bytes levando junto as travas de `sudo`/`rm`/`dd`) e **mudou** (`sha256`, só para
+  o que deve ser imutável — a planilha do posto é o caso, porque troca silenciosa dela
+  envenena todo golden master a jusante). Hash trocado de propósito, por planilha nova,
+  se atualiza no manifesto **no mesmo commit**.
   **Silencioso quando está tudo ok** — aviso que aparece sempre deixa de ser lido.
 
   As três últimas entraram em 07/08, e as três pelo mesmo motivo — **a instrução sobrevive
@@ -419,7 +434,7 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
     o arquivo é versionado — não commitar nesse estado.
 
 Instrução é forte; hook é garantia. Regra cara demais para depender de memória vira hook.
-Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 107 casos, e os negativos
+Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 119 casos, e os negativos
 valem tanto quanto os positivos. Para revisar ou desligar: `/hooks`.
 
 ---

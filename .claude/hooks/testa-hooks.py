@@ -11,6 +11,7 @@ e os dois modos são silenciosos até doer.
 Nota: o literal da flag é montado em partes aqui de propósito. Escrito inteiro,
 ele dispararia o hook da sessão que estiver rodando este arquivo.
 """
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -335,6 +336,73 @@ def main() -> int:
     falhas += not ok
     print(f"  {'✓' if ok else '✗'} {'sem session_id nao trava':60} "
           f"{'NEGA' if sem_sessao else 'passa'}")
+
+    print("── higiene · ativos críticos ──")
+    # Cada caso monta um repo de mentira: (manifesto, arquivos no disco) -> quantos
+    # problemas. O manifesto substituiu uma lista fixa que funcionava e mesmo assim
+    # não pegou a perda de 16/08 — por isso os três modos de perda são testados
+    # separados, e os negativos (arquivo ok) valem tanto quanto os positivos.
+    CONTEUDO = b"conteudo do ativo critico"
+    HASH_OK = hashlib.sha256(CONTEUDO).hexdigest()
+    HASH_ERRADO = "0" * 64
+    CASOS_ATIVOS = [
+        ("presente, sem exigencia", [{"caminho": "a.bin"}], {"a.bin": CONTEUDO}, 0),
+        ("sumiu", [{"caminho": "a.bin"}], {}, 1),
+        ("caminho absoluto sumido", [{"caminho": "/nao/existe/x.bin"}], {}, 1),
+        ("encolheu", [{"caminho": "a.bin", "bytes_minimos": 2000}], {"a.bin": CONTEUDO}, 1),
+        ("tamanho ok", [{"caminho": "a.bin", "bytes_minimos": 5}], {"a.bin": CONTEUDO}, 0),
+        ("hash bate", [{"caminho": "a.bin", "sha256": HASH_OK}], {"a.bin": CONTEUDO}, 0),
+        ("hash mudou", [{"caminho": "a.bin", "sha256": HASH_ERRADO}], {"a.bin": CONTEUDO}, 1),
+        # Sumiu vence encolheu e mudou: um aviso por ativo, nunca três pelo mesmo.
+        ("sumiu nao duplica aviso",
+         [{"caminho": "a.bin", "bytes_minimos": 9999, "sha256": HASH_ERRADO}], {}, 1),
+        ("dois ativos, um quebrado",
+         [{"caminho": "a.bin"}, {"caminho": "b.bin"}], {"a.bin": CONTEUDO}, 1),
+    ]
+    raiz_real = higiene.RAIZ
+    try:
+        for rotulo, ativos, arquivos, esperado in CASOS_ATIVOS:
+            with tempfile.TemporaryDirectory() as tmp:
+                falso = Path(tmp)
+                higiene.RAIZ = falso
+                (falso / ".claude").mkdir()
+                (falso / ".claude/ativos-criticos.json").write_text(
+                    json.dumps({"ativos": ativos})
+                )
+                for nome, dados in arquivos.items():
+                    (falso / nome).write_bytes(dados)
+                obtido = len(higiene.ativos_criticos())
+                ok = obtido == esperado
+                falhas += not ok
+                print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido} problema(s)")
+
+        # O manifesto é ele próprio um ativo: sem ele, nada está sendo conferido,
+        # e o silêncio pareceria saúde.
+        for rotulo, escreve in (("manifesto ausente", None),
+                                ("manifesto ilegivel", "{ isto nao e json")):
+            with tempfile.TemporaryDirectory() as tmp:
+                falso = Path(tmp)
+                higiene.RAIZ = falso
+                if escreve is not None:
+                    (falso / ".claude").mkdir()
+                    (falso / ".claude/ativos-criticos.json").write_text(escreve)
+                obtido = len(higiene.ativos_criticos())
+                ok = obtido == 1
+                falhas += not ok
+                print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido} problema(s)")
+    finally:
+        higiene.RAIZ = raiz_real
+
+    # E o manifesto REAL tem de estar íntegro — mesma lição do detector de plugin
+    # fantasma, cujos 7 casos sintéticos passavam enquanto o artefato de verdade
+    # acusava. Ativo quebrado aqui é falha da bateria, não ruído no SessionStart.
+    reais = higiene.ativos_criticos()
+    ok = reais == []
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'manifesto REAL sem ativo quebrado':60} "
+          f"{len(reais)} problema(s)")
+    for p in reais:
+        print(f"      → {p[:100]}")
 
     print("── higiene (fumaça) ──")
     r = subprocess.run(

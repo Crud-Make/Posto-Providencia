@@ -61,6 +61,31 @@
   aqui". O foco antes usava a cor de texto encostada na borda de 1px da célula,
   e lia como borda dobrada.
 
+### 🛡️ A higiene deixa de ser lista de cicatrizes e vira invariante
+- **[16/08/2026]** Novo manifesto `.claude/ativos-criticos.json` + `ativos_criticos()`
+  no `higiene.py`, substituindo a lista fixa de três caminhos de `docs/data/`.
+- Por que a lista fixa não bastava: ela existia porque *aquela pasta* sumiu em 07/08.
+  Funcionava — e não pegou nada em 16/08, quando três ativos se perderam no mesmo dia,
+  porque `docs/data/` estava intacto e o que foi para a lixeira foi a **planilha
+  fonte**, que ninguém tinha pensado em conferir. Cada checagem do hook era uma
+  cicatriz de um acidente específico, e cicatriz não cobre ferida nova.
+- O hook passa a saber **como** conferir; o manifesto declara **o que** importa. Ativo
+  novo entra no JSON, não no código. Três formas silenciosas de perder arquivo:
+  - **sumiu** — apagado, movido, lixeira; `git status` limpo porque é gitignored ou
+    mora fora do repo;
+  - **encolheu** (`bytes_minimos`) — foi assim que o `settings.json` global caiu de
+    3.694 para 22 bytes, levando junto `ask` em `sudo`/`rm`/`mv`/`dd`/`git push` e
+    `deny` em `rm -rf`/`mkfs`. O arquivo continua lá, válido, e vazio do que importava;
+  - **mudou** (`sha256`) — só para o que deve ser imutável. A planilha do posto é o
+    caso: substituição silenciosa dela envenena todo golden master a jusante.
+- **Pegou o problema real no primeiro dia**: rodando contra o manifesto de verdade, o
+  único caso que falha na bateria é o `~/.claude/settings.json` a 312 bytes. É
+  verdadeiro positivo, e continua pendente de restauração.
+- Bateria: **107 → 119 casos**. Os 11 sintéticos rodam contra um repo de mentira em
+  `tempfile`; o 12º roda contra o manifesto **real**, que é a lição que o detector de
+  plugin fantasma já tinha ensinado — caso sintético passa enquanto o artefato de
+  verdade acusa.
+
 ### 🚨 A planilha fonte estava na lixeira — recuperada
 - **[16/08/2026]** `Posto,Jorro, 2026.xlsx` foi apagada de `~/Downloads` às
   **08:38** e nada avisou. É a fonte auditável de tudo, **nunca esteve em commit

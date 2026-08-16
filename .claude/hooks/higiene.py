@@ -14,15 +14,16 @@ ninguém percebe olhando o código do projeto:
   symlink na pasta pai (decisão de 29/07, para drift ser impossível). Symlink
   apontando para o vazio não dá erro: a skill simplesmente deixa de existir, e
   perder a skill de fechamento é perder a fonte de verdade do cálculo.
-- **`docs/data/` sumido.** Descoberto em 07/08: a pasta não existia mais, os cinco
-  golden masters estouravam no `new Database()` e o agente `planilha` estava sem
-  fonte — e nada disso aparecia até alguém rodar o teste. Como o diretório é
-  gitignored, `git status` fica limpo enquanto a prova de auditoria não existe.
-  Este é o pior dos quatro: silencioso E bloqueia o §0.6 inteiro.
+- **Ativo crítico fora do git.** Começou como "`docs/data/` sumido", descoberto em
+  07/08. Virou manifesto (`.claude/ativos-criticos.json`) em 16/08, depois que três
+  ativos se perderam no mesmo dia e a lista fixa de três caminhos não pegou nenhum
+  deles — porque `docs/data/` estava intacto e o que sumiu foi a planilha fonte.
+  Ver `ativos_criticos()`. É o pior da lista: silencioso E bloqueia o §0.6 inteiro.
 
 Silencioso por princípio: aviso que aparece toda sessão vira ruído e deixa de ser
 lido. Só fala quando tem o que dizer.
 """
+import hashlib
 import json
 import re
 import subprocess
@@ -174,20 +175,99 @@ def mcp_sem_read_only() -> bool:
     return bool(args) and "--read-only" not in args
 
 
-def fonte_auditavel_sumida() -> list[str]:
-    """Arquivos que os golden masters abrem por caminho fixo e não estão lá.
+def resolve(caminho: str) -> Path:
+    """Relativo = raiz do repo. Começando com `~` ou `/` = absoluto."""
+    p = Path(caminho).expanduser()
+    return p if p.is_absolute() else RAIZ / p
 
-    Lista fixa de propósito, ao contrário do resto do hook: são exatamente os
-    caminhos citados em `packages/utils/src/*.golden.spec.ts`. Se um spec novo
-    passar a abrir outro arquivo, ele entra aqui — conferir com
-    `grep -rn 'docs/data' packages/utils/src/*.golden.spec.ts`.
+
+def sha256_de(arquivo: Path) -> str | None:
+    """Hash em blocos: a planilha tem ~1 MB e não precisa ir inteira para a RAM."""
+    h = hashlib.sha256()
+    try:
+        with arquivo.open("rb") as f:
+            for bloco in iter(lambda: f.read(1 << 20), b""):
+                h.update(bloco)
+    except OSError:
+        return None
+    return h.hexdigest()
+
+
+def ativos_criticos() -> list[str]:
+    """Confere o manifesto dos arquivos que o git não protege.
+
+    Substituiu uma lista fixa de três caminhos de `docs/data/`. A lista funcionava
+    e ainda assim não pegou nada em 16/08/2026, quando três ativos se perderam no
+    mesmo dia: `docs/data/` estava intacto, e a planilha fonte — que ninguém tinha
+    pensado em conferir — foi para a lixeira às 08:38.
+
+    O problema era a forma, não o conteúdo: **cada checagem existia porque aquela
+    coisa específica já tinha quebrado uma vez.** Uma lista de cicatrizes nunca
+    cobre a próxima ferida. Aqui o hook sabe *como* conferir e o manifesto declara
+    *o que importa*, então ativo novo entra em `.claude/ativos-criticos.json` sem
+    tocar em código.
+
+    Três formas de perder um arquivo, e as três são silenciosas:
+
+    - **sumiu** — apagado, movido, lixeira. `git status` fica limpo porque o ativo
+      é gitignored ou mora fora do repo.
+    - **encolheu** — reescrito por cima com uma fração do conteúdo. Foi o caso do
+      `settings.json` global: 3.694 bytes viraram 22, e com eles foram as travas de
+      `sudo`, `rm` e `dd`. O arquivo continua lá, válido, e vazio de tudo que
+      importava.
+    - **mudou** — conteúdo trocado sob um caminho que devia ser imutável. Só vale
+      para quem declara `sha256`; a planilha do posto é o caso, porque uma
+      substituição silenciosa dela envenena todo golden master a jusante.
+
+    Erra para o aviso a mais, como o `portao-golden`: isto guarda a fonte do
+    dinheiro, e a escolha do §14 nesse lado é sempre a oposta do silêncio.
     """
-    esperados = (
-        "docs/data/janeiro_referencia.sqlite",
-        "docs/data/posto_jorro_2026.sqlite",
-        "docs/data/fixture_lucro_custo_mes01.json",
-    )
-    return [c for c in esperados if not (RAIZ / c).exists()]
+    manifesto = RAIZ / ".claude/ativos-criticos.json"
+    if not manifesto.is_file():
+        return ["o próprio manifesto `.claude/ativos-criticos.json` não existe — "
+                "nenhum ativo crítico está sendo conferido"]
+    try:
+        ativos = json.loads(manifesto.read_text()).get("ativos", [])
+    except (json.JSONDecodeError, OSError):
+        return ["`.claude/ativos-criticos.json` está ilegível — nenhum ativo "
+                "crítico está sendo conferido"]
+
+    problemas = []
+    for ativo in ativos:
+        caminho = str(ativo.get("caminho", ""))
+        if not caminho:
+            continue
+        porque = str(ativo.get("porque", "")).strip()
+        alvo = resolve(caminho)
+
+        if not alvo.exists():
+            problemas.append(f"**{caminho} SUMIU** — {porque}")
+            continue
+
+        minimo = ativo.get("bytes_minimos")
+        if isinstance(minimo, int):
+            try:
+                tamanho = alvo.stat().st_size
+            except OSError:
+                tamanho = None
+            if tamanho is not None and tamanho < minimo:
+                problemas.append(
+                    f"**{caminho} ENCOLHEU** — {tamanho} bytes, esperado no mínimo "
+                    f"{minimo}. {porque}"
+                )
+                continue
+
+        esperado = ativo.get("sha256")
+        if esperado:
+            obtido = sha256_de(alvo)
+            if obtido and obtido != esperado:
+                problemas.append(
+                    f"**{caminho} MUDOU DE CONTEÚDO** — sha256 {obtido[:12]}…, "
+                    f"esperado {str(esperado)[:12]}…. {porque}. Se foi troca "
+                    f"legítima (planilha nova do posto, por exemplo), atualize o "
+                    f"hash em `.claude/ativos-criticos.json` no mesmo commit."
+                )
+    return problemas
 
 
 def main() -> None:
@@ -234,16 +314,17 @@ def main() -> None:
             "versionado: **não commite sem o flag**."
         )
 
-    sumidos = fonte_auditavel_sumida()
-    if sumidos:
+    criticos = ativos_criticos()
+    if criticos:
         avisos.append(
-            "· 🔴 Fonte auditável ausente: " + ", ".join(sumidos)
-            + ". Os golden masters abrem esses caminhos direto e estouram no "
-            "`new Database()` — enquanto isso durar, o §0.6 proíbe mexer em "
-            "qualquer fórmula, e o agente `planilha` não tem número para dar. "
-            "`docs/data/` é gitignored, então o git não recupera: só o .xlsx "
-            "original do posto refaz a cadeia (ETL em `git show d4491b2^:"
-            "docs/data/xlsx_to_csv.py`). Confirme com `bun run test:golden`."
+            "· 🔴 Ativo crítico fora do git com problema:\n    "
+            + "\n    ".join(criticos)
+            + "\n  O git não recupera nenhum destes. Antes de qualquer outra coisa: "
+            "**procure na lixeira** (`~/.local/share/Trash/files/`), que foi onde a "
+            "planilha estava em 16/08, e confira o hash contra "
+            "`.claude/ativos-criticos.json` antes de dar por restaurado. Enquanto "
+            "faltar fonte de `docs/data/`, o §0.6 proíbe mexer em fórmula — confirme "
+            "com `bun run test:golden`."
         )
 
     if not avisos:
