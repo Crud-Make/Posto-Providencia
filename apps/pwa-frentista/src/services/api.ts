@@ -385,6 +385,23 @@ export const api = {
 
         const { data: inserted, error } = await supabase.from('Leitura').insert(rows).select();
         if (error) throw new Error(error.message);
+
+        // O encerrante é a OUTRA metade do dia: sem isto, o dono manda a leitura
+        // à noite e o `total_vendas` do pai continua com o valor de antes — ou em
+        // zero, se nenhum frentista tiver enviado depois dele. Consolida só se o
+        // pai já existe; criar um a partir do encerrante é decisão de produto, e
+        // quando o primeiro frentista enviar ele nasce já com estas leituras no
+        // banco, então a ordem de chegada não muda o resultado.
+        const { data: pai } = await supabase
+            .from('Fechamento')
+            .select('id')
+            .eq('posto_id', postoId)
+            .eq('data', dataStr)
+            .eq('turno_id', turnoId)
+            .maybeSingle();
+
+        if (pai?.id) await api.consolidarFechamento(pai.id);
+
         return inserted;
     },
 
