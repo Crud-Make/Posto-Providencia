@@ -369,6 +369,18 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
   **negada** pelo hook `memoria-somente`, declarado no frontmatter de cada agente (não
   no `settings.json`: vale só para quem o declara). Devolve o "somente leitura" que
   `memory:` tinha furado. Conclusão que exige mudar arquivo vira **patch na resposta**.
+- **Leitura acima do teto na thread principal — negada uma vez**, pelo hook
+  `forca-delegacao` (`Read|Grep|Glob|Bash`, teto 15, calibrável por
+  `POSTO_TETO_LEITURAS`). O `roteia-consulta` cobre **pergunta**; a sessão incha é
+  **implementando** — ler vinte arquivos para entender um fluxo não casa com rota
+  nenhuma e cai inteiro aqui. Nega e **zera o contador**, em vez de virar parede:
+  depois de delegar, a thread ainda precisa ler os poucos arquivos que o agente
+  apontou. **Subagente nunca é barrado** — os hooks do `settings.json` disparam
+  dentro dele também, e contar no mesmo balde bloquearia justamente o
+  `code-explorer` que o hook mandou chamar; o que separa os dois é o campo
+  `agent_id`, presente só dentro de subagente. Leitura por shell (`cat`, `rg`,
+  `grep`…) conta igual, pela mesma porta dos fundos que o `protege-dados` teve de
+  cobrir.
 - **Ferramenta mutante do MCP do Supabase — negada** por lista `deny` em
   `.claude/settings.json`: `apply_migration`, `deploy_edge_function` e os cinco `*_branch`.
   Não é redundância com o `--read-only` do `.mcp.json`: **medido em 07/08, o flag não remove
@@ -407,7 +419,7 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
     o arquivo é versionado — não commitar nesse estado.
 
 Instrução é forte; hook é garantia. Regra cara demais para depender de memória vira hook.
-Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 89 casos, e os negativos
+Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 107 casos, e os negativos
 valem tanto quanto os positivos. Para revisar ou desligar: `/hooks`.
 
 ---

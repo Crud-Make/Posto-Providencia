@@ -72,6 +72,27 @@
   stdlib**, enquanto ela pressupõe `openpyxl`, `pandas`, `markitdown` e LibreOffice —
   **nenhum dos quatro instalado nesta máquina**. Serve para planilha de fora.
 
+### 🧰 Delegação a subagente deixa de depender de eu lembrar
+- **[16/08/2026]** Novo hook `forca-delegacao.py` (`PreToolUse` em
+  `Read|Grep|Glob|Bash`): passando de **15 leituras** na thread principal, a
+  próxima é **negada** e a varredura tem de ir para um agente. Calibrável por
+  `POSTO_TETO_LEITURAS`.
+- Por que faltava: o `roteia-consulta` cobre **pergunta** ("onde fica X", "quanto
+  deu Y") e só. A sessão não incha respondendo pergunta — incha **implementando**,
+  lendo vinte arquivos para entender um fluxo. Isso não casa com rota nenhuma e
+  caía inteiro na thread principal.
+- **Nega uma vez e zera o contador**, em vez de virar parede: depois de delegar, a
+  thread ainda precisa ler os poucos arquivos que o agente apontou. O efeito
+  pretendido é ritmo, não muro.
+- **Subagente nunca é barrado.** Os hooks do `settings.json` disparam dentro dos
+  subagentes também, então contar no mesmo balde bloquearia justamente o
+  `code-explorer` que o hook mandou chamar. O que separa os dois é o campo
+  `agent_id`, presente só dentro de subagente — conferido na doc oficial, não
+  deduzido. Leitura por shell (`cat`, `rg`, `grep`…) conta igual, pela mesma porta
+  dos fundos que o `protege-dados` já tinha coberto.
+- Bateria: **89 → 107 casos**, todos verdes. Fumaça real por stdin além do teste
+  unitário, porque o unitário mexe no `sys.path` e mascararia falha de import.
+
 ### 🧩 `/feature-dev` instalado — e o CLAUDE.md corrigido sobre o marketplace
 - **[16/08/2026]** O marketplace `claude-plugins-official` estava **auto-instalado
   desde sempre** nesta máquina, com 60+ plugins no catálogo e **zero** instalado.

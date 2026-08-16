@@ -15,6 +15,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HOOKS = Path(__file__).resolve().parent
@@ -168,6 +169,33 @@ CASOS_FANTASMA = [
 ]
 
 
+# forca-delegacao: sequência de chamadas numa mesma thread -> o que cada uma
+# devolve. `True` = nega. O teto é fixado em 3 no teste para a lista caber.
+# Os dois casos que carregam o desenho inteiro:
+#   - `agent_id` presente NUNCA é barrado, senão o hook bloqueia justamente o
+#     `code-explorer` que ele mandou chamar;
+#   - negar ZERA o contador, senão a trava vira parede e impede a leitura
+#     pontual que o próprio agente acabou de apontar.
+CASOS_DELEGACAO = [
+    ("Read", {"file_path": "a.ts"}, None, False),
+    ("Grep", {"pattern": "x"}, None, False),
+    ("Glob", {"pattern": "*.ts"}, None, True),      # 3a: bate no teto
+    ("Read", {"file_path": "b.ts"}, None, False),   # contador zerado, passa
+    ("Bash", {"command": "cat packages/utils/src/fechamento.ts"}, None, False),
+    ("Bash", {"command": "bun run test"}, None, False),      # nao e leitura
+    ("Write", {"file_path": "c.ts"}, None, False),           # nem toda tool conta
+    ("Bash", {"command": "rg valor_conferido apps/"}, None, True),   # 3a de novo
+    # Subagente: mesmo estourando o teto varias vezes, nunca e barrado.
+    ("Read", {"file_path": "d.ts"}, "ag_1", False),
+    ("Read", {"file_path": "e.ts"}, "ag_1", False),
+    ("Read", {"file_path": "f.ts"}, "ag_1", False),
+    ("Read", {"file_path": "g.ts"}, "ag_1", False),
+    ("Grep", {"pattern": "y"}, "ag_1", False),
+    # Descricao nao e execucao — a mesma regra do _comum que o protege-dados usa.
+    ("Bash", {"command": 'echo "cat arquivo.ts"'}, None, False),
+]
+
+
 def roda(script: str, payload: dict) -> str | None:
     r = subprocess.run(
         ["python3", str(HOOKS / script)],
@@ -278,6 +306,35 @@ def main() -> int:
     falhas += not ok
     print(f"  {'✓' if ok else '✗'} {'CLAUDE.md REAL não acusa fantasma':60} "
           f"{', '.join(obtido) or 'nenhum'}")
+
+    print("── forca-delegacao ──")
+    delegacao = carrega("forca-delegacao.py")
+    with tempfile.TemporaryDirectory() as tmp:
+        # Estado e teto de laboratório: o hook real usa /tmp e teto 15, e um
+        # teste não pode depender de nenhum dos dois.
+        delegacao.ESTADO = Path(tmp)
+        delegacao.TETO = 3
+        for tool, entrada, agente, esperado in CASOS_DELEGACAO:
+            payload = {
+                "tool_name": tool,
+                "tool_input": entrada,
+                "session_id": "sessao-de-teste",
+            }
+            if agente:
+                payload["agent_id"] = agente
+            obtido = bool(delegacao.decide(payload))
+            ok = obtido == esperado
+            falhas += not ok
+            rotulo = f"{'[sub] ' if agente else ''}{tool} {list(entrada.values())[0]}"
+            print(f"  {'✓' if ok else '✗'} {rotulo[:58]:60} "
+                  f"{'NEGA' if obtido else 'passa'}")
+
+    # Sem session_id não há contador possível: tem de passar, nunca travar.
+    sem_sessao = delegacao.decide({"tool_name": "Read", "tool_input": {"file_path": "a"}})
+    ok = sem_sessao is None
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'sem session_id nao trava':60} "
+          f"{'NEGA' if sem_sessao else 'passa'}")
 
     print("── higiene (fumaça) ──")
     r = subprocess.run(
