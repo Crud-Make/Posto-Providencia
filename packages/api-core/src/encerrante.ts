@@ -76,6 +76,15 @@ export interface LeituraOcr {
     confianca: boolean | null;
 }
 
+/** O que já foi gravado hoje — a prova, na tela, de que o envio aconteceu. */
+export interface EncerranteDoDia {
+    readonly bicos: number;
+    readonly litros: number;
+    readonly valor: number;
+    /** Momento da gravação mais recente do dia, para a tela dizer "às 21h04". */
+    readonly gravadoEm: string | null;
+}
+
 /** Um dia passado cujo encerrante não foi enviado, ou foi só em parte. */
 export interface DiaEmFalta {
     /** ISO local `aaaa-mm-dd`. */
@@ -134,6 +143,7 @@ export interface AcessoEncerrante {
     lerEncerrante(imagemBase64: string, mimeType: string): Promise<LeituraOcr[]>;
     getUltimasLeiturasPorBico(postoId: number): Promise<Map<number, number>>;
     diasEmFalta(postoId: number, bicosEsperados: number): Promise<DiaEmFalta[]>;
+    encerranteDeHoje(postoId: number): Promise<EncerranteDoDia | null>;
     salvarLeituras(params: {
         postoId: number;
         data: string;
@@ -300,6 +310,52 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                 }
             }
             return faltas;
+        },
+
+        /**
+         * O que já foi gravado HOJE, para a tela provar que o envio aconteceu.
+         *
+         * @returns `null` quando ainda não há nada gravado no dia.
+         * @remarks Existe por causa de um susto real do dono no primeiro teste:
+         *          ele enviou, mudou de tela, voltou — e os números tinham
+         *          sumido. Não era falha de gravação (os valores estavam no
+         *          banco), era a tela sem memória. Depois de enviar, ela limpa
+         *          os campos e recarrega as leituras anteriores; e
+         *          `getUltimasLeiturasPorBico` recorta `data < hoje` de
+         *          propósito (a correção do 81a2a38), então exclui justamente o
+         *          que acabou de ser gravado. A tela voltava ao estado
+         *          anterior ao envio, como se nada tivesse acontecido.
+         *
+         *          Sem isto, não há como saber pelo app se o dia já foi
+         *          enviado — o que convida ao envio duplicado e mantém a
+         *          desconfiança que o sistema existe para acabar.
+         */
+        async encerranteDeHoje(postoId: number): Promise<EncerranteDoDia | null> {
+            const { data, error } = await supabase
+                .from('Leitura')
+                .select('litros_vendidos, valor_total, createdAt')
+                .eq('posto_id', postoId)
+                .eq('data', hojeIso());
+            if (error) throw new Error(error.message);
+
+            const linhas = (data ?? []) as {
+                litros_vendidos: number | null;
+                valor_total: number | null;
+                createdAt: string | null;
+            }[];
+            if (linhas.length === 0) return null;
+
+            let gravadoEm: string | null = null;
+            let litros = 0;
+            let valor = 0;
+            for (const l of linhas) {
+                litros += Number(l.litros_vendidos ?? 0);
+                valor += Number(l.valor_total ?? 0);
+                if (l.createdAt && (gravadoEm === null || l.createdAt > gravadoEm)) {
+                    gravadoEm = l.createdAt;
+                }
+            }
+            return { bicos: linhas.length, litros, valor, gravadoEm };
         },
 
         /**
