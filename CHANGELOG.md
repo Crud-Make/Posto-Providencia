@@ -2,6 +2,57 @@
 
 ## [Não Lançado]
 
+### 📸 O encerrante vira app do dono, e sai da mão do frentista
+- **[16/08/2026]** Nasce o `apps/pwa-dono` — terceiro app do monorepo, uma tela
+  só: fotografar o papel do encerrante e enviar a leitura das bombas. A aba
+  Encerrante **saiu** do PWA do frentista.
+- **Ela nunca foi do frentista.** A tabela `Leitura` é a leitura da *bomba* e não
+  tem coluna de frentista — o commit `635a6f2` já tinha constatado isso ao
+  remover a exigência de selecionar alguém, e o plano original do OCR dizia
+  desde o começo *"apps/web (dono) + apps/pwa-frentista (frentista)"*. A aba no
+  app errado era o desvio; agora está desfeito.
+- ⚠️ **Não confundir com o campo `encerrante` do `FechamentoFrentista`**, que
+  continua no app do frentista: aquele é o total em **R$** que ele declara do
+  concentrador. São duas coisas com o mesmo nome.
+- **A tela foi movida, não reescrita.** Com ela viajaram as cinco armadilhas já
+  pagas: o CORS que só quebrava no navegador, o cold start de 40s da Edge
+  Function, a câmera do Android descarregando a página e perdendo a primeira
+  foto, a auto-conferência que chama o Gemini duas vezes, e o recorte
+  `data < hoje` que impede o segundo envio do dia de apagar a manhã.
+- **Quem já tem o app instalado não vê tela quebrada.** A aba ficava salva no
+  `localStorage`, e os celulares guardam `'encerrante'` — valor que não
+  corresponde mais a tela nenhuma. Sem tratar, o app abriria no Registro com a
+  barra inferior sem nada selecionado.
+- Os testes da aba **migraram junto**, não foram apagados.
+
+### 🧱 `packages/api-core` deixa de ser um esqueleto
+- **[16/08/2026]** Ele prometia "acesso a dados desacoplado" e era um arquivo de
+  helpers com **zero importadores**. Agora abriga as seis operações do
+  encerrante que os **dois** PWAs precisam usar igual.
+- **Por que compartilhar em vez de copiar:** `salvarLeituras` chama
+  `consolidarFechamento`, que escreve `Fechamento.total_vendas` e `diferenca` —
+  o número sobre o qual se cobra o caixa do frentista. Duas cópias divergiriam
+  como divergiram os quatro lugares que calculavam litros.
+- O cliente Supabase é **injetado**: cada app tem o seu, com auth e `.env`
+  próprios, e `packages/*` nunca importa de app.
+- O `services/api.ts` do PWA do frentista caiu de ~430 para 209 linhas.
+
+### 💥 Dia salvo pela metade derrubava a tela de Leituras
+- **[16/08/2026]** Lançar alguns bicos, salvar, e voltar depois para os outros —
+  o uso normal — deixava a tela **em branco** ao digitar em qualquer bico que
+  faltava, perdendo tudo o que já estava preenchido.
+- A carga tinha dois modos: dia **sem** leitura montava entrada para todos os
+  bicos; dia **com** alguma leitura mapeava só as linhas existentes. Bastava um
+  bico salvo e os outros cinco ficavam **sem entrada nenhuma** — o `0,000` que
+  aparecia neles era placeholder do input, não dado.
+- **O crash era o sintoma bom.** Sem ele, a gravação levaria `leitura_inicial`
+  = 0 e os litros do dia virariam o odômetro inteiro da bomba: no Bico 02,
+  660.100 L e cerca de **R$ 4,6 milhões** de venda que não existiram, gravados
+  sem um aviso.
+- Corrigido nas duas camadas: a carga completa os bicos faltantes com a última
+  leitura anterior, e o cálculo de litros parou de confiar que os campos
+  existem.
+
 ### 🔢 O encerrante do Bico 01 era gravado mil vezes menor
 - **[16/08/2026]** Na tela de Leituras Diárias, o encerrante digitado era lido
   com `replace('.', '')` **sem a flag `/g`** — saía só o primeiro separador de
