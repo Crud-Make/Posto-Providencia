@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { hojeIso } from '@posto/utils';
+import { hojeIso, meiosFromFechamentoRow, totaisDoDia } from '@posto/utils';
 
 /** Payload enviado por App.tsx ao fechar o turno do frentista (shape de FechamentoFrentista.Insert). */
 interface FechamentoFrentistaPayload {
@@ -78,7 +78,108 @@ export const api = {
             .select()
             .single();
         if (error) throw new Error(error.message);
+
+        // O pai nascia zerado e ficava assim até alguém abrir o painel — é a
+        // origem dos 12 dias que nunca fecharam. Agora todo filho gravado
+        // reconsolida o pai a partir do banco.
+        await api.consolidarFechamento(payload.fechamento_id);
+
         return data;
+    },
+
+    /**
+     * Recalcula os totais do dia a partir das linhas filhas e grava no pai.
+     *
+     * @remarks Lê do BANCO em vez de somar o que acabou de ser enviado: o
+     *          fechamento do dia tem vários frentistas, cada um mandando do seu
+     *          celular, e quem envia por último não sabe o que os outros
+     *          mandaram. Reler é o que torna o pai correto seja qual for a ordem
+     *          — e é o que faz um reenvio corrigir em vez de somar de novo.
+     *
+     *          A conta é a canônica de `@posto/utils` (`totaisDoDia`), a mesma
+     *          que o painel usa: `diferenca = concentrador − conferido`,
+     *          positivo = FALTA (§6).
+     *
+     *          **Não derruba o envio se falhar.** O dinheiro do frentista já está
+     *          gravado quando esta função roda; deixar o pai desatualizado é
+     *          ruim, perder a submissão por causa dele é pior. A falha é
+     *          reportada no console e o pai continua reconciliável pelo painel.
+     */
+    async consolidarFechamento(fechamentoId: number) {
+        try {
+            const { data: pai, error: erroPai } = await supabase
+                .from('Fechamento')
+                .select('id, data, turno_id, posto_id')
+                .eq('id', fechamentoId)
+                .single();
+            if (erroPai || !pai) throw new Error(erroPai?.message ?? 'fechamento não encontrado');
+
+            const [{ data: filhos, error: erroFilhos }, { data: leituras, error: erroLeituras }] =
+                await Promise.all([
+                    supabase
+                        .from('FechamentoFrentista')
+                        .select(
+                            'valor_dinheiro, valor_moedas, valor_pix, valor_cartao, valor_cartao_debito, valor_cartao_credito, valor_nota, baratao'
+                        )
+                        .eq('fechamento_id', fechamentoId),
+                    supabase
+                        .from('Leitura')
+                        .select('valor_total')
+                        .eq('posto_id', pai.posto_id)
+                        .eq('data', pai.data)
+                        .eq('turno_id', pai.turno_id),
+                ]);
+            if (erroFilhos) throw new Error(erroFilhos.message);
+            if (erroLeituras) throw new Error(erroLeituras.message);
+
+            // AUSÊNCIA DE LEITURA NÃO É VENDA ZERO. Os frentistas mandam durante
+            // o dia; o encerrante das bombas chega à noite. No caminho normal,
+            // quando o primeiro frentista envia ainda não há leitura nenhuma — e
+            // tratar isso como concentrador = 0 faria a diferença virar
+            // `0 − conferido`, uma SOBRA gigante que nunca existiu. Sem
+            // encerrante não há o que conferir: grava só o que os frentistas
+            // entregaram e deixa venda e diferença intocadas até a noite.
+            const semEncerrante = (leituras ?? []).length === 0;
+            const vendaConcentrador = (leituras ?? []).reduce(
+                (acc, l) => acc + Number(l.valor_total ?? 0),
+                0
+            );
+
+            const sessoes = (filhos ?? []).map((f) =>
+                meiosFromFechamentoRow({
+                    valor_dinheiro: Number(f.valor_dinheiro ?? 0),
+                    valor_moedas: Number(f.valor_moedas ?? 0),
+                    valor_pix: Number(f.valor_pix ?? 0),
+                    valor_cartao: Number(f.valor_cartao ?? 0),
+                    valor_cartao_debito: Number(f.valor_cartao_debito ?? 0),
+                    valor_cartao_credito: Number(f.valor_cartao_credito ?? 0),
+                    valor_nota: Number(f.valor_nota ?? 0),
+                    valor_baratao: Number(f.baratao ?? 0),
+                })
+            );
+
+            const totais = totaisDoDia(vendaConcentrador, sessoes);
+
+            const { error: erroUpdate } = await supabase
+                .from('Fechamento')
+                .update(
+                    semEncerrante
+                        ? { total_recebido: totais.totalRecebido }
+                        : {
+                              total_vendas: totais.totalVendas,
+                              total_recebido: totais.totalRecebido,
+                              diferenca: totais.diferenca,
+                          }
+                )
+                .eq('id', fechamentoId);
+            if (erroUpdate) throw new Error(erroUpdate.message);
+
+            return totais;
+        } catch (e) {
+            // Ver o @remarks: consolidação é acessório do envio, não condição.
+            console.error('Falha ao consolidar o fechamento do dia:', e);
+            return null;
+        }
     },
 
     /** Busca histórico de fechamentos de um frentista */
