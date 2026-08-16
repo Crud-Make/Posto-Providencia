@@ -19,10 +19,18 @@ const BICOS = [
     { id: 11, numero: 2, combustivel_id: 2, combustivel: { nome: 'Etanol', preco_venda: 4.5 } },
 ];
 
+/** Um dia passado sem encerrante completo, como o `api-core` devolve. */
+interface DiaEmFalta {
+    data: string;
+    bicosLancados: number;
+    bicosEsperados: number;
+}
+
 // Mutáveis: cada teste ajusta o cenário antes de montar.
 let ultimasLeituras = new Map<number, number>();
 let respostaOcr: LeituraOcr[] = [];
 let erroOcr: Error | null = null;
+let faltas: DiaEmFalta[] = [];
 
 const salvarLeituras = vi.fn(async (_payload: unknown) => []);
 const lerEncerrante = vi.fn(async (_base64: string, _mimeType: string) => {
@@ -35,6 +43,7 @@ vi.mock('../services/api', () => ({
         getBicos: async () => BICOS,
         getUltimasLeiturasPorBico: async () => ultimasLeituras,
         aquecerEncerrante: () => { },
+        diasEmFalta: async () => faltas,
         lerEncerrante: (...args: [string, string]) => lerEncerrante(...args),
         salvarLeituras: (...args: Parameters<typeof salvarLeituras>) => salvarLeituras(...args),
     },
@@ -129,6 +138,7 @@ describe('EncerranteScreen — caminho da foto', () => {
         ]);
         respostaOcr = [];
         erroOcr = null;
+        faltas = [];
         salvarLeituras.mockClear();
         lerEncerrante.mockClear();
         stubarPipelineDeImagem();
@@ -204,6 +214,45 @@ describe('EncerranteScreen — caminho da foto', () => {
         digitar(campos()[0], '1.861.900,500');
 
         expect(botaoEnviar().disabled).toBe(false);
+    });
+
+    /**
+     * O encerrante passou a depender de UMA pessoa. Antes, três turnos davam
+     * três chances por dia de alguém lembrar; agora, esquecer um dia não
+     * produz sinal nenhum — o `total_vendas` daquele dia fica no que estava e o
+     * fechamento não concilia, calado.
+     */
+    it('mostra os dias passados sem encerrante completo', async () => {
+        faltas = [
+            { data: '2026-08-14', bicosLancados: 0, bicosEsperados: 2 },
+            { data: '2026-08-15', bicosLancados: 1, bicosEsperados: 2 },
+        ];
+        await montar();
+        await escoar();
+
+        expect(container.textContent).toContain('2 dias sem o encerrante completo');
+        expect(container.textContent).toContain('14/08');
+        expect(container.textContent).toContain('nenhum bico');
+        expect(container.textContent).toContain('15/08');
+        expect(container.textContent).toContain('1 de 2 bicos');
+    });
+
+    /** Aviso que aparece sempre deixa de ser lido: sem falta, sem bloco. */
+    it('fica calado quando não há dia em falta', async () => {
+        faltas = [];
+        await montar();
+        await escoar();
+
+        expect(container.textContent).not.toContain('sem o encerrante completo');
+    });
+
+    it('usa singular quando só um dia está em falta', async () => {
+        faltas = [{ data: '2026-08-15', bicosLancados: 0, bicosEsperados: 2 }];
+        await montar();
+        await escoar();
+
+        expect(container.textContent).toContain('1 dia sem o encerrante completo');
+        expect(container.textContent).not.toContain('1 dias');
     });
 
     /**

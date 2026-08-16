@@ -1,7 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, Camera, Check, AlertCircle, Loader2, Gauge, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Camera, Check, AlertCircle, Loader2, Gauge, RefreshCw, CalendarX } from 'lucide-react';
 import { api } from '../services/api';
-import { hojeIso } from '@posto/utils';
+import type { DiaEmFalta } from '@posto/api-core';
+import { hojeIso, deIsoLocal } from '@posto/utils';
+
+/** `2026-08-14` → `14/08 (sex)`. Dia da semana ajuda a reconhecer o dia esquecido. */
+const rotuloDoDia = (iso: string): string => {
+    const d = deIsoLocal(iso);
+    const semana = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} (${semana})`;
+};
 
 interface EncerranteProps {
     /** Só rótulo: quem fotografou não é gravado — `Leitura` não tem frentista. */
@@ -116,6 +124,10 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         return () => clearInterval(t);
     }, []);
 
+    // Dias passados sem encerrante (ou com encerrante pela metade). Carregado
+    // depois dos bicos, porque depende de saber quantos bicos são esperados.
+    const [diasEmFalta, setDiasEmFalta] = useState<DiaEmFalta[]>([]);
+
     useEffect(() => {
         Promise.all([api.getBicos(POSTO_ID), api.getUltimasLeiturasPorBico(POSTO_ID)])
             .then(([bs, ult]) => {
@@ -130,6 +142,13 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                 }));
                 setBicos(mapped);
                 setUltimas(ult);
+
+                // Falha em silêncio de propósito: o aviso é conveniência, e um
+                // erro de rede aqui não pode impedir alguém de enviar o
+                // encerrante que está na mão.
+                api.diasEmFalta(POSTO_ID, mapped.length)
+                    .then(setDiasEmFalta)
+                    .catch(() => { });
             })
             .catch(err => setFeedback({ tipo: 'erro', msg: err.message || 'Erro ao carregar bicos' }))
             .finally(() => setCarregandoBase(false));
@@ -314,6 +333,37 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                         )}
                     </div>
                 </label>
+
+                {/* Dias em falta — silencioso quando não há nenhum. O encerrante
+                    passou a depender de uma pessoa só; esquecer um dia não
+                    produzia sinal nenhum antes deste bloco. */}
+                {diasEmFalta.length > 0 && (
+                    <div className="rounded-xl p-3 border bg-amber-500/10 border-amber-500/30">
+                        <div className="flex items-start gap-2 text-amber-300 text-sm font-semibold">
+                            <CalendarX size={16} className="mt-0.5 shrink-0" />
+                            <span>
+                                {diasEmFalta.length === 1
+                                    ? '1 dia sem o encerrante completo'
+                                    : `${diasEmFalta.length} dias sem o encerrante completo`}
+                            </span>
+                        </div>
+                        <ul className="mt-2 space-y-1">
+                            {diasEmFalta.map(dia => (
+                                <li key={dia.data} className="text-amber-200/80 text-xs flex justify-between gap-3">
+                                    <span>{rotuloDoDia(dia.data)}</span>
+                                    <span>
+                                        {dia.bicosLancados === 0
+                                            ? 'nenhum bico'
+                                            : `${dia.bicosLancados} de ${dia.bicosEsperados} bicos`}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="text-amber-200/60 text-[11px] mt-2">
+                            Dá para lançar até 7 dias para trás. Depois disso o sistema não aceita mais.
+                        </p>
+                    </div>
+                )}
 
                 {preview && !lendo && (
                     <div className="flex items-center gap-3 bg-[#131722] rounded-xl p-2 border border-slate-800/60">

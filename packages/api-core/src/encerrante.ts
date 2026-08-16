@@ -19,6 +19,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
     hojeIso,
+    deIsoLocal,
+    somarDias,
     litrosVendidos,
     valorDaLeitura,
     meiosFromFechamentoRow,
@@ -27,6 +29,17 @@ import {
 
 /** Turno canônico das leituras. O encerrante é por DIA e por bico, não por turno. */
 const TURNO_CANONICO = 1;
+
+/**
+ * Quantos dias para trás vale a pena cobrar o encerrante.
+ *
+ * @remarks Não é número redondo escolhido a gosto: é a largura da janela de
+ *          escrita da RLS (`dentro_da_janela_de_escrita`: `data >= hoje - 7`).
+ *          Fora dela o banco recusa o INSERT, então avisar sobre dia mais
+ *          antigo seria cobrar algo que o app não consegue fazer — aviso que
+ *          não leva a lugar nenhum é aviso que se aprende a ignorar.
+ */
+const DIAS_COBRAVEIS = 7;
 
 /** Linha crua da query de leituras (select bico_id, leitura_final, data, id). */
 interface LinhaLeitura {
@@ -50,11 +63,64 @@ export interface LeituraOcr {
     confianca: boolean | null;
 }
 
+/** Um dia passado cujo encerrante não foi enviado, ou foi só em parte. */
+export interface DiaEmFalta {
+    /** ISO local `aaaa-mm-dd`. */
+    readonly data: string;
+    /** Quantos bicos têm leitura nesse dia. Zero = ninguém enviou. */
+    readonly bicosLancados: number;
+    /** Quantos bicos ativos o posto tem hoje. */
+    readonly bicosEsperados: number;
+}
+
+/**
+ * Recusa que não adianta repetir — a tela mostra esta mensagem como está.
+ *
+ * @remarks Separada de `Error` comum para o retry saber a diferença entre
+ *          "tenta de novo" e "não insista". `instanceof` sobrevive porque a
+ *          classe é a mesma instância de módulo nos dois apps.
+ */
+export class RecusaDoOcr extends Error {
+    constructor(mensagem: string) {
+        super(mensagem);
+        this.name = 'RecusaDoOcr';
+    }
+}
+
+/**
+ * Traduz o status HTTP da Edge Function em mensagem para quem está na bomba.
+ *
+ * @returns A mensagem, ou `null` quando vale tentar de novo.
+ * @remarks A proteção de custo da function (limite de taxa e teto de tamanho)
+ *          responde 429 e 413. Sem esta tradução, os dois chegariam ao dono
+ *          como "Não consegui ler a foto. Tente novamente." — conselho errado
+ *          nos dois casos: no 429 tentar de novo é exatamente o que não se
+ *          deve fazer, e no 413 a foto não vai encolher sozinha.
+ *
+ *          O status vive em `error.context`, que o supabase-js preenche com a
+ *          `Response` crua. Chega como `unknown` de propósito: `any` está
+ *          proibido (§4), e o formato é do cliente, não nosso.
+ */
+function recusaDefinitiva(erro: unknown): string | null {
+    const contexto = (erro as { context?: unknown })?.context;
+    const status = (contexto as { status?: unknown })?.status;
+    if (typeof status !== 'number') return null;
+
+    if (status === 429) {
+        return 'Muitas leituras seguidas. Espere um minuto e fotografe de novo — ou digite as leituras à mão.';
+    }
+    if (status === 413) {
+        return 'A foto ficou grande demais para enviar. Tire outra mais de perto, ou digite as leituras à mão.';
+    }
+    return null;
+}
+
 export interface AcessoEncerrante {
     getBicos(postoId: number): Promise<unknown[]>;
     aquecerEncerrante(): void;
     lerEncerrante(imagemBase64: string, mimeType: string): Promise<LeituraOcr[]>;
     getUltimasLeiturasPorBico(postoId: number): Promise<Map<number, number>>;
+    diasEmFalta(postoId: number, bicosEsperados: number): Promise<DiaEmFalta[]>;
     salvarLeituras(params: {
         postoId: number;
         data: string;
@@ -108,10 +174,20 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                     const { data, error } = await supabase.functions.invoke('ler-encerrante', {
                         body: { imagemBase64, mimeType },
                     });
-                    if (error) throw new Error(error.message);
+                    if (error) {
+                        const recusa = recusaDefinitiva(error);
+                        if (recusa) throw new RecusaDoOcr(recusa);
+                        throw new Error(error.message);
+                    }
                     if (data?.erro) throw new Error(String(data.erro));
                     return (data?.leituras || []) as LeituraOcr[];
                 } catch (e) {
+                    // Repetir uma recusa definitiva não ajuda e atrapalha: no
+                    // 429 a segunda tentativa é mais uma batida na porta que já
+                    // disse "devagar", e no 413 a foto continua do mesmo
+                    // tamanho. O retry existe para a function FRIA, não para
+                    // qualquer erro.
+                    if (e instanceof RecusaDoOcr) throw e;
                     ultimoErro = e;
                     if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));
                 }
@@ -153,6 +229,64 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                 if (!ultimas.has(l.bico_id)) ultimas.set(l.bico_id, Number(l.leitura_final));
             });
             return ultimas;
+        },
+
+        /**
+         * Dias passados, dentro da janela de escrita, sem encerrante ou com
+         * encerrante incompleto.
+         *
+         * @param bicosEsperados Quantos bicos ativos o posto tem — vem de
+         *                       `getBicos`, e não de constante, porque bico
+         *                       novo muda o que "completo" significa.
+         *
+         * @remarks Existe porque o encerrante passou a depender de UMA pessoa.
+         *          Enquanto ele era enviado pelo PWA do frentista, três turnos
+         *          davam três chances por dia de alguém lembrar; com o app do
+         *          dono, esquecer um dia não produz nenhum sinal — o
+         *          `total_vendas` daquele dia simplesmente fica no que estava,
+         *          e o fechamento não concilia sem nada reclamar.
+         *
+         *          **HOJE NÃO ENTRA NA LISTA.** O dia corrente não está em
+         *          falta, está em andamento: é exatamente o que a pessoa abriu
+         *          o app para fazer. Cobrá-lo às 10h da manhã transformaria o
+         *          aviso em ruído permanente, e aviso que aparece sempre deixa
+         *          de ser lido.
+         *
+         *          Dia INCOMPLETO conta como falta, e não é preciosismo: foi o
+         *          estado que derrubava a tela de Leituras do painel, e é o que
+         *          faz um dia fechar com parte dos litros faltando.
+         */
+        async diasEmFalta(postoId: number, bicosEsperados: number): Promise<DiaEmFalta[]> {
+            const hoje = hojeIso();
+            const primeiro = somarDias(deIsoLocal(hoje), -DIAS_COBRAVEIS);
+
+            const { data, error } = await supabase
+                .from('Leitura')
+                .select('data')
+                .eq('posto_id', postoId)
+                .gte('data', primeiro)
+                .lt('data', hoje);
+            if (error) throw new Error(error.message);
+
+            // A coluna `data` volta como timestamp (`2026-08-16 00:00:00+00`);
+            // o recorte em 10 caracteres é o dia como ele foi gravado, sem
+            // passar por `new Date()` — que converteria para o fuso local e
+            // escorregaria cada leitura um dia para trás.
+            const lancadosPorDia = new Map<string, number>();
+            for (const linha of (data ?? []) as { data: string }[]) {
+                const dia = String(linha.data).slice(0, 10);
+                lancadosPorDia.set(dia, (lancadosPorDia.get(dia) ?? 0) + 1);
+            }
+
+            const faltas: DiaEmFalta[] = [];
+            for (let atras = DIAS_COBRAVEIS; atras >= 1; atras--) {
+                const dia = somarDias(deIsoLocal(hoje), -atras);
+                const lancados = lancadosPorDia.get(dia) ?? 0;
+                if (lancados < bicosEsperados) {
+                    faltas.push({ data: dia, bicosLancados: lancados, bicosEsperados });
+                }
+            }
+            return faltas;
         },
 
         /**
