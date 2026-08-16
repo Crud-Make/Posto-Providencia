@@ -2,6 +2,50 @@
 
 ## [Não Lançado]
 
+### 🧾 A tela `/planilha` vira a planilha de verdade, ligada ao banco
+- **[16/08/2026]** `/planilha` foi refeita no desenho aprovado (`Fechamento Posto.html`): três
+  blocos coloridos — **Venda**, **Compra**, **Estoque** —, seis KPIs no topo, três painéis de
+  síntese e a caixa lateral `Compra e custo`. Mesma ordem e mesmos nomes de coluna da planilha
+  que o dono lê há anos.
+- **Lê do banco de verdade**: produtos e bicos vêm do cadastro (`Combustivel`, `Bico`, com a
+  `cor` cadastrada); `Inicial`/`Fechamento` saem do encerrante mensal da `Leitura`;
+  `Compra, LT`/`Compra, R$` da `Compra` do mês; `Desp, Mês` da `Despesa`; e as duas medições do
+  `HistoricoTanque`. Conferido contra a produção em 16/08: 4 combustíveis, 6 bicos, 4 tanques, e
+  as tabelas transacionais em **zero linhas** — o replay ainda não repôs nada, e a tela diz isso
+  em vez de mostrar zeros mudos.
+- **`Valor LT` é o preço médio ponderado do que foi vendido**, nunca o `preco_venda` do cadastro:
+  aquele guarda só o preço de hoje e, aplicado a um mês passado, é o bug do "preço único" que já
+  inflou a venda histórica em 8–11%.
+- **Só a régua se digita aqui.** `Estoque anterior` e `Estoque tanque` gravam em
+  `HistoricoTanque` (abertura na véspera do período, fechamento no fim), com botão explícito de
+  **Gravar medições** e o rascunho separado do que veio do banco. As demais colunas ficam
+  somente leitura **de propósito**: reescrever `Inicial`/`Fechamento` daqui mexeria em dia já
+  fechado, e um total mensal de compra ou despesa digitado não sabe a qual nota pertence —
+  perderia fornecedor, data e rastro. Cada uma tem sua tela de lançamento, e a faixa de cada
+  bloco agora diz qual é.
+- **Nenhuma fórmula nova.** `packages/utils/src/planilha-mensal.ts` **compõe** os módulos que já
+  existiam e já estavam travados por golden master (`resumo-produto`, `resumo-compra`,
+  `resumo-estoque`, `lucro`). Ele existe para o rateio da despesa ser calculado **uma vez** e
+  distribuído aos três blocos: calcular esse número em dois lugares é exatamente como o piso de
+  venda de um produto passa a discordar do lucro do mesmo produto. Acrescenta só três agregados
+  do cabeçalho — margem bruta (lucro antes da despesa), lucro por litro e perda com sinal.
+- **Os gráficos deixaram de ser simulação.** `packages/utils/src/serie-diaria.ts` monta as três
+  séries de dado real: venda por dia da `Leitura`, uma coluna por entrega da `Compra` (notas do
+  mesmo dia somadas, preço ponderado pelo volume) e o nível de estoque dia a dia. A média
+  diária divide pelos **dias com venda lançada**, não por 30 — num mês em replay dividir por 30
+  pareceria colapso de movimento. O módulo de simulação foi apagado.
+- **"Não medi" continua diferente de "não perdi"**: `estoqueTanque` virou `number | null`, e sem
+  medição de abertura a perda do produto sai como “—” em vez de acusar uma perda inteira que
+  nunca existiu. A tela lista quem está faltando.
+- Componente **não calcula dinheiro** (§3): a conta inteira vem de `@posto/utils`.
+- ⚠️ **Achado de segurança, fora do escopo desta tarefa:** a policy `Public Access` do
+  `HistoricoTanque` é `ALL` para `public` com `USING true` e sem `WITH CHECK` — o painel em
+  **modo visitante grava medição de tanque sem login**. A RLS está ligada, mas essa policy não
+  segura nada.
+- Fontes `Barlow Semi Condensed` e `IBM Plex Mono` somadas ao `index.html` (só `<link>`, nenhuma
+  dependência nova). A tela ocupa a largura toda: o desenho travava em 1420px e deixava 236px de
+  vazio num monitor de 1920, numa página que é toda tabela larga.
+
 ### ⛽ A aba de resumo da planilha vira tela — venda por produto, piso de venda e perda de tanque
 - **[16/08/2026] O pedido do dono:** trazer para a Visão do Proprietário o que ele lê na aba de
   resumo da planilha. A tela mostrava só o **total** do mês (venda, litros, lucro real, margem);

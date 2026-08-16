@@ -13,4 +13,6 @@ export * from './encerrante-mensal';
 export * from './resumo-produto';
 export * from './resumo-compra';
 export * from './resumo-estoque';
+export * from './planilha-mensal';
+export * from './serie-diaria';
 export * from './presenca';

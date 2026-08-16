@@ -12,6 +12,7 @@ import {
   Moon,
   Calendar,
   Crown,
+  Table2,
   Menu
 } from 'lucide-react';
 import { useTheme } from '../contexts/useTheme';
@@ -49,6 +50,9 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
   // Definição dos itens do menu lateral
   const menuItems = [
     { path: '/proprietario', label: 'Visão Proprietário', icon: Crown },
+    // A planilha do posto tem tela própria: são três tabelas densas, uma leitura
+    // diferente dos cartões de acompanhamento da Visão Proprietário.
+    { path: '/planilha', label: 'Planilha do Mês', icon: Table2 },
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/fechamento', label: 'Fechamento de Caixa', icon: ShoppingCart },
     { path: '/relatorio-diario', label: 'Relatório Diário', icon: ClipboardList },
