@@ -75,10 +75,11 @@ cruzarem no mesmo dia.
 > pior, o `consolidarFechamento` filtrava igual — leitura do painel **nunca**
 > chegava a `total_vendas`, sem erro nenhum.
 
-## 1.3 Leia o banco, não a migração
+## 1.3 Leia o banco, e leia a migração na ordem certa
 
 O arquivo em `supabase/migrations/` diz o que alguém **quis**. O catálogo diz o
-que **é**. Os dois divergem neste projeto — comprovadamente.
+que **é**. Confirme no catálogo — mas o erro mais comum aqui não é o arquivo
+mentir: é **você ler a pasta na ordem errada**.
 
 ```sql
 SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'SuaTabela';
@@ -86,12 +87,31 @@ SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
  WHERE conrelid = 'public."SuaTabela"'::regclass;
 ```
 
-> Caso real: a migração cria `leitura_unica_bico_data_turno (bico_id, data,
-> turno_id)`. Produção tem `leitura_unica_bico_data (bico_id, data)`, sem
-> turno. Quem lesse só o arquivo concluiria que o turno faz parte da chave —
-> e erraria o diagnóstico do `duplicate key`.
+> **Caso real, e a armadilha é a ordem alfabética.** Duas migrações de 31/07
+> mexem no mesmo índice:
+>
+> ```
+> 20260731_leitura_uma_por_bico_por_dia.sql      ← dropa o índice COM turno
+> 20260731_leitura_unica_por_bico_data_turno.sql ← cria o índice COM turno
+> ```
+>
+> Os nomes locais **não têm o sufixo de hora**, e em ordem alfabética `uma` vem
+> antes de `unica` (`m` < `n`). Quem lê a pasta na ordem do `ls` conclui que o
+> turno entrou na chave por último — o **oposto** do que produção tem. A ordem
+> real é por versão, e o histórico verdadeiro vive em
+> `supabase_migrations.schema_migrations`, no Postgres.
+>
+> Em 16/08 isso custou caro: diagnostiquei um `duplicate key` do zero quando a
+> resposta estava escrita na migração de 31/07, em português, na linha 13 —
+> *"como `.eq('turno_id', 1)` não casa com [NULL]"*. O arquivo abre dizendo **"o
+> posto não trabalha por turno"**, confirmado com o dono e com a planilha como
+> prova. Ler as migrações que tocam a tabela, por versão, teria dado a resposta
+> em um minuto.
 
 Use o agente `schema` para o drift e o `rls` para quem alcança a tabela.
+E antes de diagnosticar comportamento estranho de uma tabela, **leia o
+cabeçalho das migrações dela** — neste projeto elas explicam o porquê, não só
+o quê.
 
 ## 1.4 Ache a regra que parece errada e não é
 
