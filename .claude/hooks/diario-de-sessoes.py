@@ -40,7 +40,38 @@ import time
 from pathlib import Path
 
 RAIZ = Path(os.environ.get("CLAUDE_PROJECT_DIR", "."))
-DIARIO = RAIZ / ".claude" / "logs" / "sessoes.jsonl"
+
+
+def _diario() -> Path:
+    """O diário no `.git` COMUM — um só para todas as worktrees.
+
+    @remarks A primeira versão gravava em `<árvore>/.claude/logs/`, e worktrees
+             diferentes ficavam com diários diferentes: cada sessão só enxergava
+             quem estava na mesma árvore. Justamente o caso desta máquina, com
+             `Posto-Providencia` e `.claude/worktrees/pwa-dono` abertas ao mesmo
+             tempo — as duas sessões que colidiram em 16/08.
+
+             `--git-common-dir` é o `.git` de verdade, partilhado por todas as
+             worktrees (cada worktree tem só um arquivo `.git` apontando para
+             lá). Nunca é versionado, e some junto com o repositório.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=RAIZ, capture_output=True, text=True, timeout=3,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            comum = Path(r.stdout.strip())
+            if not comum.is_absolute():
+                comum = (RAIZ / comum).resolve()
+            return comum / "claude-sessoes.jsonl"
+    except Exception:
+        pass
+    # Fora de repositório git: cai no comportamento antigo, por árvore.
+    return RAIZ / ".claude" / "logs" / "sessoes.jsonl"
+
+
+DIARIO = _diario()
 # Janela do que se considera "recente" ao abrir a sessão. 6h cobre um turno de
 # trabalho sem trazer a semana inteira.
 JANELA_H = 6
