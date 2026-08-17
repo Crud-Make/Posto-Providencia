@@ -2,7 +2,7 @@
  * Hook para gerenciamento de carregamento de dados gerais
  *
  * @remarks
- * Centraliza carregamento de bicos, frentistas, turnos
+ * Centraliza carregamento de bicos e frentistas
  * e configuração de realtime subscriptions do Supabase
  *
  * @author Sistema de Gestão - Posto Providência
@@ -13,10 +13,9 @@
 // Motivo: Permitir ajuste rápido de preço durante o fechamento sem alterar cadastro
 import { useState, useCallback, useEffect } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
-import type { Frentista, Turno } from '../../../types/database/index';
-import { bicoService, frentistaService, turnoService } from '../../../services/api';
+import type { Frentista } from '../../../types/database/index';
+import { bicoService, frentistaService } from '../../../services/api';
 import { supabase } from '../../../services/supabase';
-import { TURNOS_PADRAO } from '../../../types/fechamento';
 import { isSuccess } from '../../../types/ui/response-types';
 
 /**
@@ -25,7 +24,6 @@ import { isSuccess } from '../../../types/ui/response-types';
 interface RetornoCarregamentoDados {
   bicos: BicoComDetalhes[];
   frentistas: Frentista[];
-  turnos: Turno[];
   carregando: boolean;
   erro: string | null;
   carregarDados: () => Promise<void>;
@@ -39,8 +37,7 @@ interface RetornoCarregamentoDados {
  * @returns Dados carregados e funções de controle
  *
  * @remarks
- * - Carrega bicos, frentistas e turnos em paralelo
- * - Usa turnos padrão como fallback
+ * - Carrega bicos e frentistas em paralelo
  * - Configura realtime subscription para atualizações
  *
  * @example
@@ -51,7 +48,6 @@ export const useCarregamentoDados = (
 ): RetornoCarregamentoDados => {
   const [bicos, setBicos] = useState<BicoComDetalhes[]>([]);
   const [frentistas, setFrentistas] = useState<Frentista[]>([]);
-  const [turnos, setTurnos] = useState<Turno[]>(TURNOS_PADRAO);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -89,10 +85,9 @@ export const useCarregamentoDados = (
       // Carrega em paralelo para melhor performance
       // [18/01 00:00] Checar success e extrair data do ApiResponse
       // Motivo: services agora retornam ApiResponse
-      const [dadosBicosRes, dadosFrentistasRes, dadosTurnosRes] = await Promise.all([
+      const [dadosBicosRes, dadosFrentistasRes] = await Promise.all([
         bicoService.getWithDetails(postoId),
-        frentistaService.getAll(postoId),
-        turnoService.getAll(postoId)
+        frentistaService.getAll(postoId)
       ]);
 
       const erros: string[] = [];
@@ -108,13 +103,6 @@ export const useCarregamentoDados = (
         setFrentistas([]);
       } else {
         setFrentistas(dadosFrentistasRes.data);
-      }
-
-      // Usa turnos do banco ou fallback para padrão
-      if (isSuccess(dadosTurnosRes) && dadosTurnosRes.data.length > 0) {
-        setTurnos(dadosTurnosRes.data);
-      } else if (!isSuccess(dadosTurnosRes)) {
-        erros.push(dadosTurnosRes.error);
       }
 
       if (erros.length > 0) {
@@ -169,7 +157,6 @@ export const useCarregamentoDados = (
   return {
     bicos,
     frentistas,
-    turnos,
     carregando,
     erro,
     carregarDados,

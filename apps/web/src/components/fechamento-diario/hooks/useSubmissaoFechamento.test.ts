@@ -22,12 +22,12 @@ vi.mock('../../../contexts/usePosto', () => ({
 
 vi.mock('../../../services/api', () => ({
     fechamentoService: {
-        getByDateAndTurno: vi.fn(),
+        getDoDia: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
     },
     leituraService: {
-        deleteByShift: vi.fn(),
+        deleteByDate: vi.fn(),
         bulkCreate: vi.fn(),
     },
     fechamentoFrentistaService: {
@@ -94,16 +94,16 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         // (isso seria `resetAllMocks`), então os `mockResolvedValue` abaixo seguem valendo.
         vi.clearAllMocks();
 
-        vi.mocked(fechamentoService.getByDateAndTurno).mockResolvedValue({
+        vi.mocked(fechamentoService.getDoDia).mockResolvedValue({
             success: false,
             error: 'não encontrado',
             code: 'NOT_FOUND',
             timestamp: new Date().toISOString(),
         });
         // A exclusão das leituras do dia roda SEMPRE, exista ou não `Fechamento` para a data
-        // — inclusive neste cenário, em que `getByDateAndTurno` devolve NOT_FOUND. Sem este
+        // — inclusive neste cenário, em que `getDoDia` devolve NOT_FOUND. Sem este
         // retorno o mock resolve `undefined`, a submissão aborta e nada chega ao `bulkCreate`.
-        vi.mocked(leituraService.deleteByShift).mockResolvedValue({
+        vi.mocked(leituraService.deleteByDate).mockResolvedValue({
             success: true,
             data: undefined,
             timestamp: new Date().toISOString(),
@@ -135,7 +135,6 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         await act(async () => {
             await result.current.handleSave({
                 selectedDate: '2026-07-26',
-                selectedTurno: 1,
                 bicos: [],
                 leituras: {},
                 sessoesFrentistas: [sessaoComMoedas],
@@ -167,7 +166,6 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         await act(async () => {
             await result.current.handleSave({
                 selectedDate: '2026-07-26',
-                selectedTurno: 1,
                 bicos: [],
                 leituras: {},
                 sessoesFrentistas: [sessao()],
@@ -187,7 +185,7 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
     });
 
     // Regressão do bug que dobrava os litros de um dia histórico (31/07/2026).
-    // `getByDateAndTurno` devolve NOT_FOUND neste `beforeEach` — o caso do dia antigo, que não
+    // `getDoDia` devolve NOT_FOUND neste `beforeEach` — o caso do dia antigo, que não
     // tem `Fechamento`. Antes, a exclusão das leituras morava dentro do ramo "fechamento existe",
     // então esse caminho inseria por cima das leituras já gravadas e o dia ficava com o dobro.
     it('apaga as leituras do dia mesmo quando não existe fechamento para a data', async () => {
@@ -196,7 +194,6 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         await act(async () => {
             await result.current.handleSave({
                 selectedDate: '2026-07-10',
-                selectedTurno: 1,
                 bicos: [],
                 leituras: {},
                 sessoesFrentistas: [sessao()],
@@ -210,15 +207,18 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
             });
         });
 
-        expect(leituraService.deleteByShift).toHaveBeenCalledTimes(1);
-        expect(leituraService.deleteByShift).toHaveBeenCalledWith('2026-07-10', 1, 42);
+        expect(leituraService.deleteByDate).toHaveBeenCalledTimes(1);
+        // [16/08] Assinatura sem turno: apagar o dia inteiro, não o recorte por turno.
+        // O `1` que ficava no meio era o turno, e era ele que deixava a linha do outro
+        // app (turno nulo) sobreviver ao delete.
+        expect(leituraService.deleteByDate).toHaveBeenCalledWith('2026-07-10', 42);
     });
 
     // A trava de 7 dias da RLS recusa apagar dia antigo, e um DELETE filtrado pela RLS não vira
     // erro do Supabase — o serviço é quem detecta contando o que sobrou. Seguir gravando depois
     // disso era o que duplicava o dia.
     it('aborta antes de gravar quando a exclusão das leituras é recusada', async () => {
-        vi.mocked(leituraService.deleteByShift).mockResolvedValue({
+        vi.mocked(leituraService.deleteByDate).mockResolvedValue({
             success: false,
             error: 'a proteção do banco só permite excluir os últimos 7 dias',
             code: 'DELETE_BLOQUEADO',
@@ -230,7 +230,6 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         await act(async () => {
             await result.current.handleSave({
                 selectedDate: '2026-07-10',
-                selectedTurno: 1,
                 bicos: [],
                 leituras: {},
                 sessoesFrentistas: [sessao()],

@@ -21,7 +21,6 @@ import { chaveRascunhoFechamento } from '../../../utils/rascunho-fechamento';
 interface RascunhoFechamento {
   leituras: Record<number, { inicial: string; fechamento: string }>;
   dataSelecionada: string;
-  turnoSelecionado: number | null;
   sessoesFrentistas: unknown[]; // Tipagem genérica para flexibilidade
 }
 
@@ -31,7 +30,6 @@ interface RascunhoFechamento {
 interface ParametrosAutoSave {
   postoId: number | null;
   dataSelecionada: string;
-  turnoSelecionado: number | null;
   leituras: Record<number, { inicial: string; fechamento: string }>;
   sessoesFrentistas: unknown[];
   carregando: boolean;
@@ -64,7 +62,6 @@ interface RetornoAutoSave {
  * const { restaurado, rascunhoRestaurado } = useAutoSave({
  *   postoId: 1,
  *   dataSelecionada: '2026-01-08',
- *   turnoSelecionado: 1,
  *   leituras: {...},
  *   sessoesFrentistas: [...],
  *   carregando: false,
@@ -75,7 +72,6 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
   const {
     postoId,
     dataSelecionada,
-    turnoSelecionado,
     leituras,
     sessoesFrentistas,
     carregando,
@@ -145,7 +141,6 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
       const rascunho: RascunhoFechamento = {
         leituras,
         dataSelecionada,
-        turnoSelecionado,
         sessoesFrentistas
       };
 
@@ -158,7 +153,6 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
   }, [
     leituras,
     dataSelecionada,
-    turnoSelecionado,
     sessoesFrentistas,
     carregando,
     salvando,

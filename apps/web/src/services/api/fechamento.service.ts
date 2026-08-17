@@ -26,18 +26,28 @@ interface FechamentoComDetalhes extends Fechamento {
 }
 export const fechamentoService = {
   /**
-   * Busca um fechamento único por data e posto
+   * Busca o fechamento do dia
+   *
    * @param data - Data no formato YYYY-MM-DD
    * @param postoId - ID do posto (opcional)
-   * @remarks Assume turno_id = 1 (padrão legado/simplificado)
+   *
+   * @remarks [16/08] Substitui `getByDateUnique` e `getByDateAndTurno`, que eram a mesma
+   *          consulta a menos do filtro de turno — uma fixava `turno_id = 1` e a outra
+   *          recebia o turno de fora. O posto não trabalha por turno: o fechamento é do
+   *          dia, e é essa a chave. Com as duas separadas, ler pelo caminho "com turno" e
+   *          gravar pelo "único" podia acertar linhas diferentes no mesmo dia.
+   *
+   *          Ainda ordena por `id` decrescente e pega 1: enquanto o índice de produção for
+   *          `UNIQUE (data, turno_id)`, um `turno_id` nulo não colide com outro nulo, então
+   *          o dia PODE ter mais de uma linha. Até a migração trocar o índice para
+   *          `UNIQUE (data)`, esta ordenação é o que garante que se leia a mais recente.
    */
-  async getByDateUnique(data: string, postoId?: number): Promise<ApiResponse<Fechamento | null>> {
+  async getDoDia(data: string, postoId?: number): Promise<ApiResponse<Fechamento | null>> {
     try {
       let query = supabase
         .from('Fechamento')
         .select('*')
-        .eq('data', data)
-        .eq('turno_id', 1);
+        .eq('data', data);
 
       if (postoId) {
         query = query.eq('posto_id', postoId);
@@ -54,45 +64,20 @@ export const fechamentoService = {
   },
 
   /**
-   * Busca fechamento por data e turno específico
-   * @param data - Data no formato YYYY-MM-DD
-   * @param turnoId - ID do turno
-   * @param postoId - ID do posto (opcional)
-   */
-  async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<ApiResponse<Fechamento | null>> {
-    try {
-      let query = supabase
-        .from('Fechamento')
-        .select('*')
-        .eq('data', data)
-        .eq('turno_id', turnoId);
-
-      if (postoId) {
-        query = query.eq('posto_id', postoId);
-      }
-
-      const { data: fechamentos, error } = await query.order('id', { ascending: false }).limit(1);
-      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
-
-      const resultado = fechamentos && fechamentos.length > 0 ? fechamentos[0] : null;
-      return createSuccessResponse(resultado as Fechamento | null);
-    } catch (err) {
-      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
-    }
-  },
-
-  /**
-   * Lista todos os fechamentos de uma data com joins de turno e usuário
+   * Lista todos os fechamentos de uma data com join de usuário
    * @param data - Data no formato YYYY-MM-DD
    * @param postoId - ID do posto (opcional)
+   *
+   * @remarks [16/08] O join `turno:Turno(*)` saiu. Deve devolver uma linha só; devolve
+   *          lista porque o índice de produção ainda permite mais de uma por dia enquanto
+   *          `turno_id` for nulável — ver `getDoDia`.
    */
-  async getByDate(data: string, postoId?: number): Promise<ApiResponse<(Fechamento & { turno: Turno | null; usuario: { id: string; nome: string } | null })[]>> {
+  async getByDate(data: string, postoId?: number): Promise<ApiResponse<(Fechamento & { usuario: { id: string; nome: string } | null })[]>> {
     try {
       let query = supabase
         .from('Fechamento')
         .select(`
           *,
-          turno:Turno(*),
           usuario:Usuario(id, nome)
         `)
         .eq('data', data);
@@ -104,7 +89,7 @@ export const fechamentoService = {
       const { data: fechamentos, error } = await query;
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
 
-      return createSuccessResponse(fechamentos as unknown as (Fechamento & { turno: Turno | null; usuario: { id: string; nome: string } | null })[]);
+      return createSuccessResponse(fechamentos as unknown as (Fechamento & { usuario: { id: string; nome: string } | null })[]);
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }

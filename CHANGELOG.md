@@ -2,6 +2,39 @@
 
 ## [Não Lançado]
 
+### 🕐 O turno sai do Fechamento de Caixa — o dia é a chave inteira
+- **[16/08/2026]** O posto **não trabalha por turno**. A regra foi confirmada pelo dono em
+  31/07 e já estava aplicada no banco pela migração `20260731112422
+  leitura_uma_por_bico_por_dia`, que dropou o índice com turno e criou
+  `leitura_unica_bico_data (bico_id, data)`. A interface nunca soube: a tela de Fechamento
+  seguia com um seletor **Manhã / Tarde / Noite** obrigatório, carimbando num turno que não
+  existe na operação.
+- **O seletor foi removido** do `HeaderFechamento`, e `selectedTurno` saiu do estado, dos
+  cinco efeitos, do auto-save e do `handleSave`. De brinde some um gate: os carregamentos do
+  dia esperavam a lista de turnos chegar do banco para rodar, e agora dependem só da data.
+- **`leituraService.deleteByDate` deixa de filtrar `turno_id = 1`**, e o gêmeo
+  `deleteByShift` foi removido. Os dois apagavam o dia recortado por turno enquanto a chave
+  real é `(bico_id, data)` — e em SQL `= 1` **não casa com `NULL`**. Encerrante lançado pelo
+  outro app sobrevivia ao delete e derrubava o insert seguinte com `duplicate key`.
+- **A conferência anti-RLS era o lado perigoso disso.** Ela usava o mesmo recorte do DELETE,
+  então a linha de turno divergente não era apagada **nem contada**: a guarda que existe
+  justamente para pegar delete silencioso passava em verde por cima da linha que ia causar o
+  erro. Agora conta o dia inteiro.
+- **`fechamentoService.getByDateUnique` e `getByDateAndTurno` viraram `getDoDia`** — eram a
+  mesma consulta a menos do filtro de turno, uma fixando `turno_id = 1` e a outra recebendo
+  o turno de fora. Com as duas vivas, ler por um caminho e gravar pelo outro podia acertar
+  linhas diferentes no mesmo dia. `leituraService.getByDateAndTurno` também saiu, sem
+  chamador.
+- **Uma coisa NÃO foi removida, de propósito:** `Fechamento.turno_id` continua sendo gravado,
+  agora pela constante `TURNO_TAMPAO_ATE_A_MIGRACAO`. O índice de produção do `Fechamento` é
+  `UNIQUE (data, turno_id)`, e em Postgres dois `NULL` não colidem — gravar nulo ali não daria
+  erro, apenas deixaria o mesmo dia aceitar vários `Fechamento`, cada um afirmando um
+  `total_vendas` diferente, em silêncio. A constante sai junto com a migração que trocar o
+  índice para `UNIQUE (data)`. Trocar um bug barulhento por um silencioso seria o pior negócio
+  possível aqui.
+- Verificado: `bun run type-check` limpo, **265 vitest** e **1021 golden** passando, zero
+  falhas. A contagem é desta branch — o §7 avisa que ela muda sozinha entre árvores.
+
 ### 💸 A Edge Function do encerrante deixa de ser uma torneira aberta de custo
 - **[16/08/2026]** `supabase/functions/ler-encerrante` estava pública e sem nenhum
   limite: CORS `*`, sem teto de tamanho de imagem, sem limite de taxa. Cada foto

@@ -1,7 +1,6 @@
 import React from 'react';
 import { TrendingUp, MapPin } from 'lucide-react';
 import { Calendario, modoDia } from '@shared/ui/calendario';
-import { Turno } from '../../../types/database/index';
 
 /**
  * Abas do Fechamento de Caixa.
@@ -27,14 +26,18 @@ export type AbaFechamento = (typeof ABAS)[number]['chave'];
 
 /**
  * Componente de cabeçalho do Fechamento Diário
- * Contém seletores de data, turno e abas de navegação
+ * Contém seletor de data e abas de navegação
+ *
+ * @remarks [16/08] O seletor de turno saiu daqui. O posto não trabalha por turno — é um
+ *          encerrante por bico por dia, regra confirmada pelo dono em 31/07 e já gravada
+ *          no índice de produção `leitura_unica_bico_data (bico_id, data)`, sem turno.
+ *          Enquanto o seletor existiu, a tela era obrigada a carimbar "Manhã" num turno
+ *          que não existe na operação, e o painel e o app do dono gravavam valores
+ *          diferentes na mesma coluna.
  */
 interface HeaderFechamentoProps {
     selectedDate: string;
     setSelectedDate: (date: string) => void;
-    selectedTurno: number | null;
-    setSelectedTurno: (id: number | null) => void;
-    turnos: Turno[];
     activeTab: AbaFechamento;
     setActiveTab: (tab: AbaFechamento) => void;
     postoNome?: string;
@@ -48,9 +51,6 @@ interface HeaderFechamentoProps {
 export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
     selectedDate,
     setSelectedDate,
-    selectedTurno,
-    setSelectedTurno,
-    turnos,
     activeTab,
     setActiveTab,
     postoNome,
@@ -74,7 +74,7 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* Seletores de Contexto Modernizados */}
+                    {/* Seletor de Contexto Modernizado */}
                     <div className="flex items-center gap-3 bg-slate-800/50 p-1.5 rounded-xl border border-slate-700/50">
                         <Calendario
                             modo={modoDia}
@@ -83,15 +83,6 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
                             tom="escuro"
                             className="py-2"
                         />
-                        <select
-                            value={selectedTurno || ''}
-                            onChange={(e) => setSelectedTurno(Number(e.target.value))}
-                            className="text-sm bg-slate-800 border-slate-600/50 rounded-lg py-2 pl-3 pr-8 focus:ring-2 focus:ring-blue-500/50 text-slate-200 font-medium cursor-pointer hover:bg-slate-700 transition-colors"
-                        >
-                            {turnos.map(t => (
-                                <option key={t.id} value={t.id}>{t.nome}</option>
-                            ))}
-                        </select>
                     </div>
 
                     {/* Botão de Ajuda / Posto */}

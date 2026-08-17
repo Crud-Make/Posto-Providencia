@@ -90,7 +90,7 @@ describe('useSessoesFrentistas — reconstrução de status a partir do marcador
         const { result } = renderHook(() => useSessoesFrentistas(1, frentistas));
 
         await act(async () => {
-            await result.current.carregarSessoes('2026-07-26', 1);
+            await result.current.carregarSessoes('2026-07-26');
         });
 
         const sessaoAna = result.current.sessoes.find(s => s.frentistaId === 1);

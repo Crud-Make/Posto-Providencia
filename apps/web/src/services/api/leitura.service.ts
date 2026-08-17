@@ -44,20 +44,22 @@ const ERRO_FORA_DA_JANELA =
  *          apagou, reinsere as leituras por cima e o dia fica com litros e valor em dobro
  *          (não há índice único que segure — ver a migração citada em ERRO_FORA_DA_JANELA).
  *          Por isso a prova é CONTAR o que sobrou, nunca ler o status da resposta.
+ *
+ *          [16/08] O filtro de turno saiu daqui, e essa era a parte perigosa: a conferência
+ *          usava o MESMO recorte do DELETE, então uma linha com `turno_id` diferente (ou
+ *          nulo) não era apagada **e nem contada** — a guarda que existe para pegar delete
+ *          silencioso passava em verde justamente por cima da linha que ia causar o
+ *          `duplicate key` no insert seguinte. Contar o dia inteiro é o que a torna guarda.
  * @returns `null` se não sobrou nada; caso contrário a mensagem de erro a propagar.
  */
 async function conferirLeiturasApagadas(
-  filtros: { data: string; posto_id: number; turno_id?: number }
+  filtros: { data: string; posto_id: number }
 ): Promise<string | null> {
-  let consulta = supabase
+  const consulta = supabase
     .from('Leitura')
     .select('id', { count: 'exact', head: true })
     .eq('data', filtros.data)
     .eq('posto_id', filtros.posto_id);
-
-  if (filtros.turno_id !== undefined) {
-    consulta = consulta.eq('turno_id', filtros.turno_id);
-  }
 
   const { count, error } = await consulta;
 
@@ -144,39 +146,11 @@ export const leituraService = {
   },
 
   /**
-   * Busca leituras de uma data e turno específicos
-   * @param data - Data no formato YYYY-MM-DD
-   * @param turnoId - ID do turno
-   * @param postoId - ID do posto (opcional)
+   * [16/08] `getByDateAndTurno` removido: era o `getByDate` acima com um `.eq('turno_id')`
+   * a mais, e ficou sem chamador quando a tela deixou de escolher entre as duas conforme
+   * houvesse turno selecionado. Ler o dia pelos dois caminhos era o que permitia à tela
+   * mostrar um conjunto de leituras e ao salvamento apagar outro.
    */
-  async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<ApiResponse<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]>> {
-    try {
-      const baseQuery = supabase
-        .from('Leitura')
-        .select(`
-          *,
-          bico:Bico(
-            *,
-            combustivel:Combustivel(*),
-            bomba:Bomba(*)
-          )
-        `)
-        .eq('data', data)
-        .eq('turno_id', turnoId);
-
-      const query = withPostoFilter(baseQuery, postoId);
-
-      const { data: leituras, error } = await query.order('id');
-
-      if (error) {
-        return createErrorResponse(error.message, 'FETCH_ERROR');
-      }
-
-      return createSuccessResponse((leituras as unknown as (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]) || []);
-    } catch (err) {
-      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
-    }
-  },
 
   /**
    * Busca a última leitura de cada bico
@@ -391,10 +365,17 @@ export const leituraService = {
   },
 
   /**
-   * Remove todas as leituras de uma data específica
+   * Remove todas as leituras de uma data
+   *
    * @param data - Data no formato YYYY-MM-DD
    * @param postoId - ID do posto
-   * @remarks Considera apenas turno_id = 1
+   *
+   * @remarks [16/08] O filtro `turno_id = 1` saiu, e o gêmeo `deleteByShift` foi removido.
+   *          Os dois apagavam o dia recortado por turno, enquanto o índice único de produção
+   *          é `leitura_unica_bico_data (bico_id, data)`, sem turno — e em SQL `= 1` não casa
+   *          com `NULL`. Encerrante lançado pelo outro app sobrevivia ao delete e derrubava o
+   *          insert seguinte com `duplicate key`. Apagar pelo dia inteiro é o que alinha o
+   *          recorte da exclusão ao recorte da chave.
    */
   async deleteByDate(data: string, postoId: number): Promise<ApiResponse<void>> {
     try {
@@ -402,38 +383,11 @@ export const leituraService = {
         .from('Leitura')
         .delete()
         .eq('data', data)
-        .eq('turno_id', 1)
         .eq('posto_id', postoId);
 
       if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
 
-      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId, turno_id: 1 });
-      if (bloqueio) return createErrorResponse(bloqueio, 'DELETE_BLOQUEADO');
-
-      return createSuccessResponse(undefined);
-    } catch (err) {
-      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
-    }
-  },
-
-  /**
-   * Remove todas as leituras de uma data e turno específicos
-   * @param data - Data no formato YYYY-MM-DD
-   * @param turnoId - ID do turno
-   * @param postoId - ID do posto
-   */
-  async deleteByShift(data: string, turnoId: number, postoId: number): Promise<ApiResponse<void>> {
-    try {
-      const { error } = await supabase
-        .from('Leitura')
-        .delete()
-        .eq('data', data)
-        .eq('turno_id', turnoId)
-        .eq('posto_id', postoId);
-
-      if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
-
-      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId, turno_id: turnoId });
+      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId });
       if (bloqueio) return createErrorResponse(bloqueio, 'DELETE_BLOQUEADO');
 
       return createSuccessResponse(undefined);

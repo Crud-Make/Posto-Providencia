@@ -185,7 +185,6 @@ const formatarAoSair = (value: string): string => {
  *
  * @param postoId - ID do posto ativo
  * @param dataSelecionada - Data do fechamento
- * @param turnoSelecionado - Turno selecionado
  * @param bicos - Lista de bicos com detalhes
  * @returns Leituras e funções de controle
  *
@@ -194,15 +193,18 @@ const formatarAoSair = (value: string): string => {
  * - Formata entrada durante digitação
  * - Formata com 3 decimais ao sair do campo
  *
+ * [16/08] O turno saiu da assinatura. É uma leitura por bico por dia — a chave do
+ * índice de produção é `(bico_id, data)`, sem turno. Antes o hook escolhia entre
+ * duas consultas conforme houvesse turno selecionado; agora sempre busca o dia.
+ *
  * @example
  * const { leituras, alterarInicial } = useLeituras(
- *   postoId, dataSelecionada, turnoSelecionado, bicos
+ *   postoId, dataSelecionada, bicos
  * );
  */
 export const useLeituras = (
   postoId: number | null,
   dataSelecionada: string,
-  turnoSelecionado: number | null,
   bicos: BicoComDetalhes[],
   /**
    * Devolve à tela o preço carimbado em cada leitura salva (`preco_litro`).
@@ -218,16 +220,15 @@ export const useLeituras = (
   const [leituras, setLeituras] = useState<Record<number, Leitura>>({});
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const ultimoContextoCarregado = useRef<{ data: string; turno: number | null }>({
-    data: '',
-    turno: null
+  const ultimoContextoCarregado = useRef<{ data: string }>({
+    data: ''
   });
 
   /**
    * Carrega leituras do banco de dados
    *
    * @remarks
-   * - Se existir fechamento para data/turno: carrega leituras existentes
+   * - Se existir leitura para a data: carrega as existentes
    * - Senão: busca última leitura de fechamento para usar como inicial
    */
   const carregarLeituras = useCallback(async (force = false) => {
@@ -236,8 +237,7 @@ export const useLeituras = (
     // Evita recarregar se já carregou para este contexto, a menos que seja forçado
     if (
       !force &&
-      ultimoContextoCarregado.current.data === dataSelecionada &&
-      ultimoContextoCarregado.current.turno === turnoSelecionado
+      ultimoContextoCarregado.current.data === dataSelecionada
     ) {
       return;
     }
@@ -247,30 +247,12 @@ export const useLeituras = (
 
 
     try {
-      let dadosRes: LeituraPorDataResponse;
-
-
-
-      if (turnoSelecionado) {
-        // [18/01 00:00] Checar success e extrair data do ApiResponse
-        // Motivo: leituraService agora retorna ApiResponse
-        dadosRes = await leituraService.getByDateAndTurno(
-          dataSelecionada,
-          turnoSelecionado,
-          postoId
-        );
-
-      } else {
-        // Se não tem turno selecionado, busca todas do dia
-        // Nota: isso assume que para visualização diária queremos todas as leituras
-        // [18/01 00:00] Checar success e extrair data do ApiResponse
-        // Motivo: leituraService agora retorna ApiResponse
-        dadosRes = await leituraService.getByDate(
-          dataSelecionada,
-          postoId
-        );
-
-      }
+      // [18/01 00:00] Checar success e extrair data do ApiResponse
+      // Motivo: leituraService agora retorna ApiResponse
+      const dadosRes: LeituraPorDataResponse = await leituraService.getByDate(
+        dataSelecionada,
+        postoId
+      );
 
       if (!isSuccess(dadosRes)) {
         // [18/01 00:00] Tratar erro de ApiResponse sem quebrar UI
@@ -288,7 +270,7 @@ export const useLeituras = (
         // [29/01 13:40] Modo edição: usa leituras existentes
         console.log('[29/01 13:40] Leituras carregadas do banco:', dados.length, 'registros');
         const mapeado = dados.reduce((acc, l) => {
-          // leitura_final === leitura_inicial é a leitura-base do dia (1ª foto do turno,
+          // leitura_final === leitura_inicial é a leitura-base do dia (1ª foto do dia,
           // ainda sem fechamento real) — mostra "final" em branco até a 2ª foto chegar.
           const aindaSemFechamento = Number(l.leitura_final) === Number(l.leitura_inicial);
           acc[l.bico_id] = {
@@ -330,8 +312,7 @@ export const useLeituras = (
       }
 
       ultimoContextoCarregado.current = {
-        data: dataSelecionada,
-        turno: turnoSelecionado
+        data: dataSelecionada
       };
     } catch (err) {
       const mensagemErro = 'Erro ao carregar leituras';
@@ -340,7 +321,7 @@ export const useLeituras = (
     } finally {
       setCarregando(false);
     }
-  }, [postoId, dataSelecionada, turnoSelecionado, bicos, aoRestaurarPrecoDoDia]);
+  }, [postoId, dataSelecionada, bicos, aoRestaurarPrecoDoDia]);
 
   /**
    * Handler para mudança de leitura inicial

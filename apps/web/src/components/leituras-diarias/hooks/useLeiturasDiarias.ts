@@ -26,7 +26,7 @@ export function useLeiturasDiarias(postoAtivoId: number | null) {
     const [msgSucesso, setMsgSucesso] = useState<string | null>(null);
 
     // Hook de Leituras (Compartilhado com Fechamento Diário)
-    const leiturasHook = useLeituras(postoAtivoId, selectedDate, null, bicos);
+    const leiturasHook = useLeituras(postoAtivoId, selectedDate, bicos);
     const { carregarLeituras, leituras } = leiturasHook;
 
     /**
