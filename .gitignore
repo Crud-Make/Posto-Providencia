@@ -121,3 +121,6 @@ plans/
 # Bytecode dos hooks — artefato de execução, nunca fonte.
 __pycache__/
 *.pyc
+
+# Diário de sessões — local por máquina, cresce sozinho
+.claude/logs/
