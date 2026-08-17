@@ -265,6 +265,79 @@ def abrir_sessao() -> None:
     print("\n".join(linhas), file=sys.stderr)
 
 
+# ─── PreToolUse: avisar ANTES de escrever em cima de outra sessão ────────────
+
+# Quanto tempo o toque de outra sessão continua sendo notícia. Uma hora e meia
+# cobre o intervalo entre "ela editou" e "eu vou editar" sem transformar
+# trabalho de ontem em alarme de hoje.
+JANELA_COLISAO_MIN = 90
+
+
+def avisar_colisao(entrada: dict) -> None:
+    """Aviso no INSTANTE da escrita — o relatório de abertura não pega isto.
+
+    @remarks É a peça que faltava. O `SessionStart` conta o que aconteceu ANTES
+             de a sessão abrir; a colisão de 16/08 aconteceu NO MEIO: uma sessão
+             conferiu `api.ts`, a outra commitou, e a primeira commitou pela
+             metade — só o CHANGELOG, sem o código que ele descrevia.
+
+             NÃO BLOQUEIA, e é decisão. Duas sessões no mesmo arquivo em
+             momentos diferentes é normal e produtivo; barrar pararia trabalho
+             legítimo. O que faltava era saber, não permissão.
+    """
+    ent = entrada.get("tool_input", {}) or {}
+    caminho = str(ent.get("file_path", ""))
+    if not caminho:
+        return
+    try:
+        caminho = str(Path(caminho).relative_to(RAIZ))
+    except Exception:
+        pass
+
+    if not DIARIO.exists():
+        return
+    try:
+        linhas = DIARIO.read_text(encoding="utf-8").splitlines()[-TETO_LINHAS:]
+    except Exception:
+        return
+
+    corte = time.time() - JANELA_COLISAO_MIN * 60
+    eu = sessao_id()
+    outras: dict[str, int] = {}
+    for ln in linhas:
+        try:
+            e = json.loads(ln)
+        except Exception:
+            continue
+        if (
+            e.get("tipo") == "arquivo"
+            and e.get("resumo") == caminho
+            and e.get("sessao") != eu
+            and e.get("t", 0) >= corte
+        ):
+            outras[e.get("sessao", "?")] = max(outras.get(e.get("sessao", "?"), 0), e.get("t", 0))
+
+    if not outras:
+        return
+
+    quem = ", ".join(
+        f"{sid} (há {int((time.time() - t) / 60)} min)" for sid, t in outras.items()
+    )
+    texto = (
+        f"[diário de sessões] OUTRA SESSÃO EDITOU ESTE ARQUIVO: `{caminho}` — {quem}.\n"
+        "  → Leia o disco antes de escrever: seu contexto pode ser anterior à mudança dela.\n"
+        "  → Se for trabalho paralelo no mesmo arquivo, fale com ela (`ListAgents` + "
+        "`SendMessage`) antes de commitar — commit pela metade já aconteceu aqui.\n"
+        "  → Isto é aviso, não trava. Se você já sabe da mudança, siga."
+    )
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": texto,
+        }
+    }))
+
+
 def main() -> int:
     try:
         entrada = json.load(sys.stdin)
@@ -276,6 +349,8 @@ def main() -> int:
     evento = entrada.get("hook_event_name", "")
     if evento == "SessionStart":
         abrir_sessao()
+    elif evento == "PreToolUse":
+        avisar_colisao(entrada)
     else:
         registrar(entrada)
     return 0

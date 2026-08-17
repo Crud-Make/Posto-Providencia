@@ -88,6 +88,15 @@
             "statusMessage": "Conferindo checklist de commit"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/diario-de-sessoes.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
