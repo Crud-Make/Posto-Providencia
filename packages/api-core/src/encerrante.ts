@@ -370,36 +370,44 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
         }) {
             const { postoId, data: dataStr, usuarioId = 1, linhas } = params;
 
-            // SEM FILTRO DE TURNO, e é correção de bug real. O encerrante é por
-            // DIA e por bico — o índice único de produção diz isso na letra:
-            // `leitura_unica_bico_data (bico_id, data)`, sem turno.
+            // SÓ OS BICOS QUE ESTÃO SENDO GRAVADOS, e é correção de bug real.
             //
-            // O painel grava `turno_id: null` e este caminho gravava
-            // `turno_id: 1`. Como `turno_id = 1` NÃO casa com NULL em SQL, o
-            // delete filtrado deixava viva a linha lançada pelo painel, e o
-            // insert seguinte batia no índice único: `duplicate key`. Ou seja,
-            // um encerrante lançado no painel impedia o app do dono de gravar
-            // aquele bico naquele dia, e vice-versa.
+            // O delete apagava o DIA INTEIRO e o insert repunha só os bicos
+            // preenchidos. Mandar os seis, ver um dígito errado num deles e
+            // reenviar SÓ aquele para corrigir apagava os outros cinco — um
+            // toque, e o `total_vendas` do dia desabava para um bico. Era o
+            // caminho mais natural de correção que existe.
+            //
+            // Sem filtro de TURNO, isso sim: o encerrante é por dia e por bico,
+            // e o índice único de produção diz na letra —
+            // `leitura_unica_bico_data (bico_id, data)`. O painel grava
+            // `turno_id: null` e este caminho grava `1`; como `= 1` não casa
+            // com NULL em SQL, filtrar por turno deixava viva a linha do outro
+            // app e o insert batia no índice: `duplicate key`.
+            const bicosGravados = linhas.map(l => l.bico_id);
+
             const { error: delError } = await supabase
                 .from('Leitura')
                 .delete()
                 .eq('data', dataStr)
-                .eq('posto_id', postoId);
+                .eq('posto_id', postoId)
+                .in('bico_id', bicosGravados);
             if (delError) throw new Error(delError.message);
 
             // Um DELETE barrado pela RLS (dia fora da janela de 7 dias) devolve
             // 204 SEM erro. Seguir daqui reinseriria as leituras por cima das
             // antigas e dobraria o dia — em silêncio.
             //
-            // A conferência precisa do MESMO recorte do delete. Enquanto ela
-            // filtrava por turno, não enxergava a linha órfã do painel: a
-            // guarda que existe justamente para pegar delete silencioso passava
-            // em verde sobre a linha que ia causar o erro.
+            // A conferência usa o MESMO recorte do delete, inclusive nos bicos.
+            // Recorte diferente já cegou esta guarda uma vez: quando ela
+            // filtrava por turno e o delete também, nenhuma das duas enxergava
+            // a linha órfã do painel.
             const { count: sobraram, error: erroConferencia } = await supabase
                 .from('Leitura')
                 .select('id', { count: 'exact', head: true })
                 .eq('data', dataStr)
-                .eq('posto_id', postoId);
+                .eq('posto_id', postoId)
+                .in('bico_id', bicosGravados);
             if (erroConferencia) throw new Error(erroConferencia.message);
             if ((sobraram ?? 0) > 0) {
                 throw new Error(
@@ -506,7 +514,26 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                 // `0 − conferido`, uma SOBRA gigante que nunca existiu. Sem
                 // encerrante grava só o que os frentistas entregaram e deixa
                 // venda e diferença intocadas até a noite.
-                const semEncerrante = (leituras ?? []).length === 0;
+                //
+                // ENCERRANTE PELA METADE TAMBÉM NÃO É VENDA COMPLETA, e esta é
+                // a parte que faltava. A checagem era tudo-ou-nada
+                // (`length === 0`), então um dia com 2 de 6 bicos caía no ramo
+                // do dia fechado e gravava `total_vendas`/`diferenca` como se
+                // estivesse completo. A venda dos bicos que faltam vira SOBRA
+                // fantasma — cobrada contra o frentista, que entregou dinheiro
+                // de combustível que o sistema acha que não foi vendido.
+                //
+                // O total de bicos vem do cadastro, não de constante: bico novo
+                // muda o que "completo" significa, e constante apodreceria em
+                // silêncio.
+                const { count: bicosAtivos } = await supabase
+                    .from('Bico')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('posto_id', pai.posto_id)
+                    .eq('ativo', true);
+
+                const lidos = (leituras ?? []).length;
+                const semEncerrante = lidos === 0 || (bicosAtivos != null && lidos < bicosAtivos);
                 const vendaConcentrador = (leituras ?? []).reduce(
                     (acc: number, l: { valor_total: number | null }) => acc + Number(l.valor_total ?? 0),
                     0

@@ -28,10 +28,25 @@
  *
  * @param texto Conteúdo do campo, em pt-BR e com separador de milhar —
  *              `"1.861.796,633"`. A máscara da tela sempre insere o milhar.
- * @returns O valor lido, ou `0` quando o campo está vazio ou ilegível.
+ * @returns O valor lido, ou **`null`** quando o campo está vazio ou ilegível —
+ *          nunca zero.
+ *
+ * @remarks **A primeira versão devolvia `0` para campo vazio, e isso era um
+ *          bug pior que o que ela consertava.** O `parseFloat` antigo devolvia
+ *          `NaN`, e como toda comparação com `NaN` é falsa, a linha era
+ *          FILTRADA FORA da gravação. Ao trocar por `0`, a linha passou a
+ *          atravessar o filtro e gravar `leitura_inicial: 0` — fazendo o
+ *          odômetro inteiro da bomba virar litros vendidos do dia.
+ *
+ *          Zero é um valor legítimo (bico que não girou); ausência não é.
+ *          Devolver `null` obriga quem chama a decidir o que fazer com o campo
+ *          em branco, em vez de tratá-lo como número. É a mesma escolha, pelo
+ *          mesmo motivo, do `numeroDoCampo` da `/planilha`.
  */
-export const numeroDoEncerrante = (texto: string | undefined | null): number => {
-    if (!texto) return 0;
-    const n = parseFloat(texto.replace(/\./g, '').replace(',', '.'));
-    return Number.isFinite(n) ? n : 0;
+export const numeroDoEncerrante = (texto: string | undefined | null): number | null => {
+    if (!texto) return null;
+    const limpo = texto.trim();
+    if (limpo === '') return null;
+    const n = parseFloat(limpo.replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
 };

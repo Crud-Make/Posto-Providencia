@@ -33,13 +33,29 @@ describe('numeroDoEncerrante', () => {
         expect(numeroDoEncerrante('1.861.796')).toBeCloseTo(1861796, 3);
     });
 
-    it('trata campo vazio, nulo e indefinido como zero', () => {
-        expect(numeroDoEncerrante('')).toBe(0);
-        expect(numeroDoEncerrante(null)).toBe(0);
-        expect(numeroDoEncerrante(undefined)).toBe(0);
+    /**
+     * NULO, NUNCA ZERO — e a diferença já custou um bug.
+     *
+     * A primeira versão devolvia `0` para campo vazio. Como o filtro de
+     * gravação comparava `final > inicial`, uma linha com inicial em branco
+     * passava (`final > 0`) e gravava `leitura_inicial: 0` — o odômetro
+     * inteiro virando litros vendidos do dia. O `parseFloat` que ela
+     * substituiu devolvia `NaN`, e `NaN` derrubava a linha no filtro.
+     */
+    it('devolve null para campo vazio, nulo e indefinido — nunca zero', () => {
+        expect(numeroDoEncerrante('')).toBeNull();
+        expect(numeroDoEncerrante('   ')).toBeNull();
+        expect(numeroDoEncerrante(null)).toBeNull();
+        expect(numeroDoEncerrante(undefined)).toBeNull();
     });
 
-    it('trata texto ilegível como zero em vez de NaN', () => {
-        expect(numeroDoEncerrante('abc')).toBe(0);
+    it('devolve null para texto ilegível', () => {
+        expect(numeroDoEncerrante('abc')).toBeNull();
+    });
+
+    /** Zero DIGITADO é valor legítimo: bico que não girou. Não confundir com vazio. */
+    it('distingue zero digitado de campo vazio', () => {
+        expect(numeroDoEncerrante('0,000')).toBe(0);
+        expect(numeroDoEncerrante('')).toBeNull();
     });
 });

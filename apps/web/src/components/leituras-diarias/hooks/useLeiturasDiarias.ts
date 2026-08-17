@@ -91,12 +91,19 @@ export function useLeiturasDiarias(postoAtivoId: number | null) {
                     const inicial = numeroDoEncerrante(l.inicial);
                     const final = numeroDoEncerrante(l.fechamento);
 
-                    return final > 0 && final > inicial;
+                    // `null` = campo em branco ou ilegível, e aí a linha NÃO
+                    // vai para o banco. Tratar a inicial ausente como zero
+                    // gravaria o odômetro inteiro da bomba como litros do dia
+                    // — centenas de milhares de litros de venda inventada.
+                    if (inicial === null || final === null) return false;
+
+                    return final > inicial;
                 })
                 .map(bico => {
                     const l = leituras[bico.id];
-                    const inicial = numeroDoEncerrante(l.inicial);
-                    const final = numeroDoEncerrante(l.fechamento);
+                    // Não-nulos: o filtro acima já derrubou os que não são.
+                    const inicial = numeroDoEncerrante(l.inicial) as number;
+                    const final = numeroDoEncerrante(l.fechamento) as number;
 
                     return {
                         bico_id: bico.id,
