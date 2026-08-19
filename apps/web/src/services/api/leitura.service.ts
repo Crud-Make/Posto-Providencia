@@ -153,18 +153,32 @@ export const leituraService = {
    */
 
   /**
-   * Busca a última leitura de cada bico
+   * Busca a leitura mais recente de cada bico **anterior a uma data**.
+   *
    * @param postoId - ID do posto (opcional)
-   * @remarks Busca as últimas 200 leituras e filtra a mais recente por bico
+   * @param anteriorA - Data da tela (`YYYY-MM-DD`). Só entram leituras de dias
+   *                    estritamente anteriores. Omitir devolve a última leitura
+   *                    absoluta, que é o comportamento antigo.
+   * @remarks Serve para preencher o encerrante **inicial** de um dia sem leitura
+   *          salva: o inicial de um dia é o final do último dia *antes* dele.
+   *          Sem o recorte, um dia lançado fora de ordem cronológica — replay de
+   *          período passado — herdava o encerrante do dia mais recente do banco
+   *          e produzia litragem negativa na casa das dezenas de milhares.
+   *          Confirmado em 19/08/2026 abrindo 01/01/2026 com leitura de 18/08 no
+   *          banco: o bico 01 vinha com 1.877.237,402 em vez de 1.716.778,963.
    */
-  async getLastReading(postoId?: number): Promise<ApiResponse<Leitura[]>> {
+  async getLastReading(postoId?: number, anteriorA?: string): Promise<ApiResponse<Leitura[]>> {
     try {
-      const baseQuery = supabase
+      let baseQuery = supabase
         .from('Leitura')
         .select('*')
         .order('data', { ascending: false })
         .order('id', { ascending: false })
         .limit(200);
+
+      if (anteriorA) {
+        baseQuery = baseQuery.lt('data', anteriorA);
+      }
 
       const query = withPostoFilter(baseQuery, postoId);
 

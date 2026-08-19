@@ -291,7 +291,7 @@ export const useLeituras = (
         // Modo criação: busca última leitura para inicializar
         // [18/01 00:00] Checar success e extrair data do ApiResponse
         // Motivo: leituraService agora retorna ApiResponse
-        const ultimasLeiturasRes: UltimaLeituraResponse = await leituraService.getLastReading(postoId);
+        const ultimasLeiturasRes: UltimaLeituraResponse = await leituraService.getLastReading(postoId, dataSelecionada);
         if (!isSuccess(ultimasLeiturasRes)) {
           setErro(ultimasLeiturasRes.error);
           setLeituras({});
