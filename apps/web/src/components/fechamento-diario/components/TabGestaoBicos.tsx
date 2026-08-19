@@ -34,6 +34,9 @@ interface LeituraMap {
 interface TabGestaoBicosProps {
     bicos: BicoComDetalhes[];
     leituras: LeituraMap;
+    /** Custo médio de compra do mês por produto — ver `useCustoMensal`. */
+    custoMedioPorProduto: Record<string, number | null>;
+    despesaOperacionalLitro: number;
     loading?: boolean;
 }
 
@@ -44,10 +47,12 @@ interface TabGestaoBicosProps {
 export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
     bicos,
     leituras,
+    custoMedioPorProduto,
+    despesaOperacionalLitro,
     loading
 }) => {
     // Separação de Lógica: Hook customizado para cálculos
-    const dadosConsolidados = useCalculoGestaoBicos(bicos, leituras);
+    const dadosConsolidados = useCalculoGestaoBicos(bicos, leituras, custoMedioPorProduto, despesaOperacionalLitro);
 
     const metaLucroGlobal = 60000; // Meta MOCKADA (Ideal: vir de parâmetro/backend)
     const percentualLucro = Math.min((dadosConsolidados.lucroTotal / metaLucroGlobal) * 100, 100);
@@ -76,6 +81,14 @@ export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
                         Meta de Lucro Global
                         <span className="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[9px]">MENSAL</span>
+                        {!dadosConsolidados.apurado && (
+                            <span
+                                className="bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded text-[9px]"
+                                title="Algum produto vendido não tem compra lançada neste mês — o lucro mostrado é parcial, não o do mês inteiro."
+                            >
+                                PARCIAL
+                            </span>
+                        )}
                     </span>
                     <div className="flex items-end gap-3 mt-2">
                         <span className="text-2xl font-black text-white">

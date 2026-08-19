@@ -24,6 +24,7 @@ import { AlertTriangle, TrendingUp } from 'lucide-react';
 
 import { usePosto } from '../../contexts/usePosto';
 import { useCarregamentoDados } from './hooks/useCarregamentoDados';
+import { useCustoMensal } from './hooks/useCustoMensal';
 import { useLeituras } from './hooks/useLeituras';
 import { useSessoesFrentistas } from './hooks/useSessoesFrentistas';
 import { usePagamentos } from './hooks/usePagamentos';
@@ -64,7 +65,9 @@ const TelaFechamentoDiario: React.FC = () => {
    const [observacoes] = useState<string>('');
 
    // --- Hooks de Dados e Lógica (Refatorados) ---
-   const { bicos, frentistas, carregando: loadingDados, carregarDados, updateBicoPrice } = useCarregamentoDados(postoAtivoId);
+   const { bicos, frentistas, carregando: loadingDados, carregarDados, updateBicoPrice } = useCarregamentoDados(postoAtivoId, selectedDate);
+
+   const { custoMedioPorProduto, despesaOperacionalLitro } = useCustoMensal(postoAtivoId, selectedDate, bicos);
 
    const {
       leituras, carregando: loadingLeituras, carregarLeituras,
@@ -279,6 +282,8 @@ const TelaFechamentoDiario: React.FC = () => {
                   <TabGestaoBicos
                      bicos={bicos}
                      leituras={leituras}
+                     custoMedioPorProduto={custoMedioPorProduto}
+                     despesaOperacionalLitro={despesaOperacionalLitro}
                      loading={loading}
                   />
                )}

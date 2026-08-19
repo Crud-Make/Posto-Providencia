@@ -2,6 +2,37 @@
 
 ## [Não Lançado]
 
+### 📉 Lucro por bico deixa de usar margem fixa hardcoded
+- **[19/08/2026]** `useCalculoGestaoBicos` estimava o lucro com uma margem % fixa por tipo
+  de combustível (Gasolina 11,79%, Etanol 9,02%, Diesel 2,73%) sempre que o cadastro não
+  tinha `preco_custo`. Confirmado contra a planilha real (agente `planilha`, jan/2026) que
+  essa margem diverge até **67%** do lucro real, sem padrão de sinal entre combustíveis —
+  subestima o Diesel, superestima Gasolina e Etanol.
+- Trocada pela fórmula real da planilha: custo médio de compra do produto no mês + despesa
+  operacional rateada por litro. `custoMedioCompra` é novo em `@posto/utils/lucro`; o hook
+  `useCustoMensal` busca `Compra`/`Despesa` do mês pra alimentar a tela. Produto sem compra
+  lançada no mês vira "não apurável" (badge **PARCIAL** no card de lucro), nunca um número
+  estimado — mesmo princípio que `resumoPorProduto` já usa no Resumo Mensal.
+- Golden master (1026, +5 sobre `custoMedioCompra`), Vitest (274, +6), type-check limpo.
+
+### 🧮 Preço do dia por combustível, em vez de bico a bico
+- **[19/08/2026]** Campo novo na tela de Leituras: um input por combustível (Gasolina Comum,
+  Aditivada, Etanol, Diesel) que aplica o preço em todos os bicos daquele combustível de uma
+  vez, em vez de editar cada bico na mão — útil quando vários bicos vendem o mesmo produto.
+
+### 💰 Preço editado no dia deixava de sumir sozinho
+- **[19/08/2026]** Editar o preço de um bico na tela de Fechamento sobrevivia só enquanto o
+  usuário ficasse na mesma tela: sair pra outra rota e voltar, ou qualquer escrita em
+  `Fechamento` disparando a recarga do realtime, apagava a edição e o preço voltava pro
+  cadastro de hoje — reproduzido ao vivo testando o replay de 01/01/2026.
+- Corrigido guardando o preço editado em `sessionStorage`, indexado por **dia + bico**
+  (`useCarregamentoDados.ts`), não mais só em memória do componente. `useEstadoPersistido`
+  ganhou suporte a atualizador funcional (`(atual) => novo`, igual `useState`) — sem isso,
+  aplicar o mesmo preço em vários bicos numa única chamada síncrona (o campo por combustível
+  acima) fazia cada chamada pisar na anterior, e só o último bico ficava com o preço certo.
+- Testado ao vivo no Chrome: preço sobrevive à recarga do realtime, a navegar pra outra tela
+  e voltar, e trocar de dia não vaza o preço de um dia pro outro.
+
 ### 🕐 O turno sai do Fechamento de Caixa — o dia é a chave inteira
 - **[16/08/2026]** O posto **não trabalha por turno**. A regra foi confirmada pelo dono em
   31/07 e já estava aplicada no banco pela migração `20260731112422
