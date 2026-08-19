@@ -65,14 +65,16 @@ function renderizar(sessoes: SessaoFrentista[]) {
     let root: Root | null = null;
     let resultado: ReturnType<typeof useFechamento> | null = null;
 
-    function Sonda() {
-        resultado = useFechamento(bicos, leituras, sessoes, []);
+    // A sonda entrega o resultado por callback: atribuir a variável de fora de
+    // dentro do componente é o que a regra do React Compiler barra no lint.
+    function Sonda({ aoCalcular }: { aoCalcular: (r: ReturnType<typeof useFechamento>) => void }) {
+        aoCalcular(useFechamento(bicos, leituras, sessoes, []));
         return null;
     }
 
     act(() => {
         root = createRoot(container);
-        root.render(React.createElement(Sonda));
+        root.render(React.createElement(Sonda, { aoCalcular: (r) => { resultado = r; } }));
     });
     act(() => {
         root?.unmount();

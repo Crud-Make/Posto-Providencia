@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { formatBR, formatCurrency } from '@posto/utils';
 import { usePlanilhaDoBanco } from '../model/use-planilha-do-banco';
 import { ESTILOS_PLANILHA } from './estilos';

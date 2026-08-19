@@ -1,5 +1,5 @@
 import { supabase } from '../supabase';
-import { Fechamento, InsertTables, UpdateTables, Recebimento, FormaPagamento, Maquininha, FechamentoFrentista, Frentista, Turno } from '../../types/database/index';
+import { Fechamento, InsertTables, UpdateTables, Recebimento, FormaPagamento, Maquininha, FechamentoFrentista, Frentista } from '../../types/database/index';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -234,8 +234,8 @@ export const fechamentoService = {
       let query = supabase
         .from('Fechamento')
         .select('total_vendas, custo_combustiveis, lucro_bruto, taxas_pagamento, diferenca, lucro_liquido, margem_bruta_percentual, margem_liquida_percentual')
-        .gte('data', `${dataInicio}T00:00:00`)
-        .lte('data', `${dataFim}T23:59:59`)
+        .gte('data', `${dataInicio}T00:00:00Z`)
+        .lte('data', `${dataFim}T23:59:59Z`)
         .gt('total_vendas', 0);  // Apenas dias com movimento
 
       if (postoId) {
