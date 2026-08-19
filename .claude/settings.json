@@ -21,6 +21,14 @@
             "statusMessage": "Conferindo saúde do ferramental"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/diario-de-sessoes.py\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -80,6 +88,15 @@
             "statusMessage": "Conferindo checklist de commit"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/diario-de-sessoes.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -91,6 +108,15 @@
             "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/portao-golden.py\"",
             "timeout": 10,
             "statusMessage": "Conferindo cobertura de golden master"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit|Bash|mcp__supabase__execute_sql|mcp__supabase__apply_migration",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/diario-de-sessoes.py\""
           }
         ]
       }

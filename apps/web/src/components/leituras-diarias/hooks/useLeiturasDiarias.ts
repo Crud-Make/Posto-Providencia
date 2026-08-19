@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { bicoService, leituraService } from '../../../services/api';
 import { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
+import { numeroDoEncerrante } from '../model/encerrante-digitado';
 import { USUARIO_SISTEMA_ID } from '@shared/constants/usuario-sistema';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { BicoComDetalhes } from '../../../types/fechamento';
@@ -87,15 +88,22 @@ export function useLeiturasDiarias(postoAtivoId: number | null) {
                     const l = leituras[bico.id];
                     if (!l || !l.fechamento) return false;
 
-                    const inicial = parseFloat(l.inicial.replace('.', '').replace(',', '.'));
-                    const final = parseFloat(l.fechamento.replace('.', '').replace(',', '.'));
+                    const inicial = numeroDoEncerrante(l.inicial);
+                    const final = numeroDoEncerrante(l.fechamento);
 
-                    return !isNaN(final) && final > inicial;
+                    // `null` = campo em branco ou ilegível, e aí a linha NÃO
+                    // vai para o banco. Tratar a inicial ausente como zero
+                    // gravaria o odômetro inteiro da bomba como litros do dia
+                    // — centenas de milhares de litros de venda inventada.
+                    if (inicial === null || final === null) return false;
+
+                    return final > inicial;
                 })
                 .map(bico => {
                     const l = leituras[bico.id];
-                    const inicial = parseFloat(l.inicial.replace('.', '').replace(',', '.'));
-                    const final = parseFloat(l.fechamento.replace('.', '').replace(',', '.'));
+                    // Não-nulos: o filtro acima já derrubou os que não são.
+                    const inicial = numeroDoEncerrante(l.inicial) as number;
+                    const final = numeroDoEncerrante(l.fechamento) as number;
 
                     return {
                         bico_id: bico.id,

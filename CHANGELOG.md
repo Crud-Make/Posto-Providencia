@@ -146,6 +146,125 @@
   importá-lo num teste subiria um servidor.
 - **Não foi feito deploy.** `deploy_edge_function` está na lista `deny` e a
   decisão é do dono. Enquanto não subir, a função em produção continua aberta.
+### 🔔 O app do dono avisa os dias que ficaram sem encerrante
+- **[16/08/2026]** Consequência direta de o encerrante ter saído do PWA do
+  frentista: antes, três turnos davam três chances por dia de alguém lembrar.
+  Agora depende de uma pessoa, e esquecer um dia **não produzia sinal nenhum** —
+  o `total_vendas` daquele dia fica no valor de antes e o fechamento não
+  concilia, calado.
+- Lista os dias passados com menos leituras que bicos ativos, com a contagem à
+  vista (`1 de 6 bicos`). **Dia incompleto conta como falta**: é o estado que
+  derrubava a tela de Leituras do painel.
+- **Hoje não entra na lista.** O dia corrente não está em falta, está em
+  andamento — é o que a pessoa abriu o app para fazer. Cobrá-lo às 10h da manhã
+  tornaria o aviso ruído permanente.
+- **Sete dias**, porque é a largura da janela de escrita da RLS. Fora dela o
+  banco recusa o INSERT, e cobrar um dia que o app não consegue lançar seria
+  aviso sem saída.
+- `lerEncerrante` **deixou de repetir a chamada** quando a Edge Function recusa
+  por limite de taxa (429) ou tamanho (413). Repetir um 429 é bater de novo na
+  porta que acabou de pedir calma; repetir um 413 não encolhe a foto. As duas
+  recusas agora chegam à tela com o que fazer, lembrando que dá para digitar à
+  mão.
+
+### 🔒 `UPDATE` de `Fechamento` passa a valer só nas colunas que o sistema grava
+- **[16/08/2026]** `anon` e `authenticated` podiam reescrever **18 colunas** de
+  qualquer fechamento dentro da janela — inclusive `posto_id`, `usuario_id` e a
+  própria `data`, que é a coluna que a policy usa para decidir se a linha está
+  na janela. Poder mudá-la é poder arrastar a linha para dentro dela.
+- A migração deixa **5**: `total_vendas`, `total_recebido`, `diferenca`,
+  `status`, `observacoes` — as que os dois únicos call sites de UPDATE do
+  monorepo realmente escrevem.
+- ⚠️ **Não aplicada.** É arquivo versionado; aplicar é decisão do dono (§5).
+
+### 📸 O encerrante vira app do dono, e sai da mão do frentista
+- **[16/08/2026]** Nasce o `apps/pwa-dono` — terceiro app do monorepo, uma tela
+  só: fotografar o papel do encerrante e enviar a leitura das bombas. A aba
+  Encerrante **saiu** do PWA do frentista.
+- **Ela nunca foi do frentista.** A tabela `Leitura` é a leitura da *bomba* e não
+  tem coluna de frentista — o commit `635a6f2` já tinha constatado isso ao
+  remover a exigência de selecionar alguém, e o plano original do OCR dizia
+  desde o começo *"apps/web (dono) + apps/pwa-frentista (frentista)"*. A aba no
+  app errado era o desvio; agora está desfeito.
+- ⚠️ **Não confundir com o campo `encerrante` do `FechamentoFrentista`**, que
+  continua no app do frentista: aquele é o total em **R$** que ele declara do
+  concentrador. São duas coisas com o mesmo nome.
+- **A tela foi movida, não reescrita.** Com ela viajaram as cinco armadilhas já
+  pagas: o CORS que só quebrava no navegador, o cold start de 40s da Edge
+  Function, a câmera do Android descarregando a página e perdendo a primeira
+  foto, a auto-conferência que chama o Gemini duas vezes, e o recorte
+  `data < hoje` que impede o segundo envio do dia de apagar a manhã.
+- **Quem já tem o app instalado não vê tela quebrada.** A aba ficava salva no
+  `localStorage`, e os celulares guardam `'encerrante'` — valor que não
+  corresponde mais a tela nenhuma. Sem tratar, o app abriria no Registro com a
+  barra inferior sem nada selecionado.
+- Os testes da aba **migraram junto**, não foram apagados.
+
+### 🧱 `packages/api-core` deixa de ser um esqueleto
+- **[16/08/2026]** Ele prometia "acesso a dados desacoplado" e era um arquivo de
+  helpers com **zero importadores**. Agora abriga as seis operações do
+  encerrante que os **dois** PWAs precisam usar igual.
+- **Por que compartilhar em vez de copiar:** `salvarLeituras` chama
+  `consolidarFechamento`, que escreve `Fechamento.total_vendas` e `diferenca` —
+  o número sobre o qual se cobra o caixa do frentista. Duas cópias divergiriam
+  como divergiram os quatro lugares que calculavam litros.
+- O cliente Supabase é **injetado**: cada app tem o seu, com auth e `.env`
+  próprios, e `packages/*` nunca importa de app.
+- O `services/api.ts` do PWA do frentista caiu de ~430 para 209 linhas.
+
+### 💥 Dia salvo pela metade derrubava a tela de Leituras
+- **[16/08/2026]** Lançar alguns bicos, salvar, e voltar depois para os outros —
+  o uso normal — deixava a tela **em branco** ao digitar em qualquer bico que
+  faltava, perdendo tudo o que já estava preenchido.
+- A carga tinha dois modos: dia **sem** leitura montava entrada para todos os
+  bicos; dia **com** alguma leitura mapeava só as linhas existentes. Bastava um
+  bico salvo e os outros cinco ficavam **sem entrada nenhuma** — o `0,000` que
+  aparecia neles era placeholder do input, não dado.
+- **O crash era o sintoma bom.** Sem ele, a gravação levaria `leitura_inicial`
+  = 0 e os litros do dia virariam o odômetro inteiro da bomba: no Bico 02,
+  660.100 L e cerca de **R$ 4,6 milhões** de venda que não existiram, gravados
+  sem um aviso.
+- Corrigido nas duas camadas: a carga completa os bicos faltantes com a última
+  leitura anterior, e o cálculo de litros parou de confiar que os campos
+  existem.
+
+### 🔢 O encerrante do Bico 01 era gravado mil vezes menor
+- **[16/08/2026]** Na tela de Leituras Diárias, o encerrante digitado era lido
+  com `replace('.', '')` **sem a flag `/g`** — saía só o primeiro separador de
+  milhar. `1.861.796,633` virava `1861.796` e ia para o banco assim.
+- **Só o Bico 01 (Gasolina Comum) era atingido**, porque é o único que passa de
+  1 milhão na operação real e por isso o único cujo número tem **dois** pontos.
+  Os outros cinco ficam abaixo de 700 mil. Foi o que manteve o bug invisível.
+- **O pior não era o valor errado, era a divergência.** O cálculo de exibição já
+  lia certo: a tela mostrava **348,487 L enquanto o banco recebia 0,349 L** —
+  mesmo hook, dois números.
+- Segundo efeito, mais silencioso ainda: com o final deslocado e o inicial
+  correto, o filtro `final > inicial` **derrubava a linha sem erro visível**.
+  Digitava-se a leitura, salvava, e nada era gravado.
+- **Nenhum dado no banco foi contaminado** — conferido antes da correção: 186
+  linhas em `Leitura`, as 31 do Bico 01 todas em milhões, e a cadeia diária sem
+  quebra (o inicial de cada dia bate com o final do anterior, 0 quebras em 186).
+  As linhas vieram de carga em lote, não do formulário: o dado está limpo porque
+  não passou por esta tela, não porque ela estivesse certa.
+- A correção usa a **mesma normalização da exibição**, extraída para
+  `model/encerrante-digitado.ts` com 7 testes — aquele diretório não tinha
+  nenhum.
+
+### 📏 Litros e valor de uma leitura passam a ter uma função só
+- **[16/08/2026]** A aritmética do encerrante vivia em dois lugares com
+  convenções **diferentes**: o PWA aplicava piso de zero, o painel não. A mesma
+  leitura invertida gravava 0 L por um caminho e litros **negativos** pelo outro
+  — e `valor_total` alimenta `total_vendas` e daí a `diferenca` do frentista.
+- Fica o **piso de zero**: litro negativo não existe fisicamente, e negativo
+  contamina o total do dia em silêncio. O piso **não substitui o aviso** —
+  `motivoImplausivel` aponta encerrante que retrocede e salto acima de 3.000 L
+  no turno, para a tela avisar antes de gravar.
+- Conferido contra as **1.188 leituras reais de 2026**: litros batem 1188/1188 e
+  a venda bate 990/990 nas linhas que têm preço. E **0 linhas têm o encerrante
+  retrocedendo** — ou seja, adotar o piso não altera nenhum número histórico.
+- ⚠️ **Lacuna da fonte, travada em teste:** o Bico 06 sai do ETL sem `valor_lt`
+  nas suas 198 linhas, embora tenha litros e venda. O preço é recuperável
+  (`venda ÷ litros`), mas é conserto de ETL.
 
 ### 🧮 O fechamento do dia deixa de nascer zerado esperando o painel
 - **[16/08/2026]** O PWA gravava a linha do frentista e criava o **pai zerado**;

@@ -121,3 +121,8 @@ plans/
 # Bytecode dos hooks — artefato de execução, nunca fonte.
 __pycache__/
 *.pyc
+
+# Diário de sessões: mora no .git comum (compartilhado entre worktrees),
+# então já está fora do versionamento. `.claude/logs/` fica ignorado como
+# retaguarda, para o caso de o hook rodar fora de um repositório git.
+.claude/logs/

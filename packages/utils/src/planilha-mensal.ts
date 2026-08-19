@@ -193,7 +193,16 @@ export function planilhaMensal(entrada: EntradaPlanilhaMensal): PlanilhaMensal {
     const porProduto = new Map(entrada.produtos.map((p) => [p.produto, p]));
 
     // ── Litros por bico: o salto do encerrante ────────────────────────────────
-    const litrosDoBico = entrada.bicos.map((b) => arredondarLitros(b.fechamento - b.inicial));
+    //
+    // `Math.max(0, …)` pela mesma razão do módulo canônico `leitura.ts`, que
+    // esta branch introduziu: bomba não anda para trás, e litro negativo não
+    // fica onde nasce. Ele desce para `litrosVendidos`, que é o DENOMINADOR do
+    // custo operacional por litro — então um encerrante invertido num bico
+    // encolhe os litros do mês, sobe o custo por litro de TODO produto, e
+    // inverte PERDA em SOBRA no bloco de estoque. Nada na saída sinalizava.
+    const litrosDoBico = entrada.bicos.map((b) =>
+        arredondarLitros(Math.max(0, b.fechamento - b.inicial))
+    );
     const litrosVendidos = somaLitros(litrosDoBico);
 
     // ── O rateio, calculado UMA vez e distribuído aos três blocos ─────────────
@@ -267,7 +276,26 @@ export function planilhaMensal(entrada: EntradaPlanilhaMensal): PlanilhaMensal {
 
     const percas: PercaProduto[] = estoque.produtos.map((p) => {
         const impossivel = p.estoqueTeorico < 0;
-        const apuravel = p.percaOuSobra !== null && !impossivel;
+
+        // ENCERRANTE NÃO LANÇADO NÃO É COMBUSTÍVEL SUMIDO.
+        //
+        // Tanque medido + zero litro vendido dá `estoqueTeorico = anterior +
+        // comprado`, e a diferença contra a régua sai fortemente negativa: a
+        // tela acusaria uma PERDA do tamanho do mês inteiro. Mas o que faltou
+        // não foi combustível, foi o lançamento do encerrante — e este é o
+        // estado NORMAL de um mês em reconstrução, não a exceção.
+        //
+        // O módulo já protegia o caso espelho (`impossivel`, estoque teórico
+        // negativo) e deixava passar justamente o que produz o número
+        // alarmante. Acusar furto de combustível por falta de digitação é o
+        // erro mais caro que esta tela pode cometer.
+        //
+        // Zero litro com estoque parado (`percaOuSobra === 0`) não entra aqui:
+        // aquilo é um mês legítimo sem venda, e é apurável.
+        const semLeituraLancada =
+            p.litrosVendidos === 0 && p.percaOuSobra !== null && p.percaOuSobra !== 0;
+
+        const apuravel = p.percaOuSobra !== null && !impossivel && !semLeituraLancada;
 
         return {
             produto: p.produto,

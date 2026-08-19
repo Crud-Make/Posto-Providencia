@@ -124,3 +124,73 @@ describe('planilhaMensal', () => {
         expect(vazio.percaPercentual).toBeNull();
     });
 });
+
+describe('planilhaMensal — as duas guardas de mês incompleto', () => {
+    /**
+     * Encerrante que anda para trás não encolhe o mês.
+     *
+     * Sem o piso, o bico invertido subtrai dos litros do mês — e `litrosVendidos`
+     * é o DENOMINADOR do custo por litro. Um bico errado sobe o piso de venda de
+     * TODO produto e inverte PERDA em SOBRA no estoque, sem nada na saída
+     * sinalizando. É o mesmo motivo pelo qual `leitura.ts` tem `Math.max(0, …)`.
+     */
+    it('não deixa bico invertido encolher os litros do mês', () => {
+        const invertido: EntradaPlanilhaMensal = {
+            ...ENTRADA,
+            bicos: ENTRADA.bicos.map((b, i) =>
+                // Bico 05: fechamento ABAIXO do inicial, como um dígito trocado faria.
+                i === 4 ? { ...b, inicial: 12969.192, fechamento: 8549.042 } : b
+            ),
+        };
+
+        const r = planilhaMensal(invertido);
+        const bico05 = r.venda.bicos[4];
+
+        expect(bico05.litros).toBe(0);
+        // Sem o piso seriam −4.420,150 L, e o mês inteiro cairia com eles.
+        expect(r.venda.totais.litros).toBeCloseTo(46843.062 - 4420.15, 3);
+        expect(r.venda.totais.litros).toBeGreaterThan(0);
+    });
+
+    /**
+     * Tanque medido + encerrante não lançado NÃO é combustível sumido.
+     *
+     * É o estado normal de um mês em reconstrução: a medição da régua entra
+     * (fica fora da janela de 7 dias da RLS) e a venda não. Sem a guarda, a tela
+     * acusa uma PERDA do tamanho do mês — furto de combustível por falta de
+     * digitação.
+     */
+    it('não acusa perda quando o tanque foi medido e o encerrante não foi lançado', () => {
+        const semLeitura: EntradaPlanilhaMensal = {
+            ...ENTRADA,
+            // Nenhum bico girou: todo fechamento igual ao inicial.
+            bicos: ENTRADA.bicos.map((b) => ({ ...b, fechamento: b.inicial })),
+        };
+
+        const r = planilhaMensal(semLeitura);
+        const gc = r.percas.find((p) => p.produto === 'gc');
+
+        // 7392 anterior + 31000 comprado − 0 vendido = 38392 teórico contra
+        // 5672 na régua: acusaria 32.720 L de perda.
+        expect(gc?.litros).toBeNull();
+        expect(gc?.percentual).toBeNull();
+        expect(r.percaTotal).toBeNull();
+    });
+
+    /** Mês legítimo sem venda e sem mexer no tanque continua apurável. */
+    it('mantém apurável o produto que não vendeu e não perdeu', () => {
+        const parado: EntradaPlanilhaMensal = {
+            bicos: [{ bico: 'B1', produto: 'gc', inicial: 100, fechamento: 100 }],
+            produtos: [
+                { produto: 'gc', preco: 6, compraLitros: 0, compraValor: 0, estoqueAnterior: 500, estoqueTanque: 500 },
+            ],
+            despesasDoMes: 0,
+        };
+
+        const r = planilhaMensal(parado);
+        const gc = r.percas.find((p) => p.produto === 'gc');
+
+        expect(gc?.litros).toBe(0);
+        expect(gc?.impossivel).toBe(false);
+    });
+});

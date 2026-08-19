@@ -1,7 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, Camera, Check, AlertCircle, Loader2, Gauge, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Camera, Check, AlertCircle, Loader2, Gauge, RefreshCw, CalendarX } from 'lucide-react';
 import { api } from '../services/api';
-import { hojeIso } from '@posto/utils';
+import type { DiaEmFalta } from '@posto/api-core';
+import { hojeIso, deIsoLocal } from '@posto/utils';
+
+/** `2026-08-14` → `14/08 (sex)`. Dia da semana ajuda a reconhecer o dia esquecido. */
+const rotuloDoDia = (iso: string): string => {
+    const d = deIsoLocal(iso);
+    const semana = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} (${semana})`;
+};
 
 interface EncerranteProps {
     /** Só rótulo: quem fotografou não é gravado — `Leitura` não tem frentista. */
@@ -45,6 +53,42 @@ const formatBR = (dotStr: string | null): string => {
     const [int, dec = ''] = String(dotStr).split('.');
     const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     return dec ? `${intFmt},${dec}` : intFmt;
+};
+
+/**
+ * Máscara de digitação: os TRÊS ÚLTIMOS dígitos são sempre os mililitros.
+ *
+ * @remarks Digitar `1740317000` produz `1.740.317,000`. Quem digita a vírgula
+ *          também acerta — ela é descartada e a contagem de dígitos é a mesma.
+ *
+ *          Esta é a MESMA convenção do painel (`formatarEntradaEncerrante` em
+ *          `useLeituras.ts`), e a consistência aqui não é estética: é a mesma
+ *          pessoa lançando encerrante nos dois lugares.
+ *
+ *          ⚠️ **Esta heurística é proibida para dinheiro e correta para
+ *          encerrante**, e a diferença é o que impede alguém de copiá-la para o
+ *          lugar errado. Em dinheiro, o número de casas varia, e supor três
+ *          decimais já transformou **R$ 7.436,00 em R$ 7,44 em produção** (é o
+ *          `analisarValor` que o `campo-numerico.ts` da `/planilha` substituiu
+ *          justamente por isso). O encerrante é o odômetro da bomba: ele tem
+ *          três casas SEMPRE, impressas no papel, e é por isso que aqui não há
+ *          o que adivinhar.
+ *
+ *          O custo aceito: quem digitar só a parte inteira (`1740317`) recebe
+ *          `1.740,317`, mil vezes menor. É por isso que a tela mostra a leitura
+ *          anterior embaixo de cada campo e avisa em âmbar quando o número
+ *          retrocede — o erro fica visível antes de gravar.
+ */
+const mascaraEncerrante = (texto: string): string => {
+    const digitos = texto.replace(/\D/g, '');
+    if (digitos === '') return '';
+
+    const acolchoado = digitos.padStart(4, '0');
+    const decimais = acolchoado.slice(-3);
+    const inteiro = acolchoado.slice(0, -3).replace(/^0+(?=\d)/, '');
+    const comMilhar = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+    return `${comMilhar},${decimais}`;
 };
 
 // "1.861.796,633" -> 1861796.633
@@ -116,6 +160,10 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         return () => clearInterval(t);
     }, []);
 
+    // Dias passados sem encerrante (ou com encerrante pela metade). Carregado
+    // depois dos bicos, porque depende de saber quantos bicos são esperados.
+    const [diasEmFalta, setDiasEmFalta] = useState<DiaEmFalta[]>([]);
+
     useEffect(() => {
         Promise.all([api.getBicos(POSTO_ID), api.getUltimasLeiturasPorBico(POSTO_ID)])
             .then(([bs, ult]) => {
@@ -130,6 +178,13 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                 }));
                 setBicos(mapped);
                 setUltimas(ult);
+
+                // Falha em silêncio de propósito: o aviso é conveniência, e um
+                // erro de rede aqui não pode impedir alguém de enviar o
+                // encerrante que está na mão.
+                api.diasEmFalta(POSTO_ID, mapped.length)
+                    .then(setDiasEmFalta)
+                    .catch(() => { });
             })
             .catch(err => setFeedback({ tipo: 'erro', msg: err.message || 'Erro ao carregar bicos' }))
             .finally(() => setCarregandoBase(false));
@@ -315,6 +370,37 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                     </div>
                 </label>
 
+                {/* Dias em falta — silencioso quando não há nenhum. O encerrante
+                    passou a depender de uma pessoa só; esquecer um dia não
+                    produzia sinal nenhum antes deste bloco. */}
+                {diasEmFalta.length > 0 && (
+                    <div className="rounded-xl p-3 border bg-amber-500/10 border-amber-500/30">
+                        <div className="flex items-start gap-2 text-amber-300 text-sm font-semibold">
+                            <CalendarX size={16} className="mt-0.5 shrink-0" />
+                            <span>
+                                {diasEmFalta.length === 1
+                                    ? '1 dia sem o encerrante completo'
+                                    : `${diasEmFalta.length} dias sem o encerrante completo`}
+                            </span>
+                        </div>
+                        <ul className="mt-2 space-y-1">
+                            {diasEmFalta.map(dia => (
+                                <li key={dia.data} className="text-amber-200/80 text-xs flex justify-between gap-3">
+                                    <span>{rotuloDoDia(dia.data)}</span>
+                                    <span>
+                                        {dia.bicosLancados === 0
+                                            ? 'nenhum bico'
+                                            : `${dia.bicosLancados} de ${dia.bicosEsperados} bicos`}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="text-amber-200/60 text-[11px] mt-2">
+                            Dá para lançar até 7 dias para trás. Depois disso o sistema não aceita mais.
+                        </p>
+                    </div>
+                )}
+
                 {preview && !lendo && (
                     <div className="flex items-center gap-3 bg-[#131722] rounded-xl p-2 border border-slate-800/60">
                         <img src={preview} alt="foto" className="w-14 h-14 rounded-lg object-cover" />
@@ -364,7 +450,8 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                                             inputMode="decimal"
                                             value={valores[b.id] || ''}
                                             onChange={e => {
-                                                setValores(prev => ({ ...prev, [b.id]: e.target.value }));
+                                                const comMascara = mascaraEncerrante(e.target.value);
+                                                setValores(prev => ({ ...prev, [b.id]: comMascara }));
                                                 setDuvidaOcr(prev => (prev[b.id] ? { ...prev, [b.id]: false } : prev));
                                             }}
                                             placeholder="0,000"

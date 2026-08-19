@@ -16,3 +16,4 @@ export * from './resumo-estoque';
 export * from './planilha-mensal';
 export * from './serie-diaria';
 export * from './presenca';
+export * from './leitura';
