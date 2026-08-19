@@ -141,6 +141,10 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     // bico_id -> a 2ª leitura (auto-conferência) divergiu da 1ª nesse bico
     const [duvidaOcr, setDuvidaOcr] = useState<Record<number, boolean>>({});
 
+    // Dia que está sendo fechado. Padrão é hoje — a operação normal — mas o dono
+    // precisa poder lançar um dia passado (encerrante esquecido, replay de
+    // período). Tudo que depende de data lê daqui, nunca de `hojeIso()` direto.
+    const [dataEnvio, setDataEnvio] = useState<string>(() => hojeIso());
     const [enviando, setEnviando] = useState(false);
     const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'erro'; msg: string } | null>(null);
 
@@ -164,9 +168,23 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
     // depois dos bicos, porque depende de saber quantos bicos são esperados.
     const [diasEmFalta, setDiasEmFalta] = useState<DiaEmFalta[]>([]);
 
+    // Incrementa depois de cada envio: as leituras recém-gravadas viram a base
+    // do próximo, e o aviso de dias em falta precisa ser refeito.
+    const [versaoBase, setVersaoBase] = useState(0);
+
     useEffect(() => {
-        Promise.all([api.getBicos(POSTO_ID), api.getUltimasLeiturasPorBico(POSTO_ID)])
-            .then(([bs, ult]) => {
+        // Trocar o dia no meio de uma carga deixa duas respostas em voo; sem
+        // esta flag a que chega por último vence, e a base pode ficar sendo a
+        // do dia errado — que é o que `handleEnviar` grava como inicial.
+        let ativo = true;
+        setCarregandoBase(true);
+        Promise.all([
+            api.getBicos(POSTO_ID),
+            api.getUltimasLeiturasPorBico(POSTO_ID, dataEnvio),
+            api.getUltimosPrecosPorBico(POSTO_ID, dataEnvio),
+        ])
+            .then(([bs, ult, precos]) => {
+                if (!ativo) return;
                 // Cliente Supabase não tipado com o Database gerado: o join infere `combustivel`
                 // como array na estrutura, mas essa FK é many-to-one — em runtime vem objeto único.
                 const mapped: BicoInfo[] = (bs as unknown as BicoRow[]).map(b => ({
@@ -174,7 +192,12 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                     numero: b.numero,
                     combustivel_id: b.combustivel_id,
                     combNome: b.combustivel?.nome ?? '—',
-                    preco: Number(b.combustivel?.preco_venda ?? 0),
+                    // Cadastro é o preço de HOJE. Num dia passado ele produz valor
+                    // errado sem avisar — foi o que fez o replay de 01/01 fechar em
+                    // R$ 10.503,77 contra R$ 9.430,34 da planilha. O preço do último
+                    // dia lançado manda; o cadastro só entra quando não há dia
+                    // anterior nenhum.
+                    preco: precos.get(b.id) ?? Number(b.combustivel?.preco_venda ?? 0),
                 }));
                 setBicos(mapped);
                 setUltimas(ult);
@@ -183,12 +206,15 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                 // erro de rede aqui não pode impedir alguém de enviar o
                 // encerrante que está na mão.
                 api.diasEmFalta(POSTO_ID, mapped.length)
-                    .then(setDiasEmFalta)
+                    .then(faltas => { if (ativo) setDiasEmFalta(faltas); })
                     .catch(() => { });
             })
-            .catch(err => setFeedback({ tipo: 'erro', msg: err.message || 'Erro ao carregar bicos' }))
-            .finally(() => setCarregandoBase(false));
-    }, []);
+            .catch(err => { if (ativo) setFeedback({ tipo: 'erro', msg: err.message || 'Erro ao carregar bicos' }); })
+            .finally(() => { if (ativo) setCarregandoBase(false); });
+        return () => { ativo = false; };
+        // Trocar o dia troca a base: a inicial de cada bico é o fechamento do dia
+        // anterior AO ESCOLHIDO, não ao de hoje.
+    }, [dataEnvio, versaoBase]);
 
     const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -307,15 +333,15 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
 
         setEnviando(true);
         try {
-            const data = hojeIso();
-            await api.salvarLeituras({ postoId: POSTO_ID, data, linhas });
-            setFeedback({ tipo: 'ok', msg: `${linhas.length} leituras enviadas com sucesso!` });
+            await api.salvarLeituras({ postoId: POSTO_ID, data: dataEnvio, linhas });
+            setFeedback({ tipo: 'ok', msg: `${linhas.length} leituras enviadas para ${rotuloDoDia(dataEnvio)}!` });
             setTemLeitura(false);
             setPreview(null);
             setValores({});
             setDuvidaOcr({});
-            // recarrega as últimas leituras (agora as que acabamos de gravar viram base)
-            api.getUltimasLeiturasPorBico(POSTO_ID).then(setUltimas).catch(() => { });
+            // recarrega a base pelo mesmo efeito da data (as que acabamos de gravar
+            // viram base), em vez de um fetch solto que corria com a troca de dia
+            setVersaoBase(v => v + 1);
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Erro ao enviar as leituras.';
             setFeedback({ tipo: 'erro', msg });
@@ -346,6 +372,32 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                         <p className="text-sm text-slate-400">{frentistaNome ?? 'Leitura das bombas'}</p>
                     </div>
                 </div>
+
+                {/* Dia do lançamento. Vem em hoje, que é o caso de sempre; trocar
+                    serve para o encerrante esquecido e para o replay de período
+                    passado. Fica destacado quando NÃO é hoje, para ninguém lançar
+                    num dia errado sem perceber. */}
+                <label
+                    className={`mt-4 flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+                        dataEnvio === hojeIso()
+                            ? 'border-slate-700 bg-slate-900/60'
+                            : 'border-amber-500/40 bg-amber-500/10'
+                    }`}
+                >
+                    <span className="text-sm text-slate-400 shrink-0">Dia do encerrante</span>
+                    <input
+                        type="date"
+                        value={dataEnvio}
+                        max={hojeIso()}
+                        onChange={(e) => setDataEnvio(e.target.value || hojeIso())}
+                        className="bg-transparent text-right text-white font-semibold text-sm outline-none"
+                    />
+                </label>
+                {dataEnvio !== hojeIso() && (
+                    <p className="mt-1.5 text-xs text-amber-300">
+                        Lançando em {rotuloDoDia(dataEnvio)} — não é hoje.
+                    </p>
+                )}
             </div>
 
             <div className="px-5 space-y-4 flex-1">
@@ -396,7 +448,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                             ))}
                         </ul>
                         <p className="text-amber-200/60 text-[11px] mt-2">
-                            Dá para lançar até 7 dias para trás. Depois disso o sistema não aceita mais.
+                            Dá para lançar qualquer dia de 2026 enquanto o histórico está sendo reconstruído. Lançar no futuro segue barrado.
                         </p>
                     </div>
                 )}
@@ -487,14 +539,14 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
             <div className="px-5 pt-4">
                 <button
                     onClick={handleEnviar}
-                    disabled={enviando || !temValorParaEnviar}
+                    disabled={enviando || carregandoBase || !temValorParaEnviar}
                     className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-white transition-all
-                        ${enviando || !temValorParaEnviar
+                        ${enviando || carregandoBase || !temValorParaEnviar
                             ? 'bg-indigo-600/40 cursor-not-allowed'
                             : 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-[0_0_20px_rgba(79,70,229,0.3)]'}`}
                 >
-                    {enviando ? <RefreshCw size={20} className="animate-spin" /> : <Check size={20} />}
-                    {enviando ? 'Enviando…' : 'Confirmar e Enviar Leituras'}
+                    {enviando || carregandoBase ? <RefreshCw size={20} className="animate-spin" /> : <Check size={20} />}
+                    {enviando ? 'Enviando…' : carregandoBase ? 'Carregando base do dia…' : 'Confirmar e Enviar Leituras'}
                 </button>
             </div>
         </div>
