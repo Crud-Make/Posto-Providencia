@@ -28,9 +28,6 @@ interface DiaEmFalta {
 
 // Mutáveis: cada teste ajusta o cenário antes de montar.
 let ultimasLeituras = new Map<number, number>();
-// Preço praticado no último dia lançado. Vazio por padrão: o bico cai no cadastro,
-// que é o que os testes existentes já esperavam.
-let ultimosPrecos = new Map<number, number>();
 let respostaOcr: LeituraOcr[] = [];
 let erroOcr: Error | null = null;
 let faltas: DiaEmFalta[] = [];
@@ -45,7 +42,6 @@ vi.mock('../services/api', () => ({
     api: {
         getBicos: async () => BICOS,
         getUltimasLeiturasPorBico: async () => ultimasLeituras,
-        getUltimosPrecosPorBico: async () => ultimosPrecos,
         aquecerEncerrante: () => { },
         diasEmFalta: async () => faltas,
         lerEncerrante: (...args: [string, string]) => lerEncerrante(...args),
@@ -136,7 +132,6 @@ const botaoEnviar = () =>
 
 describe('EncerranteScreen — caminho da foto', () => {
     beforeEach(() => {
-        ultimosPrecos = new Map<number, number>();
         ultimasLeituras = new Map<number, number>([
             [10, 1861796.633],
             [11, 500000],
@@ -385,47 +380,5 @@ describe('EncerranteScreen — caminho da foto', () => {
         expect(payload.linhas).toHaveLength(1);
         expect(payload.linhas[0].leitura_inicial).toBe(1861900.5);
         expect(payload.linhas[0].leitura_final).toBe(1861900.5);
-    });
-
-    /**
-     * O cadastro guarda o preço de HOJE. Lançar um dia passado com ele produz o
-     * valor errado sem nenhum aviso: em 19/08/2026 o replay de 01/01 fechou em
-     * R$ 10.503,77 contra R$ 9.430,34 da planilha, porque a gasolina valia 6,98
-     * no cadastro e 6,28 naquele dia. O preço do último dia lançado manda.
-     */
-    it('grava o preço do último dia lançado, não o do cadastro', async () => {
-        ultimosPrecos = new Map<number, number>([[10, 6.28]]);
-        await montar();
-        digitar(campos()[0], '1.861.900,500');
-
-        await act(async () => {
-            botaoEnviar().click();
-        });
-        await escoar();
-
-        const [payload] = salvarLeituras.mock.calls[0] as unknown as [
-            { linhas: Array<{ preco_litro: number }> },
-        ];
-        expect(payload.linhas[0].preco_litro).toBe(6.28);
-    });
-
-    /**
-     * Sem dia anterior não há o que herdar, e aí o cadastro é a única fonte —
-     * é o caso do primeiro lançamento do posto, e do bico recém-instalado.
-     */
-    it('cai no preço do cadastro quando não há dia anterior lançado', async () => {
-        ultimosPrecos = new Map<number, number>();
-        await montar();
-        digitar(campos()[0], '1.861.900,500');
-
-        await act(async () => {
-            botaoEnviar().click();
-        });
-        await escoar();
-
-        const [payload] = salvarLeituras.mock.calls[0] as unknown as [
-            { linhas: Array<{ preco_litro: number }> },
-        ];
-        expect(payload.linhas[0].preco_litro).toBe(6.98);
     });
 });
