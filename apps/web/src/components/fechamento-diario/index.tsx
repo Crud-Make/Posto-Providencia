@@ -161,6 +161,12 @@ const TelaFechamentoDiario: React.FC = () => {
    // chave inteira do fechamento. De quebra some o gate: os carregamentos abaixo eram
    // barrados até a lista de turnos chegar do banco, e agora dependem só da data.
 
+   // E aplicado UMA vez por restauração, mesmo não vazio: este efeito redispara toda
+   // vez que `carregarSessoes` troca de identidade, o que acontece a cada recarga da
+   // lista de frentistas — e ela recarrega em todo evento realtime de `Fechamento`
+   // (cada envio do PWA consolida o pai). Sem a trava, um rascunho com valores da
+   // abertura da tela voltava por cima das sessões recém-vindas do banco.
+   const rascunhoAplicado = React.useRef<typeof rascunhoRestaurado>(null);
    useEffect(() => {
       if (restaurado && !saving && !success) {
          // As leituras dos bicos e os envios do PWA vêm do banco (OCR/PWA + realtime) —
@@ -169,7 +175,16 @@ const TelaFechamentoDiario: React.FC = () => {
          // sessões já enviadas vêm do banco, sessões digitadas localmente e ainda não
          // enviadas continuam preservadas).
          carregarLeituras();
-         if (rascunhoRestaurado?.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
+         // `.length > 0`, não só a existência: `[]` é verdadeiro em JavaScript, e o
+         // rascunho nasce com a lista vazia. Sem o comprimento, este `if` entrava com
+         // array vazio e chamava `definirSessoes([])`, apagando o que o realtime tinha
+         // acabado de trazer do banco — o envio do frentista aparecia na tela e sumia
+         // um instante depois. Medido em 19/08/2026 no navegador do dono:
+         // `rascunho_fechamento_diario_v1_1` → `sessoesFrentistas: []`.
+         if (rascunhoRestaurado?.sessoesFrentistas?.length && rascunhoAplicado.current !== rascunhoRestaurado) {
+            rascunhoAplicado.current = rascunhoRestaurado;
+            definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
+         }
          if (selectedDate) {
             carregarSessoes(selectedDate);
             // Os pagamentos do Caixa Geral também vêm do banco e precisam ser carregados AQUI.

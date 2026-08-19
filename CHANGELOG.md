@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### 👻 Envio do PWA aparecia no painel e sumia um instante depois
+- **[19/08/2026]** Em produção, o frentista enviava pelo app, a linha entrava na aba de
+  Frentistas pelo realtime e **desaparecia**; só voltava com F5. A cadeia: o `INSERT` em
+  `FechamentoFrentista` recarregava as sessões (certo), mas o PWA em seguida consolida o
+  pai (`UPDATE Fechamento`), cujo realtime recarrega a lista de frentistas, o que troca a
+  identidade de `carregarSessoes` e **redispara o efeito do rascunho** — que reaplicava o
+  `localStorage` (antigo, ou `[]`) por cima das sessões recém-vindas do banco. O
+  `carregarSessoes` seguinte não era forçado e batia no cache da data, então nada recarregava.
+- Correção em `fechamento-diario/index.tsx`: o rascunho é aplicado **uma vez por
+  restauração** (`ref`), e `sessoesFrentistas: []` deixa de contar como rascunho — `[]` é
+  verdadeiro em JS e entrava no `if`, apagando a tela. Medido no navegador do dono:
+  `rascunho_fechamento_diario_v1_1` → `sessoesFrentistas: []`.
+
 ### 🔒 O modo visitante sai — sem senha não há meia-entrada
 - **[19/08/2026]** O "Continuar sem entrar" existia desde 16/08 como escada para a
   apresentação não travar sem a senha à mão. Saiu porque era **pior que a trava**: como `anon`,
