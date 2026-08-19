@@ -215,7 +215,7 @@ export const useLeituras = (
    * a preço de agosto (R$ 6,98). O receptor esperado é o `updateBicoPrice`
    * de `useCarregamentoDados`, que só altera o preço em memória da tela.
    */
-  aoRestaurarPrecoDoDia?: (bicoId: number, precoDoDia: number) => void
+  aoRestaurarPrecoDoDia?: (bicoId: number, precoDoDia: number, modo?: 'sobrescrever' | 'se-vazio') => void
 ): RetornoLeituras => {
   const [leituras, setLeituras] = useState<Record<number, Leitura>>({});
   const [carregando, setCarregando] = useState(false);
@@ -301,7 +301,10 @@ export const useLeituras = (
         // como o modo criação faz logo abaixo.
         const semEntrada = bicos.filter(bico => !(bico.id in mapeado));
         if (semEntrada.length > 0) {
-          const ultimasRes = await leituraService.getLastReading(postoId);
+          // `dataSelecionada` não é opcional aqui: sem o recorte, o bico faltante
+          // herda o encerrante do dia mais NOVO do banco, e num dia histórico isso
+          // é justamente o odômetro inteiro que o comentário acima teme.
+          const ultimasRes = await leituraService.getLastReading(postoId, dataSelecionada);
           const ultimas = isSuccess(ultimasRes) ? ultimasRes.data : [];
           for (const bico of semEntrada) {
             const ultima = ultimas.find(l => l.bico_id === bico.id);
@@ -333,6 +336,20 @@ export const useLeituras = (
             inicial: ultima ? formatarParaBR(ultima.leitura_final, 3) : '0,000',
             fechamento: ''
           };
+
+          // O preço segue a mesma regra do encerrante inicial: o dia novo herda
+          // o do último dia lançado, não o do cadastro. Posto não retabela todo
+          // dia — o preço vale até a próxima troca, e é assim que a planilha
+          // registra. Sem isto, cada dia do histórico nascia com o preço de HOJE
+          // e o dono teria de redigitar os quatro combustíveis 212 vezes, com
+          // uma chance de errar em cada uma. Cadastro só entra quando não há
+          // nenhum dia anterior lançado.
+          // 'se-vazio': herança nunca pisa no preço que o gerente já digitou
+          // para este dia — senão cada recarga devolvia o preço de ontem por
+          // cima do rascunho (achado de 19/08/2026).
+          if (ultima && Number(ultima.preco_litro) > 0) {
+            aoRestaurarPrecoDoDia?.(bico.id, Number(ultima.preco_litro), 'se-vazio');
+          }
           return acc;
         }, {} as Record<number, Leitura>);
         setLeituras(mapeado);

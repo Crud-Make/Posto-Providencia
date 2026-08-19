@@ -296,8 +296,16 @@ export const fechamentoFrentistaService = {
       let fechamentoQuery = supabase
         .from('Fechamento')
         .select('id')
-        .gte('data', `${dataStr}T00:00:00`)
-        .lte('data', `${dataStr}T23:59:59`);
+        // **O `Z` não é enfeite.** `Fechamento.data` é `timestamptz` e o PWA grava à
+        // meia-noite UTC. Sem o sufixo, o Postgres interpreta o limite no fuso da
+        // SESSÃO: em America/Sao_Paulo, `2026-01-01T00:00:00` vira 03:00Z, a linha
+        // gravada às 00:00Z cai abaixo do piso, e o dia inteiro some da tela sem
+        // erro nenhum. Foi o que fez o painel não mostrar NENHUM envio de frentista
+        // em 19/08/2026 — o dono mandava do celular, o banco gravava certo, e a
+        // tela seguia dizendo R$ 0,00. Medido: com fuso UTC a consulta acha a linha,
+        // com America/Sao_Paulo acha zero.
+        .gte('data', `${dataStr}T00:00:00Z`)
+        .lte('data', `${dataStr}T23:59:59Z`);
 
       if (postoId) {
         fechamentoQuery = fechamentoQuery.eq('posto_id', postoId);
@@ -339,7 +347,7 @@ export const fechamentoFrentistaService = {
    * @remarks
    * Mesmo desenho de {@link getByDate}, com intervalo no lugar de um dia: duas
    * consultas, porque `FechamentoFrentista` não tem data própria — a data mora no
-   * `Fechamento` pai. O recorte usa `T00:00:00`/`T23:59:59` porque `Fechamento.data`
+   * `Fechamento` pai. O recorte usa `T00:00:00Z`/`T23:59:59Z` porque `Fechamento.data`
    * é timestamp, não date: comparar com a data crua deixaria o último dia de fora.
    */
   async getByPeriodo(dataInicio: string, dataFim: string, postoId?: number): Promise<ApiResponse<FechamentoFrentistaComRelacoes[]>> {
@@ -347,8 +355,8 @@ export const fechamentoFrentistaService = {
       let fechamentoQuery = supabase
         .from('Fechamento')
         .select('id')
-        .gte('data', `${dataInicio}T00:00:00`)
-        .lte('data', `${dataFim}T23:59:59`);
+        .gte('data', `${dataInicio}T00:00:00Z`)
+        .lte('data', `${dataFim}T23:59:59Z`);
 
       if (postoId) {
         fechamentoQuery = fechamentoQuery.eq('posto_id', postoId);
@@ -389,8 +397,8 @@ export const fechamentoFrentistaService = {
       let fechamentoQuery = supabase
         .from('Fechamento')
         .select('id')
-        .gte('data', `${dataStr}T00:00:00`)
-        .lte('data', `${dataStr}T23:59:59`)
+        .gte('data', `${dataStr}T00:00:00Z`)
+        .lte('data', `${dataStr}T23:59:59Z`)
         .eq('turno_id', turnoId);
 
       if (postoId) {

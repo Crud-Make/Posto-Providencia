@@ -252,12 +252,12 @@ const TelaFechamentoDiario: React.FC = () => {
             postoNome={postoAtivo?.nome} loading={loadingDados}
          />
 
-         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+         <div className="w-full px-2 lg:px-3 py-4 space-y-4">
             {loading && <div className="mb-6"><ProgressIndicator current={50} total={100} label="Sincronizando dados..." /></div>}
             {error && <div className="p-4 bg-red-900/20 text-red-200 rounded-xl border border-red-500/30 flex items-center gap-3 animate-shake"><AlertTriangle size={20} className="text-red-400" /><span>{error}</span></div>}
             {success && <div className="p-4 bg-emerald-900/20 text-emerald-200 rounded-xl border border-emerald-500/30 flex items-center gap-3 animate-bounce-subtle"><TrendingUp size={20} className="text-emerald-400" /><span>{success}</span></div>}
 
-            <div className="bg-slate-800/30 rounded-2xl border border-slate-700/50 p-1">
+            <div className="bg-slate-800/30 rounded-2xl border border-slate-700/50 p-0.5">
                {activeTab === 'leituras' ? (
                   <TabLeituras
                      bicos={bicos} leituras={leituras} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
@@ -329,8 +329,8 @@ const TelaFechamentoDiario: React.FC = () => {
                   setSuccess(null);
                   carregarLeituras();
                   if (selectedDate) {
-                     carregarSessoes(selectedDate);
-                     carregarPagamentos(selectedDate);
+                     carregarSessoes(selectedDate, true);
+                     carregarPagamentos(selectedDate, true);
                   }
                }
             })}

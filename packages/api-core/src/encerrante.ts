@@ -46,18 +46,49 @@ const TURNO_CANONICO = 1;
 /**
  * Quantos dias para trás vale a pena cobrar o encerrante.
  *
- * @remarks Não é número redondo escolhido a gosto: é a largura da janela de
- *          escrita da RLS (`dentro_da_janela_de_escrita`: `data >= hoje - 7`).
- *          Fora dela o banco recusa o INSERT, então avisar sobre dia mais
- *          antigo seria cobrar algo que o app não consegue fazer — aviso que
- *          não leva a lugar nenhum é aviso que se aprende a ignorar.
+ * @remarks Não é número redondo escolhido a gosto: nasceu como a largura da
+ *          janela de escrita da RLS (`dentro_da_janela_de_escrita`, em regime
+ *          normal `data >= hoje - 7`). A janela do banco pode estar mais larga
+ *          (migration `20260819_janela_escrita_cobre_o_replay`, enquanto o
+ *          histórico é reconstruído), mas o aviso continua cobrando só a
+ *          semana: aviso que lista meses de dias é aviso que se aprende a
+ *          ignorar.
  */
 const DIAS_COBRAVEIS = 7;
 
 /** Linha crua da query de leituras (select bico_id, leitura_final, data, id). */
+/**
+ * A última linha de `Leitura` de cada bico antes de `anteriorA`.
+ *
+ * @remarks Um lugar só para o recorte, porque encerrante inicial e preço herdado
+ *          têm de vir do MESMO dia. Duas consultas separadas poderiam divergir se
+ *          uma rodasse antes e a outra depois de uma gravação.
+ */
+async function ultimaLinhaPorBico(
+    supabase: SupabaseClient,
+    postoId: number,
+    anteriorA?: string
+): Promise<Map<number, LinhaLeitura>> {
+    const { data, error } = await supabase
+        .from('Leitura')
+        .select('bico_id, leitura_final, preco_litro, data, id')
+        .eq('posto_id', postoId)
+        .lt('data', anteriorA ?? hojeIso())
+        .order('data', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(200);
+    if (error) throw new Error(error.message);
+    const porBico = new Map<number, LinhaLeitura>();
+    (data || []).forEach((l: LinhaLeitura) => {
+        if (!porBico.has(l.bico_id)) porBico.set(l.bico_id, l);
+    });
+    return porBico;
+}
+
 interface LinhaLeitura {
     bico_id: number;
     leitura_final: number;
+    preco_litro: number | null;
 }
 
 /** Uma leitura de bico pronta para gravar, ainda sem litros nem valor. */
@@ -141,7 +172,13 @@ export interface AcessoEncerrante {
     getBicos(postoId: number): Promise<unknown[]>;
     aquecerEncerrante(): void;
     lerEncerrante(imagemBase64: string, mimeType: string): Promise<LeituraOcr[]>;
-    getUltimasLeiturasPorBico(postoId: number): Promise<Map<number, number>>;
+    /** `anteriorA` (`YYYY-MM-DD`) recorta o dia que está sendo fechado; padrão hoje. */
+    getUltimasLeiturasPorBico(postoId: number, anteriorA?: string): Promise<Map<number, number>>;
+    /**
+     * Mapa `bico_id` -> `preco_litro` do último dia lançado antes de `anteriorA`.
+     * Bico sem dia anterior não entra — quem chama cai no cadastro.
+     */
+    getUltimosPrecosPorBico(postoId: number, anteriorA?: string): Promise<Map<number, number>>;
     diasEmFalta(postoId: number, bicosEsperados: number): Promise<DiaEmFalta[]>;
     encerranteDeHoje(postoId: number): Promise<EncerranteDoDia | null>;
     salvarLeituras(params: {
@@ -237,21 +274,46 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
          *          no mesmo dia partia da própria foto anterior, e o dia
          *          encolhia a cada tentativa.
          */
-        async getUltimasLeiturasPorBico(postoId: number): Promise<Map<number, number>> {
-            const { data, error } = await supabase
-                .from('Leitura')
-                .select('bico_id, leitura_final, data, id')
-                .eq('posto_id', postoId)
-                .lt('data', hojeIso())
-                .order('data', { ascending: false })
-                .order('id', { ascending: false })
-                .limit(200);
-            if (error) throw new Error(error.message);
+        /**
+         * Mapa `bico_id` -> última `leitura_final` de ANTES de `anteriorA`.
+         *
+         * @param anteriorA - Dia que está sendo fechado (`YYYY-MM-DD`). O padrão
+         *                    é hoje, que é o caso da operação normal.
+         * @remarks O recorte é **estritamente anterior** porque `salvarLeituras`
+         *          apaga e regrava o dia inteiro: o envio precisa partir do
+         *          fechamento do dia de antes, não do que já foi gravado hoje.
+         *          Parametrizado em 19/08/2026 para o app do dono poder lançar
+         *          um dia passado — com `hojeIso()` fixo, um dia histórico
+         *          herdava o encerrante do dia mais recente do banco e produzia
+         *          litragem que não existiu.
+         */
+        async getUltimasLeiturasPorBico(postoId: number, anteriorA?: string): Promise<Map<number, number>> {
             const ultimas = new Map<number, number>();
-            (data || []).forEach((l: LinhaLeitura) => {
-                if (!ultimas.has(l.bico_id)) ultimas.set(l.bico_id, Number(l.leitura_final));
+            (await ultimaLinhaPorBico(supabase, postoId, anteriorA)).forEach((l, bicoId) => {
+                ultimas.set(bicoId, Number(l.leitura_final));
             });
             return ultimas;
+        },
+
+        /**
+         * Mapa `bico_id` -> `preco_litro` praticado no último dia lançado.
+         *
+         * @remarks Existe porque o cadastro (`Combustivel.preco_venda`) é o preço de
+         *          HOJE, e lançar um dia passado com ele produz o valor errado sem
+         *          nenhum aviso: em 19/08/2026, o replay de 01/01 fechou em
+         *          R$ 10.503,77 contra R$ 9.430,34 da planilha — R$ 1.073 a mais,
+         *          só porque a gasolina valia 6,98 no cadastro e 6,28 naquele dia.
+         *          Posto não retabela todo dia: o preço vale até a próxima troca, e
+         *          herdá-lo do último dia lançado acerta sozinho o caso comum.
+         *          Bico sem dia anterior fica de fora, e quem chama cai no cadastro.
+         */
+        async getUltimosPrecosPorBico(postoId: number, anteriorA?: string): Promise<Map<number, number>> {
+            const precos = new Map<number, number>();
+            (await ultimaLinhaPorBico(supabase, postoId, anteriorA)).forEach((l, bicoId) => {
+                const preco = Number(l.preco_litro ?? 0);
+                if (preco > 0) precos.set(bicoId, preco);
+            });
+            return precos;
         },
 
         /**
@@ -394,7 +456,7 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                 .in('bico_id', bicosGravados);
             if (delError) throw new Error(delError.message);
 
-            // Um DELETE barrado pela RLS (dia fora da janela de 7 dias) devolve
+            // Um DELETE barrado pela RLS (dia fora da janela de escrita) devolve
             // 204 SEM erro. Seguir daqui reinseriria as leituras por cima das
             // antigas e dobraria o dia — em silêncio.
             //
@@ -411,7 +473,7 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
             if (erroConferencia) throw new Error(erroConferencia.message);
             if ((sobraram ?? 0) > 0) {
                 throw new Error(
-                    'Não foi possível regravar as leituras deste dia: só é permitido alterar os últimos 7 dias.'
+                    'Não foi possível regravar as leituras deste dia: está fora da janela de edição do banco — veja com o gerente.'
                 );
             }
 

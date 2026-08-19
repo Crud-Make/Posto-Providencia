@@ -15,7 +15,7 @@
 // Motivo: Services agora retornam { success, data, error } (Smart Types)
 
 import * as React from 'react';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import type { EntradaPagamento } from '../../../types/fechamento';
 import type { Recebimento } from '../../../types/database/aliases';
 import { formaPagamentoService } from '../../../services/api';
@@ -33,7 +33,7 @@ interface RetornoPagamentos {
   totalPagamentos: number;
   totalTaxas: number;
   totalLiquido: number;
-  carregarPagamentos: (data?: string) => Promise<void>;
+  carregarPagamentos: (data?: string, force?: boolean) => Promise<void>;
   alterarPagamento: (indice: number, valor: string) => void;
   aoSairPagamento: (indice: number) => void;
   sincronizarComSessoes: (sessoes: import('../../../types/fechamento').SessaoFrentista[]) => void;
@@ -57,12 +57,21 @@ interface RetornoPagamentos {
 export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
   const [pagamentos, setPagamentos] = useState<EntradaPagamento[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const ultimoContextoCarregado = useRef<string>('');
 
   /**
    * Carrega formas de pagamento do banco e valores salvos se houver
    */
-  const carregarPagamentos = useCallback(async (data?: string) => {
+  const carregarPagamentos = useCallback(async (data?: string, force = false) => {
     if (!postoId) return;
+
+    // Mesma trava de `carregarSessoes`/`carregarLeituras`: o efeito de restauração
+    // em `index.tsx` redispara a cada troca de identidade dos carregadores, e sem
+    // isto cada recarga remontava `pagamentos` a partir do banco (ou vazio), apagando
+    // o que o gerente tinha DIGITADO no Caixa Geral e ainda não salvo. Recarga
+    // deliberada (depois de salvar) passa `force`.
+    const chave = `${postoId}|${data ?? ''}`;
+    if (!force && ultimoContextoCarregado.current === chave) return;
 
     setCarregando(true);
     try {
@@ -112,6 +121,7 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
       }));
 
       setPagamentos(inicializados);
+      ultimoContextoCarregado.current = chave;
 
     } catch (err) {
       console.error('❌ Erro ao carregar formas de pagamento:', err);

@@ -94,8 +94,8 @@ export const leituraService = {
       console.log('🔍 [leituraService.getByDate] Parâmetros:', {
         data,
         postoId,
-        dataInicio: `${data}T00:00:00`,
-        dataFim: `${data}T23:59:59`
+        dataInicio: `${data}T00:00:00Z`,
+        dataFim: `${data}T23:59:59Z`
       });
 
       const baseQuery = supabase

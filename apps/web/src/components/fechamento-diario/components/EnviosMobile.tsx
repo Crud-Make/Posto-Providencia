@@ -63,7 +63,6 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
             <thead className="bg-slate-900/80">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Frentista</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Enviado em</th>
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Dinheiro</th>
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">PIX</th>
                 <th className="px-4 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Débito</th>
@@ -78,7 +77,11 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
             <tbody className="bg-slate-800 divide-y divide-slate-700/50">
               {sessoesComFrentista.map((s) => {
                 const nome = frentistas.find(f => f.id === s.frentistaId)?.nome || 'Frentista';
-                const enviadoEm = s.data_hora_envio ? new Date(s.data_hora_envio).toLocaleString('pt-BR') : '-';
+                // Só a hora: a data da linha é a da tela, repetir era ruído. Vazio
+                // quando não houve envio — a linha é um lugar em branco do painel.
+                const enviadoEm = s.data_hora_envio
+                  ? new Date(s.data_hora_envio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                  : '';
 
                 const dinheiro = parseValue(s.valor_dinheiro);
                 const pix = parseValue(s.valor_pix);
@@ -91,8 +94,18 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
 
                 return (
                   <tr key={s.tempId} className="hover:bg-slate-700/20 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-200">{nome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 font-mono">{enviadoEm}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="block text-sm font-medium text-slate-200">{nome}</span>
+                      {/* A coluna "Enviado em" saiu em 19/08/2026: ocupava largura de
+                          data completa e espremia os sete campos de dinheiro, que são
+                          o que se lê aqui. A hora desce para baixo do nome porque a
+                          informação não é decorativa — é o ÚNICO sinal de que a linha
+                          veio do app do frentista; sem ela, uma linha vazia criada pelo
+                          painel fica idêntica a um envio real. */}
+                      {enviadoEm && (
+                        <span className="block text-[11px] text-emerald-400/70 font-mono leading-tight">{enviadoEm}</span>
+                      )}
+                    </td>
 
                     {[
                       { campo: 'valor_dinheiro', val: s.valor_dinheiro },
@@ -103,7 +116,7 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
                       { campo: 'valor_baratao', val: s.valor_baratao },
                       { campo: 'valor_moedas', val: s.valor_moedas },
                     ].map((col) => (
-                      <td key={col.campo} className="px-2 py-3 text-right">
+                      <td key={col.campo} className="px-2 py-3 text-right min-w-[8.5rem]">
                         <div className="relative flex items-center">
                           <span className="absolute left-2 text-slate-500/70 font-mono text-sm pointer-events-none select-none">R$</span>
                           <input
@@ -113,7 +126,7 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
                             onChange={(e) => onUpdateCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
                             onBlur={(e) => onBlurCampo?.(s.tempId, col.campo as keyof SessaoFrentista, e.target.value)}
                             disabled={loading}
-                            className="w-full bg-slate-800/50 border border-slate-700 rounded py-2 pr-2 pl-8 text-right text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-colors hover:bg-slate-700/50"
+                            className="w-full min-w-[7.5rem] bg-slate-800/50 border border-slate-700 rounded py-2 pr-2 pl-8 text-right text-slate-200 font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-colors hover:bg-slate-700/50"
                           />
                         </div>
                       </td>

@@ -55,15 +55,37 @@ export const DetalhamentoParticipacaoRow: React.FC<BaseRowProps> = ({ sessoes, t
  */
 const CellDiferenca: React.FC<{ sessao: SessaoFrentista; totalVendasPosto: number }> = ({ sessao, totalVendasPosto }) => {
   const { diferenca } = useDetalhamentoFrentista(sessao, totalVendasPosto);
-  // Consistência com o resto do app (FooterAcoes/relatórios): falta (negativo) = vermelho, sobra (positivo) = verde.
-  // Falta é diferença POSITIVA (§6: concentrador − conferido) — vermelho nela.
-  // A condição estava trocada porque o cálculo vinha invertido; virou junto com
-  // o sinal em 16/08/2026. Zero continua neutro.
-  const colorClass = diferenca > 0 ? 'text-red-400 font-bold' : diferenca < 0 ? 'text-emerald-400 font-bold' : 'text-slate-500';
+
+  // Sem venda apurada não há com o que comparar, e a diferença dá zero por
+  // ausência de termo — não por acerto. Anunciar "bateu" aí é o pior tipo de
+  // mentira do sistema: em 19/08/2026 os cinco frentistas do dia entraram sem
+  // nenhum encerrante lançado e a tela deu o dia por conferido.
+  const semEncerrante = totalVendasPosto < 0.005;
+
+  // Meio centavo: dinheiro é inteiro em centavos, mas a diferença chega aqui como
+  // float. Sem a tolerância, um -0,000001 de arredondamento apareceria como
+  // "-R$ 0,00" — um dia que bateu exibido como sobra.
+  const bateu = !semEncerrante && Math.abs(diferenca) < 0.005;
+
+  // Zero era `text-slate-500` com "R$ 0,00": cinza, do tom dos campos vazios, e
+  // indistinguível de "ainda não conferido". O caso mais comum do dia — o
+  // frentista que fechou certo — era o menos legível da tela. Passa a dizer que
+  // bateu, em verde. Falta é diferença POSITIVA (§6: concentrador − conferido),
+  // e é ela que fica em vermelho.
+  const colorClass = semEncerrante
+    ? 'text-amber-400/70 font-normal italic'
+    : bateu
+      ? 'text-emerald-400 font-bold'
+      : diferenca > 0
+        ? 'text-red-400 font-bold'
+        : 'text-amber-400 font-bold';
 
   return (
-    <td className={`px-4 py-3 text-center border border-slate-700/50 ${colorClass}`}>
-      {paraReais(diferenca)}
+    <td
+      className={`px-4 py-3 text-center border border-slate-700/50 ${colorClass}`}
+      title={semEncerrante ? 'A leitura das bombas ainda não foi lançada neste dia' : undefined}
+    >
+      {semEncerrante ? 'sem encerrante' : bateu ? '✓ Bateu' : paraReais(diferenca)}
     </td>
   );
 };
