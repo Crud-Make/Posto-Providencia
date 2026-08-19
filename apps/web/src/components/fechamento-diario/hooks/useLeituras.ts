@@ -185,7 +185,6 @@ const formatarAoSair = (value: string): string => {
  *
  * @param postoId - ID do posto ativo
  * @param dataSelecionada - Data do fechamento
- * @param turnoSelecionado - Turno selecionado
  * @param bicos - Lista de bicos com detalhes
  * @returns Leituras e funções de controle
  *
@@ -194,30 +193,42 @@ const formatarAoSair = (value: string): string => {
  * - Formata entrada durante digitação
  * - Formata com 3 decimais ao sair do campo
  *
+ * [16/08] O turno saiu da assinatura. É uma leitura por bico por dia — a chave do
+ * índice de produção é `(bico_id, data)`, sem turno. Antes o hook escolhia entre
+ * duas consultas conforme houvesse turno selecionado; agora sempre busca o dia.
+ *
  * @example
  * const { leituras, alterarInicial } = useLeituras(
- *   postoId, dataSelecionada, turnoSelecionado, bicos
+ *   postoId, dataSelecionada, bicos
  * );
  */
 export const useLeituras = (
   postoId: number | null,
   dataSelecionada: string,
-  turnoSelecionado: number | null,
-  bicos: BicoComDetalhes[]
+  bicos: BicoComDetalhes[],
+  /**
+   * Devolve à tela o preço carimbado em cada leitura salva (`preco_litro`).
+   *
+   * @remarks
+   * Sem isso, reabrir um dia já salvo recalculava venda e resumo com o
+   * `preco_venda` de HOJE do cadastro — um dia de janeiro (R$ 6,28) aparecia
+   * a preço de agosto (R$ 6,98). O receptor esperado é o `updateBicoPrice`
+   * de `useCarregamentoDados`, que só altera o preço em memória da tela.
+   */
+  aoRestaurarPrecoDoDia?: (bicoId: number, precoDoDia: number) => void
 ): RetornoLeituras => {
   const [leituras, setLeituras] = useState<Record<number, Leitura>>({});
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const ultimoContextoCarregado = useRef<{ data: string; turno: number | null }>({
-    data: '',
-    turno: null
+  const ultimoContextoCarregado = useRef<{ data: string }>({
+    data: ''
   });
 
   /**
    * Carrega leituras do banco de dados
    *
    * @remarks
-   * - Se existir fechamento para data/turno: carrega leituras existentes
+   * - Se existir leitura para a data: carrega as existentes
    * - Senão: busca última leitura de fechamento para usar como inicial
    */
   const carregarLeituras = useCallback(async (force = false) => {
@@ -226,8 +237,7 @@ export const useLeituras = (
     // Evita recarregar se já carregou para este contexto, a menos que seja forçado
     if (
       !force &&
-      ultimoContextoCarregado.current.data === dataSelecionada &&
-      ultimoContextoCarregado.current.turno === turnoSelecionado
+      ultimoContextoCarregado.current.data === dataSelecionada
     ) {
       return;
     }
@@ -237,30 +247,12 @@ export const useLeituras = (
 
 
     try {
-      let dadosRes: LeituraPorDataResponse;
-
-
-
-      if (turnoSelecionado) {
-        // [18/01 00:00] Checar success e extrair data do ApiResponse
-        // Motivo: leituraService agora retorna ApiResponse
-        dadosRes = await leituraService.getByDateAndTurno(
-          dataSelecionada,
-          turnoSelecionado,
-          postoId
-        );
-
-      } else {
-        // Se não tem turno selecionado, busca todas do dia
-        // Nota: isso assume que para visualização diária queremos todas as leituras
-        // [18/01 00:00] Checar success e extrair data do ApiResponse
-        // Motivo: leituraService agora retorna ApiResponse
-        dadosRes = await leituraService.getByDate(
-          dataSelecionada,
-          postoId
-        );
-
-      }
+      // [18/01 00:00] Checar success e extrair data do ApiResponse
+      // Motivo: leituraService agora retorna ApiResponse
+      const dadosRes: LeituraPorDataResponse = await leituraService.getByDate(
+        dataSelecionada,
+        postoId
+      );
 
       if (!isSuccess(dadosRes)) {
         // [18/01 00:00] Tratar erro de ApiResponse sem quebrar UI
@@ -278,15 +270,48 @@ export const useLeituras = (
         // [29/01 13:40] Modo edição: usa leituras existentes
         console.log('[29/01 13:40] Leituras carregadas do banco:', dados.length, 'registros');
         const mapeado = dados.reduce((acc, l) => {
-          // leitura_final === leitura_inicial é a leitura-base do dia (1ª foto do turno,
+          // leitura_final === leitura_inicial é a leitura-base do dia (1ª foto do dia,
           // ainda sem fechamento real) — mostra "final" em branco até a 2ª foto chegar.
           const aindaSemFechamento = Number(l.leitura_final) === Number(l.leitura_inicial);
           acc[l.bico_id] = {
             inicial: formatarParaBR(l.leitura_inicial, 3),
             fechamento: (!aindaSemFechamento && l.leitura_final > 0) ? formatarParaBR(l.leitura_final, 3) : ''
           };
+          // Preço do DIA, carimbado na leitura salva — volta para a tela, senão
+          // o dia reaberto é recalculado com o preço de hoje do cadastro.
+          if (Number(l.preco_litro) > 0) {
+            aoRestaurarPrecoDoDia?.(l.bico_id, Number(l.preco_litro));
+          }
           return acc;
         }, {} as Record<number, Leitura>);
+
+        // Dia salvo PARCIALMENTE (lança-se uns bicos, volta-se depois para os
+        // outros) deixava os bicos restantes SEM ENTRADA no estado — não com
+        // valor vazio, inexistentes. O `0,000` que aparecia neles era
+        // placeholder do input, não dado. Digitar num desses bicos criava
+        // `{ ...undefined, fechamento }`, um objeto sem `inicial`, e a tela
+        // inteira caía em branco no `calcLitros`.
+        //
+        // Pior que o crash seria o crash não acontecer: com `inicial` ausente
+        // a gravação levaria 0, e os litros do dia virariam o odômetro
+        // inteiro da bomba — centenas de milhares de litros de venda que não
+        // existiram.
+        //
+        // Completa os que faltam com a última leitura anterior, exatamente
+        // como o modo criação faz logo abaixo.
+        const semEntrada = bicos.filter(bico => !(bico.id in mapeado));
+        if (semEntrada.length > 0) {
+          const ultimasRes = await leituraService.getLastReading(postoId);
+          const ultimas = isSuccess(ultimasRes) ? ultimasRes.data : [];
+          for (const bico of semEntrada) {
+            const ultima = ultimas.find(l => l.bico_id === bico.id);
+            mapeado[bico.id] = {
+              inicial: ultima ? formatarParaBR(ultima.leitura_final, 3) : '0,000',
+              fechamento: ''
+            };
+          }
+        }
+
         setLeituras(mapeado);
         console.log('[29/01 13:40] Leituras mapeadas para estado:', Object.keys(mapeado).length, 'bicos');
 
@@ -294,7 +319,7 @@ export const useLeituras = (
         // Modo criação: busca última leitura para inicializar
         // [18/01 00:00] Checar success e extrair data do ApiResponse
         // Motivo: leituraService agora retorna ApiResponse
-        const ultimasLeiturasRes: UltimaLeituraResponse = await leituraService.getLastReading(postoId);
+        const ultimasLeiturasRes: UltimaLeituraResponse = await leituraService.getLastReading(postoId, dataSelecionada);
         if (!isSuccess(ultimasLeiturasRes)) {
           setErro(ultimasLeiturasRes.error);
           setLeituras({});
@@ -315,8 +340,7 @@ export const useLeituras = (
       }
 
       ultimoContextoCarregado.current = {
-        data: dataSelecionada,
-        turno: turnoSelecionado
+        data: dataSelecionada
       };
     } catch (err) {
       const mensagemErro = 'Erro ao carregar leituras';
@@ -325,7 +349,7 @@ export const useLeituras = (
     } finally {
       setCarregando(false);
     }
-  }, [postoId, dataSelecionada, turnoSelecionado, bicos]);
+  }, [postoId, dataSelecionada, bicos, aoRestaurarPrecoDoDia]);
 
   /**
    * Handler para mudança de leitura inicial
@@ -388,8 +412,13 @@ export const useLeituras = (
     const leitura = leituras[bicoId];
     if (!leitura) return { value: 0, display: '-' };
 
-    const inicial = parseFloat(leitura.inicial.replace(/\./g, '').replace(',', '.')) || 0;
-    const fechamento = parseFloat(leitura.fechamento.replace(/\./g, '').replace(',', '.')) || 0;
+    // `?? ''` não é paranoia: o guarda acima só cobre a entrada AUSENTE, e o
+    // que derrubava a tela era a entrada PRESENTE com `inicial` indefinido —
+    // criada ao digitar num bico que a carga tinha deixado de fora. A carga
+    // foi corrigida acima; isto impede que o próximo caminho que monte um
+    // objeto pela metade volte a apagar a tela do gerente.
+    const inicial = parseFloat((leitura.inicial ?? '').replace(/\./g, '').replace(',', '.')) || 0;
+    const fechamento = parseFloat((leitura.fechamento ?? '').replace(/\./g, '').replace(',', '.')) || 0;
 
     if (fechamento <= inicial || fechamento === 0) {
       return { value: 0, display: '-' };

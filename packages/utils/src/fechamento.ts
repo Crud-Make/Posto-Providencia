@@ -90,6 +90,58 @@ export function isSobra(diferencaValor: number): boolean {
     return diferencaValor < 0;
 }
 
+/** Os três números que fecham o dia. */
+export interface TotaisDoDia {
+    /** Venda apurada pelo concentrador, em reais. */
+    readonly totalVendas: number;
+    /** Soma do que os frentistas entregaram, em reais. */
+    readonly totalRecebido: number;
+    /**
+     * `totalVendas − totalRecebido`.
+     *
+     * @remarks **Positivo = FALTA, negativo = SOBRA** (§6). Esta é a única
+     *          convenção do sistema, e ela vem da planilha real do dono.
+     */
+    readonly diferenca: number;
+}
+
+/**
+ * Fecha o dia: concentrador contra o que os frentistas entregaram.
+ *
+ * @param vendaConcentrador Venda do dia pelo concentrador, em reais.
+ * @param sessoes           Uma entrada por sessão de frentista no dia.
+ *
+ * @remarks Existe porque esta soma estava **reimplementada à mão em quatro
+ *          lugares** do painel, e num deles com o sinal invertido — o painel
+ *          gravava `conferido − concentrador` enquanto os próprios filhos da
+ *          mesma submissão gravavam `concentrador − conferido`. Falta virava
+ *          sobra dependendo de quem escreveu a linha.
+ *
+ *          Some por construção o "dia que nasce zerado": não há total guardado
+ *          para alguém esquecer de atualizar — o dia é sempre a conta das suas
+ *          partes.
+ *
+ *          Coberto por `totais-do-dia.golden.spec.ts` contra os 31 dias reais de
+ *          janeiro. Não altere sem rodar `bun run test:golden`.
+ */
+export function totaisDoDia(
+    vendaConcentrador: number,
+    sessoes: readonly MeiosPagamento[]
+): TotaisDoDia {
+    const totalVendas = emCentavos(vendaConcentrador);
+    // Soma em centavos a cada passo, como o resto do módulo: acumular reais em
+    // float sobre ~7 sessões por dia e 31 dias derrapa no centavo.
+    const totalRecebido = emCentavos(
+        sessoes.reduce((acc, m) => emCentavos(acc + conferido(m)), 0)
+    );
+
+    return {
+        totalVendas,
+        totalRecebido,
+        diferenca: diferenca(totalVendas, totalRecebido),
+    };
+}
+
 /**
  * Recupera o valor conferido a partir do que está gravado numa linha agregada de
  * `Fechamento`, que guarda `total_vendas` e `diferenca` mas não o conferido.

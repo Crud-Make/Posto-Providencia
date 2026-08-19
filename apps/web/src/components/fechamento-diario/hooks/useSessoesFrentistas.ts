@@ -43,7 +43,7 @@ interface RetornoSessoesFrentistas {
   sessoes: SessaoFrentista[];
   carregando: boolean;
   totais: TotaisFrentistas;
-  carregarSessoes: (data: string, turno: number, force?: boolean) => Promise<void>;
+  carregarSessoes: (data: string, force?: boolean) => Promise<void>;
   adicionarFrentista: () => void;
   removerFrentista: (tempId: string) => void;
   atualizarSessao: (tempId: string, atualizacoes: Partial<SessaoFrentista>) => void;
@@ -95,34 +95,31 @@ export const useSessoesFrentistas = (
 ): RetornoSessoesFrentistas => {
   const [sessoes, setSessoes] = useState<SessaoFrentista[]>([]);
   const [carregando, setCarregando] = useState(false);
-  const ultimoContextoCarregado = useRef<{ data: string; turno: number | null }>({
-    data: '',
-    turno: null
+  const ultimoContextoCarregado = useRef<{ data: string }>({
+    data: ''
   });
 
   /**
    * Carrega sessões existentes do banco
    *
    * @param data - Data do fechamento
-   * @param turno - Turno selecionado
    */
-  const carregarSessoes = useCallback(async (data: string, turno: number, force = false) => {
+  const carregarSessoes = useCallback(async (data: string, force = false) => {
     if (!postoId) return;
 
     // [29/01 13:40] Evita recarregar se já carregou para este contexto, a menos que seja forçado
     if (
       !force &&
-      ultimoContextoCarregado.current.data === data &&
-      ultimoContextoCarregado.current.turno === turno
+      ultimoContextoCarregado.current.data === data
     ) {
       return;
     }
 
     setCarregando(true);
     try {
-      // Universal (pedido do dono): o envio do frentista não tem turno. Carregamos
-      // TODOS os envios do dia (getByDate), independente do turno selecionado no topo.
-      // O parâmetro `turno` fica só no guard de cache abaixo.
+      // O envio do frentista é por dia: `getByDate` carrega todos os envios da data.
+      // [16/08] O parâmetro `turno` saiu — ele já não chegava à consulta, servia só ao
+      // guard de cache acima, e mantê-lo dava a impressão de que a busca filtrava por turno.
       const dadosRes = await fechamentoFrentistaService.getByDate(
         data,
         postoId
@@ -221,8 +218,7 @@ export const useSessoesFrentistas = (
 
       // [29/01 13:40] Atualiza contexto carregado
       ultimoContextoCarregado.current = {
-        data,
-        turno
+        data
       };
     } catch (err) {
       console.error('❌ Erro ao carregar sessões:', err);

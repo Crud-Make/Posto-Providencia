@@ -22,7 +22,7 @@ import ClosingsTable from './components/ClosingsTable';
 import PerformanceSidebar from './components/PerformanceSidebar';
 import PresencaFrentistas from './components/PresencaFrentistas';
 import FilterDropdown from './components/filter-dropdown';
-import DateRangePicker from './components/date-range-picker';
+import { Calendario, modoIntervalo } from '@shared/ui/calendario';
 import { useDashboard } from './hooks/useDashboard';
 import { usePresencaFrentistas } from './hooks/usePresencaFrentistas';
 import { usePosto } from '../../contexts/usePosto';
@@ -114,7 +114,7 @@ const TelaDashboard: React.FC = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-8">
-        <DateRangePicker periodo={periodo} onChange={setPeriodo} />
+        <Calendario modo={modoIntervalo} valor={periodo} aoMudar={setPeriodo} prefixo="Data" />
 
         <FilterDropdown<number | null>
           Icon={User}

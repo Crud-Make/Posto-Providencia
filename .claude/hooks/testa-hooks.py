@@ -11,10 +11,12 @@ e os dois modos são silenciosos até doer.
 Nota: o literal da flag é montado em partes aqui de propósito. Escrito inteiro,
 ele dispararia o hook da sessão que estiver rodando este arquivo.
 """
+import hashlib
 import importlib.util
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HOOKS = Path(__file__).resolve().parent
@@ -168,6 +170,55 @@ CASOS_FANTASMA = [
 ]
 
 
+# forca-delegacao: sequência de chamadas numa mesma thread -> o que cada uma
+# devolve. `True` = nega. O teto é fixado em 3 no teste para a lista caber.
+# Os dois casos que carregam o desenho inteiro:
+#   - `agent_id` presente NUNCA é barrado, senão o hook bloqueia justamente o
+#     `code-explorer` que ele mandou chamar;
+#   - negar ZERA o contador, senão a trava vira parede e impede a leitura
+#     pontual que o próprio agente acabou de apontar.
+CASOS_DELEGACAO = [
+    ("Read", {"file_path": "a.ts"}, None, False),
+    ("Grep", {"pattern": "x"}, None, False),
+    ("Glob", {"pattern": "*.ts"}, None, True),      # 3a: bate no teto
+    ("Read", {"file_path": "b.ts"}, None, False),   # contador zerado, passa
+    ("Bash", {"command": "cat packages/utils/src/fechamento.ts"}, None, False),
+    ("Bash", {"command": "bun run test"}, None, False),      # nao e leitura
+    ("Write", {"file_path": "c.ts"}, None, False),           # nem toda tool conta
+    ("Bash", {"command": "rg valor_conferido apps/"}, None, True),   # 3a de novo
+    # Subagente: mesmo estourando o teto varias vezes, nunca e barrado.
+    ("Read", {"file_path": "d.ts"}, "ag_1", False),
+    ("Read", {"file_path": "e.ts"}, "ag_1", False),
+    ("Read", {"file_path": "f.ts"}, "ag_1", False),
+    ("Read", {"file_path": "g.ts"}, "ag_1", False),
+    ("Grep", {"pattern": "y"}, "ag_1", False),
+    # Descricao nao e execucao — a mesma regra do _comum que o protege-dados usa.
+    ("Bash", {"command": 'echo "cat arquivo.ts"'}, None, False),
+]
+
+# Refinamento do pipe: depois de um `|` o comando FILTRA o que ja entrou no
+# contexto; antes dele, BUSCA no disco. `True` = conta como leitura.
+# O primeiro caso e o falso positivo real de 16/08 — `git diff | grep '^@@'` foi
+# barrado como se abrisse arquivo, no primeiro dia do hook.
+CASOS_PIPE = [
+    ("git diff -U0 | grep -E '^@@'", False),
+    ("git log --oneline | head -20", False),
+    ("ls -la | grep claude", False),
+    ("bun run test | tail -5", False),
+    # Antes do pipe, le mesmo: conta uma vez, pelo primeiro.
+    ("cat packages/utils/src/fechamento.ts | head -40", True),
+    ("grep -rn valor_conferido apps/ | wc -l", True),
+    ("find . -name '*.sql' | head", True),
+    # `;` e `&&` iniciam comando NOVO: o primeiro de cada pipeline e olhado.
+    ("git status; cat CLAUDE.md", True),
+    ("bun install && rg encerrante packages/", True),
+    ("echo oi; git log | cat", False),
+    # `||` nao pode ser confundido com pipe.
+    ("test -f x || cat x", True),
+    ("cat x || echo vazio", True),
+]
+
+
 def roda(script: str, payload: dict) -> str | None:
     r = subprocess.run(
         ["python3", str(HOOKS / script)],
@@ -278,6 +329,110 @@ def main() -> int:
     falhas += not ok
     print(f"  {'✓' if ok else '✗'} {'CLAUDE.md REAL não acusa fantasma':60} "
           f"{', '.join(obtido) or 'nenhum'}")
+
+    print("── forca-delegacao ──")
+    delegacao = carrega("forca-delegacao.py")
+    with tempfile.TemporaryDirectory() as tmp:
+        # Estado e teto de laboratório: o hook real usa /tmp e teto 15, e um
+        # teste não pode depender de nenhum dos dois.
+        delegacao.ESTADO = Path(tmp)
+        delegacao.TETO = 3
+        for tool, entrada, agente, esperado in CASOS_DELEGACAO:
+            payload = {
+                "tool_name": tool,
+                "tool_input": entrada,
+                "session_id": "sessao-de-teste",
+            }
+            if agente:
+                payload["agent_id"] = agente
+            obtido = bool(delegacao.decide(payload))
+            ok = obtido == esperado
+            falhas += not ok
+            rotulo = f"{'[sub] ' if agente else ''}{tool} {list(entrada.values())[0]}"
+            print(f"  {'✓' if ok else '✗'} {rotulo[:58]:60} "
+                  f"{'NEGA' if obtido else 'passa'}")
+
+    print("── forca-delegacao · pipe filtra, não lê ──")
+    for cmd, esperado in CASOS_PIPE:
+        obtido = delegacao.e_leitura("Bash", {"tool_input": {"command": cmd}})
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {cmd[:58]:60} "
+              f"{'conta' if obtido else 'nao conta'}")
+
+    # Sem session_id não há contador possível: tem de passar, nunca travar.
+    sem_sessao = delegacao.decide({"tool_name": "Read", "tool_input": {"file_path": "a"}})
+    ok = sem_sessao is None
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'sem session_id nao trava':60} "
+          f"{'NEGA' if sem_sessao else 'passa'}")
+
+    print("── higiene · ativos críticos ──")
+    # Cada caso monta um repo de mentira: (manifesto, arquivos no disco) -> quantos
+    # problemas. O manifesto substituiu uma lista fixa que funcionava e mesmo assim
+    # não pegou a perda de 16/08 — por isso os três modos de perda são testados
+    # separados, e os negativos (arquivo ok) valem tanto quanto os positivos.
+    CONTEUDO = b"conteudo do ativo critico"
+    HASH_OK = hashlib.sha256(CONTEUDO).hexdigest()
+    HASH_ERRADO = "0" * 64
+    CASOS_ATIVOS = [
+        ("presente, sem exigencia", [{"caminho": "a.bin"}], {"a.bin": CONTEUDO}, 0),
+        ("sumiu", [{"caminho": "a.bin"}], {}, 1),
+        ("caminho absoluto sumido", [{"caminho": "/nao/existe/x.bin"}], {}, 1),
+        ("encolheu", [{"caminho": "a.bin", "bytes_minimos": 2000}], {"a.bin": CONTEUDO}, 1),
+        ("tamanho ok", [{"caminho": "a.bin", "bytes_minimos": 5}], {"a.bin": CONTEUDO}, 0),
+        ("hash bate", [{"caminho": "a.bin", "sha256": HASH_OK}], {"a.bin": CONTEUDO}, 0),
+        ("hash mudou", [{"caminho": "a.bin", "sha256": HASH_ERRADO}], {"a.bin": CONTEUDO}, 1),
+        # Sumiu vence encolheu e mudou: um aviso por ativo, nunca três pelo mesmo.
+        ("sumiu nao duplica aviso",
+         [{"caminho": "a.bin", "bytes_minimos": 9999, "sha256": HASH_ERRADO}], {}, 1),
+        ("dois ativos, um quebrado",
+         [{"caminho": "a.bin"}, {"caminho": "b.bin"}], {"a.bin": CONTEUDO}, 1),
+    ]
+    raiz_real = higiene.RAIZ
+    try:
+        for rotulo, ativos, arquivos, esperado in CASOS_ATIVOS:
+            with tempfile.TemporaryDirectory() as tmp:
+                falso = Path(tmp)
+                higiene.RAIZ = falso
+                (falso / ".claude").mkdir()
+                (falso / ".claude/ativos-criticos.json").write_text(
+                    json.dumps({"ativos": ativos})
+                )
+                for nome, dados in arquivos.items():
+                    (falso / nome).write_bytes(dados)
+                obtido = len(higiene.ativos_criticos())
+                ok = obtido == esperado
+                falhas += not ok
+                print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido} problema(s)")
+
+        # O manifesto é ele próprio um ativo: sem ele, nada está sendo conferido,
+        # e o silêncio pareceria saúde.
+        for rotulo, escreve in (("manifesto ausente", None),
+                                ("manifesto ilegivel", "{ isto nao e json")):
+            with tempfile.TemporaryDirectory() as tmp:
+                falso = Path(tmp)
+                higiene.RAIZ = falso
+                if escreve is not None:
+                    (falso / ".claude").mkdir()
+                    (falso / ".claude/ativos-criticos.json").write_text(escreve)
+                obtido = len(higiene.ativos_criticos())
+                ok = obtido == 1
+                falhas += not ok
+                print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido} problema(s)")
+    finally:
+        higiene.RAIZ = raiz_real
+
+    # E o manifesto REAL tem de estar íntegro — mesma lição do detector de plugin
+    # fantasma, cujos 7 casos sintéticos passavam enquanto o artefato de verdade
+    # acusava. Ativo quebrado aqui é falha da bateria, não ruído no SessionStart.
+    reais = higiene.ativos_criticos()
+    ok = reais == []
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'manifesto REAL sem ativo quebrado':60} "
+          f"{len(reais)} problema(s)")
+    for p in reais:
+        print(f"      → {p[:100]}")
 
     print("── higiene (fumaça) ──")
     r = subprocess.run(

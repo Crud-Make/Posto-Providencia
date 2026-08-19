@@ -19,7 +19,7 @@ import {
   type SumarioCombustivel
 } from '../../../utils/calculators';
 import { analisarValor } from '../../../utils/formatters';
-import { conferido } from '@posto/utils';
+import { conferido, diferenca as diferencaCanonica } from '@posto/utils';
 import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
 /**
@@ -115,14 +115,26 @@ export const useFechamento = (
   }, [pagamentos]);
 
   /**
-   * Diferença entre encerrantes e recebido pelos frentistas
+   * Diferença de caixa do dia: concentrador − conferido.
    *
-   * @remarks
-   * Diferença positiva: sobra (frentistas receberam mais)
-   * Diferença negativa: falta (frentistas receberam menos)
+   * @returns Positivo = **FALTA**, negativo = **SOBRA** (§6).
+   *
+   * @remarks Estava invertido até 16/08/2026 (`totalFrentistas −
+   *          totaisLeituras.valor`), com JSDoc afirmando o contrário. O estrago
+   *          não era só de rótulo: este valor é gravado em `Fechamento.diferenca`
+   *          por `useSubmissaoFechamento`, e os FILHOS da mesma submissão
+   *          (`FechamentoFrentista.diferenca_calculada`) já usavam a convenção
+   *          canônica — pai e filho da mesma linha discordavam do sinal, e o
+   *          histórico carregado pelo ETL também é canônico.
+   *
+   *          Agora chama o módulo, em vez de repetir a conta: era a quarta
+   *          reimplementação da mesma aritmética no painel.
+   *
+   *          Coberto por `totais-do-dia.golden.spec.ts`, contra os 31 dias reais
+   *          de janeiro. Não altere sem rodar `bun run test:golden`.
    */
   const diferenca = useMemo(() => {
-    return totalFrentistas - totaisLeituras.valor;
+    return diferencaCanonica(totaisLeituras.valor, totalFrentistas);
   }, [totalFrentistas, totaisLeituras.valor]);
 
   /**

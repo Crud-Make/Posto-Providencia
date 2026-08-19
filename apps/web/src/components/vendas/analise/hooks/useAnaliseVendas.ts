@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesAnalysisService } from '../../../../services/api';
 import { usePosto } from '../../../../contexts/usePosto';
+import { usePeriodo } from '../../../../contexts/usePeriodo';
 import { ProductData, ProfitabilityData, Totals, PeriodData, Insight } from '../types';
 import { isSuccess } from '../../../../types/ui/response-types';
 
@@ -21,9 +22,10 @@ export const useAnaliseVendas = () => {
   });
   const [previousPeriod, setPreviousPeriod] = useState<PeriodData | null>(null);
 
-  // Date selection
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  // O mês vem do contexto: é o mesmo período das demais telas de análise. O serviço pede ano e
+  // mês em número, então eles são derivados daqui — o estado guardado continua sendo um só.
+  const { mes, definirMes } = usePeriodo();
+  const [selectedYear, selectedMonth] = mes.split('-').map(Number);
 
   const loadData = useCallback(async () => {
     if (!postoAtivoId) return;
@@ -129,10 +131,10 @@ export const useAnaliseVendas = () => {
     totals,
     variations,
     insights,
+    mes,
+    definirMes,
     selectedYear,
-    setSelectedYear,
     selectedMonth,
-    setSelectedMonth,
     loadData
   };
 };

@@ -258,9 +258,11 @@ Já mentiu com confiança total uma vez; ver anexo.
 | Para isto                                    | Use                                                     |
 | -------------------------------------------- | ------------------------------------------------------- |
 | Regra de negócio, fórmula, nomenclatura      | `fechamento-posto-providencia`                            |
-| Importar/atualizar a partir do `.xlsx`       | `etl-planilha-posto-providencia`                          |
+| Tela/hook/módulo novo: onde nasce, o que segura | `implementar-feature-posto-providencia`                |
+| Importar/atualizar a partir do `.xlsx`       | `etl-planilha-posto-providencia` — **nunca** a `xlsx`      |
 | Avaliar ou planejar refatoração              | `refatoracao-posto-providencia`                           |
 | "Está pronto?", "pode entregar?", "falta o quê?" | `entrega-real-posto-providencia`                      |
+| Validar UMA feature: tela × banco, antes do dono | `validar-feature-posto-providencia`                    |
 | "Onde fica X", "quem usa Y", raio de impacto | agente `grafo` (§12)                                      |
 | "Quanto deu X?", conferir número contra o real | agente `planilha`                                       |
 | "Essa tabela está protegida?", exposição do banco | agente `rls`                                         |
@@ -270,12 +272,21 @@ Já mentiu com confiança total uma vez; ver anexo.
 | Revisar o diff da branch                     | `/code-review` (embutido)                                 |
 | Limpar o que já escrevi, sem caçar bug       | `/simplify` (embutido)                                    |
 | Varrer a branch por risco de segurança       | `/security-review` (embutido)                             |
+| Feature nova inteira, do zero ao review      | `/feature-dev` (plugin oficial, instalado 16/08)          |
 | Mexer no código sem gerar dívida             | `karpathy-guidelines`                                     |
 | Buscar em base de notas indexada             | `engraph:engraph` (plugin, instalado 05/08)               |
 | Gráfico ou dashboard                         | `dataviz` (embutido), sob demanda                         |
 
 **Conferido em 07/08/2026: `claude-mem` e `mattpocock-skills` NÃO estão instalados.** Não há
-rastro em `~/.claude/plugins/`, e nenhum marketplace configurado. Seis linhas desta tabela
+rastro em `~/.claude/plugins/`, e nenhum marketplace configurado.
+
+> **Corrigido em 16/08/2026 — a segunda metade desta frase apodreceu.** O marketplace
+> `claude-plugins-official` se auto-instalou (`officialMarketplaceAutoInstalled: true` no
+> `~/.claude.json`) com 60+ plugins no catálogo, e ficou com **zero** deles instalado. É o §14 ao
+> contrário: lá a instrução sobrevive à ferramenta que sumiu; aqui a ferramenta chegou e a
+> instrução não soube. `mattpocock-skills` está nesse catálogo — as 6 linhas removidas acima podem
+> voltar com um `claude plugin install`, e quem repuser **repõe a linha na tabela no mesmo commit**.
+> Instalado dele até agora: só `/feature-dev` (3 agentes, ~238 tok always-on). Seis linhas desta tabela
 apontavam para eles — `:diagnosing-bugs`, `:tdd`, `:code-review`, `:codebase-design`,
 `:domain-modeling`, `:make-plan`+`:do`, `:mem-search` —, e foram removidas. É a mesma falha do
 §12 e do MCP do Supabase: **a instrução sobreviveu à ferramenta**. Reconferir com
@@ -286,9 +297,19 @@ apontavam para eles — `:diagnosing-bugs`, `:tdd`, `:code-review`, `:codebase-d
   módulo é a skill `refatoracao-posto-providencia` mais o agente `grafo`. Se você quiser os
   originais de volta, instale o marketplace e **reponha a linha aqui no mesmo commit** — tabela
   que cita ferramenta ausente é pior que tabela sem a linha.
-- **Um pipeline por tarefa, nunca dois.** A regra continua valendo para o dia em que houver dois
-  pipelines completos de "planeje em fases e execute com subagents" instalados ao mesmo tempo:
-  rodar os dois duplica plano e queima token.
+- **Um pipeline por tarefa, nunca dois.** Deixou de ser hipótese em 16/08: `/feature-dev` é o
+  pipeline completo de "planeje em fases e execute com subagents" desta máquina, e é o único.
+  O `superpowers`, no mesmo catálogo oficial, é um segundo — instalar os dois duplica plano e
+  queima token. Escolher outro significa **desinstalar este**, não somar.
+- **A skill `xlsx` (instalada 16/08) não vale para a planilha do posto.** Ela dispara por
+  descrição em "qualquer arquivo de planilha", inclusive no exemplo literal *"the xlsx in my
+  downloads"* — que é o caminho exato da nossa. Três motivos para a precedência ser da
+  `etl-planilha-posto-providencia`, sempre: (1) a postura padrão dela é **editar e recalcular** o
+  workbook, e o §6 diz que o xlsx original não se edita; (2) as 3 guardas do nosso ETL vieram de
+  bug real nesta planilha e ela não as conhece; (3) o nosso estágio 1 lê o `.xlsx` com **`zipfile`
+  da stdlib**, sem dependência alguma, enquanto a `xlsx` pressupõe `openpyxl`, `pandas`,
+  `markitdown` e LibreOffice — **nenhum dos quatro existe nesta máquina** (conferido 16/08). Ela
+  serve para planilha de fora do posto; para a nossa, é a skill errada com a ferramenta ausente.
 - **Não use, se um dia forem instaladas:** skills que leem arquivo para entender base
   desconhecida (`learn-codebase`, `smart-explore`, `pathfinder` e equivalentes). Este repo já
   responde isso pelo grafo (§12). Valem em repo sem grafo.
@@ -349,6 +370,21 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
   **negada** pelo hook `memoria-somente`, declarado no frontmatter de cada agente (não
   no `settings.json`: vale só para quem o declara). Devolve o "somente leitura" que
   `memory:` tinha furado. Conclusão que exige mudar arquivo vira **patch na resposta**.
+- **Leitura acima do teto na thread principal — negada uma vez**, pelo hook
+  `forca-delegacao` (`Read|Grep|Glob|Bash`, teto 15, calibrável por
+  `POSTO_TETO_LEITURAS`). O `roteia-consulta` cobre **pergunta**; a sessão incha é
+  **implementando** — ler vinte arquivos para entender um fluxo não casa com rota
+  nenhuma e cai inteiro aqui. Nega e **zera o contador**, em vez de virar parede:
+  depois de delegar, a thread ainda precisa ler os poucos arquivos que o agente
+  apontou. **Subagente nunca é barrado** — os hooks do `settings.json` disparam
+  dentro dele também, e contar no mesmo balde bloquearia justamente o
+  `code-explorer` que o hook mandou chamar; o que separa os dois é o campo
+  `agent_id`, presente só dentro de subagente. Leitura por shell (`cat`, `rg`,
+  `grep`…) conta igual, pela mesma porta dos fundos que o `protege-dados` teve de
+  cobrir — mas **só a primeira etapa de cada pipeline**: depois de um `|` o comando
+  filtra o que já entrou no contexto, antes dele é que busca no disco. `git diff |
+  grep` não abre arquivo nenhum, e ser barrado por isso foi o falso positivo do
+  primeiro dia.
 - **Ferramenta mutante do MCP do Supabase — negada** por lista `deny` em
   `.claude/settings.json`: `apply_migration`, `deploy_edge_function` e os cinco `*_branch`.
   Não é redundância com o `--read-only` do `.mcp.json`: **medido em 07/08, o flag não remove
@@ -369,7 +405,22 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
   do golden master (§0.6) **na hora da edição**, não no fim da tarefa. Erra para o lado do
   aviso a mais: aviso sobrando é uma linha, aviso faltando é fórmula mudando calada.
 - Início de sessão → confere cache órfão de plugin, grafo desatualizado, symlink de skill
-  quebrado, **fonte auditável ausente**, **plugin fantasma** e **MCP sem `--read-only`**.
+  quebrado, **ativo crítico fora do git**, **plugin fantasma** e **MCP sem `--read-only`**.
+
+  **A checagem de ativo crítico é a única que não é uma cicatriz** — e virou isso em
+  16/08. Ela era uma lista fixa de três caminhos de `docs/data/`, escrita depois que
+  aquela pasta sumiu em 07/08. Funcionava, e mesmo assim não pegou nada no dia em que
+  três ativos se perderam: `docs/data/` estava intacto, e o que foi para a lixeira às
+  08:38 foi a **planilha fonte**, que ninguém tinha pensado em conferir. Uma lista de
+  cicatrizes nunca cobre a próxima ferida.
+  Agora o hook sabe **como** conferir e o manifesto `.claude/ativos-criticos.json`
+  declara **o que** importa — ativo novo entra no JSON, não no código. Ele pega as três
+  formas silenciosas de perder arquivo: **sumiu** (apagado, movido, lixeira),
+  **encolheu** (`bytes_minimos`, que é como o `settings.json` global caiu de 3.694 para
+  22 bytes levando junto as travas de `sudo`/`rm`/`dd`) e **mudou** (`sha256`, só para
+  o que deve ser imutável — a planilha do posto é o caso, porque troca silenciosa dela
+  envenena todo golden master a jusante). Hash trocado de propósito, por planilha nova,
+  se atualiza no manifesto **no mesmo commit**.
   **Silencioso quando está tudo ok** — aviso que aparece sempre deixa de ser lido.
 
   As três últimas entraram em 07/08, e as três pelo mesmo motivo — **a instrução sobrevive
@@ -387,7 +438,7 @@ Regras deste arquivo que deixaram de depender de eu lembrar delas. Rodam como ho
     o arquivo é versionado — não commitar nesse estado.
 
 Instrução é forte; hook é garantia. Regra cara demais para depender de memória vira hook.
-Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 89 casos, e os negativos
+Mexeu em hook? Rode **`python3 .claude/hooks/testa-hooks.py`** — 131 casos, e os negativos
 valem tanto quanto os positivos. Para revisar ou desligar: `/hooks`.
 
 ---

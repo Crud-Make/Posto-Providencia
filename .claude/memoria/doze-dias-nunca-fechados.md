@@ -1,10 +1,18 @@
 ---
 name: doze-dias-nunca-fechados
-description: 12 fechamentos estão com status ABERTO desde 26/07/2026 e somem do lucro; fechá-los é operação do dono pelo painel, não conserto de código
-metadata:
+description: "12 fechamentos estão com status ABERTO desde 26/07/2026 e somem do lucro; fechá-los é operação do dono pelo painel, não conserto de código"
+metadata: 
   node_type: memory
   type: project
+  originSessionId: e14ef858-7750-49c5-99d4-ecbc9f8e8f49
+  modified: 2026-08-14T11:28:39.191Z
 ---
+
+> **OBSOLETO desde 14/08/2026:** esses 12 fechamentos **não existem mais em
+> produção** — o banco transacional foi zerado por decisão do dono (ver
+> [[banco-zerado-replay-em-curso]]; os dados vivem no backup). O que segue vale
+> como história e porque **o mecanismo do PWA descrito abaixo continua no
+> código**: dia lançado pelo celular e nunca fechado no painel fica zerado.
 
 **Medido no catálogo em 13/08/2026.** Dos 213 fechamentos: os **201 `FECHADO` têm
 `total_vendas` preenchido**; os **12 `ABERTO` têm `total_vendas = 0`**. Zero

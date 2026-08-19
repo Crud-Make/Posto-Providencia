@@ -16,10 +16,8 @@ const TelaAnaliseVendas: React.FC = () => {
     totals,
     variations,
     insights,
-    selectedYear,
-    setSelectedYear,
-    selectedMonth,
-    setSelectedMonth,
+    mes,
+    definirMes,
     loadData
   } = useAnaliseVendas();
 
@@ -46,13 +44,7 @@ const TelaAnaliseVendas: React.FC = () => {
       </div>
 
       {/* Header & Filter */}
-      <FiltroPeriodo
-        selectedMonth={selectedMonth}
-        setSelectedMonth={setSelectedMonth}
-        selectedYear={selectedYear}
-        setSelectedYear={setSelectedYear}
-        onRefresh={loadData}
-      />
+      <FiltroPeriodo mes={mes} onMesChange={definirMes} onRefresh={loadData} />
 
       {/* Error Message */}
       {error && (

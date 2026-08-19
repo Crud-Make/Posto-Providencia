@@ -1,0 +1,93 @@
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '../services/supabase';
+
+/**
+ * Estado de autenticação do painel.
+ *
+ * @remarks Até 16/08/2026 o `apps/web` não autenticava: acessava o Supabase
+ *          apenas com a chave anônima. Isso não era detalhe de conveniência —
+ *          as policies de RLS distinguem `anon` de `authenticated`, e como
+ *          visitante o painel **não lê** `Fornecedor` nem `Compra`, **não grava**
+ *          compra, e não escreve em data fora da janela de 7 dias. Leitura
+ *          barrada por RLS volta como lista vazia sem erro, então a tela
+ *          concluía "não há nada cadastrado" quando na verdade não tinha
+ *          permissão de ver.
+ *
+ *          O modo visitante existiu entre 16 e 19/08/2026 como escada para a
+ *          apresentação não travar sem a senha à mão. Saiu porque era pior que
+ *          a trava: `anon` lê metade das tabelas em silêncio e não grava data
+ *          histórica, então o painel mostrava número incompleto sem dizer que
+ *          era incompleto, e o replay falhava com o erro cru da RLS. Sem sessão
+ *          agora só existe a tela de login.
+ */
+export interface EstadoAutenticacao {
+  readonly sessao: Session | null;
+  readonly carregando: boolean;
+  /** `true` quando há sessão — o banco passa a responder como `authenticated`. */
+  readonly autenticado: boolean;
+  entrar: (email: string, senha: string) => Promise<string | null>;
+  sair: () => Promise<void>;
+}
+
+const AuthContext = createContext<EstadoAutenticacao | null>(null);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [sessao, setSessao] = useState<Session | null>(null);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    let ativo = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!ativo) return;
+      setSessao(data.session);
+      setCarregando(false);
+    });
+
+    // Cleanup obrigatório: subscrição viva depois do desmonte vaza canal e
+    // estoura o limite de conexão do projeto (CLAUDE.md §5).
+    const { data: assinatura } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
+      setSessao(novaSessao);
+    });
+
+    return () => {
+      ativo = false;
+      assinatura.subscription.unsubscribe();
+    };
+  }, []);
+
+  const entrar = useCallback(async (email: string, senha: string): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    if (!error) return null;
+
+    // A mensagem do Supabase vem em inglês e genérica de propósito (não revela
+    // se o e-mail existe). Traduzir mantém a mesma discrição, em pt-BR.
+    return /invalid login credentials/i.test(error.message)
+      ? 'E-mail ou senha incorretos.'
+      : error.message;
+  }, []);
+
+  const sair = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, []);
+
+  // Sem React Compiler neste projeto: a memoização é manual e necessária, senão
+  // todo consumidor do contexto re-renderiza a cada render do provider.
+  const valor = useMemo<EstadoAutenticacao>(
+    () => ({
+      sessao,
+      carregando,
+      autenticado: sessao !== null,
+      entrar,
+      sair,
+    }),
+    [sessao, carregando, entrar, sair]
+  );
+
+  return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
+};
+
+// O hook `useAuth` mora em `./useAuth.ts` — extraído para satisfazer
+// `react-refresh/only-export-components`, como o `PostoContext` já faz.
+export default AuthContext;

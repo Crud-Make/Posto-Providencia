@@ -1,5 +1,6 @@
 import React from 'react';
-import { Calendar, Filter, X } from 'lucide-react';
+import { Filter, X } from 'lucide-react';
+import { Calendario, modoIntervalo } from '@shared/ui/calendario';
 import { FiltrosFinanceiros as IFiltros } from '../hooks/useFiltrosFinanceiros';
 
 /**
@@ -52,22 +53,15 @@ export const FiltrosFinanceiros: React.FC<FiltrosFinanceirosProps> = ({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <div className="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700/50">
-            <Calendar size={18} className="text-blue-400" />
-            <input
-              type="date"
-              value={filtros.dataInicio}
-              onChange={(e) => onAplicar('dataInicio', e.target.value)}
-              className="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-200 outline-none"
-            />
-            <span className="text-slate-500">–</span>
-            <input
-              type="date"
-              value={filtros.dataFim}
-              onChange={(e) => onAplicar('dataFim', e.target.value)}
-              className="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-200 outline-none"
-            />
-          </div>
+          <Calendario
+            modo={modoIntervalo}
+            tom="escuro"
+            valor={{ inicio: filtros.dataInicio, fim: filtros.dataFim }}
+            aoMudar={({ inicio, fim }) => {
+              onAplicar('dataInicio', inicio);
+              onAplicar('dataFim', fim);
+            }}
+          />
 
           <div className="relative w-full sm:w-48">
             <select

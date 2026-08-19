@@ -38,13 +38,20 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                     </div>
                     <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700/50">
                         <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Apurado (Frentistas)</p>
-                        <p className={`text-xl font-bold font-mono ${diferenca < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {/* Vermelho quando FALTA, e falta é diferença POSITIVA
+                            (§6: concentrador − conferido). A condição era `< 0`
+                            porque o cálculo vinha invertido; corrigido o sinal
+                            em 16/08/2026, a cor tinha de virar junto — senão
+                            falta apareceria em verde. */}
+                        <p className={`text-xl font-bold font-mono ${diferenca > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                             {totalFrentistas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
                     </div>
                     <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-slate-700/50 border-l-4 border-l-orange-500/50">
-                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Diferença</p>
-                        <p className={`text-xl font-bold font-mono ${diferenca < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                            Diferença <span className="normal-case font-normal">(+ falta · − sobra)</span>
+                        </p>
+                        <p className={`text-xl font-bold font-mono ${diferenca > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                             {diferenca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
                     </div>

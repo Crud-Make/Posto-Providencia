@@ -33,7 +33,7 @@ interface RetornoPagamentos {
   totalPagamentos: number;
   totalTaxas: number;
   totalLiquido: number;
-  carregarPagamentos: (data?: string, turno?: number) => Promise<void>;
+  carregarPagamentos: (data?: string) => Promise<void>;
   alterarPagamento: (indice: number, valor: string) => void;
   aoSairPagamento: (indice: number) => void;
   sincronizarComSessoes: (sessoes: import('../../../types/fechamento').SessaoFrentista[]) => void;
@@ -61,7 +61,7 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
   /**
    * Carrega formas de pagamento do banco e valores salvos se houver
    */
-  const carregarPagamentos = useCallback(async (data?: string, turno?: number) => {
+  const carregarPagamentos = useCallback(async (data?: string) => {
     if (!postoId) return;
 
     setCarregando(true);
@@ -77,9 +77,9 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
       const formasPagamento = dadosRes.data;
       let valoresSalvos: Record<number, number> = {};
 
-      // 2. Se data e turno fornecidos, busca valores salvos
-      if (data && turno) {
-        const fechamentoRes = await fechamentoService.getByDateAndTurno(data, turno, postoId);
+      // 2. Se a data foi fornecida, busca valores salvos
+      if (data) {
+        const fechamentoRes = await fechamentoService.getDoDia(data, postoId);
 
         if (isSuccess(fechamentoRes) && fechamentoRes.data) {
           const detalhesRes = await fechamentoService.getWithDetails(fechamentoRes.data.id);

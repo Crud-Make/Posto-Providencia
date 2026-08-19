@@ -2,6 +2,9 @@ import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PostoProvider } from './contexts/PostoContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { PeriodoProvider } from './contexts/PeriodoContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/useAuth';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import UpdateNotifier from './shared/ui/UpdateNotifier';
@@ -25,6 +28,8 @@ const TelaGestaoEscalas = React.lazy(() => import('./components/TelaGestaoEscala
 const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGestaoClientes'));
 const TelaFechamentoMensal = React.lazy(() => import('./components/fechamento-mensal'));
 const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
+const TelaLogin = React.lazy(() => import('./components/login'));
+const TelaPlanilhaMensal = React.lazy(() => import('./pages/planilha-mensal'));
 
 // Componente de Loading para Suspense
 const LoadingFallback = () => (
@@ -66,6 +71,7 @@ const AppRoutes = () => {
         <Route path="/despesas" element={<Navigate to="/fechamento" replace />} />
         <Route path="/fechamento-mensal" element={<Suspense fallback={<LoadingFallback />}><TelaFechamentoMensal /></Suspense>} />
         <Route path="/proprietario" element={<Suspense fallback={<LoadingFallback />}><TelaDashboardProprietario /></Suspense>} />
+        <Route path="/planilha" element={<Suspense fallback={<LoadingFallback />}><TelaPlanilhaMensal /></Suspense>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -76,17 +82,49 @@ const AppRoutes = () => {
 // [14/01 07:05] Refatoração completa para React Router + Lazy Loading.
 // Implementado Suspense para carregamento sob demanda das rotas.
 
+/**
+ * Porta de entrada: sem sessão, só a tela de login.
+ *
+ * @remarks Não é enfeite de segurança. As policies de RLS distinguem `anon` de
+ *          `authenticated`: sem sessão o painel não lê `Fornecedor` nem `Compra`
+ *          e não grava em data histórica — e leitura barrada volta como lista
+ *          vazia, sem erro, o que faz a tela dizer "não há nada cadastrado"
+ *          quando o que falta é permissão. Por isso não há caminho alternativo:
+ *          um painel que mente sobre o que não pode ver é pior que um login.
+ */
+const PortaDeEntrada: React.FC = () => {
+  const { autenticado, carregando } = useAuth();
+
+  if (carregando) return <LoadingFallback />;
+
+  if (!autenticado) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <TelaLogin />
+      </Suspense>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  );
+};
+
 const App: React.FC = () => {
   return (
-    <PostoProvider>
-      <ThemeProvider>
-        <Toaster position="top-right" richColors closeButton />
-        <UpdateNotifier />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </ThemeProvider>
-    </PostoProvider>
+    <AuthProvider>
+      <PostoProvider>
+        <ThemeProvider>
+          <PeriodoProvider>
+            <Toaster position="top-right" richColors closeButton />
+            <UpdateNotifier />
+            <PortaDeEntrada />
+          </PeriodoProvider>
+        </ThemeProvider>
+      </PostoProvider>
+    </AuthProvider>
   );
 };
 

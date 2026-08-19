@@ -24,7 +24,26 @@ import {
     despesaOperacionalPorLitro,
     lucroCombustivel,
     margemPercentual,
+    custoMedioCompra,
 } from './lucro';
+
+// Custo médio de compra recalculado a partir da compra crua (litros/valor) do
+// mês bate com o `media_lt_rs` da planilha — é o que `custoMedioCompra`
+// substitui: a margem % hardcoded por tipo de combustível que o app tinha em
+// `useCalculoGestaoBicos.ts` (ver .claude/agent-memory/planilha para a
+// divergência medida: até 67% de erro no lucro do Diesel).
+for (const c of fixture.mes_01_compra_custo_estoque) {
+    test(`custoMedioCompra recalcula o custo médio real — ${c.produto}`, () => {
+        const custo = custoMedioCompra([{ litros: c.compra_lt, valorTotal: c.compra_rs }]);
+        expect(custo).not.toBeNull();
+        expect(Math.abs((custo as number) - c.media_lt_rs)).toBeLessThan(1e-9);
+    });
+}
+
+test('custoMedioCompra devolve null sem compra no período (nunca 0)', () => {
+    expect(custoMedioCompra([])).toBeNull();
+    expect(custoMedioCompra([{ litros: 0, valorTotal: 0 }])).toBeNull();
+});
 
 const TOL = 1.0; // R$ 1,00 de tolerância (arredondamentos de custo/rateio na planilha)
 

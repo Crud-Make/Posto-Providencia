@@ -1,14 +1,6 @@
 import { useMemo } from 'react';
 import { BicoComDetalhes } from '../../../types/fechamento';
-
-// Margens de lucro padrão (fallback) conforme regras de negócio
-// Fonte: docs/regras-negocio.md
-const MARGENS_PADRAO: Record<string, number> = {
-    'Gasolina': 0.1179, // ~11.79%
-    'Aditivada': 0.1153, // ~11.53%
-    'Etanol': 0.0902,   // ~9.02%
-    'Diesel': 0.0273    // ~2.73%
-};
+import { lucroCombustivel, margemPercentual } from '@posto/utils';
 
 interface Leitura {
     inicial: string;
@@ -22,8 +14,21 @@ interface LeituraMap {
 /**
  * Hook para cálculos da aba Gestão de Bicos
  * Centraliza a lógica de agregação de volumes, faturamento e margens.
+ *
+ * @param custoMedioPorProduto - Custo médio de compra do mês, por nome de
+ *        produto (`useCustoMensal`). Produto sem compra no mês fica `null` —
+ *        lucro não apurável, nunca estimado por margem fixa (era o bug: uma
+ *        margem % hardcoded por tipo de combustível divergia até 67% do
+ *        lucro real, conferido contra a planilha em jan/2026).
+ * @param despesaOperacionalLitro - Rateio da despesa do mês (R$/L), de
+ *        `despesaOperacionalPorLitro` — mesmo número que o Resumo Mensal usa.
  */
-export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: LeituraMap) => {
+export const useCalculoGestaoBicos = (
+    bicos: BicoComDetalhes[],
+    leituras: LeituraMap,
+    custoMedioPorProduto: Record<string, number | null>,
+    despesaOperacionalLitro: number
+) => {
     return useMemo(() => {
         // Dados por Combustível
         const porCombustivel: Record<string, { volume: number, faturamento: number, meta: number, cor: string }> = {};
@@ -40,25 +45,28 @@ export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: Leitur
             // 2. Calcular Volume
             const volume = final >= inicial ? final - inicial : 0;
 
-            // 3. Obter Preços
+            // 3. Preço de venda (já resolvido pro dia — cadastro ou o editado
+            // manualmente na aba Leituras de Bomba, ver useCarregamentoDados)
             const precoVenda = Number(bico.combustivel?.preco_venda || 0);
             const nomeCombustivel = bico.combustivel?.nome || 'Desconhecido';
 
-            // Tenta obter custo do cadastro, senão estima pela margem padrão do tipo
-            let precoCusto = Number(bico.combustivel?.preco_custo || 0);
+            // 4. Custo do mês: custo médio de compra do produto + rateio de
+            // despesa operacional. Sem compra lançada no mês, o custo é
+            // desconhecido — o lucro não é apurável, nunca vira zero nem uma
+            // estimativa por margem fixa (número plausível e errado).
+            const custoMedio = custoMedioPorProduto[nomeCombustivel] ?? null;
+            const apurado = custoMedio !== null && precoVenda > 0;
 
-            if (precoCusto <= 0 && precoVenda > 0) {
-                // Fallback de margem baseado no nome do combustível
-                const margemEstimada = Object.entries(MARGENS_PADRAO)
-                    .find(([key]) => nomeCombustivel.includes(key))?.[1] || 0.10; // 10% default
-
-                precoCusto = precoVenda * (1 - margemEstimada);
-            }
-
-            // 4. Calcular Financeiro
             const faturamento = volume * precoVenda;
-            const lucro = volume * (precoVenda - precoCusto);
-            const margem = faturamento > 0 ? (lucro / faturamento) * 100 : 0;
+            const lucro = apurado
+                ? lucroCombustivel({
+                    litros: volume,
+                    precoVenda,
+                    custoMedio: custoMedio as number,
+                    despesaOperacionalLitro
+                })
+                : 0;
+            const margem = apurado ? margemPercentual(lucro, faturamento) : 0;
 
             return {
                 id: bico.id,
@@ -70,6 +78,7 @@ export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: Leitur
                 faturamento,
                 margem,
                 lucro,
+                apurado,
                 // Meta de performance: 5000L/bico (exemplo)
                 performance: Math.min((volume / 5000) * 100, 100)
             };
@@ -102,6 +111,10 @@ export const useCalculoGestaoBicos = (bicos: BicoComDetalhes[], leituras: Leitur
 
         const listaBicos = [...detalhes].sort((a, b) => b.faturamento - a.faturamento);
 
-        return { volumeTotal, faturamentoTotal, lucroTotal, listaBicos, porCombustivel };
-    }, [bicos, leituras]);
+        // `false` quando algum bico com volume vendido ficou sem custo apurável —
+        // o lucroTotal exibido é só a soma do que deu pra apurar, não o mês inteiro.
+        const apurado = detalhes.every(d => d.apurado || d.volume === 0);
+
+        return { volumeTotal, faturamentoTotal, lucroTotal, listaBicos, porCombustivel, apurado };
+    }, [bicos, leituras, custoMedioPorProduto, despesaOperacionalLitro]);
 };

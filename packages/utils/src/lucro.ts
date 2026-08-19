@@ -33,6 +33,29 @@ export function despesaOperacionalPorLitro(
     return litrosVendidos > 0 ? despesasTotais / litrosVendidos : 0;
 }
 
+/** Uma compra do período, já somada por produto. */
+export interface CompraDoProduto {
+    /** Litros comprados do produto no período. */
+    litros: number;
+    /** Valor total pago pelo produto no período (R$). */
+    valorTotal: number;
+}
+
+/**
+ * Custo médio de compra por litro, ponderado pelo volume (planilha: `F16 = E16/D16`).
+ *
+ * @returns R$/litro, ou `null` sem compra no período — nunca `0`, que se
+ *          confundiria com "comprado de graça", e nunca o `preco_custo` do
+ *          cadastro, que é um preço só, o de hoje (ver {@link EntradaBicoMes}
+ *          em `@posto/utils/resumo-produto`, mesma ressalva).
+ */
+export function custoMedioCompra(compras: readonly CompraDoProduto[]): number | null {
+    const litros = compras.reduce((acc, c) => acc + c.litros, 0);
+    if (litros <= 0) return null;
+    const valorTotal = compras.reduce((acc, c) => acc + c.valorTotal, 0);
+    return valorTotal / litros;
+}
+
 /** Entrada para o cálculo de lucro de um combustível. */
 export interface LucroCombustivelInput {
     /** Litros vendidos. */

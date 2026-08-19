@@ -13,9 +13,23 @@ import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../../.
 import { conferido, diferenca as calcularDiferenca } from '@posto/utils';
 import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
+/**
+ * Valor gravado em `Fechamento.turno_id` enquanto a coluna existir.
+ *
+ * @remarks [16/08] NÃO é o turno de trabalho — o posto não trabalha por turno, e o conceito
+ *          saiu do sistema. É um tampão para não perder a única garantia que a coluna ainda
+ *          sustenta: o índice de produção é `UNIQUE (data, turno_id)`, e em Postgres dois
+ *          `NULL` não colidem entre si. Gravar `null` aqui não daria erro — apenas deixaria
+ *          o mesmo dia aceitar vários `Fechamento`, cada um afirmando um `total_vendas`
+ *          diferente, sem nada reclamar.
+ *
+ *          Sai junto com a migração que trocar o índice para `UNIQUE (data)` e dropar a
+ *          coluna. Até lá, esta constante é o que mantém um fechamento por dia.
+ */
+const TURNO_TAMPAO_ATE_A_MIGRACAO = 1;
+
 interface SubmissaoParams {
    selectedDate: string;
-   selectedTurno: number | null;
    bicos: BicoComDetalhes[];
    leituras: Record<number, { inicial: string; fechamento: string }>;
    sessoesFrentistas: SessaoFrentista[];
@@ -46,7 +60,6 @@ export function useSubmissaoFechamento() {
    const handleSave = async (params: SubmissaoParams) => {
       const {
          selectedDate,
-         selectedTurno,
          bicos,
          leituras,
          sessoesFrentistas,
@@ -61,11 +74,6 @@ export function useSubmissaoFechamento() {
 
       if (!postoAtivoId) {
          setError('Posto não selecionado.');
-         return;
-      }
-
-      if (!selectedTurno) {
-         setError('Turno não selecionado.');
          return;
       }
 
@@ -92,13 +100,13 @@ export function useSubmissaoFechamento() {
          // depois descobrir que as leituras não saíram deixaria o dia pela metade.
          // Um DELETE barrado pela RLS não vira erro do Supabase: quem confere é o serviço,
          // contando o que sobrou.
-         const leiturasAntigasRes = await leituraService.deleteByShift(selectedDate, selectedTurno, postoAtivoId);
+         const leiturasAntigasRes = await leituraService.deleteByDate(selectedDate, postoAtivoId);
          if (!isSuccess(leiturasAntigasRes)) {
             throw new Error(leiturasAntigasRes.error || 'Erro ao limpar as leituras anteriores');
          }
 
          // 1. Obter ou Criar Fechamento
-         const fechamentoRes = await fechamentoService.getByDateAndTurno(selectedDate, selectedTurno, postoAtivoId);
+         const fechamentoRes = await fechamentoService.getDoDia(selectedDate, postoAtivoId);
 
          let fechamento;
          if (isSuccess(fechamentoRes) && fechamentoRes.data) {
@@ -119,7 +127,7 @@ export function useSubmissaoFechamento() {
             const createRes = await fechamentoService.create({
                data: selectedDate,
                usuario_id: USUARIO_SISTEMA_ID,
-               turno_id: selectedTurno,
+               turno_id: TURNO_TAMPAO_ATE_A_MIGRACAO,
                status: 'RASCUNHO',
                posto_id: postoAtivoId
             });
@@ -141,7 +149,6 @@ export function useSubmissaoFechamento() {
                combustivel_id: bico.combustivel.id,
                preco_litro: bico.combustivel.preco_venda,
                usuario_id: USUARIO_SISTEMA_ID,
-               turno_id: selectedTurno,
                posto_id: postoAtivoId
             }));
 

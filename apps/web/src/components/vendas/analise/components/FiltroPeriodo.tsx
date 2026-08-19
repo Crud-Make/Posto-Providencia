@@ -1,24 +1,17 @@
 import React from 'react';
-import { Calendar, RefreshCw, Download, BarChart2 } from 'lucide-react';
+import { RefreshCw, Download, BarChart2 } from 'lucide-react';
+import { Calendario, modoMes } from '@shared/ui/calendario';
 
 interface FiltroPeriodoProps {
-  selectedMonth: number;
-  setSelectedMonth: (month: number) => void;
-  selectedYear: number;
-  setSelectedYear: (year: number) => void;
+  /** Mês exibido, ISO local `aaaa-mm`. */
+  mes: string;
+  onMesChange: (mes: string) => void;
   onRefresh: () => void;
 }
 
-const monthNames = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
-
 const FiltroPeriodo: React.FC<FiltroPeriodoProps> = ({
-  selectedMonth,
-  setSelectedMonth,
-  selectedYear,
-  setSelectedYear,
+  mes,
+  onMesChange,
   onRefresh
 }) => {
   return (
@@ -27,27 +20,7 @@ const FiltroPeriodo: React.FC<FiltroPeriodoProps> = ({
         <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Análise de Vendas</h1>
         <div className="flex items-center gap-2 mt-2">
           <span className="text-gray-500">Período:</span>
-          <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm">
-            <Calendar size={16} className="text-blue-600" />
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="font-bold text-gray-900 text-sm outline-none bg-transparent cursor-pointer"
-            >
-              {monthNames.map((name, idx) => (
-                <option key={idx} value={idx + 1}>{name}</option>
-              ))}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="font-bold text-gray-900 text-sm outline-none bg-transparent cursor-pointer"
-            >
-              {[2023, 2024, 2025, 2026].map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
+          <Calendario modo={modoMes} valor={mes} aoMudar={onMesChange} className="py-1.5" />
           <button
             onClick={onRefresh}
             className="p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"

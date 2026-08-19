@@ -13,6 +13,22 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { litrosVendidos, valorDaLeitura, type LeituraDeBico } from '@posto/utils';
+
+/**
+ * Traduz a linha do banco para o contrato de domínio de `@posto/utils`.
+ *
+ * @remarks O banco fala `leitura_inicial`/`leitura_final`, o domínio fala
+ *          `inicial`/`fechamento` (§4: a tradução acontece na fronteira, uma
+ *          vez). Este service é a fronteira das leituras no painel.
+ */
+const comoLeitura = (l: {
+  leitura_inicial: number;
+  leitura_final: number;
+}): LeituraDeBico => ({
+  inicial: l.leitura_inicial,
+  fechamento: l.leitura_final,
+});
 
 export interface VendaPorCombustivel {
   combustivel: Combustivel;
@@ -44,20 +60,22 @@ const ERRO_FORA_DA_JANELA =
  *          apagou, reinsere as leituras por cima e o dia fica com litros e valor em dobro
  *          (não há índice único que segure — ver a migração citada em ERRO_FORA_DA_JANELA).
  *          Por isso a prova é CONTAR o que sobrou, nunca ler o status da resposta.
+ *
+ *          [16/08] O filtro de turno saiu daqui, e essa era a parte perigosa: a conferência
+ *          usava o MESMO recorte do DELETE, então uma linha com `turno_id` diferente (ou
+ *          nulo) não era apagada **e nem contada** — a guarda que existe para pegar delete
+ *          silencioso passava em verde justamente por cima da linha que ia causar o
+ *          `duplicate key` no insert seguinte. Contar o dia inteiro é o que a torna guarda.
  * @returns `null` se não sobrou nada; caso contrário a mensagem de erro a propagar.
  */
 async function conferirLeiturasApagadas(
-  filtros: { data: string; posto_id: number; turno_id?: number }
+  filtros: { data: string; posto_id: number }
 ): Promise<string | null> {
-  let consulta = supabase
+  const consulta = supabase
     .from('Leitura')
     .select('id', { count: 'exact', head: true })
     .eq('data', filtros.data)
     .eq('posto_id', filtros.posto_id);
-
-  if (filtros.turno_id !== undefined) {
-    consulta = consulta.eq('turno_id', filtros.turno_id);
-  }
 
   const { count, error } = await consulta;
 
@@ -144,53 +162,39 @@ export const leituraService = {
   },
 
   /**
-   * Busca leituras de uma data e turno específicos
-   * @param data - Data no formato YYYY-MM-DD
-   * @param turnoId - ID do turno
-   * @param postoId - ID do posto (opcional)
+   * [16/08] `getByDateAndTurno` removido: era o `getByDate` acima com um `.eq('turno_id')`
+   * a mais, e ficou sem chamador quando a tela deixou de escolher entre as duas conforme
+   * houvesse turno selecionado. Ler o dia pelos dois caminhos era o que permitia à tela
+   * mostrar um conjunto de leituras e ao salvamento apagar outro.
    */
-  async getByDateAndTurno(data: string, turnoId: number, postoId?: number): Promise<ApiResponse<(Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]>> {
-    try {
-      const baseQuery = supabase
-        .from('Leitura')
-        .select(`
-          *,
-          bico:Bico(
-            *,
-            combustivel:Combustivel(*),
-            bomba:Bomba(*)
-          )
-        `)
-        .eq('data', data)
-        .eq('turno_id', turnoId);
-
-      const query = withPostoFilter(baseQuery, postoId);
-
-      const { data: leituras, error } = await query.order('id');
-
-      if (error) {
-        return createErrorResponse(error.message, 'FETCH_ERROR');
-      }
-
-      return createSuccessResponse((leituras as unknown as (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[]) || []);
-    } catch (err) {
-      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
-    }
-  },
 
   /**
-   * Busca a última leitura de cada bico
+   * Busca a leitura mais recente de cada bico **anterior a uma data**.
+   *
    * @param postoId - ID do posto (opcional)
-   * @remarks Busca as últimas 200 leituras e filtra a mais recente por bico
+   * @param anteriorA - Data da tela (`YYYY-MM-DD`). Só entram leituras de dias
+   *                    estritamente anteriores. Omitir devolve a última leitura
+   *                    absoluta, que é o comportamento antigo.
+   * @remarks Serve para preencher o encerrante **inicial** de um dia sem leitura
+   *          salva: o inicial de um dia é o final do último dia *antes* dele.
+   *          Sem o recorte, um dia lançado fora de ordem cronológica — replay de
+   *          período passado — herdava o encerrante do dia mais recente do banco
+   *          e produzia litragem negativa na casa das dezenas de milhares.
+   *          Confirmado em 19/08/2026 abrindo 01/01/2026 com leitura de 18/08 no
+   *          banco: o bico 01 vinha com 1.877.237,402 em vez de 1.716.778,963.
    */
-  async getLastReading(postoId?: number): Promise<ApiResponse<Leitura[]>> {
+  async getLastReading(postoId?: number, anteriorA?: string): Promise<ApiResponse<Leitura[]>> {
     try {
-      const baseQuery = supabase
+      let baseQuery = supabase
         .from('Leitura')
         .select('*')
         .order('data', { ascending: false })
         .order('id', { ascending: false })
         .limit(200);
+
+      if (anteriorA) {
+        baseQuery = baseQuery.lt('data', anteriorA);
+      }
 
       const query = withPostoFilter(baseQuery, postoId);
 
@@ -242,9 +246,8 @@ export const leituraService = {
    */
   async create(leitura: InsertTables<'Leitura'>): Promise<ApiResponse<Leitura>> {
     try {
-      // Calcula litros vendidos e valor venda
-      const litros_vendidos = leitura.leitura_final - leitura.leitura_inicial;
-      const valor_total = litros_vendidos * leitura.preco_litro;
+      const litros_vendidos = litrosVendidos(comoLeitura(leitura));
+      const valor_total = valorDaLeitura(comoLeitura(leitura), leitura.preco_litro);
 
       const { data, error } = await supabase
         .from('Leitura')
@@ -292,8 +295,12 @@ export const leituraService = {
       // Recalcula se necessário
       let updates = { ...leitura };
       if (leitura.leitura_final !== undefined && leitura.leitura_inicial !== undefined && leitura.preco_litro !== undefined) {
-        updates.litros_vendidos = leitura.leitura_final - leitura.leitura_inicial;
-        updates.valor_total = updates.litros_vendidos * leitura.preco_litro;
+        const alvo = comoLeitura({
+          leitura_inicial: leitura.leitura_inicial,
+          leitura_final: leitura.leitura_final,
+        });
+        updates.litros_vendidos = litrosVendidos(alvo);
+        updates.valor_total = valorDaLeitura(alvo, leitura.preco_litro);
       }
 
       const { data, error } = await supabase
@@ -319,8 +326,8 @@ export const leituraService = {
     try {
       const leiturasWithCalc = leituras.map(l => ({
         ...l,
-        litros_vendidos: l.leitura_final - l.leitura_inicial,
-        valor_total: (l.leitura_final - l.leitura_inicial) * l.preco_litro,
+        litros_vendidos: litrosVendidos(comoLeitura(l)),
+        valor_total: valorDaLeitura(comoLeitura(l), l.preco_litro),
       }));
 
       const { data, error } = await supabase
@@ -391,10 +398,17 @@ export const leituraService = {
   },
 
   /**
-   * Remove todas as leituras de uma data específica
+   * Remove todas as leituras de uma data
+   *
    * @param data - Data no formato YYYY-MM-DD
    * @param postoId - ID do posto
-   * @remarks Considera apenas turno_id = 1
+   *
+   * @remarks [16/08] O filtro `turno_id = 1` saiu, e o gêmeo `deleteByShift` foi removido.
+   *          Os dois apagavam o dia recortado por turno, enquanto o índice único de produção
+   *          é `leitura_unica_bico_data (bico_id, data)`, sem turno — e em SQL `= 1` não casa
+   *          com `NULL`. Encerrante lançado pelo outro app sobrevivia ao delete e derrubava o
+   *          insert seguinte com `duplicate key`. Apagar pelo dia inteiro é o que alinha o
+   *          recorte da exclusão ao recorte da chave.
    */
   async deleteByDate(data: string, postoId: number): Promise<ApiResponse<void>> {
     try {
@@ -402,38 +416,11 @@ export const leituraService = {
         .from('Leitura')
         .delete()
         .eq('data', data)
-        .eq('turno_id', 1)
         .eq('posto_id', postoId);
 
       if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
 
-      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId, turno_id: 1 });
-      if (bloqueio) return createErrorResponse(bloqueio, 'DELETE_BLOQUEADO');
-
-      return createSuccessResponse(undefined);
-    } catch (err) {
-      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
-    }
-  },
-
-  /**
-   * Remove todas as leituras de uma data e turno específicos
-   * @param data - Data no formato YYYY-MM-DD
-   * @param turnoId - ID do turno
-   * @param postoId - ID do posto
-   */
-  async deleteByShift(data: string, turnoId: number, postoId: number): Promise<ApiResponse<void>> {
-    try {
-      const { error } = await supabase
-        .from('Leitura')
-        .delete()
-        .eq('data', data)
-        .eq('turno_id', turnoId)
-        .eq('posto_id', postoId);
-
-      if (error) return createErrorResponse(error.message, 'DELETE_ERROR');
-
-      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId, turno_id: turnoId });
+      const bloqueio = await conferirLeiturasApagadas({ data, posto_id: postoId });
       if (bloqueio) return createErrorResponse(bloqueio, 'DELETE_BLOQUEADO');
 
       return createSuccessResponse(undefined);

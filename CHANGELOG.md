@@ -2,6 +2,911 @@
 
 ## [Não Lançado]
 
+### 👻 Envio do PWA aparecia no painel e sumia um instante depois
+- **[19/08/2026]** Em produção, o frentista enviava pelo app, a linha entrava na aba de
+  Frentistas pelo realtime e **desaparecia**; só voltava com F5. A cadeia: o `INSERT` em
+  `FechamentoFrentista` recarregava as sessões (certo), mas o PWA em seguida consolida o
+  pai (`UPDATE Fechamento`), cujo realtime recarrega a lista de frentistas, o que troca a
+  identidade de `carregarSessoes` e **redispara o efeito do rascunho** — que reaplicava o
+  `localStorage` (antigo, ou `[]`) por cima das sessões recém-vindas do banco. O
+  `carregarSessoes` seguinte não era forçado e batia no cache da data, então nada recarregava.
+- Correção em `fechamento-diario/index.tsx`: o rascunho é aplicado **uma vez por
+  restauração** (`ref`), e `sessoesFrentistas: []` deixa de contar como rascunho — `[]` é
+  verdadeiro em JS e entrava no `if`, apagando a tela. Medido no navegador do dono:
+  `rascunho_fechamento_diario_v1_1` → `sessoesFrentistas: []`.
+
+### 🔒 O modo visitante sai — sem senha não há meia-entrada
+- **[19/08/2026]** O "Continuar sem entrar" existia desde 16/08 como escada para a
+  apresentação não travar sem a senha à mão. Saiu porque era **pior que a trava**: como `anon`,
+  a RLS devolve lista vazia **sem erro** em `Fornecedor` e `Compra`, então o painel mostrava
+  número incompleto sem dizer que estava incompleto — e a gravação de data histórica morria
+  no erro cru do Postgres (`new row violates row-level security policy for table "Fechamento"`),
+  em inglês, na cara do dono. Reproduzido ao vivo hoje tentando salvar 01/01/2026.
+- Fora `modoVisitante`, `seguirComoVisitante` e a chave `posto:modo-visitante` do
+  `AuthContext`; `App.tsx` abre a porta só com sessão; o botão da barra lateral virou só
+  **Sair**. As 5 mensagens de UI que citavam "modo visitante" foram reescritas para falar da
+  RLS e da conta — mensagem que aponta para um modo que não existe mais é a mesma podridão
+  que o §13 persegue.
+
+### 🌑 Tela de login em modo escuro
+- **[19/08/2026]** A tela de entrada era a única superfície clara do sistema e destoava do
+  painel. Agora é escura e **sempre** escura: não segue o alternador de tema, porque o painel
+  também não. A identidade fica no detalhe — faixa amarela da estrada no topo, a logo na
+  placa branca (única superfície clara, porque a marca pede fundo branco), vermelho da marca
+  no botão, azul do arco no foco.
+
+### 🔢 Encerrante inicial vinha do dia mais recente, não do dia anterior
+- **[19/08/2026]** `leituraService.getLastReading` buscava a última leitura de cada bico
+  **sem recorte de data**. Abrir um dia sem leitura salva preenchia o encerrante inicial com o
+  fechamento do dia mais novo do banco — não do dia anterior ao da tela. Lançamento em ordem
+  cronológica não percebia; **replay de período passado quebrava em todo dia**.
+- Achado ao abrir 01/01/2026 com leitura de 18/08/2026 no banco: o bico 01 vinha com
+  `1.877.237,402` em vez de `1.716.778,963`, e o dia fechava com **−159.785,87 litros**.
+- A função ganhou o parâmetro `anteriorA` (`.lt('data', …)`), e `useLeituras` passa a data da
+  tela. Omitir o parâmetro mantém o comportamento antigo, para não mexer em chamador futuro
+  que queira mesmo a última leitura absoluta.
+- **O estrago já estava gravado:** as 12 leituras de 17 e 18/08 no banco eram encerrante de
+  agosto lançado contra a base de 31/12/2025 — 8 meses de volume num único dia, R$ 2,1 milhões
+  de faturamento fantasma na Planilha do Mês. Apagadas junto com os 2 `Fechamento` zerados,
+  os 4 `FechamentoFrentista` e os 5 `PresencaFrentista`. A leitura-base de 31/12/2025 ficou:
+  é a abertura de janeiro.
+
+### 🚪 O painel não tinha como sair
+- **[19/08/2026]** `sair()` existe no `AuthContext` desde o início e **nenhum componente
+  chamava**: dava para entrar no painel e não dava para largar dele. Quem abriu em modo
+  visitante ficava preso nele — e o modo visitante **não grava lançamento de data antiga**,
+  que é exatamente o que o replay precisa, então o caminho de volta para o login importava.
+- Botão no rodapé da `BarraLateral`, abaixo do alternador de tema. Serve aos dois estados:
+  autenticado encerra a sessão, visitante limpa a marca e cai no login.
+
+### 📉 Lucro por bico deixa de usar margem fixa hardcoded
+- **[19/08/2026]** `useCalculoGestaoBicos` estimava o lucro com uma margem % fixa por tipo
+  de combustível (Gasolina 11,79%, Etanol 9,02%, Diesel 2,73%) sempre que o cadastro não
+  tinha `preco_custo`. Confirmado contra a planilha real (agente `planilha`, jan/2026) que
+  essa margem diverge até **67%** do lucro real, sem padrão de sinal entre combustíveis —
+  subestima o Diesel, superestima Gasolina e Etanol.
+- Trocada pela fórmula real da planilha: custo médio de compra do produto no mês + despesa
+  operacional rateada por litro. `custoMedioCompra` é novo em `@posto/utils/lucro`; o hook
+  `useCustoMensal` busca `Compra`/`Despesa` do mês pra alimentar a tela. Produto sem compra
+  lançada no mês vira "não apurável" (badge **PARCIAL** no card de lucro), nunca um número
+  estimado — mesmo princípio que `resumoPorProduto` já usa no Resumo Mensal.
+- Golden master (1026, +5 sobre `custoMedioCompra`), Vitest (274, +6), type-check limpo.
+
+### 🧮 Preço do dia por combustível, em vez de bico a bico
+- **[19/08/2026]** Campo novo na tela de Leituras: um input por combustível (Gasolina Comum,
+  Aditivada, Etanol, Diesel) que aplica o preço em todos os bicos daquele combustível de uma
+  vez, em vez de editar cada bico na mão — útil quando vários bicos vendem o mesmo produto.
+
+### 💰 Preço editado no dia deixava de sumir sozinho
+- **[19/08/2026]** Editar o preço de um bico na tela de Fechamento sobrevivia só enquanto o
+  usuário ficasse na mesma tela: sair pra outra rota e voltar, ou qualquer escrita em
+  `Fechamento` disparando a recarga do realtime, apagava a edição e o preço voltava pro
+  cadastro de hoje — reproduzido ao vivo testando o replay de 01/01/2026.
+- Corrigido guardando o preço editado em `sessionStorage`, indexado por **dia + bico**
+  (`useCarregamentoDados.ts`), não mais só em memória do componente. `useEstadoPersistido`
+  ganhou suporte a atualizador funcional (`(atual) => novo`, igual `useState`) — sem isso,
+  aplicar o mesmo preço em vários bicos numa única chamada síncrona (o campo por combustível
+  acima) fazia cada chamada pisar na anterior, e só o último bico ficava com o preço certo.
+- Testado ao vivo no Chrome: preço sobrevive à recarga do realtime, a navegar pra outra tela
+  e voltar, e trocar de dia não vaza o preço de um dia pro outro.
+
+### 🕐 O turno sai do Fechamento de Caixa — o dia é a chave inteira
+- **[16/08/2026]** O posto **não trabalha por turno**. A regra foi confirmada pelo dono em
+  31/07 e já estava aplicada no banco pela migração `20260731112422
+  leitura_uma_por_bico_por_dia`, que dropou o índice com turno e criou
+  `leitura_unica_bico_data (bico_id, data)`. A interface nunca soube: a tela de Fechamento
+  seguia com um seletor **Manhã / Tarde / Noite** obrigatório, carimbando num turno que não
+  existe na operação.
+- **O seletor foi removido** do `HeaderFechamento`, e `selectedTurno` saiu do estado, dos
+  cinco efeitos, do auto-save e do `handleSave`. De brinde some um gate: os carregamentos do
+  dia esperavam a lista de turnos chegar do banco para rodar, e agora dependem só da data.
+- **`leituraService.deleteByDate` deixa de filtrar `turno_id = 1`**, e o gêmeo
+  `deleteByShift` foi removido. Os dois apagavam o dia recortado por turno enquanto a chave
+  real é `(bico_id, data)` — e em SQL `= 1` **não casa com `NULL`**. Encerrante lançado pelo
+  outro app sobrevivia ao delete e derrubava o insert seguinte com `duplicate key`.
+- **A conferência anti-RLS era o lado perigoso disso.** Ela usava o mesmo recorte do DELETE,
+  então a linha de turno divergente não era apagada **nem contada**: a guarda que existe
+  justamente para pegar delete silencioso passava em verde por cima da linha que ia causar o
+  erro. Agora conta o dia inteiro.
+- **`fechamentoService.getByDateUnique` e `getByDateAndTurno` viraram `getDoDia`** — eram a
+  mesma consulta a menos do filtro de turno, uma fixando `turno_id = 1` e a outra recebendo
+  o turno de fora. Com as duas vivas, ler por um caminho e gravar pelo outro podia acertar
+  linhas diferentes no mesmo dia. `leituraService.getByDateAndTurno` também saiu, sem
+  chamador.
+- **Uma coisa NÃO foi removida, de propósito:** `Fechamento.turno_id` continua sendo gravado,
+  agora pela constante `TURNO_TAMPAO_ATE_A_MIGRACAO`. O índice de produção do `Fechamento` é
+  `UNIQUE (data, turno_id)`, e em Postgres dois `NULL` não colidem — gravar nulo ali não daria
+  erro, apenas deixaria o mesmo dia aceitar vários `Fechamento`, cada um afirmando um
+  `total_vendas` diferente, em silêncio. A constante sai junto com a migração que trocar o
+  índice para `UNIQUE (data)`. Trocar um bug barulhento por um silencioso seria o pior negócio
+  possível aqui.
+- Verificado: `bun run type-check` limpo, **265 vitest** e **1021 golden** passando, zero
+  falhas. A contagem é desta branch — o §7 avisa que ela muda sozinha entre árvores.
+
+### 💸 A Edge Function do encerrante deixa de ser uma torneira aberta de custo
+- **[16/08/2026]** `supabase/functions/ler-encerrante` estava pública e sem nenhum
+  limite: CORS `*`, sem teto de tamanho de imagem, sem limite de taxa. Cada foto
+  processada dispara **duas** chamadas ao Gemini (a auto-conferência roda
+  `temperature 0` e `0.3` em paralelo), então um laço `for` contra a URL
+  multiplicava a fatura do dono por 2 a cada requisição. A função está viva:
+  `{"ping":true}` responde `{"pong":true}` em 0,25s.
+- **`verify_jwt` não protegia nada** — a `anon key` **é** um JWT válido e vai no
+  bundle de três apps. Quem abre o DevTools tem a credencial.
+- **Limite de taxa por cliente** é a única trava que vale contra custo: 6
+  leituras/min e 40/h no caminho caro, 30 pings/min, 60 pedidos/min no geral.
+  Responde `429` com `Retry-After`. **É por isolate, não global** — a Supabase
+  pode manter mais de um vivo, e o teto efetivo se multiplica por eles. Um limite
+  global exigiria estado no Postgres a cada pedido, latência no caminho quente e
+  uma migração. Isto não zera o abuso; corta a ordem de grandeza dele.
+- **Teto de tamanho** em duas camadas: `Content-Length` conferido **antes** do
+  `req.json()` (depois de bufferizar, banda e memória já foram gastas) e o
+  `imagemBase64` limitado a **2 MiB** depois do parse. O número é medido: o
+  cliente já comprime (lado maior a 1000px, JPEG 0.82), as fotos reais do spike
+  **sem** essa redução dão 582 mil e 551 mil caracteres, e a que o OCR acertou
+  6/6 dá 160 mil. Folga deliberada porque **ninguém testou num aparelho real
+  ainda** — errar apertado rejeita a foto do dono na hora H, errar folgado só
+  deixa passar banda, e a fatura já está protegida pelo limite de taxa.
+- **CORS por lista** (`ORIGENS_PERMITIDAS`), com `Vary: Origin`. Sem a variável
+  configurada segue `*`, que é o comportamento de hoje — os domínios reais ainda
+  não existem, e travar em domínio inventado quebraria os três apps sem proteger
+  nada. E **CORS não é trava de custo**: só existe dentro do navegador, `curl`
+  ignora.
+- **Segredo em cabeçalho** (`SEGREDO_ENCERRANTE`) é **obstáculo, não autenticação**
+  — está escrito assim no código para ninguém confundir depois. Ele viaja no
+  bundle. Serve contra varredura que acha a URL sem ler o JavaScript da página.
+- A lógica de OCR **não foi tocada**. As guardas moram em `guardas.ts`, puras e
+  sem Deno, cobertas por 23 testes — o `index.ts` chama `Deno.serve` no topo, e
+  importá-lo num teste subiria um servidor.
+- **Não foi feito deploy.** `deploy_edge_function` está na lista `deny` e a
+  decisão é do dono. Enquanto não subir, a função em produção continua aberta.
+### 🔔 O app do dono avisa os dias que ficaram sem encerrante
+- **[16/08/2026]** Consequência direta de o encerrante ter saído do PWA do
+  frentista: antes, três turnos davam três chances por dia de alguém lembrar.
+  Agora depende de uma pessoa, e esquecer um dia **não produzia sinal nenhum** —
+  o `total_vendas` daquele dia fica no valor de antes e o fechamento não
+  concilia, calado.
+- Lista os dias passados com menos leituras que bicos ativos, com a contagem à
+  vista (`1 de 6 bicos`). **Dia incompleto conta como falta**: é o estado que
+  derrubava a tela de Leituras do painel.
+- **Hoje não entra na lista.** O dia corrente não está em falta, está em
+  andamento — é o que a pessoa abriu o app para fazer. Cobrá-lo às 10h da manhã
+  tornaria o aviso ruído permanente.
+- **Sete dias**, porque é a largura da janela de escrita da RLS. Fora dela o
+  banco recusa o INSERT, e cobrar um dia que o app não consegue lançar seria
+  aviso sem saída.
+- `lerEncerrante` **deixou de repetir a chamada** quando a Edge Function recusa
+  por limite de taxa (429) ou tamanho (413). Repetir um 429 é bater de novo na
+  porta que acabou de pedir calma; repetir um 413 não encolhe a foto. As duas
+  recusas agora chegam à tela com o que fazer, lembrando que dá para digitar à
+  mão.
+
+### 🔒 `UPDATE` de `Fechamento` passa a valer só nas colunas que o sistema grava
+- **[16/08/2026]** `anon` e `authenticated` podiam reescrever **18 colunas** de
+  qualquer fechamento dentro da janela — inclusive `posto_id`, `usuario_id` e a
+  própria `data`, que é a coluna que a policy usa para decidir se a linha está
+  na janela. Poder mudá-la é poder arrastar a linha para dentro dela.
+- A migração deixa **5**: `total_vendas`, `total_recebido`, `diferenca`,
+  `status`, `observacoes` — as que os dois únicos call sites de UPDATE do
+  monorepo realmente escrevem.
+- ⚠️ **Não aplicada.** É arquivo versionado; aplicar é decisão do dono (§5).
+
+### 📸 O encerrante vira app do dono, e sai da mão do frentista
+- **[16/08/2026]** Nasce o `apps/pwa-dono` — terceiro app do monorepo, uma tela
+  só: fotografar o papel do encerrante e enviar a leitura das bombas. A aba
+  Encerrante **saiu** do PWA do frentista.
+- **Ela nunca foi do frentista.** A tabela `Leitura` é a leitura da *bomba* e não
+  tem coluna de frentista — o commit `635a6f2` já tinha constatado isso ao
+  remover a exigência de selecionar alguém, e o plano original do OCR dizia
+  desde o começo *"apps/web (dono) + apps/pwa-frentista (frentista)"*. A aba no
+  app errado era o desvio; agora está desfeito.
+- ⚠️ **Não confundir com o campo `encerrante` do `FechamentoFrentista`**, que
+  continua no app do frentista: aquele é o total em **R$** que ele declara do
+  concentrador. São duas coisas com o mesmo nome.
+- **A tela foi movida, não reescrita.** Com ela viajaram as cinco armadilhas já
+  pagas: o CORS que só quebrava no navegador, o cold start de 40s da Edge
+  Function, a câmera do Android descarregando a página e perdendo a primeira
+  foto, a auto-conferência que chama o Gemini duas vezes, e o recorte
+  `data < hoje` que impede o segundo envio do dia de apagar a manhã.
+- **Quem já tem o app instalado não vê tela quebrada.** A aba ficava salva no
+  `localStorage`, e os celulares guardam `'encerrante'` — valor que não
+  corresponde mais a tela nenhuma. Sem tratar, o app abriria no Registro com a
+  barra inferior sem nada selecionado.
+- Os testes da aba **migraram junto**, não foram apagados.
+
+### 🧱 `packages/api-core` deixa de ser um esqueleto
+- **[16/08/2026]** Ele prometia "acesso a dados desacoplado" e era um arquivo de
+  helpers com **zero importadores**. Agora abriga as seis operações do
+  encerrante que os **dois** PWAs precisam usar igual.
+- **Por que compartilhar em vez de copiar:** `salvarLeituras` chama
+  `consolidarFechamento`, que escreve `Fechamento.total_vendas` e `diferenca` —
+  o número sobre o qual se cobra o caixa do frentista. Duas cópias divergiriam
+  como divergiram os quatro lugares que calculavam litros.
+- O cliente Supabase é **injetado**: cada app tem o seu, com auth e `.env`
+  próprios, e `packages/*` nunca importa de app.
+- O `services/api.ts` do PWA do frentista caiu de ~430 para 209 linhas.
+
+### 💥 Dia salvo pela metade derrubava a tela de Leituras
+- **[16/08/2026]** Lançar alguns bicos, salvar, e voltar depois para os outros —
+  o uso normal — deixava a tela **em branco** ao digitar em qualquer bico que
+  faltava, perdendo tudo o que já estava preenchido.
+- A carga tinha dois modos: dia **sem** leitura montava entrada para todos os
+  bicos; dia **com** alguma leitura mapeava só as linhas existentes. Bastava um
+  bico salvo e os outros cinco ficavam **sem entrada nenhuma** — o `0,000` que
+  aparecia neles era placeholder do input, não dado.
+- **O crash era o sintoma bom.** Sem ele, a gravação levaria `leitura_inicial`
+  = 0 e os litros do dia virariam o odômetro inteiro da bomba: no Bico 02,
+  660.100 L e cerca de **R$ 4,6 milhões** de venda que não existiram, gravados
+  sem um aviso.
+- Corrigido nas duas camadas: a carga completa os bicos faltantes com a última
+  leitura anterior, e o cálculo de litros parou de confiar que os campos
+  existem.
+
+### 🔢 O encerrante do Bico 01 era gravado mil vezes menor
+- **[16/08/2026]** Na tela de Leituras Diárias, o encerrante digitado era lido
+  com `replace('.', '')` **sem a flag `/g`** — saía só o primeiro separador de
+  milhar. `1.861.796,633` virava `1861.796` e ia para o banco assim.
+- **Só o Bico 01 (Gasolina Comum) era atingido**, porque é o único que passa de
+  1 milhão na operação real e por isso o único cujo número tem **dois** pontos.
+  Os outros cinco ficam abaixo de 700 mil. Foi o que manteve o bug invisível.
+- **O pior não era o valor errado, era a divergência.** O cálculo de exibição já
+  lia certo: a tela mostrava **348,487 L enquanto o banco recebia 0,349 L** —
+  mesmo hook, dois números.
+- Segundo efeito, mais silencioso ainda: com o final deslocado e o inicial
+  correto, o filtro `final > inicial` **derrubava a linha sem erro visível**.
+  Digitava-se a leitura, salvava, e nada era gravado.
+- **Nenhum dado no banco foi contaminado** — conferido antes da correção: 186
+  linhas em `Leitura`, as 31 do Bico 01 todas em milhões, e a cadeia diária sem
+  quebra (o inicial de cada dia bate com o final do anterior, 0 quebras em 186).
+  As linhas vieram de carga em lote, não do formulário: o dado está limpo porque
+  não passou por esta tela, não porque ela estivesse certa.
+- A correção usa a **mesma normalização da exibição**, extraída para
+  `model/encerrante-digitado.ts` com 7 testes — aquele diretório não tinha
+  nenhum.
+
+### 📏 Litros e valor de uma leitura passam a ter uma função só
+- **[16/08/2026]** A aritmética do encerrante vivia em dois lugares com
+  convenções **diferentes**: o PWA aplicava piso de zero, o painel não. A mesma
+  leitura invertida gravava 0 L por um caminho e litros **negativos** pelo outro
+  — e `valor_total` alimenta `total_vendas` e daí a `diferenca` do frentista.
+- Fica o **piso de zero**: litro negativo não existe fisicamente, e negativo
+  contamina o total do dia em silêncio. O piso **não substitui o aviso** —
+  `motivoImplausivel` aponta encerrante que retrocede e salto acima de 3.000 L
+  no turno, para a tela avisar antes de gravar.
+- Conferido contra as **1.188 leituras reais de 2026**: litros batem 1188/1188 e
+  a venda bate 990/990 nas linhas que têm preço. E **0 linhas têm o encerrante
+  retrocedendo** — ou seja, adotar o piso não altera nenhum número histórico.
+- ⚠️ **Lacuna da fonte, travada em teste:** o Bico 06 sai do ETL sem `valor_lt`
+  nas suas 198 linhas, embora tenha litros e venda. O preço é recuperável
+  (`venda ÷ litros`), mas é conserto de ETL.
+
+### 🧮 O fechamento do dia deixa de nascer zerado esperando o painel
+- **[16/08/2026]** O PWA gravava a linha do frentista e criava o **pai zerado**;
+  os totais do dia só apareciam quando alguém abria o painel. É o mecanismo que
+  produziu os **12 dias nunca fechados** da seção mais abaixo — a tela dizia
+  "FECHADO, R$ 0,00" para dias que tinham movimento.
+- Agora todo filho gravado chama `consolidarFechamento`, que **relê o banco** em
+  vez de somar o que acabou de ser enviado. O dia tem vários frentistas, cada um
+  mandando do seu celular, e quem envia por último não sabe o que os outros
+  mandaram: reler é o que torna o pai correto **em qualquer ordem de envio** — e
+  o que faz um reenvio **corrigir** em vez de somar de novo.
+- A conta é a canônica de `@posto/utils` (`totaisDoDia`), a mesma do painel:
+  `diferenca = concentrador − conferido`, positivo = FALTA (§6). Não é uma quinta
+  reimplementação da aritmética.
+- **Ausência de leitura não é venda zero.** Os frentistas mandam durante o dia; o
+  encerrante das bombas chega à noite. Quando o primeiro frentista envia ainda
+  não há leitura nenhuma, e tratar isso como concentrador = 0 faria a diferença
+  virar `0 − conferido` — uma **SOBRA gigante que nunca existiu**. Sem encerrante
+  grava só `total_recebido` e deixa venda e diferença intocadas até a noite.
+- **A consolidação não derruba o envio.** O dinheiro do frentista já está gravado
+  quando ela roda: deixar o pai desatualizado é ruim, perder a submissão por
+  causa dele é pior. Falha vai para o console e o pai continua reconciliável pelo
+  painel.
+
+### 🇧🇷 Os campos digitáveis passam a falar português
+- **[16/08/2026]** Os campos que ficaram editáveis mostravam o número cru do
+  JavaScript — `22158.46`, `0.473`, `31000` — com **ponto no lugar da vírgula**,
+  numa planilha que o dono lê em pt-BR há anos. As células de leitura já estavam
+  certas; os campos não.
+- **Vírgula decimal, sem separador de milhar na entrada** — e a ausência do
+  milhar é decisão, não esquecimento. Em campo digitável, `31.000` e `0.473` têm
+  a mesma forma: ponto seguido de três dígitos. Nenhuma regra separa os dois sem
+  adivinhar, e adivinhar aqui **já custou caro**: o `analisarValor` de
+  `apps/web/src/utils/formatters.ts` assume os três últimos dígitos como decimais
+  e transformou **R$ 7.436,00 em R$ 7,44 em produção**. Sem milhar na entrada a
+  ambiguidade some. As células de **leitura** seguem com o milhar, onde ele só
+  ajuda e ninguém digita em cima.
+- Ainda assim o parser **aceita** valor colado com milhar (`1.234,56`), porque
+  com vírgula presente todo ponto só pode ser milhar — é leitura determinística,
+  não palpite.
+- **Custo do litro com 4 casas fixas (`0,4730`)**, e não 2. Ele é multiplicado
+  pelos litros do mês inteiro: em janeiro, `0,4730 × 46.843 L` reproduz a despesa
+  de R$ 22.158,46, e `0,47` daria R$ 22.016,21 — **R$ 142,25 a menos**. Exibir
+  `0,473` sugeriria que a quarta casa não existe.
+- O KPI `Despesas do mês` dizia `R$ 0,47 por litro` enquanto o campo mostrava
+  `0,4730` — o mesmo número aparecendo diferente em dois lugares da mesma tela.
+  Agora os dois mostram 4 casas.
+- Módulo novo `model/campo-numerico.ts` com `numeroDoCampo` e `textoDoCampo`,
+  **coberto por 12 testes** — inclusive o caso do R$ 7.436 e a volta completa
+  número → campo → número. Ele consolidou **três cópias do parser** que estavam
+  espalhadas (hook, célula editável e gravação da régua); a da gravação não sabia
+  ler valor com milhar.
+
+### ✍️ Despesa, custo do litro e compra passam a se digitar na `/planilha`
+- **[16/08/2026]** A pedido do dono, para o replay mês a mês: `Despesas do mês`,
+  `Custo do LT` e as colunas `Compra, LT` / `Compra, R$` aceitam digitação e
+  gravam no banco, pelo mesmo botão que já gravava a régua do tanque.
+- **O total digitado NÃO apaga o que foi lançado item a item.** A gravação mantém
+  cada despesa e cada nota com fornecedor, data e categoria, e põe a diferença
+  numa única linha marcada `Ajuste da planilha`. O rastro fica inteiro e o que
+  foi acertado por total fica identificável. É por essa marca que uma segunda
+  gravação **atualiza** o ajuste em vez de empilhar outro — sem ela, digitar três
+  vezes o mesmo total triplicaria o mês em silêncio.
+- **`Custo do LT` é a despesa lida ao contrário, não um valor fixo.** O §6 diz
+  que o custo operacional por litro é `despesas ÷ litros vendidos` e nunca um
+  número solto; guardar aqui o que foi digitado tiraria a fórmula do caminho e o
+  custo é a origem do piso de venda e do lucro de todo produto. Então digitar
+  R$ 0,7583 grava a **despesa equivalente** (`custo × litros`), e os dois campos
+  viram duas vistas do mesmo número — mexer num move o outro na hora. Sem litro
+  vendido no mês o campo se desabilita: `0 × custo` é zero para qualquer custo.
+- **`fornecedor_id` da `Compra` é NOT NULL**, e um total mensal digitado não sabe
+  de quem veio: a linha de ajuste herda o fornecedor já cadastrado. Sem nenhum
+  fornecedor, a gravação **para e diz o que falta** em vez de criar cadastro pelas
+  costas do dono.
+- Ajuste que zera é **apagado**, não gravado como zero — linha de valor nenhum
+  sujaria a tela de Despesas com um lançamento que não é nada.
+- ⚠️ **`Inicial`/`Fechamento` da Venda continuam somente leitura.** Não é
+  esquecimento: o encerrante mora na `Leitura`, que é por **dia e por bico**, e um
+  par inicial/fechamento do mês inteiro não diz em que dia o combustível saiu — o
+  Fechamento de Caixa concilia dia a dia contra o que os frentistas entregaram.
+  Falta decidir com o dono o que acontece com os dias antes de abrir esse campo.
+
+### 🔒 `Despesa` deixa de aceitar escrita anônima
+- **[16/08/2026]** As policies `Despesa: Permitir inserção para anon` e
+  `Despesa: Permitir atualização para anon` eram `WITH CHECK (true)` — **qualquer
+  um com a anon key inseria e alterava despesa**, e a anon key vai no bundle
+  publicado. Encontrado ao checar a RLS **antes** de ligar a digitação de despesa
+  na tela, não depois.
+- Mesma família do buraco do `HistoricoTanque` fechado hoje de manhã, com um
+  agravante: aqui mexe na corrente inteira do lucro. `custo por litro =
+  despesas ÷ litros vendidos`, `piso de venda = custo da compra + custo por
+  litro`, `lucro = venda − litros × piso`. Uma linha inventada de R$ 20.000 num
+  mês de ~46 mil litros desloca o custo do litro em ~R$ 0,43 e derruba o lucro na
+  mesma proporção — e a tela mostra isso como se fosse o resultado do negócio. O
+  caminho contrário também vale: zerar valor por UPDATE faz o posto parecer mais
+  lucrativo do que é, e **nada no sistema contradiz**, porque a `Despesa` é a
+  autoridade do rateio.
+- Migração versionada:
+  `supabase/migrations/20260816_rls_despesa_escrita_anonima.sql`, no mesmo molde
+  da de manhã — guarda no início (aborta se sobrar policy de escrita alcançando
+  `anon` fora das três previstas) e auto-verificação antes do `COMMIT`.
+  **Medido antes de escrever: 2 policies de escrita irrestritas alcançam o
+  anônimo hoje; a verificação exige 0.**
+- A verificação testa **papel e predicado juntos**. Testar só o papel reprovaria
+  a própria correção, que é `TO public` de propósito — a mesma forma que `Tanque`
+  e `HistoricoTanque` já usam. O que separa a policy nova das antigas é o
+  predicado: aqui exige `authenticated`, lá era `true`.
+- **O DELETE anônimo cai junto.** A `despesa_delete_janela_edicao` limitava o
+  anônimo a 7 dias, mas com INSERT e UPDATE fechados manter o DELETE deixaria de
+  pé o pior dos três verbos — o único que não deixa rastro do que havia.
+- **Sem janela de tempo**, como no `HistoricoTanque`: o replay grava despesa de
+  mês passado (janeiro entrou com data 31/01) e a digitação nova grava no último
+  dia do mês apurado. Janela de 7 dias bloquearia o trabalho em curso. A trava é
+  **quem** escreve, não **quando**.
+- Impacto conferido no código em 16/08: o **PWA do frentista não toca nesta
+  tabela**; o painel logado passa igual (sessão real `posto@providencia.com`
+  conferida na hora); o painel **em modo visitante** deixa de lançar e alterar
+  despesa — de propósito. Leitura anônima intacta (Fase 3).
+
+### 🛢️ A célula do Estoque vira o próprio tanque
+- **[16/08/2026]** `Estoque anterior`, `Estoque hoje` e `Estoque tanque` passam a
+  desenhar o **nível do tanque atrás do número**, com a cor do combustível:
+  preenchimento = `volume ÷ capacidade`, e o percentual exato no `title`. Um
+  volume em litro sozinho não diz nada — `5.672 L` é tranquilo num tanque de
+  30.000 e é véspera de faltar produto num de 6.000. A capacidade passou a ser
+  lida da `Tanque` (o hook trazia só `id` e `combustivel_id`).
+- **Dois casos em que o medidor se recusa a desenhar**, porque a barra mentiria:
+  capacidade ausente ou zero (sem denominador não há fração) e **volume
+  negativo** — estoque teórico negativo é impossível físico, e barra vazia leria
+  como "tanque no fim" em vez de "falta compra lançada".
+- Acima de 100% a barra trava na largura da célula e ganha um risco vermelho na
+  borda: passar da capacidade só acontece com cadastro errado ou lançamento a
+  mais, e nos dois casos o número não pode parecer normal.
+- Nas duas células digitáveis o medidor acompanha **o que está sendo digitado**,
+  não o que veio do banco — é o que faz um zero a mais na régua estourar a barra
+  na hora, antes de gravar.
+
+### 🔠 Fonte maior e saldo em cor na `/planilha`
+- **[16/08/2026]** A tela é lida todo dia e a escala estava pequena demais para
+  isso: tabela 14→**16px**, primeira coluna 15→**17px**, cabeçalho de coluna
+  12→**13px**, KPI 22→**30px**, valor do custo 26→**32px**, título 34→**38px**,
+  campo digitável 14→**16px**. O respiro das células subiu junto (7→9px), senão
+  a fonte maior só aperta.
+- **`font-variant-numeric: tabular-nums` na tabela inteira**: sem isso o Barlow
+  entrega dígito de largura variável fora do bloco monoespaçado, e a coluna
+  dança a cada mês.
+- **Saldo em cor, verde positivo e vermelho negativo**, em `Lucro LT`,
+  `Lucro bico`, `Margem`, `Perca e sobra` e nos KPIs de margem e lucro.
+  Faturamento, litro e despesa **não** entram: não têm sinal a comunicar, e
+  pintar tudo faria a cor deixar de significar onde ela precisa gritar. Zero fica
+  neutro — verde no zero leria como lucro que não existiu.
+- Dois defeitos de especificidade corrigidos de passagem: `Total e média` saía
+  **mais leve** que os números que totaliza, e o estado vazio das tabelas saía
+  alinhado à esquerda em negrito, com cara de linha de dado. Nos dois, a regra
+  de `td:first-child` vencia a da linha.
+- O botão do rodapé foi de 28px para **40px** de altura — são os dois únicos
+  controles reais da tela.
+
+### ✂️ Os três gráficos saem da `/planilha`
+- **[16/08/2026]** `Venda diária`, `Entregas no mês` e `Nível de estoque no mês`
+  foram removidos a pedido do dono: a tela tinha informação demais para o uso
+  dela, que é ler a planilha. `GraficoAcumulado`, `GraficoEntregas`,
+  `geometria-series.ts` e `serie-diaria.ts` **continuam no repo, sem uso** — não
+  apaguei porque a decisão é recente e o custo de voltar atrás é um import.
+- `Compra e custo` desceu para **baixo** da tabela de Compra, em vez da lateral
+  de 300px: a tabela ganhou a largura inteira e os três blocos de custo agora
+  ficam lado a lado, com número grande, em vez de empilhados num tubo estreito.
+
+### 🗓️ O seletor de mês sai da ponta e vai para o meio do cabeçalho
+- **[16/08/2026]** O `Calendario` tinha uma faixa só para ele acima da planilha
+  (`flex justify-end px-5 pt-5`): **62px de altura para segurar um botão**, que
+  somados aos 20px de recuo do widget empurravam o título para **82px abaixo do
+  topo** — numa página que é toda tabela. A faixa foi removida e o seletor virou
+  o filho do meio do `.pm-topo`, entre o título e a procedência.
+- Entra no widget como **nó** (`seletorDeMes`), não como `aoMudarMes`: quem é
+  dono do período é a página, porque o `PeriodoContext` é compartilhado com as
+  outras telas de análise. O widget só empresta o lugar, e a direção do FSD
+  continua de cima para baixo.
+- Centralizado, o painel deixou de precisar do `alinhamento="direita"`: ele abre
+  a 288px do meio da tela e não alcança mais borda nenhuma.
+
+### 🗓️ Quatro meses do ano eram inalcançáveis no seletor da `/planilha`
+- **[16/08/2026]** O painel do `Calendario` tem 288px e abria ancorado à
+  **esquerda** de um botão colado na borda direita da janela: a terceira coluna
+  da grade vazava para fora da tela e **março, junho, setembro e dezembro
+  simplesmente não existiam** para quem clicasse — junto com as setas de ano e o
+  atalho "Hoje". Não havia sinal nenhum de que estavam ali. Corrigido com
+  `alinhamento="direita"` em `pages/planilha-mensal/index.tsx`.
+- Achado abrindo a tela no navegador, não lendo código — e é o tipo de defeito
+  que teste nenhum pegaria. ⚠️ **Outras 10 telas usam o mesmo componente e só o
+  `fechamento-mensal` passa o alinhamento**; o padrão continua sendo o que
+  quebrou aqui.
+
+### 🎨 O tema escuro da `/planilha` deixa de disputar a hierarquia
+- **[16/08/2026]** As cores de bloco (`--venda`, `--compra`, `--custo`,
+  `--estoque` e suas linhas/tintas) eram declaradas **só** em `.pm`, e o
+  `.dark .pm` redefinia apenas fundo, tinta, linhas e os verdes/vermelhos.
+  Resultado no escuro: as três faixas de seção e as três linhas de total ficavam
+  com o pastel do tema claro em saturação plena sobre um painel `#1c211d` —
+  **os seis objetos mais claros da página**, mais claros que o Lucro líquido. O
+  olho ia para o rótulo "Venda", que nunca é a resposta que a tela existe para
+  dar. Agora cada bloco tem par escuro (fundo escurece, tinta clareia), e as
+  cores de **barra** ficaram como estavam, porque são marca de dado sobre
+  trilho, não fundo.
+- Duas cores cravadas (`color: #141715` na faixa de seção e na linha de total)
+  passaram a `var(--ink)`: elas ignoravam o tema por definição.
+- Herdado do desenho aprovado, que é um mock de tema único — o toggle veio
+  depois. Herdar o defeito não o ratifica.
+
+### ♿ Botão de gravar legível parado, e a célula digitável parecendo digitável
+- **[16/08/2026]** `Gravar medições` usava `opacity: .35`, que compõe fundo
+  **e** texto contra a página: **2,14:1** no tema claro, abaixo até do piso de
+  3:1 de elemento não textual. E não é estado de canto — o botão **nasce
+  desabilitado toda vez que a página abre**, com a régua ainda não digitada.
+  Agora é fundo de 10% + tinta forte (`--muted2`, 7,12:1 no claro / 8,70:1 no
+  escuro) e a regra vem **depois** da variante fantasma, senão o fundo
+  transparente dela venceria e o estado sumiria de novo.
+- As **duas** células digitáveis da tela viviam no meio de ~140 de leitura, e o
+  único sinal de que aceitavam a régua era a **ausência** do tom do produto —
+  diferença de poucos por cento de luminância no escuro. Ganharam filete de
+  acento no pé da célula, `:hover` e anel de foco próprio.
+- Novo token `--acento` (`#0b6b8f` / `#63b3d1`), portado do desenho e até aqui
+  esquecido: é a única matiz que não pertence a nenhum produto nem a nenhum
+  bloco, então só ela consegue significar "aqui se digita" e "o teclado está
+  aqui". O foco antes usava a cor de texto encostada na borda de 1px da célula,
+  e lia como borda dobrada.
+
+### 🔧 `forca-delegacao`: comando depois de `|` filtra, não lê
+- **[16/08/2026]** Falso positivo achado **no primeiro dia** do hook: um
+  `git diff -U0 | grep -E '^@@'` foi barrado como se abrisse arquivo. Aquele `grep`
+  não abre nada — filtra a saída do `git diff`, que já entrou no contexto e já foi
+  contada uma vez. Contar de novo é cobrar duas vezes pela mesma leitura.
+- A causa era usar `segmentos()` do `_comum`, que quebra em `|` porque o
+  `protege-dados` precisa olhar **toda** etapa (um `rm` perigoso no meio do pipe
+  ainda apaga). Para contar leitura a pergunta é outra.
+- Novo `primeiros_de_pipeline()` no `_comum`, ao lado de `segmentos()` e sem tocá-lo
+  — mexer no compartilhado arriscaria a trava de `docs/data/` para ganhar precisão
+  numa trava de ritmo. Ele quebra só em `;`, `&&`, `||` e nova linha, e devolve a
+  primeira etapa de cada pipeline. A regra que isso modela: **depois de um `|` o
+  comando filtra, antes dele ele busca.** `cat arquivo | head` conta uma vez, pelo
+  `cat`, não duas.
+- Limite consciente e documentado: `algo | xargs cat` lê arquivo e não é contado.
+  Cobrir `xargs` exigiria interpretar o comando de dentro do comando, e o preço do
+  erro aqui é uma barra a menos numa trava de ritmo.
+- Bateria: **119 → 131 casos**. Os 12 novos cobrem os dois lados — `git diff | grep`,
+  `ls | grep` e `bun run test | tail` não contam; `cat x | head`, `grep -rn x apps/`
+  e `find . | head` contam. E `||` não é confundido com pipe.
+
+### 🛡️ A higiene deixa de ser lista de cicatrizes e vira invariante
+- **[16/08/2026]** Novo manifesto `.claude/ativos-criticos.json` + `ativos_criticos()`
+  no `higiene.py`, substituindo a lista fixa de três caminhos de `docs/data/`.
+- Por que a lista fixa não bastava: ela existia porque *aquela pasta* sumiu em 07/08.
+  Funcionava — e não pegou nada em 16/08, quando três ativos se perderam no mesmo dia,
+  porque `docs/data/` estava intacto e o que foi para a lixeira foi a **planilha
+  fonte**, que ninguém tinha pensado em conferir. Cada checagem do hook era uma
+  cicatriz de um acidente específico, e cicatriz não cobre ferida nova.
+- O hook passa a saber **como** conferir; o manifesto declara **o que** importa. Ativo
+  novo entra no JSON, não no código. Três formas silenciosas de perder arquivo:
+  - **sumiu** — apagado, movido, lixeira; `git status` limpo porque é gitignored ou
+    mora fora do repo;
+  - **encolheu** (`bytes_minimos`) — foi assim que o `settings.json` global caiu de
+    3.694 para 22 bytes, levando junto `ask` em `sudo`/`rm`/`mv`/`dd`/`git push` e
+    `deny` em `rm -rf`/`mkfs`. O arquivo continua lá, válido, e vazio do que importava;
+  - **mudou** (`sha256`) — só para o que deve ser imutável. A planilha do posto é o
+    caso: substituição silenciosa dela envenena todo golden master a jusante.
+- **Pegou o problema real no primeiro dia**: rodando contra o manifesto de verdade, o
+  único caso que falha na bateria é o `~/.claude/settings.json` a 312 bytes. É
+  verdadeiro positivo, e continua pendente de restauração.
+- Bateria: **107 → 119 casos**. Os 11 sintéticos rodam contra um repo de mentira em
+  `tempfile`; o 12º roda contra o manifesto **real**, que é a lição que o detector de
+  plugin fantasma já tinha ensinado — caso sintético passa enquanto o artefato de
+  verdade acusa.
+
+### 🚨 A planilha fonte estava na lixeira — recuperada
+- **[16/08/2026]** `Posto,Jorro, 2026.xlsx` foi apagada de `~/Downloads` às
+  **08:38** e nada avisou. É a fonte auditável de tudo, **nunca esteve em commit
+  nenhum** e não é recuperável do git. Achada por acaso na lixeira do KDE, horas
+  depois, procurando outra coisa.
+- Restaurada com identidade conferida: 965.079 bytes e
+  `sha256 abecc283…fc952`, batendo com o registro da memória `planilha-fonte-onde-esta`.
+- **Cópia fria nova em `/mnt/dados/backups-posto/`**, mesmo hash. `~/Downloads` é
+  onde se apaga coisa; a tabela de discos manda arquivo grande e frio para o SSD.
+- O `higiene.py` já confere "fonte auditável ausente", mas olha `docs/data/` — que
+  estava intacto. O `.xlsx` de origem não era conferido por ninguém.
+
+### 📗 Skill `xlsx` instalada — e barrada para a planilha do posto
+- **[16/08/2026]** `document-skills@anthropic-agent-skills` (docx, pdf, pptx, xlsx),
+  ~1.028 tok always-on, sendo ~330 do `xlsx`.
+- **Não se aplica à nossa planilha, e o §13 passou a dizer isso.** A skill dispara
+  por descrição em qualquer arquivo de planilha — o exemplo literal dela é *"the
+  xlsx in my downloads"*, que é o nosso caminho exato. Mas: a postura padrão dela é
+  **editar e recalcular** o workbook, contra o §6; ela não conhece as 3 guardas que
+  o nosso ETL tirou de bug real; e o nosso estágio 1 lê o `.xlsx` com **`zipfile` da
+  stdlib**, enquanto ela pressupõe `openpyxl`, `pandas`, `markitdown` e LibreOffice —
+  **nenhum dos quatro instalado nesta máquina**. Serve para planilha de fora.
+
+### 🧰 Delegação a subagente deixa de depender de eu lembrar
+- **[16/08/2026]** Novo hook `forca-delegacao.py` (`PreToolUse` em
+  `Read|Grep|Glob|Bash`): passando de **15 leituras** na thread principal, a
+  próxima é **negada** e a varredura tem de ir para um agente. Calibrável por
+  `POSTO_TETO_LEITURAS`.
+- Por que faltava: o `roteia-consulta` cobre **pergunta** ("onde fica X", "quanto
+  deu Y") e só. A sessão não incha respondendo pergunta — incha **implementando**,
+  lendo vinte arquivos para entender um fluxo. Isso não casa com rota nenhuma e
+  caía inteiro na thread principal.
+- **Nega uma vez e zera o contador**, em vez de virar parede: depois de delegar, a
+  thread ainda precisa ler os poucos arquivos que o agente apontou. O efeito
+  pretendido é ritmo, não muro.
+- **Subagente nunca é barrado.** Os hooks do `settings.json` disparam dentro dos
+  subagentes também, então contar no mesmo balde bloquearia justamente o
+  `code-explorer` que o hook mandou chamar. O que separa os dois é o campo
+  `agent_id`, presente só dentro de subagente — conferido na doc oficial, não
+  deduzido. Leitura por shell (`cat`, `rg`, `grep`…) conta igual, pela mesma porta
+  dos fundos que o `protege-dados` já tinha coberto.
+- Bateria: **89 → 107 casos**, todos verdes. Fumaça real por stdin além do teste
+  unitário, porque o unitário mexe no `sys.path` e mascararia falha de import.
+
+### 🧩 `/feature-dev` instalado — e o CLAUDE.md corrigido sobre o marketplace
+- **[16/08/2026]** O marketplace `claude-plugins-official` estava **auto-instalado
+  desde sempre** nesta máquina, com 60+ plugins no catálogo e **zero** instalado.
+  O §13 afirmava "nenhum marketplace configurado": verdade em 07/08, falsa desde
+  então. Corrigido com data e com o porquê — é o §14 ao contrário, a ferramenta
+  chegou e a instrução não soube.
+- Instalado `feature-dev@claude-plugins-official`: 3 agentes (`code-explorer`,
+  `code-architect`, `code-reviewer`) e 1 skill, ~238 tok always-on. Fases 2 e 4
+  lançam 2-3 agentes **em paralelo** — exploração e desenho de arquitetura com
+  trade-off explícito, que é o §11 virado código.
+- `mattpocock-skills` está no mesmo catálogo: as 6 linhas removidas do §13 em
+  07/08 podem voltar quando o dono quiser. Quem repuser, repõe a linha da tabela
+  no mesmo commit.
+- A regra "um pipeline por tarefa, nunca dois" saiu da hipótese: `/feature-dev` é
+  o pipeline desta máquina, e o `superpowers` seria o segundo.
+
+### 🔒 `HistoricoTanque` deixa de aceitar escrita anônima
+- **[16/08/2026]** A policy `Public Access` era `ALL` / role `public` /
+  `USING (true)` / sem `WITH CHECK`. Em policy sem `WITH CHECK` o Postgres usa o
+  `USING` como verificação do INSERT, então **qualquer um com a anon key gravava**
+  — e a anon key vai no bundle publicado. **Medido, não deduzido:** gravei
+  `volume_fisico = 1234` pela tela em modo visitante, sem login, e apaguei em
+  seguida. Depois da correção, a mesma sequência é recusada e a tabela fica em 0.
+- Migração versionada: `supabase/migrations/20260816_rls_historico_tanque_escrita_anonima.sql`,
+  com guarda no início (aborta se sobrar outra policy de escrita alcançando `anon`)
+  e auto-verificação antes do `COMMIT` — "rodou sem erro" não é o mesmo que
+  "fechou o buraco". A escrita agora copia a forma que a tabela-mãe `Tanque` já
+  usava: `ALL` restrito a `(SELECT auth.role()) = 'authenticated'`.
+- **Sem janela de tempo aqui, ao contrário das tabelas de dinheiro**: o replay em
+  curso grava medição de mês passado, e a abertura de um período é gravada na
+  véspera dele — uma janela de 7 dias bloquearia o trabalho em andamento. A trava
+  é **quem** escreve, não **quando**.
+- Por que esta tabela e não outra: `volume_fisico` é o único insumo da perda de
+  combustível (`perca = medido − teórico`), e nada no sistema o contradiz. Quem
+  escreve nela sem login escolhe se o posto aparece com perda ou sem.
+
+### 📥 Janeiro/2026 entra no banco — primeiro mês do replay
+- **[16/08/2026]** Carregado de `docs/data/posto_jorro_2026.sqlite` (estágios 1 e 2
+  já promovidos), mês a mês como a skill de ETL exige, com reconciliação contra a
+  referência antes de qualquer escrita:
+
+  | Tabela | Linhas | Total |
+  | --- | --- | --- |
+  | `Leitura` | 186 (31 dias × 6 bicos) | 46.843,062 L · R$ 290.062,94 |
+  | `Compra` | 4 (31/01, fornecedor 3) | 47.000 L · R$ 241.195,00 |
+  | `Despesa` | 15 itens | R$ 22.158,46 |
+  | `HistoricoTanque` | 8 (abertura 31/12/2025, fecho 31/01) | 15.683 → 12.274 L |
+
+  A corrente fecha no banco: **custo do litro R$ 0,4730361** — o mesmo número que
+  `resumo-compra.ts` documenta — e perda de **−3.565,938 L**. Litros exatos ao
+  mililitro; a venda fica R$ 0,02 acima da referência por arredondamento a
+  centavos em cada um dos 186 dias.
+- Dois scripts novos, no padrão dos que já existiam (emitem SQL idempotente, não
+  escrevem sozinhos, conferem antes de emitir): `carga-historico-tanque.py` e
+  `carga-historico-despesa.py`.
+- **`--fonte` é obrigatório no de despesa, sem padrão.** A referência tem duas
+  listas que discordam: a da planilha (15 itens, R$ 22.158,46, o total que faz o
+  `lucro_bico` da planilha fechar) e a do app (21 itens, R$ 35.523,58, que inclui
+  Bombeiro AVCB, conserto de bomba, extintor, Luz, Net e Embasa — gastos reais que
+  a planilha não registra). A escolha move o custo do litro de R$ 0,4730 para
+  R$ 0,7583 e o lucro de janeiro em R$ 13.365,12. Escolher calado é o erro que a
+  skill manda evitar, então o script se recusa a rodar sem a fonte declarada.
+  **Janeiro entrou com `--fonte planilha`, por escolha do dono; pelo §6 a lista do
+  app é a mais defensável e a troca segue em aberto.**
+
+### 🧮 Estoque teórico negativo deixa de virar "sobra enorme"
+- **[16/08/2026]** Com a `Compra` invisível (ela não abre para visitante e volta
+  vazia **sem erro**), o estoque teórico de janeiro dava **−31.160 L** e a tela
+  anunciava **sobra de 43.434 L** — 92,72% do volume vendido. Número fabricado, na
+  coluna que existe para acusar combustível faltando.
+- `planilha-mensal.ts` passa a tratar estoque teórico negativo como **impossível
+  físico**: ninguém vende mais do que tinha somado ao que comprou. A perda desses
+  produtos vem `null`, o total de perda vem `null` quando **algum** produto não é
+  apurável, e a tela diz quais e por quê. `percaTotal` virou `number | null` e
+  `PercaProduto.litros` também.
+- Mesma família do "não medi ≠ não perdi" que `resumo-estoque` já protegia: o
+  perigo aqui não era o cálculo, era a direção do erro — a lacuna de cadastro
+  saía como a leitura mais tranquilizadora possível.
+
+### 🪧 Os avisos da planilha viram uma tira de etiquetas
+- **[16/08/2026]** Eram até quatro parágrafos de largura inteira empilhados acima
+  dos KPIs, e empurravam as tabelas para fora da tela — numa página que existe
+  para mostrar tabela. Agora é **uma linha de etiquetas** (`sem leitura`,
+  `sem despesa`, `sem compra`, `estoque teórico negativo`,
+  `sem medição de abertura`), com o texto inteiro no `title`. O motivo continua
+  marcado onde importa: o `—` na célula, o `sem compra` ao lado da perda, o `*` no
+  lucro que só somou o que deu para apurar. O aviso encolheu; nenhum sumiu.
+
+### 🧾 A tela `/planilha` vira a planilha de verdade, ligada ao banco
+- **[16/08/2026]** `/planilha` foi refeita no desenho aprovado (`Fechamento Posto.html`): três
+  blocos coloridos — **Venda**, **Compra**, **Estoque** —, seis KPIs no topo, três painéis de
+  síntese e a caixa lateral `Compra e custo`. Mesma ordem e mesmos nomes de coluna da planilha
+  que o dono lê há anos.
+- **Lê do banco de verdade**: produtos e bicos vêm do cadastro (`Combustivel`, `Bico`, com a
+  `cor` cadastrada); `Inicial`/`Fechamento` saem do encerrante mensal da `Leitura`;
+  `Compra, LT`/`Compra, R$` da `Compra` do mês; `Desp, Mês` da `Despesa`; e as duas medições do
+  `HistoricoTanque`. Conferido contra a produção em 16/08: 4 combustíveis, 6 bicos, 4 tanques, e
+  as tabelas transacionais em **zero linhas** — o replay ainda não repôs nada, e a tela diz isso
+  em vez de mostrar zeros mudos.
+- **`Valor LT` é o preço médio ponderado do que foi vendido**, nunca o `preco_venda` do cadastro:
+  aquele guarda só o preço de hoje e, aplicado a um mês passado, é o bug do "preço único" que já
+  inflou a venda histórica em 8–11%.
+- **Só a régua se digita aqui.** `Estoque anterior` e `Estoque tanque` gravam em
+  `HistoricoTanque` (abertura na véspera do período, fechamento no fim), com botão explícito de
+  **Gravar medições** e o rascunho separado do que veio do banco. As demais colunas ficam
+  somente leitura **de propósito**: reescrever `Inicial`/`Fechamento` daqui mexeria em dia já
+  fechado, e um total mensal de compra ou despesa digitado não sabe a qual nota pertence —
+  perderia fornecedor, data e rastro. Cada uma tem sua tela de lançamento, e a faixa de cada
+  bloco agora diz qual é.
+- **Nenhuma fórmula nova.** `packages/utils/src/planilha-mensal.ts` **compõe** os módulos que já
+  existiam e já estavam travados por golden master (`resumo-produto`, `resumo-compra`,
+  `resumo-estoque`, `lucro`). Ele existe para o rateio da despesa ser calculado **uma vez** e
+  distribuído aos três blocos: calcular esse número em dois lugares é exatamente como o piso de
+  venda de um produto passa a discordar do lucro do mesmo produto. Acrescenta só três agregados
+  do cabeçalho — margem bruta (lucro antes da despesa), lucro por litro e perda com sinal.
+- **Os gráficos deixaram de ser simulação.** `packages/utils/src/serie-diaria.ts` monta as três
+  séries de dado real: venda por dia da `Leitura`, uma coluna por entrega da `Compra` (notas do
+  mesmo dia somadas, preço ponderado pelo volume) e o nível de estoque dia a dia. A média
+  diária divide pelos **dias com venda lançada**, não por 30 — num mês em replay dividir por 30
+  pareceria colapso de movimento. O módulo de simulação foi apagado.
+- **"Não medi" continua diferente de "não perdi"**: `estoqueTanque` virou `number | null`, e sem
+  medição de abertura a perda do produto sai como “—” em vez de acusar uma perda inteira que
+  nunca existiu. A tela lista quem está faltando.
+- Componente **não calcula dinheiro** (§3): a conta inteira vem de `@posto/utils`.
+- ⚠️ **Achado de segurança, fora do escopo desta tarefa:** a policy `Public Access` do
+  `HistoricoTanque` é `ALL` para `public` com `USING true` e sem `WITH CHECK` — o painel em
+  **modo visitante grava medição de tanque sem login**. A RLS está ligada, mas essa policy não
+  segura nada.
+- Fontes `Barlow Semi Condensed` e `IBM Plex Mono` somadas ao `index.html` (só `<link>`, nenhuma
+  dependência nova). A tela ocupa a largura toda: o desenho travava em 1420px e deixava 236px de
+  vazio num monitor de 1920, numa página que é toda tabela larga.
+
+### 🪧 A tela de login passa a ter a cara do posto
+- **[16/08/2026]** A entrada do painel era um cartão cinza genérico com um ícone de bomba num
+  quadrado azul — o azul padrão do sistema, não a marca. A versão final segue o molde dos
+  logins tidos como referência (Linear, Vercel — conferidos por print via Firecrawl):
+  **contenção** — coluna centrada de 360px, fundo papel-quente `#f7f4ef` quase liso com um
+  brilho âmbar quase imperceptível no alto, logo pequena, "Entrar no painel", dois campos, um
+  botão, rodapé mínimo. A identidade entra em **detalhe**, não em cenário: a **faixa dupla
+  amarela** de 7px colada no topo da página (a faixa da estrada), a logo numa **placa** branca
+  com filete e sombra suave, vermelho da marca só no botão e no erro, azul do arco no foco.
+- **Três direções foram descartadas antes** — placa branca com foto ao lado (logo minúscula,
+  coluna vazia), foto da estrada full-bleed com painel escuro (o dono achou horrível) e uma
+  cena Three.js do pátio (low-poly, escura; o dono não gostou). O `three` chegou a ser
+  instalado a pedido e **saiu no mesmo dia** — sem dependência morta. `logo-lisa.png` e
+  `logo-posto.png` seguem em `public/` sem uso.
+- **A marca real entra em vez do ícone**: `public/marca-posto@2x.png` (481×213) é o recorte da
+  `logo-rede.png` sem a moldura cinza, ampliado 2,6× com Lanczos + máscara de nitidez
+  (ImageMagick). É a única versão que existe e ainda é macia de perto. **Um vetor ou PNG
+  grande da logo melhora isso sem mexer em código**: basta trocar o arquivo.
+- **Cores viram token do Tailwind** (`index.html`): `marca-vermelho #EF3238`,
+  `marca-vermelho-escuro`, `marca-amarelo #F5C239`, `marca-azul #284384`, `asfalto #1C1917`,
+  amostradas da logo. Nada de `blue-600` nesta tela.
+- Comportamento intacto: mesmo `useActionState`, mesma lógica de e-mail lembrado (só o e-mail,
+  nunca a senha), mesmo modo visitante com o mesmo aviso. Ganhou `role="alert"` no erro,
+  **botão de mostrar/ocultar senha** (olho no campo, com `aria-pressed`), placeholders,
+  `Entrando…` durante o envio, e não tem variantes `dark:` — é uma tela só, iluminada.
+- **Skills de design instaladas** (fora do repo, `~/.claude/skills/`): `interface-design`
+  (dashboards/admin, com `/interface-design-design-review` e `-deslop`) e
+  `web-design-guidelines` (auditoria a11y/UX da Vercel). O `impeccable` foi lido e **não**
+  instalado: 18 mil linhas de script, hook `PostToolUse` próprio e modo `live` que edita fonte
+  por fora do `Edit` — pesado demais por ora.
+
+### ⛽ A aba de resumo da planilha vira tela — venda por produto, piso de venda e perda de tanque
+- **[16/08/2026] O pedido do dono:** trazer para a Visão do Proprietário o que ele lê na aba de
+  resumo da planilha. A tela mostrava só o **total** do mês (venda, litros, lucro real, margem);
+  a quebra por produto — a que responde *qual produto me dá dinheiro* e *sumiu combustível?* —
+  não existia em lugar nenhum do sistema.
+- **Três blocos, três módulos puros em `packages/utils`,** nenhuma fórmula em componente:
+  `resumo-produto.ts` (venda por bico e por produto), `resumo-compra.ts` (custo médio e piso de
+  venda) e `resumo-estoque.ts` (estoque teórico e perda). O bloco 1 **compõe** sobre o
+  `encerrante-mensal` e o `lucro` que já existiam, em vez de reimplementar — é o mesmo salto de
+  encerrante que a tela de fechamento mensal usa, então os dois não têm como divergir.
+- **Fórmulas derivadas do dado cru e confirmadas na aritmética**, não deduzidas de cabeça:
+  `valor_pra_venda = média_de_compra + despesa_por_litro` (5,34516 + 0,47304 = 5,81820);
+  `% = despesa_por_litro ÷ valor_pra_venda`; `estoque_teórico = abertura + comprado − vendido`
+  (38.392 − 29.007,79 = 9.384,21); `perda = medido − teórico` (5.672 − 9.384,21 = −3.712,21).
+  O `Custo do LT R$` da planilha **é** o `despesaOperacionalPorLitro` que já existia — mesma
+  conta, mesmo número.
+- **Golden master nos 7 meses reais, 42 linhas ao centavo.** `resumo-produto.golden.spec.ts`
+  alimenta a função com as mesmas entradas da planilha e confere o `Lucro,bico, R$.` de cada
+  bico: bate exato nos 7 meses, com o total divergindo no máximo 1 centavo por arredondamento.
+  `resumo-compra-estoque.golden.spec.ts` cobre custo médio, piso de venda, estoque teórico e
+  perda. Suíte em **16/08/2026: 675 golden + 208 vitest, zero falhas**.
+- **A participação é por PRODUTO, não por bico, e isso é o ponto.** Três bicos vendem Gasolina
+  Comum (01, 05 e 06). Calcular participação por bico daria três fatias de ~20% e esconderia que
+  a comum é **61,9%** do volume. O agrupamento vive no módulo e é coberto por teste.
+- **Custo desconhecido aparece como desconhecido.** Produto sem compra lançada no mês tem lucro
+  **não apurável** (`apurado: false`, exibido como “—”), e o total se declara incompleto. O
+  `preco_custo` do cadastro **não** é usado como substituto: ele guarda um preço só, o de hoje, e
+  aplicá-lo a mês passado é exatamente o bug do "preço único" que inflava a venda histórica em
+  8–11%. Mesma regra para o estoque: sem medição de tanque na abertura, o produto fica fora da
+  tabela em vez de aparecer com perda inventada do tamanho do estoque inteiro.
+- **Onde nasceu:** primeiro slice FSD de verdade do `apps/web` —
+  `widgets/resumo-mensal/{model,ui}`, com API pública por `index.ts`. Importado por `@/widgets/…`
+  e **não** por `@widgets/…`: o alias curto existe no `tsconfig.json` mas **não** no
+  `vite.config.ts`, então compilaria e quebraria em runtime. Dívida registrada, não corrigida
+  aqui.
+- **O centro do mês, que a planilha calcula mas não mostra.** Auditando as fórmulas célula a
+  célula da aba `POSTO JORRO 2026`, a cadeia inteira nasce de **uma** célula: `I16 = D286` (a
+  despesa do mês, puxada da matriz de despesas) → `I19 = I16 ÷ F11` (custo do litro, sobre litros
+  **vendidos**) → `G16..G19` (piso de venda por produto) → `I5..I9` (lucro por litro) → `J`
+  (lucro do bico) → `J11` (lucro do mês). Mudar a despesa move o lucro do posto inteiro. A
+  planilha deixa isso partido entre o bloco de compra e o de venda, e a corrente não aparece em
+  lugar nenhum — a seção **O centro do mês** mostra os quatro elos numa linha só, no topo da
+  Visão do Proprietário.
+- **Achado da auditoria: a planilha tem fórmula sobrescrita por valor colado.** Na aba oficial,
+  `H7`, `J7`, `K7`, `J8`, `K8`, `J9` e `K9` são valores fixos onde deveria haver fórmula. Hoje
+  eles batem (foram colados quando a despesa já era a atual), e é por isso que o golden fecha ao
+  centavo — mas **não recalculam**: corrigir a despesa do mês deixaria o lucro do etanol, do
+  diesel e do bico 05 para trás, em silêncio. A `Plan1` é a mesma aba com esse defeito já
+  materializado: despesa de 15.000 contra os 22.158,46 reais, e três lucros congelados de uma
+  versão anterior (`J7` −1,58, `J8` −0,71, `J9` −1,68 contra a própria fórmula dela). A tela não
+  herda o defeito: tudo deriva do dado.
+- **Confirmado com o dono:** o bico 04 é **Diesel S10**. O `Ds:.500` da aba de resumo é rótulo
+  errado digitado, não um segundo produto — registrado nos dois goldens.
+- **Os blocos ficaram preenchíveis, como na planilha.** A auditoria de fórmulas separou o que é
+  entrada do que é derivado: só `Compra, LT.`/`Compra, R$.`, `Ano passado.` e `Estoque Tanque.`
+  são digitados — o resto é fórmula. Entraram os dois formulários que faltavam
+  (`form-compra.tsx`, `form-medicao.tsx`, com `useActionState`), e **nenhum deles escreve na
+  tabela**: vão por `compraService.create` (que já calcula custo por litro e atualiza o custo
+  médio ponderado) e `tanqueService.saveHistory` (upsert por tanque + data). Criar um segundo
+  dono da mesma regra é como `valor_conferido` acabou duplicado em seis lugares.
+- **A medição tem duas datas, e a diferença importa:** a **abertura** grava no dia *anterior* ao
+  início do período — o estoque com que o mês começa é o que sobrou no fecho do mês passado, que
+  é o `Ano passado.` da planilha. O **fechamento** grava no fim do período. Como o service faz
+  upsert por tanque + data, gravar as duas na mesma data sobrescreveria uma com a outra.
+- **Número vai por `type="number"`, não por `parseValue`.** O parser brasileiro trata ponto como
+  separador de milhar e leria `5672.500` como 5.672.500 — erro de mil vezes em litros de tanque.
+- **Mês sem leitura continua mostrando os formulários.** Esconder o que falta preencher atrás de
+  um "nada aqui" é como o mês fica vazio em primeiro lugar.
+- **🔒 Achado de RLS, não corrigido aqui (exige decisão + migration):** o `apps/web` **não
+  autentica em lugar nenhum** — zero chamadas de `signIn`, ele acessa o banco como `anon`. E as
+  policies não combinam com isso: `Compra` e `Estoque` só liberam `authenticated`, então
+  **lançar compra pelo painel falha**; já `HistoricoTanque` tem uma policy `Public Access` com
+  `USING true` e `cmd = ALL`, ou seja **escrita e DELETE anônimos liberados** — a medição grava,
+  e qualquer um com a chave anônima também pode apagar o histórico inteiro. Enquanto não se
+  decide, a recusa da RLS aparece traduzida na tela ("o painel não tem permissão para gravar
+  esta tabela") em vez do jargão do Postgres, que faria o dono achar que o sistema quebrou.
+- **Ainda não validado com dado real:** o banco está zerado pelo replay, então a tela abre
+  vazia. A prova contra a planilha está nos goldens; a validação pela UI acontece quando
+  janeiro/2026 for relançado.
+
+### 🗓️ A data era 10 estados independentes — trocar o mês numa tela não mexia nas outras
+- **[14/08/2026] Achado pelo dono:** escolheu maio no dashboard geral, foi para a Visão do
+  Proprietário e ela continuava em agosto. E ao sair de uma tela e voltar, a data escolhida
+  sumia e voltava para hoje.
+- **A causa:** cada uma das 10 telas com filtro de data guardava o seu próprio `useState`
+  inicializado em `hojeIso()`/`mesAtualIso()`. Nenhuma conversava com as outras, e desmontar o
+  componente ao trocar de rota apagava a escolha. Duas queixas, uma raiz só.
+- **A correção:** `PeriodoContext` no nível do app é o dono único dessa data. Guarda **um**
+  `Periodo { inicio, fim }` e cada tela projeta o que precisa — intervalo lê direto, tela de mês
+  lê o mês de `fim` e escreve `intervaloDoMes`, tela de dia lê `fim` e escreve um dia só.
+  Persistido em `sessionStorage` via o novo `useEstadoPersistido`.
+- **`sessionStorage`, não `localStorage`, e é decisão:** a escolha precisa durar a sessão de
+  trabalho, mas **não** o dia seguinte — um painel de posto que abre pela manhã na data de ontem
+  parece atual e não está.
+- **Compartilham (6):** dashboard geral, Visão do Proprietário, relatório diário, fechamento
+  mensal, dashboard de vendas, análise de vendas e análise de custos.
+- **NÃO compartilham, de propósito (2):** fechamento diário e leituras diárias. São as telas
+  onde se lança e se salva dinheiro, e herdar a data de uma navegação de relatório abriria o
+  fechamento num dia que o usuário não escolheu ali. Elas lembram a **própria** data, com chave
+  própria, então também não resetam mais — só não herdam. Decisão do dono; não ligar ao contexto.
+  Fora também a barra do painel financeiro, que por decisão de 31/07 é um segundo eixo de tempo.
+
+### 📅 Um calendário só para o sistema — mudar o comportamento deixa de ser 13 edições
+- **[14/08/2026] O problema:** havia **16 seletores de data em 13 arquivos**. Um único era
+  calendário de verdade (`dashboard/components/date-range-picker.tsx`, usado numa tela só); todo o
+  resto era `<input type="date">` ou `type="month"` nativo, com a aparência decidida pelo
+  navegador e o formato pelo locale da máquina. Travar data futura, mudar cor de seleção ou
+  corrigir formato exigia editar cada um deles — e esquecer um era o normal.
+- **A solução, sob Open/Closed:** o calendário foi promovido para `shared/ui/calendario/` e
+  partido em núcleo fechado + dois parâmetros abertos. `calendario.tsx` desenha grade, navegação,
+  popover, `minimo`/`maximo` e `Esc`, e **não sabe** o que é dia, mês ou intervalo. Quem sabe é
+  o **modo** (`modos.ts`: `modoDia`, `modoMes`, `modoIntervalo`) e o **tom** (`tons.ts`). Modo ou
+  tom novo é objeto novo nesses arquivos — o núcleo não se altera.
+- **Por que dois tons e não um:** o sistema tem duas realidades visuais. `auto` segue o
+  `ThemeContext`; `escuro` é para as telas pintadas de slate na unha (fechamento diário,
+  fechamento mensal, financeiro), onde as variantes `dark:` não disparam e um calendário `auto`
+  apareceria branco dentro de um header escuro.
+- **Migrados nesta fase (10 seletores):** `dashboard` (intervalo), `relatorio-diario`,
+  `fechamento-diario` e `leituras-diarias` (dia), `financeiro` (os dois inputs viraram um
+  intervalo só), `vendas/dashboard`, `vendas/analise` (os dois `select` de mês e ano viraram um
+  calendário), `fechamento-mensal`, `dashboard-proprietario` (o `select` de 12 meses) e
+  `configuracoes/ModalApagarMes` (mês). O `date-range-picker.tsx` foi removido.
+- **Deliberadamente fora desta fase:** os 8 `type="date"` **dentro de formulário**
+  (`FormDespesa`, `ModalNovaNota`, `ModalPagamento`, `FormFrentista`, `FormReceita`) — ali o
+  nativo entrega validação de form e teclado de graça, e trocar é decisão à parte; e o
+  **PWA frentista**, que por §2 não pode importar de `apps/web` e exigiria criar um
+  `packages/ui` com React dentro.
+- **Sem toque em fórmula:** é UI pura. Cobertura: 15 testes novos sobre os modos
+  (`modos.test.ts`), que é onde mora a regra de seleção.
+
+### 💰 Dia passado era avaliado a preço de hoje — o bug do "preço único"
+- **[14/08/2026] Achado pelo dono na auditoria real:** janeiro aparecia a R$ 6,98/L (preço de
+  agosto no cadastro), quando o preço real do mês era R$ 6,28–6,48. O preço oscila mês a mês (março
+  teve 8 preços distintos na gasolina), mas `Combustivel.preco_venda` guarda **um preço só, o de
+  hoje** — e vários pontos do painel liam ele para dias passados, inflando venda e lucro históricos
+  em ~8–11%.
+- **O dado certo sempre existiu:** `Leitura.preco_litro` e `valor_total` são carimbados na
+  submissão com o preço vigente do dia (auditados contra a planilha em janeiro, linha a linha).
+  O defeito era só de leitura.
+- **Corrigido em dois pontos:** o relatório diário (`useRelatorioDiario`) passa a calcular venda e
+  lucro pelo preço carimbado na leitura (`vendaLucroDaLeitura`, com teste ao lado usando o dia
+  01/01 real), com cadastro apenas como fallback de linha antiga sem preço; e reabrir um dia salvo
+  na tela de fechamento (`useLeituras` → `updateBicoPrice`) restaura o preço do dia no estado da
+  tela, em vez de recalcular tudo com o preço atual.
+- **Fora do escopo, registrado como dívida:** as margens do `aggregator.service.ts` (dashboard)
+  ainda usam `preco_venda`/`preco_custo` do cadastro em agregações históricas, e o **custo** por
+  litro não é carimbado na leitura (o custo histórico correto vive na RPC
+  `get_dashboard_proprietario`). Mexer ali exige golden próprio antes.
+
 ### 🚨 12 dias nunca foram fechados — e a tela mostrava "FECHADO, R$ 0,00" para todos eles
 - **[13/08/2026] Achado ao investigar por que o relatório diário mostrava R$ 0,00 de venda com
   1.288 L na bomba.** Não era erro de cálculo: **12 fechamentos estão com `status = 'ABERTO'`**,

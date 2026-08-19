@@ -24,6 +24,7 @@ import { AlertTriangle, TrendingUp } from 'lucide-react';
 
 import { usePosto } from '../../contexts/usePosto';
 import { useCarregamentoDados } from './hooks/useCarregamentoDados';
+import { useCustoMensal } from './hooks/useCustoMensal';
 import { useLeituras } from './hooks/useLeituras';
 import { useSessoesFrentistas } from './hooks/useSessoesFrentistas';
 import { usePagamentos } from './hooks/usePagamentos';
@@ -48,6 +49,7 @@ import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
 import { hojeIso, conferido } from '@posto/utils';
+import { useEstadoPersistido } from '@shared/lib/estado-persistido';
 import { meiosDaSessao } from '../../utils/fechamentoMeios';
 import { parseValue } from '../../utils/formatters';
 
@@ -55,18 +57,22 @@ const TelaFechamentoDiario: React.FC = () => {
    const { postoAtivoId, postoAtivo } = usePosto();
 
    // --- Estados de Contexto da Tela ---
-   const [selectedDate, setSelectedDate] = useState<string>(hojeIso());
-   const [selectedTurno, setSelectedTurno] = useState<number | null>(null);
+   // Data própria, **fora** do `PeriodoContext` de propósito: esta é a tela onde se lança e se
+   // salva dinheiro, e herdar a data de uma navegação de relatório abriria o fechamento num dia
+   // que o usuário não escolheu aqui. Persistida só para não voltar a hoje ao trocar de tela.
+   const [selectedDate, setSelectedDate] = useEstadoPersistido<string>('data-fechamento', hojeIso);
    const [activeTab, setActiveTab] = useState<AbaFechamento>('leituras');
    const [observacoes] = useState<string>('');
 
    // --- Hooks de Dados e Lógica (Refatorados) ---
-   const { bicos, frentistas, turnos, carregando: loadingDados, carregarDados, updateBicoPrice } = useCarregamentoDados(postoAtivoId);
+   const { bicos, frentistas, carregando: loadingDados, carregarDados, updateBicoPrice } = useCarregamentoDados(postoAtivoId, selectedDate);
+
+   const { custoMedioPorProduto, despesaOperacionalLitro } = useCustoMensal(postoAtivoId, selectedDate, bicos);
 
    const {
       leituras, carregando: loadingLeituras, carregarLeituras,
       alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros
-   } = useLeituras(postoAtivoId, selectedDate, selectedTurno, bicos);
+   } = useLeituras(postoAtivoId, selectedDate, bicos, updateBicoPrice);
 
    const {
       sessoes: frentistaSessions, carregando: loadingSessoes,
@@ -94,8 +100,8 @@ const TelaFechamentoDiario: React.FC = () => {
             (payload) => {
                console.log('🔔 Alteração de FechamentoFrentista detectada em tempo real:', payload.eventType, payload);
                // Recarrega as sessões forçando refresh
-               if (selectedDate && selectedTurno) {
-                  carregarSessoes(selectedDate, selectedTurno, true);
+               if (selectedDate) {
+                  carregarSessoes(selectedDate, true);
                }
             }
          )
@@ -106,7 +112,7 @@ const TelaFechamentoDiario: React.FC = () => {
       return () => {
          supabase.removeChannel(channel);
       };
-   }, [selectedDate, selectedTurno, carregarSessoes]);
+   }, [selectedDate, carregarSessoes]);
 
    // --- 🔴 REALTIME: Escuta leituras de bico (OCR encerrante) em tempo real ---
    useEffect(() => {
@@ -138,7 +144,7 @@ const TelaFechamentoDiario: React.FC = () => {
    const loading = loadingDados || loadingLeituras || loadingSessoes || loadingPagamentos;
 
    const { restaurado, rascunhoRestaurado, limparAutoSave } = useAutoSave({
-      postoId: postoAtivoId, dataSelecionada: selectedDate, turnoSelecionado: selectedTurno,
+      postoId: postoAtivoId, dataSelecionada: selectedDate,
       leituras, sessoesFrentistas: frentistaSessions, carregando: loading, salvando: false
    });
 
@@ -149,26 +155,18 @@ const TelaFechamentoDiario: React.FC = () => {
       if (postoAtivoId) { carregarDados(); carregarPagamentos(); }
    }, [postoAtivoId, carregarDados, carregarPagamentos]);
 
-   // Turno padrão: assim que a lista de turnos carrega e ainda não há turno selecionado,
-   // ajusta o estado direto no corpo do render (padrão oficial do React pra "sincronizar
-   // estado a partir de um dado já disponível", ver https://react.dev/learn/you-might-not-need-an-effect)
-   // em vez de useEffect+setState — elimina o aviso de react-hooks/set-state-in-effect e,
-   // de brinde, evita o frame extra com o turno ainda vazio antes do efeito rodar.
-   // A guarda `!selectedTurno` garante que só aplica uma vez: depois de setado, a
-   // condição vira falsa e não reexecuta.
-   if (turnos.length > 0 && !selectedTurno) {
-      const diario = turnos.find(t => t.nome.toLowerCase().includes('diário') || t.nome.toLowerCase().includes('diario'));
-      setSelectedTurno(diario ? diario.id : turnos[0].id);
-   }
+   // [16/08] Os dois ajustes de turno que ficavam aqui saíram junto com o conceito: um
+   // escolhia um turno padrão assim que a lista carregava, o outro restaurava o turno do
+   // rascunho. Ambos existiam só para preencher um estado que ninguém mais lê — o dia é a
+   // chave inteira do fechamento. De quebra some o gate: os carregamentos abaixo eram
+   // barrados até a lista de turnos chegar do banco, e agora dependem só da data.
 
-   // Turno do rascunho restaurado: mesmo padrão do ajuste acima, direto no render.
-   // A guarda de igualdade evita reaplicar o mesmo valor a cada render (equivalente ao
-   // `if (rascunhoRestaurado.turnoSelecionado)` original, só que idempotente de forma
-   // explícita em vez de depender do bail-out silencioso do setState com valor igual).
-   if (restaurado && !saving && !success && rascunhoRestaurado?.turnoSelecionado && selectedTurno !== rascunhoRestaurado.turnoSelecionado) {
-      setSelectedTurno(rascunhoRestaurado.turnoSelecionado);
-   }
-
+   // E aplicado UMA vez por restauração, mesmo não vazio: este efeito redispara toda
+   // vez que `carregarSessoes` troca de identidade, o que acontece a cada recarga da
+   // lista de frentistas — e ela recarrega em todo evento realtime de `Fechamento`
+   // (cada envio do PWA consolida o pai). Sem a trava, um rascunho com valores da
+   // abertura da tela voltava por cima das sessões recém-vindas do banco.
+   const rascunhoAplicado = React.useRef<typeof rascunhoRestaurado>(null);
    useEffect(() => {
       if (restaurado && !saving && !success) {
          // As leituras dos bicos e os envios do PWA vêm do banco (OCR/PWA + realtime) —
@@ -177,26 +175,35 @@ const TelaFechamentoDiario: React.FC = () => {
          // sessões já enviadas vêm do banco, sessões digitadas localmente e ainda não
          // enviadas continuam preservadas).
          carregarLeituras();
-         if (rascunhoRestaurado?.sessoesFrentistas) definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
-         if (selectedDate && selectedTurno) {
-            carregarSessoes(selectedDate, selectedTurno);
+         // `.length > 0`, não só a existência: `[]` é verdadeiro em JavaScript, e o
+         // rascunho nasce com a lista vazia. Sem o comprimento, este `if` entrava com
+         // array vazio e chamava `definirSessoes([])`, apagando o que o realtime tinha
+         // acabado de trazer do banco — o envio do frentista aparecia na tela e sumia
+         // um instante depois. Medido em 19/08/2026 no navegador do dono:
+         // `rascunho_fechamento_diario_v1_1` → `sessoesFrentistas: []`.
+         if (rascunhoRestaurado?.sessoesFrentistas?.length && rascunhoAplicado.current !== rascunhoRestaurado) {
+            rascunhoAplicado.current = rascunhoRestaurado;
+            definirSessoes(rascunhoRestaurado.sessoesFrentistas as SessaoFrentista[]);
+         }
+         if (selectedDate) {
+            carregarSessoes(selectedDate);
             // Os pagamentos do Caixa Geral também vêm do banco e precisam ser carregados AQUI.
             // Antes só o efeito de baixo os carregava, e ele é barrado por `!rascunhoRestaurado` —
             // como o rascunho é gravado automaticamente, na prática havia quase sempre um, e os
             // `Recebimento` salvos nunca voltavam: o bloco reabria zerado e a tela acusava sobra
             // de caixa igual ao total do dia.
-            carregarPagamentos(selectedDate, selectedTurno);
+            carregarPagamentos(selectedDate);
          }
       }
-   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos, definirSessoes, selectedDate, selectedTurno]);
+   }, [restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos, definirSessoes, selectedDate]);
 
    useEffect(() => {
-      if (selectedDate && selectedTurno && restaurado && !rascunhoRestaurado && !saving && !success) {
+      if (selectedDate && restaurado && !rascunhoRestaurado && !saving && !success) {
          carregarLeituras();
-         carregarSessoes(selectedDate, selectedTurno);
-         carregarPagamentos(selectedDate, selectedTurno);
+         carregarSessoes(selectedDate);
+         carregarPagamentos(selectedDate);
       }
-   }, [selectedDate, selectedTurno, restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos]);
+   }, [selectedDate, restaurado, rascunhoRestaurado, saving, success, carregarLeituras, carregarSessoes, carregarPagamentos]);
 
    // Dia sem `Recebimento` salvo: preenche o Caixa Geral com o que os frentistas
    // declararam, em vez de deixar em branco.
@@ -213,10 +220,10 @@ const TelaFechamentoDiario: React.FC = () => {
    // preserva a decisão do ETL de não ter as duas fontes no banco ao mesmo tempo.
    const derivacaoFeita = React.useRef<string | null>(null);
    useEffect(() => {
-      if (!selectedDate || !selectedTurno || saving || success) return;
+      if (!selectedDate || saving || success) return;
       if (loadingPagamentos || loadingSessoes || payments.length === 0) return;
 
-      const chave = `${selectedDate}|${selectedTurno}`;
+      const chave = selectedDate;
       if (derivacaoFeita.current === chave) return;
 
       // Já veio valor do banco: respeita o que está salvo, não sobrescreve.
@@ -231,7 +238,7 @@ const TelaFechamentoDiario: React.FC = () => {
 
       derivacaoFeita.current = chave;
       sincronizarComSessoes(frentistaSessions);
-   }, [selectedDate, selectedTurno, saving, success, loadingPagamentos, loadingSessoes, payments, frentistaSessions, sincronizarComSessoes]);
+   }, [selectedDate, saving, success, loadingPagamentos, loadingSessoes, payments, frentistaSessions, sincronizarComSessoes]);
 
    // --- Render ---
    return (
@@ -241,8 +248,7 @@ const TelaFechamentoDiario: React.FC = () => {
       <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/30">
          <HeaderFechamento
             selectedDate={selectedDate} setSelectedDate={setSelectedDate}
-            selectedTurno={selectedTurno} setSelectedTurno={setSelectedTurno}
-            turnos={turnos} activeTab={activeTab} setActiveTab={setActiveTab}
+            activeTab={activeTab} setActiveTab={setActiveTab}
             postoNome={postoAtivo?.nome} loading={loadingDados}
          />
 
@@ -256,7 +262,7 @@ const TelaFechamentoDiario: React.FC = () => {
                   <TabLeituras
                      bicos={bicos} leituras={leituras} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
                      onRefreshSessoes={() => {
-                        if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno, true);
+                        if (selectedDate) carregarSessoes(selectedDate, true);
                      }}
                      handlers={{
                         alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros,
@@ -270,7 +276,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      leituras={leituras} bicos={bicos} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
                      dataSelecionada={selectedDate} postoId={postoAtivoId}
                      onRefreshSessoes={() => {
-                        if (selectedDate && selectedTurno) carregarSessoes(selectedDate, selectedTurno, true);
+                        if (selectedDate) carregarSessoes(selectedDate, true);
                      }}
                      handlers={{ alterarPagamento, aoSairPagamento, sincronizarComSessoes }}
                   />
@@ -291,6 +297,8 @@ const TelaFechamentoDiario: React.FC = () => {
                   <TabGestaoBicos
                      bicos={bicos}
                      leituras={leituras}
+                     custoMedioPorProduto={custoMedioPorProduto}
+                     despesaOperacionalLitro={despesaOperacionalLitro}
                      loading={loading}
                   />
                )}
@@ -307,7 +315,6 @@ const TelaFechamentoDiario: React.FC = () => {
             totalVendas={totalVendas} totalFrentistas={totalFrentistas} diferenca={diferenca} saving={saving} podeFechar={podeFechar}
             handleSave={() => handleSave({
                selectedDate,
-               selectedTurno,
                bicos,
                leituras,
                sessoesFrentistas: frentistaSessions,
@@ -321,9 +328,9 @@ const TelaFechamentoDiario: React.FC = () => {
                onSuccess: () => {
                   setSuccess(null);
                   carregarLeituras();
-                  if (selectedDate && selectedTurno) {
-                     carregarSessoes(selectedDate, selectedTurno);
-                     carregarPagamentos(selectedDate, selectedTurno);
+                  if (selectedDate) {
+                     carregarSessoes(selectedDate);
+                     carregarPagamentos(selectedDate);
                   }
                }
             })}

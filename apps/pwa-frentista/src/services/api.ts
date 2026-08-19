@@ -1,5 +1,18 @@
 import { supabase } from '../lib/supabase';
+import { criarAcessoEncerrante } from '@posto/api-core';
 import { hojeIso } from '@posto/utils';
+
+/**
+ * Acesso ao encerrante compartilhado com o PWA do dono.
+ *
+ * @remarks Estas seis operações escrevem `Leitura` e reconsolidam
+ *          `Fechamento.total_vendas`/`diferenca`. Os dois apps precisam do
+ *          MESMO comportamento — inclusive das correções que custaram caro (o
+ *          recorte `data < hoje`, a conferência anti-RLS-silenciosa, "ausência
+ *          de leitura não é venda zero") —, então elas vivem em
+ *          `packages/api-core` e aqui só se delega.
+ */
+const encerrante = criarAcessoEncerrante(supabase);
 
 /** Payload enviado por App.tsx ao fechar o turno do frentista (shape de FechamentoFrentista.Insert). */
 interface FechamentoFrentistaPayload {
@@ -18,14 +31,6 @@ interface FechamentoFrentistaPayload {
     valor_conferido: number;
     diferenca_calculada: number;
     observacoes: string;
-}
-
-/** Linha crua devolvida pela query de leituras (select bico_id, leitura_final, data, id). */
-interface LeituraRow {
-    bico_id: number;
-    leitura_final: number;
-    data: string;
-    id: number;
 }
 
 export const api = {
@@ -78,7 +83,18 @@ export const api = {
             .select()
             .single();
         if (error) throw new Error(error.message);
+
+        // O pai nascia zerado e ficava assim até alguém abrir o painel — é a
+        // origem dos 12 dias que nunca fecharam. Agora todo filho gravado
+        // reconsolida o pai a partir do banco.
+        await api.consolidarFechamento(payload.fechamento_id);
+
         return data;
+    },
+
+    /** Delegado a `@posto/api-core` — ver o porquê em `encerrante.ts`. */
+    consolidarFechamento(fechamentoId: number) {
+        return encerrante.consolidarFechamento(fechamentoId);
     },
 
     /** Busca histórico de fechamentos de um frentista */
@@ -130,21 +146,14 @@ export const api = {
         return data;
     },
 
-    /** Busca bicos ativos do posto com preço do combustível (para o encerrante) */
-    async getBicos(postoId: number) {
-        const { data, error } = await supabase
-            .from('Bico')
-            .select('id, numero, combustivel_id, combustivel:Combustivel(nome, preco_venda)')
-            .eq('posto_id', postoId)
-            .eq('ativo', true)
-            .order('numero');
-        if (error) throw new Error(error.message);
-        return data || [];
+    /** Delegado a `@posto/api-core`. */
+    getBicos(postoId: number) {
+        return encerrante.getBicos(postoId);
     },
 
-    /** Aquece a Edge Function (evita cold start na hora da foto). Fire-and-forget. */
+    /** Delegado a `@posto/api-core`. */
     aquecerEncerrante() {
-        supabase.functions.invoke('ler-encerrante', { body: { ping: true } }).catch(() => { });
+        encerrante.aquecerEncerrante();
     },
 
     /**
@@ -166,125 +175,19 @@ export const api = {
         if (error) console.warn('[presenca] sinal não registrado:', error.message);
     },
 
-    /**
-     * OCR do papel de encerrantes via Edge Function (Gemini). Devolve [{ bico, numero }].
-     * Tenta 2x: se a 1ª cai numa function fria e falha/expira, a 2ª já pega ela quente.
-     */
-    async lerEncerrante(imagemBase64: string, mimeType: string) {
-        let ultimoErro: unknown;
-        for (let tentativa = 1; tentativa <= 2; tentativa++) {
-            try {
-                const { data, error } = await supabase.functions.invoke('ler-encerrante', {
-                    body: { imagemBase64, mimeType },
-                });
-                if (error) throw new Error(error.message);
-                if (data?.erro) throw new Error(String(data.erro));
-                return (data?.leituras || []) as { bico: number; numero: string | null; confianca: boolean | null }[];
-            } catch (e) {
-                ultimoErro = e;
-                if (tentativa < 2) await new Promise(r => setTimeout(r, 1500));
-            }
-        }
-        throw ultimoErro instanceof Error ? ultimoErro : new Error('Falha ao ler a foto');
+    /** Delegado a `@posto/api-core`. */
+    lerEncerrante(imagemBase64: string, mimeType: string) {
+        return encerrante.lerEncerrante(imagemBase64, mimeType);
     },
 
-    /**
-     * Mapa `bico_id` -> última `leitura_final` de ANTES de hoje (vira a
-     * `leitura_inicial` do dia).
-     *
-     * @remarks
-     * **O recorte `data < hoje` é o que segura o segundo envio do dia.** O encerrante
-     * é o totalizador da bomba, cumulativo, e `salvarLeituras` apaga e regrava o dia
-     * inteiro — então o último envio do dia precisa cobrir o dia TODO, partindo do
-     * fechamento de ontem.
-     *
-     * Sem o recorte, esta busca devolvia a leitura do próprio dia como se fosse "a
-     * anterior". No 02/08/2026 isso ia custar caro: o turno das 13h às 21h fechou com
-     * 9.515,710 L gravados, e o envio das 23h teria partido daí — apagando as linhas
-     * do primeiro turno e deixando no dia só o que rodou das 21h às 23h.
-     *
-     * Vale igual para reenvio de correção: fotografar de novo no mesmo dia partia da
-     * própria foto anterior, e o dia encolhia a cada tentativa.
-     */
-    async getUltimasLeiturasPorBico(postoId: number): Promise<Map<number, number>> {
-        const { data, error } = await supabase
-            .from('Leitura')
-            .select('bico_id, leitura_final, data, id')
-            .eq('posto_id', postoId)
-            .lt('data', hojeIso())
-            .order('data', { ascending: false })
-            .order('id', { ascending: false })
-            .limit(200);
-        if (error) throw new Error(error.message);
-        const ultimas = new Map<number, number>();
-        (data || []).forEach((l: LeituraRow) => {
-            if (!ultimas.has(l.bico_id)) ultimas.set(l.bico_id, Number(l.leitura_final));
-        });
-        return ultimas;
+    /** Delegado a `@posto/api-core` — o recorte `data < hoje` mora lá. */
+    getUltimasLeiturasPorBico(postoId: number) {
+        return encerrante.getUltimasLeiturasPorBico(postoId);
     },
 
-    /**
-     * Grava as leituras do dia no turno canônico 1, substituindo as existentes
-     * (mesmo modelo delete-por-dia + insert usado pela web). Calcula litros e valor.
-     */
-    async salvarLeituras(params: {
-        postoId: number;
-        data: string;
-        usuarioId?: number;
-        linhas: {
-            bico_id: number;
-            combustivel_id: number;
-            leitura_inicial: number;
-            leitura_final: number;
-            preco_litro: number;
-        }[];
-    }) {
-        const { postoId, data: dataStr, usuarioId = 1, linhas } = params;
-        const turnoId = 1;
-
-        const { error: delError } = await supabase
-            .from('Leitura')
-            .delete()
-            .eq('data', dataStr)
-            .eq('turno_id', turnoId)
-            .eq('posto_id', postoId);
-        if (delError) throw new Error(delError.message);
-
-        // Um DELETE barrado pela RLS (dia fora da janela de 7 dias) devolve 204 sem erro.
-        // Seguir daqui reinseriria as leituras por cima das antigas e dobraria o dia.
-        const { count: sobraram, error: erroConferencia } = await supabase
-            .from('Leitura')
-            .select('id', { count: 'exact', head: true })
-            .eq('data', dataStr)
-            .eq('turno_id', turnoId)
-            .eq('posto_id', postoId);
-        if (erroConferencia) throw new Error(erroConferencia.message);
-        if ((sobraram ?? 0) > 0) {
-            throw new Error(
-                'Não foi possível regravar as leituras deste dia: só é permitido alterar os últimos 7 dias.'
-            );
-        }
-
-        const rows = linhas.map(l => {
-            const litros = Math.max(0, l.leitura_final - l.leitura_inicial);
-            return {
-                data: dataStr,
-                bico_id: l.bico_id,
-                combustivel_id: l.combustivel_id,
-                leitura_inicial: l.leitura_inicial,
-                leitura_final: l.leitura_final,
-                litros_vendidos: litros,
-                preco_litro: l.preco_litro,
-                valor_total: litros * l.preco_litro,
-                usuario_id: usuarioId,
-                turno_id: turnoId,
-                posto_id: postoId,
-            };
-        });
-
-        const { data: inserted, error } = await supabase.from('Leitura').insert(rows).select();
-        if (error) throw new Error(error.message);
-        return inserted;
+    /** Delegado a `@posto/api-core` — delete-por-dia e consolidação moram lá. */
+    salvarLeituras(params: Parameters<typeof encerrante.salvarLeituras>[0]) {
+        return encerrante.salvarLeituras(params);
     },
 
     /** Busca vendas de produtos do dia por frentista */

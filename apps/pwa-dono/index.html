@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/pwa-192x192.png" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="description" content="Leitura das bombas por foto — Posto Providência" />
+
+    <!-- iOS ignora quase tudo do manifest e exige estas metas próprias. Sem
+         `apple-mobile-web-app-capable` o atalho abre dentro do Safari, com
+         barra de endereço — ou seja, não parece aplicativo. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- `black`, e NÃO `black-translucent`: o layout não trata área segura
+         (`env(safe-area-inset-*)`), então com a barra translúcida o cabeçalho
+         passaria por baixo do notch. Mesmo motivo para não ligar
+         `viewport-fit=cover`. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Encerrante" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <title>Encerrante</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

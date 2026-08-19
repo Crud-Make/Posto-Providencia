@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
+import { usePeriodo } from '../../../contexts/usePeriodo';
 import {
     fechamentoService,
     leituraService,
@@ -16,7 +17,7 @@ import { ShiftData, DailyTotals, ExpenseData } from '../types';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { DBDespesa } from '../../../types/database/index';
-import { hojeIso, semLancamento } from '@posto/utils';
+import { semLancamento } from '@posto/utils';
 
 /**
  * Fechamento com os campos necessários para o relatório diário.
@@ -50,12 +51,39 @@ interface LeituraDiaria {
     turno_id: number;
     leitura_inicial: number;
     leitura_final: number;
+    /** Preço do litro NO DIA da leitura, carimbado na submissão. */
+    preco_litro?: number | null;
+    /** Venda do bico no dia, gravada na submissão (`litros × preco_litro`). */
+    valor_total?: number | null;
     bico?: {
         combustivel?: {
             preco_venda?: number | null;
             preco_custo?: number | null;
         } | null;
     } | null;
+}
+
+/**
+ * Venda e lucro de uma leitura, a preço DO DIA.
+ *
+ * @remarks
+ * O preço vem do que foi carimbado na própria leitura (`preco_litro`/
+ * `valor_total`); o `preco_venda` do cadastro é só fallback para linha antiga
+ * sem preço gravado. Era daqui que saía o bug do "preço único": dia de janeiro
+ * (R$ 6,28) exibido a preço de agosto (R$ 6,98) — o cadastro guarda um preço
+ * só, o de hoje. O custo segue vindo do cadastro por falta de custo carimbado
+ * na leitura (o custo histórico correto vive na RPC `get_dashboard_proprietario`);
+ * o lucro daqui é aproximação de tela, não fórmula canônica.
+ */
+export function vendaLucroDaLeitura(l: LeituraDiaria): { volume: number; venda: number; lucro: number } {
+    const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
+    if (volume <= 0) return { volume: 0, venda: 0, lucro: 0 };
+
+    const precoDoDia = Number(l.preco_litro ?? l.bico?.combustivel?.preco_venda ?? 0);
+    const precoCusto = Number(l.bico?.combustivel?.preco_custo ?? 0);
+    const venda = l.valor_total != null ? Number(l.valor_total) : volume * precoDoDia;
+
+    return { volume, venda, lucro: volume * (precoDoDia - precoCusto) };
 }
 
 /**
@@ -97,7 +125,8 @@ function mapDbDespesaToUi(despesa: DBDespesa): ExpenseData {
 
 export const useRelatorioDiario = () => {
     const { postoAtivoId } = usePosto();
-    const [selectedDate, setSelectedDate] = useState(hojeIso());
+    // O dia vem do contexto: o relatório é tela de leitura, e acompanha o período de análise.
+    const { dia: selectedDate, definirDia: setSelectedDate } = usePeriodo();
     const [loading, setLoading] = useState(false);
     const [shiftsData, setShiftsData] = useState<ShiftData[]>([]);
     const [totals, setTotals] = useState<DailyTotals>({
@@ -169,16 +198,10 @@ export const useRelatorioDiario = () => {
                     let vendasLeituras = 0;
 
                     leiturasTurno.forEach(l => {
-                        const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
-                        if (volume > 0) {
-                            litrosTurno += volume;
-                            const precoVenda = Number(l.bico?.combustivel?.preco_venda || 0);
-                            const precoCusto = Number(l.bico?.combustivel?.preco_custo || 0);
-                            const lucroUnitario = precoVenda - precoCusto;
-
-                            vendasLeituras += volume * precoVenda;
-                            lucroTurno += volume * lucroUnitario;
-                        }
+                        const { volume, venda, lucro } = vendaLucroDaLeitura(l);
+                        litrosTurno += volume;
+                        vendasLeituras += venda;
+                        lucroTurno += lucro;
                     });
 
                     // O total do `Fechamento` só vale depois que o dia foi CONSOLIDADO pelo
