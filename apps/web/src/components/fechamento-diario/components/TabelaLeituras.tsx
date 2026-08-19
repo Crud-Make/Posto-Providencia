@@ -30,6 +30,44 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
 }) => {
   const [editingPriceBicoId, setEditingPriceBicoId] = React.useState<number | null>(null);
   const [tempPrice, setTempPrice] = React.useState<string>('');
+  const [precosPorCombustivel, setPrecosPorCombustivel] = React.useState<Record<number, string>>({});
+
+  /**
+   * Combustíveis distintos entre os bicos, na ordem em que aparecem.
+   */
+  const combustiveisUnicos = React.useMemo(() => {
+    const vistos = new Set<number>();
+    const lista: { id: number; nome: string }[] = [];
+    bicos.forEach(bico => {
+      if (!vistos.has(bico.combustivel.id)) {
+        vistos.add(bico.combustivel.id);
+        lista.push({ id: bico.combustivel.id, nome: bico.combustivel.nome });
+      }
+    });
+    return lista;
+  }, [bicos]);
+
+  /**
+   * Aplica o preço digitado a todos os bicos daquele combustível de uma vez —
+   * evita repetir o mesmo valor bico a bico quando vários usam o mesmo preço.
+   */
+  const aplicarPrecoCombustivel = (combustivelId: number) => {
+    if (!onUpdatePrice) return;
+    const bruto = precosPorCombustivel[combustivelId];
+    if (!bruto) return;
+    const numericPrice = parseFloat(bruto.replace(',', '.'));
+    if (isNaN(numericPrice) || numericPrice <= 0) return;
+    bicos
+      .filter(bico => bico.combustivel.id === combustivelId)
+      .forEach(bico => onUpdatePrice(bico.id, numericPrice));
+    setPrecosPorCombustivel(prev => ({ ...prev, [combustivelId]: '' }));
+  };
+
+  const handlePrecoCombustivelKeyDown = (e: React.KeyboardEvent, combustivelId: number) => {
+    if (e.key === 'Enter') {
+      aplicarPrecoCombustivel(combustivelId);
+    }
+  };
 
   /**
    * Inicia a edição do preço ao clicar no valor
@@ -79,6 +117,34 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
         </div>
         Leituras dos Encerrantes
       </h2>
+
+      {onUpdatePrice && combustiveisUnicos.length > 0 && (
+        <div className="mb-6 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 font-display">
+            Preço do dia por combustível — aplica em todos os bicos daquele combustível
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {combustiveisUnicos.map(combustivel => (
+              <div key={combustivel.id} className="flex items-center gap-2">
+                <label className="text-sm text-slate-400 whitespace-nowrap">{combustivel.nome}</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={precosPorCombustivel[combustivel.id] ?? ''}
+                  onChange={(e) =>
+                    setPrecosPorCombustivel(prev => ({ ...prev, [combustivel.id]: e.target.value }))
+                  }
+                  onBlur={() => aplicarPrecoCombustivel(combustivel.id)}
+                  onKeyDown={(e) => handlePrecoCombustivelKeyDown(e, combustivel.id)}
+                  disabled={isLoading}
+                  className="w-24 text-sm font-medium text-slate-100 bg-slate-800 border border-slate-700 rounded p-1.5 font-mono focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto custom-scrollbar">
         <table className="min-w-full divide-y divide-slate-700/50">
