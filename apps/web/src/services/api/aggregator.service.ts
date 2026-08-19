@@ -645,8 +645,8 @@ export const aggregatorService = {
         .from('FechamentoFrentista')
         .select('frentista_id, fechamento:Fechamento!inner(status, data)')
         .eq('fechamento.status', 'ABERTO')
-        .gte('fechamento.data', `${hojeStr}T00:00:00`)
-        .lte('fechamento.data', `${hojeStr}T23:59:59`);
+        .gte('fechamento.data', `${hojeStr}T00:00:00Z`)
+        .lte('fechamento.data', `${hojeStr}T23:59:59Z`);
 
       const mapCaixaAberto = new Set<number>();
       if (caixasAbertos) {

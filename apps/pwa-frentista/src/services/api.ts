@@ -114,6 +114,26 @@ export const api = {
         return data || [];
     },
 
+    /**
+     * Envios já feitos no dia, de todos os frentistas — o "o que já foi" que o
+     * frentista (e o dono, no replay) olha antes de mandar o próximo. Filtra pelo
+     * `Fechamento.data` do pai: o envio é por dia, não por turno.
+     */
+    async getEnviosDoDia(postoId: number, dataStr: string) {
+        const { data, error } = await supabase
+            .from('FechamentoFrentista')
+            .select(`
+        id, frentista_id, valor_conferido, encerrante, diferenca_calculada, data_hora_envio,
+        frentista:Frentista(nome),
+        fechamento:Fechamento!inner(data, posto_id)
+      `)
+            .eq('fechamento.posto_id', postoId)
+            .eq('fechamento.data', dataStr)
+            .order('data_hora_envio', { ascending: true });
+        if (error) throw new Error(error.message);
+        return data || [];
+    },
+
     /** Busca produtos ativos do posto */
     async getProdutos(postoId: number) {
         const { data, error } = await supabase
@@ -192,7 +212,12 @@ export const api = {
 
     /** Busca vendas de produtos do dia por frentista */
     async getVendasProdutoHoje(frentistaId: number) {
-        const hoje = hojeIso();
+        // `VendaProduto.data` é gravada com `toISOString()` (instante UTC real). O
+        // recorte precisa ser a meia-noite LOCAL convertida para UTC: com `T00:00:00Z`
+        // sobre a data local, uma venda às 21h30 (00h30Z do dia seguinte) caía fora de "hoje".
+        const inicio = new Date(`${hojeIso()}T00:00:00`);
+        const fim = new Date(inicio);
+        fim.setDate(fim.getDate() + 1);
         const { data, error } = await supabase
             .from('VendaProduto')
             .select(`
@@ -200,8 +225,8 @@ export const api = {
         produto:Produto(nome, categoria)
       `)
             .eq('frentista_id', frentistaId)
-            .gte('data', `${hoje}T00:00:00`)
-            .lte('data', `${hoje}T23:59:59`)
+            .gte('data', inicio.toISOString())
+            .lt('data', fim.toISOString())
             .order('data', { ascending: false });
         if (error) throw new Error(error.message);
         return data || [];

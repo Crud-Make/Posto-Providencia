@@ -63,6 +63,9 @@ describe('useCarregamentoDados — preço editado na tela não pode voltar sozin
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    // `precos-editados` é 'permanente' (localStorage): sem limpar, o 6,28 de um
+    // teste vaza para o seguinte e a ordem dos `it` passa a decidir o resultado.
+    localStorage.clear();
     vi.mocked(frentistaService.getAll).mockResolvedValue({
       success: true,
       data: [],
@@ -97,6 +100,29 @@ describe('useCarregamentoDados — preço editado na tela não pode voltar sozin
     });
 
     expect(result.current.bicos[0].combustivel.preco_venda).toBe(6.28);
+  });
+
+  it("herança do dia anterior ('se-vazio') não pisa no preço digitado; a digitação ('sobrescrever') pisa", async () => {
+    const { result } = renderHook(() => useCarregamentoDados(1, '2026-01-01'));
+    await act(async () => {
+      await result.current.carregarDados();
+    });
+
+    // Dia novo, sem nada digitado: a herança preenche.
+    act(() => {
+      result.current.updateBicoPrice(1, 6.28, 'se-vazio');
+    });
+    expect(result.current.bicos[0].combustivel.preco_venda).toBe(6.28);
+
+    // Gerente digita 6,50. Uma recarga (realtime, reabrir a aba) tenta herdar
+    // 6,28 de novo e NÃO pode vencer o que foi digitado.
+    act(() => {
+      result.current.updateBicoPrice(1, 6.5);
+    });
+    act(() => {
+      result.current.updateBicoPrice(1, 6.28, 'se-vazio');
+    });
+    expect(result.current.bicos[0].combustivel.preco_venda).toBe(6.5);
   });
 
   it('mantém o preço editado depois de desmontar e montar de novo (navegar para outra tela e voltar)', async () => {

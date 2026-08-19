@@ -12,7 +12,7 @@
 // [18/01 00:00] Adaptar consumo do fechamentoFrentistaService para ApiResponse
 // Motivo: Services agora retornam { success, data, error } (Smart Types)
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
@@ -95,9 +95,24 @@ export const useSessoesFrentistas = (
 ): RetornoSessoesFrentistas => {
   const [sessoes, setSessoes] = useState<SessaoFrentista[]>([]);
   const [carregando, setCarregando] = useState(false);
-  const ultimoContextoCarregado = useRef<{ data: string }>({
-    data: ''
+  // Chave por data E posto: trocar de posto com a mesma data batia no cache e
+  // devolvia as sessões do posto anterior (achado de 19/08/2026).
+  const ultimoContextoCarregado = useRef<{ data: string; postoId: number | null }>({
+    data: '',
+    postoId: null
   });
+  // `frentistasCadastrados` chega como array novo a cada `carregarDados` — e
+  // `carregarDados` roda em todo evento realtime de `Fechamento` (cada envio do
+  // PWA consolida o pai). Com ele nas deps, `carregarSessoes` trocava de
+  // identidade a cada envio, o que (1) derrubava e reassinava o canal realtime
+  // de `FechamentoFrentista` em `index.tsx` bem na hora em que o filho era
+  // inserido — o INSERT caía no buraco e o envio só aparecia no F5 — e
+  // (2) redisparava o efeito de restauração do rascunho. Lendo por ref, a
+  // função é estável e o canal fica de pé.
+  const frentistasRef = useRef<Frentista[]>(frentistasCadastrados);
+  useEffect(() => {
+    frentistasRef.current = frentistasCadastrados;
+  }, [frentistasCadastrados]);
 
   /**
    * Carrega sessões existentes do banco
@@ -110,7 +125,8 @@ export const useSessoesFrentistas = (
     // [29/01 13:40] Evita recarregar se já carregou para este contexto, a menos que seja forçado
     if (
       !force &&
-      ultimoContextoCarregado.current.data === data
+      ultimoContextoCarregado.current.data === data &&
+      ultimoContextoCarregado.current.postoId === postoId
     ) {
       return;
     }
@@ -135,8 +151,9 @@ export const useSessoesFrentistas = (
 
       // Obtemos frentistas ativos (independente se existem dados ou não)
       let frentistasAtivos: Frentista[] = [];
-      if (frentistasCadastrados.length > 0) {
-        frentistasAtivos = frentistasCadastrados.filter(f => f.ativo);
+      const frentistasCadastradosAtuais = frentistasRef.current;
+      if (frentistasCadastradosAtuais.length > 0) {
+        frentistasAtivos = frentistasCadastradosAtuais.filter(f => f.ativo);
       } else {
         const frentistasRes = await frentistaService.getAll(postoId);
         if (isSuccess(frentistasRes)) {
@@ -218,7 +235,8 @@ export const useSessoesFrentistas = (
 
       // [29/01 13:40] Atualiza contexto carregado
       ultimoContextoCarregado.current = {
-        data
+        data,
+        postoId
       };
     } catch (err) {
       console.error('❌ Erro ao carregar sessões:', err);
@@ -226,7 +244,7 @@ export const useSessoesFrentistas = (
     } finally {
       setCarregando(false);
     }
-  }, [postoId, frentistasCadastrados]);
+  }, [postoId]);
 
   /**
    * Adiciona nova sessão de frentista

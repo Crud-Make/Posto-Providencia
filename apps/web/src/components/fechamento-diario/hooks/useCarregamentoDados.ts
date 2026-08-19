@@ -36,8 +36,15 @@ interface RetornoCarregamentoDados {
   carregando: boolean;
   erro: string | null;
   carregarDados: () => Promise<void>;
-  updateBicoPrice: (bicoId: number, newPrice: number) => void;
+  updateBicoPrice: (bicoId: number, newPrice: number, modo?: ModoPreco) => void;
 }
+
+/**
+ * Como `updateBicoPrice` trata um preço já editado para (data, bico):
+ * 'sobrescrever' é a digitação do gerente e o preço carimbado numa leitura SALVA;
+ * 'se-vazio' é a herança do dia anterior, que nunca pisa no que foi digitado.
+ */
+export type ModoPreco = 'sobrescrever' | 'se-vazio';
 
 const chavePrecoEditado = (data: string, bicoId: number): string => `${data}:${bicoId}`;
 
@@ -64,9 +71,13 @@ export const useCarregamentoDados = (
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // 'permanente': o preço é rascunho DIGITADO, e a chave já carrega a data, então
+  // não vaza entre dias. Fechar a aba não pode apagar o que ainda não foi salvo —
+  // ao contrário da data selecionada, que morre de propósito. Ver DuracaoEstado.
   const [precosEditados, definirPrecosEditados] = useEstadoPersistido<Record<string, number>>(
     'fechamento:precos-editados',
-    () => ({})
+    () => ({}),
+    'permanente'
   );
 
   /**
@@ -97,16 +108,22 @@ export const useCarregamentoDados = (
    * `useLeituras`) — os dois escrevem no mesmo lugar, então o mais recente
    * sempre vence.
    */
-  const updateBicoPrice = useCallback((bicoId: number, newPrice: number) => {
+  const updateBicoPrice = useCallback((bicoId: number, newPrice: number, modo: ModoPreco = 'sobrescrever') => {
     if (!dataSelecionada) return;
     // Forma de função: aplicar preço em vários bicos de uma vez (preço por
     // combustível) chama isto em sequência síncrona dentro do mesmo evento —
     // ler `precosEditados` direto da closure faria a 2ª chamada pisar na 1ª,
     // porque as duas partiriam do mesmo estado "antigo". Ver useEstadoPersistido.
-    definirPrecosEditados(atual => ({
-      ...atual,
-      [chavePrecoEditado(dataSelecionada, bicoId)]: newPrice
-    }));
+    definirPrecosEditados(atual => {
+      const chave = chavePrecoEditado(dataSelecionada, bicoId);
+      // 'se-vazio' é a herança do dia anterior num dia ainda sem leitura: ela
+      // só preenche o que o gerente NÃO digitou. Sem isto, cada recarga (abrir a
+      // aba de novo, realtime de uma leitura de outro dia) devolvia o preço
+      // herdado por cima do rascunho digitado — e o 'permanente' do rascunho
+      // não servia para nada.
+      if (modo === 'se-vazio' && atual[chave] !== undefined) return atual;
+      return { ...atual, [chave]: newPrice };
+    });
   }, [dataSelecionada, definirPrecosEditados]);
 
   /**

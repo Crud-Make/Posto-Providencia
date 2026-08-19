@@ -2,6 +2,44 @@
 
 ## [Não Lançado]
 
+### 🧹 Varredura do code-review de 19/08 — o que o dono ia encontrar primeiro
+- **[19/08/2026] Painel — envio do PWA que NUNCA aparecia (a outra metade do sumiço).**
+  `carregarSessoes` trocava de identidade a cada evento realtime de `Fechamento` (a lista de
+  frentistas chega como array novo), e o efeito que assina o canal de `FechamentoFrentista`
+  dependia dela: o canal era derrubado e reassinado bem na hora em que o PWA inseria o filho —
+  o INSERT caía no buraco. `useSessoesFrentistas` agora lê os frentistas por `ref` e a função é
+  estável; o canal fica de pé. O cache de sessões também passou a ser por **data e posto**
+  (trocar de posto com a mesma data devolvia as sessões do outro).
+- **Painel — Caixa Geral digitado sumia sozinho.** `carregarPagamentos` não tinha trava de
+  contexto e remontava os valores do banco (ou vazio) a cada redisparo do efeito de restauração.
+  Ganhou a mesma trava de `carregarSessoes`/`carregarLeituras`, com `force` para a recarga
+  deliberada depois de salvar.
+- **Painel — preço herdado do dia anterior pisava no preço digitado.** A herança de preço num
+  dia sem leitura (`useLeituras`) escrevia em `precosEditados` como se fosse digitação; reabrir
+  a aba ou um realtime de outro dia devolvia o preço de ontem por cima do rascunho. `updateBicoPrice`
+  ganhou o modo `'se-vazio'`: herança só preenche o que o gerente não digitou. Teste em
+  `useCarregamentoDados.test.ts`, que também passou a limpar `localStorage` entre casos.
+- **PWA frentista — quatro travas:** (1) a confirmação "data diferente de hoje" rearma depois de
+  um envio que falhou (antes o 2º toque passava direto); (2) a data lembrada do `localStorage`
+  só vale no dia em que foi gravada — no dia seguinte o app abre em hoje; (3) erro ao carregar
+  os envios do dia mostra erro e botão de tentar de novo, não "Nenhum envio neste dia ainda";
+  (4) segundo envio do mesmo frentista no mesmo dia é bloqueado no app ("Já enviado"), porque a
+  consolidação soma os filhos e a duplicata dobrava o caixa. A trava de banco correspondente
+  está em `supabase/migrations/20260819_fechamento_frentista_unico_por_dia.sql` — **escrita,
+  não aplicada**.
+- **PWA frentista — vendas de produto "de hoje" perdiam as de 21h em diante:** o recorte usava a
+  data local com sufixo `Z`; agora vai da meia-noite local à meia-noite local seguinte.
+- **App do dono — trocar a data e enviar em seguida gravava a base do dia velho.** O efeito que
+  carrega bicos e últimas leituras não cancelava a resposta anterior e o botão de enviar não
+  esperava a recarga. Agora a resposta de um efeito já cancelado é ignorada, a recarga pós-envio
+  passa pelo mesmo caminho, e o botão fica travado ("Carregando base do dia…") até a base do dia
+  escolhido chegar. Dois testes novos em `encerrante-screen.test.tsx`.
+- **Janela de escrita — policy de DELETE de `Leitura` estava em `public`.** A migration
+  `20260819_janela_escrita_cobre_o_replay.sql` recriava a policy sem `TO anon, authenticated`;
+  arquivo corrigido e produção alinhada com `ALTER POLICY` (mesma regra, papéis explícitos).
+  A mensagem de erro do `api-core` parou de afirmar "últimos 7 dias" enquanto a janela está
+  aberta para o replay.
+
 ### 👻 Envio do PWA aparecia no painel e sumia um instante depois
 - **[19/08/2026]** Em produção, o frentista enviava pelo app, a linha entrava na aba de
   Frentistas pelo realtime e **desaparecia**; só voltava com F5. A cadeia: o `INSERT` em
