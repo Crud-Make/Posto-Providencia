@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  User, Calendar, Gauge, Smartphone, Banknote,
+  User, Calendar, Smartphone, Banknote,
   Coins, CircleDollarSign, FileText, CreditCard,
   ClipboardList, ShoppingBag, History, ChevronDown,
   X, Check, AlertCircle
@@ -32,6 +32,45 @@ const ABAS_VALIDAS: readonly TabType[] = ['registro', 'vendas', 'historico', 'pe
 
 const abaSalvaOuPadrao = (valor: string | null): TabType =>
   ABAS_VALIDAS.includes(valor as TabType) ? (valor as TabType) : 'registro';
+
+interface EnvioDoDia {
+  id: number;
+  frentista_id: number;
+  valor_conferido: number | null;
+  data_hora_envio: string;
+  frentista: { nome: string } | null;
+}
+
+/** Chave do `localStorage` onde a data escolhida sobrevive ao reload. */
+const CHAVE_DATA_FECHAMENTO = 'pwa.dataFechamento';
+
+/**
+ * Restaura a data salva SÓ se foi gravada hoje.
+ *
+ * @remarks A data persiste porque abrir a câmera no celular descarrega a página
+ *          (ver `selectedFrentista`). Mas sem validade ela virava armadilha: no
+ *          dia seguinte o app abria na data de ontem e o frentista enviava o
+ *          caixa de hoje no dia errado sem aviso. Por isso grava-se junto o dia
+ *          em que foi salva, e valor de outro dia — ou o formato antigo, string
+ *          pura — é descartado em favor de hoje.
+ */
+const dataFechamentoInicial = (salvo: string | null, hoje: string = hojeIso()): string => {
+  if (!salvo) return hoje;
+  try {
+    const obj: unknown = JSON.parse(salvo);
+    if (
+      typeof obj === 'object' && obj !== null &&
+      'data' in obj && 'gravadoEm' in obj &&
+      typeof obj.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(obj.data) &&
+      obj.gravadoEm === hoje
+    ) {
+      return obj.data;
+    }
+  } catch { /* formato antigo (string pura) ou lixo: cai em hoje */ }
+  return hoje;
+};
+
+const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as const;
 
 interface DialogState {
   isOpen: boolean;
@@ -90,6 +129,12 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   });
   const [frentistas, setFrentistas] = useState<{ id: number, nome: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Histórico de enviados do dia (todos os frentistas): recarrega ao trocar a data
+  // e depois de cada envio. É o "quem já mandou" que evita envio em dobro e mostra
+  // na hora em que dia o registro caiu.
+  const [enviosDoDia, setEnviosDoDia] = useState<EnvioDoDia[]>([]);
+  const [enviosVersao, setEnviosVersao] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try { return abaSalvaOuPadrao(localStorage.getItem('pwa.activeTab')); } catch { return 'registro'; }
   });
@@ -124,7 +169,35 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     debito: '',
     credito: ''
   });
-  const [dataFechamento, setDataFechamento] = useState(() => hojeIso());
+  // A data sobrevive ao reload: em 19/08/2026 um reload do dev server zerou a data
+  // para hoje no meio do replay e um envio de 01/01 caiu em 01/19 — só o mês tinha
+  // sido trocado de novo. Mesmo padrão de `pwa.frentista` e `pwa.activeTab`.
+  // Só vale no dia em que foi gravada — ver `dataFechamentoInicial`.
+  const [dataFechamento, setDataFechamento] = useState(() => {
+    try { return dataFechamentoInicial(localStorage.getItem(CHAVE_DATA_FECHAMENTO)); } catch { return hojeIso(); }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAVE_DATA_FECHAMENTO, JSON.stringify({ data: dataFechamento, gravadoEm: hojeIso() }));
+    } catch { /* ignora */ }
+  }, [dataFechamento]);
+  /** Falha ao carregar os envios do dia — distinta de "ninguém enviou ainda". */
+  const [erroEnvios, setErroEnvios] = useState<string | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    api.getEnviosDoDia(1, dataFechamento)
+      .then((rows) => { if (ativo) { setEnviosDoDia(rows as unknown as EnvioDoDia[]); setErroEnvios(null); } })
+      .catch((err: unknown) => {
+        if (!ativo) return;
+        // Lista vazia por erro NÃO é "ninguém enviou": a trava de envio em dobro
+        // se apoia nesta lista, e o frentista precisa saber que ela não carregou.
+        setEnviosDoDia([]);
+        setErroEnvios(err instanceof Error ? err.message : 'Falha ao carregar os envios.');
+      });
+    return () => { ativo = false; };
+  }, [dataFechamento, enviosVersao]);
+  /** Pedido de confirmação pendente por a data não ser hoje. Ver `handleSubmit`. */
+  const [confirmarDataDiferente, setConfirmarDataDiferente] = useState(false);
 
   const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTotalVendido(formatCurrency(e.target.value));
@@ -169,6 +242,32 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
       return;
     }
 
+    // A data é o único campo desta tela que vem preenchido e que ninguém relê.
+    // Enviar o caixa de um dia inteiro para a data errada não dá erro nenhum —
+    // grava certinho no dia errado, e só aparece quando o dono abre o dia certo e
+    // não acha nada. Aconteceu duas vezes em 19/08/2026, com o dono testando.
+    // Hoje segue sem atrito; dia diferente exige um "sim" consciente.
+    if (dataFechamento !== hojeIso() && !confirmarDataDiferente) {
+      setConfirmarDataDiferente(true);
+      return;
+    }
+
+    // Um envio por frentista por dia. `FechamentoFrentista` não tem unique em
+    // (fechamento_id, frentista_id) e `consolidarFechamento` SOMA os filhos —
+    // um segundo toque do mesmo frentista dobraria o caixa do dia no pai.
+    // Migration 20260819_fechamento_frentista_unico_por_dia cobre o banco; esta
+    // trava dá a mensagem legível antes de bater nele.
+    if (enviosDoDia.some((e) => e.frentista_id === selectedFrentista.id)) {
+      setConfirmarDataDiferente(false);
+      setDialog({
+        isOpen: true,
+        title: 'Já enviado',
+        message: `${selectedFrentista.nome} já enviou o fechamento de ${new Date(dataFechamento + 'T00:00:00').toLocaleDateString('pt-BR')}. Para corrigir, fale com o gerente no painel.`,
+        type: 'error',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const dataStr = dataFechamento;
@@ -200,6 +299,8 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
 
       await api.submitFrentistaClosing(payload);
 
+      setEnviosVersao((v) => v + 1);
+      setConfirmarDataDiferente(false);
       setDialog({ isOpen: true, title: 'Sucesso!', message: 'Registro de Turno enviado com sucesso!', type: 'success' });
       // Limpa os dados
       setTotalVendido('');
@@ -207,6 +308,9 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
       setSelectedFrentista(null);
 
     } catch (err) {
+      // Desarma a confirmação de data: sem isso o próximo toque enviaria direto,
+      // sem o "sim" consciente que a data diferente de hoje exige.
+      setConfirmarDataDiferente(false);
       setDialog({ isOpen: true, title: 'Erro', message: err instanceof Error ? err.message : 'Ocorreu um erro no servidor.', type: 'error' });
     } finally {
       setIsSubmitting(false);
@@ -214,24 +318,24 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   };
 
   const renderBottomNav = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-[#0F131D] border-t border-slate-800/80 px-6 py-2 flex justify-between items-center z-50 pb-6">
-      <div onClick={() => setActiveTab('registro')} className="flex flex-col items-center gap-1 cursor-pointer">
-        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'registro' ? 'bg-[#FF756B]/10' : ''}`}>
-          <ClipboardList size={20} className={activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'} />
+    <div className="fixed bottom-0 left-0 right-0 bg-[#0F131D] border-t border-slate-800/80 px-8 pt-1 pb-3 flex justify-between items-center z-50">
+      <div onClick={() => setActiveTab('registro')} className="flex flex-col items-center gap-0.5 cursor-pointer">
+        <div className={`w-12 h-6 rounded-full flex items-center justify-center ${activeTab === 'registro' ? 'bg-[#FF756B]/10' : ''}`}>
+          <ClipboardList size={16} className={activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'} />
         </div>
-        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Registro</span>
+        <span className={`text-[9px] font-bold tracking-wide ${activeTab === 'registro' ? 'text-[#FF756B]' : 'text-slate-400'}`}>Registro</span>
       </div>
-      <div onClick={() => setActiveTab('vendas')} className="flex flex-col items-center gap-1 cursor-pointer">
-        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'vendas' ? 'bg-emerald-500/10' : ''}`}>
-          <ShoppingBag size={20} className={activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'} />
+      <div onClick={() => setActiveTab('vendas')} className="flex flex-col items-center gap-0.5 cursor-pointer">
+        <div className={`w-12 h-6 rounded-full flex items-center justify-center ${activeTab === 'vendas' ? 'bg-emerald-500/10' : ''}`}>
+          <ShoppingBag size={16} className={activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'} />
         </div>
-        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'}`}>Vendas</span>
+        <span className={`text-[9px] font-bold tracking-wide ${activeTab === 'vendas' ? 'text-emerald-400' : 'text-slate-400'}`}>Vendas</span>
       </div>
-      <div onClick={() => setActiveTab('historico')} className="flex flex-col items-center gap-1 cursor-pointer">
-        <div className={`w-14 h-8 rounded-full flex items-center justify-center ${activeTab === 'historico' ? 'bg-indigo-500/10' : ''}`}>
-          <History size={20} className={activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'} />
+      <div onClick={() => setActiveTab('historico')} className="flex flex-col items-center gap-0.5 cursor-pointer">
+        <div className={`w-12 h-6 rounded-full flex items-center justify-center ${activeTab === 'historico' ? 'bg-indigo-500/10' : ''}`}>
+          <History size={16} className={activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'} />
         </div>
-        <span className={`text-[10px] font-bold tracking-wide ${activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'}`}>Histórico</span>
+        <span className={`text-[9px] font-bold tracking-wide ${activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'}`}>Histórico</span>
       </div>
     </div>
   );
@@ -291,10 +395,9 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans pb-32">
+    <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans pb-24">
       <ReloadPrompt />
       <div className="p-5 flex-1 space-y-4">
-        <h1 className="text-2xl font-bold text-white mb-6">Registro de Turno</h1>
 
         {/* Selecionar Frentista */}
         <div
@@ -331,7 +434,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         </div>
 
         {/* Data do Fechamento */}
-        <div className="bg-[#131722] rounded-3xl p-4 border border-slate-800/60 flex items-center justify-between">
+        <div className="bg-[#131722] rounded-3xl p-4 border border-slate-800/60 flex flex-col gap-3">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-blue-900/20 flex items-center justify-center border border-blue-800/30">
               <Calendar size={20} className="text-blue-500" />
@@ -343,36 +446,72 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
               </h2>
             </div>
           </div>
-          <label className="relative cursor-pointer">
-            <div className="bg-[#2563EB] hover:bg-blue-600 active:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl transition-colors text-sm shadow-[0_0_10px_rgba(37,99,235,0.3)] pointer-events-none">
-              Alterar
-            </div>
-            <input
-              type="date"
-              value={dataFechamento}
-              onChange={(e) => setDataFechamento(e.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-            />
-          </label>
+          {/* Dia/Mês/Ano em selects diretos, em vez do calendário nativo: no celular
+              ele obriga a rolar mês a mês para chegar numa data antiga (o replay
+              começa em 01/01), e o mês escolhido de uma vez é o que o dono pediu. */}
+          <div className="flex items-center gap-2 w-full">
+            {(() => {
+              const [anoStr, mesStr, diaStr] = dataFechamento.split('-');
+              const ano = Number(anoStr), mes = Number(mesStr), dia = Number(diaStr);
+              const anoAtual = new Date().getFullYear();
+              const anos = Array.from({ length: anoAtual - 2025 + 1 }, (_, i) => 2025 + i);
+              const diasNoMes = new Date(ano, mes, 0).getDate();
+              const pad = (n: number) => String(n).padStart(2, '0');
+              const mudar = (a: number, m: number, d: number) => {
+                const maxDia = new Date(a, m, 0).getDate();
+                setDataFechamento(`${a}-${pad(m)}-${pad(Math.min(d, maxDia))}`);
+                setConfirmarDataDiferente(false);
+              };
+              const cls = 'flex-1 min-w-0 bg-[#1C2230] text-white font-bold text-sm rounded-lg px-2 py-2 border border-slate-700/60 outline-none';
+              return (
+                <>
+                  <select aria-label="Dia" className={cls} value={dia} onChange={(e) => mudar(ano, mes, Number(e.target.value))}>
+                    {Array.from({ length: diasNoMes }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{pad(d)}</option>)}
+                  </select>
+                  <select aria-label="Mês" className={cls} value={mes} onChange={(e) => mudar(ano, Number(e.target.value), dia)}>
+                    {MESES_CURTOS.map((nome, i) => <option key={nome} value={i + 1}>{nome}</option>)}
+                  </select>
+                  <select aria-label="Ano" className={cls} value={ano} onChange={(e) => mudar(Number(e.target.value), mes, dia)}>
+                    {anos.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </>
+              );
+            })()}
+          </div>
         </div>
+
+        {/* Data diferente de hoje fica gritando na tela até o envio. O campo vem
+            preenchido e ninguém relê o que já está certo — foi assim que o caixa
+            de um dia inteiro foi para a data errada duas vezes em 19/08/2026. */}
+        {dataFechamento !== hojeIso() && (
+          <div className={`rounded-2xl p-4 border ${confirmarDataDiferente
+            ? 'bg-amber-500/15 border-amber-500/50'
+            : 'bg-amber-500/10 border-amber-500/30'}`}>
+            <p className="text-amber-300 font-bold text-sm flex items-center gap-2">
+              <AlertCircle size={16} className="shrink-0" />
+              Este caixa NÃO é de hoje
+            </p>
+            <p className="text-amber-200/80 text-xs mt-1 leading-relaxed">
+              Vai ser lançado em{' '}
+              <strong>{new Date(dataFechamento + 'T00:00:00').toLocaleDateString('pt-BR')}</strong>.
+              {confirmarDataDiferente
+                ? ' Toque em enviar de novo para confirmar.'
+                : ' Confira antes de enviar.'}
+            </p>
+          </div>
+        )}
 
         {/* Conferência de Vendas (Roxo) */}
         <div className="bg-gradient-to-br from-[#5B4EFF] to-[#7B61FF] rounded-[1.75rem] p-5 shadow-lg shadow-indigo-500/20 mt-2">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-full border border-white/40 flex items-center justify-center bg-white/10">
-              <Gauge size={16} className="text-white" />
-            </div>
-            <p className="text-[10px] font-bold text-white/90 tracking-wider uppercase">Conferência de Vendas</p>
-          </div>
-          <h2 className="text-white font-bold text-xl mb-3">Total Vendido (R$)</h2>
-          <div className="bg-white/10 rounded-2xl p-4 flex items-center gap-2 backdrop-blur-sm border border-white/20">
-            <span className="text-white/70 font-bold text-2xl">R$</span>
+          <h2 className="text-white font-bold text-base mb-2">Total</h2>
+          <div className="bg-white/10 rounded-xl px-3 py-2 flex items-center gap-2 backdrop-blur-sm border border-white/20">
+            <span className="text-white/70 font-bold text-base">R$</span>
             <input
               type="text"
               inputMode="numeric"
               value={totalVendido}
               onChange={handleTotalChange}
-              className="bg-transparent text-white text-3xl font-bold w-full outline-none focus:ring-0 placeholder:text-white/30"
+              className="bg-transparent text-white text-xl font-bold w-full outline-none focus:ring-0 placeholder:text-white/30"
               placeholder="0,00"
             />
           </div>
@@ -422,15 +561,68 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
           </div>
         </div>
 
+        {/* Enviados no dia */}
+        <div className="bg-[#131722] rounded-[1.75rem] p-5 border border-slate-800/60">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Check size={16} className="text-emerald-400" />
+              <h3 className="text-white font-bold text-sm">
+                Enviados em {new Date(dataFechamento + 'T00:00:00').toLocaleDateString('pt-BR')}
+              </h3>
+            </div>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              {enviosDoDia.length}
+            </span>
+          </div>
+          {erroEnvios ? (
+            <button
+              type="button"
+              onClick={() => setEnviosVersao((v) => v + 1)}
+              className="text-xs text-red-300 text-left underline underline-offset-2"
+            >
+              Não deu para carregar os envios do dia — toque para tentar de novo
+            </button>
+          ) : enviosDoDia.length === 0 ? (
+            <p className="text-xs text-slate-500">Nenhum envio neste dia ainda.</p>
+          ) : (
+            <ul className="divide-y divide-slate-800/80">
+              {enviosDoDia.map((e) => (
+                <li key={e.id} className="py-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-100 truncate">{e.frentista?.nome ?? 'Frentista'}</p>
+                    <p className="text-[11px] text-slate-500 font-mono">
+                      {new Date(e.data_hora_envio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-emerald-400 font-mono whitespace-nowrap">
+                    R$ {Number(e.valor_conferido ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {/* Botão Enviar Registro */}
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
           className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-white transition-all 
-                  ${isSubmitting ? 'bg-indigo-600/50 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-[0_0_20px_rgba(79,70,229,0.3)] shadow-indigo-600/20'}`}
+                  ${isSubmitting
+                    ? 'bg-indigo-600/50 cursor-not-allowed'
+                    : confirmarDataDiferente
+                      // Confirmação armada: o botão MUDA, porque o primeiro toque não envia e
+                      // só uma frase no aviso amarelo dizia isso — em 19/08/2026 dois envios
+                      // ficaram no primeiro toque e o dono achou que tinham ido.
+                      ? 'bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-900 shadow-[0_0_20px_rgba(245,158,11,0.35)] animate-pulse'
+                      : 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-[0_0_20px_rgba(79,70,229,0.3)] shadow-indigo-600/20'}`}
         >
-          <Check size={20} />
-          {isSubmitting ? 'Enviando...' : 'Enviar Registro'}
+          {confirmarDataDiferente && !isSubmitting ? <AlertCircle size={20} /> : <Check size={20} />}
+          {isSubmitting
+            ? 'Enviando...'
+            : confirmarDataDiferente
+              ? `Toque de novo: confirmar envio em ${new Date(dataFechamento + 'T00:00:00').toLocaleDateString('pt-BR')}`
+              : 'Enviar Registro'}
         </button>
       </div>
 
@@ -444,7 +636,9 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
 
           <div className="bg-[#0A0D14] w-full rounded-t-[2rem] pt-6 flex flex-col h-[85vh] relative z-10 transform transition-transform shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
             {/* Header Vermelho */}
-            <div className="bg-[#D32F2F] absolute top-0 left-0 right-0 h-28 rounded-t-[2rem] flex items-start justify-between p-6 overflow-hidden">
+            {/* z-30 > z-20 da lista: a lista tem pt-28 e cobria o cabeçalho inteiro, e o toque no X
+                caía nela — o botão de fechar ficava morto. */}
+            <div className="bg-[#D32F2F] absolute top-0 left-0 right-0 h-28 rounded-t-[2rem] flex items-start justify-between p-6 overflow-hidden z-30">
               <div className="z-10">
                 <h2 className="text-2xl font-bold text-white mb-0.5">Quem está trabalhando?</h2>
                 <p className="text-red-100/80 text-sm">8 frentistas ativos</p>
