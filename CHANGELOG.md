@@ -2,6 +2,50 @@
 
 ## [Não Lançado]
 
+### 🔒 O modo visitante sai — sem senha não há meia-entrada
+- **[19/08/2026]** O "Continuar sem entrar" existia desde 16/08 como escada para a
+  apresentação não travar sem a senha à mão. Saiu porque era **pior que a trava**: como `anon`,
+  a RLS devolve lista vazia **sem erro** em `Fornecedor` e `Compra`, então o painel mostrava
+  número incompleto sem dizer que estava incompleto — e a gravação de data histórica morria
+  no erro cru do Postgres (`new row violates row-level security policy for table "Fechamento"`),
+  em inglês, na cara do dono. Reproduzido ao vivo hoje tentando salvar 01/01/2026.
+- Fora `modoVisitante`, `seguirComoVisitante` e a chave `posto:modo-visitante` do
+  `AuthContext`; `App.tsx` abre a porta só com sessão; o botão da barra lateral virou só
+  **Sair**. As 5 mensagens de UI que citavam "modo visitante" foram reescritas para falar da
+  RLS e da conta — mensagem que aponta para um modo que não existe mais é a mesma podridão
+  que o §13 persegue.
+
+### 🌑 Tela de login em modo escuro
+- **[19/08/2026]** A tela de entrada era a única superfície clara do sistema e destoava do
+  painel. Agora é escura e **sempre** escura: não segue o alternador de tema, porque o painel
+  também não. A identidade fica no detalhe — faixa amarela da estrada no topo, a logo na
+  placa branca (única superfície clara, porque a marca pede fundo branco), vermelho da marca
+  no botão, azul do arco no foco.
+
+### 🔢 Encerrante inicial vinha do dia mais recente, não do dia anterior
+- **[19/08/2026]** `leituraService.getLastReading` buscava a última leitura de cada bico
+  **sem recorte de data**. Abrir um dia sem leitura salva preenchia o encerrante inicial com o
+  fechamento do dia mais novo do banco — não do dia anterior ao da tela. Lançamento em ordem
+  cronológica não percebia; **replay de período passado quebrava em todo dia**.
+- Achado ao abrir 01/01/2026 com leitura de 18/08/2026 no banco: o bico 01 vinha com
+  `1.877.237,402` em vez de `1.716.778,963`, e o dia fechava com **−159.785,87 litros**.
+- A função ganhou o parâmetro `anteriorA` (`.lt('data', …)`), e `useLeituras` passa a data da
+  tela. Omitir o parâmetro mantém o comportamento antigo, para não mexer em chamador futuro
+  que queira mesmo a última leitura absoluta.
+- **O estrago já estava gravado:** as 12 leituras de 17 e 18/08 no banco eram encerrante de
+  agosto lançado contra a base de 31/12/2025 — 8 meses de volume num único dia, R$ 2,1 milhões
+  de faturamento fantasma na Planilha do Mês. Apagadas junto com os 2 `Fechamento` zerados,
+  os 4 `FechamentoFrentista` e os 5 `PresencaFrentista`. A leitura-base de 31/12/2025 ficou:
+  é a abertura de janeiro.
+
+### 🚪 O painel não tinha como sair
+- **[19/08/2026]** `sair()` existe no `AuthContext` desde o início e **nenhum componente
+  chamava**: dava para entrar no painel e não dava para largar dele. Quem abriu em modo
+  visitante ficava preso nele — e o modo visitante **não grava lançamento de data antiga**,
+  que é exatamente o que o replay precisa, então o caminho de volta para o login importava.
+- Botão no rodapé da `BarraLateral`, abaixo do alternador de tema. Serve aos dois estados:
+  autenticado encerra a sessão, visitante limpa a marca e cai no login.
+
 ### 📉 Lucro por bico deixa de usar margem fixa hardcoded
 - **[19/08/2026]** `useCalculoGestaoBicos` estimava o lucro com uma margem % fixa por tipo
   de combustível (Gasolina 11,79%, Etanol 9,02%, Diesel 2,73%) sempre que o cadastro não

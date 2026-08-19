@@ -13,9 +13,11 @@ import {
   Calendar,
   Crown,
   Table2,
-  Menu
+  Menu,
+  LogOut
 } from 'lucide-react';
 import { useTheme } from '../contexts/useTheme';
+import { useAuth } from '../contexts/useAuth';
 import { NavLink } from 'react-router-dom';
 
 interface SidebarProps {
@@ -46,6 +48,7 @@ interface SidebarProps {
  */
 const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhida = false, onAlternarRecolhida }) => {
   const { theme, toggleTheme } = useTheme();
+  const { autenticado, sair } = useAuth();
 
   // Definição dos itens do menu lateral
   const menuItems = [
@@ -146,6 +149,20 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
             {theme === 'light' ? <Moon size={18} className="shrink-0" /> : <Sun size={18} className="shrink-0" />}
             <span className={recolhida ? 'lg:hidden' : ''}>Modo {theme === 'light' ? 'Escuro' : 'Claro'}</span>
           </button>
+
+          {/* `sair()` existia no AuthContext desde o início e nunca teve porta
+              na interface: dava para entrar no painel e não dava para largar
+              dele. */}
+          {autenticado && (
+            <button
+              onClick={() => { void sair(); onClose?.(); }}
+              title={recolhida ? 'Sair da conta' : undefined}
+              className={`mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors ${recolhida ? 'lg:justify-center lg:px-0 lg:gap-0' : ''}`}
+            >
+              <LogOut size={18} className="shrink-0" />
+              <span className={recolhida ? 'lg:hidden' : ''}>Sair</span>
+            </button>
+          )}
         </div>
       </aside>
     </>

@@ -13,35 +13,28 @@ import { supabase } from '../services/supabase';
  *          barrada por RLS volta como lista vazia sem erro, então a tela
  *          concluía "não há nada cadastrado" quando na verdade não tinha
  *          permissão de ver.
+ *
+ *          O modo visitante existiu entre 16 e 19/08/2026 como escada para a
+ *          apresentação não travar sem a senha à mão. Saiu porque era pior que
+ *          a trava: `anon` lê metade das tabelas em silêncio e não grava data
+ *          histórica, então o painel mostrava número incompleto sem dizer que
+ *          era incompleto, e o replay falhava com o erro cru da RLS. Sem sessão
+ *          agora só existe a tela de login.
  */
 export interface EstadoAutenticacao {
   readonly sessao: Session | null;
   readonly carregando: boolean;
   /** `true` quando há sessão — o banco passa a responder como `authenticated`. */
   readonly autenticado: boolean;
-  /**
-   * `true` quando o usuário optou por seguir sem entrar.
-   *
-   * @remarks Existe para a apresentação do sistema não travar caso a senha não
-   *          esteja à mão. Nesse modo o painel funciona como sempre funcionou —
-   *          como visitante —, com as limitações de permissão descritas acima.
-   */
-  readonly modoVisitante: boolean;
   entrar: (email: string, senha: string) => Promise<string | null>;
   sair: () => Promise<void>;
-  seguirComoVisitante: () => void;
 }
 
 const AuthContext = createContext<EstadoAutenticacao | null>(null);
 
-const CHAVE_VISITANTE = 'posto:modo-visitante';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessao, setSessao] = useState<Session | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [modoVisitante, setModoVisitante] = useState<boolean>(
-    () => sessionStorage.getItem(CHAVE_VISITANTE) === '1'
-  );
 
   useEffect(() => {
     let ativo = true;
@@ -66,11 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const entrar = useCallback(async (email: string, senha: string): Promise<string | null> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-    if (!error) {
-      sessionStorage.removeItem(CHAVE_VISITANTE);
-      setModoVisitante(false);
-      return null;
-    }
+    if (!error) return null;
 
     // A mensagem do Supabase vem em inglês e genérica de propósito (não revela
     // se o e-mail existe). Traduzir mantém a mesma discrição, em pt-BR.
@@ -81,13 +70,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sair = useCallback(async () => {
     await supabase.auth.signOut();
-    sessionStorage.removeItem(CHAVE_VISITANTE);
-    setModoVisitante(false);
-  }, []);
-
-  const seguirComoVisitante = useCallback(() => {
-    sessionStorage.setItem(CHAVE_VISITANTE, '1');
-    setModoVisitante(true);
   }, []);
 
   // Sem React Compiler neste projeto: a memoização é manual e necessária, senão
@@ -97,12 +79,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessao,
       carregando,
       autenticado: sessao !== null,
-      modoVisitante,
       entrar,
       sair,
-      seguirComoVisitante,
     }),
-    [sessao, carregando, modoVisitante, entrar, sair, seguirComoVisitante]
+    [sessao, carregando, entrar, sair]
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

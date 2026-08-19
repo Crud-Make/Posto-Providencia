@@ -204,7 +204,7 @@ export const PlanilhaDoMes: React.FC<PlanilhaDoMesProps> = ({
                 apurado.produtosComEstoqueImpossivel.map(nomeDoProduto).join(', ') +
                 '. Isso é impossível: ninguém vende mais do que tinha somado ao que comprou. O que ' +
                 'falta é entrada — compra não lançada no mês, ou compra que este acesso não pode ' +
-                'ler (a tabela de Compras não abre para visitante). A perda fica como “—” até a ' +
+                'ler (a RLS não abre a tabela de Compras para esta conta). A perda fica como “—” até a ' +
                 'compra aparecer; exibi-la agora anunciaria uma sobra enorme.',
         },
         produtosSemAbertura.length > 0 && {

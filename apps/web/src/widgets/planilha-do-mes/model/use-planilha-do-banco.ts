@@ -309,14 +309,14 @@ function diasDoMes(mesIso: string): number {
 /**
  * Traduz a recusa da RLS para uma frase que o dono entenda.
  *
- * @remarks Sem login o painel acessa o banco como visitante, e a policy recusa a
+ * @remarks A policy pode recusar a escrita conforme o papel da sessão, e a
  *          escrita. O Postgres devolve "new row violates row-level security
  *          policy", que não diz nada a quem está tentando gravar uma medição —
  *          e faz o sistema parecer quebrado quando é permissão.
  */
 function mensagemDeErro(erro: string): string {
     return /row-level security|42501|violates row-level/i.test(erro)
-        ? 'O painel não tem permissão para gravar esta medição (você está em modo visitante). ' +
+        ? 'O painel não tem permissão para gravar esta medição (a RLS recusou para esta conta). ' +
               'Entre com seu login e tente de novo.'
         : erro;
 }

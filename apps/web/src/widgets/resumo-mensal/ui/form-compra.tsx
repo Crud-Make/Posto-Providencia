@@ -68,7 +68,7 @@ export const FormCompra: React.FC<FormCompraProps> = ({
     return (
       <p className="text-sm text-amber-700 dark:text-amber-400">
         A lista de fornecedores veio vazia. Ou não há nenhum cadastrado, ou o painel não tem
-        permissão para lê-la — ele acessa o banco como visitante. Sem fornecedor não dá para
+        permissão para lê-la — a RLS recusa para esta conta. Sem fornecedor não dá para
         lançar a compra, porque a nota precisa saber de quem veio o combustível.
       </p>
     );

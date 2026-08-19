@@ -146,7 +146,7 @@ const num = (valor: number | string | null | undefined): number => Number(valor 
 function mensagemDeErro(erro: string): string {
     const rls = /row-level security|42501|violates row-level/i.test(erro);
     return rls
-        ? 'O painel não tem permissão para gravar esta tabela (ele acessa o banco como visitante). ' +
+        ? 'O painel não tem permissão para gravar esta tabela (a RLS recusou a escrita para esta conta). ' +
               'É preciso liberar a permissão no banco antes de lançar por aqui.'
         : erro;
 }

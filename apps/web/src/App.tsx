@@ -83,20 +83,21 @@ const AppRoutes = () => {
 // Implementado Suspense para carregamento sob demanda das rotas.
 
 /**
- * Porta de entrada: sem sessão e sem escolha de modo visitante, só a tela de login.
+ * Porta de entrada: sem sessão, só a tela de login.
  *
  * @remarks Não é enfeite de segurança. As policies de RLS distinguem `anon` de
- *          `authenticated`, e como visitante o painel não lê `Fornecedor` nem
- *          `Compra` e não grava em data histórica — e leitura barrada volta como
- *          lista vazia, sem erro, o que faz a tela dizer "não há nada cadastrado"
- *          quando o que falta é permissão.
+ *          `authenticated`: sem sessão o painel não lê `Fornecedor` nem `Compra`
+ *          e não grava em data histórica — e leitura barrada volta como lista
+ *          vazia, sem erro, o que faz a tela dizer "não há nada cadastrado"
+ *          quando o que falta é permissão. Por isso não há caminho alternativo:
+ *          um painel que mente sobre o que não pode ver é pior que um login.
  */
 const PortaDeEntrada: React.FC = () => {
-  const { autenticado, modoVisitante, carregando } = useAuth();
+  const { autenticado, carregando } = useAuth();
 
   if (carregando) return <LoadingFallback />;
 
-  if (!autenticado && !modoVisitante) {
+  if (!autenticado) {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <TelaLogin />
