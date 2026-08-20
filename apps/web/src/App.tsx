@@ -29,6 +29,7 @@ const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGe
 const TelaFechamentoMensal = React.lazy(() => import('./components/fechamento-mensal'));
 const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
 const TelaLogin = React.lazy(() => import('./components/login'));
+const TelaRedefinirSenha = React.lazy(() => import('./components/login/redefinir-senha'));
 const TelaPlanilhaMensal = React.lazy(() => import('./pages/planilha-mensal'));
 
 // Componente de Loading para Suspense
@@ -93,9 +94,19 @@ const AppRoutes = () => {
  *          um painel que mente sobre o que não pode ver é pior que um login.
  */
 const PortaDeEntrada: React.FC = () => {
-  const { autenticado, carregando } = useAuth();
+  const { autenticado, carregando, recuperandoSenha } = useAuth();
 
   if (carregando) return <LoadingFallback />;
+
+  // O link do e-mail de recuperação chega COM sessão — sem esta parada o
+  // painel abriria direto e a troca de senha nunca aconteceria.
+  if (recuperandoSenha) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <TelaRedefinirSenha />
+      </Suspense>
+    );
+  }
 
   if (!autenticado) {
     return (
