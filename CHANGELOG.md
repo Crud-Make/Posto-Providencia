@@ -2,6 +2,12 @@
 
 ## [Não Lançado]
 
+### 🏷️ A marca do posto na aba do painel
+- **[19/08/2026]** O painel na Vercel abria com o ícone padrão do navegador: o `index.html` não
+  declarava favicon e o `manifest.json` apontava para `favicon.ico`/`logo192.png` que nunca
+  existiram na pasta. Agora os três apps usam os mesmos ícones da marca (`pwa-192x192`,
+  `pwa-512x512`, `apple-touch-icon`), copiados do PWA do frentista para `apps/web/public/`.
+
 - **[19/08/2026] Painel — tela de login com o visual do Stitch ("Provident Security").**
   Layout escolhido pelo dono a partir do export `stitch_professional_theme_transformation (1).zip`:
   arte do posto cobrindo a tela (`public/fundo-login.jpg`, ampliada do original de 275px —
