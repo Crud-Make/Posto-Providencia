@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🔓 Salvar Fechamento destravado quando nem todos os frentistas trabalham
+- **[19/08/2026] Painel — as linhas semeadas dos frentistas que não enviaram travavam o botão.**
+  Descoberto no replay de 01/01: os 5 envios do PWA salvaram todos (log da API sem um erro), mas
+  o "Salvar Fechamento" ficava desabilitado sem dizer por quê. A tela semeia uma linha por
+  frentista **ativo** (decisão de 20/01) e a validação `temFrentistasVazios` contava linha
+  intocada como erro — com 10 ativos e 5 trabalhando, o dia era infechável e o dono tinha que
+  apagar as linhas vazias uma a uma. Regra nova, pura e testada em `fechamentoMeios.test.ts`:
+  linha **sem nenhum lançamento** (nem valor, nem encerrante) é "não trabalhou hoje" — não
+  bloqueia o botão e **não vira registro de R$ 0,00 no banco** ao salvar. Continuam bloqueando:
+  valor declarado sem frentista selecionado (dinheiro órfão) e encerrante lançado com declaração
+  zerada (a bomba girou e ninguém prestou conta). `sessaoSemMovimento`/`sessaoBloqueiaFechamento`
+  em `apps/web/src/utils/fechamentoMeios.ts`; consumo em `useFechamento` (validação) e
+  `useSubmissaoFechamento` (filtro no insert). Nenhuma fórmula de dinheiro tocada.
+
 ### 🏷️ A marca do posto na aba do painel
 - **[19/08/2026]** O painel na Vercel abria com o ícone padrão do navegador: o `index.html` não
   declarava favicon e o `manifest.json` apontava para `favicon.ico`/`logo192.png` que nunca
