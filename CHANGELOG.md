@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### ⏭️ Salvou, avança: o fechamento emenda um dia no outro
+- **[19/08/2026] Painel — depois do Salvar, a tela pula sozinha para o dia seguinte.** Pedido do
+  dono durante o replay de janeiro: salvar o caixa e já cair no próximo dia, com a leitura
+  inicial de cada bico preenchida com a final do dia recém-salvo. A semeadura já existia
+  (`useLeituras` em modo criação busca a última leitura anterior à data via `getLastReading`,
+  que usa `lt('data', ...)` — e herda o preço); o que faltava era o avanço da data no
+  `onSuccess` (`fechamento-diario/index.tsx`), feito com `somarDias`/`deIsoLocal` de
+  `@posto/utils/data-local` para não escorregar um dia na virada UTC. Trava no presente: se o
+  dia salvo já é hoje, não há amanhã para lançar — recarrega o próprio dia como antes.
+  Validado em uso real: salvou 01/01 (FECHADO, 5 sessões, −308,52) e a tela abriu 02/01 com as
+  6 iniciais idênticas às finais de 01/01.
+
 ### 🔓 Salvar Fechamento destravado quando nem todos os frentistas trabalham
 - **[19/08/2026] Painel — as linhas semeadas dos frentistas que não enviaram travavam o botão.**
   Descoberto no replay de 01/01: os 5 envios do PWA salvaram todos (log da API sem um erro), mas

@@ -48,7 +48,7 @@ import FechamentoMensal from '../fechamento-mensal';
 import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
-import { hojeIso, conferido } from '@posto/utils';
+import { hojeIso, conferido, deIsoLocal, somarDias } from '@posto/utils';
 import { useEstadoPersistido } from '@shared/lib/estado-persistido';
 import { meiosDaSessao } from '../../utils/fechamentoMeios';
 import { parseValue } from '../../utils/formatters';
@@ -327,6 +327,19 @@ const TelaFechamentoDiario: React.FC = () => {
                limparAutoSave,
                onSuccess: () => {
                   setSuccess(null);
+                  // [19/08] Encadeia o lançamento dia a dia: salvou, a tela avança para o dia
+                  // seguinte, e o `useLeituras` (modo criação) já semeia a leitura inicial de
+                  // cada bico com a última final anterior à data (`getLastReading` usa
+                  // `lt('data', ...)`) — o encerrante final de hoje vira o inicial de amanhã
+                  // sem digitação. `somarDias`/`deIsoLocal` para não escorregar um dia na
+                  // virada UTC (ver @posto/utils/data-local).
+                  const proximoDia = selectedDate ? somarDias(deIsoLocal(selectedDate), 1) : null;
+                  if (proximoDia && proximoDia <= hojeIso()) {
+                     setSelectedDate(proximoDia);
+                     return;
+                  }
+                  // Dia salvo já é hoje (não há amanhã para lançar): mantém o comportamento
+                  // antigo, recarregando o próprio dia.
                   carregarLeituras();
                   if (selectedDate) {
                      carregarSessoes(selectedDate, true);
