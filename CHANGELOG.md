@@ -4,9 +4,11 @@
 
 - **[19/08/2026] Painel — tela de login com o visual do Stitch ("Provident Security").**
   Layout escolhido pelo dono a partir do export `stitch_professional_theme_transformation (1).zip`:
-  arte do posto cobrindo a tela (`public/fundo-login.jpg`, ampliada do original de 275px com véu
-  escuro + desfoque leve por cima), card translúcido à direita com o tile da logo do export
-  (`public/logo-login.jpg`), campos com ícone e botão "Entrar no Sistema →". A lógica não mudou:
+  arte do posto cobrindo a tela (`public/fundo-login.jpg`, ampliada do original de 275px —
+  nítida e clara, com véu mínimo, por escolha do dono), card translúcido à direita com o tile
+  da logo do export (`public/logo-login.jpg`), campos com ícone e botão vermelho só com a bomba
+  (`public/bomba-login.png`, de `~/Downloads/bomba.webp` com o fundo removido; o nome do botão
+  vive no `aria-label`). A lógica não mudou:
   `useActionState`, lembrar e-mail+senha opt-in e olho de senha seguem os de 19/08. Fora do
   mockup ficaram o "Esqueceu a senha?" (não existe fluxo de recuperação no app) e os links
   mortos de Privacidade/Termos.

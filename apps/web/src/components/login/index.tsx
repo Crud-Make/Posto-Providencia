@@ -1,5 +1,5 @@
 import React, { useActionState, useState } from 'react';
-import { Loader2, AlertTriangle, Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Loader2, AlertTriangle, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
 
 /**
@@ -93,9 +93,9 @@ const TelaLogin: React.FC = () => {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-slate-950 text-white">
-      {/* A foto do posto, cobrindo a tela inteira. O véu escuro e o desfoque
-          leve são os do mockup — e o desfoque também disfarça a ampliação da
-          arte original, que só existe em 275px. */}
+      {/* A foto do posto, cobrindo a tela inteira — nítida e clara por escolha
+          do dono (19/08/2026): sem desfoque e com véu mínimo, aceitando a
+          granulação da ampliação (a arte original só existe em 275px). */}
       <div aria-hidden="true" className="absolute inset-0 z-0">
         <img
           src="/fundo-login.jpg"
@@ -103,7 +103,7 @@ const TelaLogin: React.FC = () => {
           className="h-full w-full select-none object-cover"
           draggable={false}
         />
-        <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-slate-950/20" />
       </div>
 
       <main className="relative z-10 flex flex-1 items-center justify-center px-5 py-10 lg:justify-end lg:px-[6vw]">
@@ -209,24 +209,28 @@ const TelaLogin: React.FC = () => {
               </div>
             )}
 
+            {/* Só a bomba, sem rótulo visível — pedido do dono em 19/08/2026.
+                O nome do botão vive no aria-label; o glifo branco veio de
+                ~/Downloads/bomba.webp, com o fundo vermelho removido para
+                assentar no vermelho do botão. */}
             <button
               type="submit"
               disabled={pendente}
-              className="group mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-marca-vermelho px-4 text-[15px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.4)] transition-[background-color,transform] duration-150 ease-out hover:bg-marca-vermelho-escuro focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-marca-azul/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.99] disabled:cursor-progress disabled:opacity-70 disabled:active:scale-100"
+              aria-label={pendente ? 'Entrando…' : 'Entrar no sistema'}
+              title="Entrar no sistema"
+              className="group mt-1 inline-flex h-12 w-full items-center justify-center rounded-lg bg-marca-vermelho px-4 shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.4)] transition-[background-color,transform] duration-150 ease-out hover:bg-marca-vermelho-escuro focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-marca-azul/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.99] disabled:cursor-progress disabled:opacity-70 disabled:active:scale-100"
             >
               {pendente ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  Entrando…
-                </>
+                <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden="true" />
               ) : (
-                <>
-                  Entrar no Sistema
-                  <ArrowRight
-                    className="h-[18px] w-[18px] transition-transform duration-150 group-hover:translate-x-1"
-                    aria-hidden="true"
-                  />
-                </>
+                <img
+                  src="/bomba-login.png"
+                  alt=""
+                  width={78}
+                  height={96}
+                  className="h-7 w-auto select-none transition-transform duration-150 group-hover:scale-110"
+                  draggable={false}
+                />
               )}
             </button>
           </form>
