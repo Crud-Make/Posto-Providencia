@@ -26,8 +26,18 @@ export interface EstadoAutenticacao {
   readonly carregando: boolean;
   /** `true` quando há sessão — o banco passa a responder como `authenticated`. */
   readonly autenticado: boolean;
+  /**
+   * `true` quando o usuário chegou pelo link de recuperação do e-mail
+   * (evento `PASSWORD_RECOVERY`). Nesse estado o app mostra a tela de
+   * definir nova senha em vez do painel, mesmo já havendo sessão.
+   */
+  readonly recuperandoSenha: boolean;
   entrar: (email: string, senha: string) => Promise<string | null>;
   sair: () => Promise<void>;
+  /** Dispara o e-mail de recuperação. Devolve mensagem de erro ou `null`. */
+  pedirRecuperacaoSenha: (email: string) => Promise<string | null>;
+  /** Troca a senha da sessão de recuperação. Devolve mensagem de erro ou `null`. */
+  definirNovaSenha: (senha: string) => Promise<string | null>;
 }
 
 const AuthContext = createContext<EstadoAutenticacao | null>(null);
@@ -35,6 +45,7 @@ const AuthContext = createContext<EstadoAutenticacao | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessao, setSessao] = useState<Session | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [recuperandoSenha, setRecuperandoSenha] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -47,7 +58,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Cleanup obrigatório: subscrição viva depois do desmonte vaza canal e
     // estoura o limite de conexão do projeto (CLAUDE.md §5).
-    const { data: assinatura } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
+    const { data: assinatura } = supabase.auth.onAuthStateChange((evento, novaSessao) => {
+      // O link do e-mail de recuperação abre o app já com sessão; sem este
+      // sinal o gate mostraria o painel direto e a troca de senha nunca
+      // aconteceria.
+      if (evento === 'PASSWORD_RECOVERY') setRecuperandoSenha(true);
       setSessao(novaSessao);
     });
 
@@ -72,6 +87,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   }, []);
 
+  const pedirRecuperacaoSenha = useCallback(async (email: string): Promise<string | null> => {
+    // O redirect volta para a origem do próprio app; a URL precisa estar na
+    // allowlist de redirecionamento do projeto Supabase (Auth → URL Config).
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (!error) return null;
+    return /rate limit|security purposes/i.test(error.message)
+      ? 'Aguarde um pouco antes de pedir outro e-mail de recuperação.'
+      : error.message;
+  }, []);
+
+  const definirNovaSenha = useCallback(async (senha: string): Promise<string | null> => {
+    const { error } = await supabase.auth.updateUser({ password: senha });
+    if (!error) {
+      setRecuperandoSenha(false);
+      return null;
+    }
+    if (/at least 6|weak/i.test(error.message)) {
+      return 'A senha precisa de pelo menos 6 caracteres.';
+    }
+    if (/should be different/i.test(error.message)) {
+      return 'A nova senha precisa ser diferente da atual.';
+    }
+    return error.message;
+  }, []);
+
   // Sem React Compiler neste projeto: a memoização é manual e necessária, senão
   // todo consumidor do contexto re-renderiza a cada render do provider.
   const valor = useMemo<EstadoAutenticacao>(
@@ -79,10 +121,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessao,
       carregando,
       autenticado: sessao !== null,
+      recuperandoSenha,
       entrar,
       sair,
+      pedirRecuperacaoSenha,
+      definirNovaSenha,
     }),
-    [sessao, carregando, entrar, sair]
+    [sessao, carregando, recuperandoSenha, entrar, sair, pedirRecuperacaoSenha, definirNovaSenha]
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

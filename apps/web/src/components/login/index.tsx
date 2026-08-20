@@ -1,5 +1,5 @@
-import React, { useActionState, useState } from 'react';
-import { Loader2, AlertTriangle, Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import React, { useActionState, useRef, useState } from 'react';
+import { Loader2, AlertTriangle, CheckCircle2, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
 
 /**
@@ -13,16 +13,16 @@ import { useAuth } from '../../contexts/useAuth';
  *          incompleto sem avisar que estava incompleto, e o lançamento de dia
  *          passado morria no erro cru da RLS. Sem senha não há meia-entrada.
  *
- *          Visual: layout do export do Stitch escolhido pelo dono em
- *          19/08/2026 ("Provident Security") — foto do posto cobrindo a tela,
- *          card translúcido à direita no desktop (centrado no mobile), campos
- *          com ícone, botão vermelho da marca. A logo é o tile do próprio
- *          export (`public/logo-login.jpg`), e o fundo é
- *          `public/fundo-login.jpg`, recortado do export (as URLs originais
- *          do Stitch expiram); trocar por uma foto real do posto no mesmo
- *          caminho melhora a tela sem tocar em código.
- *          Escura de propósito e sempre — não segue o
- *          alternador de tema, para casar com o painel, que é escuro.
+ *          Visual (19/08/2026, terceira iteração com o dono): split-screen
+ *          tonal. A arte do posto só existe em 275px — esticada na tela
+ *          inteira ela granula, então ela vira um QUADRO na zona da marca, no
+ *          tamanho em que é nítida, com a faixa dupla amarela da estrada como
+ *          assinatura embaixo. O formulário vive num painel um passo mais
+ *          claro (slate-900 sobre slate-950; inputs mais escuros que o painel,
+ *          porque input é encaixe). Do export do Stitch ficaram o tile da logo
+ *          (`public/logo-login.jpg`), o "Jesus te ama" e o card de proporção
+ *          440px; o botão é só a bomba, pedido do dono. Escura de propósito e
+ *          sempre — não segue o alternador de tema, para casar com o painel.
  */
 /**
  * Onde o acesso lembrado fica.
@@ -48,23 +48,33 @@ const CHAVE_EMAIL = 'posto:email-lembrado';
 const CHAVE_SENHA = 'posto:senha-lembrada';
 
 const CLASSE_CAMPO =
-  'block h-12 w-full rounded-lg border border-slate-700 bg-slate-900/80 pl-11 pr-3.5 text-[15px] text-white ' +
+  'block h-12 w-full rounded-lg border border-white/10 bg-slate-950/70 pl-11 pr-3.5 text-[15px] text-white ' +
   'placeholder:text-slate-500 focus:border-marca-azul focus:outline-none focus:ring-[3px] focus:ring-marca-azul/25 ' +
   'transition-[border-color,box-shadow] duration-150';
 
-const CLASSE_ROTULO = 'mb-2 block text-[13px] font-medium text-slate-400';
+const CLASSE_ROTULO = 'block text-[13px] font-medium text-slate-400';
 
 const CLASSE_ICONE_CAMPO =
   'pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center text-slate-500';
 
+/** Mensagem fora do fluxo de submit — o resultado do "Esqueceu a senha?". */
+interface Aviso {
+  readonly tom: 'ok' | 'erro';
+  readonly texto: string;
+}
+
 const TelaLogin: React.FC = () => {
-  const { entrar } = useAuth();
+  const { entrar, pedirRecuperacaoSenha } = useAuth();
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
   const emailLembrado = localStorage.getItem(CHAVE_EMAIL) ?? '';
   const senhaLembrada = localStorage.getItem(CHAVE_SENHA) ?? '';
 
   const [erro, acao, pendente] = useActionState<string | null, FormData>(
     async (_anterior, formData) => {
+      setAviso(null);
       const email = String(formData.get('email') ?? '').trim();
       const senha = String(formData.get('senha') ?? '');
       const lembrar = formData.get('lembrar') === 'on';
@@ -91,42 +101,70 @@ const TelaLogin: React.FC = () => {
     null
   );
 
-  return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-slate-950 text-white">
-      {/* A foto do posto, cobrindo a tela inteira — nítida e clara por escolha
-          do dono (19/08/2026): sem desfoque e com véu mínimo, aceitando a
-          granulação da ampliação (a arte original só existe em 275px). */}
-      <div aria-hidden="true" className="absolute inset-0 z-0">
-        <img
-          src="/fundo-login.jpg"
-          alt=""
-          className="h-full w-full select-none object-cover"
-          draggable={false}
-        />
-        <div className="absolute inset-0 bg-slate-950/20" />
-      </div>
+  const aoEsquecerSenha = async () => {
+    const email = emailRef.current?.value.trim() ?? '';
+    if (!email) {
+      setAviso({ tom: 'erro', texto: 'Preencha o e-mail acima para receber o link de recuperação.' });
+      emailRef.current?.focus();
+      return;
+    }
+    setEnviandoRecuperacao(true);
+    const falha = await pedirRecuperacaoSenha(email);
+    setEnviandoRecuperacao(false);
+    setAviso(
+      falha
+        ? { tom: 'erro', texto: falha }
+        : { tom: 'ok', texto: `Enviamos o link de recuperação para ${email}. Confira a caixa de entrada.` }
+    );
+  };
 
-      <main className="relative z-10 flex flex-1 items-center justify-center px-5 py-10 lg:justify-end lg:px-[6vw]">
-        {/* O card translúcido — vidro sobre a foto, como no export. */}
-        <div className="w-full max-w-[440px] rounded-2xl border border-slate-200/15 bg-slate-900/85 p-6 shadow-2xl backdrop-blur-md sm:p-10">
-          {/* O tile da logo, vindo do export do Stitch (public/logo-login.jpg).
-              O fundo dele é quase o navy do card, então entra sem moldura. */}
+  return (
+    <div className="flex min-h-screen bg-slate-950 text-white">
+      {/* Zona da marca — a arte do posto como quadro, no tamanho em que é
+          nítida, sobre o navy mais fundo da tela. */}
+      <section
+        aria-hidden="true"
+        className="relative hidden flex-1 flex-col items-center justify-center overflow-hidden p-12 lg:flex"
+      >
+        {/* Luz âmbar dos postes da pista, bem baixa. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[50vh] bg-[radial-gradient(55%_60%_at_50%_0%,rgba(245,194,57,0.07),rgba(245,194,57,0)_70%)]" />
+
+        <figure className="relative w-[min(40vw,560px)]">
+          <img
+            src="/fundo-login.jpg"
+            alt=""
+            width={1120}
+            height={745}
+            className="h-auto w-full select-none rounded-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_24px_48px_-24px_rgba(0,0,0,0.9)]"
+            draggable={false}
+          />
+          {/* A faixa dupla da estrada — assinatura da tela desde a versão anterior. */}
+          <div className="mx-auto mt-8 h-[7px] w-24 border-y-2 border-marca-amarelo" />
+          <figcaption className="mt-4 text-center text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Painel de gestão
+          </figcaption>
+        </figure>
+      </section>
+
+      {/* Painel do formulário — um passo tonal acima da zona da marca. */}
+      <main className="flex w-full flex-col bg-slate-900 px-6 py-8 sm:px-12 lg:w-[480px] lg:border-l lg:border-white/10">
+        <div className="mx-auto my-auto w-full max-w-[356px] py-6">
           <img
             src="/logo-login.jpg"
             alt="Posto Providência"
-            width={512}
-            height={512}
-            className="mx-auto h-auto w-[176px] select-none rounded-xl"
+            width={306}
+            height={306}
+            className="mx-auto h-auto w-[132px] select-none rounded-xl"
             draggable={false}
           />
 
-          <h1 className="mt-7 text-center font-display text-[26px] font-bold tracking-tight text-white text-balance">
+          <h1 className="mt-6 text-center font-display text-[24px] font-bold tracking-tight text-white text-balance">
             Jesus te ama
           </h1>
 
           <form action={acao} className="mt-8 flex flex-col gap-5" noValidate>
             <div>
-              <label className={CLASSE_ROTULO} htmlFor="login-email">
+              <label className={`${CLASSE_ROTULO} mb-2`} htmlFor="login-email">
                 E-mail
               </label>
               <div className="relative">
@@ -134,6 +172,9 @@ const TelaLogin: React.FC = () => {
                   <Mail className="h-[18px] w-[18px]" />
                 </span>
                 <input
+                  ref={(el) => {
+                    emailRef.current = el;
+                  }}
                   id="login-email"
                   name="email"
                   type="email"
@@ -150,9 +191,19 @@ const TelaLogin: React.FC = () => {
             </div>
 
             <div>
-              <label className={CLASSE_ROTULO} htmlFor="login-senha">
-                Senha
-              </label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className={CLASSE_ROTULO} htmlFor="login-senha">
+                  Senha
+                </label>
+                <button
+                  type="button"
+                  onClick={aoEsquecerSenha}
+                  disabled={enviandoRecuperacao}
+                  className="text-[13px] font-medium text-red-300 transition-colors duration-150 hover:text-red-200 focus-visible:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-marca-azul/40 disabled:opacity-60"
+                >
+                  {enviandoRecuperacao ? 'Enviando…' : 'Esqueceu a senha?'}
+                </button>
+              </div>
               <div className="relative">
                 <span className={CLASSE_ICONE_CAMPO} aria-hidden="true">
                   <Lock className="h-[18px] w-[18px]" />
@@ -199,13 +250,21 @@ const TelaLogin: React.FC = () => {
               Salvar meu acesso neste computador
             </label>
 
-            {erro && (
+            {(erro || aviso) && (
               <div
-                role="alert"
-                className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-[14px] text-red-300"
+                role={erro || aviso?.tom === 'erro' ? 'alert' : 'status'}
+                className={
+                  erro || aviso?.tom === 'erro'
+                    ? 'flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-[14px] text-red-300'
+                    : 'flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-[14px] text-emerald-300'
+                }
               >
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{erro}</span>
+                {erro || aviso?.tom === 'erro' ? (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                )}
+                <span>{erro ?? aviso?.texto}</span>
               </div>
             )}
 
@@ -218,7 +277,7 @@ const TelaLogin: React.FC = () => {
               disabled={pendente}
               aria-label={pendente ? 'Entrando…' : 'Entrar no sistema'}
               title="Entrar no sistema"
-              className="group mt-1 inline-flex h-12 w-full items-center justify-center rounded-lg bg-marca-vermelho px-4 shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.4)] transition-[background-color,transform] duration-150 ease-out hover:bg-marca-vermelho-escuro focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-marca-azul/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.99] disabled:cursor-progress disabled:opacity-70 disabled:active:scale-100"
+              className="group mt-1 inline-flex h-12 w-full items-center justify-center rounded-lg bg-marca-vermelho px-4 shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.4)] transition-[background-color,transform] duration-150 ease-out hover:bg-marca-vermelho-escuro focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-marca-azul/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 active:scale-[0.99] disabled:cursor-progress disabled:opacity-70 disabled:active:scale-100"
             >
               {pendente ? (
                 <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden="true" />
@@ -235,11 +294,11 @@ const TelaLogin: React.FC = () => {
             </button>
           </form>
         </div>
-      </main>
 
-      <footer className="relative z-10 pb-6 text-center text-[12px] font-medium text-slate-400">
-        © {new Date().getFullYear()} Posto Providência
-      </footer>
+        <footer className="pt-6 text-center text-[12px] font-medium text-slate-500">
+          © {new Date().getFullYear()} Posto Providência
+        </footer>
+      </main>
     </div>
   );
 };

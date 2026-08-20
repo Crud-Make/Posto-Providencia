@@ -8,16 +8,19 @@
   existiram na pasta. Agora os três apps usam os mesmos ícones da marca (`pwa-192x192`,
   `pwa-512x512`, `apple-touch-icon`), copiados do PWA do frentista para `apps/web/public/`.
 
-- **[19/08/2026] Painel — tela de login com o visual do Stitch ("Provident Security").**
-  Layout escolhido pelo dono a partir do export `stitch_professional_theme_transformation (1).zip`:
-  arte do posto cobrindo a tela (`public/fundo-login.jpg`, ampliada do original de 275px —
-  nítida e clara, com véu mínimo, por escolha do dono), card translúcido à direita com o tile
-  da logo do export (`public/logo-login.jpg`), campos com ícone e botão vermelho só com a bomba
-  (`public/bomba-login.png`, de `~/Downloads/bomba.webp` com o fundo removido; o nome do botão
-  vive no `aria-label`). A lógica não mudou:
-  `useActionState`, lembrar e-mail+senha opt-in e olho de senha seguem os de 19/08. Fora do
-  mockup ficaram o "Esqueceu a senha?" (não existe fluxo de recuperação no app) e os links
-  mortos de Privacidade/Termos.
+- **[19/08/2026] Painel — tela de login profissional (3ª iteração com o dono) + recuperação de senha.**
+  Split-screen tonal: a arte do posto (só existe em 275px, esticada granulava) virou um **quadro**
+  na zona da marca, no tamanho em que é nítida (`public/fundo-login.jpg`), com a faixa dupla
+  amarela como assinatura; o formulário vive num painel um passo mais claro, com o tile da logo
+  do export do Stitch (`public/logo-login.jpg`), "Jesus te ama", campos com ícone e o botão
+  vermelho só com a bomba (`public/bomba-login.png`; o nome vive no `aria-label`). E o
+  **"Esqueceu a senha?" agora é real**: dispara o e-mail de recuperação do Supabase
+  (`resetPasswordForEmail`) usando o e-mail digitado, e o link do e-mail abre a tela nova de
+  definir nova senha (`components/login/redefinir-senha.tsx`, evento `PASSWORD_RECOVERY` no
+  `AuthContext`, parada própria no gate do `App`). A lógica de entrar não mudou: `useActionState`,
+  lembrar e-mail+senha opt-in e olho de senha seguem os de 19/08. Pendência de configuração: a
+  URL do painel precisa estar na allowlist de redirect do Supabase (Auth → URL Configuration)
+  para o link do e-mail voltar certo.
 
 ### 🧹 Varredura do code-review de 19/08 — o que o dono ia encontrar primeiro
 - **[19/08/2026] Painel — envio do PWA que NUNCA aparecia (a outra metade do sumiço).**
