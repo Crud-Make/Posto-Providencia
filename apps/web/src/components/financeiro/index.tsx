@@ -7,6 +7,7 @@ import { FiltrosFinanceiros } from './components/FiltrosFinanceiros';
 import { ResumoFinanceiro } from './components/ResumoFinanceiro';
 import { GraficoFluxoCaixa } from './components/GraficoFluxoCaixa';
 import { DespesasPorCategoria } from './components/DespesasPorCategoria';
+import { ListaDespesas } from './components/ListaDespesas';
 import { Loader2, Plus, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FixaPendente } from '@posto/utils';
@@ -31,9 +32,11 @@ import { ModalFixasPendentes } from './components/ModalFixasPendentes';
  * O que mudou foi ONDE isto aparece, não O QUE é calculado — todos os números continuam
  * vindo de `useFinanceiro` exatamente como antes.
  *
- * A tabela "Últimas Transações" foi removida nessa mudança. O pipeline que a alimentava
- * (`dados.transacoes`) continua vivo de propósito: `GraficoFluxoCaixa` e
- * `DespesasPorCategoria` derivam dele.
+ * [21/08] A listagem item a item voltou como `ListaDespesas`, depois que o dono lançava
+ * despesa e não via onde ela caía — só o total e a pizza. Mostra só despesas (o foco da
+ * tela é a saída de caixa; receita poluía a leitura). Consome o mesmo `dados.transacoes`
+ * que `GraficoFluxoCaixa` e `DespesasPorCategoria` já derivam; não recalcula nada, só
+ * exibe, respeitando os filtros de período e categoria.
  *
  * @module PainelReceitasDespesas
  */
@@ -191,6 +194,8 @@ export const PainelReceitasDespesas: React.FC = () => {
           </div>
         </div>
       )}
+
+      {!carregando && <ListaDespesas dados={dados} />}
 
       {fixasPendentes && (
         <ModalFixasPendentes

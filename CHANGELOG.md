@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🧾 A lista de despesas voltou para a aba Receitas e Despesas
+- **[21/08/2026] Painel — o dono lançava despesa e não via onde ela caía.** A aba "Receitas e
+  Despesas" só mostrava o total e a pizza por categoria; a listagem item a item tinha sido
+  removida quando a tela virou aba do Fechamento. Novo componente `ListaDespesas`
+  (`apps/web/src/components/financeiro/`) reintroduz a lista, consumindo o mesmo
+  `dados.transacoes` que o gráfico de fluxo e a pizza já derivavam — **não recalcula dinheiro,
+  só exibe**. Por decisão do dono: (1) mostra **só despesas** (receita poluía a leitura); (2)
+  só as **operacionais** (`origem === 'despesa'`) — as compras de combustível têm a tela
+  Compras e, 10x maiores, dominariam; (3) **agrupadas por categoria** (Folha de Pagamento,
+  Impostos, Frete…) com subtotal em cada, maior primeiro. Data formatada por fatiamento de
+  string (sem `new Date()`, que escorregaria na virada UTC). Coberto por
+  `ListaDespesas.test.tsx` (4 casos: exclusão de receita/compra, agrupamento, total, estado
+  vazio). Validado no replay de janeiro: 15 lançamentos, R$ 22.158,46, batendo com a planilha.
+
 ### 🏷️ A marca do posto na aba do painel
 - **[19/08/2026]** O painel na Vercel abria com o ícone padrão do navegador: o `index.html` não
   declarava favicon e o `manifest.json` apontava para `favicon.ico`/`logo192.png` que nunca
