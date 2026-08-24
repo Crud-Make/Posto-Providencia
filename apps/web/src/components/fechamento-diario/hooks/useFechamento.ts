@@ -20,7 +20,11 @@ import {
 } from '../../../utils/calculators';
 import { analisarValor } from '../../../utils/formatters';
 import { conferido, diferenca as diferencaCanonica } from '@posto/utils';
-import { meiosDaSessao } from '../../../utils/fechamentoMeios';
+import {
+  meiosDaSessao,
+  sessaoBloqueiaFechamento,
+  sessaoSemMovimento
+} from '../../../utils/fechamentoMeios';
 
 /**
  * Retorno do hook useFechamento
@@ -174,22 +178,16 @@ export const useFechamento = (
   }, [bicos, leituras]);
 
   /**
-   * Validação: verifica se há frentistas sem frentista selecionado ou valor zero
+   * Validação: verifica se alguma sessão impede o fechamento.
+   *
+   * @remarks [19/08] A linha intocada (sem valor e sem encerrante) deixou de contar
+   *          como erro: o painel semeia uma por frentista ativo, e quem não
+   *          trabalhou no dia travava o botão Salvar do dia inteiro. O critério
+   *          do que bloqueia mora em {@link sessaoBloqueiaFechamento} — puro e
+   *          coberto por `fechamentoMeios.test.ts`.
    */
   const temFrentistasVazios = useMemo(() => {
-    return sessoesFrentistas.some(
-      fs => {
-        if (!fs.frentistaId) return true;
-        const totalInformado =
-          (analisarValor(fs.valor_cartao) || (analisarValor(fs.valor_cartao_debito) + analisarValor(fs.valor_cartao_credito))) +
-          analisarValor(fs.valor_nota) +
-          analisarValor(fs.valor_pix) +
-          analisarValor(fs.valor_dinheiro) +
-          analisarValor(fs.valor_baratao) +
-          analisarValor(fs.valor_moedas);
-        return totalInformado === 0;
-      }
-    );
+    return sessoesFrentistas.some(sessaoBloqueiaFechamento);
   }, [sessoesFrentistas]);
 
   /**
@@ -198,16 +196,16 @@ export const useFechamento = (
    * @remarks
    * Critérios:
    * - Não ter leituras inválidas
-   * - Não ter frentistas vazios
+   * - Nenhuma sessão bloqueando (valor sem dono, encerrante sem declaração)
    * - Ter pelo menos uma leitura
-   * - Ter pelo menos um frentista
+   * - Ter pelo menos uma sessão com movimento (linha semeada vazia não conta)
    */
   const podeFechar = useMemo(() => {
     return (
       !temLeiturasInvalidas &&
       !temFrentistasVazios &&
       Object.keys(leituras).length > 0 &&
-      sessoesFrentistas.length > 0
+      sessoesFrentistas.some(fs => !sessaoSemMovimento(fs))
     );
   }, [temLeiturasInvalidas, temFrentistasVazios, leituras, sessoesFrentistas]);
 

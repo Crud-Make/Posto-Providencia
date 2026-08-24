@@ -8,6 +8,7 @@
  * sobre o resultado, sem reimplementar soma.
  */
 import {
+    conferido,
     meiosFromFechamentoRow,
     type FechamentoRowNumerico,
     type MeiosPagamento,
@@ -29,6 +30,42 @@ export const meiosDaSessao = (s: SessaoFrentista): MeiosPagamento =>
         valor_nota: parseValue(s.valor_nota),
         valor_baratao: parseValue(s.valor_baratao),
     });
+
+/**
+ * A sessão não tem nenhum lançamento — nem dinheiro declarado, nem encerrante.
+ *
+ * @remarks
+ * É o critério de "não trabalhou hoje". O painel semeia uma linha por frentista
+ * ativo (decisão de 20/01, `useSessoesFrentistas.carregarSessoes`); num dia em que
+ * só parte da equipe trabalha, as linhas dos ausentes ficam zeradas. Elas não
+ * bloqueiam o fechamento nem viram registro no banco — sessão de R$ 0,00 salva
+ * seria indistinguível de um frentista que fechou sem vender nada.
+ *
+ * Coberto por `fechamentoMeios.test.ts`.
+ */
+export function sessaoSemMovimento(s: SessaoFrentista): boolean {
+    return conferido(meiosDaSessao(s)) === 0 && parseValue(s.valor_encerrante) === 0;
+}
+
+/**
+ * A sessão impede o fechamento do dia como está.
+ *
+ * @returns `true` quando há dinheiro declarado sem frentista selecionado, ou
+ *          encerrante lançado sem nenhum valor declarado.
+ *
+ * @remarks
+ * Regra de 19/08 (investigação do Salvar travado no replay de 01/01): a linha
+ * **intocada** deixa de contar como erro — antes, os frentistas que não enviaram
+ * fechamento naquele dia travavam o botão para o dia inteiro, e o dono tinha que
+ * apagar as linhas vazias uma a uma. O que continua bloqueando:
+ * - valor declarado sem dono (`frentistaId` nulo): dinheiro não pode ficar órfão;
+ * - encerrante > 0 com declaração zerada: a bomba girou e ninguém prestou conta.
+ */
+export function sessaoBloqueiaFechamento(s: SessaoFrentista): boolean {
+    const declarado = conferido(meiosDaSessao(s));
+    if (declarado > 0) return !s.frentistaId;
+    return parseValue(s.valor_encerrante) > 0;
+}
 
 /**
  * Balde canônico de dinheiro que uma forma de pagamento cadastrada representa.
