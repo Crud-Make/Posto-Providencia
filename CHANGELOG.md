@@ -2,6 +2,25 @@
 
 ## [Não Lançado]
 
+### 🔗 Golden: o encadeamento de estoque entre meses, e a divergência das duas fórmulas de custo
+- **[26/08/2026] `packages/utils` — o estoque anterior de um mês nunca tinha sido testado.** O
+  `resumo-compra-estoque.golden.spec.ts` já provava os 7 meses de 2026 isoladamente: dado um
+  saldo inicial, o teórico e a perda saem certos. Ninguém olhava **de onde vinha esse saldo**.
+  Novo `estoque-encadeamento.golden.spec.ts` (24 casos) trava três coisas: (1) a regra da
+  corrente — `estoque_anterior[m] = estoque_tanque[m−1]`, o litro **medido na régua**, nunca o
+  teórico, válida de março a julho; (2) a **quebra de fevereiro/2026**, que repetiu o
+  `ano_passado` de janeiro em vez de herdar o medido (Δ +2.187 L de Aditivada, +1.720 de Comum)
+  e por isso acusa uma perda fantasma de −2.070,25 L — erro **da planilha**, documentado como
+  divergência (§7) e não "consertado" no módulo; (3) a prova de que a planilha custeia pela
+  compra do próprio mês (`media_lt = compra_rs ÷ compra_lt` nas 28 linhas), sem estoque anterior.
+- **Divergência conhecida, agora com número.** O caminho de escrita (`compra.service.ts:117` e
+  `usePersistenciaRegistro.ts:161`, que fazem a **mesma** média ponderada duas vezes) usa fórmula
+  diferente da planilha. Medido nos 7 meses: no ano as duas quase empatam — **R$ 132,69** sobre
+  R$ 1.541.032 comprados —, mas o **mês** erra até **R$ 2.582,18** (abril, lucro inflado; março
+  +R$ 1.986; fevereiro −R$ 1.338). É por isso que passou despercebida: só aparece na janela que o
+  dono realmente olha. O teste replica a fórmula porque `packages/*` não importa de `apps/*` (§2)
+  e a do hook é closure não exportada — trava **o tamanho da divergência**, não a chamada real.
+
 ### 🧾 A lista de despesas voltou para a aba Receitas e Despesas
 - **[21/08/2026] Painel — o dono lançava despesa e não via onde ela caía.** A aba "Receitas e
   Despesas" só mostrava o total e a pizza por categoria; a listagem item a item tinha sido
