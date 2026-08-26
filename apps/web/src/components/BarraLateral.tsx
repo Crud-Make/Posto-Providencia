@@ -75,14 +75,17 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
       <aside className={`w-64 ${recolhida ? 'lg:w-16' : ''} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col h-screen overflow-y-auto overflow-x-hidden sticky top-0 z-40 transition-[width,transform] duration-200 ${className}`}>
         {/* Logo, botão de recolher (desktop) e botão de fechar (mobile) */}
         <div className={`p-6 flex items-center justify-between ${recolhida ? 'lg:p-3 lg:justify-center' : ''}`}>
-          <div className={`flex items-center gap-3 ${recolhida ? 'lg:hidden' : ''}`}>
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-              <Fuel size={24} />
-            </div>
-            <div>
-              <h1 className="font-bold text-gray-900 dark:text-white leading-tight">Posto Providência</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Gestão Integrada</p>
-            </div>
+          {/* A marca do posto (mesma do login e da aba). O PNG tem fundo branco, então vai
+              num tile branco de propósito — no modo escuro vira um cartão, não um recorte. */}
+          <div className={`flex items-center ${recolhida ? 'lg:hidden' : ''}`}>
+            <h1 className="bg-white rounded-lg px-2 py-1 shadow-sm ring-1 ring-gray-200 dark:ring-gray-600">
+              <img
+                src="/marca-posto@2x.png"
+                alt="Posto Providência"
+                className="h-10 w-auto"
+                draggable={false}
+              />
+            </h1>
           </div>
           {onAlternarRecolhida && (
             <button
