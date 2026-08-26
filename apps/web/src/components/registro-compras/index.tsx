@@ -67,7 +67,8 @@ const TelaRegistroCompras: React.FC = () => {
         loading,
         loadData,
         updateCombustivel,
-        setCombustiveis
+        setCombustiveis,
+        ultimoDiaFechado
     } = useCombustiveisHibridos(mes);
     
     // Refs para persistência
@@ -226,6 +227,8 @@ const TelaRegistroCompras: React.FC = () => {
                     combustiveis={combustiveis}
                     calculos={calculos}
                     totais={calculos.totais}
+                    ultimoDiaFechado={ultimoDiaFechado}
+                    diasNoMes={Number(intervaloDoMes(mes, `${mes}-31`).fim.slice(8, 10))}
                 />
 
                 <SecaoCompras

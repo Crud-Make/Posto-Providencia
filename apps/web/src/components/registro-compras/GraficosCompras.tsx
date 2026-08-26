@@ -49,7 +49,7 @@ export const GraficosCompras: React.FC<Props> = ({ combustiveis, calculos }) => 
 
    const volume = combustiveis.map((c) => ({
       produto: c.nome,
-      comprado: parseBRFloat(c.compra_lt),
+      comprado: c.compra_mes_lt + parseBRFloat(c.compra_lt),
       vendido: calculos.calcLitrosVendidos(c),
    }));
 
@@ -85,7 +85,7 @@ export const GraficosCompras: React.FC<Props> = ({ combustiveis, calculos }) => 
                         <BarChart data={volume} margin={{ top: 16, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%" barGap={2}>
                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.15} />
                            <XAxis dataKey="produto" {...EIXO} tickMargin={8} />
-                           <YAxis {...EIXO} tickFormatter={(v: number) => `${formatarParaBR(v / 1000, 0)}k`} width={40} />
+                           <YAxis {...EIXO} tickFormatter={(v: number) => (v >= 10_000 ? `${formatarParaBR(v / 1000, 0)}k` : formatarParaBR(v, 0))} width={48} />
                            <Tooltip
                               contentStyle={TOOLTIP_STYLE}
                               cursor={{ fill: '#9ca3af', opacity: 0.08 }}
@@ -125,9 +125,7 @@ export const GraficosCompras: React.FC<Props> = ({ combustiveis, calculos }) => 
                            <Bar dataKey="lucro" stackId="preco" fill={cor.lucro} radius={[0, 4, 4, 0]} maxBarSize={28}>
                               <LabelList dataKey="lucro" position="right" fontSize={11} fill="currentColor" formatter={(v: number) => (v > 0 ? `+${paraReais(v)}` : '')} />
                            </Bar>
-                           <Bar dataKey="prejuizo" stackId="preco" fill="#e34948" radius={[4, 0, 0, 4]} maxBarSize={28}>
-                              <LabelList dataKey="prejuizo" position="left" fontSize={11} fill="currentColor" formatter={(v: number) => (v < 0 ? paraReais(v) : '')} />
-                           </Bar>
+                           <Bar dataKey="prejuizo" stackId="preco" fill="#e34948" radius={[4, 0, 0, 4]} maxBarSize={28} />
                         </BarChart>
                      </ResponsiveContainer>
                   </div>

@@ -103,6 +103,8 @@ export const useCombustiveisHibridos = (mesIso: string) => {
     const { postoAtivoId } = usePosto();
     const [loading, setLoading] = useState(true);
     const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([]);
+    /** Último dia em que TODOS os bicos estavam fechados; `null` sem leitura no mês. */
+    const [ultimoDiaFechado, setUltimoDiaFechado] = useState<number | null>(null);
 
     /** Carrega cadastro, vendas, compras e régua do mês. */
     const loadData = useCallback(async () => {
@@ -155,6 +157,7 @@ export const useCombustiveisHibridos = (mesIso: string) => {
                 valorDia: l.valor_total === null ? null : Number(l.valor_total),
             }));
             const mensal = encerranteMensal(diarias);
+            setUltimoDiaFechado(mensal.ultimoDiaFechado ?? null);
 
             const vendaPorProduto = new Map<number, { inicial: number; fechamento: number; bruto: number }>();
             for (const b of mensal.bicos) {
@@ -227,6 +230,7 @@ export const useCombustiveisHibridos = (mesIso: string) => {
     return {
         combustiveis,
         setCombustiveis,
+        ultimoDiaFechado,
         loading,
         loadData,
         updateCombustivel,

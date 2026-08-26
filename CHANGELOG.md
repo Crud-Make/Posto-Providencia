@@ -37,6 +37,13 @@
   litros comprados × vendidos por produto, e a composição do preço do litro (custo + despesa
   rateada + sobra), paleta validada pelo `validate_palette.js` da skill `dataviz` em claro e
   escuro. Nenhuma fórmula nova: os gráficos só exibem o que `useCalculosRegistro` já calcula.
+  **Aviso de mês parcial** no cabeçalho de Vendas ("dia 1 a N de M"): a despesa do mês inteiro
+  rateada só pelos litros já lançados infla o custo por litro (em 26/08, janeiro com 1 dia
+  lançado dava R$ 13,83/L de despesa contra R$ 0,47 do mês fechado) — a conta está certa, o
+  dado é que está pela metade, e a tela agora diz isso em vez de deixar o lucro negativo falar
+  sozinho. Validado em `localhost:3015` contra a planilha: custo médio 5,35 / 5,31 / 4,10 / 5,38
+  (`F16:F19`), estoque anterior 7.392 / 4.124 / 1.752 / 2.415 (`D24:D27`), compra + estoque
+  38.392 / 9.124 / 9.752 / 5.415 (`E24:E27`).
 - **Achados da conferência, ainda sem código:** na planilha o **Frete não é digitado** —
   `D258 = D20 × 0,12` (12% dos litros comprados, tratado como R$), única despesa calculada;
   conferir se a `Despesa` do banco recebe isso. E Aditivada e Comum B05 **copiam** o preço do

@@ -14,6 +14,10 @@ interface Props {
    calculos: CalculosRegistro;
    /** Totais consolidados para exibição no rodapé */
    totais: CalculosRegistro['totais'];
+   /** Último dia do mês com todos os bicos fechados; `null` sem leitura. */
+   ultimoDiaFechado: number | null;
+   /** Quantos dias o mês selecionado tem. */
+   diasNoMes: number;
 }
 
 /**
@@ -26,7 +30,8 @@ interface Props {
  *          encerrante. O que esta seção alimenta é o rateio da despesa por
  *          litro vendido (`I19 = I16/F11`) e o lucro por bico.
  */
-export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais }) => {
+export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais, ultimoDiaFechado, diasNoMes }) => {
+   const mesParcial = ultimoDiaFechado !== null && ultimoDiaFechado < diasNoMes;
    return (
       <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
          <div className="bg-emerald-600 px-6 py-4 flex items-center justify-between">
@@ -34,8 +39,17 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais })
                <TrendingUp className="text-white" size={24} />
                <h2 className="text-white font-semibold text-lg">Vendas (Leituras)</h2>
             </div>
-            <span className="text-xs text-emerald-100/90">Lidas do fechamento diário — o mês consolidado</span>
+            <span className="text-xs text-emerald-100/90">
+               {ultimoDiaFechado === null
+                  ? 'Nenhum fechamento lançado neste mês'
+                  : `Lidas do fechamento diário — dia 1 a ${ultimoDiaFechado} de ${diasNoMes}`}
+            </span>
          </div>
+         {mesParcial && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-2 text-xs text-amber-800 dark:text-amber-200">
+               <strong>Mês parcial.</strong> A despesa do mês inteiro está sendo rateada só pelos litros lançados até o dia {ultimoDiaFechado} — o custo por litro sai inflado e o lucro, subestimado. Os números fecham quando o mês estiver todo lançado.
+            </div>
+         )}
          <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm text-left">
                <thead className="bg-slate-100 dark:bg-gray-700 text-xs uppercase font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
