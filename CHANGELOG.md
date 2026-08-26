@@ -2,6 +2,26 @@
 
 ## [Não Lançado]
 
+### 💳 Taxas de cartão: um lançamento por provedor, como despesa do mês
+
+- **Botão "Taxas de Cartão"** na aba Receitas e Despesas abre um modal com uma linha por
+  provedor (Sipag, Sicoob…) e o valor digitado da fatura da maquininha. Cada linha vira uma
+  `Despesa` com categoria `Taxas Cartão` — a mesma que a carga histórica gravou —, na data
+  do mês exibido, e entra no rateio por litro da tela de Compras e da Planilha do Mês como
+  qualquer outra despesa. Segue a planilha: **taxa é despesa digitada**, não conta de
+  `recebimento × %`. Só o nome do provedor é lembrado do mês anterior; valor, nunca.
+- **"Nova Receita" saiu** da aba. Receita é a venda dos bicos; uma receita digitada entrava
+  no card de lucro sem ter vindo de bomba nenhuma. O `Receita` que o card
+  `useFinanceiro` ainda soma como "extras" fica documentado como divergência a resolver com
+  golden, junto com o desconto em dobro da taxa (`Fechamento.taxas_pagamento` + despesa).
+- Categoria `Taxas Cartão` na lista do formulário de despesa.
+
+### 🔗 Compras aponta para onde a despesa se lança
+
+- Chip **"Despesa do mês · R$ X · lançar"** no cabeçalho de Compra e Custo, abrindo o
+  Fechamento direto na aba Receitas e Despesas (`/fechamento?aba=receitas-despesas`). A
+  tela de Compras continua só lendo a `Despesa`; escrever é num lugar só.
+
 ### 🛢️ Tanques: o estoque atual passou a ser derivado, não carimbado
 - **[26/08/2026] Painel `/estoque/tanques` — cada leitura salva agora diminui o tanque de verdade.**
   `Tanque.estoque_atual` era um contador que só a tela de compras somava e ninguém subtraía: a

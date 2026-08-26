@@ -27,5 +27,6 @@ export const CATEGORIAS_DESPESA = [
     'Marketing',
     'Seguros',
     'Contabilidade',
+    'Taxas Cartão',
     'Outros'
 ];

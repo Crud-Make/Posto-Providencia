@@ -8,17 +8,17 @@ import { ResumoFinanceiro } from './components/ResumoFinanceiro';
 import { GraficoFluxoCaixa } from './components/GraficoFluxoCaixa';
 import { DespesasPorCategoria } from './components/DespesasPorCategoria';
 import { ListaDespesas } from './components/ListaDespesas';
-import { Loader2, Plus, Repeat } from 'lucide-react';
+import { CreditCard, Loader2, Plus, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FixaPendente } from '@posto/utils';
 import FormDespesa from '../despesas/components/FormDespesa';
 import { DespesaFormData } from '../despesas/types';
-import { despesaService, receitaService } from '../../services/api';
+import { despesaService } from '../../services/api';
 import { isSuccess } from '../../types/ui/response-types';
 import { despesaFixaService, type LancamentoFixa } from '../../services/api/despesa-fixa.service';
 import { hojeIso, mesAtualIso, ultimoDiaDoMes, deIsoLocal } from '../../utils/periodo';
-import { FormReceita, ReceitaFormData } from './components/FormReceita';
 import { ModalFixasPendentes } from './components/ModalFixasPendentes';
+import { ModalTaxasCartao, CATEGORIA_TAXAS_CARTAO, provedorDaDescricao } from './components/ModalTaxasCartao';
 // [01/02 11:22] Integrado FormReceita e lógica de salvamento de receitas extras.
 
 /**
@@ -43,9 +43,11 @@ import { ModalFixasPendentes } from './components/ModalFixasPendentes';
 export const PainelReceitasDespesas: React.FC = () => {
   const { postoAtivoId } = usePosto();
   const [showFormDespesa, setShowFormDespesa] = React.useState(false);
-  const [showFormReceita, setShowFormReceita] = React.useState(false);
   const [fixasPendentes, setFixasPendentes] = React.useState<FixaPendente[] | null>(null);
   const [buscandoFixas, setBuscandoFixas] = React.useState(false);
+  /** `null` fechado; aberto carrega os provedores de cartão usados no mês anterior. */
+  const [provedoresTaxa, setProvedoresTaxa] = React.useState<string[] | null>(null);
+  const [buscandoTaxas, setBuscandoTaxas] = React.useState(false);
 
   const { filtros, atualizar, resetar, aplicarPreset } = useFiltrosFinanceiros(postoAtivoId || undefined);
   const { dados, carregando, erro, recarregar } = useFinanceiro(filtros);
@@ -90,16 +92,21 @@ export const PainelReceitasDespesas: React.FC = () => {
     }
   };
 
-  const handleLancarFixas = async (lancamentos: LancamentoFixa[]) => {
-    if (!postoAtivoId) return;
-
-    // Lança no último dia do mês exibido — mesma convenção da carga histórica, em que
-    // a despesa mensal é do mês inteiro e não de um dia específico. No mês corrente
-    // usa hoje, porque lançar no futuro deixaria a despesa fora de qualquer relatório
-    // até o mês virar.
+  /**
+   * Data do lançamento mensal: o último dia do mês exibido — mesma convenção da carga
+   * histórica, em que a despesa mensal é do mês inteiro e não de um dia específico. No
+   * mês corrente usa hoje, porque lançar no futuro deixaria a despesa fora de qualquer
+   * relatório até o mês virar.
+   */
+  const dataDoLancamentoMensal = (): string => {
     const ultimoDia = ultimoDiaDoMes(deIsoLocal(`${mesDoFiltro}-01`));
     const hoje = hojeIso();
-    const data = ultimoDia > hoje ? hoje : ultimoDia;
+    return ultimoDia > hoje ? hoje : ultimoDia;
+  };
+
+  const handleLancarFixas = async (lancamentos: LancamentoFixa[]) => {
+    if (!postoAtivoId) return;
+    const data = dataDoLancamentoMensal();
 
     const res = await despesaFixaService.lancar(lancamentos, data, postoAtivoId);
     if (!isSuccess(res)) {
@@ -112,14 +119,42 @@ export const PainelReceitasDespesas: React.FC = () => {
     await recarregar();
   };
 
-  const handleSaveReceita = async (data: ReceitaFormData): Promise<boolean> => {
-    // [01/02 11:38] Adicionando usuario_id nulo por padrão para satisfazer tipo ReceitaInsert
-    const response = await receitaService.create({ ...data, usuario_id: null });
-    if (response.success) {
-      await recarregar();
-      return true;
+  /**
+   * Abre o modal de taxas com os provedores do mês anterior já em linha (só o nome:
+   * o valor de um mês não diz nada sobre o outro, então nunca é sugerido).
+   */
+  const abrirTaxasCartao = async () => {
+    if (!postoAtivoId) return;
+    setBuscandoTaxas(true);
+    try {
+      const [ano, m] = mesDoFiltro.split('-').map(Number);
+      const anterior = m === 1 ? { ano: ano - 1, mes: 12 } : { ano, mes: m - 1 };
+      const res = await despesaService.getByMonth(anterior.ano, anterior.mes, postoAtivoId);
+      const provedores = isSuccess(res)
+        ? res.data
+            .filter((d) => d.categoria === CATEGORIA_TAXAS_CARTAO)
+            .map((d) => provedorDaDescricao(d.descricao))
+            .filter((p): p is string => p !== null)
+        : [];
+      setProvedoresTaxa([...new Set(provedores)]);
+    } finally {
+      setBuscandoTaxas(false);
     }
-    return false;
+  };
+
+  const handleLancarTaxas = async (lancamentos: LancamentoFixa[]) => {
+    if (!postoAtivoId) return;
+    const data = dataDoLancamentoMensal();
+
+    const res = await despesaFixaService.lancar(lancamentos, data, postoAtivoId);
+    if (!isSuccess(res)) {
+      toast.error(res.error);
+      return;
+    }
+
+    toast.success(`Taxa de ${res.data} provedor(es) lançada em ${data.split('-').reverse().join('/')}.`);
+    setProvedoresTaxa(null);
+    await recarregar();
   };
 
   return (
@@ -144,12 +179,13 @@ export const PainelReceitasDespesas: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setShowFormReceita(true)}
-            disabled={!postoAtivoId}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={abrirTaxasCartao}
+            disabled={!postoAtivoId || buscandoTaxas}
+            title="Lança a fatura de cada maquininha (Sipag, Sicoob…) como despesa do mês"
+            className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white font-bold rounded-xl hover:bg-sky-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus size={18} />
-            Nova Receita
+            {buscandoTaxas ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
+            Taxas de Cartão
           </button>
 
           <button
@@ -206,19 +242,20 @@ export const PainelReceitasDespesas: React.FC = () => {
         />
       )}
 
+      {provedoresTaxa && (
+        <ModalTaxasCartao
+          mes={mesDoFiltro}
+          provedoresSugeridos={provedoresTaxa}
+          onCancelar={() => setProvedoresTaxa(null)}
+          onLancar={handleLancarTaxas}
+        />
+      )}
+
       {showFormDespesa && postoAtivoId && (
         <FormDespesa
           postoId={postoAtivoId}
           onSave={handleSaveDespesa}
           onCancel={() => setShowFormDespesa(false)}
-        />
-      )}
-
-      {showFormReceita && postoAtivoId && (
-        <FormReceita
-          postoId={postoAtivoId}
-          onSave={handleSaveReceita}
-          onCancel={() => setShowFormReceita(false)}
         />
       )}
     </div>
