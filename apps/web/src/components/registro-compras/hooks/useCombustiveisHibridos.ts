@@ -2,18 +2,34 @@
  * Hook para gerenciar combustíveis no Registro de Compras.
  *
  * @remarks
- * Normaliza retornos de `ApiResponse` e mantém o estado híbrido (string para inputs e numeric para cálculos).
- * [01/02 15:30] Adicionado suporte a persistência de estado para evitar perda de dados ao navegar.
+ * Estado híbrido: string nos campos que o gerente digita, número no que vem do
+ * banco. **Só três coisas se digitam aqui** — a compra do dia (litros e reais)
+ * e a régua do tanque. Todo o resto é lido do mês:
+ *
+ * - **Vendas** (inicial, fechamento, litros, faturamento) vêm de `Leitura`,
+ *   consolidadas por `encerranteMensal` — o mesmo módulo da Planilha do Mês.
+ *   A planilha real redigita esses números no resumo (`D5:E10` são literais)
+ *   porque não tem vínculo com as abas diárias; o sistema tem, e usa.
+ * - **Compras já lançadas no mês** vêm de `Compra`: o custo médio do litro é
+ *   `Σ R$ ÷ Σ L` do mês inteiro (`F16 = E16/D16`), não só da compra que está
+ *   sendo digitada.
+ * - **Estoque anterior** é a última régua ANTES do mês (`HistoricoTanque`),
+ *   o `Ano passado.` da planilha (`D24`) — nunca `Tanque.estoque_atual`, que
+ *   era um contador que ninguém subtraía.
+ *
+ * Nada de `preco_custo` do cadastro: é um preço só, o de hoje, e aplicá-lo ao
+ * mês é o bug do "preço único" (ver `@posto/utils/resumo-produto`).
  */
 import { useState, useEffect, useCallback } from 'react';
-import { combustivelService, estoqueService, tanqueService } from '../../../services/api';
+import { encerranteMensal, type LeituraDiariaBico } from '@posto/utils';
+import { supabase } from '../../../services/supabase';
+import { combustivelService, tanqueService } from '../../../services/api';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
-import { Combustivel, Estoque, Tanque } from '../../../types/database/index';
+import { Combustivel, Tanque } from '../../../types/database/index';
 import { usePosto } from '../../../contexts/usePosto';
 import { formatarParaBR } from '../../../utils/formatters';
-
-const STORAGE_KEY = 'registro_compras_form_data';
+import { intervaloDoMes, hojeIso } from '../../../utils/periodo';
 
 /**
  * Extrai o `data` de uma `ApiResponse` com mensagem de erro consistente.
@@ -26,70 +42,169 @@ function extractApiData<T>(response: ApiResponse<T>): T {
 }
 
 /**
- * Tipo que representa um combustível com estado híbrido (string para inputs e numeric para cálculos).
+ * Combustível com estado híbrido (string para inputs, número para o que vem do banco).
  */
 export type CombustivelHibrido = {
     id: number;
     nome: string;
     codigo: string;
-    // Campos de VENDA
-    inicial: string;            // Leitura inicial
-    fechamento: string;         // Leitura final
-    preco_venda_atual: string;  // Preço de venda PRATICADO (G5 na planilha)
-    // Campos de COMPRA
-    compra_lt: string;          // Litros comprados
-    compra_rs: string;          // Valor total da compra
-    estoque_anterior: string;   // Estoque ano passado (J na planilha)
-    estoque_tanque: string;     // Medição física do tanque (N na planilha)
+    // ── VENDA — lida do mês, somente leitura ──────────────────────────────
+    /** Σ do encerrante inicial dos bicos do produto no 1º dia lançado do mês. */
+    inicial: string;
+    /** Σ do encerrante final dos bicos do produto no último dia fechado do mês. */
+    fechamento: string;
+    /** Faturamento real do mês (Σ `Leitura.valor_total`), em reais. */
+    venda_mes_rs: number;
+    /** Preço de bomba do cadastro — decisão do dono, nunca calculado (planilha `G5` literal). */
+    preco_venda_atual: string;
+    // ── COMPRA — a do dia é digitada; a do mês vem do banco ───────────────
+    compra_lt: string;
+    compra_rs: string;
+    /** Litros já comprados no mês, antes desta tela. */
+    compra_mes_lt: number;
+    /** Reais já pagos no mês, antes desta tela. */
+    compra_mes_rs: number;
+    // ── ESTOQUE ───────────────────────────────────────────────────────────
+    /** Última régua ANTES do mês (`Ano passado.` da planilha), em litros. */
+    estoque_anterior: string;
+    /** Régua do fim do mês — digitada (planilha `H24` literal). */
+    estoque_tanque: string;
     tanque_id?: number;
-    preco_custo_cadastro: number; // Preço de custo atual no cadastro
+    /** `false` quando não há régua anterior ao mês: o `estoque_anterior` é 0 por falta de dado. */
+    tem_regua_anterior: boolean;
 };
 
+/** Campos que o gerente digita — os únicos que sobrevivem a um recarregamento. */
+export const CAMPOS_DIGITADOS = ['compra_lt', 'compra_rs', 'estoque_tanque'] as const;
+export type CampoDigitado = (typeof CAMPOS_DIGITADOS)[number];
+
+interface LeituraRow {
+    data: string;
+    bico_id: number;
+    leitura_inicial: number | string | null;
+    leitura_final: number | string | null;
+    valor_total: number | string | null;
+    bico: { combustivel_id: number } | null;
+}
+interface CompraRow { combustivel_id: number | null; quantidade_litros: number | string; valor_total: number | string }
+interface ReguaRow { tanque_id: number; data: string; volume_fisico: number | string | null }
+
 /**
- * Hook para gerenciar o estado dos combustíveis na tela de registro de compras.
- * Carrega dados iniciais do banco e provê funções de atualização de estado.
- * 
- * @returns Objeto contendo estado dos combustíveis, funções de carregamento e atualização.
+ * Dia do mês a partir do timestamp do banco, sem `new Date()` — converter para
+ * horário local escorrega a leitura um dia para trás.
  */
-export const useCombustiveisHibridos = () => {
+const diaDoMes = (iso: string): number => Number(iso.slice(8, 10));
+
+/**
+ * @param mesIso - Mês exibido, `aaaa-mm`. A tela é MENSAL como a planilha:
+ *        a compra de hoje entra no custo do mês inteiro.
+ */
+export const useCombustiveisHibridos = (mesIso: string) => {
     const { postoAtivoId } = usePosto();
     const [loading, setLoading] = useState(true);
     const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([]);
 
-    /** Carrega todos os dados necessários (combustíveis, estoques e tanques) */
+    /** Carrega cadastro, vendas, compras e régua do mês. */
     const loadData = useCallback(async () => {
         if (!postoAtivoId) return;
 
         try {
             setLoading(true);
-            // [18/01 10:45] Ajustado para extrair payload de `ApiResponse` e evitar `map is not a function`.
-            const [combustiveisRes, estoquesRes, tanquesRes] = await Promise.all([
+            const periodo = intervaloDoMes(mesIso, hojeIso());
+
+            const [combustiveisRes, tanquesRes, leiturasRes, comprasRes, reguasRes] = await Promise.all([
                 combustivelService.getAll(postoAtivoId),
-                estoqueService.getAll(postoAtivoId),
-                tanqueService.getAll(postoAtivoId)
+                tanqueService.getAll(postoAtivoId),
+                supabase
+                    .from('Leitura')
+                    .select('data, bico_id, leitura_inicial, leitura_final, valor_total, bico:Bico!inner(combustivel_id)')
+                    .eq('posto_id', postoAtivoId)
+                    .gte('data', periodo.inicio)
+                    .lte('data', periodo.fim),
+                supabase
+                    .from('Compra')
+                    .select('combustivel_id, quantidade_litros, valor_total')
+                    .eq('posto_id', postoAtivoId)
+                    .gte('data', periodo.inicio)
+                    .lte('data', periodo.fim),
+                supabase
+                    .from('HistoricoTanque')
+                    .select('tanque_id, data, volume_fisico')
+                    .lt('data', periodo.inicio)
+                    .not('volume_fisico', 'is', null)
+                    .order('data', { ascending: false }),
             ]);
 
             const data = extractApiData(combustiveisRes as ApiResponse<Combustivel[]>);
-            const estoques = extractApiData(estoquesRes as ApiResponse<Estoque[]>);
             const tanques = extractApiData(tanquesRes as ApiResponse<Tanque[]>);
+            if (leiturasRes.error) throw new Error(`Falha ao ler as vendas do mês: ${leiturasRes.error.message}`);
+            if (comprasRes.error) throw new Error(`Falha ao ler as compras do mês: ${comprasRes.error.message}`);
+            if (reguasRes.error) throw new Error(`Falha ao ler a régua anterior: ${reguasRes.error.message}`);
 
-            const mapped: CombustivelHibrido[] = data.map(c => {
-                const est = estoques.find(e => e.combustivel_id === c.id);
-                const tanque = tanques.find(t => t.combustivel_id === c.id);
+            // Vendas do mês por produto — soma dos bicos daquele produto, como a
+            // planilha faz em `L5 = F5+F9+F10` (Comum = B01+B05+B06).
+            const leituras = (leiturasRes.data ?? []) as unknown as LeituraRow[];
+            const produtoDoBico = new Map<number, number>();
+            for (const l of leituras) if (l.bico) produtoDoBico.set(l.bico_id, l.bico.combustivel_id);
+
+            const diarias: LeituraDiariaBico[] = leituras.map((l) => ({
+                dia: diaDoMes(l.data),
+                bico: String(l.bico_id),
+                inicial: l.leitura_inicial === null ? null : Number(l.leitura_inicial),
+                fechamento: l.leitura_final === null ? null : Number(l.leitura_final),
+                valorDia: l.valor_total === null ? null : Number(l.valor_total),
+            }));
+            const mensal = encerranteMensal(diarias);
+
+            const vendaPorProduto = new Map<number, { inicial: number; fechamento: number; bruto: number }>();
+            for (const b of mensal.bicos) {
+                const produtoId = produtoDoBico.get(Number(b.bico));
+                if (produtoId === undefined) continue;
+                const acc = vendaPorProduto.get(produtoId) ?? { inicial: 0, fechamento: 0, bruto: 0 };
+                acc.inicial += b.inicial ?? 0;
+                acc.fechamento += b.fechamento ?? 0;
+                acc.bruto += b.bruto;
+                vendaPorProduto.set(produtoId, acc);
+            }
+
+            // Compras já lançadas no mês, por produto.
+            const compraPorProduto = new Map<number, { litros: number; reais: number }>();
+            for (const c of (comprasRes.data ?? []) as CompraRow[]) {
+                if (c.combustivel_id === null) continue;
+                const acc = compraPorProduto.get(c.combustivel_id) ?? { litros: 0, reais: 0 };
+                acc.litros += Number(c.quantidade_litros);
+                acc.reais += Number(c.valor_total);
+                compraPorProduto.set(c.combustivel_id, acc);
+            }
+
+            // Última régua antes do mês, por tanque (a query já vem ordenada desc).
+            const reguaPorTanque = new Map<number, number>();
+            for (const r of (reguasRes.data ?? []) as ReguaRow[]) {
+                if (!reguaPorTanque.has(r.tanque_id)) reguaPorTanque.set(r.tanque_id, Number(r.volume_fisico));
+            }
+
+            const mapped: CombustivelHibrido[] = data.map((c) => {
+                const tanque = tanques.find((t) => t.combustivel_id === c.id);
+                const venda = vendaPorProduto.get(c.id);
+                const compra = compraPorProduto.get(c.id);
+                const regua = tanque ? reguaPorTanque.get(tanque.id) : undefined;
 
                 return {
                     id: c.id,
                     nome: c.nome,
                     codigo: c.codigo,
-                    inicial: '',
-                    fechamento: '',
+                    inicial: venda ? formatarParaBR(venda.inicial) : '',
+                    fechamento: venda ? formatarParaBR(venda.fechamento) : '',
+                    venda_mes_rs: venda?.bruto ?? 0,
                     preco_venda_atual: formatarParaBR(c.preco_venda || 0),
                     compra_lt: '',
                     compra_rs: '',
-                    estoque_anterior: tanque ? formatarParaBR(tanque.estoque_atual) : (est ? formatarParaBR(est.quantidade_atual) : '0,000'),
+                    compra_mes_lt: compra?.litros ?? 0,
+                    compra_mes_rs: compra?.reais ?? 0,
+                    estoque_anterior: formatarParaBR(regua ?? 0),
                     estoque_tanque: '',
                     tanque_id: tanque?.id,
-                    preco_custo_cadastro: c.preco_custo || 0
+                    tem_regua_anterior: regua !== undefined,
                 };
             });
             setCombustiveis(mapped);
@@ -98,53 +213,15 @@ export const useCombustiveisHibridos = () => {
         } finally {
             setLoading(false);
         }
-    }, [postoAtivoId]);
-
-    /**
-     * Verifica se existem dados persistidos no sessionStorage
-     */
-    const temDadosPersistidos = (): boolean => {
-        try {
-            const saved = sessionStorage.getItem(STORAGE_KEY);
-            if (!saved) return false;
-            
-            const data = JSON.parse(saved);
-            const temDados = data.combustiveis?.some((c: CombustivelHibrido) => 
-                c.inicial || c.fechamento || c.compra_lt || c.compra_rs || c.estoque_tanque
-            );
-            
-            // Verificar se dados não são muito antigos (mais de 24 horas)
-            const agora = Date.now();
-            const umDia = 24 * 60 * 60 * 1000;
-            if (agora - data.timestamp > umDia) {
-                sessionStorage.removeItem(STORAGE_KEY);
-                return false;
-            }
-            
-            return temDados || !!data.despesasMes;
-        } catch {
-            return false;
-        }
-    };
+    }, [postoAtivoId, mesIso]);
 
     useEffect(() => {
-        // [01/02 15:30] Só carrega do banco se não houver dados persistidos
-        if (!temDadosPersistidos()) {
-            loadData();
-        } else {
-            console.log('[Compras] Dados persistidos encontrados, aguardando restauração...');
-            setLoading(false);
-        }
-    }, [postoAtivoId, loadData]);
+        loadData();
+    }, [loadData]);
 
-    /** Atualiza um campo específico de um combustível no estado local */
-    const updateCombustivel = (id: number, field: keyof CombustivelHibrido, value: string) => {
-        setCombustiveis(prev => prev.map(c => {
-            if (c.id === id) {
-                return { ...c, [field]: value };
-            }
-            return c;
-        }));
+    /** Atualiza um campo digitado de um combustível no estado local */
+    const updateCombustivel = (id: number, field: CampoDigitado, value: string) => {
+        setCombustiveis((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
     };
 
     return {
@@ -152,7 +229,6 @@ export const useCombustiveisHibridos = () => {
         setCombustiveis,
         loading,
         loadData,
-        updateCombustivel
+        updateCombustivel,
     };
 };
-

@@ -24,7 +24,7 @@ export interface CalculosRegistro {
         totalLucroBico: number;
         totalCompraLt: number;
         totalCompraRs: number;
-        despesasMesTotal: number;
+        despesaDoMesTotal: number;
         mediaTotal: number;
         margemMedia: number;
         totalCustoEstoque: number;
@@ -50,26 +50,40 @@ function calcLitrosVendidosPura(c: CombustivelHibrido): number {
     return fechamento - inicial;
 }
 
-/** Calcula o valor financeiro total da venda por bico/combustível */
+/**
+ * Faturamento do produto no mês.
+ *
+ * @remarks É o bruto REAL das leituras (Σ `valor_total` diário), não
+ *          `litros × preço de hoje`: o preço muda dentro do mês, e avaliar
+ *          janeiro a preço de agosto foi o bug que inflou a venda histórica
+ *          em 8–11%. Sem leitura no mês, cai para litros × preço, que aí é
+ *          tudo do mesmo dia.
+ */
 function calcValorPorBicoPura(c: CombustivelHibrido): number {
+    if (c.venda_mes_rs > 0) return c.venda_mes_rs;
     const litros = calcLitrosVendidosPura(c);
     const preco = parseBRFloat(c.preco_venda_atual);
     return litros * preco;
 }
 
-/** Calcula o custo médio da compra atual ou retorna o custo de cadastro */
+/**
+ * Custo médio do litro no MÊS — planilha `F16 = E16/D16`.
+ *
+ * @remarks Soma o que já foi comprado no mês com o que está sendo digitado:
+ *          a compra de hoje entra no custo do mês inteiro, não substitui as
+ *          anteriores. Sem compra no mês devolve 0 e a tela mostra "-":
+ *          custo desconhecido aparece como desconhecido, nunca como o
+ *          `preco_custo` do cadastro (um preço só, o de hoje).
+ */
 function calcMediaLtRsPura(c: CombustivelHibrido): number {
-    const compra_lt = parseBRFloat(c.compra_lt);
-    const compra_rs = parseBRFloat(c.compra_rs);
-    if (compra_lt > 0) {
-        return compra_rs / compra_lt;
-    }
-    return c.preco_custo_cadastro || 0;
+    const litros = c.compra_mes_lt + parseBRFloat(c.compra_lt);
+    const reais = c.compra_mes_rs + parseBRFloat(c.compra_rs);
+    return litros > 0 ? reais / litros : 0;
 }
 
 /** Calcula a despesa operacional rateada por litro */
-function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesasMes: string): number {
-    const despesasTotal = parseBRFloat(despesasMes);
+function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+    const despesasTotal = despesaDoMes;
     if (despesasTotal === 0) return 0;
 
     const totalLitrosVendidos = combustiveis.reduce((acc, c) => acc + calcLitrosVendidosPura(c), 0);
@@ -81,31 +95,31 @@ function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesasMes
 }
 
 /** Calcula o valor de custo total (produto + despesa) para venda */
-function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesasMes: string): number {
+function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const custoMedio = calcMediaLtRsPura(c);
-    const despesaLt = calcDespesaPorLitroPura(combustiveis, despesasMes);
+    const despesaLt = calcDespesaPorLitroPura(combustiveis, despesaDoMes);
     if (custoMedio === 0) return 0;
     return custoMedio + despesaLt;
 }
 
 /** Calcula o lucro por litro (Preço Venda - (Custo + Despesa)) */
-function calcLucroLtPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesasMes: string): number {
+function calcLucroLtPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const precoVenda = parseBRFloat(c.preco_venda_atual);
-    const custoVenda = calcValorParaVendaPura(c, combustiveis, despesasMes);
+    const custoVenda = calcValorParaVendaPura(c, combustiveis, despesaDoMes);
     if (custoVenda === 0) return 0;
     return precoVenda - custoVenda;
 }
 
 /** Calcula o lucro total do bico/combustível */
-function calcLucroBicoPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesasMes: string): number {
+function calcLucroBicoPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const litros = calcLitrosVendidosPura(c);
-    const lucroLt = calcLucroLtPura(c, combustiveis, despesasMes);
+    const lucroLt = calcLucroLtPura(c, combustiveis, despesaDoMes);
     return litros * lucroLt;
 }
 
 /** Calcula a margem de lucro em porcentagem */
-function calcMargemPctPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesasMes: string): number {
-    const lucroBico = calcLucroBicoPura(c, combustiveis, despesasMes);
+function calcMargemPctPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+    const lucroBico = calcLucroBicoPura(c, combustiveis, despesaDoMes);
     const valorBico = calcValorPorBicoPura(c);
     if (valorBico === 0) return 0;
     return (lucroBico / valorBico) * 100;
@@ -119,9 +133,9 @@ function calcProdutoPctPura(c: CombustivelHibrido, combustiveis: CombustivelHibr
     return (litros / totalLitros) * 100;
 }
 
-/** Calcula o total disponível (Compra + Estoque Anterior) */
+/** Total disponível no mês — planilha `E24 = D16 + D24` (compra do mês + estoque anterior) */
 function calcCompraEEstoquePura(c: CombustivelHibrido): number {
-    const compra = parseBRFloat(c.compra_lt);
+    const compra = c.compra_mes_lt + parseBRFloat(c.compra_lt);
     const estoqueAnt = parseBRFloat(c.estoque_anterior);
     return compra + estoqueAnt;
 }
@@ -146,25 +160,25 @@ function calcPercaSobraPura(c: CombustivelHibrido): number {
  * Segue a lógica da planilha de gestão de combustível.
  *
  * @param combustiveis - Lista de combustíveis com seus estados atuais.
- * @param despesasMes - String representando o valor total de despesas do mês.
+ * @param despesaDoMes - Despesa operacional do mês em reais, lida da tabela `Despesa`.
  * @returns Objeto com funções de cálculo e totais consolidados.
  */
 export const useCalculosRegistro = (
     combustiveis: CombustivelHibrido[],
-    despesasMes: string
+    despesaDoMes: number
 ): CalculosRegistro => {
-    // Funções expostas na API pública do hook: fecham sobre `combustiveis`/`despesasMes`
+    // Funções expostas na API pública do hook: fecham sobre `combustiveis`/`despesaDoMes`
     // (os únicos parâmetros reativos deste hook) só para preservar a assinatura de
     // um argumento (`c`) que os componentes filhos já consomem. A fórmula em si
     // vive nas funções puras de módulo acima.
     const calcLitrosVendidos = (c: CombustivelHibrido): number => calcLitrosVendidosPura(c);
     const calcValorPorBico = (c: CombustivelHibrido): number => calcValorPorBicoPura(c);
     const calcMediaLtRs = (c: CombustivelHibrido): number => calcMediaLtRsPura(c);
-    const calcDespesaPorLitro = (): number => calcDespesaPorLitroPura(combustiveis, despesasMes);
-    const calcValorParaVenda = (c: CombustivelHibrido): number => calcValorParaVendaPura(c, combustiveis, despesasMes);
-    const calcLucroLt = (c: CombustivelHibrido): number => calcLucroLtPura(c, combustiveis, despesasMes);
-    const calcLucroBico = (c: CombustivelHibrido): number => calcLucroBicoPura(c, combustiveis, despesasMes);
-    const calcMargemPct = (c: CombustivelHibrido): number => calcMargemPctPura(c, combustiveis, despesasMes);
+    const calcDespesaPorLitro = (): number => calcDespesaPorLitroPura(combustiveis, despesaDoMes);
+    const calcValorParaVenda = (c: CombustivelHibrido): number => calcValorParaVendaPura(c, combustiveis, despesaDoMes);
+    const calcLucroLt = (c: CombustivelHibrido): number => calcLucroLtPura(c, combustiveis, despesaDoMes);
+    const calcLucroBico = (c: CombustivelHibrido): number => calcLucroBicoPura(c, combustiveis, despesaDoMes);
+    const calcMargemPct = (c: CombustivelHibrido): number => calcMargemPctPura(c, combustiveis, despesaDoMes);
     const calcProdutoPct = (c: CombustivelHibrido): number => calcProdutoPctPura(c, combustiveis);
     const calcCompraEEstoque = (c: CombustivelHibrido): number => calcCompraEEstoquePura(c);
     const calcEstoqueHoje = (c: CombustivelHibrido): number => calcEstoqueHojePura(c);
@@ -172,7 +186,7 @@ export const useCalculosRegistro = (
 
     // === TOTAIS CONSOLIDADOS ===
     // Corpo do useMemo só referencia as funções puras de módulo acima (estáveis,
-    // fora do escopo do componente) + `combustiveis`/`despesasMes` (já nas deps) +
+    // fora do escopo do componente) + `combustiveis`/`despesaDoMes` (já nas deps) +
     // `parseBRFloat` (import estável) — nada mais precisa entrar no array de deps.
     const totais = useMemo(() => {
         let totalLitros = 0;
@@ -188,14 +202,13 @@ export const useCalculosRegistro = (
             const litros = calcLitrosVendidosPura(c);
             totalLitros += litros;
             totalValorBico += calcValorPorBicoPura(c);
-            totalLucroBico += calcLucroBicoPura(c, combustiveis, despesasMes);
+            totalLucroBico += calcLucroBicoPura(c, combustiveis, despesaDoMes);
 
-            const compraLt = parseBRFloat(c.compra_lt);
-            totalCompraLt += compraLt;
-            totalCompraRs += parseBRFloat(c.compra_rs);
+            totalCompraLt += c.compra_mes_lt + parseBRFloat(c.compra_lt);
+            totalCompraRs += c.compra_mes_rs + parseBRFloat(c.compra_rs);
 
             totalCustoEstoque += calcEstoqueHojePura(c) * calcMediaLtRsPura(c);
-            totalLucroEstoque += calcEstoqueHojePura(c) * calcLucroLtPura(c, combustiveis, despesasMes);
+            totalLucroEstoque += calcEstoqueHojePura(c) * calcLucroLtPura(c, combustiveis, despesaDoMes);
             totalPercaSobra += calcPercaSobraPura(c);
         });
 
@@ -208,14 +221,14 @@ export const useCalculosRegistro = (
             totalLucroBico,
             totalCompraLt,
             totalCompraRs,
-            despesasMesTotal: parseBRFloat(despesasMes),
+            despesaDoMesTotal: despesaDoMes,
             mediaTotal,
             margemMedia,
             totalCustoEstoque,
             totalLucroEstoque,
             totalPercaSobra
         };
-    }, [combustiveis, despesasMes]);
+    }, [combustiveis, despesaDoMes]);
 
     return {
         calcLitrosVendidos,

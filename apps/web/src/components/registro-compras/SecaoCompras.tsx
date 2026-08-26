@@ -1,7 +1,7 @@
 import React from 'react';
 import { Package } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
-import { CombustivelHibrido } from './hooks/useCombustiveisHibridos';
+import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 import { Database } from '../../types/database/index';
@@ -10,11 +10,9 @@ type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
 
 interface Props {
    combustiveis: CombustivelHibrido[];
-   updateCombustivel: (id: number, field: keyof CombustivelHibrido, value: string) => void;
+   updateCombustivel: (id: number, field: CampoDigitado, value: string) => void;
    calculos: CalculosRegistro;
    totais: CalculosRegistro['totais'];
-   despesasMes: string;
-   setDespesasMes: (v: string) => void;
    saving: boolean;
    onSave: () => void;
    fornecedores: Fornecedor[];
@@ -26,7 +24,7 @@ const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-med
 
 export const SecaoCompras: React.FC<Props> = ({
    combustiveis, updateCombustivel, calculos, totais,
-   despesasMes, setDespesasMes, saving, onSave,
+   saving, onSave,
    fornecedores, fornecedorSelecionado, setFornecedorSelecionado
 }) => {
    return (
@@ -56,22 +54,6 @@ export const SecaoCompras: React.FC<Props> = ({
                   </select>
                </div>
 
-               {/* Campo Despesas do Mês - planilha H19:=D390 */}
-               <div className="flex items-center gap-3 bg-orange-700/50 rounded-lg px-4 py-2">
-                  <div className="flex flex-col">
-                     <span className="text-[10px] uppercase font-bold text-orange-200 tracking-wider">Despesas do Mês (R$)</span>
-                     <span className="text-[9px] text-orange-300">Rateado por litro vendido</span>
-                  </div>
-                  <div className="relative">
-                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-orange-300 text-sm font-bold">R$</span>
-                     <InputFinanceiro
-                        value={despesasMes}
-                        onChangeValue={setDespesasMes}
-                        className="w-32 pl-8 pr-2 py-1 bg-white/10 border border-orange-400/30 rounded text-white placeholder-orange-300/50 focus:outline-none focus:bg-white/20 text-right text-sm font-bold"
-                        placeholder="0,00"
-                     />
-                  </div>
-               </div>
 
                <button
                   onClick={onSave}

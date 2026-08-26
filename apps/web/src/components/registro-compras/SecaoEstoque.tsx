@@ -1,13 +1,13 @@
 import React from 'react';
 import { DollarSign } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
-import { CombustivelHibrido } from './hooks/useCombustiveisHibridos';
+import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais, analisarValor } from '../../utils/formatters';
 
 interface Props {
    combustiveis: CombustivelHibrido[];
-   updateCombustivel: (id: number, field: keyof CombustivelHibrido, value: string) => void;
+   updateCombustivel: (id: number, field: CampoDigitado, value: string) => void;
    calculos: CalculosRegistro;
    totais: CalculosRegistro['totais'];
 }
@@ -56,7 +56,9 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                               </div>
                            </td>
                            <td className="px-4 py-5 text-right text-slate-500">
-                              {formatarParaBR(estoqueAnt, 0)}
+                              {c.tem_regua_anterior
+                                 ? formatarParaBR(estoqueAnt, 0)
+                                 : <span className="text-amber-600 text-xs font-medium" title="Nenhuma medição de régua anterior a este mês">sem régua</span>}
                            </td>
                            <td className="px-4 py-5 text-right font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/10">
                               {formatarParaBR(compraEstoque, 0)}

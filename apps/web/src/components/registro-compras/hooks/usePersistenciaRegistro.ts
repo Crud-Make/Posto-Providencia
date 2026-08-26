@@ -1,10 +1,9 @@
 // [11/01 17:00] Refatoração para padrão Senior: JSDoc, tratamento de erros e tipagem
 import { useState } from 'react';
-import { combustivelService, compraService, tanqueService } from '../../../services/api';
+import { compraService, tanqueService } from '../../../services/api';
 import { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
 import { isSuccess, ErrorResponse } from '../../../types/ui/response-types';
-import { hojeIso } from '@posto/utils';
 
 /**
  * Hook responsável pela persistência dos dados de registro de compras e estoque.
@@ -28,11 +27,13 @@ export const usePersistenciaRegistro = (
      * @param combustiveis - Lista de combustíveis com dados de compra e medição.
      * @param calcEstoqueHoje - Função para calcular o estoque escritural atual.
      * @param fornecedorId - ID do fornecedor selecionado (obrigatório se houver compras).
+     * @param dataCompra - Data ISO (`aaaa-mm-dd`) da compra e da régua: hoje no mês corrente, o último dia do mês em mês passado.
      */
     const salvarDados = async (
         combustiveis: CombustivelHibrido[],
         calcEstoqueHoje: (c: CombustivelHibrido) => number,
-        fornecedorId: number | null
+        fornecedorId: number | null,
+        dataCompra: string
     ) => {
         if (!postoAtivoId) {
             console.warn('[Compras] Posto ativo ID não definido');
@@ -41,7 +42,7 @@ export const usePersistenciaRegistro = (
 
         try {
             setSaving(true);
-            const hoje = hojeIso();
+            const hoje = dataCompra;
 
             // [25/01 Debug] Log dos valores recebidos
             console.log('[Compras] Iniciando salvamento:', {
@@ -150,38 +151,8 @@ export const usePersistenciaRegistro = (
             await tanqueService.updateStock(c.tanque_id, litrosCompra);
         }
 
-        // C. Atualizar Preço de Custo Médio Ponderado (PM)
-        await atualizarPrecoCustoMedio(c, litrosCompra, valorTotal);
     };
 
-    /**
-     * Calcula e atualiza o preço de custo médio ponderado
-     */
-    const atualizarPrecoCustoMedio = async (
-        c: CombustivelHibrido,
-        litrosCompra: number,
-        valorTotalCompra: number
-    ) => {
-        const estoqueAntes = parseValue(c.estoque_anterior);
-        const custoAntigo = c.preco_custo_cadastro;
-
-        const estoqueAjustado = Math.max(estoqueAntes, 0);
-        const valorEstoqueAntigo = estoqueAjustado * custoAntigo;
-
-        const novoTotalValor = valorEstoqueAntigo + valorTotalCompra;
-        const novoTotalLitros = estoqueAjustado + litrosCompra;
-
-        let novoCusto = custoAntigo;
-        if (novoTotalLitros > 0) {
-            novoCusto = novoTotalValor / novoTotalLitros;
-        }
-
-        if (novoCusto !== custoAntigo) {
-            await combustivelService.update(c.id, {
-                preco_custo: novoCusto
-            });
-        }
-    };
 
     return {
         saving,
