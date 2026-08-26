@@ -49,13 +49,17 @@ export type CombustivelHibrido = {
     nome: string;
     codigo: string;
     // ── VENDA — lida do mês, somente leitura ──────────────────────────────
-    /** Σ do encerrante inicial dos bicos do produto no 1º dia lançado do mês. */
+    /** Base do salto por produto — `'0'` quando há venda no mês, `''` sem venda. Encerrante real é por bico ({@link VendaBicoMes}). */
     inicial: string;
-    /** Σ do encerrante final dos bicos do produto no último dia fechado do mês. */
+    /** Litros vendidos do produto no mês (Σ dos bicos), como texto — `fechamento − inicial` dá os litros. */
     fechamento: string;
     /** Faturamento real do mês (Σ `Leitura.valor_total`), em reais. */
     venda_mes_rs: number;
-    /** Preço de bomba do cadastro — decisão do dono, nunca calculado (planilha `G5` literal). */
+    /**
+     * Preço de bomba DO MÊS, em R$/L: bruto ÷ litros das leituras do produto.
+     * Cai para o `preco_venda` do cadastro só quando o mês não tem leitura —
+     * aplicar o preço de hoje a um mês passado é o bug do "preço único".
+     */
     preco_venda_atual: string;
     // ── COMPRA — a do dia é digitada; a do mês vem do banco ───────────────
     compra_lt: string;
@@ -74,6 +78,27 @@ export type CombustivelHibrido = {
     tem_regua_anterior: boolean;
 };
 
+/**
+ * Venda do mês de UM bico — a linha 5–10 do resumo da planilha.
+ *
+ * @remarks A planilha mostra bico a bico, e o dono confere o encerrante de
+ *          cada um (o `1.716.778,963` do B01). Somar os três bicos de Comum
+ *          num número só esconde exatamente o que ele procura.
+ */
+export interface VendaBicoMes {
+    readonly bicoId: number;
+    readonly numero: number;
+    readonly produtoId: number;
+    readonly produtoNome: string;
+    readonly inicial: number | null;
+    readonly fechamento: number | null;
+    readonly litros: number;
+    /** Faturamento real do mês nesse bico (Σ `valor_total`). */
+    readonly bruto: number;
+    /** `bruto ÷ litros` — o preço de bomba praticado no mês. `null` sem venda. */
+    readonly precoMedio: number | null;
+}
+
 /** Campos que o gerente digita — os únicos que sobrevivem a um recarregamento. */
 export const CAMPOS_DIGITADOS = ['compra_lt', 'compra_rs', 'estoque_tanque'] as const;
 export type CampoDigitado = (typeof CAMPOS_DIGITADOS)[number];
@@ -84,7 +109,7 @@ interface LeituraRow {
     leitura_inicial: number | string | null;
     leitura_final: number | string | null;
     valor_total: number | string | null;
-    bico: { combustivel_id: number } | null;
+    bico: { id: number; numero: number; combustivel_id: number } | null;
 }
 interface CompraRow { combustivel_id: number | null; quantidade_litros: number | string; valor_total: number | string }
 interface ReguaRow { tanque_id: number; data: string; volume_fisico: number | string | null }
@@ -105,6 +130,7 @@ export const useCombustiveisHibridos = (mesIso: string) => {
     const [combustiveis, setCombustiveis] = useState<CombustivelHibrido[]>([]);
     /** Último dia em que TODOS os bicos estavam fechados; `null` sem leitura no mês. */
     const [ultimoDiaFechado, setUltimoDiaFechado] = useState<number | null>(null);
+    const [vendasBicos, setVendasBicos] = useState<VendaBicoMes[]>([]);
 
     /** Carrega cadastro, vendas, compras e régua do mês. */
     const loadData = useCallback(async () => {
@@ -119,7 +145,7 @@ export const useCombustiveisHibridos = (mesIso: string) => {
                 tanqueService.getAll(postoAtivoId),
                 supabase
                     .from('Leitura')
-                    .select('data, bico_id, leitura_inicial, leitura_final, valor_total, bico:Bico!inner(combustivel_id)')
+                    .select('data, bico_id, leitura_inicial, leitura_final, valor_total, bico:Bico!inner(id, numero, combustivel_id)')
                     .eq('posto_id', postoAtivoId)
                     .gte('data', periodo.inicio)
                     .lte('data', periodo.fim),
@@ -146,8 +172,8 @@ export const useCombustiveisHibridos = (mesIso: string) => {
             // Vendas do mês por produto — soma dos bicos daquele produto, como a
             // planilha faz em `L5 = F5+F9+F10` (Comum = B01+B05+B06).
             const leituras = (leiturasRes.data ?? []) as unknown as LeituraRow[];
-            const produtoDoBico = new Map<number, number>();
-            for (const l of leituras) if (l.bico) produtoDoBico.set(l.bico_id, l.bico.combustivel_id);
+            const bicoInfo = new Map<number, { numero: number; produtoId: number }>();
+            for (const l of leituras) if (l.bico) bicoInfo.set(l.bico_id, { numero: l.bico.numero, produtoId: l.bico.combustivel_id });
 
             const diarias: LeituraDiariaBico[] = leituras.map((l) => ({
                 dia: diaDoMes(l.data),
@@ -159,15 +185,31 @@ export const useCombustiveisHibridos = (mesIso: string) => {
             const mensal = encerranteMensal(diarias);
             setUltimoDiaFechado(mensal.ultimoDiaFechado ?? null);
 
-            const vendaPorProduto = new Map<number, { inicial: number; fechamento: number; bruto: number }>();
-            for (const b of mensal.bicos) {
-                const produtoId = produtoDoBico.get(Number(b.bico));
-                if (produtoId === undefined) continue;
-                const acc = vendaPorProduto.get(produtoId) ?? { inicial: 0, fechamento: 0, bruto: 0 };
-                acc.inicial += b.inicial ?? 0;
-                acc.fechamento += b.fechamento ?? 0;
+            const nomeProduto = new Map(data.map((c) => [c.id, c.nome]));
+            const bicos: VendaBicoMes[] = mensal.bicos.flatMap((b) => {
+                const info = bicoInfo.get(Number(b.bico));
+                if (!info) return [];
+                return [{
+                    bicoId: Number(b.bico),
+                    numero: info.numero,
+                    produtoId: info.produtoId,
+                    produtoNome: nomeProduto.get(info.produtoId) ?? '',
+                    inicial: b.inicial,
+                    fechamento: b.fechamento,
+                    litros: b.litros,
+                    bruto: b.bruto,
+                    precoMedio: b.precoMedio,
+                }];
+            }).sort((a, b) => a.numero - b.numero);
+            setVendasBicos(bicos);
+
+            // Por produto: litros e bruto somados dos bicos (planilha `L5 = F5+F9+F10`).
+            const vendaPorProduto = new Map<number, { litros: number; bruto: number }>();
+            for (const b of bicos) {
+                const acc = vendaPorProduto.get(b.produtoId) ?? { litros: 0, bruto: 0 };
+                acc.litros += b.litros;
                 acc.bruto += b.bruto;
-                vendaPorProduto.set(produtoId, acc);
+                vendaPorProduto.set(b.produtoId, acc);
             }
 
             // Compras já lançadas no mês, por produto.
@@ -196,10 +238,13 @@ export const useCombustiveisHibridos = (mesIso: string) => {
                     id: c.id,
                     nome: c.nome,
                     codigo: c.codigo,
-                    inicial: venda ? formatarParaBR(venda.inicial) : '',
-                    fechamento: venda ? formatarParaBR(venda.fechamento) : '',
+                    // Por produto, o salto vira "0 → litros": a tela por bico é que mostra os encerrantes.
+                    inicial: venda ? '0' : '',
+                    fechamento: venda ? formatarParaBR(venda.litros) : '',
                     venda_mes_rs: venda?.bruto ?? 0,
-                    preco_venda_atual: formatarParaBR(c.preco_venda || 0),
+                    preco_venda_atual: formatarParaBR(
+                        venda && venda.litros > 0 ? venda.bruto / venda.litros : (c.preco_venda || 0)
+                    ),
                     compra_lt: '',
                     compra_rs: '',
                     compra_mes_lt: compra?.litros ?? 0,
@@ -230,6 +275,7 @@ export const useCombustiveisHibridos = (mesIso: string) => {
     return {
         combustiveis,
         setCombustiveis,
+        vendasBicos,
         ultimoDiaFechado,
         loading,
         loadData,

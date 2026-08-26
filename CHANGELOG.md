@@ -37,6 +37,12 @@
   litros comprados × vendidos por produto, e a composição do preço do litro (custo + despesa
   rateada + sobra), paleta validada pelo `validate_palette.js` da skill `dataviz` em claro e
   escuro. Nenhuma fórmula nova: os gráficos só exibem o que `useCalculosRegistro` já calcula.
+  **Vendas por BICO, não por produto** (correção de 26/08 à tarde, apontada pelo dono): somar os
+  três bicos de Comum num encerrante só (1.729.894) escondia o `1.716.778,963` do B01 que ele
+  confere na planilha; a seção agora tem uma linha por bico (`D5:E10`), com o total do produto
+  impresso na primeira linha dele (`L5 = F5+F9+F10`). **Preço do mês vem da `Leitura`**
+  (bruto ÷ litros do bico — 6,28 em janeiro), não do `preco_venda` do cadastro (6,98, o de hoje):
+  era o "preço único" de novo, agora na coluna de preço.
   **Aviso de mês parcial** no cabeçalho de Vendas ("dia 1 a N de M"): a despesa do mês inteiro
   rateada só pelos litros já lançados infla o custo por litro (em 26/08, janeiro com 1 dia
   lançado dava R$ 13,83/L de despesa contra R$ 0,47 do mês fechado) — a conta está certa, o

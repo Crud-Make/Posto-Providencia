@@ -68,6 +68,7 @@ const TelaRegistroCompras: React.FC = () => {
         loadData,
         updateCombustivel,
         setCombustiveis,
+        vendasBicos,
         ultimoDiaFechado
     } = useCombustiveisHibridos(mes);
     
@@ -225,6 +226,7 @@ const TelaRegistroCompras: React.FC = () => {
 
                 <SecaoVendas
                     combustiveis={combustiveis}
+                    vendasBicos={vendasBicos}
                     calculos={calculos}
                     totais={calculos.totais}
                     ultimoDiaFechado={ultimoDiaFechado}

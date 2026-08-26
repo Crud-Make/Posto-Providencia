@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp } from 'lucide-react';
-import { CombustivelHibrido } from './hooks/useCombustiveisHibridos';
+import { CombustivelHibrido, VendaBicoMes } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 
@@ -8,8 +8,10 @@ import { formatarParaBR, paraReais } from '../../utils/formatters';
  * Propriedades do componente SecaoVendas.
  */
 interface Props {
-   /** Lista de combustíveis para exibição */
+   /** Produtos, para o custo e o valor p/ venda de cada um */
    combustiveis: CombustivelHibrido[];
+   /** Venda do mês bico a bico — as linhas 5–10 do resumo da planilha */
+   vendasBicos: VendaBicoMes[];
    /** Objeto contendo funções de cálculos financeiros */
    calculos: CalculosRegistro;
    /** Totais consolidados para exibição no rodapé */
@@ -21,17 +23,30 @@ interface Props {
 }
 
 /**
- * Seção de Vendas (Leituras) da tela de compras — SOMENTE LEITURA.
+ * Seção de Vendas (Leituras) da tela de compras — SOMENTE LEITURA, por bico.
  *
  * @remarks As leituras vêm de `Leitura`, consolidadas pelo mês: são as mesmas
  *          que o painel e o app do dono já lançaram dia a dia. A planilha
  *          redigita esses números no resumo por falta de vínculo; aqui o
  *          vínculo existe, e digitar de novo seria uma segunda versão do mesmo
- *          encerrante. O que esta seção alimenta é o rateio da despesa por
- *          litro vendido (`I19 = I16/F11`) e o lucro por bico.
+ *          encerrante. Uma linha por bico, como na planilha (`D5:E10`): o dono
+ *          confere o encerrante de cada bico, não a soma dos três de Comum.
+ *
+ *          Fórmulas da planilha, célula a célula:
+ *          - preço do mês = bruto ÷ litros do bico (a planilha digita `G5`)
+ *          - lucro LT     = preço do bico − valor p/ venda do produto (`I5 = G5 − G16`)
+ *          - lucro bico   = lucro LT × litros (`J5 = I5 × F5`)
+ *          - prod. vendido = Σ litros dos bicos do produto (`L5 = F5+F9+F10`)
  */
-export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais, ultimoDiaFechado, diasNoMes }) => {
+export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calculos, totais, ultimoDiaFechado, diasNoMes }) => {
    const mesParcial = ultimoDiaFechado !== null && ultimoDiaFechado < diasNoMes;
+   const produtoPorId = new Map(combustiveis.map((c) => [c.id, c]));
+   const litrosTotais = vendasBicos.reduce((acc, b) => acc + b.litros, 0);
+
+   /** Primeiro bico de cada produto — é nele que a planilha imprime o total do produto. */
+   const primeiroBicoDoProduto = new Map<number, number>();
+   for (const b of vendasBicos) if (!primeiroBicoDoProduto.has(b.produtoId)) primeiroBicoDoProduto.set(b.produtoId, b.bicoId);
+
    return (
       <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
          <div className="bg-emerald-600 px-6 py-4 flex items-center justify-between">
@@ -54,11 +69,11 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais, u
             <table className="w-full text-sm text-left">
                <thead className="bg-slate-100 dark:bg-gray-700 text-xs uppercase font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                   <tr>
-                     <th className="px-4 py-4 min-w-[120px]">Produtos</th>
+                     <th className="px-4 py-4 min-w-[140px]">Bico</th>
                      <th className="px-4 py-4 text-right">Inicial</th>
                      <th className="px-4 py-4 text-right">Fechamento</th>
                      <th className="px-4 py-4 text-right">Litros</th>
-                     <th className="px-4 py-4 text-right text-emerald-600">Preço Atual R$</th>
+                     <th className="px-4 py-4 text-right text-emerald-600">Preço do Mês R$</th>
                      <th className="px-4 py-4 text-right text-blue-600">Valor p/ Bico</th>
                      <th className="px-4 py-4 text-right text-amber-600">Lucro LT R$</th>
                      <th className="px-4 py-4 text-right text-amber-600">Lucro Bico R$</th>
@@ -68,51 +83,59 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais, u
                   </tr>
                </thead>
                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {combustiveis.map((c) => {
-                     const litros = calculos.calcLitrosVendidos(c);
-                     const valorBico = calculos.calcValorPorBico(c);
-                     const lucroLt = calculos.calcLucroLt(c);
-                     const lucroBico = calculos.calcLucroBico(c);
-                     const margemPct = calculos.calcMargemPct(c);
-                     const produtoPct = calculos.calcProdutoPct(c);
+                  {vendasBicos.length === 0 && (
+                     <tr>
+                        <td colSpan={11} className="px-4 py-8 text-center text-slate-500">Nenhuma leitura lançada neste mês.</td>
+                     </tr>
+                  )}
+                  {vendasBicos.map((b) => {
+                     const produto = produtoPorId.get(b.produtoId);
+                     const valorParaVenda = produto ? calculos.calcValorParaVenda(produto) : 0;
+                     const preco = b.precoMedio ?? 0;
+                     const lucroLt = preco > 0 && valorParaVenda > 0 ? preco - valorParaVenda : 0;
+                     const lucroBico = lucroLt * b.litros;
+                     const margemPct = b.bruto > 0 ? (lucroBico / b.bruto) * 100 : 0;
+                     const litrosProduto = produto ? calculos.calcLitrosVendidos(produto) : 0;
+                     const mostraProduto = primeiroBicoDoProduto.get(b.produtoId) === b.bicoId;
+                     const produtoPct = litrosTotais > 0 ? (litrosProduto / litrosTotais) * 100 : 0;
 
                      return (
-                        <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
-                           <td className="px-4 py-5 font-medium text-slate-900 dark:text-white">
+                        <tr key={b.bicoId} className="hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
+                           <td className="px-4 py-4 font-medium text-slate-900 dark:text-white">
                               <div className="flex flex-col">
-                                 <span className="text-base">{c.nome}</span>
-                                 <span className="text-xs text-slate-500 font-mono mt-1">{c.codigo}</span>
+                                 <span className="text-base">Bico {String(b.numero).padStart(2, '0')}</span>
+                                 <span className="text-xs text-slate-500 mt-0.5">{b.produtoNome}</span>
                               </div>
                            </td>
-                           <td className="px-4 py-5 text-right font-mono text-slate-600 dark:text-slate-300">
-                              {c.inicial || '-'}
+                           <td className="px-4 py-4 text-right font-mono text-slate-600 dark:text-slate-300">
+                              {b.inicial === null ? '-' : formatarParaBR(b.inicial)}
                            </td>
-                           <td className="px-4 py-5 text-right font-mono text-slate-600 dark:text-slate-300">
-                              {c.fechamento || '-'}
+                           <td className="px-4 py-4 text-right font-mono text-slate-600 dark:text-slate-300">
+                              {b.fechamento === null ? '-' : formatarParaBR(b.fechamento)}
                            </td>
-                           <td className="px-4 py-5 text-right font-bold text-slate-700 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-800/30">
-                              {litros > 0 ? formatarParaBR(litros, 0) : '-'}
+                           <td className="px-4 py-4 text-right font-bold text-slate-700 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-800/30">
+                              {b.litros > 0 ? formatarParaBR(b.litros, 0) : '-'}
                            </td>
-                           <td className="px-4 py-5 text-right font-medium text-emerald-600">
-                              {c.preco_venda_atual}
+                           <td className="px-4 py-4 text-right font-medium text-emerald-600">
+                              {preco > 0 ? formatarParaBR(preco, 2) : '-'}
                            </td>
-                           <td className="px-4 py-5 text-right font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/10">
-                              {valorBico !== 0 ? paraReais(valorBico) : '-'}
+                           <td className="px-4 py-4 text-right font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/10">
+                              {b.bruto > 0 ? paraReais(b.bruto) : '-'}
                            </td>
-                           <td className="px-4 py-5 text-right text-amber-600">
+                           <td className="px-4 py-4 text-right text-amber-600">
                               {lucroLt !== 0 ? paraReais(lucroLt) : '-'}
                            </td>
-                           <td className="px-4 py-5 text-right font-bold text-amber-700 bg-amber-50 dark:bg-amber-900/10">
+                           <td className="px-4 py-4 text-right font-bold text-amber-700 bg-amber-50 dark:bg-amber-900/10">
                               {lucroBico !== 0 ? paraReais(lucroBico) : '-'}
                            </td>
-                           <td className="px-4 py-5 text-right text-red-400">
-                              {margemPct !== 0 ? `${formatarParaBR(margemPct)}% ` : '-'}
+                           <td className={`px-4 py-4 text-right ${margemPct < 0 ? 'text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                              {margemPct !== 0 ? `${formatarParaBR(margemPct, 2)}%` : '-'}
                            </td>
-                           <td className="px-4 py-5 text-right">
-                              {litros > 0 ? formatarParaBR(litros, 0) : '-'}
+                           <td className="px-4 py-4 text-right">
+                              {mostraProduto && litrosProduto > 0 ? formatarParaBR(litrosProduto, 0) : ''}
                            </td>
-                           <td className="px-4 py-5 text-right font-bold">
-                              {produtoPct > 0 ? `${formatarParaBR(produtoPct)}% ` : '-'}
+                           <td className="px-4 py-4 text-right font-bold">
+                              {mostraProduto && produtoPct > 0 ? `${formatarParaBR(produtoPct, 2)}%` : ''}
                            </td>
                         </tr>
                      );
@@ -124,11 +147,13 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais, u
                      <td className="px-4 py-3 text-center text-slate-400">-</td>
                      <td className="px-4 py-3 text-center text-slate-400">-</td>
                      <td className="px-4 py-3 text-right">{formatarParaBR(totais.totalLitros, 0)}</td>
-                     <td className="px-4 py-3 text-right text-slate-400">-</td>
+                     <td className="px-4 py-3 text-right text-slate-300">
+                        {totais.totalLitros > 0 ? formatarParaBR(totais.totalValorBico / totais.totalLitros, 2) : '-'}
+                     </td>
                      <td className="px-4 py-3 text-right bg-blue-900">{paraReais(totais.totalValorBico)}</td>
                      <td className="px-4 py-3 text-right text-slate-400">-</td>
                      <td className="px-4 py-3 text-right bg-amber-700">{paraReais(totais.totalLucroBico)}</td>
-                     <td className="px-4 py-3 text-right bg-slate-700">{formatarParaBR(totais.margemMedia)}%</td>
+                     <td className="px-4 py-3 text-right bg-slate-700">{formatarParaBR(totais.margemMedia, 2)}%</td>
                      <td className="px-4 py-3 text-right">{formatarParaBR(totais.totalLitros, 0)}</td>
                      <td className="px-4 py-3 text-right">100,00%</td>
                   </tr>
@@ -138,4 +163,3 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, calculos, totais, u
       </section>
    );
 };
-
