@@ -11,7 +11,7 @@ import { parseValue } from '../../../utils/formatters';
 import { isSuccess } from '../../../types/ui/response-types';
 import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../../../types/fechamento';
 import { conferido, diferenca as calcularDiferenca } from '@posto/utils';
-import { meiosDaSessao } from '../../../utils/fechamentoMeios';
+import { meiosDaSessao, sessaoSemMovimento } from '../../../utils/fechamentoMeios';
 
 /**
  * Valor gravado em `Fechamento.turno_id` enquanto a coluna existir.
@@ -162,7 +162,10 @@ export function useSubmissaoFechamento() {
          // 3. Salvar Sessões de Frentistas
          if (sessoesFrentistas.length > 0) {
             const frentistasToCreate = sessoesFrentistas
-               .filter(fs => fs.frentistaId !== null)
+               // Linha semeada sem nenhum lançamento é "não trabalhou hoje": não vira
+               // registro — sessão de R$ 0,00 no banco seria indistinguível de um
+               // frentista que fechou sem vender (ver sessaoSemMovimento).
+               .filter(fs => fs.frentistaId !== null && !sessaoSemMovimento(fs))
                .map(fs => {
                   // Aritmética canônica via @posto/utils (soma dos 7 buckets).
                   const meios = meiosDaSessao(fs);

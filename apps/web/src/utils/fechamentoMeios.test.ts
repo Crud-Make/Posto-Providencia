@@ -7,6 +7,8 @@ import {
     distribuirNasFormas,
     agruparPorFrentista,
     meiosDaSessao,
+    sessaoSemMovimento,
+    sessaoBloqueiaFechamento,
 } from './fechamentoMeios';
 import type { SessaoFrentista } from '../types/fechamento';
 
@@ -256,5 +258,54 @@ describe('distribuirNasFormas', () => {
     it('mês zerado não escreve zero em campo nenhum', () => {
         const linhas = distribuirNasFormas(FORMAS, totaisDasLinhas([]));
         expect(linhas.every((l) => l.valor === '')).toBe(true);
+    });
+});
+
+describe('sessaoSemMovimento / sessaoBloqueiaFechamento', () => {
+    // O cenário que motivou a regra (19/08, replay de 01/01): o painel semeia
+    // uma linha por frentista ativo; 5 enviaram pelo PWA e 5 ficaram em branco,
+    // e as linhas em branco travavam o Salvar do dia inteiro.
+    const semeada = (frentistaId: number): SessaoFrentista =>
+        sessao({ frentistaId, valor_encerrante: '', valor_conferido: '', observacoes: '' } as Partial<SessaoFrentista>);
+
+    it('linha semeada intocada é "não trabalhou hoje": sem movimento, não bloqueia', () => {
+        const s = semeada(7);
+        expect(sessaoSemMovimento(s)).toBe(true);
+        expect(sessaoBloqueiaFechamento(s)).toBe(false);
+    });
+
+    it('envio real do PWA tem movimento e não bloqueia', () => {
+        const s = sessao({
+            frentistaId: 3,
+            valor_dinheiro: 'R$ 794,85',
+            valor_pix: 'R$ 358,27',
+            valor_cartao_credito: 'R$ 1.049,31',
+            valor_nota: 'R$ 503,10',
+        } as Partial<SessaoFrentista>);
+        expect(sessaoSemMovimento(s)).toBe(false);
+        expect(sessaoBloqueiaFechamento(s)).toBe(false);
+    });
+
+    it('dinheiro declarado sem frentista selecionado bloqueia: valor não fica órfão', () => {
+        const s = sessao({ frentistaId: null, valor_dinheiro: 'R$ 10,00' } as Partial<SessaoFrentista>);
+        expect(sessaoSemMovimento(s)).toBe(false);
+        expect(sessaoBloqueiaFechamento(s)).toBe(true);
+    });
+
+    it('encerrante lançado com declaração zerada bloqueia: a bomba girou sem prestação de conta', () => {
+        const s = sessao({ frentistaId: 5, valor_encerrante: 'R$ 893,59' } as Partial<SessaoFrentista>);
+        expect(sessaoSemMovimento(s)).toBe(false);
+        expect(sessaoBloqueiaFechamento(s)).toBe(true);
+    });
+
+    it('qualquer balde sozinho já conta como movimento (moedas e baratão incluídos)', () => {
+        for (const campo of [
+            'valor_dinheiro', 'valor_moedas', 'valor_pix', 'valor_cartao',
+            'valor_cartao_debito', 'valor_cartao_credito', 'valor_nota', 'valor_baratao',
+        ] as const) {
+            const s = sessao({ frentistaId: 1, [campo]: 'R$ 0,01' } as Partial<SessaoFrentista>);
+            expect(sessaoSemMovimento(s)).toBe(false);
+            expect(sessaoBloqueiaFechamento(s)).toBe(false);
+        }
     });
 });

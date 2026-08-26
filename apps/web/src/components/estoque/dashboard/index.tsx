@@ -77,6 +77,16 @@ const TelaDashboardEstoque: React.FC = () => {
         </div>
       ) : (
         <>
+          {tanques.some((t) => !t.medido) && (
+            <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-medium">Tanque sem régua: {tanques.filter((t) => !t.medido).map((t) => t.nome).join(', ')}</p>
+                <p className="text-xs opacity-80">O estoque atual é derivado da última medição física — sem ela não há de onde partir. Registre uma medição para começar a contagem.</p>
+              </div>
+            </div>
+          )}
+
           <ResumoFinanceiro tanques={tanques} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">

@@ -6,16 +6,23 @@
  * Os dados são persistidos automaticamente antes do unmount e restaurados ao retornar.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import { CombustivelHibrido } from './useCombustiveisHibridos';
+import { CombustivelHibrido, CAMPOS_DIGITADOS, type CampoDigitado } from './useCombustiveisHibridos';
 
 const STORAGE_KEY = 'registro_compras_form_data';
 
+/** Só o que o gerente digitou: o resto vem do banco e não se guarda. */
+export type CamposDigitadosPorProduto = Record<number, Pick<CombustivelHibrido, CampoDigitado>>;
+
 interface PersistedFormData {
-    combustiveis: CombustivelHibrido[];
-    despesasMes: string;
+    digitados: CamposDigitadosPorProduto;
     fornecedorSelecionado: number | null;
     timestamp: number;
 }
+
+const soDigitados = (combustiveis: CombustivelHibrido[]): CamposDigitadosPorProduto =>
+    Object.fromEntries(
+        combustiveis.map((c) => [c.id, Object.fromEntries(CAMPOS_DIGITADOS.map((k) => [k, c[k]]))])
+    ) as CamposDigitadosPorProduto;
 
 /**
  * Hook para persistir e restaurar estado do formulário de compras.
@@ -36,21 +43,17 @@ export const usePersistenciaFormulario = (postoAtivoId: number | null) => {
      */
     const salvarEstado = useCallback((
         combustiveis: CombustivelHibrido[],
-        despesasMes: string,
         fornecedorSelecionado: number | null
     ) => {
         try {
-            const hasData = combustiveis.some(c => 
-                c.inicial || c.fechamento || c.compra_lt || c.compra_rs || c.estoque_tanque
-            );
+            const hasData = combustiveis.some((c) => CAMPOS_DIGITADOS.some((k) => c[k]));
             
-            if (!hasData && !despesasMes) {
+            if (!hasData) {
                 return;
             }
 
             const data: PersistedFormData = {
-                combustiveis,
-                despesasMes,
+                digitados: soDigitados(combustiveis),
                 fornecedorSelecionado,
                 timestamp: Date.now(),
             };
@@ -98,9 +101,7 @@ export const usePersistenciaFormulario = (postoAtivoId: number | null) => {
             if (!saved) return false;
             
             const data: PersistedFormData = JSON.parse(saved);
-            return data.combustiveis.some(c => 
-                c.inicial || c.fechamento || c.compra_lt || c.compra_rs || c.estoque_tanque
-            ) || !!data.despesasMes;
+            return Object.values(data.digitados).some((d) => CAMPOS_DIGITADOS.some((k) => d[k]));
         } catch {
             return false;
         }

@@ -2,6 +2,138 @@
 
 ## [Não Lançado]
 
+### 💳 Taxas de cartão: um lançamento por provedor, como despesa do mês
+
+- **Botão "Taxas de Cartão"** na aba Receitas e Despesas abre um modal com uma linha por
+  provedor (Sipag, Sicoob…) e o valor digitado da fatura da maquininha. Cada linha vira uma
+  `Despesa` com categoria `Taxas Cartão` — a mesma que a carga histórica gravou —, na data
+  do mês exibido, e entra no rateio por litro da tela de Compras e da Planilha do Mês como
+  qualquer outra despesa. Segue a planilha: **taxa é despesa digitada**, não conta de
+  `recebimento × %`. Só o nome do provedor é lembrado do mês anterior; valor, nunca.
+- **"Nova Receita" saiu** da aba. Receita é a venda dos bicos; uma receita digitada entrava
+  no card de lucro sem ter vindo de bomba nenhuma. O `Receita` que o card
+  `useFinanceiro` ainda soma como "extras" fica documentado como divergência a resolver com
+  golden, junto com o desconto em dobro da taxa (`Fechamento.taxas_pagamento` + despesa).
+- Categoria `Taxas Cartão` na lista do formulário de despesa.
+
+### 🔗 Compras aponta para onde a despesa se lança
+
+- Chip **"Despesa do mês · R$ X · lançar"** no cabeçalho de Compra e Custo, abrindo o
+  Fechamento direto na aba Receitas e Despesas (`/fechamento?aba=receitas-despesas`). A
+  tela de Compras continua só lendo a `Despesa`; escrever é num lugar só.
+
+### 🛢️ Tanques: o estoque atual passou a ser derivado, não carimbado
+- **[26/08/2026] Painel `/estoque/tanques` — cada leitura salva agora diminui o tanque de verdade.**
+  `Tanque.estoque_atual` era um contador que só a tela de compras somava e ninguém subtraía: a
+  venda dava baixa em OUTRA tabela (`Estoque`), e os dois livros divergiam a cada lançamento —
+  em 26/08 estavam em `0` e `−1.745 L` para o mesmo produto. Novo
+  `estoque/dashboard/model/estoque-derivado.ts` calcula `última régua + compras desde − vendas
+  desde` com o `resumoEstoque` de `@posto/utils` (golden dos 7 meses de 2026) — é a regra da
+  corrente da planilha, sem fórmula nova e sem carimbo para desalinhar. Régua vem de
+  `HistoricoTanque.volume_fisico`, compra de `Compra`, venda de `Leitura`; datas comparadas
+  pelo prefixo ISO, sem `new Date()` (o fuso escorregava um dia). Tanque nunca medido mostra
+  **aviso**, não zero — "não medi" e "vazio" são estados diferentes. A medição de régua deixou
+  de escrever em `Tanque.estoque_atual`; grava só em `HistoricoTanque`. 6 casos em
+  `estoque-derivado.test.ts`. Dado semeado no banco: régua de **31/12/2025** nos 4 tanques
+  (7.392 / 4.124 / 1.752 / 2.415 L, o `Ano passado.` da planilha) e `preco_custo`/`custo_medio`
+  refeitos a partir das compras de janeiro — estavam em julho e em zero, respectivamente.
+
+### 🧾 Compras: tela mensal lida do banco, sem despesa digitada, com gráficos
+- **[26/08/2026] Painel `/compras` — a tela virou o bloco de resumo mensal da planilha, célula a
+  célula** (conferido pelo agente `planilha` na aba `POSTO JORRO 2026`, mês 01). Seletor de mês
+  no cabeçalho. **Vendas (Leituras)** deixou de ser digitada: vem de `Leitura` consolidada por
+  `encerranteMensal` (o mesmo módulo da Planilha do Mês), somada por produto como `L5 = F5+F9+F10`
+  — a planilha redigita esses números (`D5:E10` são literais) porque não tem vínculo com as abas
+  diárias; o sistema tem. Faturamento é o bruto real das leituras, não `litros × preço de hoje`
+  (o bug do "preço único"). **Custo do litro** é `Σ R$ ÷ Σ L` do mês inteiro (`F16 = E16/D16`),
+  compras já lançadas + a que está sendo digitada; sem compra mostra "-", nunca o `preco_custo`
+  do cadastro. **Estoque anterior** é a última régua antes do mês (`D24`), lida de
+  `HistoricoTanque`, não `Tanque.estoque_atual`. **Campo "Despesas do Mês" removido**: a
+  despesa vem da tabela `Despesa` (`I16 = D286`), rateada por litro vendido (`I19 = I16/F11`).
+  A média ponderada que o Salvar escrevia em `Combustivel.preco_custo` foi retirada — a fonte do
+  custo é a `Compra`. Em mês passado (replay) a compra é gravada no último dia do mês. O
+  `sessionStorage` guarda só os 3 campos digitados (compra L, compra R$, régua). Seção nova
+  **"Visão do Período"** com dois gráficos (`GraficosCompras.tsx`, recharts já instalado):
+  litros comprados × vendidos por produto, e a composição do preço do litro (custo + despesa
+  rateada + sobra), paleta validada pelo `validate_palette.js` da skill `dataviz` em claro e
+  escuro. Nenhuma fórmula nova: os gráficos só exibem o que `useCalculosRegistro` já calcula.
+  **Vendas por BICO, não por produto** (correção de 26/08 à tarde, apontada pelo dono): somar os
+  três bicos de Comum num encerrante só (1.729.894) escondia o `1.716.778,963` do B01 que ele
+  confere na planilha; a seção agora tem uma linha por bico (`D5:E10`), com o total do produto
+  impresso na primeira linha dele (`L5 = F5+F9+F10`). **Preço do mês vem da `Leitura`**
+  (bruto ÷ litros do bico — 6,28 em janeiro), não do `preco_venda` do cadastro (6,98, o de hoje):
+  era o "preço único" de novo, agora na coluna de preço.
+  **Aviso de mês parcial** no cabeçalho de Vendas ("dia 1 a N de M"): a despesa do mês inteiro
+  rateada só pelos litros já lançados infla o custo por litro (em 26/08, janeiro com 1 dia
+  lançado dava R$ 13,83/L de despesa contra R$ 0,47 do mês fechado) — a conta está certa, o
+  dado é que está pela metade, e a tela agora diz isso em vez de deixar o lucro negativo falar
+  sozinho. Validado em `localhost:3015` contra a planilha: custo médio 5,35 / 5,31 / 4,10 / 5,38
+  (`F16:F19`), estoque anterior 7.392 / 4.124 / 1.752 / 2.415 (`D24:D27`), compra + estoque
+  38.392 / 9.124 / 9.752 / 5.415 (`E24:E27`).
+- **Achados da conferência, ainda sem código:** na planilha o **Frete não é digitado** —
+  `D258 = D20 × 0,12` (12% dos litros comprados, tratado como R$), única despesa calculada;
+  conferir se a `Despesa` do banco recebe isso. E Aditivada e Comum B05 **copiam** o preço do
+  B01 (`G6 = G5`, `G9 = G5`); B06 não tem preço e usa o do B05.
+
+### 🔗 Golden: o encadeamento de estoque entre meses, e a divergência das duas fórmulas de custo
+- **[26/08/2026] `packages/utils` — o estoque anterior de um mês nunca tinha sido testado.** O
+  `resumo-compra-estoque.golden.spec.ts` já provava os 7 meses de 2026 isoladamente: dado um
+  saldo inicial, o teórico e a perda saem certos. Ninguém olhava **de onde vinha esse saldo**.
+  Novo `estoque-encadeamento.golden.spec.ts` (24 casos) trava três coisas: (1) a regra da
+  corrente — `estoque_anterior[m] = estoque_tanque[m−1]`, o litro **medido na régua**, nunca o
+  teórico, válida de março a julho; (2) a **quebra de fevereiro/2026**, que repetiu o
+  `ano_passado` de janeiro em vez de herdar o medido (Δ +2.187 L de Aditivada, +1.720 de Comum)
+  e por isso acusa uma perda fantasma de −2.070,25 L — erro **da planilha**, documentado como
+  divergência (§7) e não "consertado" no módulo; (3) a prova de que a planilha custeia pela
+  compra do próprio mês (`media_lt = compra_rs ÷ compra_lt` nas 28 linhas), sem estoque anterior.
+- **Divergência conhecida, agora com número.** O caminho de escrita (`compra.service.ts:117` e
+  `usePersistenciaRegistro.ts:161`, que fazem a **mesma** média ponderada duas vezes) usa fórmula
+  diferente da planilha. Medido nos 7 meses: no ano as duas quase empatam — **R$ 132,69** sobre
+  R$ 1.541.032 comprados —, mas o **mês** erra até **R$ 2.582,18** (abril, lucro inflado; março
+  +R$ 1.986; fevereiro −R$ 1.338). É por isso que passou despercebida: só aparece na janela que o
+  dono realmente olha. O teste replica a fórmula porque `packages/*` não importa de `apps/*` (§2)
+  e a do hook é closure não exportada — trava **o tamanho da divergência**, não a chamada real.
+
+### 🧾 A lista de despesas voltou para a aba Receitas e Despesas
+- **[21/08/2026] Painel — o dono lançava despesa e não via onde ela caía.** A aba "Receitas e
+  Despesas" só mostrava o total e a pizza por categoria; a listagem item a item tinha sido
+  removida quando a tela virou aba do Fechamento. Novo componente `ListaDespesas`
+  (`apps/web/src/components/financeiro/`) reintroduz a lista, consumindo o mesmo
+  `dados.transacoes` que o gráfico de fluxo e a pizza já derivavam — **não recalcula dinheiro,
+  só exibe**. Por decisão do dono: (1) mostra **só despesas** (receita poluía a leitura); (2)
+  só as **operacionais** (`origem === 'despesa'`) — as compras de combustível têm a tela
+  Compras e, 10x maiores, dominariam; (3) **agrupadas por categoria** (Folha de Pagamento,
+  Impostos, Frete…) com subtotal em cada, maior primeiro. Data formatada por fatiamento de
+  string (sem `new Date()`, que escorregaria na virada UTC). Coberto por
+  `ListaDespesas.test.tsx` (4 casos: exclusão de receita/compra, agrupamento, total, estado
+  vazio). Validado no replay de janeiro: 15 lançamentos, R$ 22.158,46, batendo com a planilha.
+
+### ⏭️ Salvou, avança: o fechamento emenda um dia no outro
+- **[19/08/2026] Painel — depois do Salvar, a tela pula sozinha para o dia seguinte.** Pedido do
+  dono durante o replay de janeiro: salvar o caixa e já cair no próximo dia, com a leitura
+  inicial de cada bico preenchida com a final do dia recém-salvo. A semeadura já existia
+  (`useLeituras` em modo criação busca a última leitura anterior à data via `getLastReading`,
+  que usa `lt('data', ...)` — e herda o preço); o que faltava era o avanço da data no
+  `onSuccess` (`fechamento-diario/index.tsx`), feito com `somarDias`/`deIsoLocal` de
+  `@posto/utils/data-local` para não escorregar um dia na virada UTC. Trava no presente: se o
+  dia salvo já é hoje, não há amanhã para lançar — recarrega o próprio dia como antes.
+  Validado em uso real: salvou 01/01 (FECHADO, 5 sessões, −308,52) e a tela abriu 02/01 com as
+  6 iniciais idênticas às finais de 01/01.
+
+### 🔓 Salvar Fechamento destravado quando nem todos os frentistas trabalham
+- **[19/08/2026] Painel — as linhas semeadas dos frentistas que não enviaram travavam o botão.**
+  Descoberto no replay de 01/01: os 5 envios do PWA salvaram todos (log da API sem um erro), mas
+  o "Salvar Fechamento" ficava desabilitado sem dizer por quê. A tela semeia uma linha por
+  frentista **ativo** (decisão de 20/01) e a validação `temFrentistasVazios` contava linha
+  intocada como erro — com 10 ativos e 5 trabalhando, o dia era infechável e o dono tinha que
+  apagar as linhas vazias uma a uma. Regra nova, pura e testada em `fechamentoMeios.test.ts`:
+  linha **sem nenhum lançamento** (nem valor, nem encerrante) é "não trabalhou hoje" — não
+  bloqueia o botão e **não vira registro de R$ 0,00 no banco** ao salvar. Continuam bloqueando:
+  valor declarado sem frentista selecionado (dinheiro órfão) e encerrante lançado com declaração
+  zerada (a bomba girou e ninguém prestou conta). `sessaoSemMovimento`/`sessaoBloqueiaFechamento`
+  em `apps/web/src/utils/fechamentoMeios.ts`; consumo em `useFechamento` (validação) e
+  `useSubmissaoFechamento` (filtro no insert). Nenhuma fórmula de dinheiro tocada.
+
 ### 🏷️ A marca do posto na aba do painel
 - **[19/08/2026]** O painel na Vercel abria com o ícone padrão do navegador: o `index.html` não
   declarava favicon e o `manifest.json` apontava para `favicon.ico`/`logo192.png` que nunca
@@ -2832,7 +2964,6 @@
   - **Depois:** 95 linhas (orquestrador) + hook `useEscalas` + 4 subcomponentes.
   - **Destaque:** UI premium, JSDoc mandatório, PDF export aprimorado.
 - **Métrica Sprint 3:** 100% COMPLETA 🎉 (3/3 componentes da fase 1).
-
 
 ### ⚡ Infraestrutura e Performance
 - **Issue #17 - Migração para Bun:** Runtime migrado de Node.js para Bun.

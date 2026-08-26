@@ -5,9 +5,12 @@ import { usePosto } from '../../contexts/usePosto';
 interface Props {
    onRefresh: () => void;
    loading: boolean;
+   /** Mês exibido, `aaaa-mm`. A tela é mensal como o resumo da planilha. */
+   mes: string;
+   onMesChange: (mes: string) => void;
 }
 
-export const HeaderRegistroCompras: React.FC<Props> = ({ onRefresh, loading }) => {
+export const HeaderRegistroCompras: React.FC<Props> = ({ onRefresh, loading, mes, onMesChange }) => {
    const { postos, postoAtivo, setPostoAtivoById } = usePosto();
    const [postoDropdownOpen, setPostoDropdownOpen] = useState(false);
 
@@ -18,10 +21,21 @@ export const HeaderRegistroCompras: React.FC<Props> = ({ onRefresh, loading }) =
                <FileText className="text-emerald-600" />
                Registro de Compras
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie compras, leituras e reconciliação de estoque</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">Compra do mês, vendas consolidadas e reconciliação de estoque</p>
          </div>
 
          <div className="flex items-center gap-4 mt-4 md:mt-0">
+            {/* Mês de referência */}
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+               <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">Mês</span>
+               <input
+                  type="month"
+                  value={mes}
+                  onChange={(e) => e.target.value && onMesChange(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+               />
+            </label>
+
             {/* Seletor de Posto */}
             <div className="relative">
                <button

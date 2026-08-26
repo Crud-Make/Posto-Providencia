@@ -20,6 +20,7 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 
 import { usePosto } from '../../contexts/usePosto';
@@ -35,7 +36,8 @@ import type { SessaoFrentista } from '../../types/fechamento';
 import { supabase } from '../../services/supabase';
 
 // Subcomponentes
-import { HeaderFechamento, type AbaFechamento } from './components/HeaderFechamento';
+import { HeaderFechamento } from './components/HeaderFechamento';
+import { abaFechamentoDe, type AbaFechamento } from './abas';
 import { TabLeituras } from './components/TabLeituras';
 import { TabFinanceiro } from './components/TabFinanceiro';
 // [20/01 11:30] Adição da aba Detalhamento Frentistas
@@ -48,7 +50,7 @@ import FechamentoMensal from '../fechamento-mensal';
 import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
 import { ProgressIndicator } from '@shared/ui/ValidationAlert';
-import { hojeIso, conferido } from '@posto/utils';
+import { hojeIso, conferido, deIsoLocal, somarDias } from '@posto/utils';
 import { useEstadoPersistido } from '@shared/lib/estado-persistido';
 import { meiosDaSessao } from '../../utils/fechamentoMeios';
 import { parseValue } from '../../utils/formatters';
@@ -61,7 +63,13 @@ const TelaFechamentoDiario: React.FC = () => {
    // salva dinheiro, e herdar a data de uma navegação de relatório abriria o fechamento num dia
    // que o usuário não escolheu aqui. Persistida só para não voltar a hoje ao trocar de tela.
    const [selectedDate, setSelectedDate] = useEstadoPersistido<string>('data-fechamento', hojeIso);
-   const [activeTab, setActiveTab] = useState<AbaFechamento>('leituras');
+   // `?aba=receitas-despesas` abre direto na aba pedida (a tela de Compras usa
+   // isso para "Lançar despesas"). Só o estado inicial: a navegação por abas
+   // continua local e não reescreve a URL.
+   const [searchParams] = useSearchParams();
+   const [activeTab, setActiveTab] = useState<AbaFechamento>(
+      () => abaFechamentoDe(searchParams.get('aba')) ?? 'leituras'
+   );
    const [observacoes] = useState<string>('');
 
    // --- Hooks de Dados e Lógica (Refatorados) ---
@@ -327,6 +335,19 @@ const TelaFechamentoDiario: React.FC = () => {
                limparAutoSave,
                onSuccess: () => {
                   setSuccess(null);
+                  // [19/08] Encadeia o lançamento dia a dia: salvou, a tela avança para o dia
+                  // seguinte, e o `useLeituras` (modo criação) já semeia a leitura inicial de
+                  // cada bico com a última final anterior à data (`getLastReading` usa
+                  // `lt('data', ...)`) — o encerrante final de hoje vira o inicial de amanhã
+                  // sem digitação. `somarDias`/`deIsoLocal` para não escorregar um dia na
+                  // virada UTC (ver @posto/utils/data-local).
+                  const proximoDia = selectedDate ? somarDias(deIsoLocal(selectedDate), 1) : null;
+                  if (proximoDia && proximoDia <= hojeIso()) {
+                     setSelectedDate(proximoDia);
+                     return;
+                  }
+                  // Dia salvo já é hoje (não há amanhã para lançar): mantém o comportamento
+                  // antigo, recarregando o próprio dia.
                   carregarLeituras();
                   if (selectedDate) {
                      carregarSessoes(selectedDate, true);

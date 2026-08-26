@@ -13,16 +13,8 @@ import { Calendario, modoDia } from '@shared/ui/calendario';
  *          Financeiro", que trata das formas de pagamento do dia. Esta aqui é o painel de
  *          lançamentos por período, herdado da antiga rota `/financeiro`.
  */
-const ABAS = [
-    { chave: 'leituras', rotulo: '⛽ Leituras de Bomba', classeAtiva: 'border-blue-500 text-blue-400' },
-    { chave: 'financeiro', rotulo: '💰 Fechamento Financeiro', classeAtiva: 'border-emerald-500 text-emerald-400' },
-    { chave: 'detalhamento', rotulo: '👥 Detalhamento Frentistas', classeAtiva: 'border-purple-500 text-purple-400' },
-    { chave: 'gestao-bicos', rotulo: '🚀 Gestão de Bicos', classeAtiva: 'border-indigo-500 text-indigo-400' },
-    { chave: 'receitas-despesas', rotulo: '💵 Receitas e Despesas', classeAtiva: 'border-cyan-500 text-cyan-400' },
-    { chave: 'fechamento-mensal', rotulo: '📅 Fechamento Mensal', classeAtiva: 'border-yellow-500 text-yellow-400' }
-] as const;
-
-export type AbaFechamento = (typeof ABAS)[number]['chave'];
+import { ABAS, type AbaFechamento } from '../abas';
+export type { AbaFechamento };
 
 /**
  * Componente de cabeçalho do Fechamento Diário

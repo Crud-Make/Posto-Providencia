@@ -15,11 +15,14 @@ import { HeaderRegistroCompras } from './HeaderRegistroCompras';
 import { SecaoVendas } from './SecaoVendas';
 import { SecaoCompras } from './SecaoCompras';
 import { SecaoEstoque } from './SecaoEstoque';
+import { GraficosCompras } from './GraficosCompras';
+import { useDespesaDoMes } from './hooks/useDespesaDoMes';
 import { fornecedorService } from '../../services/api';
 import { Database } from '../../types/database/index';
 import type { ApiResponse } from '../../types/ui/response-types';
 import { isSuccess } from '../../types/ui/response-types';
 import { Save, AlertCircle } from 'lucide-react';
+import { intervaloDoMes, ehMesCorrente, hojeIso, mesAtualIso } from '../../utils/periodo';
 
 type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
 
@@ -35,10 +38,12 @@ function extractApiData<T>(response: ApiResponse<T>): T {
 
 const TelaRegistroCompras: React.FC = () => {
     const { postoAtivoId } = usePosto();
-    const [despesasMes, setDespesasMes] = useState<string>('');
     const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
     const [fornecedorSelecionado, setFornecedorSelecionado] = useState<number | null>(null);
     const [dadosRestaurados, setDadosRestaurados] = useState(false);
+    // A tela é MENSAL, como o bloco de resumo da planilha: a compra de hoje
+    // entra no custo do mês inteiro, e as vendas são o mês consolidado.
+    const [mes, setMes] = useState<string>(() => mesAtualIso());
 
     // Hook de persistência
     const { salvarEstado, restaurarEstado, limparEstado } = usePersistenciaFormulario(postoAtivoId);
@@ -62,12 +67,13 @@ const TelaRegistroCompras: React.FC = () => {
         loading,
         loadData,
         updateCombustivel,
-        setCombustiveis
-    } = useCombustiveisHibridos();
+        setCombustiveis,
+        vendasBicos,
+        ultimoDiaFechado
+    } = useCombustiveisHibridos(mes);
     
     // Refs para persistência
     const combustiveisRef = useRef(combustiveis);
-    const despesasRef = useRef(despesasMes);
     const fornecedorRef = useRef(fornecedorSelecionado);
 
     // Atualizar refs quando estado mudar
@@ -76,22 +82,18 @@ const TelaRegistroCompras: React.FC = () => {
     }, [combustiveis]);
 
     useEffect(() => {
-        despesasRef.current = despesasMes;
-    }, [despesasMes]);
-
-    useEffect(() => {
         fornecedorRef.current = fornecedorSelecionado;
     }, [fornecedorSelecionado]);
 
     // Salvar estado antes de sair da página ou desmontar
     useEffect(() => {
         const handleBeforeUnload = () => {
-            salvarEstado(combustiveisRef.current, despesasRef.current, fornecedorRef.current);
+            salvarEstado(combustiveisRef.current, fornecedorRef.current);
         };
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
-                salvarEstado(combustiveisRef.current, despesasRef.current, fornecedorRef.current);
+                salvarEstado(combustiveisRef.current, fornecedorRef.current);
             }
         };
 
@@ -100,7 +102,7 @@ const TelaRegistroCompras: React.FC = () => {
 
         return () => {
             // Salvar ao desmontar
-            salvarEstado(combustiveisRef.current, despesasRef.current, fornecedorRef.current);
+            salvarEstado(combustiveisRef.current, fornecedorRef.current);
             window.removeEventListener('beforeunload', handleBeforeUnload);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
@@ -122,10 +124,9 @@ const TelaRegistroCompras: React.FC = () => {
     if (!loading && !dadosRestaurados) {
         const dadosSalvos = restaurarEstado();
 
-        if (dadosSalvos && dadosSalvos.combustiveis.length > 0) {
-            // [01/02 15:35] Usar dados do sessionStorage diretamente
-            setCombustiveis(dadosSalvos.combustiveis);
-            setDespesasMes(dadosSalvos.despesasMes || '');
+        if (dadosSalvos && Object.keys(dadosSalvos.digitados).length > 0) {
+            // Só os campos digitados voltam; o que veio do banco fica fresco.
+            setCombustiveis(prev => prev.map(c => ({ ...c, ...(dadosSalvos.digitados[c.id] ?? {}) })));
 
             // Restaurar fornecedor se ainda existir na lista
             if (dadosSalvos.fornecedorSelecionado && fornecedores.some(f => f.id === dadosSalvos.fornecedorSelecionado)) {
@@ -143,7 +144,11 @@ const TelaRegistroCompras: React.FC = () => {
         }
     }
 
-    const calculos = useCalculosRegistro(combustiveis, despesasMes);
+    // A despesa do mês vem do banco (tabela `Despesa`), não de um campo digitado:
+    // é a mesma fonte que a Planilha do Mês rateia, para as duas telas nunca
+    // divergirem no "Valor p/ Venda".
+    const despesaDoMes = useDespesaDoMes(postoAtivoId, mes);
+    const calculos = useCalculosRegistro(combustiveis, despesaDoMes);
 
     const { saving, salvarDados } = usePersistenciaRegistro(postoAtivoId, async () => {
         // On Success
@@ -158,28 +163,29 @@ const TelaRegistroCompras: React.FC = () => {
     });
 
     const handleSave = () => {
-        salvarDados(combustiveis, calculos.calcEstoqueHoje, fornecedorSelecionado);
+        // No mês corrente a compra é de hoje; em mês passado (replay), do último dia dele.
+        const hoje = hojeIso();
+        const dataCompra = ehMesCorrente(mes, hoje) ? hoje : intervaloDoMes(mes, hoje).fim;
+        salvarDados(combustiveis, calculos.calcEstoqueHoje, fornecedorSelecionado, dataCompra);
     };
 
     // Há alterações não salvas?
     //
     // [2026-07-26] Antes era `useState` + `useEffect` sincronizando a cada
-    // mudança de `combustiveis`/`despesasMes` (mesmo problema de
+    // mudança de `combustiveis` (mesmo problema de
     // `set-state-in-effect` do bloco de restauração acima). Só existiam 3
     // gatilhos externos ao efeito automático: marcar `true` ao editar (redundante,
-    // já é o que o efeito calculava sozinho a partir de `combustiveis`/`despesasMes`),
+    // já é o que o efeito calculava sozinho a partir de `combustiveis`),
     // marcar `true` ao restaurar (idem, redundante) e marcar `false` logo após
     // salvar — este último é o único caso real: `salvarDados` só limpa
     // `compra_lt`/`compra_rs`, então `combustiveis` ainda contém `inicial`/
     // `fechamento` até o `loadData()` (disparado dentro do próprio `onSuccess`
     // acima) terminar de repor os valores em branco. Por isso o valor é
-    // derivado direto de `combustiveis`/`despesasMes`, suprimido enquanto
+    // derivado direto de `combustiveis`, suprimido enquanto
     // `saving` for true — e `saving` só volta a `false` depois que `onSuccess`
     // (incluindo o `await loadData()`) termina, cobrindo exatamente essa janela.
     const temAlteracoes = !saving && (
-        combustiveis.some(c =>
-            c.inicial || c.fechamento || c.compra_lt || c.compra_rs || c.estoque_tanque
-        ) || !!despesasMes
+        combustiveis.some(c => c.compra_lt || c.compra_rs || c.estoque_tanque)
     );
 
     return (
@@ -214,13 +220,17 @@ const TelaRegistroCompras: React.FC = () => {
                 <HeaderRegistroCompras
                     onRefresh={loadData}
                     loading={loading}
+                    mes={mes}
+                    onMesChange={setMes}
                 />
 
                 <SecaoVendas
                     combustiveis={combustiveis}
-                    updateCombustivel={updateCombustivel}
+                    vendasBicos={vendasBicos}
                     calculos={calculos}
                     totais={calculos.totais}
+                    ultimoDiaFechado={ultimoDiaFechado}
+                    diasNoMes={Number(intervaloDoMes(mes, `${mes}-31`).fim.slice(8, 10))}
                 />
 
                 <SecaoCompras
@@ -228,13 +238,12 @@ const TelaRegistroCompras: React.FC = () => {
                     updateCombustivel={updateCombustivel}
                     calculos={calculos}
                     totais={calculos.totais}
-                    despesasMes={despesasMes}
-                    setDespesasMes={setDespesasMes}
                     saving={saving}
                     onSave={handleSave}
                     fornecedores={fornecedores}
                     fornecedorSelecionado={fornecedorSelecionado}
                     setFornecedorSelecionado={setFornecedorSelecionado}
+                    despesaDoMes={despesaDoMes}
                 />
 
                 <SecaoEstoque
@@ -243,6 +252,8 @@ const TelaRegistroCompras: React.FC = () => {
                     calculos={calculos}
                     totais={calculos.totais}
                 />
+
+                <GraficosCompras combustiveis={combustiveis} calculos={calculos} />
 
             </main>
         </div>
