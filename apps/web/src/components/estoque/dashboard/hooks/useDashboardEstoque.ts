@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../../contexts/usePosto';
+import { supabase } from '../../../../services/supabase';
 import { tanqueService } from '../../../../services/api';
-import { Tanque } from '../../../../services/api/tanque.service';
-import { TankHistory } from '../types';
+import { Tanque, TankHistory } from '../types';
 import { isSuccess } from '../../../../types/ui/response-types';
 import { hojeIso } from '@posto/utils';
+import { estoqueAtualDerivado, type MovimentoLitros, type ReguaTanque } from '../model/estoque-derivado';
+
+interface ReguaRow { tanque_id: number; data: string; volume_fisico: number | string | null }
+interface CompraRow { combustivel_id: number | null; data: string; quantidade_litros: number | string }
+interface LeituraRow { data: string; litros_vendidos: number | string | null; bico: { combustivel_id: number } | null }
 
 export const useDashboardEstoque = () => {
   const { postoAtivoId } = usePosto();
@@ -32,7 +37,52 @@ export const useDashboardEstoque = () => {
       }
 
       const data = response.data;
-      setTanques(data);
+      const tanqueIds = data.map((t) => t.id);
+
+      // As três fontes da regra da corrente. `Leitura` é a única que cresce
+      // todo dia; as outras duas são pequenas. Sem filtro de data: a data de
+      // corte é a régua de CADA tanque, resolvida em `estoqueAtualDerivado`.
+      const [reguasRes, comprasRes, leiturasRes] = await Promise.all([
+        supabase
+          .from('HistoricoTanque')
+          .select('tanque_id, data, volume_fisico')
+          .in('tanque_id', tanqueIds)
+          .not('volume_fisico', 'is', null),
+        supabase
+          .from('Compra')
+          .select('combustivel_id, data, quantidade_litros')
+          .eq('posto_id', postoAtivoId),
+        supabase
+          .from('Leitura')
+          .select('data, litros_vendidos, bico:Bico!inner(combustivel_id)')
+          .eq('posto_id', postoAtivoId),
+      ]);
+
+      const reguas: ReguaTanque[] = ((reguasRes.data ?? []) as ReguaRow[]).map((r) => ({
+        tanqueId: r.tanque_id,
+        data: r.data.slice(0, 10),
+        litros: Number(r.volume_fisico),
+      }));
+      const compras: MovimentoLitros[] = ((comprasRes.data ?? []) as CompraRow[])
+        .filter((c) => c.combustivel_id !== null)
+        .map((c) => ({ combustivelId: c.combustivel_id as number, data: c.data, litros: Number(c.quantidade_litros) }));
+      const vendas: MovimentoLitros[] = ((leiturasRes.data ?? []) as unknown as LeituraRow[])
+        .filter((l) => l.bico !== null)
+        .map((l) => ({ combustivelId: (l.bico as { combustivel_id: number }).combustivel_id, data: l.data, litros: Number(l.litros_vendidos ?? 0) }));
+
+      const derivado = estoqueAtualDerivado(
+        data.map((t) => ({ id: t.id, combustivelId: t.combustivel_id })),
+        reguas,
+        compras,
+        vendas
+      );
+
+      setTanques(
+        data.map((t) => {
+          const estoque = derivado.get(t.id) ?? null;
+          return { ...t, estoque_atual: estoque ?? 0, medido: estoque !== null };
+        })
+      );
 
       // Fetch histories
       const histMap: TankHistory = {};
@@ -59,7 +109,14 @@ export const useDashboardEstoque = () => {
     loadData();
   }, [loadData]);
 
-  // Handler para salvar nova medição
+  /**
+   * Salva a medição de régua.
+   *
+   * @remarks A régua vai para `HistoricoTanque.volume_fisico` e só para lá:
+   *          é dela que o estoque atual é derivado. Antes também se
+   *          carimbava `Tanque.estoque_atual`, e era esse carimbo que
+   *          divergia — a venda nunca o subtraía.
+   */
   const handleSaveMedicao = async () => {
     if (!selectedTanque || !medicaoValue) return;
 
@@ -77,20 +134,14 @@ export const useDashboardEstoque = () => {
         return;
       }
 
-      // Atualiza o estoque do tanque
-      await tanqueService.update(selectedTanque.id, {
-        estoque_atual: novoValor
+      const resultado = await tanqueService.saveHistory({
+        tanque_id: selectedTanque.id,
+        data: hojeIso(),
+        volume_fisico: novoValor
       });
-
-      // Registra no histórico (se o serviço suportar)
-      try {
-        await tanqueService.saveHistory({
-          tanque_id: selectedTanque.id,
-          data: hojeIso(),
-          volume_fisico: novoValor
-        });
-      } catch {
-        console.log('Histórico não registrado (funcionalidade opcional)');
+      if (!isSuccess(resultado)) {
+        alert(`Erro ao salvar medição: ${resultado.error}`);
+        return;
       }
 
       // Limpa os campos e fecha o modal

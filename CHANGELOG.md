@@ -2,6 +2,46 @@
 
 ## [Não Lançado]
 
+### 🛢️ Tanques: o estoque atual passou a ser derivado, não carimbado
+- **[26/08/2026] Painel `/estoque/tanques` — cada leitura salva agora diminui o tanque de verdade.**
+  `Tanque.estoque_atual` era um contador que só a tela de compras somava e ninguém subtraía: a
+  venda dava baixa em OUTRA tabela (`Estoque`), e os dois livros divergiam a cada lançamento —
+  em 26/08 estavam em `0` e `−1.745 L` para o mesmo produto. Novo
+  `estoque/dashboard/model/estoque-derivado.ts` calcula `última régua + compras desde − vendas
+  desde` com o `resumoEstoque` de `@posto/utils` (golden dos 7 meses de 2026) — é a regra da
+  corrente da planilha, sem fórmula nova e sem carimbo para desalinhar. Régua vem de
+  `HistoricoTanque.volume_fisico`, compra de `Compra`, venda de `Leitura`; datas comparadas
+  pelo prefixo ISO, sem `new Date()` (o fuso escorregava um dia). Tanque nunca medido mostra
+  **aviso**, não zero — "não medi" e "vazio" são estados diferentes. A medição de régua deixou
+  de escrever em `Tanque.estoque_atual`; grava só em `HistoricoTanque`. 6 casos em
+  `estoque-derivado.test.ts`. Dado semeado no banco: régua de **31/12/2025** nos 4 tanques
+  (7.392 / 4.124 / 1.752 / 2.415 L, o `Ano passado.` da planilha) e `preco_custo`/`custo_medio`
+  refeitos a partir das compras de janeiro — estavam em julho e em zero, respectivamente.
+
+### 🧾 Compras: tela mensal lida do banco, sem despesa digitada, com gráficos
+- **[26/08/2026] Painel `/compras` — a tela virou o bloco de resumo mensal da planilha, célula a
+  célula** (conferido pelo agente `planilha` na aba `POSTO JORRO 2026`, mês 01). Seletor de mês
+  no cabeçalho. **Vendas (Leituras)** deixou de ser digitada: vem de `Leitura` consolidada por
+  `encerranteMensal` (o mesmo módulo da Planilha do Mês), somada por produto como `L5 = F5+F9+F10`
+  — a planilha redigita esses números (`D5:E10` são literais) porque não tem vínculo com as abas
+  diárias; o sistema tem. Faturamento é o bruto real das leituras, não `litros × preço de hoje`
+  (o bug do "preço único"). **Custo do litro** é `Σ R$ ÷ Σ L` do mês inteiro (`F16 = E16/D16`),
+  compras já lançadas + a que está sendo digitada; sem compra mostra "-", nunca o `preco_custo`
+  do cadastro. **Estoque anterior** é a última régua antes do mês (`D24`), lida de
+  `HistoricoTanque`, não `Tanque.estoque_atual`. **Campo "Despesas do Mês" removido**: a
+  despesa vem da tabela `Despesa` (`I16 = D286`), rateada por litro vendido (`I19 = I16/F11`).
+  A média ponderada que o Salvar escrevia em `Combustivel.preco_custo` foi retirada — a fonte do
+  custo é a `Compra`. Em mês passado (replay) a compra é gravada no último dia do mês. O
+  `sessionStorage` guarda só os 3 campos digitados (compra L, compra R$, régua). Seção nova
+  **"Visão do Período"** com dois gráficos (`GraficosCompras.tsx`, recharts já instalado):
+  litros comprados × vendidos por produto, e a composição do preço do litro (custo + despesa
+  rateada + sobra), paleta validada pelo `validate_palette.js` da skill `dataviz` em claro e
+  escuro. Nenhuma fórmula nova: os gráficos só exibem o que `useCalculosRegistro` já calcula.
+- **Achados da conferência, ainda sem código:** na planilha o **Frete não é digitado** —
+  `D258 = D20 × 0,12` (12% dos litros comprados, tratado como R$), única despesa calculada;
+  conferir se a `Despesa` do banco recebe isso. E Aditivada e Comum B05 **copiam** o preço do
+  B01 (`G6 = G5`, `G9 = G5`); B06 não tem preço e usa o do B05.
+
 ### 🔗 Golden: o encadeamento de estoque entre meses, e a divergência das duas fórmulas de custo
 - **[26/08/2026] `packages/utils` — o estoque anterior de um mês nunca tinha sido testado.** O
   `resumo-compra-estoque.golden.spec.ts` já provava os 7 meses de 2026 isoladamente: dado um
