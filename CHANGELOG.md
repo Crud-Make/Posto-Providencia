@@ -2,6 +2,12 @@
 
 ## [Não Lançado]
 
+### 🏷️ A marca do posto no topo da barra lateral
+
+- O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),
+  ao lado do botão de recolher o menu. Vai num tile branco de propósito: o PNG tem fundo
+  branco e, no modo escuro, um cartão lê melhor que um recorte.
+
 ### 💳 Taxas de cartão: um lançamento por provedor, como despesa do mês
 
 - **Botão "Taxas de Cartão"** na aba Receitas e Despesas abre um modal com uma linha por
