@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { provedorDaDescricao, CATEGORIA_TAXAS_CARTAO } from './ModalTaxasCartao';
+import { provedorDaDescricao, CATEGORIA_TAXAS_CARTAO } from './taxas-cartao';
 
 describe('provedorDaDescricao', () => {
   it('extrai o provedor de uma descrição gravada pelo modal', () => {

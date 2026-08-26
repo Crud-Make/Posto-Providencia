@@ -36,7 +36,8 @@ import type { SessaoFrentista } from '../../types/fechamento';
 import { supabase } from '../../services/supabase';
 
 // Subcomponentes
-import { HeaderFechamento, abaFechamentoDe, type AbaFechamento } from './components/HeaderFechamento';
+import { HeaderFechamento } from './components/HeaderFechamento';
+import { abaFechamentoDe, type AbaFechamento } from './abas';
 import { TabLeituras } from './components/TabLeituras';
 import { TabFinanceiro } from './components/TabFinanceiro';
 // [20/01 11:30] Adição da aba Detalhamento Frentistas

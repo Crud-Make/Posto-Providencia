@@ -18,7 +18,8 @@ import { isSuccess } from '../../types/ui/response-types';
 import { despesaFixaService, type LancamentoFixa } from '../../services/api/despesa-fixa.service';
 import { hojeIso, mesAtualIso, ultimoDiaDoMes, deIsoLocal } from '../../utils/periodo';
 import { ModalFixasPendentes } from './components/ModalFixasPendentes';
-import { ModalTaxasCartao, CATEGORIA_TAXAS_CARTAO, provedorDaDescricao } from './components/ModalTaxasCartao';
+import { ModalTaxasCartao } from './components/ModalTaxasCartao';
+import { CATEGORIA_TAXAS_CARTAO, provedorDaDescricao } from './components/taxas-cartao';
 // [01/02 11:22] Integrado FormReceita e lógica de salvamento de receitas extras.
 
 /**

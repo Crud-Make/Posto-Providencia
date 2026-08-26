@@ -5,23 +5,7 @@ import { CampoMoeda } from '@shared/ui/campo-moeda';
 import { formatarMesBR } from '../../../utils/periodo';
 import type { LancamentoFixa } from '../../../services/api/despesa-fixa.service';
 
-/** Categoria fixa das taxas — a mesma que a carga histórica gravou em `Despesa.categoria`. */
-export const CATEGORIA_TAXAS_CARTAO = 'Taxas Cartão';
-
-/** Prefixo da descrição; o provedor vai depois do travessão (`Taxas de cartão — Sicoob`). */
-const PREFIXO_DESCRICAO = 'Taxas de cartão — ';
-
-/**
- * Extrai o provedor de uma descrição gravada por este modal.
- *
- * @returns O nome do provedor, ou `null` se a descrição não veio daqui
- *          (ex.: a linha histórica `"Despeza com das taxas dos Cartao."`).
- */
-export function provedorDaDescricao(descricao: string): string | null {
-  return descricao.startsWith(PREFIXO_DESCRICAO)
-    ? descricao.slice(PREFIXO_DESCRICAO.length).trim() || null
-    : null;
-}
+import { CATEGORIA_TAXAS_CARTAO, PREFIXO_DESCRICAO } from './taxas-cartao';
 
 interface LinhaProvedor {
   readonly id: number;
