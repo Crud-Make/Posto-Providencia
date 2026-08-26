@@ -243,6 +243,7 @@ const TelaRegistroCompras: React.FC = () => {
                     fornecedores={fornecedores}
                     fornecedorSelecionado={fornecedorSelecionado}
                     setFornecedorSelecionado={setFornecedorSelecionado}
+                    despesaDoMes={despesaDoMes}
                 />
 
                 <SecaoEstoque

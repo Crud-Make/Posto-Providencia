@@ -20,6 +20,7 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 
 import { usePosto } from '../../contexts/usePosto';
@@ -35,7 +36,7 @@ import type { SessaoFrentista } from '../../types/fechamento';
 import { supabase } from '../../services/supabase';
 
 // Subcomponentes
-import { HeaderFechamento, type AbaFechamento } from './components/HeaderFechamento';
+import { HeaderFechamento, abaFechamentoDe, type AbaFechamento } from './components/HeaderFechamento';
 import { TabLeituras } from './components/TabLeituras';
 import { TabFinanceiro } from './components/TabFinanceiro';
 // [20/01 11:30] Adição da aba Detalhamento Frentistas
@@ -61,7 +62,13 @@ const TelaFechamentoDiario: React.FC = () => {
    // salva dinheiro, e herdar a data de uma navegação de relatório abriria o fechamento num dia
    // que o usuário não escolheu aqui. Persistida só para não voltar a hoje ao trocar de tela.
    const [selectedDate, setSelectedDate] = useEstadoPersistido<string>('data-fechamento', hojeIso);
-   const [activeTab, setActiveTab] = useState<AbaFechamento>('leituras');
+   // `?aba=receitas-despesas` abre direto na aba pedida (a tela de Compras usa
+   // isso para "Lançar despesas"). Só o estado inicial: a navegação por abas
+   // continua local e não reescreve a URL.
+   const [searchParams] = useSearchParams();
+   const [activeTab, setActiveTab] = useState<AbaFechamento>(
+      () => abaFechamentoDe(searchParams.get('aba')) ?? 'leituras'
+   );
    const [observacoes] = useState<string>('');
 
    // --- Hooks de Dados e Lógica (Refatorados) ---

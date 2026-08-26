@@ -1,5 +1,6 @@
 import React from 'react';
-import { Package } from 'lucide-react';
+import { Package, Receipt } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { InputFinanceiro } from './InputFinanceiro';
 import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
@@ -18,6 +19,8 @@ interface Props {
    fornecedores: Fornecedor[];
    fornecedorSelecionado: number | null;
    setFornecedorSelecionado: (id: number | null) => void;
+   /** Despesa do mês lida da tabela `Despesa`, em reais — a parcela rateada do "Valor P/ Venda". */
+   despesaDoMes: number;
 }
 
 const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-medium border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all shadow-sm bg-white dark:bg-gray-700 dark:text-white hover:border-orange-300 dark:hover:border-orange-600";
@@ -25,8 +28,10 @@ const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-med
 export const SecaoCompras: React.FC<Props> = ({
    combustiveis, updateCombustivel, calculos, totais,
    saving, onSave,
-   fornecedores, fornecedorSelecionado, setFornecedorSelecionado
+   fornecedores, fornecedorSelecionado, setFornecedorSelecionado,
+   despesaDoMes
 }) => {
+   const navigate = useNavigate();
    return (
       <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
          <div className="bg-orange-600 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -36,6 +41,22 @@ export const SecaoCompras: React.FC<Props> = ({
             </div>
             {/* Controles do Header */}
             <div className="flex flex-col sm:flex-row gap-4 items-center">
+
+               {/* Despesa do mês: só leitura aqui. Lançar é na aba "Receitas e Despesas"
+                   do Fechamento — um lugar só para escrever, para o rateio nunca divergir. */}
+               <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-orange-200 tracking-wider mb-1">Despesa do mês</span>
+                  <button
+                     type="button"
+                     onClick={() => navigate('/fechamento?aba=receitas-despesas')}
+                     title="Abre o Fechamento na aba Receitas e Despesas"
+                     className="flex items-center gap-2 bg-white/10 border border-orange-400/30 rounded text-white text-sm py-1 px-2 hover:bg-white/20 transition-colors"
+                  >
+                     <Receipt size={14} />
+                     <span className="font-semibold">{despesaDoMes > 0 ? paraReais(despesaDoMes) : 'nenhuma'}</span>
+                     <span className="text-orange-200 text-xs">· lançar</span>
+                  </button>
+               </div>
 
                {/* Seletor de Fornecedor */}
                <div className="flex flex-col">

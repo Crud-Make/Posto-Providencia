@@ -25,6 +25,17 @@ const ABAS = [
 export type AbaFechamento = (typeof ABAS)[number]['chave'];
 
 /**
+ * Narrowing de texto vindo de fora (querystring `?aba=`) para uma aba real.
+ *
+ * @remarks Permite que outra tela abra o fechamento numa aba específica — a de
+ *          Compras leva direto a "Receitas e Despesas" para lançar a despesa do
+ *          mês. Valor desconhecido devolve `null`, e a tela fica em Leituras.
+ */
+export function abaFechamentoDe(valor: string | null): AbaFechamento | null {
+    return ABAS.some((a) => a.chave === valor) ? (valor as AbaFechamento) : null;
+}
+
+/**
  * Componente de cabeçalho do Fechamento Diário
  * Contém seletor de data e abas de navegação
  *
