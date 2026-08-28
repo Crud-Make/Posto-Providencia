@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { serieVendaDiaria, serieEntregas, serieNivelEstoque } from './serie-diaria';
+import { serieVendaDiaria, serieVendaMensal, serieEntregas, serieNivelEstoque } from './serie-diaria';
 
 describe('serieVendaDiaria', () => {
     it('soma os bicos do mesmo dia e acumula o mês', () => {
@@ -41,6 +41,52 @@ describe('serieVendaDiaria', () => {
         expect(s.total).toBe(0);
         expect(s.pico).toBe(0);
         expect(s.mediaDiaria).toBe(0);
+    });
+});
+
+describe('serieVendaMensal', () => {
+    it('soma os registros do mesmo mês e devolve a janela inteira, na ordem', () => {
+        const s = serieVendaMensal(
+            [
+                { mes: '2026-01', litros: 100.5 },
+                { mes: '2026-01', litros: 50.25 },
+                { mes: '2026-03', litros: 200 },
+            ],
+            '2026-03',
+            3
+        );
+
+        expect(s).toEqual([
+            { mes: '2026-01', litros: 150.75 },
+            { mes: '2026-02', litros: 0 },
+            { mes: '2026-03', litros: 200 },
+        ]);
+    });
+
+    it('cruza a virada de ano sem escorregar mês', () => {
+        const s = serieVendaMensal([{ mes: '2025-11', litros: 10 }], '2026-02', 6);
+
+        expect(s.map((p) => p.mes)).toEqual([
+            '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02',
+        ]);
+        expect(s[2].litros).toBe(10);
+    });
+
+    it('mês sem venda lançada vira 0, nunca número inventado', () => {
+        const s = serieVendaMensal([], '2026-06', 6);
+
+        expect(s).toHaveLength(6);
+        expect(s.every((p) => p.litros === 0)).toBe(true);
+    });
+
+    it('descarta registro fora da janela em vez de somá-lo em algum mês', () => {
+        const s = serieVendaMensal(
+            [{ mes: '2025-01', litros: 999 }, { mes: '2026-12', litros: 999 }],
+            '2026-06',
+            3
+        );
+
+        expect(s.reduce((acc, p) => acc + p.litros, 0)).toBe(0);
     });
 });
 

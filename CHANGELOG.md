@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🎲 Gráfico de evolução para de sortear o passado (saneamento 0.2)
+
+- Os 5 meses anteriores do gráfico "Evolução de Vendas" eram preenchidos com
+  `Math.random()` sobre o volume do mês atual — o gráfico mudava sozinho a cada render.
+  Agora a janela de 6 meses inteira vem da `Leitura` real, numa busca só, agregada pela
+  nova `serieVendaMensal` de `@posto/utils` (pura, testada, aritmética de mês sobre a
+  string ISO para não escorregar dia em UTC). Mês sem venda lançada aparece como 0.
+
 ### 🚫 Fim do "Lucro Total" de 18% inventado (saneamento 0.1)
 
 - O card "Lucro Total" da conciliação de frentistas mostrava `vendas × 0,18` — margem
