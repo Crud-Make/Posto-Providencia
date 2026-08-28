@@ -11,6 +11,13 @@
   em centavos na saída (< meio centavo por produto, dentro da tolerância já travada no golden).
   O fallback `litrosBase = vendidos || comprados` foi PRESERVADO neste commit — a remoção dele
   muda número e vai em commit separado, no grupo B.
+- **O "markup" da análise de custos virou a inversa canônica da margem (sítio 5, grupo A).**
+  `precoParaMargem` (custo ÷ (1 − margem%)) entrou em `@posto/utils/lucro` documentada como a
+  inversa de `margemPercentual`, e `calculatePrice`/`calculateProfit` da tela passaram a delegar
+  a ela e a `lucroCombustivel`. O golden ganhou o roundtrip contra julho real (preço de bomba ↔
+  margem canônica fecha nos dois sentidos) e os valores congelados na onda 2 não mudaram.
+  O teto de UI `margem ≥ 100% → custo × 10` foi PRESERVADO, documentado como guarda de tela
+  contra a divergência da curva (margem 100% sobre o preço não tem preço finito).
 
 ### 🧪 Saneamento pré-release — onda 2 (rede de teste das fórmulas)
 

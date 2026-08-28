@@ -93,3 +93,23 @@ export function lucroCombustivel(i: LucroCombustivelInput): number {
 export function margemPercentual(lucro: number, receita: number): number {
     return receita > 0 ? (lucro / receita) * 100 : 0;
 }
+
+/**
+ * Preço que entrega uma margem desejada SOBRE O PREÇO: `custo ÷ (1 − margem%)`.
+ *
+ * @param custoLitro - Custo total por litro (custo médio + despesa operacional/L).
+ * @param margemPct - Margem desejada em % **sobre o preço** — a mesma definição
+ *        de {@link margemPercentual} (`lucro ÷ receita`), da qual esta função é
+ *        a inversa: `margemPercentual(preco − custo, preco)` devolve `margemPct`.
+ * @returns R$/L. Não é dinheiro final → mantém precisão total (não quantiza).
+ *
+ * @remarks NÃO é markup sobre o custo: 20% sobre custo R$ 5,00 dá R$ 6,25 aqui
+ *          (margem sobre preço), não R$ 6,00. Confirmado contra julho/2026 no
+ *          golden `calculos-analise-custos.golden.spec.ts`: alimentada com o
+ *          custo total e a margem canônica do mês, reconstrói o preço de bomba
+ *          praticado. Diverge (→ Infinity) quando `margemPct ≥ 100` — quem
+ *          chama decide o teto; a curva não tem contraparte física ali.
+ */
+export function precoParaMargem(custoLitro: number, margemPct: number): number {
+    return custoLitro / (1 - margemPct / 100);
+}

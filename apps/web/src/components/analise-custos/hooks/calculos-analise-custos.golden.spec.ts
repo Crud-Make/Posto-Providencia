@@ -26,6 +26,7 @@ import {
     margemPercentual,
     somarDespesas,
 } from '@posto/utils';
+import { precoParaMargem } from '@posto/utils';
 import { calculatePrice, calculateProfit } from './calculos-analise-custos';
 
 const SQLITE = `${import.meta.dir}/../../../../../../docs/data/posto_jorro_2026.sqlite`;
@@ -98,6 +99,19 @@ test('a divergência é de interpretação: margem sobre o CUSTO daria outro pre
     expect(5 * 1.2).toBeCloseTo(6.0, 10);
     // A diferença no preço de bomba seria de R$ 0,25/L para a mesma "margem digitada".
     expect(calculatePrice(5, 20) - 5 * 1.2).toBeCloseTo(0.25, 10);
+});
+
+test('precoParaMargem é a inversa exata de margemPercentual (roundtrip em julho)', () => {
+    // [onda 3, grupo A] `calculatePrice` passou a delegar a `precoParaMargem`
+    // (@posto/utils/lucro). O roundtrip fecha nos dois sentidos com o dado real.
+    for (const p of julhoPorProduto()) {
+        const margem = margemPercentual(p.precoPraticado - p.custoTotalL, p.precoPraticado);
+        const preco = precoParaMargem(p.custoTotalL, margem);
+        expect(preco).toBeCloseTo(p.precoPraticado, 9);
+        expect(margemPercentual(preco - p.custoTotalL, preco)).toBeCloseTo(margem, 9);
+        // e abaixo do teto o simulador da tela É a canônica, sem desvio nenhum
+        expect(calculatePrice(p.custoTotalL, margem)).toBe(preco);
+    }
 });
 
 test('o teto `margem ≥ 100% → custo × 10` é invenção da tela, sem contraparte canônica', () => {
