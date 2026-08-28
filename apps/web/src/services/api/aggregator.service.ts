@@ -8,7 +8,6 @@ import { frentistaService } from './frentista.service';
 import { leituraService } from './leitura.service';
 import { fechamentoFrentistaService } from './fechamentoFrentista.service';
 import { despesaService } from './despesa.service';
-import { configuracaoService } from './configuracao.service';
 import type { Combustivel, FechamentoFrentista, Leitura } from '../../types/database/index';
 import {
   ApiResponse,
@@ -32,7 +31,11 @@ function extractData<T>(response: ApiResponse<T>): T {
  * Despesa operacional real por litro do mês de referência (planilha Posto Jorro:
  * despesas_totais_do_mês ÷ litros_vendidos_do_mês). A taxa de cartão entra aqui
  * como mais um item da lista de despesas — não como dedução por transação.
- * Fallback para a configuração `despesa_operacional_litro` quando não há despesas.
+ *
+ * @remarks Mês sem despesa lançada devolve 0 — a soma real dos lançamentos.
+ *          O fallback antigo (config `despesa_operacional_litro`, semeada com
+ *          0,45) substituía o dado real por número inventado e violava o §6:
+ *          custo operacional é SEMPRE despesas reais ÷ litros, nunca fixo.
  */
 async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promise<number> {
   const year = refDate.getFullYear();
@@ -43,23 +46,15 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
   let queryLeitura = supabase.from('Leitura').select('litros_vendidos').gte('data', inicioMesStr).lte('data', fimMesStr);
   if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
 
-  // A configuração de fallback é buscada na mesma onda (e só consumida se a taxa
-  // calculada der 0) — condicionar o fetch ao resultado criava um round-trip
-  // sequencial extra na cauda do carregamento do dashboard.
-  const [despesasRes, leiturasRes, configFallbackRes] = await Promise.all([
+  const [despesasRes, leiturasRes] = await Promise.all([
     despesaService.getByMonth(year, month, postoId),
     queryLeitura,
-    configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45),
   ]);
 
   const totalDespesas = extractData(despesasRes).reduce((acc: number, d: { valor: number }) => acc + Number(d.valor), 0);
   const totalLitros = (leiturasRes.data || []).reduce((acc: number, l: { litros_vendidos: number | null }) => acc + (l.litros_vendidos || 0), 0);
 
-  let rate = despesaOperacionalPorLitro(totalDespesas, totalLitros);
-  if (rate === 0) {
-    rate = extractData(configFallbackRes);
-  }
-  return rate;
+  return despesaOperacionalPorLitro(totalDespesas, totalLitros);
 }
 
 interface LeituraWithRelations extends Leitura {
@@ -445,14 +440,9 @@ export const aggregatorService = {
       const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
       const totalVolumeVendido = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
 
-      // Cálculo de Despesa Operacional Real por Litro (Fórmula Planilha Posto Jorro: H22 = H19/F11)
-      let despOperacional = despesaOperacionalPorLitro(totalDespesas, totalVolumeVendido);
-
-      // Fallback para configuração se não houver despesas registradas no mês
-      if (despOperacional === 0) {
-        const despOperacionalRes = await configuracaoService.getValorNumerico('despesa_operacional_litro', 0.45);
-        despOperacional = extractData(despOperacionalRes);
-      }
+      // Despesa operacional real por litro (fórmula da planilha Posto Jorro: H22 = H19/F11).
+      // Mês sem despesa lançada fica em 0 — nunca o fallback fixo de 0,45 (§6).
+      const despOperacional = despesaOperacionalPorLitro(totalDespesas, totalVolumeVendido);
 
       return createSuccessResponse(estoque.map(e => {
         const vendasComb = leituras.filter(l => l.bico?.combustivel_id === e.combustivel_id);

@@ -83,6 +83,32 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
         ]));
     });
 
+    it('mês sem despesa lançada rateia 0 — nunca o fallback fixo de 0,45', async () => {
+        // Zero despesas no mês: o rateio real (despesas ÷ litros) é 0. O código
+        // antigo trocava esse 0 pela config `despesa_operacional_litro` (semeada
+        // com 0,45) e todo dashboard mostrava lucro calculado com número
+        // inventado — com o banco em replay, era o estado normal, não a exceção.
+        vi.mocked(despesaService.getByMonth).mockResolvedValue({
+            success: true,
+            data: [],
+            timestamp: new Date().toISOString(),
+        } as never);
+
+        const result = await aggregatorService.fetchProfitabilityData(2026, 1);
+
+        expect(result.success).toBe(true);
+        if (!result.success) return;
+
+        const item = result.data.find(i => i.combustivelId === 10);
+        expect(item?.despOperacional).toBe(0);
+        // custoTotalL = custo do produto, sem parcela operacional inventada
+        expect(item?.custoTotalL).toBe(3);
+        // lucro = 550 − 100 × 3 — não 550 − 100 × 3,45
+        expect(item?.lucroTotal).toBe(250);
+        // e a config nunca é consultada como fonte de custo
+        expect(configuracaoService.getValorNumerico).not.toHaveBeenCalled();
+    });
+
     it('não inclui leituras do mês seguinte ao consultar rentabilidade de um mês fechado', async () => {
         const result = await aggregatorService.fetchProfitabilityData(2026, 1);
 

@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### 💸 O fallback de R$ 0,45/L morreu (saneamento 0.4)
+
+- Quando o mês não tinha despesa lançada, o rateio real (despesas ÷ litros = 0) era
+  substituído em silêncio pela config `despesa_operacional_litro` — semeada com 0,45,
+  um número que não vem de lugar nenhum. Com o banco em replay, "mês sem despesa" era o
+  estado normal: todo dashboard estava calculando lucro com custo inventado. Removido dos
+  dois sítios (`despesaOperacionalMensal` e `fetchProfitabilityData`); mês sem despesa
+  lançada agora rateia 0, que é a soma real dos lançamentos (efeito mês-parcial do
+  replay, documentado). Teste novo prova que a config não é mais consultada.
+- Pendência anotada: a UI dizer explicitamente "sem despesa lançada" exige tocar telas
+  da outra trilha do saneamento; fica para depois da convergência.
+
 ### 🏆 Ranking de frentistas mostra vendas reais, não "Lucro Est." rateado (saneamento 0.3)
 
 - O card "Performance Frentistas" do dashboard exibia por frentista um lucro estimado
