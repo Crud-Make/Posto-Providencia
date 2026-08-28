@@ -93,7 +93,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* 📊 Cards de Métricas (Design Sugerido) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-gradient-to-br from-[#4c1d95] to-[#2e1065] p-6 rounded-2xl flex items-center gap-5 text-white shadow-xl shadow-purple-900/20 border border-purple-500/20 card-hover-effect">
           <div className="bg-white/10 p-4 rounded-xl backdrop-blur-md">
             <Wallet className="text-white" size={28} />
@@ -101,16 +101,6 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
           <div>
             <p className="text-[10px] uppercase font-bold tracking-widest text-white/60 mb-1">Vendas Totais</p>
             <h3 className="text-2xl font-black">{paraReais(totaisGerais.vendas)}</h3>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-[#134e4a] to-[#064e3b] p-6 rounded-2xl flex items-center gap-5 text-white shadow-xl shadow-teal-900/20 border border-teal-500/20 card-hover-effect">
-          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-md">
-            <TrendingUp className="text-white" size={28} />
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-bold tracking-widest text-white/60 mb-1">Lucro Total</p>
-            <h3 className="text-2xl font-black">{paraReais(totaisGerais.vendas * 0.18)}</h3>
           </div>
         </div>
 

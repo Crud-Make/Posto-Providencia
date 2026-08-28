@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🚫 Fim do "Lucro Total" de 18% inventado (saneamento 0.1)
+
+- O card "Lucro Total" da conciliação de frentistas mostrava `vendas × 0,18` — margem
+  fixa que não vem de lugar nenhum (§6 proíbe valor hardcoded em cálculo de dinheiro).
+  A tela só tem meios de pagamento por sessão; sem litros, custo médio e despesa do mês
+  não há como calcular lucro de verdade ali. O card saiu; os três restantes
+  (Vendas Totais, Total em Dinheiro, Melhor Vendedor) são todos dados reais.
+
 ### 🧹 Código morto do aggregator (saneamento 1.1)
 
 - Apagados os 3 métodos sem consumidor de produção do `aggregator.service.ts`:
