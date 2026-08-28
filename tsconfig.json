@@ -68,7 +68,6 @@
     "create_*.ts",
     "verify_*.ts",
     "reset_*.ts",
-    "**/*.golden.spec.ts",
     "spikes",
     "supabase/functions"
   ]

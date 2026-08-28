@@ -2,6 +2,30 @@
 
 ## [Não Lançado]
 
+### 🧹 Saneamento pré-release — trilha estrutural
+
+- **Os 3233 golden masters passaram a ser compilados.** O `exclude` do `tsconfig.json` tirava
+  `**/*.golden.spec.ts`: o teste que decide se uma fórmula pode ser mergeada nunca via o `tsc`.
+  Entrou `@types/bun` (`bun:test`, `bun:sqlite`, `import.meta.dir`) e o glob saiu. O compilador
+  achou **um erro real** no primeiro dia: `encerrante-mensal.golden.spec.ts` tipava `db.query`
+  com dois parâmetros para um SQL de três placeholders, e um `as unknown as number` mascarava a
+  diferença. Sem efeito em runtime — o `bun:sqlite` ligava os três —, mas era uma mentira de tipo
+  dentro de um golden.
+- **Os 4 `enum` de `@posto/types` foram apagados.** `StatusFechamento`, `FormaPagamento`,
+  `TipoEscala` e `UserRole` violavam o §4 e nenhum membro era acessado em lugar nenhum. Cuidado
+  registrado: os homônimos que o grep encontra vêm de `apps/web/src/types/database`, a árvore de
+  tipos do próprio app.
+- **O único `any` de produção do repo saiu.** Em `DetalhamentoRow.tsx` a causa não era preguiça:
+  o componente pai já declarava `field` com a união correta e o `CellProps` interno alargava para
+  `string`, o que forçava `(totais as any)[field]`. A união virou `CampoDetalhamento`, usada nos
+  dois, e o cast morreu junto com o `eslint-disable`.
+- **Dois shims de re-export sem importador removidos** — `components/TelaGestaoClientes.tsx` e
+  `components/TelaConfiguracoes.tsx`. O `App.tsx` já importava os componentes reais.
+- **Os 5 aliases FSD passaram a resolver.** `@app`, `@pages`, `@widgets`, `@features` e
+  `@entities` existiam no `tsconfig.json` e não no `vite.config.ts`: quem os usasse **passava no
+  `type-check` e quebrava no build**. Registrados no Vite antes do `@` genérico, porque o
+  resolvedor casa por prefixo seguido de `/`. O `loadEnv` declarado e nunca usado saiu junto.
+
 ### 🏷️ A marca do posto no topo da barra lateral
 
 - O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),
