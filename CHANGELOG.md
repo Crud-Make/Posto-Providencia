@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 🧰 Saneamento pré-release — onda 3, GRUPO A (consolidações que NÃO mudam número)
+
+- **Registro de compras delega custo, lucro e margem à canônica (sítio 1, grupo A).**
+  `useCalculosRegistro.ts` trocou o trio inline por `custoMedioCompra`, `lucroCombustivel` e
+  `margemPercentual` de `@posto/utils/lucro`. O golden da onda 2 rodou intocado antes e depois
+  (3265 pass) — mesma conta, um dono só. Diferença admitida: a canônica quantiza o lucro do bico
+  em centavos na saída (< meio centavo por produto, dentro da tolerância já travada no golden).
+  O fallback `litrosBase = vendidos || comprados` foi PRESERVADO neste commit — a remoção dele
+  muda número e vai em commit separado, no grupo B.
+
 ### 🧪 Saneamento pré-release — onda 2 (rede de teste das fórmulas)
 
 - **`emCentavos` virou export público de `@posto/utils`.** Cinco módulos do pacote carregavam a
