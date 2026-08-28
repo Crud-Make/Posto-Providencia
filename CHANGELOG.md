@@ -55,6 +55,12 @@
   R$ 189.312,05 onde o lucro real é R$ 18.272,31 — mais de 10× —, e a diferença é exatamente o
   custo de produto que ela ignora (R$ 171.039,74). É o número que sustenta o insight "Saúde
   Financeira Estável".
+- **Ponderada da loja congelada e apartada da consolidação (2.2 sítio 8).** O preço médio da
+  conveniência saiu de `stockService.ts` para `calculos-estoque-produto.ts` (MOVE) com teste
+  unitário comparando com a ponderada dos tanques: mesma conta no caso comum, bordas próprias
+  (entrada sem valor unitário não mexe no custo; denominador ≤ 0 mantém o custo anterior, onde o
+  tanque assume o da compra). Recomendação registrada no módulo: loja é mercadoria de revenda,
+  sem modelo mensal na planilha — a onda 3 (que mata a ponderada dos tanques) NÃO a arrasta.
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 
