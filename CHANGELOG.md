@@ -37,6 +37,12 @@
   reimplementações: o card ignora a despesa operacional e infla o lucro exatamente na despesa do
   mês — R$ 18.585,76 a R$ 35.523,58/mês, R$ 195.230,40 nos 7 meses. Também congelado: item sem
   estoque cadastrado entra como lucro 100%, em vez de "custo desconhecido".
+- **Golden do "Lucro Previsto" do dashboard de estoque (2.2 sítio 4).** A fórmula saiu do `.tsx`
+  para `calculos-resumo-financeiro.ts` (MOVE) e o golden mede contra o estoque real de julho:
+  o card promete R$ 11.406,05 onde a projeção canônica (descontando R$ 0,5988/L de despesa) dá
+  R$ 5.640,91 — **R$ 5.765,14 a mais, o dobro do previsto real**, em 9.628 L. Segunda divergência
+  documentada (não medida — o dado de referência não tem série de cadastro): produção usa o
+  `preco_custo` de HOJE, não o custo médio do mês.
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 
