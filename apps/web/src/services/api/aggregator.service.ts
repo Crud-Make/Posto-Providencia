@@ -369,43 +369,27 @@ export const aggregatorService = {
         }, 0);
       }
 
-      // PerformanceData - Calculado com base no lucro estimado proporcional às vendas
-      const totalVendasPeriodo = vendas.totalVendas || 0;
-      const margemMedia = totalVendasPeriodo > 0 ? totalLucroEstimado / totalVendasPeriodo : 0;
-
+      // PerformanceData — ranking pelas VENDAS conferidas, que são dado real por
+      // frentista. Antes mostrava "Lucro Est." = vendas × margem média global do
+      // posto: o total fechava, mas cada linha era ficção (quem vendeu diesel e
+      // quem vendeu gasolina recebiam a mesma margem). Lucro por frentista exige
+      // venda por produto por frentista, que o modelo de dados não tem — número
+      // que não dá para calcular não aparece (§6).
       const performanceData = closingsData
-        .map((c) => {
-          const profit = c.totalSales * margemMedia;
-          return {
-            id: c.id,
-            name: c.name,
-            avatar: c.avatar,
-            metric: 'Lucro Est.',
-            value: `R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            subValue: `Vendas: R$ ${c.totalSales.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`,
-            type: (c.totalSales > 0 ? 'ticket' : 'volume') as 'ticket' | 'volume' | 'divergence',
-            rawProfit: profit,
-            rawSales: c.totalSales,
-            sessionStatus: c.sessionStatus,
-            status: c.sessionStatus // Ensure status is passed for the UI checkmark
-          };
-        })
-        .sort((a, b) => {
-          const profitDiff = b.rawProfit - a.rawProfit;
-          if (Math.abs(profitDiff) > 0.01) return profitDiff;
-          return b.rawSales - a.rawSales;
-        })
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          avatar: c.avatar,
+          metric: 'Vendas do dia',
+          value: `R$ ${c.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          subValue: '',
+          type: (c.totalSales > 0 ? 'ticket' : 'volume') as 'ticket' | 'volume' | 'divergence',
+          rawSales: c.totalSales,
+          status: c.sessionStatus,
+        }))
+        .sort((a, b) => b.rawSales - a.rawSales)
         .slice(0, 5)
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          avatar: item.avatar,
-          metric: item.metric,
-          value: item.value,
-          subValue: item.subValue,
-          type: item.type,
-          status: item.sessionStatus
-        }));
+        .map(({ rawSales: _rawSales, ...item }) => item);
 
       return createSuccessResponse({
         fuelData,

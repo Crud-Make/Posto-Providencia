@@ -2,6 +2,15 @@
 
 ## [Não Lançado]
 
+### 🏆 Ranking de frentistas mostra vendas reais, não "Lucro Est." rateado (saneamento 0.3)
+
+- O card "Performance Frentistas" do dashboard exibia por frentista um lucro estimado
+  calculado como `vendas × margem média global` — o total fechava, mas cada linha era
+  ficção (mesma margem para quem vendeu diesel e gasolina). Lucro por frentista exige
+  venda por produto por frentista, que o modelo de dados não tem. O ranking agora mostra
+  "Vendas do dia" (o conferido canônico, dado real); a ordem do pódio não muda, porque
+  ordenar por `vendas × constante` já era ordenar por vendas.
+
 ### 🎲 Gráfico de evolução para de sortear o passado (saneamento 0.2)
 
 - Os 5 meses anteriores do gráfico "Evolução de Vendas" eram preenchidos com
