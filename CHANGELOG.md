@@ -43,6 +43,13 @@
   R$ 5.640,91 — **R$ 5.765,14 a mais, o dobro do previsto real**, em 9.628 L. Segunda divergência
   documentada (não medida — o dado de referência não tem série de cadastro): produção usa o
   `preco_custo` de HOJE, não o custo médio do mês.
+- **Golden do simulador de markup da análise de custos (2.2 sítio 5) — com achado.** As funções
+  saíram do hook para `calculos-analise-custos.ts` (MOVE) e a medição contra julho CONTRARIA o
+  plano: o modelo `custo ÷ (1 − margem%)` NÃO é um terceiro modelo divergente — a margem dele é
+  margem sobre o preço, exatamente a `margemPercentual` canônica, e ele reconstrói o preço de
+  bomba e o lucro canônico de julho. As divergências reais congeladas: interpretação (margem
+  "sobre o custo" daria R$ 0,25/L a mais no exemplo), o teto arbitrário `≥100% → custo × 10`, e
+  os insumos de produção herdarem o carimbo ponderado.
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 
