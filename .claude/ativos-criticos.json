@@ -29,8 +29,8 @@
     },
     {
       "caminho": "~/.claude/settings.json",
-      "bytes_minimos": 2000,
-      "porque": "as travas da máquina inteira — ask em sudo/rm/mv/dd/git push, deny em rm -rf e mkfs — mais enabledPlugins e o marketplace. Encolheu = as travas caíram e nada avisa"
+      "bytes_minimos": 550,
+      "porque": "as travas da máquina inteira — ask em sudo/rm/mv/dd/git push, deny em rm -rf e mkfs — mais enabledPlugins e o marketplace. Encolheu = as travas caíram e nada avisa. Teto recalibrado em 28/08/2026: o 2000 vinha da versão que ainda carregava a lista de `allow`, hoje no settings.local.json (18 KB), e passou a acusar todo dia um arquivo íntegro de 595 bytes. 550 ainda pega as três mutilações já vistas (22, 97 e 389 bytes) e a perda dos blocos deny+ask; aviso que grita sem motivo deixa de ser lido"
     },
     {
       "caminho": "docs/data/janeiro_referencia.sqlite",
