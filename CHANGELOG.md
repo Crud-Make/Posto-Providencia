@@ -32,6 +32,11 @@
   lucro÷receita); a divergência real é a FONTE do custo — o carimbo `Estoque.custo_medio`
   ponderado desloca o lucro do mês nos mesmos valores do `IMPACTO_MENSAL` (até R$ 2.582 em
   abril), agora medidos através da função de produção da tela.
+- **Golden do "Lucro Estimado" do dashboard de vendas (2.2 sítio 3).** A conta saiu do hook para
+  `calculos-dashboard-vendas.ts` (MOVE) e o golden congela a maior divergência absoluta das 8
+  reimplementações: o card ignora a despesa operacional e infla o lucro exatamente na despesa do
+  mês — R$ 18.585,76 a R$ 35.523,58/mês, R$ 195.230,40 nos 7 meses. Também congelado: item sem
+  estoque cadastrado entra como lucro 100%, em vez de "custo desconhecido".
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 

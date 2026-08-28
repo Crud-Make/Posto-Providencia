@@ -6,6 +6,7 @@ import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
 import { isSuccess } from '../../../../types/ui/response-types';
 import { paraIsoLocal, serieVendaMensal } from '@posto/utils';
+import { lucroEstimadoDashboard } from './calculos-dashboard-vendas';
 
 // Color mapping for fuels
 const FUEL_COLORS: Record<string, string> = {
@@ -98,18 +99,16 @@ export const useDashboardVendas = () => {
       const resEstoque = await estoqueService.getAll(postoAtivoId);
       const estoquesData = isSuccess(resEstoque) ? resEstoque.data : [];
 
-      let totalCost = 0;
-      Object.values(byCombustivel).forEach(item => {
-        const estoque = estoquesData.find(e => e.combustivel_id === item.combustivel.id);
-        if (estoque) {
-          totalCost += item.litros * estoque.custo_medio;
-        }
-      });
-
-      const profit = totalVendas - totalCost;
+      // Conta legada (sem despesa operacional, custo do carimbo) — fórmula em
+      // ./calculos-dashboard-vendas, exercitada pelo golden ao lado (onda 2.2).
+      const { profit, margin } = lucroEstimadoDashboard(
+        Object.values(byCombustivel).map(item => {
+          const estoque = estoquesData.find(e => e.combustivel_id === item.combustivel.id);
+          return { litros: item.litros, custoMedio: estoque ? estoque.custo_medio : null };
+        }),
+        totalVendas
+      );
       setEstimatedProfit(profit);
-
-      const margin = totalVendas > 0 ? (profit / totalVendas) * 100 : 0;
       setAverageMargin(margin);
 
       // Evolução mensal REAL (últimos 6 meses): antes os 5 meses passados eram
