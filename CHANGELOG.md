@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🚪 Login redesenhado: a arte sangra a metade e o botão volta a ter nome
+
+- A foto do posto deixou de ser um quadro no meio do vazio e passa a **sangrar a metade
+  esquerda inteira**, sob um gradiente navy que segura a paleta clara da arte contra a UI
+  escura. Depende de arquivo em resolução real: o `fundo-login.jpg` atual tem 1120px e,
+  esticado, borra — trocar a arte é a pendência que sobra deste redesenho.
+- O botão de entrar **voltou a ter rótulo visível ("Entrar")** ao lado da bomba. Só-bomba
+  com o nome vivendo no `aria-label` (19/08) não se lia como botão.
+- O vermelho da marca ficou **só no CTA, no checkbox e no anel de foco** — o azul saiu dos
+  focos, que discordavam do botão. "Jesus te ama" desceu para o rodapé e o topo do
+  formulário passou a dizer "Posto Providência / Painel de Gestão".
+- `autoComplete` do e-mail corrigido de `username` para `email`, e os cinzas de placeholder
+  e de ícone subiram de `slate-500` para `slate-400`, por contraste.
+
 ### 🏷️ A marca do posto no topo da barra lateral
 
 - O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),

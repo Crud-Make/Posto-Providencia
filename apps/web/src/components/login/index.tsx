@@ -13,6 +13,11 @@ import { useAuth } from '../../contexts/useAuth';
  *          incompleto sem avisar que estava incompleto, e o lançamento de dia
  *          passado morria no erro cru da RLS. Sem senha não há meia-entrada.
  *
+ *          Visual (26/08/2026, redesenho): a arte sangra a metade esquerda
+ *          inteira sob um gradiente navy; o CTA ganhou o rótulo "Entrar", o
+ *          vermelho ficou só no CTA/checkbox/foco, e "Jesus te ama" foi para
+ *          o rodapé. O histórico abaixo é da versão anterior.
+ *
  *          Visual (19/08/2026, terceira iteração com o dono): split-screen
  *          tonal. A arte do posto só existe em 275px — esticada na tela
  *          inteira ela granula, então ela vira um QUADRO na zona da marca, no
@@ -49,13 +54,13 @@ const CHAVE_SENHA = 'posto:senha-lembrada';
 
 const CLASSE_CAMPO =
   'block h-12 w-full rounded-lg border border-white/10 bg-slate-950/70 pl-11 pr-3.5 text-[15px] text-white ' +
-  'placeholder:text-slate-500 focus:border-marca-azul focus:outline-none focus:ring-[3px] focus:ring-marca-azul/25 ' +
+  'placeholder:text-slate-400 focus:border-marca-vermelho focus:outline-none focus:ring-[3px] focus:ring-marca-vermelho/25 ' +
   'transition-[border-color,box-shadow] duration-150';
 
 const CLASSE_ROTULO = 'block text-[13px] font-medium text-slate-400';
 
 const CLASSE_ICONE_CAMPO =
-  'pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center text-slate-500';
+  'pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center text-slate-400';
 
 /** Mensagem fora do fluxo de submit — o resultado do "Esqueceu a senha?". */
 interface Aviso {
@@ -120,47 +125,38 @@ const TelaLogin: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-white">
-      {/* Zona da marca — a arte do posto como quadro, no tamanho em que é
-          nítida, sobre o navy mais fundo da tela. */}
-      <section
-        aria-hidden="true"
-        className="relative hidden flex-1 flex-col items-center justify-center overflow-hidden p-12 lg:flex"
-      >
-        {/* Luz âmbar dos postes da pista, bem baixa. */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[50vh] bg-[radial-gradient(55%_60%_at_50%_0%,rgba(245,194,57,0.07),rgba(245,194,57,0)_70%)]" />
-
-        <figure className="relative w-[min(40vw,560px)]">
-          <img
-            src="/fundo-login.jpg"
-            alt=""
-            width={1120}
-            height={745}
-            className="h-auto w-full select-none rounded-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.10),0_24px_48px_-24px_rgba(0,0,0,0.9)]"
-            draggable={false}
-          />
-          {/* A faixa dupla da estrada — assinatura da tela desde a versão anterior. */}
-          <div className="mx-auto mt-8 h-[7px] w-24 border-y-2 border-marca-amarelo" />
-          <figcaption className="mt-4 text-center text-[12px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Painel de gestão
-          </figcaption>
-        </figure>
+      {/* Zona da marca — a arte do posto sangrando a metade inteira, com um
+          gradiente navy por cima para a paleta clara da arte não brigar com
+          a UI escura (redesenho de 26/08/2026). */}
+      {/* A arte sangra a metade inteira; um gradiente navy por cima segura a
+          paleta clara. Precisa de arquivo com resolução real — 1120px
+          esticado borra (26/08/2026). */}
+      <section aria-hidden="true" className="relative hidden flex-1 overflow-hidden lg:block">
+        <img
+          src="/fundo-login.jpg"
+          alt=""
+          className="absolute inset-0 h-full w-full select-none object-cover object-center"
+          draggable={false}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,#020617_0%,rgba(2,6,23,0.85)_30%,rgba(2,6,23,0.35)_65%,rgba(2,6,23,0.10)_100%)]" />
       </section>
 
       {/* Painel do formulário — um passo tonal acima da zona da marca. */}
-      <main className="flex w-full flex-col bg-slate-900 px-6 py-8 sm:px-12 lg:w-[480px] lg:border-l lg:border-white/10">
-        <div className="mx-auto my-auto w-full max-w-[356px] py-6">
+      <main className="flex min-h-screen w-full flex-col items-center justify-center bg-slate-900 px-6 py-8 sm:px-12 lg:w-[480px] lg:border-l lg:border-white/10">
+        <div className="w-full max-w-[372px]">
           <img
             src="/logo-login.jpg"
             alt="Posto Providência"
             width={306}
             height={306}
-            className="mx-auto h-auto w-[132px] select-none rounded-xl"
+            className="mx-auto h-auto w-[112px] select-none rounded-xl"
             draggable={false}
           />
 
-          <h1 className="mt-6 text-center font-display text-[24px] font-bold tracking-tight text-white text-balance">
-            Jesus te ama
+          <h1 className="mt-6 text-center font-display text-[26px] font-bold tracking-tight text-white text-balance">
+            Posto Providência
           </h1>
+          <p className="mt-1.5 text-center text-[14px] font-medium text-slate-400">Painel de Gestão</p>
 
           <form action={acao} className="mt-8 flex flex-col gap-5" noValidate>
             <div>
@@ -178,7 +174,7 @@ const TelaLogin: React.FC = () => {
                   id="login-email"
                   name="email"
                   type="email"
-                  autoComplete="username"
+                  autoComplete="email"
                   inputMode="email"
                   spellCheck={false}
                   placeholder="voce@postoprovidencia.com.br"
@@ -199,7 +195,7 @@ const TelaLogin: React.FC = () => {
                   type="button"
                   onClick={aoEsquecerSenha}
                   disabled={enviandoRecuperacao}
-                  className="text-[13px] font-medium text-red-300 transition-colors duration-150 hover:text-red-200 focus-visible:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-marca-azul/40 disabled:opacity-60"
+                  className="text-[13px] font-medium text-slate-400 transition-colors duration-150 hover:text-slate-300 hover:underline focus-visible:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-marca-vermelho/40 disabled:opacity-60"
                 >
                   {enviandoRecuperacao ? 'Enviando…' : 'Esqueceu a senha?'}
                 </button>
@@ -225,7 +221,7 @@ const TelaLogin: React.FC = () => {
                   aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
                   aria-pressed={mostrarSenha}
                   title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-500 transition-colors duration-150 hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-marca-azul/30"
+                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-400 transition-colors duration-150 hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-marca-vermelho/30"
                 >
                   {mostrarSenha ? (
                     <EyeOff className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -245,7 +241,7 @@ const TelaLogin: React.FC = () => {
                 name="lembrar"
                 type="checkbox"
                 defaultChecked={emailLembrado !== '' || senhaLembrada !== ''}
-                className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-marca-vermelho focus:ring-[3px] focus:ring-marca-azul/25 focus:ring-offset-0"
+                className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-marca-vermelho focus:ring-[3px] focus:ring-marca-vermelho/25 focus:ring-offset-0"
               />
               Salvar meu acesso neste computador
             </label>
@@ -268,35 +264,35 @@ const TelaLogin: React.FC = () => {
               </div>
             )}
 
-            {/* Só a bomba, sem rótulo visível — pedido do dono em 19/08/2026.
-                O nome do botão vive no aria-label; o glifo branco veio de
-                ~/Downloads/bomba.webp, com o fundo vermelho removido para
-                assentar no vermelho do botão. */}
+            {/* Bomba + rótulo "Entrar" (26/08/2026): o botão só-bomba de 19/08
+                ficou sem nome visível. O glifo branco veio de
+                ~/Downloads/bomba.webp, com o fundo vermelho removido. */}
             <button
               type="submit"
               disabled={pendente}
-              aria-label={pendente ? 'Entrando…' : 'Entrar no sistema'}
               title="Entrar no sistema"
-              className="group mt-1 inline-flex h-12 w-full items-center justify-center rounded-lg bg-marca-vermelho px-4 shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.4)] transition-[background-color,transform] duration-150 ease-out hover:bg-marca-vermelho-escuro focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-marca-azul/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 active:scale-[0.99] disabled:cursor-progress disabled:opacity-70 disabled:active:scale-100"
+              className="group mt-1 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-lg bg-marca-vermelho px-4 text-[15px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.4)] transition-[background-color,transform] duration-150 ease-out hover:bg-marca-vermelho-escuro focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-marca-vermelho/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 active:scale-[0.99] disabled:cursor-progress disabled:opacity-60 disabled:active:scale-100"
             >
               {pendente ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden="true" />
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
               ) : (
                 <img
                   src="/bomba-login.png"
                   alt=""
                   width={78}
                   height={96}
-                  className="h-7 w-auto select-none transition-transform duration-150 group-hover:scale-110"
+                  className="h-[22px] w-auto select-none transition-transform duration-150 group-hover:scale-110"
                   draggable={false}
                 />
               )}
+              <span>{pendente ? 'Entrando...' : 'Entrar'}</span>
             </button>
           </form>
         </div>
 
-        <footer className="pt-6 text-center text-[12px] font-medium text-slate-500">
-          © {new Date().getFullYear()} Posto Providência
+        <footer className="flex flex-col items-center gap-1 pt-6 text-center text-[12px] text-slate-400">
+          <p className="italic">Jesus te ama</p>
+          <p className="font-medium">© {new Date().getFullYear()} Posto Providência</p>
         </footer>
       </main>
     </div>
