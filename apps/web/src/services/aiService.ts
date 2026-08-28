@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { saldoOperacionalSimplificado } from './calculos-saude-financeira';
 
 // Helper Types for direct usage
 export type Combustivel = { preco_venda: number };
@@ -61,7 +62,10 @@ export const aiService = {
 
         const totalVendas = fechamentos?.reduce((acc, curr) => acc + curr.total_vendas, 0) || 0;
         const totalDespesas = despesas?.reduce((acc, curr) => acc + curr.valor, 0) || 0;
-        const netProfit = totalVendas - totalDespesas; // Simplificado sem custo produto por enquanto
+        // Conta "Simplificado" em ./calculos-saude-financeira, exercitada pelo
+        // golden ao lado contra a canônica (onda 2.2): sem custo de produto,
+        // dá >10x o lucro real do mês.
+        const netProfit = saldoOperacionalSimplificado(totalVendas, totalDespesas);
 
         // Macro Insight: Profitability
         if (totalVendas > 0) {

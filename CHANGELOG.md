@@ -50,6 +50,11 @@
   bomba e o lucro canônico de julho. As divergências reais congeladas: interpretação (margem
   "sobre o custo" daria R$ 0,25/L a mais no exemplo), o teto arbitrário `≥100% → custo × 10`, e
   os insumos de produção herdarem o carimbo ponderado.
+- **Golden do "Saldo Operacional" dos insights de IA (2.2 sítio 6).** A conta `vendas − despesas`
+  saiu para `calculos-saude-financeira.ts` (MOVE) e o golden congela: em julho ela mostra
+  R$ 189.312,05 onde o lucro real é R$ 18.272,31 — mais de 10× —, e a diferença é exatamente o
+  custo de produto que ela ignora (R$ 171.039,74). É o número que sustenta o insight "Saúde
+  Financeira Estável".
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 
