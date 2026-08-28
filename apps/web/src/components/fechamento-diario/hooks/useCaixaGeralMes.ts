@@ -28,7 +28,7 @@ import {
 } from '../../../utils/fechamentoMeios';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { DadosCombustivel } from '../services/calculosResumo';
-import { conferido, meiosFromFechamentoRow } from '@posto/utils';
+import { conferido, emCentavos, meiosFromFechamentoRow } from '@posto/utils';
 
 interface RetornoCaixaGeralMes {
     /** Total de cada balde canônico no mês. Zerado enquanto carrega. */
@@ -138,10 +138,9 @@ export function useCaixaGeralMes(
             setResultado({
                 chave,
                 totais: totaisDasLinhas(linhas),
-                totalConferido:
-                    Math.round(
-                        linhas.reduce((acc, l) => acc + conferido(meiosFromFechamentoRow(l)), 0) * 100
-                    ) / 100,
+                totalConferido: emCentavos(
+                    linhas.reduce((acc, l) => acc + conferido(meiosFromFechamentoRow(l)), 0)
+                ),
                 diasComMovimento: new Set(
                     resSessoes.data
                         .map((l) => l.fechamento?.data)

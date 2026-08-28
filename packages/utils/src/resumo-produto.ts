@@ -36,7 +36,7 @@
  * @module @posto/utils/resumo-produto
  */
 
-import { lucroCombustivel, margemPercentual } from './lucro';
+import { emCentavos, lucroCombustivel, margemPercentual } from './lucro';
 
 /** Acumulado de um bico no mês, pronto para receber custo e despesa. */
 export interface EntradaBicoMes {
@@ -143,9 +143,6 @@ export interface ResumoProdutos {
      */
     readonly temDespesa: boolean;
 }
-
-/** Quantiza reais para centavos, evitando drift de float na soma. */
-const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
 
 /** Litros somados em mililitro inteiro — encerrante tem 3 casas exatas. */
 const somaLitros = (valores: readonly number[]): number =>

@@ -13,6 +13,7 @@
  *
  * @module @posto/utils/fechamento
  */
+import { emCentavos } from './lucro';
 
 /**
  * Meios de pagamento de uma sessão de frentista, normalizados em reais.
@@ -37,16 +38,6 @@ export interface MeiosPagamento {
 /** Coerção segura para número finito em reais (null/undefined/NaN → 0). */
 const num = (v: unknown): number =>
     typeof v === 'number' && Number.isFinite(v) ? v : 0;
-
-/**
- * Quantiza um valor em reais para centavos inteiros e volta.
- *
- * @remarks
- * Skill fechamento-posto-providencia: dinheiro deve ser operado como inteiro
- * (centavos) para não acumular erro de ponto flutuante. As funções agregadas
- * desescalam só no retorno, garantindo precisão de centavo.
- */
-const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
 
 /**
  * Total de cartão de uma sessão (ADITIVO), em precisão de centavos.

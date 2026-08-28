@@ -22,6 +22,7 @@
  *
  * @module @posto/utils/resumo-compra
  */
+import { emCentavos } from './lucro';
 
 /** Compra de um produto no mês, como sai do banco ou da planilha. */
 export interface EntradaCompraProduto {
@@ -57,9 +58,6 @@ export interface ResumoCompra {
 /** Litros somados em mililitro inteiro, para não acumular ruído de float. */
 const somaLitros = (valores: readonly number[]): number =>
     valores.reduce((acc, v) => acc + Math.round(v * 1000), 0) / 1000;
-
-/** Quantiza reais para centavos. */
-const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
 
 function montarLinha(
     produto: string,

@@ -16,8 +16,15 @@
  * @module @posto/utils/lucro
  */
 
-/** Quantiza reais para precisão de centavos (evita drift de float). */
-const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
+/**
+ * Quantiza reais para precisão de centavos (evita drift de float).
+ *
+ * @remarks É a fronteira de saída de toda fórmula de dinheiro do pacote: o
+ *          cálculo corre em reais-float e o resultado final passa por aqui.
+ *          Export único — não redeclare cópia privada em módulo novo
+ *          (`useCaixaGeralMes` chegou a reimplementá-la à mão).
+ */
+export const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
 
 /**
  * Despesa operacional por litro — rateio mensal (planilha: H22 = H19/F11).

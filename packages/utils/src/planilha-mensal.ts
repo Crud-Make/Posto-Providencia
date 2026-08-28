@@ -30,7 +30,7 @@
  * @module @posto/utils/planilha-mensal
  */
 
-import { despesaOperacionalPorLitro } from './lucro';
+import { despesaOperacionalPorLitro, emCentavos } from './lucro';
 import { resumoPorProduto, type EntradaBicoMes, type ResumoProdutos } from './resumo-produto';
 import { resumoCompra, type ResumoCompra } from './resumo-compra';
 import { resumoEstoque, type ResumoEstoque } from './resumo-estoque';
@@ -168,9 +168,6 @@ export interface PlanilhaMensal {
      */
     readonly produtosComEstoqueImpossivel: readonly string[];
 }
-
-/** Quantiza reais para centavos, evitando drift de float na soma. */
-const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
 
 /** Litros somados em mililitro inteiro — encerrante tem 3 casas exatas. */
 const somaLitros = (valores: readonly number[]): number =>

@@ -17,6 +17,7 @@
  *
  * @module @posto/utils/serie-diaria
  */
+import { emCentavos } from './lucro';
 
 /** Litros vendidos num dia do mês. */
 export interface VendaDoDia {
@@ -82,9 +83,6 @@ export interface SerieEstoque {
 /** Litros somados em mililitro inteiro, para não acumular ruído de float. */
 const somaLitros = (valores: readonly number[]): number =>
     valores.reduce((acc, v) => acc + Math.round(v * 1000), 0) / 1000;
-
-/** Quantiza reais para centavos. */
-const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
 
 /**
  * Venda dia a dia, com o acumulado do mês.

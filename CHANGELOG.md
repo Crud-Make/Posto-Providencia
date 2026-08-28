@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🧪 Saneamento pré-release — onda 2 (rede de teste das fórmulas)
+
+- **`emCentavos` virou export público de `@posto/utils`.** Cinco módulos do pacote carregavam a
+  mesma cópia privada (`lucro`, `fechamento`, `planilha-mensal`, `resumo-produto`, `resumo-compra`,
+  `serie-diaria`) e `useCaixaGeralMes` reimplementava a conta à mão. Agora todos importam a única
+  definição de `lucro.ts`. A de `encerrante-mensal.ts` ficou: ela quantiza para **centavos
+  inteiros** (`×100` sem `÷100`), é outra função. Nenhum número muda — mesma conta, um dono só.
+
 ### 🧹 Saneamento pré-release — trilha estrutural
 
 - **Os 3233 golden masters passaram a ser compilados.** O `exclude` do `tsconfig.json` tirava
