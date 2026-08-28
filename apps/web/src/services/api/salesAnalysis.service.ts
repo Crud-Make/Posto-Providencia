@@ -6,6 +6,7 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { despesaPorLitroVendido, linhaLucroProduto } from './calculos-analise-vendas';
 
 export interface SalesAnalysisData {
   products: {
@@ -132,7 +133,7 @@ export const salesAnalysisService = {
 
       // 3. Calculate Expense Per Liter
       // Se não houver vendas, expensePerLiter seria Infinito, então tratamos como 0
-      const despesaPorLitro = totalSalesVolume > 0 ? totalDespesas / totalSalesVolume : 0;
+      const despesaPorLitro = despesaPorLitroVendido(totalDespesas, totalSalesVolume);
 
       const porCombustivel: Record<string, {
         combustivel: NonNullable<LeituraComBico['bico']>['combustivel'];
@@ -177,24 +178,16 @@ export const salesAnalysisService = {
       let totalProfit = 0;
 
       const products = Object.values(porCombustivel).map(item => {
-        // EXCEL LOGIC IMPLEMENTATION:
-        // 1. Preço Praticado (Actual Price)
-        const precoPraticado = item.litros > 0 ? item.valor / item.litros : (item.combustivel.preco_venda || 0);
-
-        // 2. Valor para Venda Sugerido (Suggested Price) = Custo Médio + Despesa/Litro
-        const suggestedPrice = item.custoMedio + despesaPorLitro;
-
-        // 3. Lucro por Litro = Preço Praticado - Valor Sugerido
-        const profitPerLiter = precoPraticado - suggestedPrice;
-
-        // 4. Lucro Total = Lucro por Litro * Volume
-        const totalLucroProduto = profitPerLiter * item.litros;
-
-        // 5. Margem = Lucro por Litro / Preço Praticado
-        const margin = precoPraticado > 0 ? (profitPerLiter / precoPraticado) * 100 : 0;
-
-        // Custo Total Visualização (Custo Médio * Volume)
-        const cmv = item.litros * item.custoMedio;
+        // "EXCEL LOGIC" legada — fórmula em ./calculos-analise-vendas, exercitada
+        // pelo golden ao lado contra a canônica de @posto/utils (onda 2.2).
+        const { precoPraticado, suggestedPrice, lucroTotal: totalLucroProduto, margin, cmv } =
+          linhaLucroProduto({
+            litros: item.litros,
+            valor: item.valor,
+            custoMedio: item.custoMedio,
+            despesaPorLitro,
+            precoVendaCadastro: item.combustivel.preco_venda || 0,
+          });
 
         totalVolume += item.litros;
         totalRevenue += item.valor;

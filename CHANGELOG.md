@@ -26,6 +26,12 @@
   despesa pelos litros DIGITADOS (R$ 0,5808/L em julho) onde a canônica zera — e compra já
   salva no mês não entra nem no fallback. O `test:golden` passou a varrer também
   `apps/web/src/**/*.golden.spec.ts` (via `find`; `**` não expande no shell do script).
+- **Golden da análise de vendas (2.2 sítio 2).** O trio "EXCEL LOGIC" saiu de
+  `salesAnalysis.service.ts` para o módulo puro `calculos-analise-vendas.ts` (MOVE verbatim) e o
+  golden prova: a ESTRUTURA da conta é a canônica (empata com o custo do mês, mesma margem
+  lucro÷receita); a divergência real é a FONTE do custo — o carimbo `Estoque.custo_medio`
+  ponderado desloca o lucro do mês nos mesmos valores do `IMPACTO_MENSAL` (até R$ 2.582 em
+  abril), agora medidos através da função de produção da tela.
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 
