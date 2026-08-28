@@ -2,6 +2,17 @@
 
 ## [Não Lançado]
 
+### 🧹 Código morto do aggregator (saneamento 1.1)
+
+- Apagados os 3 métodos sem consumidor de produção do `aggregator.service.ts`:
+  `fetchClosingData`, `fetchAttendantsData` e `fetchInventoryData` (~460 linhas), junto com
+  as interfaces e imports que só eles usavam. Só o barril `services/api/index.ts` os
+  reexportava; nenhuma tela chamava.
+- O alias morto `legacyService` (e a chave `legacy` do objeto `api`) saiu do barril — zero
+  importadores.
+- `aggregator.attendants.test.ts` foi junto: testava exclusivamente o método apagado
+  (vitest 362 → 359, os 3 do arquivo).
+
 ### 🏷️ A marca do posto no topo da barra lateral
 
 - O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),
