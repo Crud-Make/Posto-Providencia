@@ -102,7 +102,15 @@ Separe **View** de **Lógica**. Componente que calcula dinheiro está errado por
 - **Data Mapper na fronteira:** a UI fala camelCase, o banco fala snake_case. A tradução acontece em
   `entities`/`api` **uma vez**, não espalhada. Exceção consciente: fixtures, goldens e artefatos de ETL
   em `docs/data/` preservam o snake_case original — a fonte auditável manda.
-- **Dinheiro em centavos (inteiro).** Float só na formatação para exibição.
+- **Dinheiro em reais (float), quantizado por `emCentavos` na fronteira de saída de toda fórmula.**
+  `emCentavos` é export de `@posto/utils`. Centavo inteiro só no parse de entrada do PWA
+  (`apps/pwa-frentista/src/App.tsx`). O proibido é float cru, sem quantização.
+  **Corrigido em 28/08/2026:** a regra dizia "centavos (inteiro)" e descrevia um repo que nunca
+  existiu — a varredura mediu que `packages/utils` inteiro sempre trabalhou em reais-float com
+  `Math.round(reais * 100) / 100`. Converter os ~40 arquivos de dinheiro para inteiro tocaria
+  dinheiro em toda parte para resolver um drift que o `emCentavos` já resolve. Regra que descreve
+  um código imaginário é pior que regra ausente: o checklist perguntava "dinheiro em centavos?" e
+  a resposta honesta era "não, e nunca foi".
 - Erro de Supabase: `instanceof` sobre `PostgrestError`, não string matching genérico.
 
 > `strict`/`verbatimModuleSyntax` ainda desligados, `any` legado, e os 9 aliases apagados: ver anexo.
@@ -461,7 +469,7 @@ git commit -m "feat: descrição (#12)"
 - [ ] Sem `any`, sem `enum`, sem import profundo entre fatias?
 - [ ] Regra de dependência do FSD respeitada?
 - [ ] Cálculo de domínio fora de componente e sem duplicar `packages/utils`?
-- [ ] Dinheiro em centavos?
+- [ ] Dinheiro quantizado por `emCentavos` na saída da fórmula?
 - [ ] RLS ativa na tabela nova / segredo fora do git?
 - [ ] Golden master rodando para qualquer fórmula tocada?
 - [ ] `bun run type-check` limpo?
