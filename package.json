@@ -16,7 +16,7 @@
     "type-check": "tsc --noEmit",
     "test": "TZ=America/Sao_Paulo vitest run",
     "test:watch": "TZ=America/Sao_Paulo vitest",
-    "test:golden": "TZ=America/Sao_Paulo bun test packages/utils/src/*.golden.spec.ts"
+    "test:golden": "TZ=America/Sao_Paulo bun test packages/utils/src/*.golden.spec.ts $(find apps/web/src -name '*.golden.spec.ts')"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.6",

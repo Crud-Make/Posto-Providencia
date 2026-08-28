@@ -18,6 +18,14 @@
   anterior com denominador zero; a produção aceita estoque negativo (que produz custo MAIOR que
   qualquer preço pago) e cai no custo da compra atual. O dado real de 2026 não exercita as bordas;
   elas estão congeladas em `custo-ponderado.test.ts`.
+- **Primeiro golden de divergência da onda 2.2: o trio inline do registro de compras.** As
+  funções puras de `useCalculosRegistro.ts` foram exportadas (sem mudar corpo) e
+  `useCalculosRegistro.golden.spec.ts` roda a conta REAL do hook lado a lado com a canônica nos
+  7 meses: empatam a menos da quantização. A divergência é o fallback
+  `litrosBase = vendidos || comprados`: digitando compra num mês sem venda o hook rateia a
+  despesa pelos litros DIGITADOS (R$ 0,5808/L em julho) onde a canônica zera — e compra já
+  salva no mês não entra nem no fallback. O `test:golden` passou a varrer também
+  `apps/web/src/**/*.golden.spec.ts` (via `find`; `**` não expande no shell do script).
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 

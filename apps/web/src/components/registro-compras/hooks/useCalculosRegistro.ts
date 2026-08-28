@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CombustivelHibrido } from './useCombustiveisHibridos';
+import type { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
 
 /**
@@ -41,9 +41,13 @@ export interface CalculosRegistro {
 // de módulo, o linter não exige (nem deveria) que entrem no array de deps —
 // elas não capturam nenhum estado/prop do componente, só recebem tudo por
 // parâmetro. Nenhuma fórmula foi alterada, apenas o escopo onde vivem.
+//
+// [2026-08-28] Exportadas (sem mudar corpo) para o golden ao lado
+// (`useCalculosRegistro.golden.spec.ts`) exercitar a conta REAL contra a
+// canônica de @posto/utils — §7: divergência se documenta em teste.
 
 /** Calcula os litros vendidos com base em leitura inicial e fechamento */
-function calcLitrosVendidosPura(c: CombustivelHibrido): number {
+export function calcLitrosVendidosPura(c: CombustivelHibrido): number {
     const inicial = parseBRFloat(c.inicial);
     const fechamento = parseBRFloat(c.fechamento);
     if (fechamento <= inicial) return 0;
@@ -59,7 +63,7 @@ function calcLitrosVendidosPura(c: CombustivelHibrido): number {
  *          em 8–11%. Sem leitura no mês, cai para litros × preço, que aí é
  *          tudo do mesmo dia.
  */
-function calcValorPorBicoPura(c: CombustivelHibrido): number {
+export function calcValorPorBicoPura(c: CombustivelHibrido): number {
     if (c.venda_mes_rs > 0) return c.venda_mes_rs;
     const litros = calcLitrosVendidosPura(c);
     const preco = parseBRFloat(c.preco_venda_atual);
@@ -75,14 +79,14 @@ function calcValorPorBicoPura(c: CombustivelHibrido): number {
  *          custo desconhecido aparece como desconhecido, nunca como o
  *          `preco_custo` do cadastro (um preço só, o de hoje).
  */
-function calcMediaLtRsPura(c: CombustivelHibrido): number {
+export function calcMediaLtRsPura(c: CombustivelHibrido): number {
     const litros = c.compra_mes_lt + parseBRFloat(c.compra_lt);
     const reais = c.compra_mes_rs + parseBRFloat(c.compra_rs);
     return litros > 0 ? reais / litros : 0;
 }
 
 /** Calcula a despesa operacional rateada por litro */
-function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+export function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const despesasTotal = despesaDoMes;
     if (despesasTotal === 0) return 0;
 
@@ -95,7 +99,7 @@ function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesaDoMe
 }
 
 /** Calcula o valor de custo total (produto + despesa) para venda */
-function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+export function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const custoMedio = calcMediaLtRsPura(c);
     const despesaLt = calcDespesaPorLitroPura(combustiveis, despesaDoMes);
     if (custoMedio === 0) return 0;
@@ -103,7 +107,7 @@ function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: Combustivel
 }
 
 /** Calcula o lucro por litro (Preço Venda - (Custo + Despesa)) */
-function calcLucroLtPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+export function calcLucroLtPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const precoVenda = parseBRFloat(c.preco_venda_atual);
     const custoVenda = calcValorParaVendaPura(c, combustiveis, despesaDoMes);
     if (custoVenda === 0) return 0;
@@ -111,7 +115,7 @@ function calcLucroLtPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido
 }
 
 /** Calcula o lucro total do bico/combustível */
-function calcLucroBicoPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+export function calcLucroBicoPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const litros = calcLitrosVendidosPura(c);
     const lucroLt = calcLucroLtPura(c, combustiveis, despesaDoMes);
     return litros * lucroLt;
