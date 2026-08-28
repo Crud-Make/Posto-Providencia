@@ -18,6 +18,11 @@
   margem canônica fecha nos dois sentidos) e os valores congelados na onda 2 não mudaram.
   O teto de UI `margem ≥ 100% → custo × 10` foi PRESERVADO, documentado como guarda de tela
   contra a divergência da curva (margem 100% sobre o preço não tem preço finito).
+- **A última conta de lucro à mão do aggregator delega à canônica (plano 3.2, grupo A).**
+  `fetchProfitabilityData` fazia `receitaBruta − volume × custoTotalL` inline — a MESMA conta de
+  `lucroCombustivel`, no arquivo que já importa a função. Agora delega (com quantização em
+  centavos na saída). A fonte do custo segue o carimbo `Estoque.custo_medio` — trocá-la é a onda
+  3.9, decisão do dono. Vitest do aggregator verde sem mudança (373 pass).
 
 ### 🧪 Saneamento pré-release — onda 2 (rede de teste das fórmulas)
 

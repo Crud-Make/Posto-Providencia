@@ -452,7 +452,17 @@ export const aggregatorService = {
         const custoMedio = e.custo_medio || 0;
         const custoTotalL = custoMedio + despOperacional;
 
-        const lucroTotal = receitaBruta - (volumeVendido * custoTotalL);
+        // [onda 3, grupo A] Era `receitaBruta − volume × custoTotalL` inline —
+        // a MESMA conta canônica, à mão, no arquivo que já importa a função.
+        // Agora delega (e quantiza em centavos na saída, como o resto do lucro).
+        // O custo segue vindo do carimbo `Estoque.custo_medio` — a fonte é a
+        // decisão da onda 3.9 (dono), não deste commit.
+        const lucroTotal = lucroCombustivel({
+          litros: volumeVendido,
+          precoVenda: volumeVendido > 0 ? receitaBruta / volumeVendido : 0,
+          custoMedio,
+          despesaOperacionalLitro: despOperacional,
+        });
         const margemLiquidaL = volumeVendido > 0 ? lucroTotal / volumeVendido : 0;
         const margemBrutaL = (e.combustivel?.preco_venda || 0) - custoMedio;
 
