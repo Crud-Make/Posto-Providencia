@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePosto } from '../../contexts/usePosto';
 import { fechamentoMensalService, FechamentoMensalResumo, EncerranteMensalConsolidado } from '../../services/api/fechamentoMensal.service';
 import { leituraService } from '../../services/api';
-import { TrendingUp, DollarSign, AlertCircle, RefreshCw, FileText, Activity, Target, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { DollarSign, AlertCircle, RefreshCw, FileText, Activity, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Calendario, modoMes } from '@shared/ui/calendario';
 import { usePeriodo } from '../../contexts/usePeriodo';
 import { useNavigate } from 'react-router-dom';
@@ -69,21 +69,10 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
         }), { volume: 0, faturamento: 0, lucro: 0, taxas: 0, gas: 0, adt: 0, eta: 0, die: 0 });
     }, [dados]);
 
-    // Projections
-    const daysInMonth = useMemo(() => {
-        const [y, m] = selectedMonth.split('-').map(Number);
-        return new Date(y, m, 0).getDate();
-    }, [selectedMonth]);
-
-    const daysPassed = dados.length || 1;
-
     /** "Dia 01 a 24" — até onde o mês está realmente fechado. */
     const periodoFechado = encerrantes.ultimoDiaFechado === null
         ? '(sem dia fechado)'
         : `(dia 01 a ${String(encerrantes.ultimoDiaFechado).padStart(2, '0')})`;
-
-    // Simple projection: (Total / DaysPassed) * DaysInMonth
-    const projectedProfit = (totalizers.lucro / daysPassed) * daysInMonth;
 
     // Goals (Hardcoded for now, could be DB driven)
     const metaLucro = 60000;
@@ -251,7 +240,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
 
                     {/* Top Stats Cards with Glow Effects */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Lucro */}
                         <div className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border border-slate-700/50 rounded-2xl p-6 overflow-hidden hover:border-emerald-500/30 transition-all duration-500 shadow-lg hover:shadow-emerald-900/10">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-opacity opacity-50 group-hover:opacity-100"></div>
@@ -326,29 +315,6 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                             </div>
                         </div>
 
-                        {/* Projeção Card Premium */}
-                        <div className="relative bg-gradient-to-br from-indigo-900 to-blue-900 border border-indigo-500/30 rounded-2xl p-6 overflow-hidden shadow-xl shadow-indigo-900/20">
-                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-                            <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-white/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
-
-                            <div className="relative z-10">
-                                <div className="flex items-center gap-2 mb-4 text-indigo-200">
-                                    <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-400/30">
-                                        <TrendingUp size={16} />
-                                    </div>
-                                    <span className="font-bold text-xs uppercase tracking-wider">Projeção Mensal</span>
-                                </div>
-
-                                <h3 className="text-4xl font-black text-white tracking-tight mb-2">
-                                    {formatCurrency(projectedProfit)}
-                                </h3>
-
-                                <div className="flex items-center gap-2 text-indigo-200/70 text-xs font-medium mt-4 p-2 bg-indigo-950/30 rounded-lg border border-indigo-500/20 backdrop-blur-sm">
-                                    <Target size={14} />
-                                    <span>Baseado em {daysPassed} dias de operação</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Charts Section */}

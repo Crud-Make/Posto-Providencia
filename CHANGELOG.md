@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 📉 Card "Projeção Mensal" saiu do fechamento mensal (saneamento 0.5)
+
+- A projeção `(lucro ÷ dias passados) × dias do mês` era calculada no corpo do
+  componente (§3 proíbe componente que calcula dinheiro) sobre `lucro_liquido` — coluna
+  carimbada que nenhuma escrita do app grava; hoje o card projetava R$ 0,00 com pompa.
+  Projeção honesta exige o lucro do mês vindo de `packages/utils` (onda 4.4 do
+  saneamento); até lá, número que projeta um zero carimbado não aparece.
+
 ### 💸 O fallback de R$ 0,45/L morreu (saneamento 0.4)
 
 - Quando o mês não tinha despesa lançada, o rateio real (despesas ÷ litros = 0) era
