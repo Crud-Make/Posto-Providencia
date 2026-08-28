@@ -9,6 +9,15 @@
   `serie-diaria`) e `useCaixaGeralMes` reimplementava a conta à mão. Agora todos importam a única
   definição de `lucro.ts`. A de `encerrante-mensal.ts` ficou: ela quantiza para **centavos
   inteiros** (`×100` sem `÷100`), é outra função. Nenhum número muda — mesma conta, um dono só.
+- **O golden do encadeamento de estoque parou de testar uma cópia (2.1).** A média ponderada que
+  `compra.service.ts` grava em `Estoque.custo_medio` subiu para `@posto/utils/custo-ponderado`
+  (MOVE, mesma conta) e o serviço passou a chamá-la — agora `estoque-encadeamento.golden.spec.ts`
+  exercita o código de produção, e mexer no custo do caminho de escrita quebra o golden. Os 3233
+  não mudaram de valor na migração. **Achado da migração:** a réplica antiga e a produção nunca
+  foram a mesma conta nas bordas — a réplica fazia `Math.max(estoque, 0)` e caía no custo
+  anterior com denominador zero; a produção aceita estoque negativo (que produz custo MAIOR que
+  qualquer preço pago) e cai no custo da compra atual. O dado real de 2026 não exercita as bordas;
+  elas estão congeladas em `custo-ponderado.test.ts`.
 
 ### 🧹 Saneamento pré-release — trilha estrutural
 

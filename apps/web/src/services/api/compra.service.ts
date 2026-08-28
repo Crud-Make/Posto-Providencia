@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import type { Compra as CompraRow, Combustivel, Fornecedor, InsertTables } from '../../types/database/index';
 import { estoqueService } from './estoque.service';
+import { custoMedioPonderado } from '@posto/utils';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -109,18 +110,20 @@ export const compraService = {
         if (estoqueResponse.success && estoqueResponse.data) {
           const estoque = estoqueResponse.data;
           const estoqueAtual = estoque.quantidade_atual;
-          const custoMedioAtual = estoque.custo_medio || 0;
           const novaQuantidade = compra.quantidade_litros;
-          const novoCusto = custo_por_litro;
 
-          // Calcula novo custo médio ponderado
-          const totalValorAntigo = estoqueAtual * custoMedioAtual;
-          const totalValorNovo = totalValorAntigo + (novaQuantidade * novoCusto);
-          const quantidadeTotal = estoqueAtual + novaQuantidade;
-          const novoCustoMedio = quantidadeTotal > 0 ? totalValorNovo / quantidadeTotal : novoCusto;
+          // Média ponderada LEGADA (fórmula em @posto/utils, exercitada pelo
+          // golden estoque-encadeamento) — diverge do custo canônico da
+          // planilha; a troca é a onda 3.9 do saneamento, decisão do dono.
+          const novoCustoMedio = custoMedioPonderado({
+            estoqueAnterior: estoqueAtual,
+            custoMedioAnterior: estoque.custo_medio || 0,
+            litrosCompra: novaQuantidade,
+            custoLitroCompra: custo_por_litro,
+          });
 
           await estoqueService.update(estoque.id, {
-            quantidade_atual: quantidadeTotal,
+            quantidade_atual: estoqueAtual + novaQuantidade,
             custo_medio: novoCustoMedio,
           });
         }

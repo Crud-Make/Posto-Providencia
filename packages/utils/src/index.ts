@@ -7,6 +7,7 @@ export * from './formatters';
 export * from './data-local';
 export * from './fechamento';
 export * from './lucro';
+export * from './custo-ponderado';
 export * from './despesa';
 export * from './despesa-fixa';
 export * from './encerrante-mensal';
