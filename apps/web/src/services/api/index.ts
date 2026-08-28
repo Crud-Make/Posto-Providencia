@@ -42,15 +42,11 @@ export { notaFrentistaService } from './notaFrentista.service';
 export { tanqueService } from './tanque.service';
 export { resetService } from './reset.service';
 export { aggregatorService } from './aggregator.service';
-export { aggregatorService as legacyService } from './aggregator.service';
 
 // Exporta funções de compatibilidade (legacy) para uso direto
 import { aggregatorService } from './aggregator.service';
 export const fetchSettingsData = aggregatorService.fetchSettingsData.bind(aggregatorService);
 export const fetchDashboardData = aggregatorService.fetchDashboardData.bind(aggregatorService);
-export const fetchClosingData = aggregatorService.fetchClosingData.bind(aggregatorService);
-export const fetchAttendantsData = aggregatorService.fetchAttendantsData.bind(aggregatorService);
-export const fetchInventoryData = aggregatorService.fetchInventoryData.bind(aggregatorService);
 export const fetchProfitabilityData = aggregatorService.fetchProfitabilityData.bind(aggregatorService);
 
 // Importa para montar objeto api
@@ -114,7 +110,6 @@ export const api = {
   cliente: clienteService,
   notaFrentista: notaFrentistaService,
   reset: resetService,
-  legacy: aggregatorService,
   aggregator: aggregatorService,
 };
 

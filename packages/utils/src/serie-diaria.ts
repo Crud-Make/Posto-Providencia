@@ -121,6 +121,58 @@ export function serieVendaDiaria(
     };
 }
 
+/** Litros vendidos num mês (`mes` em ISO `aaaa-mm`). */
+export interface VendaDoMes {
+    readonly mes: string;
+    readonly litros: number;
+}
+
+/** Um ponto da série mensal de venda. */
+export interface PontoVendaMensal {
+    /** Mês em ISO `aaaa-mm`. */
+    readonly mes: string;
+    readonly litros: number;
+}
+
+/**
+ * Volume vendido mês a mês, numa janela fixa que termina em `mesFinal`.
+ *
+ * @param vendas - Litros por mês (`aaaa-mm`). Vários registros do mesmo mês são somados.
+ * @param mesFinal - Último mês da janela, ISO `aaaa-mm`.
+ * @param quantidadeMeses - Tamanho da janela (ex.: 6 para "últimos 6 meses").
+ *
+ * @remarks
+ * Substitui o preenchimento por `Math.random()` que o gráfico de evolução usava
+ * para os meses sem busca: aqui **toda barra é um mês que existiu** — mês sem
+ * venda lançada aparece como 0, nunca como número sorteado. Mesma razão de ser
+ * de {@link serieVendaDiaria}. Aritmética de mês é feita sobre a string ISO,
+ * nunca sobre `Date`: o banco grava em UTC e converter escorrega um dia.
+ * Registro fora da janela é descartado, como em `agruparPorDia`.
+ */
+export function serieVendaMensal(
+    vendas: readonly VendaDoMes[],
+    mesFinal: string,
+    quantidadeMeses: number
+): readonly PontoVendaMensal[] {
+    const [anoFinal, mesFinalNum] = mesFinal.split('-').map(Number);
+    const indiceFinal = anoFinal * 12 + (mesFinalNum - 1);
+
+    const porMes = new Map<string, number>();
+    for (const v of vendas) {
+        porMes.set(v.mes, somaLitros([porMes.get(v.mes) ?? 0, v.litros]));
+    }
+
+    const pontos: PontoVendaMensal[] = [];
+    for (let i = quantidadeMeses - 1; i >= 0; i--) {
+        const indice = indiceFinal - i;
+        const ano = Math.floor(indice / 12);
+        const mesNum = (indice % 12) + 1;
+        const mes = `${ano}-${String(mesNum).padStart(2, '0')}`;
+        pontos.push({ mes, litros: porMes.get(mes) ?? 0 });
+    }
+    return pontos;
+}
+
 /**
  * Entregas do mês, uma linha por dia em que chegou combustível.
  *

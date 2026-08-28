@@ -26,6 +26,62 @@
   `type-check` e quebrava no build**. Registrados no Vite antes do `@` genérico, porque o
   resolvedor casa por prefixo seguido de `/`. O `loadEnv` declarado e nunca usado saiu junto.
 
+### 📉 Card "Projeção Mensal" saiu do fechamento mensal (saneamento 0.5)
+
+- A projeção `(lucro ÷ dias passados) × dias do mês` era calculada no corpo do
+  componente (§3 proíbe componente que calcula dinheiro) sobre `lucro_liquido` — coluna
+  carimbada que nenhuma escrita do app grava; hoje o card projetava R$ 0,00 com pompa.
+  Projeção honesta exige o lucro do mês vindo de `packages/utils` (onda 4.4 do
+  saneamento); até lá, número que projeta um zero carimbado não aparece.
+
+### 💸 O fallback de R$ 0,45/L morreu (saneamento 0.4)
+
+- Quando o mês não tinha despesa lançada, o rateio real (despesas ÷ litros = 0) era
+  substituído em silêncio pela config `despesa_operacional_litro` — semeada com 0,45,
+  um número que não vem de lugar nenhum. Com o banco em replay, "mês sem despesa" era o
+  estado normal: todo dashboard estava calculando lucro com custo inventado. Removido dos
+  dois sítios (`despesaOperacionalMensal` e `fetchProfitabilityData`); mês sem despesa
+  lançada agora rateia 0, que é a soma real dos lançamentos (efeito mês-parcial do
+  replay, documentado). Teste novo prova que a config não é mais consultada.
+- Pendência anotada: a UI dizer explicitamente "sem despesa lançada" exige tocar telas
+  da outra trilha do saneamento; fica para depois da convergência.
+
+### 🏆 Ranking de frentistas mostra vendas reais, não "Lucro Est." rateado (saneamento 0.3)
+
+- O card "Performance Frentistas" do dashboard exibia por frentista um lucro estimado
+  calculado como `vendas × margem média global` — o total fechava, mas cada linha era
+  ficção (mesma margem para quem vendeu diesel e gasolina). Lucro por frentista exige
+  venda por produto por frentista, que o modelo de dados não tem. O ranking agora mostra
+  "Vendas do dia" (o conferido canônico, dado real); a ordem do pódio não muda, porque
+  ordenar por `vendas × constante` já era ordenar por vendas.
+
+### 🎲 Gráfico de evolução para de sortear o passado (saneamento 0.2)
+
+- Os 5 meses anteriores do gráfico "Evolução de Vendas" eram preenchidos com
+  `Math.random()` sobre o volume do mês atual — o gráfico mudava sozinho a cada render.
+  Agora a janela de 6 meses inteira vem da `Leitura` real, numa busca só, agregada pela
+  nova `serieVendaMensal` de `@posto/utils` (pura, testada, aritmética de mês sobre a
+  string ISO para não escorregar dia em UTC). Mês sem venda lançada aparece como 0.
+
+### 🚫 Fim do "Lucro Total" de 18% inventado (saneamento 0.1)
+
+- O card "Lucro Total" da conciliação de frentistas mostrava `vendas × 0,18` — margem
+  fixa que não vem de lugar nenhum (§6 proíbe valor hardcoded em cálculo de dinheiro).
+  A tela só tem meios de pagamento por sessão; sem litros, custo médio e despesa do mês
+  não há como calcular lucro de verdade ali. O card saiu; os três restantes
+  (Vendas Totais, Total em Dinheiro, Melhor Vendedor) são todos dados reais.
+
+### 🧹 Código morto do aggregator (saneamento 1.1)
+
+- Apagados os 3 métodos sem consumidor de produção do `aggregator.service.ts`:
+  `fetchClosingData`, `fetchAttendantsData` e `fetchInventoryData` (~460 linhas), junto com
+  as interfaces e imports que só eles usavam. Só o barril `services/api/index.ts` os
+  reexportava; nenhuma tela chamava.
+- O alias morto `legacyService` (e a chave `legacy` do objeto `api`) saiu do barril — zero
+  importadores.
+- `aggregator.attendants.test.ts` foi junto: testava exclusivamente o método apagado
+  (vitest 362 → 359, os 3 do arquivo).
+
 ### 🏷️ A marca do posto no topo da barra lateral
 
 - O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),
