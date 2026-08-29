@@ -149,13 +149,16 @@ for (const mes of MESES) {
     });
 }
 
-// ─── 2. A divergência real: o fallback `litrosBase = vendidos || comprados` ─────
+// ─── 2. [onda 3, grupo B] O fallback morreu: mês sem venda rateia 0 ─────────────
 
-test('mês com compra e SEM venda: o hook inventa R$ 0,5808/L de despesa; a canônica zera', () => {
-    // Julho com as vendas zeradas e a compra do mês sendo DIGITADA: 32.000 L
-    // nos campos de entrada, R$ 18.585,76 de despesa. Detalhe medido aqui: o
-    // fallback só conta `compra_lt` digitado — compra já salva no mês
-    // (`compra_mes_lt`) NÃO entra no rateio, nem no próprio fallback.
+test('mês com compra e SEM venda: o rateio agora é 0, como a canônica — antes inventava R$ 0,5808/L', () => {
+    // ANTES (congelado na onda 2, 28/08/2026): com julho sem vendas e a compra
+    // do mês DIGITADA (32.000 L, R$ 18.585,76 de despesa), o fallback
+    // `litrosBase = vendidos || comprados` rateava a despesa pelos litros
+    // COMPRADOS e devolvia R$ 0,580805/L — e só enxergava `compra_lt` digitado,
+    // nunca a compra já salva. O lucro/L de cada produto saía R$ 0,5808 menor.
+    // DEPOIS: o hook delega a `despesaOperacionalPorLitro` (despesa ÷ litros
+    // VENDIDOS); mês sem venda rateia 0 em toda a tela.
     const linhas = produtosDoMes(7);
     const combs = linhas.map((l) => hibrido(l, true, true));
     const despesa = despesaLancada(7);
@@ -163,19 +166,19 @@ test('mês com compra e SEM venda: o hook inventa R$ 0,5808/L de despesa; a can�
     const doHook = calcDespesaPorLitroPura(combs, despesa);
     const canonico = despesaOperacionalPorLitro(despesa, 0);
 
-    // Congelado em 28/08/2026: despesa ÷ litros COMPRADOS, não vendidos.
-    expect(doHook).toBeCloseTo(0.580805, 4);
     expect(canonico).toBe(0);
+    expect(doHook).toBe(canonico);
 
-    // O lucro/L de cada produto sai R$ 0,5808 menor do que a canônica diria —
-    // num mês em que não houve venda nenhuma para ratear despesa.
+    // Sem despesa inventada, o lucro/L é exatamente preço − custo do mês.
     for (const c of combs) {
         const custoMedio = calcMediaLtRsPura(c);
         const preco = parseBRFloat(c.preco_venda_atual);
-        const lucroLtHook = calcLucroLtPura(c, combs, despesa);
-        const lucroLtCanonico = preco - custoMedio; // despesa canônica = 0
-        expect(lucroLtCanonico - lucroLtHook).toBeCloseTo(doHook, 6);
+        expect(calcLucroLtPura(c, combs, despesa)).toBeCloseTo(preco - custoMedio, 9);
     }
+
+    // A régua do que mudou na tela, em reais: o fallback antigo daria isto.
+    const litrosDigitados = combs.reduce((s, c) => s + parseBRFloat(c.compra_lt), 0);
+    expect(despesa / litrosDigitados).toBeCloseTo(0.580805, 4);
 });
 
 // ─── 3. Sem compra no mês: 0 do hook × null da canônica ─────────────────────────

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
-import { custoMedioCompra, lucroCombustivel, margemPercentual } from '@posto/utils';
+import { custoMedioCompra, despesaOperacionalPorLitro, lucroCombustivel, margemPercentual } from '@posto/utils';
 
 /**
  * Interface que define os resultados dos cálculos de registro de compras e estoque.
@@ -51,8 +51,8 @@ export interface CalculosRegistro {
 // @posto/utils/lucro (`custoMedioCompra`, `lucroCombustivel`,
 // `margemPercentual`) — eliminação de duplicata provada idêntica pelo golden
 // nos 7 meses reais. O que resta inline é adaptação de tela (parse BR,
-// 0 = "mostra -") e o rateio de despesa (`calcDespesaPorLitroPura`), cujo
-// fallback próprio é divergência medida e sai em commit separado (grupo B).
+// 0 = "mostra -"). O fallback próprio do rateio saiu em commit separado
+// (grupo B) — ver `calcDespesaPorLitroPura`.
 
 /** Calcula os litros vendidos com base em leitura inicial e fechamento */
 export function calcLitrosVendidosPura(c: CombustivelHibrido): number {
@@ -99,17 +99,20 @@ export function calcMediaLtRsPura(c: CombustivelHibrido): number {
     );
 }
 
-/** Calcula a despesa operacional rateada por litro */
+/**
+ * Despesa operacional rateada por litro VENDIDO — a canônica
+ * `despesaOperacionalPorLitro` (@posto/utils): despesas do mês ÷ litros
+ * vendidos do mês.
+ *
+ * @remarks [onda 3, grupo B] O fallback `litrosBase = vendidos || comprados`
+ *          SAIU. Ele ratearia a despesa pelos litros DIGITADOS de compra num
+ *          mês sem venda — inventando R$ 0,5808/L (julho/2026) que a canônica
+ *          zera, e ignorando compra já salva no mês. Mês sem venda agora rateia
+ *          0, como em toda outra tela. Antes/depois travado no golden ao lado.
+ */
 export function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
-    const despesasTotal = despesaDoMes;
-    if (despesasTotal === 0) return 0;
-
     const totalLitrosVendidos = combustiveis.reduce((acc, c) => acc + calcLitrosVendidosPura(c), 0);
-    const totalLitrosComprados = combustiveis.reduce((acc, c) => acc + parseBRFloat(c.compra_lt), 0);
-    const litrosBase = totalLitrosVendidos > 0 ? totalLitrosVendidos : totalLitrosComprados;
-
-    if (litrosBase === 0) return 0;
-    return despesasTotal / litrosBase;
+    return despesaOperacionalPorLitro(despesaDoMes, totalLitrosVendidos);
 }
 
 /** Calcula o valor de custo total (produto + despesa) para venda */

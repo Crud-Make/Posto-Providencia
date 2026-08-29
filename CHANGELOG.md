@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 🔴 Saneamento pré-release — onda 3, GRUPO B (mudam número em rota viva)
+
+- **Registro de compras: mês sem venda deixa de inventar despesa por litro comprado (sítio 1).**
+  O fallback `litrosBase = vendidos || comprados` saiu de `calcDespesaPorLitroPura`; o rateio é o
+  canônico (despesa ÷ litros VENDIDOS) em todo cenário. **Antes:** digitando a compra num mês sem
+  venda (ex.: julho com 32.000 L digitados e R$ 18.585,76 de despesa), a tela mostrava
+  R$ 0,5808/L de "Despesa/L" e o lucro/L saía R$ 0,5808 menor por produto. **Depois:** mês sem
+  venda rateia R$ 0,00/L — despesa sem litro vendido não vira custo por litro. Os 7 meses reais
+  (todos com venda) não mudam em nada; o golden documenta o antes e afirma o depois.
+
 ### 🧰 Saneamento pré-release — onda 3, GRUPO A (consolidações que NÃO mudam número)
 
 - **Registro de compras delega custo, lucro e margem à canônica (sítio 1, grupo A).**
