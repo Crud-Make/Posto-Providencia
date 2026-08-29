@@ -20,6 +20,13 @@
   R$ 36.858,07 → R$ 18.272,31. Total mostrado a mais no ano: **R$ 195.230,40**. O custo em
   produção segue o carimbo `Estoque.custo_medio` (onda 3.9, decisão do dono); item sem estoque
   cadastrado segue com custo 0 — mudar isso é decisão à parte, documentada no golden.
+- **Insights de IA: "Saldo Operacional" virou lucro real do mês (sítio 6).** A conta aposentada
+  era `vendas − despesas`, sem o custo do produto (~82% da venda). Agora o serviço busca o
+  `lucro_bruto` da RPC `get_dashboard_proprietario` (custo da época) e desconta as despesas do
+  período — a mesma fórmula do painel do proprietário. **Antes → depois (julho):**
+  R$ 189.312,05 → R$ 18.272,31 (o antes contava R$ 171.039,74 de custo de produto como lucro).
+  A métrica exibida passou de "Saldo Operacional" para "Lucro do Mês". Datas da consulta em
+  string local, não `toISOString()` (que pulava de mês às 21h).
 
 ### 🧰 Saneamento pré-release — onda 3, GRUPO A (consolidações que NÃO mudam número)
 

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { saldoOperacionalSimplificado } from './calculos-saude-financeira';
+import { lucroOperacionalDoMes } from './calculos-saude-financeira';
 
 // Helper Types for direct usage
 export type Combustivel = { preco_venda: number };
@@ -62,10 +62,22 @@ export const aiService = {
 
         const totalVendas = fechamentos?.reduce((acc, curr) => acc + curr.total_vendas, 0) || 0;
         const totalDespesas = despesas?.reduce((acc, curr) => acc + curr.valor, 0) || 0;
-        // Conta "Simplificado" em ./calculos-saude-financeira, exercitada pelo
-        // golden ao lado contra a canônica (onda 2.2): sem custo de produto,
-        // dá >10x o lucro real do mês.
-        const netProfit = saldoOperacionalSimplificado(totalVendas, totalDespesas);
+
+        // [onda 3, grupo B] Lucro REAL do mês: lucro_bruto da RPC (custo da
+        // época) − despesas do período — a mesma fórmula do painel do
+        // proprietário. Antes era vendas − despesas, sem custo de produto:
+        // >10× o lucro verdadeiro (golden calculos-saude-financeira).
+        // Datas em string local (aaaa-mm-dd): toISOString() pulava de mês às 21h.
+        const ano = today.getFullYear();
+        const mesNum = today.getMonth() + 1;
+        const mm = String(mesNum).padStart(2, '0');
+        const { data: rpcLucro } = await supabase.rpc('get_dashboard_proprietario', {
+            p_posto_id: postoId,
+            p_data_inicio: `${ano}-${mm}-01`,
+            p_data_fim: `${ano}-${mm}-${String(new Date(ano, mesNum, 0).getDate()).padStart(2, '0')}`,
+        });
+        const lucroBruto = Number(rpcLucro?.[0]?.lucro_bruto ?? 0);
+        const netProfit = lucroOperacionalDoMes(lucroBruto, totalDespesas);
 
         // Macro Insight: Profitability
         if (totalVendas > 0) {
@@ -88,10 +100,10 @@ export const aiService = {
                     id: 'macro-healthy',
                     type: 'macro_vision',
                     title: 'Saúde Financeira Estável',
-                    description: 'Sua operação está saudável com balanço positivo entre receitas e despesas operacionais.',
+                    description: 'Sua operação está saudável: o lucro do mês (receita − custo do produto − despesas) está positivo.',
                     severity: 'success',
                     metrics: [
-                        { label: 'Saldo Operacional', value: `R$ ${netProfit.toLocaleString('pt-BR')}`, trend: 'up' }
+                        { label: 'Lucro do Mês', value: `R$ ${netProfit.toLocaleString('pt-BR')}`, trend: 'up' }
                     ]
                 });
             }

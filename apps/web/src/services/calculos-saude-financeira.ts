@@ -1,20 +1,24 @@
 /**
- * O "Saldo Operacional" dos insights de IA — sítio 3.7 do saneamento.
+ * O lucro operacional do mês dos insights de IA — sítio 3.7 do saneamento.
  *
- * ⚠️ Reimplementação LEGADA, auto-declarada "Simplificado":
- * `saldo = vendas − despesas`, SEM o custo do produto — que é ~82% da venda de
- * combustível. Em julho/2026 esta conta mostra R$ 189.312,05 onde o lucro real
- * é R$ 18.272,31: mais de 10× o lucro verdadeiro. Movida (sem mudar a conta)
- * para fora de `aiService.ts` para que
- * `calculos-saude-financeira.golden.spec.ts` a exercite lado a lado com a
- * canônica (§7). O rótulo na UI é "Saldo Operacional", não "Lucro" — mas o
- * insight "Saúde Financeira Estável" que ela sustenta lê como veredito de
- * lucratividade.
- *
- * A consolidação no canônico é a onda 3 — não use este módulo em código novo.
+ * [onda 3, grupo B] Consolidado no modelo canônico. A versão legada
+ * ("Simplificado") fazia `vendas − despesas`, SEM o custo do produto — que é
+ * ~82% da venda de combustível: em julho/2026 mostrava R$ 189.312,05 onde o
+ * lucro real é R$ 18.272,31, mais de 10× — sustentando o insight "Saúde
+ * Financeira Estável". Agora o serviço busca o `lucro_bruto` da RPC
+ * `get_dashboard_proprietario` (custo da época, validado pelo golden
+ * `custo-historico`) e desconta as despesas do período — a MESMA fórmula do
+ * painel do proprietário (`lucro_real = lucro_bruto − despesas`, validada por
+ * `lucro-real.golden.spec.ts`).
  */
+import { emCentavos } from '@posto/utils';
 
-/** `vendas − despesas`, sem custo de produto — a conta "Simplificado" do insight. */
-export function saldoOperacionalSimplificado(totalVendas: number, totalDespesas: number): number {
-    return totalVendas - totalDespesas;
+/**
+ * Lucro operacional do período: `lucro_bruto − despesas`, quantizado.
+ *
+ * @param lucroBruto - Receita − custo do produto (RPC `get_dashboard_proprietario`).
+ * @param totalDespesas - Despesas lançadas do período (tabela `Despesa`).
+ */
+export function lucroOperacionalDoMes(lucroBruto: number, totalDespesas: number): number {
+    return emCentavos(lucroBruto - totalDespesas);
 }
