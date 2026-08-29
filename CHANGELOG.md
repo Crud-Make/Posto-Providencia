@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 🔴 Saneamento pré-release — onda 4 (taxa de cartão é despesa do mês — dono, 26/08)
+
+- **/financeiro: a taxa de cartão sai da soma de despesas (4.2).** O card Receitas/Despesas
+  somava o carimbo `taxas_pagamento` JUNTO com as despesas lançadas (`totalDespesasOps`) — e a
+  taxa, quando lançada como despesa do mês, saía do resultado duas vezes. A composição virou a
+  função pura `despesasDoPeriodo` (`calculos-financeiro.ts`), sem a parcela, com teste do
+  antes/depois. **Efeito na tela:** o total de "Despesas" cai exatamente o valor carimbado em
+  `taxas_pagamento` no período — no replay atual esse carimbo está zerado (a UI nunca o grava),
+  então hoje o número visível não muda; com histórico carimbado, muda.
+
 ### 🔴 Saneamento pré-release — onda 3, GRUPO B (mudam número em rota viva)
 
 - **Registro de compras: mês sem venda deixa de inventar despesa por litro comprado (sítio 1).**
