@@ -1,15 +1,16 @@
 /**
  * As contas do card RESUMO FINANCEIRO do estoque — sítio 3.5 do saneamento.
  *
- * ⚠️ O "Lucro Previsto Estimado" é reimplementação LEGADA:
- * `estoque × (preco_venda − preco_custo)` do CADASTRO, sem despesa operacional
- * e sem o custo médio do mês. Movida (sem mudar a conta) para fora do `.tsx`
- * para que `calculos-resumo-financeiro.golden.spec.ts` a exercite lado a lado
- * com a canônica (§7). Divergência medida com o estoque real de julho/2026:
- * R$ 5.765,14 a mais em 9.628 L — a despesa operacional que o card não desconta.
+ * [onda 3, grupo B] O "Lucro Previsto Estimado" foi consolidado na projeção
+ * canônica: `estoque × (preco_venda − preco_custo − despesa_operacional/L)`,
+ * quantizado. Antes a despesa ficava fora — R$ 5.765,14 prometidos a mais
+ * sobre o estoque real de julho/2026 (9.628 L), mais que o dobro do previsto
+ * real. Antes/depois travado no golden ao lado.
  *
- * A consolidação no canônico é a onda 3 — não use este módulo em código novo.
+ * Divergência que FICA, documentada e não medida (decisão à parte): o custo é
+ * o `preco_custo` de HOJE do cadastro, não o custo médio do mês.
  */
+import { emCentavos } from '@posto/utils';
 
 /** O que o card precisa de um tanque (estruturalmente compatível com `Tanque`). */
 export interface TanqueParaResumo {
@@ -27,14 +28,25 @@ export function valorBrutoEstoque(tanques: readonly TanqueParaResumo[]): number 
 }
 
 /**
- * "Lucro Previsto Estimado": `Σ estoque × (preco_venda − preco_custo)` do
- * cadastro — sem despesa operacional (a divergência que o golden congela) e
- * com o preço de custo de HOJE, não o custo médio do mês.
+ * "Lucro Previsto Estimado" — projeção canônica sobre o estoque atual:
+ * `Σ estoque × (preco_venda − preco_custo − despesaLitro)`, em centavos.
+ *
+ * @param despesaLitro - Despesa operacional por litro do mês corrente
+ *        (`despesaOperacionalPorLitro`); 0 quando o mês não tem despesa
+ *        lançada ou não tem litro vendido — nunca um fixo (§6).
  */
-export function lucroPrevistoEstoque(tanques: readonly TanqueParaResumo[]): number {
-    return tanques.reduce(
-        (acc, t) =>
-            acc + t.estoque_atual * ((t.combustivel?.preco_venda || 0) - (t.combustivel?.preco_custo || 0)),
-        0
+export function lucroPrevistoEstoque(
+    tanques: readonly TanqueParaResumo[],
+    despesaLitro: number
+): number {
+    return emCentavos(
+        tanques.reduce(
+            (acc, t) =>
+                acc +
+                t.estoque_atual *
+                    ((t.combustivel?.preco_venda || 0) - (t.combustivel?.preco_custo || 0) - despesaLitro),
+            0
+        )
     );
 }
+

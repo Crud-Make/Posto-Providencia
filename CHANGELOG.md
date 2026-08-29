@@ -27,6 +27,14 @@
   R$ 189.312,05 → R$ 18.272,31 (o antes contava R$ 171.039,74 de custo de produto como lucro).
   A métrica exibida passou de "Saldo Operacional" para "Lucro do Mês". Datas da consulta em
   string local, não `toISOString()` (que pulava de mês às 21h).
+- **Estoque: o "Lucro Previsto Estimado" desconta a despesa operacional por litro (sítio 4).**
+  A conta saiu de `estoque × (preco_venda − preco_custo)` para a projeção canônica
+  `estoque × (preco_venda − preco_custo − despesa/L do mês corrente)`, quantizada. O hook do
+  dashboard de estoque passou a ratear as despesas lançadas do mês pelos litros vendidos do mês
+  (0 sem despesa — nunca um fixo). **Antes → depois (estoque real de julho, 9.628 L):**
+  R$ 11.406,05 → R$ 5.640,91 (o card prometia R$ 5.765,14 a mais — mais que o dobro).
+  Divergência que fica, documentada: o custo é o `preco_custo` de HOJE do cadastro, não o custo
+  médio do mês — decisão à parte.
 
 ### 🧰 Saneamento pré-release — onda 3, GRUPO A (consolidações que NÃO mudam número)
 

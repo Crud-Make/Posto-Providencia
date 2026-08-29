@@ -1,16 +1,14 @@
 /**
  * Golden do "Lucro Previsto Estimado" do dashboard de estoque (sítio 3.5)
- * contra a projeção canônica, sobre o estoque REAL de julho/2026
- * (`docs/data/posto_jorro_2026.sqlite`).
+ * sobre o estoque REAL de julho/2026 (`docs/data/posto_jorro_2026.sqlite`).
  *
- * A conta do card é `estoque × (preco_venda − preco_custo)`, sem despesa
- * operacional. Alimentada com a régua de julho (9.628 L nos 4 produtos), o
- * preço de bomba e o custo médio do próprio mês, ela promete R$ 11.406,05 de
- * lucro; descontando a despesa operacional por litro de julho (R$ 0,5988/L),
- * a projeção canônica é R$ 5.640,91. **O card promete R$ 5.765,14 a mais** —
- * mais que o dobro do previsto real. Congelado em 28/08/2026.
+ * [onda 3, grupo B] O card foi CONSOLIDADO na projeção canônica:
+ * `estoque × (preco_venda − preco_custo − despesa_operacional/L)`. Com a
+ * régua de julho (9.628 L nos 4 produtos), preço de bomba e custo do próprio
+ * mês: **antes R$ 11.406,05 → depois R$ 5.640,91** — o card prometia
+ * R$ 5.765,14 a mais, mais que o dobro do previsto real.
  *
- * Segunda divergência, documentada aqui e não medida (não há série de
+ * Divergência que FICA, documentada e não medida (não há série de
  * `preco_custo` de cadastro no dado de referência): em produção o card usa o
  * `preco_custo` de HOJE do cadastro, não o custo médio do mês.
  *
@@ -76,7 +74,7 @@ const despesaJulho = (): number =>
             .all() as { categoria: string | null; valor: number | null }[]
     );
 
-test('o card promete R$ 5.765,14 a mais que a projeção canônica sobre o estoque de julho', () => {
+test('consolidado: o card É a projeção canônica — antes prometia R$ 5.765,14 a mais (julho)', () => {
     const produtos = julhoPorProduto();
     const litrosVendidos = produtos.reduce((s, p) => s + p.litros, 0);
     const despLt = despesaOperacionalPorLitro(despesaJulho(), litrosVendidos);
@@ -87,7 +85,7 @@ test('o card promete R$ 5.765,14 a mais que a projeção canônica sobre o estoq
         estoque_atual: p.estoque,
         combustivel: { preco_venda: p.precoVenda, preco_custo: p.custoMedio },
     }));
-    const doCard = lucroPrevistoEstoque(tanques);
+    const doCard = lucroPrevistoEstoque(tanques, despLt);
 
     // Projeção canônica do MESMO estoque: desconta a despesa operacional/L.
     const canonico = produtos.reduce(
@@ -95,9 +93,14 @@ test('o card promete R$ 5.765,14 a mais que a projeção canônica sobre o estoq
         0
     );
 
-    expect(doCard).toBeCloseTo(11_406.05, 1);
-    expect(canonico).toBeCloseTo(5_640.91, 1);
-    expect(doCard - canonico).toBeCloseTo(5_765.14, 1);
+    expect(doCard).toBeCloseTo(canonico, 2);
+    expect(doCard).toBeCloseTo(5_640.91, 1);
+
+    // O ANTES, como régua do que mudou na tela: sem o desconto da despesa o
+    // mesmo estoque prometia R$ 11.406,05 — R$ 5.765,14 a mais.
+    const antes = lucroPrevistoEstoque(tanques, 0);
+    expect(antes).toBeCloseTo(11_406.05, 1);
+    expect(antes - doCard).toBeCloseTo(5_765.14, 1);
 
     // E o estoque que sustenta os números é a régua real de julho.
     expect(produtos.reduce((s, p) => s + p.estoque, 0)).toBeCloseTo(9_628.0, 1);
