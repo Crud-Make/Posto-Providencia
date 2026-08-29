@@ -1,21 +1,31 @@
 /**
  * O "Lucro Estimado" do DASHBOARD DE VENDAS — sítio 3.4 do saneamento.
  *
- * ⚠️ Reimplementação LEGADA: `lucro = vendas − Σ litros × custo_medio`, SEM a
- * despesa operacional do mês — que no dado real de 2026 fica entre R$ 18,5 mil
- * e R$ 35,5 mil/mês. Movida (sem mudar a conta) para fora de
- * `useDashboardVendas.ts` para que `calculos-dashboard-vendas.golden.spec.ts`
- * a exercite lado a lado com a canônica de `@posto/utils/lucro` (§7).
- * O custo ainda vem do carimbo `Estoque.custo_medio` (ponderado), segunda
- * divergência, medida no golden da análise de vendas.
+ * [onda 3, grupo B] Consolidado na canônica de `@posto/utils/lucro`:
+ * `lucro = receita − litros × (custo_médio + despesa_operacional_por_litro)`.
+ * A versão legada ignorava a despesa operacional — R$ 18,5 mil a R$ 35,5 mil
+ * por mês no dado real de 2026, R$ 195.230,40 nos 7 meses de lucro mostrado a
+ * mais. O antes/depois está travado no golden ao lado.
  *
- * A consolidação no canônico é a onda 3 — não use este módulo em código novo.
+ * O que fica igual, de propósito (não é a decisão deste commit):
+ * - o custo por litro segue vindo do carimbo `Estoque.custo_medio` (média
+ *   ponderada) — a fonte é a onda 3.9, decisão do dono;
+ * - item sem estoque cadastrado entra na receita com custo 0 (o card sempre
+ *   fez assim); os litros dele ENTRAM no rateio da despesa.
  */
+import {
+    despesaOperacionalPorLitro,
+    emCentavos,
+    lucroCombustivel,
+    margemPercentual,
+} from '@posto/utils';
 
-/** Um combustível agregado no mês, com o custo que o hook achou no estoque. */
+/** Um combustível agregado no mês, como o hook o monta. */
 export interface ItemLucroDashboard {
     /** Litros vendidos no mês. */
     readonly litros: number;
+    /** Receita real do produto no mês (Σ `Leitura.valor_total`), em reais. */
+    readonly valor: number;
     /** R$/L do carimbo `Estoque.custo_medio`; `null` quando não há estoque cadastrado. */
     readonly custoMedio: number | null;
 }
@@ -27,22 +37,32 @@ export interface LucroEstimadoDashboard {
 }
 
 /**
- * A conta do card, verbatim do hook: soma o custo só de quem TEM estoque
- * cadastrado (item sem estoque entra na receita e não entra no custo) e
- * ignora a despesa operacional.
+ * A conta canônica do card: lucro por combustível somado, com a despesa do
+ * mês rateada por litro vendido sobre TODOS os litros do mês.
+ *
+ * @param despesaDoMes - Total de despesas lançadas no mês (tabela `Despesa`).
  */
 export function lucroEstimadoDashboard(
     itens: readonly ItemLucroDashboard[],
-    totalVendas: number
+    despesaDoMes: number
 ): LucroEstimadoDashboard {
-    let totalCost = 0;
-    itens.forEach((item) => {
-        if (item.custoMedio !== null) {
-            totalCost += item.litros * item.custoMedio;
-        }
-    });
+    const litrosTotal = itens.reduce((s, i) => s + i.litros, 0);
+    const despLt = despesaOperacionalPorLitro(despesaDoMes, litrosTotal);
 
-    const profit = totalVendas - totalCost;
-    const margin = totalVendas > 0 ? (profit / totalVendas) * 100 : 0;
-    return { profit, margin };
+    const profit = emCentavos(
+        itens.reduce(
+            (s, i) =>
+                s +
+                lucroCombustivel({
+                    litros: i.litros,
+                    precoVenda: i.litros > 0 ? i.valor / i.litros : 0,
+                    custoMedio: i.custoMedio ?? 0,
+                    despesaOperacionalLitro: despLt,
+                }),
+            0
+        )
+    );
+
+    const totalVendas = itens.reduce((s, i) => s + i.valor, 0);
+    return { profit, margin: margemPercentual(profit, totalVendas) };
 }

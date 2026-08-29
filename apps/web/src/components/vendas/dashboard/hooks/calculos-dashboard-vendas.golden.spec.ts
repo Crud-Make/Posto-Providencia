@@ -1,14 +1,17 @@
 /**
- * Golden do "Lucro Estimado" do DASHBOARD DE VENDAS (sítio 3.4) contra a
- * canônica de `@posto/utils/lucro`, sobre os 7 meses de
- * `docs/data/posto_jorro_2026.sqlite`.
+ * Golden do "Lucro Estimado" do DASHBOARD DE VENDAS (sítio 3.4) sobre os 7
+ * meses de `docs/data/posto_jorro_2026.sqlite`.
  *
- * A divergência deste card é a AUSÊNCIA da despesa operacional: mês a mês, o
- * lucro que ele mostra fica exatamente UMA DESPESA MENSAL acima do canônico —
- * de R$ 18.585,76 (julho) a R$ 35.523,58 (janeiro), R$ 195.230,40 nos 7
- * meses. É a maior divergência absoluta entre as 8 reimplementações do
- * saneamento. (A segunda — o custo vir do carimbo ponderado — é medida no
- * golden `calculos-analise-vendas`, e SOMA com esta.)
+ * [onda 3, grupo B] O card foi CONSOLIDADO na canônica: a produção agora
+ * desconta a despesa operacional do mês. Este golden afirma:
+ *
+ *   1. a produção (`lucroEstimadoDashboard`) empata com a soma canônica de
+ *      `lucroCombustivel` mês a mês;
+ *   2. o ANTES/DEPOIS: a conta legada (reproduzida aqui só como documentação
+ *      do modelo aposentado) mostrava exatamente UMA DESPESA MENSAL a mais —
+ *      R$ 18.585,76 (jul) a R$ 35.523,58 (jan), R$ 195.230,40 nos 7 meses;
+ *   3. item sem estoque cadastrado segue entrando com custo 0 (semântica
+ *      preservada — mudá-la é outra decisão), com os litros no rateio.
  *
  * Roda sob `bun test` (script `test:golden`); o vitest ignora (`*.spec.ts`).
  */
@@ -70,10 +73,11 @@ const despesaLancada = (mes: number): number =>
     );
 
 /**
- * O que o card mostra A MAIS que o lucro canônico, mês a mês — exatamente a
- * despesa lançada do mês, que a conta do card ignora. Congelado em 28/08/2026.
+ * O que o card ANTIGO mostrava a mais que o novo, mês a mês — exatamente a
+ * despesa lançada do mês, que a conta legada ignorava. Medido na onda 2
+ * (28/08/2026) e mantido como régua do antes/depois da consolidação.
  */
-const DESPESA_QUE_O_CARD_IGNORA: Readonly<Record<number, number>> = {
+const ANTES_MOSTRAVA_A_MAIS: Readonly<Record<number, number>> = {
     1: 35_523.58,
     2: 24_688.02,
     3: 26_794.87,
@@ -84,7 +88,7 @@ const DESPESA_QUE_O_CARD_IGNORA: Readonly<Record<number, number>> = {
 };
 
 for (const mes of MESES) {
-    test(`mês ${String(mes).padStart(2, '0')}: o card infla o lucro em R$ ${DESPESA_QUE_O_CARD_IGNORA[mes].toFixed(2)} (a despesa do mês)`, () => {
+    test(`mês ${String(mes).padStart(2, '0')}: a produção É a canônica, e o antes mostrava R$ ${ANTES_MOSTRAVA_A_MAIS[mes].toFixed(2)} a mais`, () => {
         const vendas = vendasDoMes(mes);
         const custos = custosDoMes(mes);
         const despesa = despesaLancada(mes);
@@ -92,11 +96,10 @@ for (const mes of MESES) {
         const totalVendas = vendas.reduce((s, v) => s + v.valor, 0);
         const despLt = despesaOperacionalPorLitro(despesa, litrosTotal);
 
-        // A conta REAL do card, alimentada com o custo do próprio mês para
-        // isolar a divergência estrutural (sem despesa) da do carimbo.
+        // 1. A conta REAL do card, alimentada com o custo do próprio mês.
         const doCard = lucroEstimadoDashboard(
-            vendas.map((v) => ({ litros: v.litros, custoMedio: custos[v.produto] })),
-            totalVendas
+            vendas.map((v) => ({ litros: v.litros, valor: v.valor, custoMedio: custos[v.produto] })),
+            despesa
         );
 
         const canonico = vendas.reduce(
@@ -111,22 +114,32 @@ for (const mes of MESES) {
             0
         );
 
-        const inflado = doCard.profit - canonico;
-        expect(inflado).toBeCloseTo(DESPESA_QUE_O_CARD_IGNORA[mes], 1);
-        // …e a despesa congelada é a despesa lançada de verdade, ao centavo.
-        expect(DESPESA_QUE_O_CARD_IGNORA[mes]).toBeCloseTo(despesa, 2);
+        expect(doCard.profit).toBeCloseTo(canonico, 2);
+
+        // 2. O modelo APOSENTADO (vendas − Σ litros × custo, sem despesa),
+        // reproduzido aqui só para documentar o antes/depois em reais.
+        const antes =
+            totalVendas - vendas.reduce((s, v) => s + v.litros * custos[v.produto], 0);
+        expect(antes - doCard.profit).toBeCloseTo(ANTES_MOSTRAVA_A_MAIS[mes], 1);
+        // …e a régua é a despesa lançada de verdade, ao centavo.
+        expect(ANTES_MOSTRAVA_A_MAIS[mes]).toBeCloseTo(despesa, 2);
     });
 }
 
-test('nos 7 meses o card mostraria R$ 195.230,40 a mais de lucro do que o real', () => {
+test('nos 7 meses o card antigo mostrava R$ 195.230,40 a mais de lucro do que o real', () => {
     const total = MESES.reduce((s, m) => s + despesaLancada(m), 0);
     expect(total).toBeCloseTo(195_230.4, 1);
 });
 
-test('item sem estoque cadastrado entra na receita e sai do custo (semântica do hook)', () => {
-    // 1.000 L vendidos a R$ 6.000 sem estoque cadastrado: o card trata o custo
-    // como zero — lucro 100% — em vez de "custo desconhecido".
-    const r = lucroEstimadoDashboard([{ litros: 1000, custoMedio: null }], 6000);
-    expect(r.profit).toBe(6000);
-    expect(r.margin).toBe(100);
+test('item sem estoque cadastrado segue com custo 0, mas os litros entram no rateio da despesa', () => {
+    // 1.000 L vendidos a R$ 6.000, sem estoque cadastrado e sem despesa no mês:
+    // semântica preservada do card (custo 0 → lucro 100%). Mudar isso para
+    // "custo desconhecido" é decisão à parte, fora deste commit.
+    const semDespesa = lucroEstimadoDashboard([{ litros: 1000, valor: 6000, custoMedio: null }], 0);
+    expect(semDespesa.profit).toBe(6000);
+    expect(semDespesa.margin).toBe(100);
+
+    // Com R$ 500 de despesa no mês, o rateio desconta R$ 0,50/L também dele.
+    const comDespesa = lucroEstimadoDashboard([{ litros: 1000, valor: 6000, custoMedio: null }], 500);
+    expect(comDespesa.profit).toBe(5500);
 });

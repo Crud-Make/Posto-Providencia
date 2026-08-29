@@ -11,6 +11,15 @@
   R$ 0,5808/L de "Despesa/L" e o lucro/L saía R$ 0,5808 menor por produto. **Depois:** mês sem
   venda rateia R$ 0,00/L — despesa sem litro vendido não vira custo por litro. Os 7 meses reais
   (todos com venda) não mudam em nada; o golden documenta o antes e afirma o depois.
+- **Dashboard de vendas: o card "Lucro Estimado" desconta a despesa operacional do mês (sítio 3).**
+  Era a maior divergência absoluta das 8 reimplementações: `vendas − custo`, sem despesa. Agora o
+  hook busca a despesa lançada do mês e a conta é a canônica (`lucroCombustivel` com rateio por
+  litro). **Antes → depois** (com o custo do próprio mês): jan R$ 51.133,43 → R$ 15.609,85 ·
+  fev R$ 45.462,21 → R$ 20.774,19 · mar R$ 61.551,09 → R$ 34.756,22 · abr R$ 62.697,45 →
+  R$ 29.329,10 · mai R$ 51.657,19 → R$ 21.463,37 · jun R$ 51.656,26 → R$ 25.580,26 · jul
+  R$ 36.858,07 → R$ 18.272,31. Total mostrado a mais no ano: **R$ 195.230,40**. O custo em
+  produção segue o carimbo `Estoque.custo_medio` (onda 3.9, decisão do dono); item sem estoque
+  cadastrado segue com custo 0 — mudar isso é decisão à parte, documentada no golden.
 
 ### 🧰 Saneamento pré-release — onda 3, GRUPO A (consolidações que NÃO mudam número)
 

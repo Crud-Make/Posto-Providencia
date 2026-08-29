@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../../contexts/usePosto';
 import { usePeriodo } from '../../../../contexts/usePeriodo';
-import { leituraService, estoqueService } from '../../../../services/api';
+import { leituraService, estoqueService, despesaService } from '../../../../services/api';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
 import { isSuccess } from '../../../../types/ui/response-types';
@@ -94,19 +94,30 @@ export const useDashboardVendas = () => {
       }));
       setProductMix(mixData);
 
-      // Calculate estimated profit (using a simple margin estimate)
-      // In a real app, this would come from cost data
-      const resEstoque = await estoqueService.getAll(postoAtivoId);
+      // Lucro estimado canônico (./calculos-dashboard-vendas): receita − litros ×
+      // (custo médio + despesa/L do mês). [onda 3, grupo B] Antes a despesa
+      // operacional ficava fora e o card inflava o lucro exatamente na despesa
+      // do mês (R$ 195.230,40 nos 7 meses reais) — travado no golden ao lado.
+      const [resEstoque, resDespesas] = await Promise.all([
+        estoqueService.getAll(postoAtivoId),
+        despesaService.getByMonth(year, month, postoAtivoId),
+      ]);
       const estoquesData = isSuccess(resEstoque) ? resEstoque.data : [];
+      const despesaDoMes = (isSuccess(resDespesas) ? resDespesas.data : []).reduce(
+        (acc, d) => acc + Number(d.valor || 0),
+        0
+      );
 
-      // Conta legada (sem despesa operacional, custo do carimbo) — fórmula em
-      // ./calculos-dashboard-vendas, exercitada pelo golden ao lado (onda 2.2).
       const { profit, margin } = lucroEstimadoDashboard(
         Object.values(byCombustivel).map(item => {
           const estoque = estoquesData.find(e => e.combustivel_id === item.combustivel.id);
-          return { litros: item.litros, custoMedio: estoque ? estoque.custo_medio : null };
+          return {
+            litros: item.litros,
+            valor: item.valor,
+            custoMedio: estoque ? estoque.custo_medio : null,
+          };
         }),
-        totalVendas
+        despesaDoMes
       );
       setEstimatedProfit(profit);
       setAverageMargin(margin);
