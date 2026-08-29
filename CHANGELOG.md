@@ -23,6 +23,13 @@
   `lucroCombustivel`, no arquivo que já importa a função. Agora delega (com quantização em
   centavos na saída). A fonte do custo segue o carimbo `Estoque.custo_medio` — trocá-la é a onda
   3.9, decisão do dono. Vitest do aggregator verde sem mudança (373 pass).
+- **O resumo de pagamentos do fechamento diário lê os meios canônicos (3.8, grupo A).**
+  `calculosResumo.ts` era o último site do painel que somava os baldes de cartão à mão
+  (`valor_cartao_debito + valor_cartao`). Agora o gráfico e a tabela pivô consomem
+  `meiosDaSessao` → `MeiosPagamento`, com os rótulos declarando qual balde exibem. O split
+  débito/crédito da exibição foi preservado (as taxas são diferentes) e o lump legado segue no
+  débito, como sempre — três invariantes novos no vitest travam `débito + crédito = cartao()` e
+  `Σ fatias = conferido()`. Nenhum número muda (mesmo parse, mesmos campos).
 
 ### 🧪 Saneamento pré-release — onda 2 (rede de teste das fórmulas)
 

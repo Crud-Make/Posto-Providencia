@@ -1,6 +1,29 @@
 import { parseValue } from '../../../utils/formatters';
 import type { BicoComDetalhes, Frentista, SessaoFrentista } from '../../../types/fechamento';
 import type { Leitura } from '../hooks/useLeituras';
+import type { MeiosPagamento } from '@posto/utils';
+import { meiosDaSessao } from '../../../utils/fechamentoMeios';
+
+/**
+ * Como cada linha/fatia de exibição lê os meios canônicos (`MeiosPagamento`).
+ *
+ * @remarks [onda 3, 3.8] Era soma à mão de colunas da sessão (`valor_cartao_debito
+ * + valor_cartao`…) — o último site do painel que somava os baldes de cartão sem
+ * passar pelo módulo canônico. Agora a sessão vira `MeiosPagamento` por
+ * `meiosDaSessao` (o mesmo adapter de `conferido()`), e cada rótulo declara qual
+ * balde exibe. A EXIBIÇÃO mantém o split débito/crédito de propósito (as taxas
+ * são diferentes); o lump legado `valor_cartao` segue somado ao débito, como
+ * sempre foi nesta tela — `débito + crédito` reconstitui `cartao()`, invariante
+ * travado em `calculosResumo.test.ts`.
+ */
+const BALDES_DE_EXIBICAO = [
+    { meio: 'Pix', valorDe: (m: MeiosPagamento) => m.pix },
+    { meio: 'Cartão Débito', valorDe: (m: MeiosPagamento) => m.cartaoDebito + m.cartaoLegado },
+    { meio: 'Cartão Crédito', valorDe: (m: MeiosPagamento) => m.cartaoCredito },
+    { meio: 'Nota a Prazo', valorDe: (m: MeiosPagamento) => m.nota },
+    { meio: 'Dinheiro', valorDe: (m: MeiosPagamento) => m.dinheiro },
+    { meio: 'Outros', valorDe: (m: MeiosPagamento) => m.baratao + m.moedas },
+] as const;
 
 // --- Interfaces de Domínio ---
 
@@ -98,25 +121,18 @@ export function calcularDadosCombustivel(
  * @returns Array de dados formatado para gráficos (name/value).
  */
 export function calcularTotaisPagamentos(sessoes: SessaoFrentista[]): DadosPagamentoChart[] {
-    const totais = {
-        Dinheiro: 0,
-        'Cartão Débito': 0,
-        'Cartão Crédito': 0,
-        Pix: 0,
-        'Nota a Prazo': 0,
-        Outros: 0,
-    };
+    // Ordem de exibição histórica do gráfico (Dinheiro primeiro).
+    const ordem = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix', 'Nota a Prazo', 'Outros'];
+    const totais = new Map<string, number>(ordem.map((meio) => [meio, 0]));
 
     sessoes.forEach((sessao) => {
-        totais['Dinheiro'] += parseValue(sessao.valor_dinheiro);
-        totais['Cartão Débito'] += parseValue(sessao.valor_cartao_debito) + parseValue(sessao.valor_cartao);
-        totais['Cartão Crédito'] += parseValue(sessao.valor_cartao_credito);
-        totais['Pix'] += parseValue(sessao.valor_pix);
-        totais['Nota a Prazo'] += parseValue(sessao.valor_nota);
-        totais['Outros'] += parseValue(sessao.valor_baratao) + parseValue(sessao.valor_moedas);
+        const m = meiosDaSessao(sessao);
+        for (const balde of BALDES_DE_EXIBICAO) {
+            totais.set(balde.meio, totais.get(balde.meio)! + balde.valorDe(m));
+        }
     });
 
-    return Object.entries(totais)
+    return [...totais.entries()]
         .filter(([, valor]) => valor > 0)
         .map(([name, value]) => ({ name, value }));
 }
@@ -149,26 +165,16 @@ export function gerarTabelaDetalhamento(
             };
         });
 
-    const definicaoLinhas = [
-        { id: 'pix', label: 'Pix', keys: ['valor_pix'] as (keyof SessaoFrentista)[] },
-        { id: 'debito', label: 'Cartão Débito', keys: ['valor_cartao_debito', 'valor_cartao'] as (keyof SessaoFrentista)[] },
-        { id: 'credito', label: 'Cartão Crédito', keys: ['valor_cartao_credito'] as (keyof SessaoFrentista)[] },
-        { id: 'nota', label: 'Nota a Prazo', keys: ['valor_nota'] as (keyof SessaoFrentista)[] },
-        { id: 'dinheiro', label: 'Dinheiro', keys: ['valor_dinheiro'] as (keyof SessaoFrentista)[] },
-        { id: 'outros', label: 'Outros', keys: ['valor_baratao', 'valor_moedas'] as (keyof SessaoFrentista)[] },
-    ];
-
-
-    return definicaoLinhas.map((linhaDef) => {
+    return BALDES_DE_EXIBICAO.map((balde) => {
         const rowData: LinhaDetalhamento = {
-            meio: linhaDef.label,
+            meio: balde.meio,
             total: 0
         };
 
         let totalLinha = 0;
 
         frentistasAtivos.forEach((f) => {
-            const valor = linhaDef.keys.reduce((acc, key) => acc + parseValue(f.sessao[key] as string), 0);
+            const valor = balde.valorDe(meiosDaSessao(f.sessao));
             rowData[f.sessao.tempId] = valor;
             totalLinha += valor;
         });
