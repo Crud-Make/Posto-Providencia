@@ -1,4 +1,6 @@
 import { supabase } from '../supabase';
+import { custoMedioCompra, type CompraDoProduto } from '@posto/utils';
+import { compraService } from './compra.service';
 import { despesaService } from './despesa.service';
 import { estoqueService } from './estoque.service';
 import {
@@ -94,15 +96,38 @@ export const salesAnalysisService = {
 
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
 
-      // Fetch stock data for cost info
-      const estoquesResponse = await estoqueService.getAll(postoId);
+      // [onda 3, grupo B] Custo por litro: a COMPRA DO PRÓPRIO MÊS
+      // (`custoMedioCompra`, canônica da planilha F16 = E16/D16), não mais o
+      // carimbo `Estoque.custo_medio` (média ponderada com estoque anterior),
+      // que deslocava o lucro do mês em até R$ 2.582 — medido no golden
+      // calculos-analise-vendas. O carimbo fica só como FALLBACK de mês sem
+      // compra lançada (mesma política da RPC de custo histórico).
+      const [estoquesResponse, comprasResponse] = await Promise.all([
+        estoqueService.getAll(postoId),
+        compraService.getByDateRange(startDate, endDate, postoId),
+      ]);
       const estoques = estoquesResponse.success ? estoquesResponse.data : [];
-      const custoMedioPorCombustivel: Record<number, number> = {};
+      const custoCarimboPorCombustivel: Record<number, number> = {};
       estoques.forEach(e => {
         if (e.combustivel) {
-          custoMedioPorCombustivel[e.combustivel.id] = e.custo_medio || 0;
+          custoCarimboPorCombustivel[e.combustivel.id] = e.custo_medio || 0;
         }
       });
+
+      const comprasDoMes: Record<number, CompraDoProduto[]> = {};
+      (comprasResponse.success ? comprasResponse.data : []).forEach(c => {
+        if (!c.combustivel_id) return;
+        (comprasDoMes[c.combustivel_id] ??= []).push({
+          litros: Number(c.quantidade_litros) || 0,
+          valorTotal: Number(c.valor_total) || 0,
+        });
+      });
+
+      /** Custo do mês por combustível; carimbo (ou 0) quando o mês não tem compra. */
+      const custoDoMes = (combustivelId: number): number =>
+        custoMedioCompra(comprasDoMes[combustivelId] ?? []) ??
+        custoCarimboPorCombustivel[combustivelId] ??
+        0;
 
       // 2. Aggregate by combustivel & Calculate Total Sales Volume
       let totalSalesVolume = 0;
@@ -150,7 +175,7 @@ export const salesAnalysisService = {
 
         const codigo = l.bico.combustivel.codigo;
         const combId = l.bico.combustivel.id;
-        const custoMedio = custoMedioPorCombustivel[combId] || 0;
+        const custoMedio = custoDoMes(combId);
         const litrosVendidos = l.litros_vendidos || 0;
         const valorVenda = l.valor_total || 0;
 

@@ -35,6 +35,15 @@
   R$ 11.406,05 → R$ 5.640,91 (o card prometia R$ 5.765,14 a mais — mais que o dobro).
   Divergência que fica, documentada: o custo é o `preco_custo` de HOJE do cadastro, não o custo
   médio do mês — decisão à parte.
+- **Análise de vendas: o custo vem da compra do próprio mês, não do carimbo ponderado (sítio 2).**
+  `salesAnalysis.service.ts` deixou de ler `Estoque.custo_medio` (média ponderada com estoque
+  anterior) e passa a calcular `custoMedioCompra` sobre as compras do mês consultado — o modelo
+  da planilha (F16 = E16/D16). O carimbo ficou só como fallback de mês sem compra lançada (mesma
+  política da RPC de custo histórico). **O que muda no lucro do mês mostrado** (depois − antes):
+  jan R$ 0,00 · fev +R$ 1.337,60 · mar −R$ 1.986,18 · abr −R$ 2.582,18 · mai +R$ 1.113,00 ·
+  jun +R$ 1.547,16 · jul +R$ 703,30 — a fonte antiga subestimava fev/mai/jun/jul e superestimava
+  mar/abr. `linhaLucroProduto` agora delega a `lucroCombustivel` e `margemPercentual` (lucro
+  quantizado em centavos).
 
 ### 🧰 Saneamento pré-release — onda 3, GRUPO A (consolidações que NÃO mudam número)
 

@@ -1,18 +1,17 @@
 /**
- * Golden da conta de lucro da ANÁLISE DE VENDAS (sítio 3.3) contra a canônica.
+ * Golden da conta de lucro da ANÁLISE DE VENDAS (sítio 3.3).
  *
- * Exercita `linhaLucroProduto`/`despesaPorLitroVendido` — o código REAL que
- * `salesAnalysis.service.ts` chama — lado a lado com `@posto/utils/lucro`,
- * sobre os 7 meses de `docs/data/posto_jorro_2026.sqlite`, e afirma:
+ * [onda 3, grupo B] CONSOLIDADO: `linhaLucroProduto` delega à canônica e o
+ * serviço alimenta o custo com a COMPRA DO PRÓPRIO MÊS (`custoMedioCompra`),
+ * não mais o carimbo `Estoque.custo_medio`. Este golden afirma, sobre os 7
+ * meses de `docs/data/posto_jorro_2026.sqlite`:
  *
- *   1. a ESTRUTURA da conta é a canônica: alimentada com o custo do mês
- *      (`media_lt`), empata a menos da quantização (`emCentavos`, que o
- *      serviço não aplica), e a margem é a mesma `lucro ÷ receita`;
- *   2. a divergência REAL é a FONTE do custo: em produção o serviço lê o
- *      carimbo `Estoque.custo_medio`, gravado pela média ponderada com
- *      estoque anterior — a diferença mês a mês é o mesmo `IMPACTO_MENSAL`
- *      do golden `estoque-encadeamento` (até R$ 2.582 em abril), agora
- *      atravessando a função de produção da tela.
+ *   1. a produção É a canônica: com o custo do mês (`media_lt`), empata
+ *      (agora quantizada por `emCentavos`) e a margem é `lucro ÷ receita`;
+ *   2. o ANTES/DEPOIS da troca de fonte: alimentar a MESMA função com o
+ *      carimbo ponderado (como a tela fazia) desloca o lucro do mês nos
+ *      valores de `IMPACTO_MENSAL` — até R$ 2.582 em abril, os mesmos números
+ *      do golden `estoque-encadeamento`. Positivo = a tela SUBESTIMAVA.
  *
  * Roda sob `bun test` (script `test:golden`); o vitest ignora (`*.spec.ts`).
  */
@@ -117,13 +116,13 @@ for (const mes of MESES) {
     });
 }
 
-// ─── 2. A divergência real: o carimbo ponderado no lugar do custo do mês ────────
+// ─── 2. [onda 3, grupo B] O antes/depois da troca de fonte do custo ─────────────
 
 /**
- * Quanto o carimbo ponderado desloca o lucro do mês, em reais — os MESMOS
- * números de `estoque-encadeamento.golden.spec.ts` (`IMPACTO_MENSAL`), aqui
- * atravessando a função de produção da tela. Positivo = a tela SUBESTIMA o
- * lucro do mês.
+ * Quanto o carimbo ponderado (a fonte ANTIGA) deslocava o lucro do mês, em
+ * reais — os MESMOS números de `estoque-encadeamento.golden.spec.ts`
+ * (`IMPACTO_MENSAL`), atravessando a função de produção da tela. Positivo =
+ * a tela SUBESTIMAVA o lucro do mês.
  */
 const IMPACTO_MENSAL: Readonly<Record<number, number>> = {
     1: 0,
@@ -135,7 +134,7 @@ const IMPACTO_MENSAL: Readonly<Record<number, number>> = {
     7: 703.3,
 };
 
-test('com o carimbo ponderado, a tela erra o lucro do mês em até R$ 2.582', () => {
+test('a fonte antiga (carimbo ponderado) errava o lucro do mês em até R$ 2.582 — a troca desfaz isso', () => {
     const custoCarimbado = new Map<string, number>();
 
     for (const mes of MESES) {

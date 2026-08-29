@@ -1,20 +1,19 @@
 /**
  * A conta de lucro por produto da ANÁLISE DE VENDAS — sítio 3.3 do saneamento.
  *
- * ⚠️ Reimplementação LEGADA do modelo canônico de `@posto/utils/lucro`, movida
- * (sem mudar a conta) para fora de `salesAnalysis.service.ts` para que
- * `calculos-analise-vendas.golden.spec.ts` a exercite lado a lado com a
- * canônica (§7: nada de consolidar sem teste contra todas as implementações).
- * As diferenças conhecidas, travadas no golden:
- *
- * - o custo vem do CARIMBO `Estoque.custo_medio` (média ponderada com estoque
- *   anterior — `custoMedioPonderado`), não da compra do mês: erra o lucro do
- *   mês em até R$ 2.582;
- * - não quantiza por `emCentavos`.
- *
- * A consolidação no canônico é a onda 3 do saneamento — não use este módulo
- * em código novo.
+ * [onda 3, grupo B] CONSOLIDADA na canônica de `@posto/utils/lucro`:
+ * `linhaLucroProduto` delega a `lucroCombustivel`/`margemPercentual`, e o
+ * serviço passou a alimentá-la com o custo da COMPRA DO PRÓPRIO MÊS
+ * (`custoMedioCompra`) em vez do carimbo `Estoque.custo_medio` (média
+ * ponderada com estoque anterior) — que deslocava o lucro do mês em até
+ * R$ 2.582 (abril/2026). O carimbo ficou só como fallback de mês sem compra
+ * lançada. Antes/depois travado no golden ao lado.
  */
+import {
+    despesaOperacionalPorLitro,
+    lucroCombustivel,
+    margemPercentual,
+} from '@posto/utils';
 
 /** Um produto agregado no mês, como o serviço monta a partir das leituras. */
 export interface EntradaLinhaProduto {
@@ -22,7 +21,7 @@ export interface EntradaLinhaProduto {
     readonly litros: number;
     /** Receita real do produto no mês (Σ `Leitura.valor_total`), em reais. */
     readonly valor: number;
-    /** R$/L — o carimbo `Estoque.custo_medio` (é aqui que a conta diverge). */
+    /** R$/L — custo da compra do MÊS (`custoMedioCompra`); carimbo só como fallback. */
     readonly custoMedio: number;
     /** R$/L de despesa rateada — ver {@link despesaPorLitroVendido}. */
     readonly despesaPorLitro: number;
@@ -40,33 +39,38 @@ export interface LinhaLucroProduto {
     readonly cmv: number;
 }
 
-/**
- * Despesa operacional por litro vendido no mês.
- *
- * @remarks Mesma conta de `despesaOperacionalPorLitro` (`@posto/utils`) — o
- *          golden afirma a igualdade. Mantida aqui porque o serviço inteiro
- *          ainda é a implementação legada.
- */
+/** Despesa operacional por litro vendido no mês — delega à canônica. */
 export function despesaPorLitroVendido(totalDespesas: number, litrosVendidos: number): number {
-    return litrosVendidos > 0 ? totalDespesas / litrosVendidos : 0;
+    return despesaOperacionalPorLitro(totalDespesas, litrosVendidos);
 }
 
-/** A "EXCEL LOGIC" do serviço, verbatim: preço praticado → sugerido → lucro → margem. */
+/** A linha da tela: preço praticado → sugerido → lucro (canônico) → margem. */
 export function linhaLucroProduto(e: EntradaLinhaProduto): LinhaLucroProduto {
-    // 1. Preço Praticado (Actual Price)
+    // 1. Preço Praticado (receita real ÷ litros; cadastro só sem litro no mês)
     const precoPraticado = e.litros > 0 ? e.valor / e.litros : e.precoVendaCadastro;
 
-    // 2. Valor para Venda Sugerido (Suggested Price) = Custo Médio + Despesa/Litro
+    // 2. Valor para Venda Sugerido = Custo Médio do mês + Despesa/Litro
     const suggestedPrice = e.custoMedio + e.despesaPorLitro;
 
-    // 3. Lucro por Litro = Preço Praticado - Valor Sugerido
+    // 3. Lucro por Litro (não é dinheiro final → sem quantizar)
     const profitPerLiter = precoPraticado - suggestedPrice;
 
-    // 4. Lucro Total = Lucro por Litro * Volume
-    const lucroTotal = profitPerLiter * e.litros;
+    // 4. Lucro Total — canônico, quantizado em centavos na saída
+    const lucroTotal = lucroCombustivel({
+        litros: e.litros,
+        precoVenda: precoPraticado,
+        custoMedio: e.custoMedio,
+        despesaOperacionalLitro: e.despesaPorLitro,
+    });
 
-    // 5. Margem = Lucro por Litro / Preço Praticado
-    const margin = precoPraticado > 0 ? (profitPerLiter / precoPraticado) * 100 : 0;
+    // 5. Margem canônica: lucro ÷ receita. Sem litro no mês, mantém a margem
+    // hipotética por litro sobre o preço de cadastro (comportamento da tela).
+    const margin =
+        e.litros > 0
+            ? margemPercentual(lucroTotal, e.valor)
+            : precoPraticado > 0
+              ? (profitPerLiter / precoPraticado) * 100
+              : 0;
 
     // Custo Total Visualização (Custo Médio * Volume)
     const cmv = e.litros * e.custoMedio;
