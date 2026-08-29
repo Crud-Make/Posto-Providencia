@@ -11,6 +11,17 @@
   antes/depois. **Efeito na tela:** o total de "Despesas" cai exatamente o valor carimbado em
   `taxas_pagamento` no período — no replay atual esse carimbo está zerado (a UI nunca o grava),
   então hoje o número visível não muda; com histórico carimbado, muda.
+- **RPC `get_dashboard_proprietario`: o lucro líquido para de descontar taxa chumbada (4.3).**
+  Migration nova e versionada (`20260828_rpc_taxa_cartao_e_despesa_do_mes.sql`):
+  `lucro_liquido = lucro_bruto − total_despesas` (a fórmula do painel do proprietário, validada
+  por `lucro-real.golden.spec.ts`) e `custo_taxas` devolve 0 — a estimativa com `1,2%`/`3,5%`
+  chumbados morre; a taxa real, lançada, já está nas despesas. SECURITY DEFINER, `search_path` e
+  o custo por época (golden `custo-historico`) ficam intactos. **Efeito na tela: nenhum hoje** —
+  `useDashboardProprietario` já neutralizava a coluna e calculava o lucro certo no cliente; o
+  banco passa a dizer o que o cliente já dizia (em julho a estimativa chumbada era R$ 57,50).
+  **Achado:** a tela `/fechamento-mensal` consome OUTRA RPC (`get_fechamento_mensal`, no
+  `legado/`), que ainda desconta os percentuais chumbados POR DIA e ignora despesas — corrigi-la
+  exige decidir o rateio diário de despesa mensal; fica para o dono.
 
 ### 🔴 Saneamento pré-release — onda 3, GRUPO B (mudam número em rota viva)
 
