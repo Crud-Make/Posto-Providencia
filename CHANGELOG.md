@@ -30,6 +30,13 @@
   débito/crédito da exibição foi preservado (as taxas são diferentes) e o lump legado segue no
   débito, como sempre — três invariantes novos no vitest travam `débito + crédito = cartao()` e
   `Σ fatias = conferido()`. Nenhum número muda (mesmo parse, mesmos campos).
+- **A aritmética do encerrante de `calculators.ts` delega a `@posto/utils/leitura` (3.8, grupo A).**
+  `calcularLitros`/`calcularVenda` agora chamam `litrosVendidos`/`valorDaLeitura` — a fonte única
+  coberta pelo golden das 1.188 leituras reais. O módulo NÃO subiu de pasta: mover arrastaria os
+  tipos de UI (`BicoComDetalhes`) para o pacote e mexeria no importador único (`useFechamento`),
+  dentro da zona do revert ilegível `0f201ef`. O que fica no app é adaptação de tela (parse BR,
+  regra do "-", agrupamento). Teste novo (`calculators.test.ts`) trava a equivalência com a
+  canônica. Nenhum número muda.
 
 ### 🧪 Saneamento pré-release — onda 2 (rede de teste das fórmulas)
 
