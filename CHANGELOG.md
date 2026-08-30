@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### 🔒 `.vercelignore` deixava `docs/data/` e o `.env.local` subirem para a Vercel
+
+- O `.vercelignore` **substitui** o `.gitignore` no upload — a Vercel não volta a consultar o git
+  quando ele existe. O arquivo listava só `node_modules`, `build`, `dist`, `.git`, `.trae`, `.log`
+  e `.figma`, então **tudo o mais subia**, inclusive `docs/data/` (os `.sqlite` do posto) e o
+  `.env.local` (hoje com a chave PRIVADA do VAPID). Estarem no `.gitignore` não protegia nada aqui.
+- O buraco só se abria num deploy por **CLI a partir da raiz** — descoberto ao fazer exatamente
+  isso em 30/08/2026. Deploy pela integração do GitHub usa o repositório e nunca passou por essa
+  porta, o que explica por que ninguém notou antes.
+- Agora exclui `docs/`, `.env*`, `.claude/`, `graphify-out/` e `supabase/.temp/`, com o aviso no
+  topo do arquivo para o próximo que for editá-lo.
+
 ### 🔔 Aviso no celular do dono quando o fechamento chega (em construção)
 
 - **Sem Firebase.** Web Push é padrão do navegador: o endpoint da inscrição já aponta para o
