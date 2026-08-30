@@ -1,7 +1,7 @@
 import React from 'react';
 import { DollarSign } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
-import { corDoProduto } from './cores-planilha';
+import { corDoProduto } from '@posto/utils';
 import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais, analisarValor } from '../../utils/formatters';

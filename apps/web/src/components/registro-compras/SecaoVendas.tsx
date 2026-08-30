@@ -2,7 +2,7 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { CombustivelHibrido, VendaBicoMes } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
-import { corDoProduto } from './cores-planilha';
+import { corDoProduto } from '@posto/utils';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 
 /**

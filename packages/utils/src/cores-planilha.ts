@@ -30,3 +30,25 @@ const SEM_COR: CorBico = { fundo: '#94A3B8', texto: '#FFFFFF' };
 export function corDoProduto(codigo: string | null | undefined): CorBico {
     return (codigo && CORES_BICO_PLANILHA[codigo.toUpperCase()]) || SEM_COR;
 }
+
+/**
+ * Classes Tailwind para dinheiro com sinal, iguais no projeto inteiro:
+ * ganho (lucro, sobra) verde; perda (prejuízo, falta, perca) vermelha; zero neutro.
+ *
+ * @param valor - Número já na convenção "positivo = bom". Para `diferenca` de
+ *                caixa (positivo = FALTA) passe o valor NEGADO, ou use
+ *                {@link corDaDiferenca}.
+ */
+export function corDeSinal(valor: number): { readonly texto: string; readonly fundo: string } {
+    if (valor > 0) return { texto: 'text-green-600 dark:text-green-400', fundo: 'bg-green-50 dark:bg-green-900/10' };
+    if (valor < 0) return { texto: 'text-red-600 dark:text-red-400', fundo: 'bg-red-50 dark:bg-red-900/10' };
+    return { texto: 'text-slate-500 dark:text-slate-400', fundo: '' };
+}
+
+/**
+ * Classes para a `diferenca` de caixa, na convenção do domínio
+ * (skill fechamento-posto-providencia): positivo = FALTA (vermelho), negativo = SOBRA (verde).
+ */
+export function corDaDiferenca(diferenca: number): { readonly texto: string; readonly fundo: string } {
+    return corDeSinal(-diferenca);
+}

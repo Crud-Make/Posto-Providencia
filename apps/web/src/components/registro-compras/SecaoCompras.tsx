@@ -2,7 +2,7 @@ import React from 'react';
 import { Package, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { InputFinanceiro } from './InputFinanceiro';
-import { corDoProduto } from './cores-planilha';
+import { corDoProduto } from '@posto/utils';
 import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais, parseBRFloat } from '../../utils/formatters';
