@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🖼️ A foto do frentista aparece no painel
+
+- A lista de frentistas do painel mostra a foto que o próprio frentista pôs no PWA dele. **Não há
+  sincronização**: é a mesma coluna `Frentista.foto`, e o `select('*')` do painel já a trazia — ela
+  só se perdia no mapeamento para `PerfilFrentista`. Sem foto, as iniciais de sempre.
+- A coluna passou a existir nos tipos (`FrentistaTable` do painel e `Frentista` de
+  `packages/types`), que ainda não a conheciam.
+
 ### 🔔 Corrigido: a tela pedia para ativar o aviso a quem já tinha ativado
 
 - A checagem de "já está inscrito?" perguntava `getRegistration()` **uma vez**, na montagem. O

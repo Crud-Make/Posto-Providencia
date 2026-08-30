@@ -34,6 +34,15 @@ export interface Frentista {
     turno_id: number | null;
     posto_id: number;
     created_at?: string;
+    /**
+     * Avatar em data URL JPEG (192px), reduzido no aparelho antes de subir.
+     *
+     * @remarks Quem grava é o próprio frentista, no PWA dele — e isso é regra de
+     *          TELA, não do banco: o client é `anon` e a policy
+     *          `Enable Update for Anon on Frentista` libera UPDATE em qualquer
+     *          linha. Ver `20260830_frentista_foto.sql`.
+     */
+    foto?: string | null;
 }
 
 /**
