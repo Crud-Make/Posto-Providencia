@@ -6,6 +6,7 @@ import {
     totalGanhoPerdaCentavos,
     resumoPorDirecao,
     seriePrecoDiario,
+    totalGanhoVendasCentavos,
     type LeituraPrecoDia,
 } from './troca-preco';
 
@@ -233,5 +234,50 @@ describe('seriePrecoDiario', () => {
     it('combustíveis separados, ordenados pela chave', () => {
         const series = seriePrecoDiario([dia('2026-01-01', 4.58, 100, 'et'), dia('2026-01-01', 6.28, 100, 'gc')]);
         expect(series.map((s) => s.combustivel)).toEqual(['et', 'gc']);
+    });
+});
+
+describe('lucro nas vendas desde a troca (#70)', () => {
+    const compras = [{ combustivel: 'gc', data: '2026-01-20', litros: 31_000, valorTotal: 165_700 }];
+    const leituras = [
+        dia('2026-01-06', 6.28, 500),
+        dia('2026-01-07', 6.48, 300),
+        dia('2026-01-08', 6.48, 200),
+    ];
+    const delta = 6.48 - 6.28;
+
+    it('litros vendidos desde a troca × Δpreço, venda anterior fora', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        expect(i.litrosVendidosDesdeATroca).toBe(500); // 300 + 200; os 500 de 06/01 ficam fora
+        expect(i.ganhoVendasCentavos).toBe(Math.round(500 * delta * 100)); // R$ 100,00
+    });
+
+    it('ritmo: média por dia com venda, efeito por dia e projeção de 30 dias', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        expect(i.mediaLitrosDiaDesdeATroca).toBe(250);
+        expect(i.ganhoPorDiaCentavos).toBe(Math.round(250 * delta * 100));
+        expect(i.ritmoMensalCentavos).toBe(Math.round(250 * delta * 30 * 100));
+    });
+
+    it('lucro bruto por dia antes/depois usa a margem, com a mesma média de litros', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        const custo = 165_700 / 31_000;
+        expect(i.lucroDiaAntigoCentavos).toBe(Math.round(250 * (6.28 - custo) * 100));
+        expect(i.lucroDiaNovoCentavos).toBe(Math.round(250 * (6.48 - custo) * 100));
+    });
+
+    it('sem venda desde a troca: vendas zero, média/ritmo/lucro-dia null — nunca zero disfarçado', () => {
+        const soDiaDaTroca = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 0)];
+        const [i] = impactoTrocaDePreco(soDiaDaTroca, compras, []);
+        expect(i.litrosVendidosDesdeATroca).toBe(0);
+        expect(i.ganhoVendasCentavos).toBe(0);
+        expect(i.mediaLitrosDiaDesdeATroca).toBeNull();
+        expect(i.ganhoPorDiaCentavos).toBeNull();
+        expect(i.lucroDiaAntigoCentavos).toBeNull();
+    });
+
+    it('total das vendas soma todas as trocas', () => {
+        const impactos = impactoTrocaDePreco(leituras, compras, []);
+        expect(totalGanhoVendasCentavos(impactos)).toBe(impactos[0].ganhoVendasCentavos);
     });
 });

@@ -215,3 +215,15 @@ test('janeiro — o preço antigo vigorou 6 dias (01–06/01) nos 4 combustívei
         expect(i.diasComPrecoAntigo).toBe(6);
     }
 });
+
+test('janeiro — gasolina comum: lucro extra nas vendas = litros desde 07/01 × Δ0,20 do encerrante', () => {
+    const leituras = leiturasDoMes(1);
+    const litros = leituras
+        .filter((l) => l.combustivel === 'gasolina-comum' && l.data >= '2026-01-07')
+        .reduce((soma, l) => soma + l.litrosVendidos, 0);
+    expect(litros).toBeGreaterThan(0);
+    const [gc] = impactoTrocaDePreco(leituras, comprasDoMes(1), [])
+        .filter((i) => i.combustivel === 'gasolina-comum');
+    expect(gc.litrosVendidosDesdeATroca).toBeCloseTo(litros, 6);
+    expect(gc.ganhoVendasCentavos).toBe(Math.round(litros * (6.48 - 6.28) * 100));
+});

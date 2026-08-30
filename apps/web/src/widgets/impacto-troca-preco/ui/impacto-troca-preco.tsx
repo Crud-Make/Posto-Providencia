@@ -49,20 +49,12 @@ const reaisComSinal = (centavos: number) => `${centavos >= 0 ? '+' : ''}${reais(
 const numeros: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 
 /**
- * Variantes legíveis das cores da planilha para marcas de gráfico: o hex cru
- * (amarelo puro, verde-água) some no fundo claro. O chip do combustível mantém
- * o hex exato que o dono reconhece; a barra usa o mesmo matiz um tom mais
- * escuro. Paleta validada com `scripts/validate_palette.js` da skill dataviz.
+ * A barra fala POLARIDADE, a pedido do dono: verde = preço subiu (o estoque e
+ * as vendas rendem mais), vermelho = caiu, cinza apagado = não mexeu. A
+ * identidade do combustível fica na sigla do eixo — nunca cor sozinha.
  */
-const COR_LINHA: Readonly<Record<string, string>> = {
-  GC: '#DC2626',
-  GA: '#0284C7',
-  ET: '#059669',
-  S10: '#CA8A04',
-};
-
-const corDaLinha = (codigo: string | null) =>
-  (codigo && COR_LINHA[codigo.toUpperCase()]) || '#64748B';
+const corDaBarra = (variacao: number) =>
+  variacao > 0 ? '#16A34A' : variacao < 0 ? '#DC2626' : '#64748B';
 
 /** "Foi só o diesel ou mexeu tudo?" — quanto cada preço variou no mês. */
 const GraficoVariacao: React.FC<{ readonly barras: readonly BarraVariacao[] }> = ({ barras }) => {
@@ -70,7 +62,6 @@ const GraficoVariacao: React.FC<{ readonly barras: readonly BarraVariacao[] }> =
   const dados = barras.map((b) => ({
     sigla: b.codigoCombustivel ?? b.nomeCombustivel,
     nome: b.nomeCombustivel,
-    codigo: b.codigoCombustivel,
     variacao: b.variacao,
     precoInicio: b.precoInicio,
     precoFim: b.precoFim,
@@ -112,7 +103,7 @@ const GraficoVariacao: React.FC<{ readonly barras: readonly BarraVariacao[] }> =
             />
             <Bar dataKey="variacao" radius={[4, 4, 0, 0]} maxBarSize={72} isAnimationActive={false}>
               {dados.map((b) => (
-                <Cell key={b.sigla} fill={corDaLinha(b.codigo)} fillOpacity={b.variacao === 0 ? 0.25 : 1} />
+                <Cell key={b.sigla} fill={corDaBarra(b.variacao)} fillOpacity={b.variacao === 0 ? 0.25 : 1} />
               ))}
               <LabelList
                 dataKey="variacao"
@@ -159,31 +150,44 @@ const narrativa = (i: ImpactoExibivel): string => {
   return `${vigencia}. Em ${diaCurto(i.data)} o preço ${verbo} R$ ${delta} e foi para R$ ${precoBR(i.precoNovo)}.`;
 };
 
-/** O bloco que responde a única pergunta do dono: lucrou ou perdeu? */
-const Veredito: React.FC<{ readonly ganhoCentavos: number | null }> = ({ ganhoCentavos }) => {
-  if (ganhoCentavos == null) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-1 px-5 py-4 min-w-[180px] bg-gray-50 dark:bg-gray-700/40 text-center">
-        <span className="text-[11px] font-bold tracking-widest text-gray-500 dark:text-gray-400">
-          SEM MEDIÇÃO DE TANQUE
-        </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          não dá para apurar lucro ou prejuízo
-        </span>
-      </div>
-    );
-  }
-  const positivo = ganhoCentavos >= 0;
-  const cor = corDeSinal(ganhoCentavos);
+/** Os DOIS efeitos da troca: o estoque parado (uma vez) e as vendas (todo dia). */
+const Veredito: React.FC<{ readonly impacto: ImpactoExibivel }> = ({ impacto }) => {
+  const estoque = impacto.ganhoPerdaCentavos;
+  const vendas = impacto.ganhoVendasCentavos;
+  const corVendas = corDeSinal(vendas);
   return (
-    <div className={`flex flex-col items-center justify-center gap-1 px-5 py-4 min-w-[180px] text-center ${cor.fundo}`}>
-      <span className={`flex items-center gap-1 text-[11px] font-bold tracking-widest ${cor.texto}`}>
-        {positivo ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
-        {positivo ? 'LUCRO NO ESTOQUE' : 'PREJUÍZO NO ESTOQUE'}
-      </span>
-      <span className={`text-2xl font-extrabold ${cor.texto}`} style={numeros}>
-        {reaisComSinal(ganhoCentavos)}
-      </span>
+    <div className="flex flex-col justify-center gap-2 px-5 py-3 min-w-[230px] bg-gray-50 dark:bg-gray-700/30">
+      {estoque == null ? (
+        <div>
+          <div className="text-[11px] font-bold tracking-widest text-gray-500 dark:text-gray-400">
+            NO ESTOQUE PARADO
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">sem medição de tanque — não apurável</div>
+        </div>
+      ) : (
+        <div>
+          <div className={`flex items-center gap-1 text-[11px] font-bold tracking-widest ${corDeSinal(estoque).texto}`}>
+            {estoque >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+            {estoque >= 0 ? 'LUCRO NO ESTOQUE' : 'PREJUÍZO NO ESTOQUE'}
+          </div>
+          <div className={`text-2xl font-extrabold ${corDeSinal(estoque).texto}`} style={numeros}>
+            {reaisComSinal(estoque)}
+          </div>
+        </div>
+      )}
+      <div className="border-t border-gray-200 dark:border-gray-600/60 pt-2">
+        <div className={`text-[11px] font-bold tracking-widest ${corVendas.texto}`}>
+          {vendas >= 0 ? 'LUCRO NAS VENDAS' : 'PREJUÍZO NAS VENDAS'} · DESDE {diaCurto(impacto.data)}
+        </div>
+        <div className={`text-lg font-extrabold ${corVendas.texto}`} style={numeros}>
+          {reaisComSinal(vendas)}
+        </div>
+        {impacto.ganhoPorDiaCentavos != null && impacto.ritmoMensalCentavos != null && (
+          <div className="text-[11px] text-gray-500 dark:text-gray-400" style={numeros}>
+            ritmo: {reaisComSinal(impacto.ganhoPorDiaCentavos)}/dia · {reaisComSinal(impacto.ritmoMensalCentavos)}/mês
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -219,9 +223,9 @@ const CardTroca: React.FC<{ readonly impacto: ImpactoExibivel }> = ({ impacto })
         </div>
         <p className="text-sm text-gray-600 dark:text-gray-300">{narrativa(impacto)}</p>
       </div>
-      <Veredito ganhoCentavos={impacto.ganhoPerdaCentavos} />
+      <Veredito impacto={impacto} />
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-3 border-t border-gray-100 dark:border-gray-700/70 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700/70">
+    <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-gray-100 dark:border-gray-700/70 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700/70">
       <Fato rotulo="Tanque na véspera">
         {impacto.litrosNoTanque == null ? (
           <span className="text-gray-400 dark:text-gray-500">sem régua antes da troca</span>
@@ -254,6 +258,22 @@ const CardTroca: React.FC<{ readonly impacto: ImpactoExibivel }> = ({ impacto })
           </>
         )}
       </Fato>
+      <Fato rotulo="Lucro bruto por dia">
+        {impacto.lucroDiaAntigoCentavos == null || impacto.lucroDiaNovoCentavos == null ? (
+          <span className="text-gray-400 dark:text-gray-500">
+            {impacto.mediaLitrosDiaDesdeATroca == null ? 'sem venda desde a troca' : 'sem compra no mês'}
+          </span>
+        ) : (
+          <>
+            {reais(impacto.lucroDiaAntigoCentavos)} →{' '}
+            <span className={`font-semibold ${corDeSinal(impacto.lucroDiaNovoCentavos - impacto.lucroDiaAntigoCentavos).texto}`}>
+              {reais(impacto.lucroDiaNovoCentavos)}
+            </span>
+            {impacto.mediaLitrosDiaDesdeATroca != null &&
+              ` · ${Math.round(impacto.mediaLitrosDiaDesdeATroca).toLocaleString('pt-BR')} L/dia`}
+          </>
+        )}
+      </Fato>
     </div>
   </li>
 );
@@ -282,8 +302,9 @@ export const ImpactoTrocaPreco: React.FC<Props> = ({ postoId, mesIso }) => {
 
   if (!dados || dados.impactos.length === 0) return null;
 
-  const { resumo } = dados;
-  const corMes = corDeSinal(resumo.liquidoCentavos);
+  const { resumo, totalVendasCentavos } = dados;
+  const efeitoTotal = resumo.liquidoCentavos + totalVendasCentavos;
+  const corMes = corDeSinal(efeitoTotal);
   const lados = [
     resumo.subidas.quantidade > 0 &&
       `${resumo.subidas.quantidade} ${resumo.subidas.quantidade === 1 ? 'subida' : 'subidas'}`,
@@ -303,10 +324,13 @@ export const ImpactoTrocaPreco: React.FC<Props> = ({ postoId, mesIso }) => {
         </div>
         <div className={`rounded-2xl px-4 py-2 text-center ${corMes.fundo}`}>
           <div className={`text-[11px] font-bold tracking-widest ${corMes.texto}`}>
-            {resumo.liquidoCentavos >= 0 ? 'RESULTADO: LUCRO' : 'RESULTADO: PREJUÍZO'}
+            {efeitoTotal >= 0 ? 'EFEITO TOTAL: LUCRO' : 'EFEITO TOTAL: PREJUÍZO'}
           </div>
           <div className={`text-xl font-extrabold ${corMes.texto}`} style={numeros}>
-            {reaisComSinal(resumo.liquidoCentavos)} no mês
+            {reaisComSinal(efeitoTotal)} no mês
+          </div>
+          <div className="text-[11px] text-gray-500 dark:text-gray-400" style={numeros}>
+            estoque {reaisComSinal(resumo.liquidoCentavos)} · vendas {reaisComSinal(totalVendasCentavos)}
           </div>
         </div>
       </header>

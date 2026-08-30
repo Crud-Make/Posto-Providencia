@@ -139,6 +139,35 @@ export interface ImpactoTroca extends TrocaDePreco {
      * `null` quando `litrosNoTanque` é `null`.
      */
     readonly ganhoPerdaCentavos: number | null;
+    /**
+     * Litros do combustível VENDIDOS desde o dia da troca (inclusive), dentro
+     * da janela de leituras fornecida — o encerrante realizado ao preço novo.
+     */
+    readonly litrosVendidosDesdeATroca: number;
+    /**
+     * Lucro extra (ou a menos) JÁ REALIZADO nas vendas desde a troca:
+     * `litrosVendidosDesdeATroca × Δpreço`, em CENTAVOS inteiros. O custo
+     * cancela na comparação (mesmo custo nos dois cenários) — sobra o Δpreço.
+     * Zero quando nada foi vendido desde a troca.
+     */
+    readonly ganhoVendasCentavos: number;
+    /**
+     * Média de litros/dia vendidos desde a troca (só dias com venda).
+     * `null` quando ainda não houve dia com venda ao preço novo.
+     */
+    readonly mediaLitrosDiaDesdeATroca: number | null;
+    /** `mediaLitrosDia × Δpreço`, centavos: o efeito da troca por dia de venda. `null` sem venda. */
+    readonly ganhoPorDiaCentavos: number | null;
+    /** `ganhoPorDia × 30`: o ritmo mensal do efeito, no ritmo de venda atual. `null` sem venda. */
+    readonly ritmoMensalCentavos: number | null;
+    /**
+     * Lucro BRUTO por dia de venda AO PREÇO ANTIGO: `mediaLitrosDia ×
+     * margemAntigaLitro`, centavos. "Como fica a cada encerrante": o que um
+     * dia típico rendia antes da troca. `null` sem venda ou sem compra no mês.
+     */
+    readonly lucroDiaAntigoCentavos: number | null;
+    /** Idem ao preço NOVO: `mediaLitrosDia × margemNovaLitro`. `null` sem venda ou sem compra. */
+    readonly lucroDiaNovoCentavos: number | null;
 }
 
 /**
@@ -325,6 +354,31 @@ export function impactoTrocaDePreco(
             ? null
             : valorEstoqueAntigoCentavos + ganhoPerdaCentavos;
 
+        const deltaPreco = troca.precoNovo - troca.precoAntigo;
+        let litrosVendidosDesdeATroca = 0;
+        const diasComVenda = new Set<string>();
+        for (const l of leituras) {
+            if (l.combustivel !== troca.combustivel || l.data < troca.data) continue;
+            litrosVendidosDesdeATroca += l.litrosVendidos;
+            if (l.litrosVendidos > 0) diasComVenda.add(l.data);
+        }
+        const ganhoVendasCentavos = Math.round(litrosVendidosDesdeATroca * deltaPreco * 100);
+        const mediaLitrosDiaDesdeATroca = diasComVenda.size > 0
+            ? litrosVendidosDesdeATroca / diasComVenda.size
+            : null;
+        const ganhoPorDiaCentavos = mediaLitrosDiaDesdeATroca == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * deltaPreco * 100);
+        const ritmoMensalCentavos = mediaLitrosDiaDesdeATroca == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * deltaPreco * 30 * 100);
+        const lucroDiaAntigoCentavos = mediaLitrosDiaDesdeATroca == null || margemAntigaLitro == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * margemAntigaLitro * 100);
+        const lucroDiaNovoCentavos = mediaLitrosDiaDesdeATroca == null || margemNovaLitro == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * margemNovaLitro * 100);
+
         return {
             ...troca,
             direcao,
@@ -337,6 +391,13 @@ export function impactoTrocaDePreco(
             valorEstoqueAntigoCentavos,
             valorEstoqueNovoCentavos,
             ganhoPerdaCentavos,
+            litrosVendidosDesdeATroca,
+            ganhoVendasCentavos,
+            mediaLitrosDiaDesdeATroca,
+            ganhoPorDiaCentavos,
+            ritmoMensalCentavos,
+            lucroDiaAntigoCentavos,
+            lucroDiaNovoCentavos,
         };
     });
 }
@@ -344,6 +405,11 @@ export function impactoTrocaDePreco(
 /** Total do período em centavos: soma só das trocas com estoque apurável. */
 export function totalGanhoPerdaCentavos(impactos: readonly ImpactoTroca[]): number {
     return impactos.reduce((soma, i) => soma + (i.ganhoPerdaCentavos ?? 0), 0);
+}
+
+/** Total do lucro extra já realizado nas VENDAS desde as trocas, em centavos. */
+export function totalGanhoVendasCentavos(impactos: readonly ImpactoTroca[]): number {
+    return impactos.reduce((soma, i) => soma + i.ganhoVendasCentavos, 0);
 }
 
 /** Um lado do resumo por direção: quantas trocas e quanto somaram. */

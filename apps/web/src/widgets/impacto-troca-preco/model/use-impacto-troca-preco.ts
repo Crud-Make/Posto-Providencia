@@ -14,6 +14,7 @@ import {
   impactoTrocaDePreco,
   resumoPorDirecao,
   seriePrecoDiario,
+  totalGanhoVendasCentavos,
   type ImpactoTroca,
   type ResumoPorDirecao,
   type LeituraPrecoDia,
@@ -82,6 +83,8 @@ export interface DadosImpactoTrocaPreco {
   readonly resumo: ResumoPorDirecao;
   /** Quanto cada combustível variou no mês — barras do "foi só o diesel?". */
   readonly barras: readonly BarraVariacao[];
+  /** Lucro extra já realizado nas VENDAS desde as trocas do mês, em centavos. */
+  readonly totalVendasCentavos: number;
 }
 
 /** `2026-03` → `2026-02-01` (início da busca, um mês antes). */
@@ -191,7 +194,12 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
           };
         });
 
-      setDados({ impactos: doMes, resumo: resumoPorDirecao(doMes), barras });
+      setDados({
+        impactos: doMes,
+        resumo: resumoPorDirecao(doMes),
+        barras,
+        totalVendasCentavos: totalGanhoVendasCentavos(doMes),
+      });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui apurar as trocas de preço.');
       setDados(null);

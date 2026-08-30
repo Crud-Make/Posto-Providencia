@@ -30,6 +30,14 @@
   ±R$ por litro na cor do combustível (variantes legíveis das cores da planilha, paleta validada
   pelo script da skill dataviz). A série diária por trás (`seriePrecoDiario`) é função pura nova
   em `troca-preco.ts`, com unitários; começou como gráfico de linhas e virou barras a pedido.
+- **O lucro que está saindo, não só o parado** (pedido do dono, 30/08): cada troca agora mostra
+  os DOIS efeitos — no estoque parado (uma vez) e **nas vendas desde a troca** (todo encerrante):
+  `litros vendidos desde a troca × Δpreço` já realizado, o ritmo por dia de venda e a projeção
+  de 30 dias, mais o fato "lucro bruto por dia" (média L/dia × margem, antes → depois). O
+  cabeçalho vira EFEITO TOTAL (estoque + vendas), decomposto. Fórmulas novas em `troca-preco.ts`
+  (`ganhoVendasCentavos`, `ritmoMensalCentavos`, `lucroDia*`), com unitários e golden (janeiro:
+  vendas da gasolina comum desde 07/01 contra o encerrante real). As barras de variação falam
+  polaridade (verde subiu / vermelho caiu / cinza não mexeu) — a identidade fica na sigla do eixo.
 - **fix: data com timestamp não quebra mais a véspera.** `Leitura`/`Compra` podem devolver
   `YYYY-MM-DDTHH:MM:SS`; sem normalizar, o parse da véspera dava "Invalid time value" e — pior —
   a corrente aceitava régua do PRÓPRIO dia da troca (estoque inflado: 3.737 L onde a véspera
