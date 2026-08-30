@@ -2,6 +2,7 @@ import React from 'react';
 import { Package, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { InputFinanceiro } from './InputFinanceiro';
+import { corDoProduto } from './cores-planilha';
 import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais, parseBRFloat } from '../../utils/formatters';
@@ -131,10 +132,10 @@ export const SecaoCompras: React.FC<Props> = ({
                      const sobraLt = calculos.calcLucroLt(c);
                      return (
                         <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
-                           <td className="px-4 py-5 font-medium text-slate-900 dark:text-white">
+                           <td className="px-4 py-5 font-medium text-slate-900 dark:text-white border-l-8" style={{ borderLeftColor: corDoProduto(c.codigo).fundo }}>
                               <div className="flex flex-col">
                                  <span className="text-base">{c.nome}</span>
-                                 <span className="text-xs text-slate-500 font-mono mt-1">{c.codigo}</span>
+                                 <span className="text-xs font-mono mt-1 px-1.5 py-0.5 rounded self-start" style={{ backgroundColor: corDoProduto(c.codigo).fundo, color: corDoProduto(c.codigo).texto }}>{c.codigo}</span>
                               </div>
                            </td>
                            <td className="px-3 py-5 min-w-[140px] border-l border-slate-100 dark:border-gray-700">

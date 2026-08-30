@@ -2,6 +2,7 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { CombustivelHibrido, VendaBicoMes } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
+import { corDoProduto } from './cores-planilha';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 
 /**
@@ -101,10 +102,10 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
 
                      return (
                         <tr key={b.bicoId} className="hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
-                           <td className="px-4 py-4 font-medium text-slate-900 dark:text-white">
+                           <td className="px-4 py-4 font-medium text-slate-900 dark:text-white border-l-8" style={{ borderLeftColor: corDoProduto(produto?.codigo).fundo }}>
                               <div className="flex flex-col">
                                  <span className="text-base">Bico {String(b.numero).padStart(2, '0')}</span>
-                                 <span className="text-xs text-slate-500 mt-0.5">{b.produtoNome}</span>
+                                 <span className="text-xs mt-0.5 px-1.5 py-0.5 rounded self-start" style={{ backgroundColor: corDoProduto(produto?.codigo).fundo, color: corDoProduto(produto?.codigo).texto }}>{b.produtoNome}</span>
                               </div>
                            </td>
                            <td className="px-4 py-4 text-right font-mono text-slate-600 dark:text-slate-300">
@@ -123,10 +124,28 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
                               {b.bruto > 0 ? paraReais(b.bruto) : '-'}
                            </td>
                            <td className={`px-4 py-4 text-right ${lucroLt < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {lucroLt !== 0 ? paraReais(lucroLt) : '-'}
+                              {lucroLt !== 0 ? (
+                                 <span className="flex flex-col items-end">
+                                    <span>{paraReais(lucroLt)}</span>
+                                    <span className="text-[10px] text-slate-500 whitespace-nowrap" title="Preço do mês − (custo médio da compra + despesa rateada por litro)">
+                                       {formatarParaBR(preco, 2)} − {formatarParaBR(valorParaVenda, 2)}
+                                    </span>
+                                 </span>
+                              ) : (
+                                 <span className="text-[10px] text-amber-600 whitespace-nowrap" title="Sem compra dentro do período, o custo do litro é desconhecido — não há como apurar lucro">
+                                    {preco > 0 ? 'sem compra no mês' : '-'}
+                                 </span>
+                              )}
                            </td>
                            <td className={`px-4 py-4 text-right font-bold ${lucroBico < 0 ? 'text-red-700 bg-red-50 dark:bg-red-900/10' : 'text-green-700 bg-green-50 dark:bg-green-900/10'}`}>
-                              {lucroBico !== 0 ? paraReais(lucroBico) : '-'}
+                              {lucroBico !== 0 ? (
+                                 <span className="flex flex-col items-end">
+                                    <span>{paraReais(lucroBico)}</span>
+                                    <span className="text-[10px] font-normal text-slate-500 whitespace-nowrap" title="Lucro por litro × litros vendidos no bico">
+                                       {formatarParaBR(lucroLt, 2)}/L × {formatarParaBR(b.litros, 0)} L
+                                    </span>
+                                 </span>
+                              ) : '-'}
                            </td>
                            <td className={`px-4 py-4 text-right ${margemPct < 0 ? 'text-red-600 font-semibold' : 'text-slate-600 dark:text-slate-300'}`}>
                               {margemPct !== 0 ? `${formatarParaBR(margemPct, 2)}%` : '-'}

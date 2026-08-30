@@ -15,6 +15,12 @@
 - **Fornecedor padrão** deixa de ser "o primeiro da lista" (ordem alfabética) e passa a ser o
   último com que o posto finalizou uma compra, lembrado no `localStorage` por posto; cai para o
   primeiro se nunca houve compra ou se o lembrado saiu do cadastro.
+- **Cores tradicionais dos bicos da planilha** (`cores-planilha.ts`, lidas do preenchimento do
+  `.xlsx`): Gasolina Comum vermelho, Aditivada azul, Etanol verde, Diesel amarelo — borda e
+  etiqueta do produto nas três tabelas. `Combustivel.cor` no banco tem outra paleta; não usada.
+- **Lucro por bico mostra a conta**: `lucro/L × litros`, e o lucro/L mostra `preço − custo do
+  litro`. Sem compra dentro do período aparece "sem compra no mês" em vez de "-" — é o que
+  acontece no mês corrente quando a compra está datada depois de hoje.
 - **Cores de lucro e prejuízo unificadas** na tela inteira: lucro/sobra = `green-*`, prejuízo/perca
   = `red-*`. Antes, lucro aparecia em âmbar na tabela de vendas e em esmeralda na de estoque —
   esmeralda é a cor de identidade de *venda* nesta tela, não de lucro, e âmbar é alerta. Lucro
