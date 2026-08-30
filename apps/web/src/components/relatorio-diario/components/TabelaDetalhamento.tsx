@@ -1,4 +1,5 @@
 import React from 'react';
+import { corDaDiferenca, corDeSinal } from '@posto/utils';
 import { BarChart2 } from 'lucide-react';
 import { ShiftData, DailyTotals } from '../types';
 
@@ -57,10 +58,10 @@ const TabelaDetalhamento: React.FC<TabelaDetalhamentoProps> = ({
                                 <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 font-medium">
                                     {fmtLitros(shift.litros)}
                                 </td>
-                                <td className="px-6 py-4 text-right font-black text-green-600 dark:text-green-400">
+                                <td className={`px-6 py-4 text-right font-black ${corDeSinal(shift.lucro).texto}`}>
                                     {fmtMoney(shift.lucro)}
                                 </td>
-                                <td className={`px-6 py-4 text-right font-bold ${shift.diferenca < 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                                <td className={`px-6 py-4 text-right font-bold ${corDaDiferenca(shift.diferenca).texto}`}>
                                     {fmtMoney(shift.diferenca)}
                                 </td>
                             </tr>
@@ -71,8 +72,8 @@ const TabelaDetalhamento: React.FC<TabelaDetalhamentoProps> = ({
                             <td className="px-6 py-4"></td>
                             <td className="px-6 py-4 text-right">{fmtMoney(totals.vendas)}</td>
                             <td className="px-6 py-4 text-right">{fmtLitros(totals.litros)}</td>
-                            <td className="px-6 py-4 text-right text-green-600 dark:text-green-400">{fmtMoney(totals.lucro)}</td>
-                            <td className={`px-6 py-4 text-right ${totals.diferenca < 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                            <td className={`px-6 py-4 text-right ${corDeSinal(totals.lucro).texto}`}>{fmtMoney(totals.lucro)}</td>
+                            <td className={`px-6 py-4 text-right ${corDaDiferenca(totals.diferenca).texto}`}>
                                 {fmtMoney(totals.diferenca)}
                             </td>
                         </tr>

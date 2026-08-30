@@ -49,7 +49,7 @@ const Elo: React.FC<EloProps> = ({ icone, rotulo, valor, nota, destaque, negativ
         destaque
           ? negativo
             ? 'text-red-600 dark:text-red-400'
-            : 'text-emerald-600 dark:text-emerald-400'
+            : 'text-green-600 dark:text-green-400'
           : 'text-gray-900 dark:text-white'
       }`}
     >

@@ -2,6 +2,26 @@
 
 ## [Não Lançado]
 
+### 🎨 Um padrão de cor para o sistema inteiro
+
+- **Cor do combustível é a da planilha, pelo código** (`corDoProduto` em `@posto/utils`):
+  Gasolina Comum vermelho, Aditivada azul, Etanol verde, Diesel S10 amarelo. Saem **seis mapas
+  concorrentes** — três com GC e S10 trocados (`aggregator.service`, `salesAnalysis.service`) e
+  quatro cópias de "se o nome contém gasolina" (que pintavam Aditivada de vermelho). `Combustivel.cor`
+  do banco deixa de ser lida; a `PALETA` por índice da Planilha do Mês e os `CORES_*` mortos de
+  `types/fechamento.ts` foram apagados. Cobre: fechamento de caixa (leituras, gestão de bicos,
+  gráficos), leituras diárias, dashboard, vendas, análise de custos, estoque, Planilha do Mês,
+  fechamento mensal e o PWA do dono (encerrante por foto — o `select` do `api-core` passou a trazer
+  `codigo`).
+- **Dinheiro com sinal: ganho verde, perda vermelha** (`corDeSinal`/`corDaDiferenca`). Corrige
+  três telas que contradiziam a convenção `diferença positiva = FALTA`: relatório diário (positivo
+  era azul), histórico do PWA do frentista (falta era azul com seta para cima) e o rodapé do
+  fechamento (sobra era âmbar). Sobra no PWA do frentista era laranja; lucro previsto do estoque e
+  card de lucro do dono eram verdes mesmo negativos.
+- **Não mexido, de propósito:** `useResumoCombustivel` chama de "Sobra de Caixa" a diferença
+  positiva de `totalSessoes − totalPagamentos` — precisa de decisão sobre o que essas duas somas
+  são antes de trocar rótulo ou cor.
+
 ### 🛒 Registro de Compras — compra e custo explicados, sem o gráfico
 
 - **Saiu a seção "Visão do Período"** (`GraficosCompras.tsx`, dois gráficos Recharts). Não havia

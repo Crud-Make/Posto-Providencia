@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { corDoProduto } from '@posto/utils';
 import { ChevronLeft, Camera, Check, AlertCircle, Loader2, Gauge, RefreshCw, CalendarX } from 'lucide-react';
 import { api } from '../services/api';
 import type { DiaEmFalta } from '@posto/api-core';
@@ -22,6 +23,8 @@ interface BicoInfo {
     numero: number;
     combustivel_id: number;
     combNome: string;
+    /** `Combustivel.codigo` — chave da cor da planilha. */
+    combCodigo: string | null;
     preco: number;
 }
 
@@ -30,7 +33,7 @@ interface BicoRow {
     id: number;
     numero: number;
     combustivel_id: number;
-    combustivel: { nome: string; preco_venda: number } | null;
+    combustivel: { nome: string; codigo: string; preco_venda: number } | null;
 }
 
 // Formato aceito por api.salvarLeituras.
@@ -192,6 +195,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                     numero: b.numero,
                     combustivel_id: b.combustivel_id,
                     combNome: b.combustivel?.nome ?? '—',
+                    combCodigo: b.combustivel?.codigo ?? null,
                     // Cadastro é o preço de HOJE. Num dia passado ele produz valor
                     // errado sem avisar — foi o que fez o replay de 01/01 fechar em
                     // R$ 10.503,77 contra R$ 9.430,34 da planilha. O preço do último
@@ -484,7 +488,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                                 <div key={b.id} className={`bg-[#131722] rounded-2xl p-4 border ${aviso ? 'border-amber-500/60' : 'border-slate-800/60'}`}>
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="w-7 h-7 rounded-full bg-indigo-500/15 text-indigo-300 text-xs font-bold flex items-center justify-center border border-indigo-500/30">
+                                            <span className="w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center" style={{ backgroundColor: corDoProduto(b.combCodigo).fundo, color: corDoProduto(b.combCodigo).texto }}>
                                                 {b.numero}
                                             </span>
                                             <div>
