@@ -10,6 +10,7 @@
  */
 
 import React from 'react';
+import { corDeSinal, corDoProduto } from '@posto/utils';
 import { TrendingUp, Download, Search } from 'lucide-react';
 import { BicoComDetalhes } from '../../../types/fechamento';
 import { useCalculoGestaoBicos } from '../hooks/useCalculoGestaoBicos';
@@ -275,7 +276,7 @@ export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
                                             {item.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-4 border-l-8" style={{ borderLeftColor: corDoProduto(item.codigo).fundo }}>
                                         <div className="flex flex-col">
                                             <span className="text-slate-200 font-medium">{item.combustivel}</span>
                                             <span className="text-[10px] text-slate-500">{item.ilha}</span>
@@ -285,10 +286,10 @@ export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
                                     <td className="px-6 py-4 text-right text-slate-400">{formatCurrency(item.faturamento)}</td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="inline-flex items-center gap-1 font-bold text-sm">
-                                            <span className={item.margem < 10 ? 'text-red-400' : 'text-green-400'}>{item.margem.toFixed(1)}%</span>
+                                            <span className={corDeSinal(item.margem).texto}>{item.margem.toFixed(1)}%</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right font-black group-hover:scale-105 transition-transform" style={{ color: item.margem < 10 ? '#EF4444' : '#22C55E' }}>
+                                    <td className={`px-6 py-4 text-right font-black group-hover:scale-105 transition-transform ${corDeSinal(item.lucro).texto}`}>
                                         {formatCurrency(item.lucro)}
                                     </td>
                                     <td className="px-6 py-4 text-center">

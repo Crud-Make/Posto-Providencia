@@ -4,6 +4,7 @@ import React from 'react';
 // Motivo: Permitir ajuste rápido sem alterar cadastro global
 import { BicoComDetalhes } from '../../../types/fechamento';
 import { paraReais } from '../../../utils/formatters';
+import { corDoProduto } from '@posto/utils';
 
 interface TabelaLeiturasProps {
   bicos: BicoComDetalhes[];
@@ -37,11 +38,11 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
    */
   const combustiveisUnicos = React.useMemo(() => {
     const vistos = new Set<number>();
-    const lista: { id: number; nome: string }[] = [];
+    const lista: { id: number; nome: string; codigo: string }[] = [];
     bicos.forEach(bico => {
       if (!vistos.has(bico.combustivel.id)) {
         vistos.add(bico.combustivel.id);
-        lista.push({ id: bico.combustivel.id, nome: bico.combustivel.nome });
+        lista.push({ id: bico.combustivel.id, nome: bico.combustivel.nome, codigo: bico.combustivel.codigo });
       }
     });
     return lista;
@@ -126,7 +127,10 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
           <div className="flex flex-wrap gap-3">
             {combustiveisUnicos.map(combustivel => (
               <div key={combustivel.id} className="flex items-center gap-2">
-                <label className="text-sm text-slate-400 whitespace-nowrap">{combustivel.nome}</label>
+                <label className="text-sm text-slate-400 whitespace-nowrap flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: corDoProduto(combustivel.codigo).fundo }} aria-hidden="true" />
+                  {combustivel.nome}
+                </label>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -176,19 +180,16 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
               const litros = calcLitros(bico.id);
               const totalVenda = litros.value * bico.combustivel.preco_venda;
 
-              // Adaptação de cores para dark mode baseado no combustível
-              let corBadge = { bg: 'bg-slate-700', text: 'text-slate-300', border: 'border-slate-600' };
-              const nomeCombustivel = bico.combustivel.nome.toLowerCase();
-
-              if (nomeCombustivel.includes('gasolina')) corBadge = { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30' };
-              else if (nomeCombustivel.includes('etanol')) corBadge = { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30' };
-              else if (nomeCombustivel.includes('diesel')) corBadge = { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30' };
+              // Cor do combustível: a da planilha, pelo código (GC/GA/ET/S10).
+              // Antes era um mapa por trecho do nome que não distinguia Comum
+              // de Aditivada e pintava diesel de âmbar.
+              const corProduto = corDoProduto(bico.combustivel.codigo);
 
               return (
                 <tr key={bico.id} className="hover:bg-slate-700/30 transition-colors group">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap border-l-8" style={{ borderLeftColor: corProduto.fundo }}>
                     <div className="flex items-center">
-                      <div className={`flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-xl ${corBadge.bg} ${corBadge.text} border ${corBadge.border} font-bold shadow-sm`}>
+                      <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-xl font-bold shadow-sm" style={{ backgroundColor: corProduto.fundo, color: corProduto.texto }}>
                         {bico.numero}
                       </div>
                       <div className="ml-4">

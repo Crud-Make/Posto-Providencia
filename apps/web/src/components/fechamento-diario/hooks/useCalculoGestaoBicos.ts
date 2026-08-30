@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { BicoComDetalhes } from '../../../types/fechamento';
-import { lucroCombustivel, margemPercentual } from '@posto/utils';
+import { corDoProduto, lucroCombustivel, margemPercentual } from '@posto/utils';
 
 interface Leitura {
     inicial: string;
@@ -73,6 +73,7 @@ export const useCalculoGestaoBicos = (
                 numero: bico.numero,
                 status: bico.ativo ? 'Ativo' : 'Inativo',
                 combustivel: nomeCombustivel,
+                codigo: bico.combustivel?.codigo ?? null,
                 ilha: `Bomba ${bico.bomba?.nome || '--'}`,
                 volume,
                 faturamento,
@@ -97,10 +98,9 @@ export const useCalculoGestaoBicos = (
             lucroTotal += item.lucro;
 
             if (!porCombustivel[item.combustivel]) {
-                let cor = '#3B82F6'; // Default Blue
-                if (item.combustivel.includes('Gasolina')) cor = '#A855F7'; // Roxo
-                if (item.combustivel.includes('Diesel')) cor = '#22C55E'; // Verde
-                if (item.combustivel.includes('Etanol')) cor = '#F97316'; // Laranja
+                // Cor da planilha pelo código do combustível — a mesma do resto
+                // do sistema. Antes: roxo/verde/laranja por trecho do nome.
+                const cor = corDoProduto(item.codigo).fundo;
 
                 // Meta simulada baseada em histórico (pode ser parametrizada futuramente)
                 porCombustivel[item.combustivel] = { volume: 0, faturamento: 0, meta: 100000, cor };

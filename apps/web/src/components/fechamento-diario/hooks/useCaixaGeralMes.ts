@@ -128,7 +128,7 @@ export function useCaixaGeralMes(
                 const nome = l.bico?.combustivel?.nome;
                 if (!nome) continue;
 
-                const atual = porCombustivel.get(nome) ?? { nome, litros: 0, valor: 0 };
+                const atual = porCombustivel.get(nome) ?? { nome, codigo: l.bico?.combustivel?.codigo, litros: 0, valor: 0 };
                 atual.litros += l.litros_vendidos || 0;
                 atual.valor += l.valor_total || 0;
                 porCombustivel.set(nome, atual);

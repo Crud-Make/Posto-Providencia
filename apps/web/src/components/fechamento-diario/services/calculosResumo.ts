@@ -10,6 +10,8 @@ import type { Leitura } from '../hooks/useLeituras';
 export interface DadosCombustivel {
     /** Nome do combustível */
     nome: string;
+    /** Código do combustível (GC/GA/ET/S10) — chave da cor da planilha. */
+    codigo?: string;
     /** Quantidade total de litros vendidos */
     litros: number;
     /** Valor monetário total das vendas */
@@ -73,6 +75,7 @@ export function calcularDadosCombustivel(
                 if (!dadosMap[nomeCombustivel]) {
                     dadosMap[nomeCombustivel] = {
                         nome: nomeCombustivel,
+                        codigo: bico.combustivel.codigo,
                         litros: 0,
                         valor: 0
                     };
