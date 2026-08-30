@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Info, CheckCircle2, AlertCircle, TrendingUp, Wallet, Trophy, Coins } from 'lucide-react';
+import { Smartphone, Info, AlertCircle, TrendingUp, Wallet, Trophy, Coins } from 'lucide-react';
 import { paraReais, parseValue } from '../../../../utils/formatters';
 import { cartao as cartaoModulo, conferido } from '@posto/utils';
 import { meiosDaSessao } from '../../../../utils/fechamentoMeios';
@@ -104,6 +104,8 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
           </div>
         </div>
 
+        {/* O card "Lucro Total" (vendas × 0,18 fixo) saiu em 30/08/2026: margem
+            hardcoded viola o §6 — o lucro real é o da Planilha do Mês. */}
         <div className="bg-gradient-to-br from-[#064e3b] to-[#14532d] p-6 rounded-2xl flex items-center gap-5 text-white shadow-xl shadow-emerald-900/20 border border-emerald-500/20 card-hover-effect">
           <div className="bg-white/10 p-4 rounded-xl backdrop-blur-md">
             <Wallet className="text-white" size={28} />
@@ -129,7 +131,7 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
       </div>
 
       {/* 📈 Gráficos e Distribuição */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <div className="bg-slate-900/40 p-6 rounded-2xl border border-slate-800/60 backdrop-blur-sm">
           <h4 className="text-sm font-semibold mb-6 flex items-center gap-2 text-slate-200">
             <Wallet size={16} className="text-purple-400" />
@@ -138,7 +140,8 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
           <div className="h-48 flex items-end justify-between gap-2 px-2">
             {[
               { id: 'pix', label: 'Pix', color: 'from-[#8B5CF6] to-[#A78BFA]', val: sessoes.reduce((acc, s) => acc + parseValue(s.valor_pix), 0) },
-              { id: 'cartao', label: 'Cartão', color: 'from-[#0D9488] to-[#2DD4BF]', val: sessoes.reduce((acc, s) => acc + parseValue(s.valor_cartao), 0) },
+              // Cartão aditivo (legado + débito + crédito), como na tabela abaixo — antes só o legado entrava.
+              { id: 'cartao', label: 'Cartão', color: 'from-[#0D9488] to-[#2DD4BF]', val: sessoes.reduce((acc, s) => acc + cartaoModulo(meiosDaSessao(s)), 0) },
               { id: 'nota', label: 'Prazo', color: 'from-indigo-500 to-indigo-400', val: sessoes.reduce((acc, s) => acc + parseValue(s.valor_nota), 0) },
               { id: 'dinheiro', label: 'Dinheiro', color: 'from-[#059669] to-[#34D399]', val: sessoes.reduce((acc, s) => acc + parseValue(s.valor_dinheiro), 0) }
             ].map((item) => {
@@ -162,15 +165,6 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
           </div>
         </div>
 
-        <div className="bg-slate-900/40 p-6 rounded-2xl border border-slate-800/60 backdrop-blur-sm flex flex-col justify-center items-center text-center">
-          <div className="p-4 bg-slate-800/50 rounded-full mb-4">
-            <AlertCircle size={32} className="text-slate-600" />
-          </div>
-          <h4 className="text-slate-400 font-medium mb-2">Mais Gráficos em Breve</h4>
-          <p className="text-sm text-slate-500 max-w-xs">
-            Os gráficos de evolução e margem serão ativados assim que houver histórico suficiente.
-          </p>
-        </div>
       </div>
 
       {/* 📑 Tabela de Conciliação Robusta */}
@@ -180,34 +174,18 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
             <thead>
               <tr className="bg-slate-900/80 border-b border-slate-800">
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Meio de Pagamento</th>
-                {frentistasUnicos.map(f => {
-                  const sessaoFrentista = getSessaoPorFrentista(f.id);
-                  const estaConferido = sessaoFrentista?.status === 'conferido';
-                  return (
-                    <th key={f.id} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 text-center min-w-[120px]">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">
-                          {f.nome.substring(0, 2).toUpperCase()}
-                        </div>
-                        {f.nome.split(' ')[0]}
-                        {sessaoFrentista && (
-                          <button
-                            type="button"
-                            onClick={() => onUpdateCampo?.(sessaoFrentista.tempId, 'status', estaConferido ? 'pendente' : 'conferido')}
-                            disabled={isLoading}
-                            className={`mt-1 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold normal-case tracking-normal border transition-colors ${estaConferido
-                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
-                              : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:bg-slate-700/60'
-                              }`}
-                          >
-                            <CheckCircle2 size={10} />
-                            {estaConferido ? 'Conferido' : 'Marcar conferido'}
-                          </button>
-                        )}
+                {/* O botão "Marcar conferido" saiu em 30/08/2026: a conferência real é a
+                    linha Diferença — bateu ou não bateu —, e um clique não muda isso. */}
+                {frentistasUnicos.map(f => (
+                  <th key={f.id} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-200 text-center min-w-[120px]">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">
+                        {f.nome.substring(0, 2).toUpperCase()}
                       </div>
-                    </th>
-                  );
-                })}
+                      {f.nome.split(' ')[0]}
+                    </div>
+                  </th>
+                ))}
                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 text-right">Total</th>
               </tr>
             </thead>
@@ -288,20 +266,8 @@ export const TabelaConciliacaoFrentistas: React.FC<TabelaConciliacaoFrentistasPr
         </div>
       </div>
 
-      {/* 📱 Seção de Conciliação com Mobile (Indicador) */}
-      <div className="flex flex-wrap items-center gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20 text-xs font-bold">
-          <CheckCircle2 size={14} />
-          {sessoes.length} sessões integradas
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20 text-xs font-bold">
-          <Smartphone size={14} />
-          Mobile Sync: Ativo
-        </div>
-        <div className="ml-auto text-xs text-slate-500">
-          Última sincronização: {new Date().toLocaleTimeString()}
-        </div>
-      </div>
+      {/* A barra "Mobile Sync: Ativo / Última sincronização" saiu em 30/08/2026:
+          mostrava a hora do render, não de sincronização nenhuma. */}
     </div>
   );
 };

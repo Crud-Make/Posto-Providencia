@@ -1,4 +1,5 @@
 import React from 'react';
+import { corDoProduto } from '@posto/utils';
 import { BarChart2, ArrowRight } from 'lucide-react';
 import { ProductData, Totals } from '../types';
 import { formatarMoeda } from '../../../../utils/formatters';
@@ -46,7 +47,7 @@ const TabelaVendas: React.FC<TabelaVendasProps> = ({ products, totals }) => {
                   <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${item.colorClass}`}>
+                        <div className="size-10 rounded-lg flex items-center justify-center font-bold text-xs shrink-0" style={{ backgroundColor: corDoProduto(item.code).fundo, color: corDoProduto(item.code).texto }}>
                           {item.code}
                         </div>
                         <div>

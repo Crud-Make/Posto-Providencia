@@ -1,4 +1,4 @@
-import { conferido, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel } from '@posto/utils';
+import { conferido, corDoProduto, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel } from '@posto/utils';
 import { supabase } from '../supabase';
 import { combustivelService } from './combustivel.service';
 import { bicoService } from './bico.service';
@@ -276,14 +276,6 @@ export const aggregatorService = {
         leituras: leiturasData
       };
 
-      // Cores padrão para combustíveis
-      const coresCombs: Record<string, string> = {
-        'GC': '#22c55e',
-        'GA': '#3b82f6',
-        'ET': '#eab308',
-        'S10': '#ef4444',
-      };
-
       // Cores padrão para formas de pagamento
       const coresFormas: Record<string, string> = {
         'cartao': '#3b82f6',
@@ -299,7 +291,9 @@ export const aggregatorService = {
         name: v.combustivel?.nome || 'N/A',
         volume: v.litros,
         maxCapacity: estoque.find(e => e.combustivel_id === v.combustivel?.id)?.capacidade_tanque ?? 0,
-        color: v.combustivel?.cor || coresCombs[v.combustivel?.codigo || ''] || '#888',
+        // Cor da planilha pelo código — não a do cadastro nem mapa local (o de
+        // antes trocava GC com S10). Um padrão só no sistema inteiro.
+        color: corDoProduto(v.combustivel?.codigo).fundo,
       }));
 
       // PaymentData real (agregado dos fechamentos ou pagamentos do dia)
@@ -340,7 +334,10 @@ export const aggregatorService = {
         return {
           id: String(f.id),
           name: f.nome,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(f.nome)}&background=random&size=128`,
+          // A foto que o próprio frentista pôs no PWA. Vazio = a UI desenha as
+          // iniciais localmente. Antes daqui saía uma URL do `ui-avatars.com`,
+          // que mandava o nome dos funcionários para fora a cada carregamento.
+          avatar: f.foto ?? '',
           shift: 'Dia', // Sistema simplificado sem turnos
           totalSales: totalSales,
           status: status,
@@ -480,7 +477,7 @@ export const aggregatorService = {
           lucroTotal,
           margemLiquidaL,
           margemBrutaL,
-          cor: e.combustivel?.cor || 'gray'
+          cor: corDoProduto(e.combustivel?.codigo).fundo
         };
       }));
     } catch (error) {

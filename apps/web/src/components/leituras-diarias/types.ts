@@ -17,17 +17,6 @@ export interface PumpGroup {
 }
 
 /**
- * Cores para combustíveis (Tailwind CSS classes)
- */
-export const FUEL_COLORS: Record<string, string> = {
-  'GC': 'bg-red-100 text-red-700',
-  'GA': 'bg-blue-100 text-blue-700',
-  'ET': 'bg-green-100 text-green-700',
-  'S10': 'bg-yellow-100 text-yellow-700',
-  'DIESEL': 'bg-amber-100 text-amber-700',
-};
-
-/**
  * Filtro de data para leituras
  */
 export interface FiltroLeituras {

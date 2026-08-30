@@ -2,9 +2,10 @@ import React from 'react';
 import { Package, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { InputFinanceiro } from './InputFinanceiro';
+import { corDoProduto } from '@posto/utils';
 import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
-import { formatarParaBR, paraReais } from '../../utils/formatters';
+import { formatarParaBR, paraReais, parseBRFloat } from '../../utils/formatters';
 import { Database } from '../../types/database/index';
 
 type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
@@ -32,6 +33,7 @@ export const SecaoCompras: React.FC<Props> = ({
    despesaDoMes
 }) => {
    const navigate = useNavigate();
+   const despesaPorLitro = calculos.calcDespesaPorLitro();
    return (
       <section className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
          <div className="bg-orange-600 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -54,6 +56,11 @@ export const SecaoCompras: React.FC<Props> = ({
                   >
                      <Receipt size={14} />
                      <span className="font-semibold">{despesaDoMes > 0 ? paraReais(despesaDoMes) : 'nenhuma'}</span>
+                     {despesaPorLitro > 0 && (
+                        <span className="text-orange-100 text-xs" title="Despesa do mês ÷ litros vendidos no mês">
+                           = {paraReais(despesaPorLitro)}/L
+                        </span>
+                     )}
                      <span className="text-orange-200 text-xs">· lançar</span>
                   </button>
                </div>
@@ -85,33 +92,50 @@ export const SecaoCompras: React.FC<Props> = ({
                </button>
             </div>
          </div>
+         {/* De onde vem o preço do litro — a mesma decomposição que a planilha faz
+             em "Valor pra Venda" e "Lucro,LT": custo de compra + despesa rateada
+             = custo do litro; preço de bomba − custo do litro = sobra. Veio do
+             gráfico "Visão do Período", que saiu: aqui a conta fica ao lado do
+             número que ela explica, produto a produto. */}
+         <p className="px-6 py-3 text-xs text-slate-600 dark:text-slate-300 bg-orange-50 dark:bg-orange-900/10 border-b border-orange-100 dark:border-orange-900/30">
+            <span className="font-semibold text-orange-700 dark:text-orange-300">De onde vem o preço do litro:</span>{' '}
+            custo de compra (média do mês) <span className="font-mono">+</span> despesa rateada por litro{' '}
+            <span className="font-mono">=</span> custo do litro. O que a bomba cobra acima disso é a{' '}
+            <span className="font-semibold text-green-600">sobra</span>; abaixo, está{' '}
+            <span className="font-semibold text-red-600">abaixo do custo</span>.
+         </p>
          <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm text-left">
                <thead className="bg-slate-100 dark:bg-gray-700 text-xs uppercase font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                   <tr className="bg-slate-200 dark:bg-gray-600 border-b border-slate-300 dark:border-gray-500">
                      <th className="px-4 py-2 bg-slate-100 dark:bg-gray-700"></th>
                      <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-orange-700 dark:text-orange-400" colSpan={2}>Compra</th>
-                     <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-blue-700 dark:text-blue-400" colSpan={1}>Custo</th>
-                     <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-emerald-700 dark:text-emerald-400" colSpan={1}>Venda</th>
+                     <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-blue-700 dark:text-blue-400" colSpan={3}>Custo do litro</th>
+                     <th className="px-4 py-2 text-center border-l border-slate-300 dark:border-gray-500 text-emerald-700 dark:text-emerald-400" colSpan={2}>Venda</th>
                   </tr>
                   <tr>
                      <th className="px-4 py-4 min-w-[120px]">Produtos</th>
                      <th className="px-4 py-4 text-center border-l border-slate-200 dark:border-gray-600">Compra, LT.</th>
                      <th className="px-4 py-4 text-center">Compra, R$.</th>
-                     <th className="px-4 py-4 text-right text-blue-600">Média LT R$</th>
-                     <th className="px-4 py-4 text-right border-l border-slate-200 text-emerald-600">Valor P/ Venda</th>
+                     <th className="px-4 py-4 text-right border-l border-slate-200 dark:border-gray-600 text-blue-600">Média LT R$</th>
+                     <th className="px-4 py-4 text-right text-blue-600">+ Despesa/L</th>
+                     <th className="px-4 py-4 text-right text-blue-700 dark:text-blue-300">= Custo do litro</th>
+                     <th className="px-4 py-4 text-right border-l border-slate-200 dark:border-gray-600 text-emerald-600">Preço de bomba</th>
+                     <th className="px-4 py-4 text-right">Sobra por litro</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {combustiveis.map((c) => {
                      const mediaLt = calculos.calcMediaLtRs(c);
                      const valorVenda = calculos.calcValorParaVenda(c);
+                     const precoBomba = parseBRFloat(c.preco_venda_atual);
+                     const sobraLt = calculos.calcLucroLt(c);
                      return (
                         <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
-                           <td className="px-4 py-5 font-medium text-slate-900 dark:text-white">
+                           <td className="px-4 py-5 font-medium text-slate-900 dark:text-white border-l-8" style={{ borderLeftColor: corDoProduto(c.codigo).fundo }}>
                               <div className="flex flex-col">
                                  <span className="text-base">{c.nome}</span>
-                                 <span className="text-xs text-slate-500 font-mono mt-1">{c.codigo}</span>
+                                 <span className="text-xs font-mono mt-1 px-1.5 py-0.5 rounded self-start" style={{ backgroundColor: corDoProduto(c.codigo).fundo, color: corDoProduto(c.codigo).texto }}>{c.codigo}</span>
                               </div>
                            </td>
                            <td className="px-3 py-5 min-w-[140px] border-l border-slate-100 dark:border-gray-700">
@@ -130,11 +154,27 @@ export const SecaoCompras: React.FC<Props> = ({
                                  placeholder="0,00"
                               />
                            </td>
-                           <td className="px-4 py-5 text-right font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/10">
+                           <td className="px-4 py-5 text-right font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/10 border-l border-slate-100 dark:border-gray-700">
                               {mediaLt !== 0 ? paraReais(mediaLt) : '-'}
                            </td>
-                           <td className="px-4 py-5 text-right font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/10 border-l border-slate-100 dark:border-gray-700">
+                           <td className="px-4 py-5 text-right text-blue-600 bg-blue-50 dark:bg-blue-900/10">
+                              {mediaLt !== 0 && despesaPorLitro > 0 ? paraReais(despesaPorLitro) : '-'}
+                           </td>
+                           <td className="px-4 py-5 text-right font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/20">
                               {valorVenda !== 0 ? paraReais(valorVenda) : '-'}
+                           </td>
+                           <td className="px-4 py-5 text-right font-medium text-emerald-600 border-l border-slate-100 dark:border-gray-700">
+                              {precoBomba > 0 ? paraReais(precoBomba) : '-'}
+                           </td>
+                           <td className={`px-4 py-5 text-right font-bold ${sobraLt > 0 ? 'text-green-600 bg-green-50 dark:bg-green-900/10' : sobraLt < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/10' : 'text-slate-400'}`}>
+                              {valorVenda !== 0 && precoBomba > 0 ? (
+                                 <span className="flex flex-col">
+                                    <span>{sobraLt > 0 ? '+' : ''}{paraReais(sobraLt)}</span>
+                                    <span className="text-[10px] opacity-75 uppercase tracking-wider">
+                                       {sobraLt >= 0 ? 'sobra' : 'abaixo do custo'}
+                                    </span>
+                                 </span>
+                              ) : '-'}
                            </td>
                         </tr>
                      );
@@ -152,6 +192,13 @@ export const SecaoCompras: React.FC<Props> = ({
                      <td className="px-4 py-3 text-right bg-blue-900">
                         {paraReais(totais.mediaTotal)}
                      </td>
+                     <td className="px-4 py-3 text-right bg-blue-900 text-blue-200">
+                        {despesaPorLitro > 0 ? paraReais(despesaPorLitro) : '-'}
+                     </td>
+                     <td className="px-4 py-3 text-right bg-blue-900">
+                        {totais.mediaTotal > 0 ? paraReais(totais.mediaTotal + despesaPorLitro) : '-'}
+                     </td>
+                     <td className="px-4 py-3 text-right text-slate-400">-</td>
                      <td className="px-4 py-3 text-right text-slate-400">-</td>
                   </tr>
                </tfoot>

@@ -39,7 +39,6 @@ import { supabase } from '../../services/supabase';
 import { HeaderFechamento } from './components/HeaderFechamento';
 import { abaFechamentoDe, type AbaFechamento } from './abas';
 import { TabLeituras } from './components/TabLeituras';
-import { TabFinanceiro } from './components/TabFinanceiro';
 // [20/01 11:30] Adição da aba Detalhamento Frentistas
 // Motivo: Nova feature solicitada para visão detalhada por frentista
 import { TabDetalhamentoFrentista } from './components/TabDetalhamentoFrentista';
@@ -88,9 +87,9 @@ const TelaFechamentoDiario: React.FC = () => {
    } = useSessoesFrentistas(postoAtivoId, frentistas);
 
    const {
-      pagamentos: payments, carregando: loadingPagamentos, totalPagamentos, carregarPagamentos, alterarPagamento, aoSairPagamento,
-      // [24/07 21:05] Passa a extrair sincronizarComSessoes: a aba Financeiro (TabFinanceiro) exige essa handler
-      // no botão "auto-preencher". Sem ela: erro de tipo TS2741 (build quebra) + TypeError em runtime ao clicar.
+      pagamentos: payments, carregando: loadingPagamentos, carregarPagamentos,
+      // Deriva as formas de pagamento das sessões dos frentistas (efeito abaixo). A aba
+      // "Fechamento Financeiro", que editava isso à mão, foi removida em 30/08/2026.
       sincronizarComSessoes
    } = usePagamentos(postoAtivoId);
 
@@ -147,7 +146,7 @@ const TelaFechamentoDiario: React.FC = () => {
       };
    }, [carregarLeituras]);
 
-   const { totalLitros, totalVendas, totalFrentistas, diferenca, podeFechar } = useFechamento(bicos, leituras, frentistaSessions, payments);
+   const { totalVendas, totalFrentistas, diferenca, podeFechar } = useFechamento(bicos, leituras, frentistaSessions, payments);
 
    const loading = loadingDados || loadingLeituras || loadingSessoes || loadingPagamentos;
 
@@ -278,16 +277,6 @@ const TelaFechamentoDiario: React.FC = () => {
                      }}
                      onUpdatePrice={updateBicoPrice}
                   />
-               ) : activeTab === 'financeiro' ? (
-                  <TabFinanceiro
-                     payments={payments} totalPagamentos={totalPagamentos} totalLitros={totalLitros} totalFrentistas={totalFrentistas}
-                     leituras={leituras} bicos={bicos} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
-                     dataSelecionada={selectedDate} postoId={postoAtivoId}
-                     onRefreshSessoes={() => {
-                        if (selectedDate) carregarSessoes(selectedDate, true);
-                     }}
-                     handlers={{ alterarPagamento, aoSairPagamento, sincronizarComSessoes }}
-                  />
                ) : activeTab === 'detalhamento' ? (
                   <TabDetalhamentoFrentista
                      frentistaSessions={frentistaSessions}
@@ -296,6 +285,8 @@ const TelaFechamentoDiario: React.FC = () => {
                      onUpdateCampo={(tempId, campo, valor) => {
                         alterarCampoFrentista(tempId, campo as keyof SessaoFrentista, valor.toString());
                      }}
+                     postoId={postoAtivoId}
+                     dataSelecionada={selectedDate}
                   />
                ) : activeTab === 'receitas-despesas' ? (
                   <PainelReceitasDespesas />
@@ -318,7 +309,7 @@ const TelaFechamentoDiario: React.FC = () => {
          {/* Mensal e Gestão de Bicos ela exibia Vendas/Apurado/Diferença zerados sobre um */}
          {/* painel que não tem nada a ver com o salvamento. Decisão do dono do produto em */}
          {/* 31/07: só na primeira aba. Consequência aceita: para salvar após editar em */}
-         {/* Financeiro ou Detalhamento, é preciso voltar à aba Leituras de Bomba. */}
+         {/* Detalhamento, é preciso voltar à aba Leituras de Bomba. */}
          {activeTab === 'leituras' && <FooterAcoes
             totalVendas={totalVendas} totalFrentistas={totalFrentistas} diferenca={diferenca} saving={saving} podeFechar={podeFechar}
             handleSave={() => handleSave({

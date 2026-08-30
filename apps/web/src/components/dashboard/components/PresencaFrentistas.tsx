@@ -1,6 +1,7 @@
 import React from 'react';
 import { Radio } from 'lucide-react';
 import { descreverPresenca, statusPresenca, type PresencaFrentista, type StatusPresenca } from '@posto/utils';
+import { AvatarFrentista } from '../../../shared/ui/avatar-frentista';
 
 interface PresencaFrentistasProps {
   readonly presencas: readonly PresencaFrentista[];
@@ -57,6 +58,7 @@ const PresencaFrentistas: React.FC<PresencaFrentistasProps> = ({ presencas, agor
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${ponto}`} aria-hidden="true" />
+                <AvatarFrentista nome={p.nome} foto={p.foto} tamanho={32} className="shrink-0" />
                 <span className="font-semibold text-gray-900 dark:text-white truncate">{p.nome}</span>
               </div>
               <div className="text-right shrink-0">

@@ -26,6 +26,8 @@ export interface FechamentoMensalResumo {
 export interface EncerranteMensalLinha extends EncerranteMensalBico {
     bicoNome: string;
     combustivelNome: string;
+    /** `Combustivel.codigo` (GC/GA/ET/S10) — chave da cor da planilha. */
+    combustivelCodigo: string | null;
 }
 
 /** Consolidado do mês pronto pra tela. */
@@ -86,7 +88,7 @@ export const fechamentoMensalService = {
         }
         if (!res.data) return CONSOLIDADO_VAZIO;
 
-        const nomes = new Map<string, { bicoNome: string; combustivelNome: string }>();
+        const nomes = new Map<string, { bicoNome: string; combustivelNome: string; combustivelCodigo: string | null }>();
 
         // Um bico pode ter mais de uma leitura no mesmo dia (um turno cada). O dia
         // abre no encerrante inicial do primeiro turno e fecha no final do último —
@@ -110,6 +112,7 @@ export const fechamentoMensalService = {
                 nomes.set(bico, {
                     bicoNome: `Bico ${bico}`,
                     combustivelNome: l.bico?.combustivel?.nome ?? '—',
+                    combustivelCodigo: l.bico?.combustivel?.codigo ?? null,
                 });
             }
 
@@ -137,6 +140,7 @@ export const fechamentoMensalService = {
                 ...b,
                 bicoNome: nomes.get(b.bico)?.bicoNome ?? b.bico,
                 combustivelNome: nomes.get(b.bico)?.combustivelNome ?? '—',
+                combustivelCodigo: nomes.get(b.bico)?.combustivelCodigo ?? null,
             })),
         };
     }

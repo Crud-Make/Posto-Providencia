@@ -284,6 +284,7 @@ Já mentiu com confiança total uma vez; ver anexo.
 | Mexer no código sem gerar dívida             | `karpathy-guidelines`                                     |
 | Buscar em base de notas indexada             | `engraph:engraph` (plugin, instalado 05/08)               |
 | Gráfico ou dashboard                         | `dataviz` (embutido), sob demanda                         |
+| Reunião/venda/preço com o Elias (dono)       | `venda-elias`                                             |
 
 **Conferido em 07/08/2026: `claude-mem` e `mattpocock-skills` NÃO estão instalados.** Não há
 rastro em `~/.claude/plugins/`, e nenhum marketplace configurado.

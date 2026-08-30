@@ -1,57 +1,89 @@
-// [25/01 17:10] Refatoração Senior para Design Premium e Conciliação Robusta
-// Motivo: Implementar visão de dashboard financeiro com inversão de matriz e integração mobile.
-
-import React from 'react';
+import React, { useState } from 'react';
 import { SessaoFrentista, Frentista } from '../../../types/fechamento';
 import { TabelaConciliacaoFrentistas } from './detalhamento/TabelaConciliacaoFrentistas';
+import { ResumoMensalFrentistas } from './detalhamento/ResumoMensalFrentistas';
+import { useResumoMensalFrentistas } from '../hooks/useResumoMensalFrentistas';
 
-/**
- * Props para o componente TabDetalhamentoFrentista
- */
 interface TabDetalhamentoFrentistaProps {
-  frentistaSessions: SessaoFrentista[]; // Lista de sessões de frentistas
-  frentistas: Frentista[]; // Lista de cadastros de frentistas para lookup de nomes
-  loading?: boolean; // Estado de carregamento
-  onUpdateCampo?: (tempId: string, campo: string, valor: number) => void; // Callback genérico para outros campos
+  frentistaSessions: SessaoFrentista[];
+  frentistas: Frentista[];
+  loading?: boolean;
+  onUpdateCampo?: (tempId: string, campo: string, valor: number) => void;
+  postoId: number | null;
+  /** Data selecionada no cabeçalho (ISO `YYYY-MM-DD`); o mês vem dela. */
+  dataSelecionada: string | null;
 }
 
+type Visao = 'dia' | 'mes';
+
+const rotuloDoMes = (dataIso: string | null): string => {
+  if (!dataIso) return 'mês';
+  const [ano, mes] = dataIso.split('-').map(Number);
+  return new Date(ano, mes - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+};
+
 /**
- * Aba de Detalhamento por Frentista (Versão Dashboard Premium)
- * 
+ * Aba de Detalhamento por Frentista.
+ *
  * @remarks
- * Orquestra a exibição de métricas rápidas e a tabela de conciliação robusta.
- * Foca em uma experiência visual de alta qualidade com dados consolidados do mobile e sistema.
+ * Duas visões: **Dia** (a conciliação editável do dia selecionado) e **Mês** (o bloco
+ * `Caixa Dia 01 a 31` da planilha — quanto cada frentista recebeu por forma de
+ * pagamento no mês, e quem é o frentista do mês). Adicionada em 30/08/2026.
  */
 export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> = ({
   frentistaSessions,
   frentistas,
   loading,
-  onUpdateCampo
+  onUpdateCampo,
+  postoId,
+  dataSelecionada,
 }) => {
-  if (loading) {
-    return (
-      <div className="p-20 text-center text-slate-400 bg-slate-900/20 rounded-3xl border border-slate-800">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
-          <p className="font-medium animate-pulse">Sincronizando frentistas e envios mobile...</p>
-        </div>
-      </div>
-    );
-  }
+  const [visao, setVisao] = useState<Visao>('dia');
+  // Só consulta o mês quando a visão pede; no dia a chamada não acontece.
+  const resumoMensal = useResumoMensalFrentistas(postoId, visao === 'mes' ? dataSelecionada : null);
+
+  const botao = (v: Visao, rotulo: string) => (
+    <button
+      type="button"
+      onClick={() => setVisao(v)}
+      className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${visao === v
+        ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+        : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:bg-slate-700/60'}`}
+    >
+      {rotulo}
+    </button>
+  );
 
   return (
     <div className="p-2 space-y-6">
-      <TabelaConciliacaoFrentistas
-        sessoes={frentistaSessions}
-        frentistas={frentistas}
-        isLoading={loading}
-        onUpdateCampo={onUpdateCampo}
-      />
+      <div className="flex items-center gap-2">
+        {botao('dia', 'Dia')}
+        {botao('mes', `Mês · ${rotuloDoMes(dataSelecionada)}`)}
+      </div>
 
-      {frentistaSessions.length === 0 && (
-        <div className="p-12 text-center bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
-          <p className="text-slate-500 italic">Nenhum frentista registrado para este turno até o momento.</p>
+      {visao === 'mes' ? (
+        <ResumoMensalFrentistas resumo={resumoMensal} rotuloMes={rotuloDoMes(dataSelecionada)} />
+      ) : loading ? (
+        <div className="p-20 text-center text-slate-400 bg-slate-900/20 rounded-3xl border border-slate-800">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
+            <p className="font-medium animate-pulse">Sincronizando frentistas e envios mobile...</p>
+          </div>
         </div>
+      ) : (
+        <>
+          <TabelaConciliacaoFrentistas
+            sessoes={frentistaSessions}
+            frentistas={frentistas}
+            isLoading={loading}
+            onUpdateCampo={onUpdateCampo}
+          />
+          {frentistaSessions.length === 0 && (
+            <div className="p-12 text-center bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
+              <p className="text-slate-500 italic">Nenhum frentista registrado para este turno até o momento.</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -58,3 +58,4 @@ export function isErrorResponse<T>(response: ApiResponse<T>): response is ApiRes
 }
 
 export * from './encerrante';
+export * from './envios';

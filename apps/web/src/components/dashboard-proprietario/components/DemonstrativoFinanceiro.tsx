@@ -142,7 +142,7 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
               {dados.temDespesa ? 'Lucro Real' : 'Lucro Bruto (sem despesa)'}
             </p>
             <p
-              className={`text-3xl font-bold ${positivo ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'} font-finance tracking-tight`}
+              className={`text-3xl font-bold ${positivo ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} font-finance tracking-tight`}
             >
               {formatCurrency(dados.lucroReal)}
             </p>
@@ -150,7 +150,7 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
             <div className="mt-4 pt-4 border-t border-emerald-200/50 dark:border-emerald-800/30">
               <div className="flex items-center gap-2">
                 <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${positivo ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-red-100 text-red-700'}`}
+                  className={`px-2 py-1 rounded text-xs font-medium ${positivo ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-700'}`}
                 >
                   {positivo ? 'LUCRO' : 'PREJUÍZO'}
                 </span>

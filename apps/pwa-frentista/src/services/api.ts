@@ -38,12 +38,31 @@ export const api = {
     async getFrentistas(postoId: number) {
         const { data, error } = await supabase
             .from('Frentista')
-            .select('id, nome')
+            .select('id, nome, foto')
             .eq('posto_id', postoId)
             .eq('ativo', true)
             .order('nome');
         if (error) throw new Error(error.message);
         return data;
+    },
+
+    /**
+     * Grava o avatar do frentista.
+     *
+     * @param foto Data URL JPEG já recortada e reduzida por `reduzirParaAvatar`.
+     *             Passe `null` para voltar à inicial do nome.
+     * @remarks Só o frentista escolhido no aparelho chega aqui — mas isso é
+     *          regra de tela, não do banco: o client é `anon` e a policy
+     *          "Enable Update for Anon on Frentista" libera UPDATE em qualquer
+     *          linha. A garantia real depende do login por frentista sobre
+     *          `Frentista.user_id`, que ainda não foi ligado.
+     */
+    async salvarFotoFrentista(frentistaId: number, foto: string | null) {
+        const { error } = await supabase
+            .from('Frentista')
+            .update({ foto })
+            .eq('id', frentistaId);
+        if (error) throw new Error(error.message);
     },
 
     /** Busca ou cria o Fechamento consolidado do dia/turno */
@@ -90,6 +109,28 @@ export const api = {
         await api.consolidarFechamento(payload.fechamento_id);
 
         return data;
+    },
+
+    /**
+     * Avisa o celular do dono que este fechamento chegou.
+     *
+     * @remarks **Nunca lança, e isso é o ponto.** O que importa é o fechamento
+     *          ter sido gravado; o aviso é cortesia. Se uma falha de
+     *          notificação derrubasse o "enviado com sucesso", o frentista
+     *          mandaria tudo de novo e criaria envio em dobro — trocando um
+     *          aviso perdido por um problema de dinheiro.
+     * @remarks Manda só o `id`. A Edge Function monta o texto lendo a linha real
+     *          do banco, para ninguém conseguir forjar um aviso.
+     */
+    async avisarDono(fechamentoFrentistaId: number) {
+        try {
+            const { error } = await supabase.functions.invoke('notifica-dono', {
+                body: { fechamentoFrentistaId },
+            });
+            if (error) console.error('aviso ao dono não saiu:', error.message);
+        } catch (err) {
+            console.error('aviso ao dono não saiu:', err);
+        }
     },
 
     /** Delegado a `@posto/api-core` — ver o porquê em `encerrante.ts`. */

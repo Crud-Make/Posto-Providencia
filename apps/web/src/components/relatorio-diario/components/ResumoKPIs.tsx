@@ -1,4 +1,5 @@
 import React from 'react';
+import { corDaDiferenca } from '@posto/utils';
 import { DollarSign, ArrowRight, TrendingUp, AlertTriangle } from 'lucide-react';
 import { DailyTotals } from '../types';
 
@@ -72,12 +73,12 @@ const ResumoKPIs: React.FC<ResumoKPIsProps> = ({ totals, expensesCount, fmtMoney
                     <AlertTriangle size={80} />
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                    <div className={`p-2 rounded-lg ${totals.diferenca < 0 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
+                    <div className={`p-2 rounded-lg ${totals.diferenca > 0 ? 'bg-red-100 text-red-600' : totals.diferenca < 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'}`}>
                         <AlertTriangle size={20} />
                     </div>
                     <span className="text-sm font-bold text-gray-500 dark:text-gray-400 font-display uppercase tracking-wider">Diferença Caixa</span>
                 </div>
-                <h3 className={`text-3xl font-black ${totals.diferenca < 0 ? 'text-red-500' : 'text-gray-900 dark:text-gray-100'} font-finance tracking-tight`}>
+                <h3 className={`text-3xl font-black ${totals.diferenca !== 0 ? corDaDiferenca(totals.diferenca).texto : 'text-gray-900 dark:text-gray-100'} font-finance tracking-tight`}>
                     {fmtMoney(totals.diferenca)}
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">

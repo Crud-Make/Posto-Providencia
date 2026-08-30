@@ -259,6 +259,256 @@
   importadores.
 - `aggregator.attendants.test.ts` foi junto: testava exclusivamente o método apagado
   (vitest 362 → 359, os 3 do arquivo).
+### 📅 Detalhamento Frentistas ganha a visão "Mês" — 30/08/2026
+
+- Seletor **Dia | Mês** no topo da aba. A visão Mês é o bloco `Caixa Dia 01 a 31`
+  da planilha lido do banco: frentistas em colunas, formas de pagamento em linhas
+  (Pix, Crédito, Débito, Moeda, Notas, Baratão, Dinheiro), `Venda Frentistas`,
+  `Falta` (concentrador − frentistas, positivo = falta) e `% do caixa`, mais a
+  coluna `Caixa` com a soma. Card **Frentista do mês** = maior `Venda Frentistas`,
+  que é o critério da planilha (a linha `Litro Vendido` só divide a venda pelo
+  preço médio, então o ranking é o mesmo).
+- Costura duas peças que já existiam sem consumidor: `fechamentoFrentistaService
+  .getByPeriodo` e `agruparPorFrentista` (`utils/fechamentoMeios`). Hook novo
+  `useResumoMensalFrentistas`, com `montarResumoMensal` puro e testado.
+- **Removido da visão Dia:** botão "Marcar conferido" (a conferência real é a
+  linha Diferença — o badge "OK" da sidebar do dashboard, que só ele acionava,
+  fica sem gatilho até o PWA gravar `[CONFERIDO]`); card "Lucro Total" (era
+  `vendas × 0,18` fixo, margem hardcoded — §6); placeholder "Mais gráficos em
+  breve"; barra "Mobile Sync: Ativo / Última sincronização" (mostrava a hora do
+  render). O gráfico de barras passa a somar cartão aditivo (legado + débito +
+  crédito), como a tabela — antes só o legado entrava.
+- Banco intocado.
+
+### 🚪 Login redesenhado: a arte sangra a metade e o botão volta a ter nome
+
+- A foto do posto deixou de ser um quadro no meio do vazio e passa a **sangrar a metade
+  esquerda inteira**, sob um gradiente navy que segura a paleta clara da arte contra a UI
+  escura. Depende de arquivo em resolução real: o `fundo-login.jpg` atual tem 1120px e,
+  esticado, borra — trocar a arte é a pendência que sobra deste redesenho.
+- O botão de entrar **voltou a ter rótulo visível ("Entrar")** ao lado da bomba. Só-bomba
+  com o nome vivendo no `aria-label` (19/08) não se lia como botão.
+- O vermelho da marca ficou **só no CTA, no checkbox e no anel de foco** — o azul saiu dos
+  focos, que discordavam do botão. "Jesus te ama" desceu para o rodapé e o topo do
+  formulário passou a dizer "Posto Providência / Painel de Gestão".
+- `autoComplete` do e-mail corrigido de `username` para `email`, e os cinzas de placeholder
+  e de ícone subiram de `slate-500` para `slate-400`, por contraste.
+### 🖼️ A foto do frentista aparece no painel — e o painel parou de pedir avatar para fora
+
+- Foto em cinco lugares: **Fechamentos do Dia**, o ranking de performance, **Trabalhando agora**,
+  a lista de Frentistas e o detalhe do frentista. Sem foto, iniciais desenhadas localmente.
+- **Removida a chamada a `ui-avatars.com`.** O painel mandava o NOME de cada funcionário para um
+  serviço de terceiros a cada carregamento, e dependia de internet para desenhar um círculo. Agora
+  o avatar sai da coluna `Frentista.foto`, e as iniciais são desenhadas aqui.
+- Removido também `/avatars/{id}.jpg`, que apontava para uma pasta **que nunca existiu** no
+  repositório — aquelas imagens davam 404 desde sempre.
+- Um componente só, `shared/ui/avatar-frentista.tsx`, no lugar de cinco desenhos de círculo
+  diferentes. `PresencaFrentista` (em `packages/utils`) ganhou `foto` **opcional**: nenhuma regra de
+  presença olha para ele — quem decide quem está online continua sendo o `vistoEm`.
+- Golden master rodado por causa do `aggregator.service.ts`: **3233 passando, 0 falhas**.
+
+- A lista de frentistas do painel mostra a foto que o próprio frentista pôs no PWA dele. **Não há
+  sincronização**: é a mesma coluna `Frentista.foto`, e o `select('*')` do painel já a trazia — ela
+  só se perdia no mapeamento para `PerfilFrentista`. Sem foto, as iniciais de sempre.
+- A coluna passou a existir nos tipos (`FrentistaTable` do painel e `Frentista` de
+  `packages/types`), que ainda não a conheciam.
+
+### 🔔 Corrigido: a tela pedia para ativar o aviso a quem já tinha ativado
+
+- A checagem de "já está inscrito?" perguntava `getRegistration()` **uma vez**, na montagem. O
+  service worker é registrado de forma assíncrona e no primeiro render costuma não existir ainda,
+  então a resposta era "não inscrito" e a tela oferecia ativar de novo — e cada "de novo" gravava
+  outra linha em `InscricaoPush`. Agora espera o SW ficar pronto, com teto de 4 s para não travar
+  onde não há SW nenhum.
+- `descricao_aparelho` passa a guardar o domínio junto do aparelho. Uma inscrição pertence ao
+  service worker de UMA origem, então o mesmo celular gera inscrições diferentes em preview e em
+  produção — sem o domínio, as linhas ficam idênticas no banco e não dá para saber qual envelheceu.
+
+### 🚀 `scripts/deploy-vercel.sh` — um caminho só para publicar
+
+- `scripts/deploy-vercel.sh <dono|frentista|painel> [--prod] [--dry-run]`. Sai sempre da raiz do
+  repositório, porque os projetos têm Root Directory dentro do monorepo (`apps/pwa-dono`) e deploy
+  de dentro da pasta do app falha com "Root Directory does not exist".
+- Três guardas antes de subir: **(1)** recusa se `docs/`, `.env*` ou `.claude/` fossem entrar no
+  upload — a guarda foi testada com o `.vercelignore` antigo e disparou, listando os 6 arquivos;
+  **(2)** exige a suíte verde; **(3)** `--prod` pede confirmação digitada, porque produção é o app
+  que o dono já usa no celular.
+- Os ids de projeto vão por variável de ambiente, então nenhum `.vercel/` é escrito na raiz.
+- Preview da Vercel fica atrás do SSO: abre no navegador logado, **não** num celular deslogado. O
+  script avisa isso ao terminar, porque é a pegadinha que some quando se esquece.
+
+### 🔒 `.vercelignore` deixava `docs/data/` e o `.env.local` subirem para a Vercel
+
+- O `.vercelignore` **substitui** o `.gitignore` no upload — a Vercel não volta a consultar o git
+  quando ele existe. O arquivo listava só `node_modules`, `build`, `dist`, `.git`, `.trae`, `.log`
+  e `.figma`, então **tudo o mais subia**, inclusive `docs/data/` (os `.sqlite` do posto) e o
+  `.env.local` (hoje com a chave PRIVADA do VAPID). Estarem no `.gitignore` não protegia nada aqui.
+- O buraco só se abria num deploy por **CLI a partir da raiz** — descoberto ao fazer exatamente
+  isso em 30/08/2026. Deploy pela integração do GitHub usa o repositório e nunca passou por essa
+  porta, o que explica por que ninguém notou antes.
+- Agora exclui `docs/`, `.env*`, `.claude/`, `graphify-out/` e `supabase/.temp/`, com o aviso no
+  topo do arquivo para o próximo que for editá-lo.
+
+### 🔔 Aviso no celular do dono quando o fechamento chega (em construção)
+
+- **Sem Firebase.** Web Push é padrão do navegador: o endpoint da inscrição já aponta para o
+  serviço do fabricante — `web.push.apple.com` no iPhone do dono. Só é preciso um par de chaves
+  VAPID, gerado localmente, sem conta e sem custo. Nem Apple Developer Program: isso é exigência
+  de app nativo, não de Web Push.
+- **Biblioteca verificada antes de escrever a função**, num Deno em container: `npm:web-push@3.6.7`
+  cifra em `aes128gcm` e assina o JWT do VAPID dentro do Deno. Usamos só `generateRequestDetails`
+  + `fetch`, sem tocar na pilha HTTP do Node — que é o que costuma quebrar fora dele.
+- Tabela `InscricaoPush` (endpoint + as duas chaves do navegador). **Não reaproveita a `PushToken`**,
+  que nasceu para Expo, exige `auth.uid()` e está vazia. O `anon` só INSERE: sem SELECT, a lista de
+  aparelhos do dono não vaza para quem tem a `anon key`. O app descobre se já está inscrito pelo
+  próprio navegador, não pelo banco.
+- Edge Function `notifica-dono`: monta a mensagem lendo a linha REAL do `FechamentoFrentista` pelo
+  id — nada do que o cliente envia entra no texto, então ninguém forja um aviso falso. Inscrição que
+  responde 404/410 é desativada, em vez de dar erro em toda notificação futura.
+- **A notificação não leva dinheiro.** Diz só `"Paulo fechou o caixa"` e a data. Ela aparece com o
+  iPhone BLOQUEADO, à vista de qualquer um — inclusive dos frentistas. Valor e falta de caixa ficam
+  atrás do desbloqueio. A função nem BUSCA o valor no banco, para não vazar por descuido depois.
+- **Tela "Envios dos frentistas" no PWA do dono**, que é para onde a notificação leva: quem enviou,
+  a que horas, quanto conferiu e se faltou ou sobrou — com a foto de perfil de cada um. Seletor de
+  data no topo. O app do dono ganhou navegação (duas abas) junto com ela; antes não havia segunda
+  tela e rota teria sido abstração vazia.
+- Ligar o aviso onde não há service worker registrado (o `bun run dev` não sobe nenhum) agora
+  responde em 5 s dizendo o motivo. Antes o botão giraria para sempre: `serviceWorker.ready` nunca
+  resolve sem registro, e falha calada é a pior de todas.
+- **Service worker próprio no PWA do dono** (`injectManifest` no lugar de `generateSW`): o SW gerado
+  não tem como receber `push`, e é só por isso que a troca aconteceu. O `src/sw.ts` reproduz de
+  propósito tudo o que o gerado fazia — precache, `skipWaiting`, `clientsClaim` e o `SKIP_WAITING`
+  que o `ReloadPrompt` manda —, mais a navegação offline caindo no `index.html` do precache, que o
+  app instalado precisa para abrir sem rede no posto. Dependência nova: `workbox-precaching`.
+- **A tag da notificação é por envio, não fixa.** Com uma tag só, o aviso do segundo frentista
+  substituiria o do primeiro e o dono nunca saberia que o Paulo também fechou. Com o id do envio,
+  cada um tem o seu e um reenvio do mesmo substitui em vez de duplicar.
+- **O PWA do frentista chama a função depois de gravar**, sem `await` e engolindo os próprios erros:
+  se uma falha de notificação derrubasse o "enviado com sucesso", o frentista mandaria tudo de novo
+  e criaria envio em dobro — trocaria um aviso perdido por um problema de dinheiro.
+- **Botão "Me avisar quando um frentista fechar o caixa"** na tela de envios, e a inscrição no Web
+  Push. O pedido de permissão sai de um TOQUE, nunca sozinho ao abrir: no iPhone a
+  `requestPermission()` fora de um gesto é recusada em silêncio, e uma negativa só se reverte
+  removendo o app da tela de início e instalando de novo — pedir automático gastaria a única
+  chance boa.
+- A decisão de o que mostrar é pura e testada (10 casos), no molde do `decidirConvite`. O caso que
+  mais importa: no iPhone **fora** da tela de início a `PushManager` nem existe, e ler isso como
+  "seu aparelho não suporta" mandaria o dono desistir de algo que o aparelho dele faz — a tela diz
+  "instale primeiro". Permissão negada também vence inscrição existente, senão a tela diria que
+  está tudo certo enquanto nada chega.
+- Diferença **não apurada** (`NULL`) aparece como "sem apurar", não como "bateu". São estados
+  diferentes, e tratar o primeiro como zero afirmaria sobre dinheiro o que ninguém conferiu — a
+  linha do "Posto providencia" em 29/08 é o caso real que revelou isso.
+- A consulta mora em `packages/api-core` (`criarAcessoEnvios`), no molde do `criarAcessoEncerrante` —
+  os dois apps olham a mesma lista por motivos diferentes. **Drift encontrado no caminho:** a tabela
+  real tem `diferenca_calculada` e não tem `total`; a migration `20251221_create_mobile_tables.sql`
+  declara `diferenca` e `total` e ficou para trás. O código segue o banco.
+
+### 📊 ETL aceita a planilha de 30/08 (janeiro a agosto)
+
+- **Aba de mês duplicada.** A planilha nova trouxe `MES, 08` (cópia velha, 16 dias) e
+  `MES, 08 ` (a viva, com espaço no fim, 29 dias). O estágio 1 deixava a última da ordem
+  do workbook vencer em silêncio; agora fica a com mais dias preenchidos e a descartada vai
+  para `manifesto.json` em `abas_descartadas`.
+- **Mês em curso.** O resumo `POSTO JORRO 2026` de agosto foi apurado no dia 27
+  (33.888,379 L) e a aba diária seguiu até o 29 (36.277,288 L). Isso não é divergência: é
+  referência atrasada. O estágio 1 marca `confere_parcial` com `referencia_ate_dia`, e o
+  estágio 2 compara o diário só até esse dia.
+- **Guardas de despesa viraram constantes datadas** (`DESPESA_PLANILHA_ESPERADA`,
+  `DESPESA_LANCADA_ESPERADA`). Continuam fixas de propósito — planilha nova tem de estourar
+  ali para alguém olhar o que mudou. Desta vez mudou: julho foi reescrito na planilha
+  (13.961,00 → 19.271,95: Frete 3.840 → 4.200, mais taxa de cartão 1.902,00, CSLL 1.490,72
+  e IRPJ 1.238,23), julho ganhou os dias 25–31 e a compra/estoque de julho mudou, e **o
+  preço da gasolina de janeiro no resumo caiu de 6,48 para 6,38**, o que muda a venda e o
+  lucro de janeiro no golden de lucro (fixture `mes01`). O diário de janeiro segue 6,28/6,48.
+- `docs/data/` **não foi promovido** por agente (hook `protege-dados`); o staging validado
+  está em `docs/data-staging/2026-08-30/`. Manifesto de ativos críticos aponta para a
+  planilha de 30/08 e guarda a de 07/08 no backup frio, datada.
+
+### 📸 Foto de perfil do frentista no PWA
+
+- O frentista escolhe a si mesmo e toca no próprio avatar para pôr ou trocar a foto. A imagem
+  é recortada num quadrado central e reduzida para 192px **no aparelho**, antes de sair pela
+  rede, e gravada na hora — abrir a câmera no celular pode descarregar a página da memória, e
+  foto que só existisse em estado do React morreria no recarregamento.
+- Guardada como data URL JPEG na coluna nova `Frentista.foto`, **não em bucket do Storage**.
+  O `anon` já tem UPDATE aberto nesta tabela, então a coluna não abre permissão nova; um
+  bucket exigiria liberar escrita anônima no Storage, superfície nova para um avatar. São ~10
+  frentistas a ~10 KB. `CHECK` na coluna barra foto crua de câmera, espelhado por
+  `TETO_DATA_URL` no cliente para o erro sair em português, e não como constraint do Postgres.
+- Sem foto, o avatar mostra as iniciais (primeiro + último nome), no cabeçalho e na lista de
+  seleção.
+- **Limite conhecido, deliberado:** "só o próprio frentista altera a foto" é regra de tela,
+  não garantia do banco — o PWA não tem autenticação, o client é `anon` e a policy
+  `Enable Update for Anon on Frentista` libera UPDATE em qualquer linha. Isso já valia para
+  nome, CPF e telefone antes desta coluna; a foto não abre buraco, passa por um já aberto. A
+  garantia real depende de ligar login por frentista sobre `Frentista.user_id`, coluna que já
+  existe e nunca foi usada — trabalho à parte.
+- **Dívida sinalizada:** `reduzirParaAvatar` é gêmea de `fileParaBase64Reduzido`
+  (`apps/pwa-dono/src/screens/EncerranteScreen.tsx`). Não foram consolidadas: as duas dependem
+  de `canvas`/`FileReader`, e `packages/utils` guarda domínio puro. Um terceiro uso justifica
+  criar o pacote de browser compartilhado.
+### 🗑️ Aba "Fechamento Financeiro" removida — 30/08/2026
+
+- A aba do Fechamento de Caixa saiu inteira: `TabFinanceiro`, `PainelFinanceiro`
+  (cards de forma de pagamento), `ResumoCombustivel` + `resumo/*` (cards de totais,
+  gráficos, tabela por frentista), `useResumoCombustivel`, `useCaixaGeralMes`,
+  `services/calculosResumo` e o `distribuirNasFormas` de `utils/fechamentoMeios`.
+- **Por quê:** era duplicata do que já existe — total de litros e caixa estão no
+  dashboard, a matriz frentista × forma está no Detalhamento Frentistas — e a
+  "Sobra de Caixa" dela era um bug de conceito: subtraía o total das sessões do
+  total dos pagamentos, que são a **mesma fonte**. Na planilha, `Venda Frentistas.`
+  (L23) **é** a soma das formas (L16:L22), então a conta dá zero por construção.
+  A diferença que existe no domínio é concentrador − conferido (§6), no rodapé.
+- **O que não mudou:** as formas de pagamento do dia continuam sendo derivadas das
+  sessões (`sincronizarComSessoes` no `index.tsx`) e gravadas em `Recebimento` ao
+  salvar. Nenhuma tabela era exclusiva da aba — nada de banco foi tocado.
+- `usePagamentos` perdeu `alterarPagamento`/`aoSairPagamento`/`totalPagamentos`,
+  que só a aba usava.
+
+### 🎨 Um padrão de cor para o sistema inteiro
+
+- **Cor do combustível é a da planilha, pelo código** (`corDoProduto` em `@posto/utils`):
+  Gasolina Comum vermelho, Aditivada azul, Etanol verde, Diesel S10 amarelo. Saem **seis mapas
+  concorrentes** — três com GC e S10 trocados (`aggregator.service`, `salesAnalysis.service`) e
+  quatro cópias de "se o nome contém gasolina" (que pintavam Aditivada de vermelho). `Combustivel.cor`
+  do banco deixa de ser lida; a `PALETA` por índice da Planilha do Mês e os `CORES_*` mortos de
+  `types/fechamento.ts` foram apagados. Cobre: fechamento de caixa (leituras, gestão de bicos,
+  gráficos), leituras diárias, dashboard, vendas, análise de custos, estoque, Planilha do Mês,
+  fechamento mensal e o PWA do dono (encerrante por foto — o `select` do `api-core` passou a trazer
+  `codigo`).
+- **Dinheiro com sinal: ganho verde, perda vermelha** (`corDeSinal`/`corDaDiferenca`). Corrige
+  três telas que contradiziam a convenção `diferença positiva = FALTA`: relatório diário (positivo
+  era azul), histórico do PWA do frentista (falta era azul com seta para cima) e o rodapé do
+  fechamento (sobra era âmbar). Sobra no PWA do frentista era laranja; lucro previsto do estoque e
+  card de lucro do dono eram verdes mesmo negativos.
+- **Não mexido, de propósito:** `useResumoCombustivel` chama de "Sobra de Caixa" a diferença
+  positiva de `totalSessoes − totalPagamentos` — precisa de decisão sobre o que essas duas somas
+  são antes de trocar rótulo ou cor.
+
+### 🛒 Registro de Compras — compra e custo explicados, sem o gráfico
+
+- **Saiu a seção "Visão do Período"** (`GraficosCompras.tsx`, dois gráficos Recharts). Não havia
+  estado só dela; removida sem código morto. O que ela explicava foi para dentro da tabela.
+- **"De onde vem o preço do litro" agora mora em "Compra e Custo"**, produto a produto: o grupo
+  *Custo do litro* mostra `Média LT` **+** `Despesa/L` **=** `Custo do litro`, e o grupo *Venda*
+  mostra o `Preço de bomba` e a `Sobra por litro` (verde) ou `abaixo do custo` (vermelho). É a
+  mesma fórmula de `useCalculosRegistro` (`calcValorParaVenda`/`calcLucroLt`), nada novo calculado
+  na view. Uma linha de texto acima da tabela resume a conta.
+- **Despesa do mês** no cabeçalho passa a mostrar também o rateio por litro (`= R$ x,xx/L`).
+- **Fornecedor padrão** deixa de ser "o primeiro da lista" (ordem alfabética) e passa a ser o
+  último com que o posto finalizou uma compra, lembrado no `localStorage` por posto; cai para o
+  primeiro se nunca houve compra ou se o lembrado saiu do cadastro.
+- **Cores tradicionais dos bicos da planilha** (`cores-planilha.ts`, lidas do preenchimento do
+  `.xlsx`): Gasolina Comum vermelho, Aditivada azul, Etanol verde, Diesel amarelo — borda e
+  etiqueta do produto nas três tabelas. `Combustivel.cor` no banco tem outra paleta; não usada.
+- **Lucro por bico mostra a conta**: `lucro/L × litros`, e o lucro/L mostra `preço − custo do
+  litro`. Sem compra dentro do período aparece "sem compra no mês" em vez de "-" — é o que
+  acontece no mês corrente quando a compra está datada depois de hoje.
+- **Cores de lucro e prejuízo unificadas** na tela inteira: lucro/sobra = `green-*`, prejuízo/perca
+  = `red-*`. Antes, lucro aparecia em âmbar na tabela de vendas e em esmeralda na de estoque —
+  esmeralda é a cor de identidade de *venda* nesta tela, não de lucro, e âmbar é alerta. Lucro
+  LT/Bico e o total ficam vermelhos quando negativos.
 
 ### 🏷️ A marca do posto no topo da barra lateral
 

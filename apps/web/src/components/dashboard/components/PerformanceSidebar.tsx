@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, AlertCircle, Trophy, Medal, CheckCircle2 } from 'lucide-react';
 import { AttendantPerformance } from '../../../types/ui/dashboard';
+import { AvatarFrentista } from '../../../shared/ui/avatar-frentista';
 
 interface PerformanceSidebarProps {
   data: AttendantPerformance[];
@@ -45,7 +46,12 @@ const PerformanceSidebar: React.FC<PerformanceSidebarProps> = ({ data }) => {
                 </div>
 
                 <div className="relative">
-                  <img src={item.avatar} alt={item.name} className={`w-12 h-12 rounded-full object-cover border-2 ${index === 0 ? 'border-yellow-400' : 'border-gray-200 dark:border-gray-600'}`} />
+                  <AvatarFrentista
+                    nome={item.name}
+                    foto={item.avatar}
+                    tamanho={48}
+                    className={`border-2 ${index === 0 ? 'border-yellow-400' : 'border-gray-200 dark:border-gray-600'}`}
+                  />
                   {item.type === 'ticket' && (
                     <div className="absolute -bottom-1 -right-1 bg-purple-600 text-white p-1 rounded-full border-2 border-white dark:border-gray-800">
                       <Star size={10} fill="white" />
