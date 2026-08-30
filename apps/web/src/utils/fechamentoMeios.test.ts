@@ -4,7 +4,6 @@ import {
     baldeDaForma,
     totaisPorBalde,
     totaisDasLinhas,
-    distribuirNasFormas,
     agruparPorFrentista,
     meiosDaSessao,
     sessaoSemMovimento,
@@ -210,54 +209,6 @@ describe('agruparPorFrentista', () => {
 
     it('mês vazio devolve lista vazia', () => {
         expect(agruparPorFrentista([])).toEqual([]);
-    });
-});
-
-describe('distribuirNasFormas', () => {
-    const FORMAS = [
-        { id: 1, nome: 'Dinheiro' },
-        { id: 5, nome: 'Convênio/Nota' },
-        { id: 6, nome: 'Vale/Check' },
-        { id: 7, nome: 'APP' },
-        { id: 8, nome: 'Moedas' },
-        { id: 9, nome: 'Baratão' },
-    ];
-
-    it('põe cada total na sua forma, em texto BR', () => {
-        const linhas = distribuirNasFormas(FORMAS, totaisPorBalde(DIA_15_06));
-        // `paraReais` sai do Intl, que separa "R$" do número com espaço RÍGIDO
-        // (U+00A0). Comparar com espaço comum falha por um caractere invisível.
-        const porNome = Object.fromEntries(
-            linhas.map((l) => [l.nome, l.valor.replace(/\u00a0/g, ' ')])
-        );
-
-        expect(porNome['Dinheiro']).toBe('R$ 4.272,68');
-        expect(porNome['Cartão de Débito'] ?? '').toBe('');
-        expect(porNome['Convênio/Nota']).toBe('R$ 2.242,00');
-        expect(porNome['Moedas']).toBe('R$ 5,00');
-        expect(porNome['Baratão']).toBe('R$ 675,23');
-    });
-
-    it('deixa VAZIA a forma sem balde, em vez de escrever R$ 0,00', () => {
-        // Vazio e zero dizem coisas diferentes: "não temos essa informação" não é
-        // "não entrou nada". Vale/Check e APP não têm coluna no envio do frentista.
-        const linhas = distribuirNasFormas(FORMAS, totaisPorBalde(DIA_15_06));
-        const porNome = Object.fromEntries(linhas.map((l) => [l.nome, l.valor]));
-
-        expect(porNome['Vale/Check']).toBe('');
-        expect(porNome['APP']).toBe('');
-    });
-
-    it('preserva a ordem e os demais campos do cadastro', () => {
-        const linhas = distribuirNasFormas(FORMAS, totaisPorBalde(DIA_15_06));
-
-        expect(linhas.map((l) => l.nome)).toEqual(FORMAS.map((f) => f.nome));
-        expect(linhas.map((l) => l.id)).toEqual(FORMAS.map((f) => f.id));
-    });
-
-    it('mês zerado não escreve zero em campo nenhum', () => {
-        const linhas = distribuirNasFormas(FORMAS, totaisDasLinhas([]));
-        expect(linhas.every((l) => l.valor === '')).toBe(true);
     });
 });
 

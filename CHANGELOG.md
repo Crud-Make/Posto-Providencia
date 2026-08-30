@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 🗑️ Aba "Fechamento Financeiro" removida — 30/08/2026
+
+- A aba do Fechamento de Caixa saiu inteira: `TabFinanceiro`, `PainelFinanceiro`
+  (cards de forma de pagamento), `ResumoCombustivel` + `resumo/*` (cards de totais,
+  gráficos, tabela por frentista), `useResumoCombustivel`, `useCaixaGeralMes`,
+  `services/calculosResumo` e o `distribuirNasFormas` de `utils/fechamentoMeios`.
+- **Por quê:** era duplicata do que já existe — total de litros e caixa estão no
+  dashboard, a matriz frentista × forma está no Detalhamento Frentistas — e a
+  "Sobra de Caixa" dela era um bug de conceito: subtraía o total das sessões do
+  total dos pagamentos, que são a **mesma fonte**. Na planilha, `Venda Frentistas.`
+  (L23) **é** a soma das formas (L16:L22), então a conta dá zero por construção.
+  A diferença que existe no domínio é concentrador − conferido (§6), no rodapé.
+- **O que não mudou:** as formas de pagamento do dia continuam sendo derivadas das
+  sessões (`sincronizarComSessoes` no `index.tsx`) e gravadas em `Recebimento` ao
+  salvar. Nenhuma tabela era exclusiva da aba — nada de banco foi tocado.
+- `usePagamentos` perdeu `alterarPagamento`/`aoSairPagamento`/`totalPagamentos`,
+  que só a aba usava.
+
 ### 🎨 Um padrão de cor para o sistema inteiro
 
 - **Cor do combustível é a da planilha, pelo código** (`corDoProduto` em `@posto/utils`):
