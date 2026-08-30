@@ -69,6 +69,24 @@ describe('estoqueNaVespera', () => {
         expect(estoqueNaVespera('gc', '2026-01-02', reguas, comprasNoDia, [])).toBe(7392);
     });
 
+    it('corrente NEGATIVA → null, não um tanque impossível (#72)', () => {
+        // Régua pequena e vendas grandes desde ela (caso real: compras da carga
+        // histórica datadas no fim do mês, invisíveis para troca no meio dele).
+        const reguaPequena = [{ combustivel: 'gc', data: '2026-03-01', litros: 100 }];
+        const vendasGrandes = [dia('2026-03-05', 6.28, 900), dia('2026-03-10', 6.48, 100)];
+        expect(estoqueNaVespera('gc', '2026-03-10', reguaPequena, [], vendasGrandes)).toBeNull();
+    });
+
+    it('corrente negativa propaga null para valorização e ganho, vendas seguem apuráveis (#72)', () => {
+        const reguaPequena = [{ combustivel: 'gc', data: '2026-03-01', litros: 100 }];
+        const vendasGrandes = [dia('2026-03-05', 6.28, 900), dia('2026-03-10', 6.48, 100)];
+        const [i] = impactoTrocaDePreco(vendasGrandes, [], reguaPequena);
+        expect(i.litrosNoTanque).toBeNull();
+        expect(i.ganhoPerdaCentavos).toBeNull();
+        expect(i.valorEstoqueAntigoCentavos).toBeNull();
+        expect(i.ganhoVendasCentavos).toBe(Math.round(100 * (6.48 - 6.28) * 100));
+    });
+
     it('sem régua anterior à troca → null, nunca zero', () => {
         expect(estoqueNaVespera('gc', '2026-01-01', reguas, compras, vendas)).toBeNull();
         expect(estoqueNaVespera('et', '2026-01-07', reguas, compras, vendas)).toBeNull();

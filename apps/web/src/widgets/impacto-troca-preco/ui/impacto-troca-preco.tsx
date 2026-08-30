@@ -163,7 +163,9 @@ const Veredito: React.FC<{ readonly impacto: ImpactoExibivel }> = ({ impacto }) 
           <div className="text-[11px] font-bold tracking-widest text-gray-500 dark:text-gray-400">
             NO ESTOQUE PARADO
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">sem medição de tanque — não apurável</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            não apurável — sem régua no período, ou corrente incoerente (#72)
+          </div>
         </div>
       ) : (
         <div>
@@ -229,7 +231,7 @@ const CardTroca: React.FC<{ readonly impacto: ImpactoExibivel }> = ({ impacto })
     <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-gray-100 dark:border-gray-700/70 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-gray-700/70">
       <Fato rotulo="Tanque na véspera">
         {impacto.litrosNoTanque == null ? (
-          <span className="text-gray-400 dark:text-gray-500">sem régua antes da troca</span>
+          <span className="text-gray-400 dark:text-gray-500">não apurável</span>
         ) : (
           <>
             <span className="font-semibold">{Math.round(impacto.litrosNoTanque).toLocaleString('pt-BR')} L</span>
@@ -251,7 +253,7 @@ const CardTroca: React.FC<{ readonly impacto: ImpactoExibivel }> = ({ impacto })
       </Fato>
       <Fato rotulo="Valor do estoque">
         {impacto.valorEstoqueAntigoCentavos == null || impacto.valorEstoqueNovoCentavos == null ? (
-          <span className="text-gray-400 dark:text-gray-500">sem régua antes da troca</span>
+          <span className="text-gray-400 dark:text-gray-500">não apurável</span>
         ) : (
           <>
             {reais(impacto.valorEstoqueAntigoCentavos)} →{' '}
