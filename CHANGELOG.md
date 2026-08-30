@@ -259,6 +259,14 @@
   importadores.
 - `aggregator.attendants.test.ts` foi junto: testava exclusivamente o método apagado
   (vitest 362 → 359, os 3 do arquivo).
+### 📊 Centro do mês: litros por produto — 30/08/2026
+
+- O card "Litros vendidos" da Visão Proprietário mostra o total em litro inteiro
+  (36.277 L, sem os 3 decimais do encerrante) e ganhou mini gráfico: barra
+  empilhada + legenda por combustível, nas cores da planilha (GC vermelho, GA
+  azul, ET verde, S10 amarelo) — a coluna `Produto,%` da aba de resumo. Só
+  exibição; nenhuma fórmula tocada.
+
 ### 📅 Detalhamento Frentistas ganha a visão "Mês" — 30/08/2026
 
 - Seletor **Dia | Mês** no topo da aba. A visão Mês é o bloco `Caixa Dia 01 a 31`
