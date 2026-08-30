@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   User, Calendar, Smartphone, Banknote,
   Coins, CircleDollarSign, FileText, CreditCard,
   ClipboardList, ShoppingBag, History, ChevronDown,
-  X, Check, AlertCircle
+  X, Check, AlertCircle, Camera
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
@@ -12,6 +12,7 @@ import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
 import ReloadPrompt from './components/ReloadPrompt';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
+import { reduzirParaAvatar, iniciais } from './lib/foto';
 import { hojeIso } from '@posto/utils';
 
 const POSTO_ID = 1;
@@ -119,16 +120,54 @@ const formatCurrency = (value: string) => {
   return amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+interface FrentistaSelecionavel {
+  id: number;
+  nome: string;
+  /** Data URL JPEG vinda da coluna `Frentista.foto`. Nulo = mostra as iniciais. */
+  foto?: string | null;
+}
+
+/**
+ * Foto do frentista, com as iniciais do nome como reserva.
+ *
+ * @param tamanho Lado em pixels — o texto das iniciais acompanha, senão a
+ *                inicial de 18px fica perdida dentro de um círculo de 40px.
+ */
+const AvatarFrentista = ({ frentista, tamanho }: { frentista: FrentistaSelecionavel; tamanho: number }) => {
+  const medida = { width: tamanho, height: tamanho };
+
+  if (frentista.foto) {
+    return (
+      <img
+        src={frentista.foto}
+        alt={`Foto de ${frentista.nome}`}
+        style={medida}
+        className="rounded-full object-cover border border-red-800/50 bg-red-900/40"
+      />
+    );
+  }
+
+  return (
+    <div style={medida} className="rounded-full bg-red-900/40 flex items-center justify-center border border-red-800/50">
+      <span className="text-red-500 font-bold" style={{ fontSize: Math.round(tamanho * 0.36) }}>
+        {iniciais(frentista.nome)}
+      </span>
+    </div>
+  );
+};
+
 const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateAction<DialogState>> }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Persistimos frentista e aba: no mobile, abrir a câmera pode descarregar a
   // página da memória e recarregar ao voltar — sem isso o app perdia o estado
   // e "voltava pra tela inicial".
-  const [selectedFrentista, setSelectedFrentista] = useState<{ id: number, nome: string } | null>(() => {
+  const [selectedFrentista, setSelectedFrentista] = useState<FrentistaSelecionavel | null>(() => {
     try { const s = localStorage.getItem('pwa.frentista'); return s ? JSON.parse(s) : null; } catch { return null; }
   });
-  const [frentistas, setFrentistas] = useState<{ id: number, nome: string }[]>([]);
+  const [frentistas, setFrentistas] = useState<FrentistaSelecionavel[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputFotoRef = useRef<HTMLInputElement>(null);
+  const [salvandoFoto, setSalvandoFoto] = useState(false);
 
   // Histórico de enviados do dia (todos os frentistas): recarrega ao trocar a data
   // e depois de cada envio. É o "quem já mandou" que evita envio em dobro e mostra
@@ -141,7 +180,19 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
 
   useEffect(() => {
     // Busca do banco POSTO ID: 1 como padrão (Pode vir de config/storage depois)
-    api.getFrentistas(1).then(data => data && setFrentistas(data)).catch(err => console.error(err));
+    api.getFrentistas(1).then(data => {
+      if (!data) return;
+      setFrentistas(data);
+      // `selectedFrentista` vem do localStorage e carrega a foto de quando foi
+      // escolhido. Sem casar com o que acabou de chegar do banco, trocar a foto
+      // num aparelho deixaria o outro mostrando a inicial antiga até alguém se
+      // reselecionar na lista.
+      setSelectedFrentista(atual => {
+        if (!atual) return atual;
+        const fresco = data.find(f => f.id === atual.id);
+        return fresco ? { ...atual, foto: fresco.foto } : atual;
+      });
+    }).catch(err => console.error(err));
   }, []);
 
   useEffect(() => {
@@ -158,6 +209,40 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   // Aparece como "trabalhando agora" no painel do dono enquanto o app estiver
   // aberto com um frentista escolhido.
   useSinalDeVida(selectedFrentista?.id ?? null, POSTO_ID);
+
+  /**
+   * Troca a foto de perfil do frentista escolhido neste aparelho.
+   *
+   * @remarks Grava no banco na hora da escolha, e não junto com o fechamento.
+   *          Abrir a câmera no celular pode descarregar a página da memória — é
+   *          o mesmo motivo de `selectedFrentista` viver no localStorage —, e
+   *          uma foto que só existisse em estado do React morreria nesse
+   *          recarregamento sem nenhum aviso.
+   */
+  const trocarFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = ''; // permite reescolher a mesma foto depois de um erro
+    if (!arquivo || !selectedFrentista) return;
+
+    const alvo = selectedFrentista;
+    setSalvandoFoto(true);
+    try {
+      const avatar = await reduzirParaAvatar(arquivo);
+      await api.salvarFotoFrentista(alvo.id, avatar);
+
+      setSelectedFrentista(atual => (atual && atual.id === alvo.id ? { ...atual, foto: avatar } : atual));
+      setFrentistas(lista => lista.map(f => (f.id === alvo.id ? { ...f, foto: avatar } : f)));
+    } catch (err) {
+      setDialog({
+        isOpen: true,
+        title: 'Não deu para salvar a foto',
+        message: err instanceof Error ? err.message : 'Tente novamente.',
+        type: 'error',
+      });
+    } finally {
+      setSalvandoFoto(false);
+    }
+  };
 
   const [totalVendido, setTotalVendido] = useState('');
   const [payments, setPayments] = useState({
@@ -405,13 +490,40 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
           className="bg-[#131722] rounded-3xl p-4 border border-slate-800/60 flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-red-900/40 flex items-center justify-center border border-red-800/50">
-              {selectedFrentista ? (
-                <span className="text-red-500 font-bold text-lg">{selectedFrentista.nome.charAt(0)}</span>
-              ) : (
+            {selectedFrentista ? (
+              <button
+                type="button"
+                /* O card inteiro abre a lista de frentistas. Sem parar a
+                   propagação, tocar no avatar para trocar a foto abriria a
+                   lista por baixo do seletor de imagem do celular. */
+                onClick={(e) => { e.stopPropagation(); inputFotoRef.current?.click(); }}
+                disabled={salvandoFoto}
+                aria-label={`Trocar a foto de ${selectedFrentista.nome}`}
+                className="relative shrink-0 rounded-full active:scale-95 transition-transform disabled:opacity-60"
+              >
+                <AvatarFrentista frentista={selectedFrentista} tamanho={48} />
+                <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-indigo-600 border-2 border-[#131722] flex items-center justify-center">
+                  {salvandoFoto
+                    ? <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                    : <Camera size={10} className="text-white" />}
+                </span>
+              </button>
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-red-900/40 flex items-center justify-center border border-red-800/50 shrink-0">
                 <User size={24} className="text-red-500" />
-              )}
-            </div>
+              </div>
+            )}
+            {/* Sem `capture`: no iPhone isso é o que faz o iOS oferecer "Tirar
+                foto" E "Escolher da biblioteca". Com `capture="user"` ele abre
+                a câmera direto, e quem já tem uma foto boa na galeria perde o
+                caminho mais curto. */}
+            <input
+              ref={inputFotoRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={trocarFoto}
+            />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white leading-tight">
@@ -664,13 +776,14 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
                       setSelectedFrentista(frentista);
                       setIsModalOpen(false);
                     }}
-                    className={`w-full text-left px-5 py-4 rounded-xl font-bold tracking-wide transition-all border
+                    className={`w-full text-left px-5 py-4 rounded-xl font-bold tracking-wide transition-all border flex items-center gap-4
                   ${selectedFrentista?.id === frentista.id
                         ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/30'
                         : 'bg-[#131722] text-slate-300 border-slate-800/80 hover:bg-slate-800/60 active:bg-slate-800'
                       }`}
                   >
-                    {frentista.nome}
+                    <AvatarFrentista frentista={frentista} tamanho={40} />
+                    <span className="truncate">{frentista.nome}</span>
                   </div>
                 ))}
                 {frentistas.length === 0 && <p className="text-slate-400 text-sm italic py-4">Carregando conta dos funcionários...</p>}

@@ -2,6 +2,30 @@
 
 ## [Não Lançado]
 
+### 📸 Foto de perfil do frentista no PWA
+
+- O frentista escolhe a si mesmo e toca no próprio avatar para pôr ou trocar a foto. A imagem
+  é recortada num quadrado central e reduzida para 192px **no aparelho**, antes de sair pela
+  rede, e gravada na hora — abrir a câmera no celular pode descarregar a página da memória, e
+  foto que só existisse em estado do React morreria no recarregamento.
+- Guardada como data URL JPEG na coluna nova `Frentista.foto`, **não em bucket do Storage**.
+  O `anon` já tem UPDATE aberto nesta tabela, então a coluna não abre permissão nova; um
+  bucket exigiria liberar escrita anônima no Storage, superfície nova para um avatar. São ~10
+  frentistas a ~10 KB. `CHECK` na coluna barra foto crua de câmera, espelhado por
+  `TETO_DATA_URL` no cliente para o erro sair em português, e não como constraint do Postgres.
+- Sem foto, o avatar mostra as iniciais (primeiro + último nome), no cabeçalho e na lista de
+  seleção.
+- **Limite conhecido, deliberado:** "só o próprio frentista altera a foto" é regra de tela,
+  não garantia do banco — o PWA não tem autenticação, o client é `anon` e a policy
+  `Enable Update for Anon on Frentista` libera UPDATE em qualquer linha. Isso já valia para
+  nome, CPF e telefone antes desta coluna; a foto não abre buraco, passa por um já aberto. A
+  garantia real depende de ligar login por frentista sobre `Frentista.user_id`, coluna que já
+  existe e nunca foi usada — trabalho à parte.
+- **Dívida sinalizada:** `reduzirParaAvatar` é gêmea de `fileParaBase64Reduzido`
+  (`apps/pwa-dono/src/screens/EncerranteScreen.tsx`). Não foram consolidadas: as duas dependem
+  de `canvas`/`FileReader`, e `packages/utils` guarda domínio puro. Um terceiro uso justifica
+  criar o pacote de browser compartilhado.
+
 ### 🏷️ A marca do posto no topo da barra lateral
 
 - O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),

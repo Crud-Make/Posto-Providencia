@@ -38,12 +38,31 @@ export const api = {
     async getFrentistas(postoId: number) {
         const { data, error } = await supabase
             .from('Frentista')
-            .select('id, nome')
+            .select('id, nome, foto')
             .eq('posto_id', postoId)
             .eq('ativo', true)
             .order('nome');
         if (error) throw new Error(error.message);
         return data;
+    },
+
+    /**
+     * Grava o avatar do frentista.
+     *
+     * @param foto Data URL JPEG já recortada e reduzida por `reduzirParaAvatar`.
+     *             Passe `null` para voltar à inicial do nome.
+     * @remarks Só o frentista escolhido no aparelho chega aqui — mas isso é
+     *          regra de tela, não do banco: o client é `anon` e a policy
+     *          "Enable Update for Anon on Frentista" libera UPDATE em qualquer
+     *          linha. A garantia real depende do login por frentista sobre
+     *          `Frentista.user_id`, que ainda não foi ligado.
+     */
+    async salvarFotoFrentista(frentistaId: number, foto: string | null) {
+        const { error } = await supabase
+            .from('Frentista')
+            .update({ foto })
+            .eq('id', frentistaId);
+        if (error) throw new Error(error.message);
     },
 
     /** Busca ou cria o Fechamento consolidado do dia/turno */
