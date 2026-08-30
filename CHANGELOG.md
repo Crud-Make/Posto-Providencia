@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 🗃️ Carga histórica: três defeitos achados ao importar a planilha de 30/08
+
+- **`encerrante` nulo virava erro de tipo.** A partir de abril a planilha deixou de registrar o
+  encerrante por frentista. Com a coluna inteira nula, o Postgres infere `text` para o `VALUES` e
+  recusa gravar em campo `numeric` — abril, maio e junho voltavam `HTTP 400`. Conversão explícita
+  no `SELECT`, que vale para nulo e para número. Março passava só porque ainda tinha valores.
+- **Base de referência agora é sobreponível** por `POSTO_BANCO_REFERENCIA`. Os cinco
+  `carga-historico-*` liam de um caminho fixo em `docs/data/`, que só muda por decisão do dono
+  (§6) — o que impedia carregar a partir de uma extração recém-gerada e ainda não promovida. Sem
+  a variável, o comportamento é idêntico ao de antes, e nada aqui escreve na pasta canônica.
+- **Rótulo que não é frentista deixou de travar a carga.** `'Posto - Jorro'` é uma coluna da
+  tabela de frentistas da planilha, não uma pessoa (julho R$ 162,99, agosto R$ 29,11). As duas
+  saídas óbvias eram ruins: cadastrar um frentista falso o faria aparecer no ranking e na
+  conciliação como se fosse gente; pular calado sumiria com o dinheiro e quebraria a conciliação
+  pelo valor exato pulado. Agora o rótulo é reconhecido, o valor é impresso alto e entra na
+  conciliação como `fora` — o termo que o script já tinha para dinheiro da referência que não
+  vira linha de carga.
+
 ### 🔴 Saneamento pré-release — onda 4 (taxa de cartão é despesa do mês — dono, 26/08)
 
 - **/financeiro: a taxa de cartão sai da soma de despesas (4.2).** O card Receitas/Despesas
