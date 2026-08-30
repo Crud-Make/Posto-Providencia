@@ -19,6 +19,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // `injectManifest` (SW nosso) em vez de `generateSW` (SW gerado): o
+      // gerado não tem como receber `push`, e é só por isso que a troca
+      // aconteceu. O `src/sw.ts` reproduz de propósito tudo o que o gerado
+      // fazia — precache, `skipWaiting`, `clientsClaim` e o `SKIP_WAITING` que
+      // o `ReloadPrompt` manda.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
@@ -62,10 +70,11 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        skipWaiting: true,
-        clientsClaim: true
+      // Com `injectManifest` a chave é `injectManifest`, não `workbox` — a
+      // `workbox` passa a ser IGNORADA em silêncio. `skipWaiting` e
+      // `clientsClaim` deixaram de ser opção e viraram código, em `src/sw.ts`.
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       }
     })
   ]
