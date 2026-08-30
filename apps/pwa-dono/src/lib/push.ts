@@ -121,7 +121,21 @@ export async function inscreverNoPush(
     };
   }
 
-  const registro = await navigator.serviceWorker.ready;
+  // `serviceWorker.ready` NUNCA resolve se nenhum SW foi registrado — e em
+  // `bun run dev` o vite-plugin-pwa não registra nenhum. Sem este teto, o botão
+  // giraria para sempre sem dizer por quê, que é o pior tipo de falha.
+  const registro = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<null>((resolver) => setTimeout(() => resolver(null), 5000)),
+  ]);
+
+  if (!registro) {
+    return {
+      ok: false,
+      estado: 'sem-suporte',
+      mensagem: 'Nenhum service worker registrado neste endereço. Em desenvolvimento ele não sobe — teste com o app compilado (bun run preview).',
+    };
+  }
 
   // Reaproveita a inscrição existente: assinar de novo com a MESMA chave
   // devolve o mesmo endpoint, mas pedir com chave diferente estoura.

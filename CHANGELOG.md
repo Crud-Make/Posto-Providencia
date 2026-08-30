@@ -25,6 +25,9 @@
   a que horas, quanto conferiu e se faltou ou sobrou — com a foto de perfil de cada um. Seletor de
   data no topo. O app do dono ganhou navegação (duas abas) junto com ela; antes não havia segunda
   tela e rota teria sido abstração vazia.
+- Ligar o aviso onde não há service worker registrado (o `bun run dev` não sobe nenhum) agora
+  responde em 5 s dizendo o motivo. Antes o botão giraria para sempre: `serviceWorker.ready` nunca
+  resolve sem registro, e falha calada é a pior de todas.
 - **Service worker próprio no PWA do dono** (`injectManifest` no lugar de `generateSW`): o SW gerado
   não tem como receber `push`, e é só por isso que a troca aconteceu. O `src/sw.ts` reproduz de
   propósito tudo o que o gerado fazia — precache, `skipWaiting`, `clientsClaim` e o `SKIP_WAITING`
