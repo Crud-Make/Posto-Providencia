@@ -24,9 +24,6 @@ const json = (corpo: unknown, status = 200) =>
     headers: { ...CABECALHOS_CORS, 'Content-Type': 'application/json' },
   });
 
-const reais = (centavos: number) =>
-  (centavos ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
 /**
  * Monta o texto do aviso a partir da linha REAL do banco.
  *
@@ -34,30 +31,21 @@ const reais = (centavos: number) =>
  *          impede alguém com a `anon key` de disparar um aviso inventado no
  *          celular do dono: o pior que consegue é reenviar o eco de um
  *          fechamento que existe de verdade.
- * @remarks A convenção do sinal é a do CLAUDE.md §6 e da planilha: `diferenca`
- *          positiva é FALTA, negativa é SOBRA. Aqui a coluna só é LIDA e
- *          rotulada — nenhum cálculo de dinheiro acontece nesta função.
+ * @remarks **Sem dinheiro no texto, de propósito.** A notificação aparece com o
+ *          iPhone BLOQUEADO, à vista de quem estiver por perto — inclusive dos
+ *          próprios frentistas. Valor conferido e falta de caixa são o assunto
+ *          mais sensível do posto e ficam atrás do desbloqueio, na tela de
+ *          envios do app. O aviso é só o empurrão para abrir.
  */
-function montarAviso(linha: {
-  frentista: { nome: string } | null;
-  data: string | null;
-  valor_conferido: number | null;
-  diferenca: number | null;
-}) {
+function montarAviso(linha: { frentista: { nome: string } | null; data: string | null }) {
   const nome = linha.frentista?.nome ?? 'Um frentista';
   const dia = linha.data
     ? new Date(linha.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
     : 'hoje';
 
-  const diferenca = linha.diferenca ?? 0;
-  const situacao =
-    diferenca > 0 ? `Falta ${reais(diferenca)}`
-      : diferenca < 0 ? `Sobra ${reais(Math.abs(diferenca))}`
-        : 'Caixa bateu certo';
-
   return {
     titulo: `${nome} fechou o caixa`,
-    corpo: `${dia} · ${reais(linha.valor_conferido ?? 0)} conferido · ${situacao}`,
+    corpo: `${dia} · toque para ver os envios`,
   };
 }
 
@@ -85,9 +73,11 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
+  // Só nome e data saem daqui: o valor nem é buscado, para não haver como
+  // vazar por descuido num `console.log` ou num payload futuro.
   const { data: linha, error: erroLinha } = await supabase
     .from('FechamentoFrentista')
-    .select('id, valor_conferido, diferenca, frentista:Frentista(nome), fechamento:Fechamento(data)')
+    .select('id, frentista:Frentista(nome), fechamento:Fechamento(data)')
     .eq('id', id)
     .maybeSingle();
 
@@ -97,8 +87,6 @@ Deno.serve(async (req) => {
   const aviso = montarAviso({
     frentista: linha.frentista as { nome: string } | null,
     data: (linha.fechamento as { data: string } | null)?.data ?? null,
-    valor_conferido: linha.valor_conferido,
-    diferenca: linha.diferenca,
   });
 
   const { data: inscricoes, error: erroInscricoes } = await supabase

@@ -18,6 +18,17 @@
 - Edge Function `notifica-dono`: monta a mensagem lendo a linha REAL do `FechamentoFrentista` pelo
   id — nada do que o cliente envia entra no texto, então ninguém forja um aviso falso. Inscrição que
   responde 404/410 é desativada, em vez de dar erro em toda notificação futura.
+- **A notificação não leva dinheiro.** Diz só `"Paulo fechou o caixa"` e a data. Ela aparece com o
+  iPhone BLOQUEADO, à vista de qualquer um — inclusive dos frentistas. Valor e falta de caixa ficam
+  atrás do desbloqueio. A função nem BUSCA o valor no banco, para não vazar por descuido depois.
+- **Tela "Envios dos frentistas" no PWA do dono**, que é para onde a notificação leva: quem enviou,
+  a que horas, quanto conferiu e se faltou ou sobrou — com a foto de perfil de cada um. Seletor de
+  data no topo. O app do dono ganhou navegação (duas abas) junto com ela; antes não havia segunda
+  tela e rota teria sido abstração vazia.
+- A consulta mora em `packages/api-core` (`criarAcessoEnvios`), no molde do `criarAcessoEncerrante` —
+  os dois apps olham a mesma lista por motivos diferentes. **Drift encontrado no caminho:** a tabela
+  real tem `diferenca_calculada` e não tem `total`; a migration `20251221_create_mobile_tables.sql`
+  declara `diferenca` e `total` e ficou para trás. O código segue o banco.
 
 ### 📊 ETL aceita a planilha de 30/08 (janeiro a agosto)
 
