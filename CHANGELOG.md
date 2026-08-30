@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### 💱 Impacto das trocas de preço na Visão do Proprietário (#61)
+
+- Nova seção na `/proprietario`, abaixo do Demonstrativo Financeiro: uma linha por mudança de
+  preço do mês — "em DD/MM o combustível foi de R$ X para R$ Y; o tanque tinha Z litros
+  (comprados a R$ C/L): ganhou/perdeu R$ G" — e o total do mês. Mês sem troca: a seção some.
+- **`ganhoPerda = litros no tanque × (preço novo − preço antigo)`**, em centavos. O custo médio
+  do mês aparece só como contexto e NÃO entra na conta (registrado na Issue #61).
+- Fórmula em `packages/utils/src/troca-preco.ts` (módulo puro): detecção de troca por
+  combustível, estoque na véspera pela mesma corrente do estoque derivado (régua + compras −
+  vendas, via `resumoEstoque`) e custo médio do mês via `custoMedioCompra`.
+- **Golden master** `troca-preco.golden.spec.ts` contra `encerrante_diario` da planilha real:
+  janeiro (4 trocas em 07/01: gasolinas 6,28→6,48, etanol 4,58→4,98, diesel 6,28→6,38), maio
+  (quedas em 16/05) e junho (quedas em 20/06). Março ficou fora de propósito: preços não
+  monotônicos com um 9,98 que parece erro de digitação — decisão do dono pendente.
+
 ### 🗃️ Carga histórica: três defeitos achados ao importar a planilha de 30/08
 
 - **`encerrante` nulo virava erro de tipo.** A partir de abril a planilha deixou de registrar o
