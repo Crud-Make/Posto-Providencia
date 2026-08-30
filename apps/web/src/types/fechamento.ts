@@ -66,36 +66,6 @@ export interface SessaoFrentista {
 }
 
 /**
- * Cores para visualização de combustíveis
- *
- * @remarks
- * Mapeia tipos de combustível para cores do Tailwind CSS
- * GC=Vermelho, GA=Azul, ET=Verde, S10=Amarelo, DIESEL=Âmbar
- */
-export const CORES_COMBUSTIVEL: Record<string, { bg: string; text: string; border: string }> = {
-  'GC': { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' },
-  'GA': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
-  'ET': { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
-  'S10': { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300' },
-  'DIESEL': { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
-};
-
-/**
- * Cores para gráficos de combustível
- *
- * @remarks
- * Cores em hexadecimal para uso em gráficos (Recharts)
- * Sincronizadas com as cores de visualização
- */
-export const CORES_GRAFICO_COMBUSTIVEL: Record<string, string> = {
-  'GC': '#EF4444', // vermelho-500
-  'GA': '#3B82F6', // azul-500
-  'ET': '#22C55E', // verde-500
-  'S10': '#EAB308', // amarelo-500
-  'DIESEL': '#F59E0B', // âmbar-500
-};
-
-/**
  * Cores para gráficos de formas de pagamento
  *
  * @remarks

@@ -32,8 +32,8 @@ const MixProdutosWidget: React.FC<MixProdutosWidgetProps> = ({ productMix, forma
               </div>
               <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${item.color}`}
-                  style={{ width: `${item.percentage}%` }}
+                  className="h-full rounded-full"
+                  style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
                 ></div>
               </div>
             </div>

@@ -44,7 +44,7 @@ const CartaoIndicador: React.FC<CartaoIndicadorProps> = ({
         <Icone size={18} className={corIcone} />
       </div>
     </div>
-    <p className={`text-2xl font-black tracking-tight ${negativo ? 'text-red-400' : 'text-white'}`}>
+    <p className={`text-2xl font-black tracking-tight ${negativo ? 'text-red-400' : 'text-green-400'}`}>
       {valor}
     </p>
     {legenda && <p className="text-xs text-slate-500 mt-1">{legenda}</p>}

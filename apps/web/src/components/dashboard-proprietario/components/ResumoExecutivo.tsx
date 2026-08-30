@@ -36,7 +36,7 @@ export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados, periodo
       </div>
 
       {/* Lucro do período */}
-      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white animate-in fade-in zoom-in duration-300 delay-100">
+      <div className={`bg-gradient-to-br ${dados.lucroReal < 0 ? 'from-red-500 to-red-700' : 'from-green-500 to-green-700'} rounded-2xl p-5 text-white animate-in fade-in zoom-in duration-300 delay-100`}>
         <div className="flex items-center justify-between mb-3">
           <span className="text-green-100 text-sm font-medium font-display uppercase tracking-wider">
             {dados.temDespesa ? 'Lucro Real' : 'Lucro Bruto'} · {periodoLabel}

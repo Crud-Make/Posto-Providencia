@@ -1,4 +1,4 @@
-import { conferido, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel } from '@posto/utils';
+import { conferido, corDoProduto, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel } from '@posto/utils';
 import { supabase } from '../supabase';
 import { combustivelService } from './combustivel.service';
 import { bicoService } from './bico.service';
@@ -347,14 +347,6 @@ export const aggregatorService = {
         leituras: leiturasData
       };
 
-      // Cores padrão para combustíveis
-      const coresCombs: Record<string, string> = {
-        'GC': '#22c55e',
-        'GA': '#3b82f6',
-        'ET': '#eab308',
-        'S10': '#ef4444',
-      };
-
       // Cores padrão para formas de pagamento
       const coresFormas: Record<string, string> = {
         'cartao': '#3b82f6',
@@ -370,7 +362,9 @@ export const aggregatorService = {
         name: v.combustivel?.nome || 'N/A',
         volume: v.litros,
         maxCapacity: estoque.find(e => e.combustivel_id === v.combustivel?.id)?.capacidade_tanque ?? 0,
-        color: v.combustivel?.cor || coresCombs[v.combustivel?.codigo || ''] || '#888',
+        // Cor da planilha pelo código — não a do cadastro nem mapa local (o de
+        // antes trocava GC com S10). Um padrão só no sistema inteiro.
+        color: corDoProduto(v.combustivel?.codigo).fundo,
       }));
 
       // PaymentData real (agregado dos fechamentos ou pagamentos do dia)
@@ -517,14 +511,6 @@ export const aggregatorService = {
       const vendasRes = await leituraService.getSalesSummaryByDate(hoje, postoId);
       const vendas = extractData(vendasRes);
 
-      // Mapeamento de cores
-      const colorClasses: Record<string, string> = {
-        'GC': 'bg-green-100 text-green-700',
-        'GA': 'bg-blue-100 text-blue-700',
-        'ET': 'bg-yellow-100 text-yellow-700',
-        'S10': 'bg-red-100 text-red-700',
-      };
-
       const iconTypes: Record<string, 'pump' | 'leaf' | 'truck'> = {
         'GC': 'pump',
         'GA': 'pump',
@@ -541,8 +527,8 @@ export const aggregatorService = {
         totalValue: pc.valor,
         volume: pc.litros,
         avgPrice: pc.litros > 0 ? pc.valor / pc.litros : pc.combustivel.preco_venda || 0,
-        color: pc.combustivel.cor || '#888',
-        colorClass: colorClasses[pc.combustivel.codigo] || 'bg-gray-100 text-gray-700',
+        color: corDoProduto(pc.combustivel.codigo).fundo,
+        colorClass: '',
       }));
 
       // Se não houver leituras, criar dados zerados
@@ -556,8 +542,8 @@ export const aggregatorService = {
             totalValue: 0,
             volume: 0,
             avgPrice: c.preco_venda || 0,
-            color: c.cor || '#888',
-            colorClass: colorClasses[c.codigo] || 'bg-gray-100 text-gray-700',
+            color: corDoProduto(c.codigo).fundo,
+            colorClass: '',
           });
         });
       }
@@ -959,7 +945,7 @@ export const aggregatorService = {
           lucroTotal,
           margemLiquidaL,
           margemBrutaL,
-          cor: e.combustivel?.cor || 'gray'
+          cor: corDoProduto(e.combustivel?.codigo).fundo
         };
       }));
     } catch (error) {

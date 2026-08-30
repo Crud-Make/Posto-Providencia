@@ -20,7 +20,7 @@ import type { EntradaPagamento } from '../../../types/fechamento';
 import type { Recebimento } from '../../../types/database/aliases';
 import { formaPagamentoService } from '../../../services/api';
 import { fechamentoService } from '../../../services/api/fechamento.service';
-import { analisarValor, formatarValorSimples, formatarValorAoSair, paraReais } from '../../../utils/formatters';
+import { analisarValor, paraReais } from '../../../utils/formatters';
 import { baldeDaForma, totaisPorBalde } from '../../../utils/fechamentoMeios';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -30,12 +30,9 @@ import { isSuccess } from '../../../types/ui/response-types';
 interface RetornoPagamentos {
   pagamentos: EntradaPagamento[];
   carregando: boolean;
-  totalPagamentos: number;
   totalTaxas: number;
   totalLiquido: number;
   carregarPagamentos: (data?: string, force?: boolean) => Promise<void>;
-  alterarPagamento: (indice: number, valor: string) => void;
-  aoSairPagamento: (indice: number) => void;
   sincronizarComSessoes: (sessoes: import('../../../types/fechamento').SessaoFrentista[]) => void;
   definirPagamentos: React.Dispatch<React.SetStateAction<EntradaPagamento[]>>;
 }
@@ -131,37 +128,6 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
   }, [postoId]);
 
   /**
-   * Handler para mudança de valor de pagamento
-   *
-   * @remarks
-   * Aceita apenas números e uma vírgula
-   * Impede múltiplas vírgulas
-   */
-  const alterarPagamento = useCallback((indice: number, valor: string) => {
-    const formatado = formatarValorSimples(valor);
-    setPagamentos(prev => {
-      const atualizado = [...prev];
-      atualizado[indice] = { ...atualizado[indice], valor: formatado };
-      return atualizado;
-    });
-  }, []);
-
-  /**
-   * Handler para blur (formata como R$ X,XX)
-   */
-  const aoSairPagamento = useCallback((indice: number) => {
-    setPagamentos(prev => {
-      const atualizado = [...prev];
-      const valorString = atualizado[indice].valor;
-
-      if (!valorString) return prev;
-
-      const formatado = formatarValorAoSair(valorString);
-      atualizado[indice] = { ...atualizado[indice], valor: formatado };
-      return atualizado;
-    });
-  }, []);
-  /**
    * Sincroniza pagamentos com o valor total dos frentistas
    */
   const sincronizarComSessoes = useCallback((sessoes: import('../../../types/fechamento').SessaoFrentista[]) => {
@@ -189,15 +155,6 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
     }));
   }, []);
   /**
-   * Calcula total de todos os pagamentos
-   */
-  const totalPagamentos = useMemo(() => {
-    return pagamentos.reduce((acc, p) => {
-      return acc + analisarValor(p.valor);
-    }, 0);
-  }, [pagamentos]);
-
-  /**
    * Calcula total de taxas (soma de valor × taxa de cada pagamento)
    */
   const totalTaxas = useMemo(() => {
@@ -221,12 +178,9 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
   return {
     pagamentos,
     carregando,
-    totalPagamentos,
     totalTaxas,
     totalLiquido,
     carregarPagamentos,
-    alterarPagamento,
-    aoSairPagamento,
     sincronizarComSessoes,
     definirPagamentos: setPagamentos
   };

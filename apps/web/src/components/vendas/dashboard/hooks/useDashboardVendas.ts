@@ -5,16 +5,7 @@ import { leituraService, estoqueService } from '../../../../services/api';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
 import { isSuccess } from '../../../../types/ui/response-types';
-import { paraIsoLocal } from '@posto/utils';
-
-// Color mapping for fuels
-const FUEL_COLORS: Record<string, string> = {
-  'GC': 'bg-red-500',
-  'GA': 'bg-blue-500',
-  'ET': 'bg-green-500',
-  'S10': 'bg-yellow-500',
-  'DIESEL': 'bg-amber-500',
-};
+import { corDoProduto, paraIsoLocal } from '@posto/utils';
 
 export const useDashboardVendas = () => {
   const { postoAtivoId } = usePosto();
@@ -87,7 +78,7 @@ export const useDashboardVendas = () => {
         codigo: item.combustivel.codigo,
         volume: item.litros,
         percentage: totalLitros > 0 ? (item.litros / totalLitros) * 100 : 0,
-        color: FUEL_COLORS[item.combustivel.codigo] || 'bg-gray-500',
+        color: corDoProduto(item.combustivel.codigo).fundo,
       }));
       setProductMix(mixData);
 

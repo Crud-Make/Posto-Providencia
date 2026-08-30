@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { corDoProduto } from '@posto/utils';
 import { usePosto } from '../../contexts/usePosto';
 import { fechamentoMensalService, FechamentoMensalResumo, EncerranteMensalConsolidado } from '../../services/api/fechamentoMensal.service';
 import { leituraService } from '../../services/api';
@@ -500,10 +501,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                                             <tr key={row.bico} className="hover:bg-slate-800/40 transition-colors group">
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border ${row.combustivelNome.toLowerCase().includes('gasolina') ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                            row.combustivelNome.toLowerCase().includes('etanol') ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                                            }`}>
+                                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs" style={{ backgroundColor: corDoProduto(row.combustivelCodigo).fundo, color: corDoProduto(row.combustivelCodigo).texto }}>
                                                             {idx + 1}
                                                         </div>
                                                         <div>

@@ -75,7 +75,8 @@ const HistoricoScreen: React.FC<HistoricoProps> = ({ frentistaId, frentistaNome,
                     <div className="space-y-3">
                         {historico.map((item) => {
                             const diff = item.diferenca_calculada || 0;
-                            const isPositive = diff > 0;
+                            // diferenca_calculada segue a convenção do domínio: positivo = FALTA (quebra), negativo = SOBRA.
+                            const isFalta = diff > 0;
                             const isZero = diff === 0;
                             const dataFechamento = item.fechamento?.data || '';
 
@@ -89,9 +90,9 @@ const HistoricoScreen: React.FC<HistoricoProps> = ({ frentistaId, frentistaNome,
                                         </div>
                                         <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1
                       ${isZero ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                                                isPositive ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                                    'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-                                            {isZero ? <CheckCircle size={12} /> : isPositive ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                                                isFalta ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                                                    'bg-green-500/20 text-green-400 border border-green-500/30'}`}>
+                                            {isZero ? <CheckCircle size={12} /> : isFalta ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
                                             {isZero ? 'Redondo' : `R$ ${formatCurrency(Math.abs(diff))}`}
                                         </div>
                                     </div>
