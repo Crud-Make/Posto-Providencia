@@ -75,8 +75,8 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
                      <th className="px-4 py-4 text-right">Litros</th>
                      <th className="px-4 py-4 text-right text-emerald-600">Preço do Mês R$</th>
                      <th className="px-4 py-4 text-right text-blue-600">Valor p/ Bico</th>
-                     <th className="px-4 py-4 text-right text-amber-600">Lucro LT R$</th>
-                     <th className="px-4 py-4 text-right text-amber-600">Lucro Bico R$</th>
+                     <th className="px-4 py-4 text-right text-green-600">Lucro LT R$</th>
+                     <th className="px-4 py-4 text-right text-green-600">Lucro Bico R$</th>
                      <th className="px-4 py-4 text-right">Margem %</th>
                      <th className="px-4 py-4 text-right">Prod. Vendido</th>
                      <th className="px-4 py-4 text-right">Produto %</th>
@@ -122,13 +122,13 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
                            <td className="px-4 py-4 text-right font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/10">
                               {b.bruto > 0 ? paraReais(b.bruto) : '-'}
                            </td>
-                           <td className="px-4 py-4 text-right text-amber-600">
+                           <td className={`px-4 py-4 text-right ${lucroLt < 0 ? 'text-red-600' : 'text-green-600'}`}>
                               {lucroLt !== 0 ? paraReais(lucroLt) : '-'}
                            </td>
-                           <td className="px-4 py-4 text-right font-bold text-amber-700 bg-amber-50 dark:bg-amber-900/10">
+                           <td className={`px-4 py-4 text-right font-bold ${lucroBico < 0 ? 'text-red-700 bg-red-50 dark:bg-red-900/10' : 'text-green-700 bg-green-50 dark:bg-green-900/10'}`}>
                               {lucroBico !== 0 ? paraReais(lucroBico) : '-'}
                            </td>
-                           <td className={`px-4 py-4 text-right ${margemPct < 0 ? 'text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                           <td className={`px-4 py-4 text-right ${margemPct < 0 ? 'text-red-600 font-semibold' : 'text-slate-600 dark:text-slate-300'}`}>
                               {margemPct !== 0 ? `${formatarParaBR(margemPct, 2)}%` : '-'}
                            </td>
                            <td className="px-4 py-4 text-right">
@@ -152,7 +152,7 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
                      </td>
                      <td className="px-4 py-3 text-right bg-blue-900">{paraReais(totais.totalValorBico)}</td>
                      <td className="px-4 py-3 text-right text-slate-400">-</td>
-                     <td className="px-4 py-3 text-right bg-amber-700">{paraReais(totais.totalLucroBico)}</td>
+                     <td className={`px-4 py-3 text-right ${totais.totalLucroBico < 0 ? 'bg-red-800' : 'bg-green-800'}`}>{paraReais(totais.totalLucroBico)}</td>
                      <td className="px-4 py-3 text-right bg-slate-700">{formatarParaBR(totais.margemMedia, 2)}%</td>
                      <td className="px-4 py-3 text-right">{formatarParaBR(totais.totalLitros, 0)}</td>
                      <td className="px-4 py-3 text-right">100,00%</td>

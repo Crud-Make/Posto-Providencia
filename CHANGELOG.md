@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 🛒 Registro de Compras — compra e custo explicados, sem o gráfico
+
+- **Saiu a seção "Visão do Período"** (`GraficosCompras.tsx`, dois gráficos Recharts). Não havia
+  estado só dela; removida sem código morto. O que ela explicava foi para dentro da tabela.
+- **"De onde vem o preço do litro" agora mora em "Compra e Custo"**, produto a produto: o grupo
+  *Custo do litro* mostra `Média LT` **+** `Despesa/L` **=** `Custo do litro`, e o grupo *Venda*
+  mostra o `Preço de bomba` e a `Sobra por litro` (verde) ou `abaixo do custo` (vermelho). É a
+  mesma fórmula de `useCalculosRegistro` (`calcValorParaVenda`/`calcLucroLt`), nada novo calculado
+  na view. Uma linha de texto acima da tabela resume a conta.
+- **Despesa do mês** no cabeçalho passa a mostrar também o rateio por litro (`= R$ x,xx/L`).
+- **Fornecedor padrão** deixa de ser "o primeiro da lista" (ordem alfabética) e passa a ser o
+  último com que o posto finalizou uma compra, lembrado no `localStorage` por posto; cai para o
+  primeiro se nunca houve compra ou se o lembrado saiu do cadastro.
+- **Cores de lucro e prejuízo unificadas** na tela inteira: lucro/sobra = `green-*`, prejuízo/perca
+  = `red-*`. Antes, lucro aparecia em âmbar na tabela de vendas e em esmeralda na de estoque —
+  esmeralda é a cor de identidade de *venda* nesta tela, não de lucro, e âmbar é alerta. Lucro
+  LT/Bico e o total ficam vermelhos quando negativos.
+
 ### 🏷️ A marca do posto no topo da barra lateral
 
 - O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),

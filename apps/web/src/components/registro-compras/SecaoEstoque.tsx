@@ -82,7 +82,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                            </td>
                            <td className="px-4 py-5 text-right font-bold">
                               {percaSobra !== 0 ? (
-                                 <span className={`flex flex-col ${percaSobra > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                 <span className={`flex flex-col ${percaSobra > 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     <span>{percaSobra > 0 ? '+' : ''}{formatarParaBR(percaSobra, 0)}</span>
                                     <span className="text-[10px] opacity-75 uppercase tracking-wider">
                                        {percaSobra > 0 ? 'SOBRA' : 'PERCA'}
@@ -119,7 +119,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                         {(() => {
                            const totalPercaSobra = totais.totalPercaSobra;
                            return totalPercaSobra !== 0 ? (
-                              <span className={totalPercaSobra > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                              <span className={totalPercaSobra > 0 ? 'text-green-400' : 'text-red-400'}>
                                  {totalPercaSobra > 0 ? '+' : ''}{formatarParaBR(totalPercaSobra, 0)}
                               </span>
                            ) : '-';
