@@ -10,8 +10,23 @@
  */
 import React from 'react';
 import { ArrowRight, Loader2, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  Cell,
+  LabelList,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { corDeSinal, corDoProduto } from '@posto/utils';
-import { useImpactoTrocaPreco, type ImpactoExibivel } from '../model/use-impacto-troca-preco';
+import {
+  useImpactoTrocaPreco,
+  type BarraVariacao,
+  type ImpactoExibivel,
+} from '../model/use-impacto-troca-preco';
 
 interface Props {
   readonly postoId: number | null;
@@ -33,7 +48,86 @@ const reaisComSinal = (centavos: number) => `${centavos >= 0 ? '+' : ''}${reais(
 
 const numeros: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 
-/** Sigla na cor que o dono reconhece da planilha (GC vermelho, ET verde…). */
+/**
+ * Variantes legíveis das cores da planilha para marcas de gráfico: o hex cru
+ * (amarelo puro, verde-água) some no fundo claro. O chip do combustível mantém
+ * o hex exato que o dono reconhece; a barra usa o mesmo matiz um tom mais
+ * escuro. Paleta validada com `scripts/validate_palette.js` da skill dataviz.
+ */
+const COR_LINHA: Readonly<Record<string, string>> = {
+  GC: '#DC2626',
+  GA: '#0284C7',
+  ET: '#059669',
+  S10: '#CA8A04',
+};
+
+const corDaLinha = (codigo: string | null) =>
+  (codigo && COR_LINHA[codigo.toUpperCase()]) || '#64748B';
+
+/** "Foi só o diesel ou mexeu tudo?" — quanto cada preço variou no mês. */
+const GraficoVariacao: React.FC<{ readonly barras: readonly BarraVariacao[] }> = ({ barras }) => {
+  if (barras.length === 0) return null;
+  const dados = barras.map((b) => ({
+    sigla: b.codigoCombustivel ?? b.nomeCombustivel,
+    nome: b.nomeCombustivel,
+    codigo: b.codigoCombustivel,
+    variacao: b.variacao,
+    precoInicio: b.precoInicio,
+    precoFim: b.precoFim,
+  }));
+  const rotulo = (v: number) =>
+    v === 0 ? 'não mexeu' : `${v > 0 ? '+' : '−'}R$ ${precoBR(Math.abs(v))}`;
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+        Variação do preço no mês, por combustível
+      </p>
+      <div className="h-44">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={dados} margin={{ top: 22, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
+            <XAxis
+              dataKey="sigla"
+              tick={{ fontSize: 12, fill: '#94A3B8', fontWeight: 600 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis hide domain={['auto', 'auto']} />
+            <ReferenceLine y={0} stroke="#94A3B8" strokeOpacity={0.4} />
+            <Tooltip
+              cursor={{ fill: '#94A3B8', fillOpacity: 0.08 }}
+              formatter={(_valor: number | string, _nome: string, item: { payload?: (typeof dados)[number] }) => {
+                const b = item.payload;
+                return b
+                  ? [`de R$ ${precoBR(b.precoInicio)} para R$ ${precoBR(b.precoFim)}`, b.nome]
+                  : ['', ''];
+              }}
+              labelFormatter={() => ''}
+              contentStyle={{
+                backgroundColor: '#111827',
+                border: '1px solid #374151',
+                borderRadius: 12,
+                fontSize: 12,
+                color: '#F9FAFB',
+              }}
+            />
+            <Bar dataKey="variacao" radius={[4, 4, 0, 0]} maxBarSize={72} isAnimationActive={false}>
+              {dados.map((b) => (
+                <Cell key={b.sigla} fill={corDaLinha(b.codigo)} fillOpacity={b.variacao === 0 ? 0.25 : 1} />
+              ))}
+              <LabelList
+                dataKey="variacao"
+                position="top"
+                formatter={rotulo}
+                style={{ fontSize: 12, fontWeight: 700, fill: '#94A3B8' }}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
 const ChipCombustivel: React.FC<{ readonly codigo: string | null; readonly nome: string }> = ({
   codigo,
   nome,
@@ -216,6 +310,7 @@ export const ImpactoTrocaPreco: React.FC<Props> = ({ postoId, mesIso }) => {
           </div>
         </div>
       </header>
+      <GraficoVariacao barras={dados.barras} />
       <ul className="flex flex-col gap-3 mt-3">
         {dados.impactos.map((impacto) => (
           <CardTroca key={`${impacto.combustivel}-${impacto.data}`} impacto={impacto} />

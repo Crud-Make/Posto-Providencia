@@ -25,6 +25,11 @@
   cor da planilha (GC/GA/ET/S10 via `corDoProduto`); grade de 3 fatos (tanque, margem/L,
   valor do estoque). A vigência ("por X dias") é campo novo do módulo puro
   (`precoAntigoDesde`/`diasComPrecoAntigo`), com unitários e golden (janeiro: 6 dias).
+- **Gráfico "foi só o diesel?"** (pedido do dono, 30/08): barras de variação do preço no mês,
+  uma por combustível — quem não mexeu fica marcado "não mexeu", quem mexeu mostra a barra com
+  ±R$ por litro na cor do combustível (variantes legíveis das cores da planilha, paleta validada
+  pelo script da skill dataviz). A série diária por trás (`seriePrecoDiario`) é função pura nova
+  em `troca-preco.ts`, com unitários; começou como gráfico de linhas e virou barras a pedido.
 - **fix: data com timestamp não quebra mais a véspera.** `Leitura`/`Compra` podem devolver
   `YYYY-MM-DDTHH:MM:SS`; sem normalizar, o parse da véspera dava "Invalid time value" e — pior —
   a corrente aceitava régua do PRÓPRIO dia da troca (estoque inflado: 3.737 L onde a véspera

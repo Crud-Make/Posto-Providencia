@@ -5,6 +5,7 @@ import {
     impactoTrocaDePreco,
     totalGanhoPerdaCentavos,
     resumoPorDirecao,
+    seriePrecoDiario,
     type LeituraPrecoDia,
 } from './troca-preco';
 
@@ -206,5 +207,31 @@ describe('vigência do preço antigo (#70)', () => {
         const [i] = impactoTrocaDePreco(ls, [], []);
         expect(i.precoAntigoDesde).toBe('2026-02-27');
         expect(i.diasComPrecoAntigo).toBe(2); // 27 e 28/02 (2026 não é bissexto)
+    });
+});
+
+describe('seriePrecoDiario', () => {
+    it('um ponto por dia com preço, na ordem; dia sem preço fica fora', () => {
+        const series = seriePrecoDiario([
+            dia('2026-01-02', 6.28), dia('2026-01-01', 6.28), dia('2026-01-03', null), dia('2026-01-04', 6.48),
+        ]);
+        expect(series).toEqual([{
+            combustivel: 'gc',
+            pontos: [
+                { data: '2026-01-01', preco: 6.28 },
+                { data: '2026-01-02', preco: 6.28 },
+                { data: '2026-01-04', preco: 6.48 },
+            ],
+        }]);
+    });
+
+    it('bicos divergindo no dia: vale o preço de quem vendeu mais (mesma regra da detecção)', () => {
+        const [serie] = seriePrecoDiario([dia('2026-01-01', 6.48, 900), dia('2026-01-01', 6.28, 100)]);
+        expect(serie.pontos).toEqual([{ data: '2026-01-01', preco: 6.48 }]);
+    });
+
+    it('combustíveis separados, ordenados pela chave', () => {
+        const series = seriePrecoDiario([dia('2026-01-01', 4.58, 100, 'et'), dia('2026-01-01', 6.28, 100, 'gc')]);
+        expect(series.map((s) => s.combustivel)).toEqual(['et', 'gc']);
     });
 });

@@ -168,7 +168,9 @@ function precoDominanteDoDia(linhas: readonly LeituraPrecoDia[]): number | null 
  * @remarks Coberto por `troca-preco.golden.spec.ts` contra janeiro, maio e
  *          junho de 2026. Não altere sem rodar `bun run test:golden`.
  */
-export function trocasDePreco(leituras: readonly LeituraPrecoDia[]): TrocaDePreco[] {
+function agruparPorCombustivelEDia(
+    leituras: readonly LeituraPrecoDia[],
+): Map<string, Map<string, LeituraPrecoDia[]>> {
     const porCombustivel = new Map<string, Map<string, LeituraPrecoDia[]>>();
     for (const l of leituras) {
         const dias = porCombustivel.get(l.combustivel) ?? new Map<string, LeituraPrecoDia[]>();
@@ -177,6 +179,11 @@ export function trocasDePreco(leituras: readonly LeituraPrecoDia[]): TrocaDePrec
         dias.set(l.data, doDia);
         porCombustivel.set(l.combustivel, dias);
     }
+    return porCombustivel;
+}
+
+export function trocasDePreco(leituras: readonly LeituraPrecoDia[]): TrocaDePreco[] {
+    const porCombustivel = agruparPorCombustivelEDia(leituras);
 
     const trocas: TrocaDePreco[] = [];
     for (const [combustivel, dias] of [...porCombustivel.entries()].sort(([a], [b]) => a.localeCompare(b))) {
@@ -373,4 +380,39 @@ export function resumoPorDirecao(impactos: readonly ImpactoTroca[]): ResumoPorDi
     const subidas = lado('subida');
     const descidas = lado('descida');
     return { subidas, descidas, liquidoCentavos: totalGanhoPerdaCentavos(impactos) };
+}
+
+/** Um ponto da série diária de preço (gráfico "só o diesel subiu?", Issue #70). */
+export interface PontoPrecoDia {
+    /** Dia em ISO local (`YYYY-MM-DD`). */
+    readonly data: string;
+    /** Preço dominante do dia, em reais/L. */
+    readonly preco: number;
+}
+
+/** A série diária de preço de um combustível. */
+export interface SeriePrecoDiario {
+    readonly combustivel: string;
+    /** Ordenada por data. Dia sem preço registrado fica FORA — nunca vira zero. */
+    readonly pontos: readonly PontoPrecoDia[];
+}
+
+/**
+ * O preço dominante de cada dia, por combustível — a matéria-prima do gráfico
+ * de linhas da seção de trocas ("foi só o diesel ou mexeu tudo?").
+ *
+ * @remarks Mesma regra de dominância de {@link trocasDePreco} (o bico que mais
+ *          vendeu define o preço do dia); a detecção por trás já tem golden, a
+ *          seleção da série é coberta por unitário.
+ */
+export function seriePrecoDiario(leituras: readonly LeituraPrecoDia[]): SeriePrecoDiario[] {
+    return [...agruparPorCombustivelEDia(leituras).entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([combustivel, dias]) => ({
+            combustivel,
+            pontos: [...dias.keys()]
+                .sort()
+                .map((dia) => ({ data: dia, preco: precoDominanteDoDia(dias.get(dia) ?? []) }))
+                .filter((p): p is PontoPrecoDia => p.preco != null),
+        }));
 }

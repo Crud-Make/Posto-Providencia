@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   impactoTrocaDePreco,
   resumoPorDirecao,
+  seriePrecoDiario,
   type ImpactoTroca,
   type ResumoPorDirecao,
   type LeituraPrecoDia,
@@ -62,10 +63,25 @@ export interface ImpactoExibivel extends ImpactoTroca {
   readonly codigoCombustivel: string | null;
 }
 
+/** A variação de preço de um combustível no mês (gráfico de barras). */
+export interface BarraVariacao {
+  readonly combustivel: string;
+  readonly nomeCombustivel: string;
+  readonly codigoCombustivel: string | null;
+  /** Primeiro preço do mês com registro (R$/L). */
+  readonly precoInicio: number;
+  /** Último preço do mês com registro (R$/L). */
+  readonly precoFim: number;
+  /** `precoFim − precoInicio` (R$/L). Zero = não mexeu no mês. */
+  readonly variacao: number;
+}
+
 export interface DadosImpactoTrocaPreco {
   readonly impactos: readonly ImpactoExibivel[];
   /** O mês decomposto em subidas × descidas (Issue #70). O líquido do mês é `resumo.liquidoCentavos`. */
   readonly resumo: ResumoPorDirecao;
+  /** Quanto cada combustível variou no mês — barras do "foi só o diesel?". */
+  readonly barras: readonly BarraVariacao[];
 }
 
 /** `2026-03` → `2026-02-01` (início da busca, um mês antes). */
@@ -158,7 +174,24 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
           codigoCombustivel: codigoDoCombustivel.get(Number(i.combustivel)) ?? null,
         }));
 
-      setDados({ impactos: doMes, resumo: resumoPorDirecao(doMes) });
+      // Barras: só o mês selecionado (a busca começa no mês anterior por causa da régua).
+      const seriesDoMes = seriePrecoDiario(leituras.filter((l) => l.data.slice(0, 7) === mesIso));
+      const barras: BarraVariacao[] = seriesDoMes
+        .filter((serie) => serie.pontos.length > 0)
+        .map((serie) => {
+          const precoInicio = serie.pontos[0].preco;
+          const precoFim = serie.pontos[serie.pontos.length - 1].preco;
+          return {
+            combustivel: serie.combustivel,
+            nomeCombustivel: nomeDoCombustivel.get(Number(serie.combustivel)) ?? `Combustível ${serie.combustivel}`,
+            codigoCombustivel: codigoDoCombustivel.get(Number(serie.combustivel)) ?? null,
+            precoInicio,
+            precoFim,
+            variacao: precoFim - precoInicio,
+          };
+        });
+
+      setDados({ impactos: doMes, resumo: resumoPorDirecao(doMes), barras });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui apurar as trocas de preço.');
       setDados(null);
