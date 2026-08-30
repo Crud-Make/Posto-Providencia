@@ -156,7 +156,11 @@ export async function inscreverNoPush(
     p256dh: bruta.keys.p256dh,
     auth: bruta.keys.auth,
     papel: 'dono',
-    descricao_aparelho: descreverAparelho(navigator.userAgent),
+    // O domínio entra junto de propósito: a inscrição pertence ao service
+    // worker de UMA origem, então o mesmo aparelho gera inscrições diferentes
+    // em preview e em produção. Sem isto, as duas linhas ficam idênticas no
+    // banco e não há como saber qual está velha.
+    descricao_aparelho: `${descreverAparelho(navigator.userAgent)} · ${window.location.host}`,
   });
 
   // Endpoint repetido = este aparelho já estava inscrito. A `unique` do banco

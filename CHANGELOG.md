@@ -2,6 +2,17 @@
 
 ## [Não Lançado]
 
+### 🔔 Corrigido: a tela pedia para ativar o aviso a quem já tinha ativado
+
+- A checagem de "já está inscrito?" perguntava `getRegistration()` **uma vez**, na montagem. O
+  service worker é registrado de forma assíncrona e no primeiro render costuma não existir ainda,
+  então a resposta era "não inscrito" e a tela oferecia ativar de novo — e cada "de novo" gravava
+  outra linha em `InscricaoPush`. Agora espera o SW ficar pronto, com teto de 4 s para não travar
+  onde não há SW nenhum.
+- `descricao_aparelho` passa a guardar o domínio junto do aparelho. Uma inscrição pertence ao
+  service worker de UMA origem, então o mesmo celular gera inscrições diferentes em preview e em
+  produção — sem o domínio, as linhas ficam idênticas no banco e não dá para saber qual envelheceu.
+
 ### 🚀 `scripts/deploy-vercel.sh` — um caminho só para publicar
 
 - `scripts/deploy-vercel.sh <dono|frentista|painel> [--prod] [--dry-run]`. Sai sempre da raiz do

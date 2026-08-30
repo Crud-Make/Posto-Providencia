@@ -15,13 +15,26 @@ import { decidirEstadoPush, inscreverNoPush, type EstadoPush } from '../lib/push
 
 const CHAVE_PUBLICA = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? '';
 
-/** Já existe inscrição neste navegador? Falso também quando não há SW registrado. */
+/**
+ * Já existe inscrição neste navegador?
+ *
+ * @remarks Espera o service worker ficar pronto em vez de perguntar uma vez e
+ *          desistir. O registro é ASSÍNCRONO: no primeiro render ele em geral
+ *          ainda não existe, e um `getRegistration()` solto devolvia "não
+ *          inscrito" para quem já tinha ativado — a tela pedia de novo, e cada
+ *          "de novo" gravava outra linha no banco.
+ * @remarks O teto de espera existe porque `ready` NUNCA resolve se nenhum SW
+ *          for registrado (é o caso do `bun run dev`), e sem ele a tela ficaria
+ *          para sempre sem decidir o que mostrar.
+ */
 async function jaTemInscricao(): Promise<boolean> {
     try {
-        // `getRegistration` e não `ready`: o `ready` NUNCA resolve se nenhum
-        // service worker foi registrado, e a tela ficaria carregando para
-        // sempre em vez de mostrar o botão.
-        const registro = await navigator.serviceWorker?.getRegistration();
+        if (!('serviceWorker' in navigator)) return false;
+
+        const registro = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise<null>((resolver) => setTimeout(() => resolver(null), 4000)),
+        ]);
         if (!registro) return false;
 
         return (await registro.pushManager.getSubscription()) != null;
