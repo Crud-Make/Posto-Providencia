@@ -60,6 +60,8 @@ export interface DadosResumoMensal {
 /** Ids que ligam um produto às tabelas de compra e de tanque. */
 export interface ReferenciaProduto {
   readonly produto: string;
+  /** Código do combustível (GC/GA/ET/S10) — chave das cores da planilha. */
+  readonly codigo: string | null;
   readonly combustivelId: number | null;
   readonly tanqueId: number | null;
 }
@@ -105,6 +107,7 @@ interface BicoDoBanco {
 interface CombustivelDoBanco {
   id: number;
   nome: string;
+  codigo: string | null;
 }
 
 interface LeituraDoBanco {
@@ -204,7 +207,7 @@ export function useResumoMensal(postoId: number | null, mesIso: string): Retorno
         fornecedoresRes,
       ] = await Promise.all([
           supabase.from('Bico').select('id, numero, combustivel_id').eq('posto_id', postoId),
-          supabase.from('Combustivel').select('id, nome').eq('posto_id', postoId),
+          supabase.from('Combustivel').select('id, nome, codigo').eq('posto_id', postoId),
           supabase
             .from('Leitura')
             .select('data, bico_id, leitura_inicial, leitura_final, valor_total')
@@ -345,6 +348,7 @@ export function useResumoMensal(postoId: number | null, mesIso: string): Retorno
 
       const referencias: ReferenciaProduto[] = combustiveis.map((c) => ({
         produto: c.nome,
+        codigo: c.codigo ?? null,
         combustivelId: c.id,
         tanqueId: tanqueDoProduto.get(c.nome) ?? null,
       }));

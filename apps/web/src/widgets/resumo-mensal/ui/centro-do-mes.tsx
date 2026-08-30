@@ -1,18 +1,24 @@
 import React from 'react';
 import { Droplets, Receipt, Divide, TrendingUp, AlertTriangle } from 'lucide-react';
-import { formatCurrency } from '@posto/utils';
-import type { TotaisMes } from '@posto/utils';
+import { corDoProduto, formatCurrency } from '@posto/utils';
+import type { LinhaProduto, TotaisMes } from '@posto/utils';
 
 interface CentroDoMesProps {
   readonly totais: TotaisMes;
+  /** Litros por produto, para o mini gráfico do elo de litros. */
+  readonly produtos: readonly LinhaProduto[];
+  /** Código do combustível (GC/GA/ET/S10) de um produto, para a cor da planilha. */
+  readonly codigoDoProduto: (produto: string) => string | null;
   readonly despesaDoMes: number;
   readonly temDespesa: boolean;
   /** `false` quando algum produto ficou sem custo — o lucro exibido é parcial. */
   readonly apurado: boolean;
 }
 
+// Litro inteiro: os três decimais do encerrante (36.277,288) só alongam o número
+// no card; o custo do litro ao lado é onde a precisão importa, e ele segue com 4 casas.
 const litros = (v: number) =>
-  `${v.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} L`;
+  `${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} L`;
 
 const porLitro = (v: number | null) =>
   v === null
@@ -26,13 +32,15 @@ interface EloProps {
   readonly nota: string;
   readonly destaque?: boolean;
   readonly negativo?: boolean;
+  /** Conteúdo extra abaixo da nota (ex.: o mini gráfico de litros). */
+  readonly extra?: React.ReactNode;
 }
 
 /**
  * Um elo da corrente. O `destaque` é o lucro — o número que o dono procura
  * primeiro, e o único que muda de cor conforme o sinal.
  */
-const Elo: React.FC<EloProps> = ({ icone, rotulo, valor, nota, destaque, negativo }) => (
+const Elo: React.FC<EloProps> = ({ icone, rotulo, valor, nota, destaque, negativo, extra }) => (
   <div
     className={`flex-1 min-w-[180px] rounded-2xl border p-5 ${
       destaque
@@ -56,8 +64,44 @@ const Elo: React.FC<EloProps> = ({ icone, rotulo, valor, nota, destaque, negativ
       {valor}
     </p>
     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{nota}</p>
+    {extra}
   </div>
 );
+
+/**
+ * Mini gráfico dos litros do mês por produto — a coluna `Produto,%` da planilha,
+ * nas cores dela: uma barra empilhada e a legenda com litros e participação.
+ */
+const BarraLitros: React.FC<{
+  readonly produtos: readonly LinhaProduto[];
+  readonly codigoDoProduto: (produto: string) => string | null;
+}> = ({ produtos, codigoDoProduto }) => {
+  const comVenda = produtos.filter((p) => p.litros > 0);
+  if (comVenda.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        {comVenda.map((p) => (
+          <div
+            key={p.produto}
+            title={`${p.produto}: ${litros(p.litros)}`}
+            style={{ width: `${p.participacaoLitros}%`, backgroundColor: corDoProduto(codigoDoProduto(p.produto)).fundo }}
+          />
+        ))}
+      </div>
+      <ul className="mt-2 space-y-0.5">
+        {comVenda.map((p) => (
+          <li key={p.produto} className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: corDoProduto(codigoDoProduto(p.produto)).fundo }} />
+            <span className="truncate">{p.produto}</span>
+            <span className="ml-auto font-finance tabular-nums">{litros(p.litros)}</span>
+            <span className="w-10 text-right tabular-nums text-gray-400">{p.participacaoLitros.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
 
 /** Seta que liga um elo ao próximo — some no celular, onde os cards empilham. */
 const Seta: React.FC = () => (
@@ -81,6 +125,8 @@ const Seta: React.FC = () => (
  */
 export const CentroDoMes: React.FC<CentroDoMesProps> = ({
   totais,
+  produtos,
+  codigoDoProduto,
   despesaDoMes,
   temDespesa,
   apurado,
@@ -109,6 +155,7 @@ export const CentroDoMes: React.FC<CentroDoMesProps> = ({
         rotulo="Litros vendidos"
         valor={litros(totais.litros)}
         nota="Denominador do rateio"
+        extra={<BarraLitros produtos={produtos} codigoDoProduto={codigoDoProduto} />}
       />
       <Seta />
       <Elo
