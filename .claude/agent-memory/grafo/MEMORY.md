@@ -6,3 +6,6 @@
 - [Janela de 7 dias trava lançamento retroativo](janela-7-dias-bloqueia-lancamento-retroativo.md) — RLS barra INSERT de venda fora de 7 dias, mas deixa passar Despesa e HistoricoTanque
 - [Colunas de lucro do Fechamento são carimbadas](colunas-lucro-fechamento-sao-carimbadas.md) — getLucroPorPeriodo só LÊ; custo/lucro vêm do script auditoria-lucro-mes.py; taxas_pagamento não tem escritor nenhum
 - [Despesa da tela de Compras ≠ lucro da Planilha do Mês](despesa-tela-compras-vs-planilha-mes.md) — input "Despesas do Mês" é local/efêmero, não persiste, não afeta useCustoMensal/tabela Despesa
+- [Mapa das implementações de custo](mapa-implementacoes-de-custo.md) — canônica (mês) × ponderada de escrita × leitores do carimbo; 3 modelos de taxa; 3 métodos mortos no aggregator
+- [Grep por caminho perde import relativo](grep-por-caminho-perde-import-relativo.md) — "não tem chamador" exige busca pelo símbolo; o caminho da pasta já produziu um falso "código morto"
+- [api-core não lê Compra nem HistoricoTanque](api-core-nao-le-compra-nem-tanque.md) — leitura mensal dessas tabelas vive em widgets do web; api-core só tem Leitura/Bico/Fechamento

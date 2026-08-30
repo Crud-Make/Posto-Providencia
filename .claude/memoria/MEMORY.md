@@ -1,5 +1,8 @@
 # Memória — Posto Providência
 
+- [📍 30/08 — planilha nova auditada, promoção PENDENTE](planilha-30-08-auditoria-e-promocao-pendente.md) — Supabase já tem jan–ago; ETL adaptado em `fix/etl-planilha-30-08`; docs/data não promovido; 11 asserções de golden esperam decisão (jan 6,48→6,38, julho reescrito, tanque 31/01 sobrescrito)
+- [📍 28/08 — zerado, conferido, carga PENDENTE](zerado-28-08-carga-conferida-pendente.md) — banco zerado com backup em /mnt/dados; referência bate com a planilha nos 7 meses; scripts de carga prontos (julho fechamento aborta); dono mandou esperar a auditoria de outra sessão
+
 - [🔴 BANCO ZERADO — replay em curso](banco-zerado-replay-em-curso.md) — desde 14/08 produção transacional está vazia DE PROPÓSITO; backup em /mnt/dados; reconstrução dia a dia pela UI, nada por SQL sem ok do dono
 - [Reset do painel apaga em silêncio](reset-do-painel-apaga-em-silencio.md) — roda como anon, RLS engole o erro, app reporta sucesso com zeros; "janela de edição" cobre 1,5 mês, não 7 dias
 - [Fix do preço único](fix-preco-litro-historico.md) — branch `fix/preco-litro-historico` (dbb38bb), dia passado deixou de ser avaliado a preço de hoje; falta validação do dono; aggregator e custo carimbado são dívida
@@ -27,3 +30,4 @@
 - [Card Receitas/Despesas lê coluna carimbada](card-receitas-despesas-le-coluna-carimbada.md) — o card soma colunas de lucro que a UI nunca grava; no replay dão 0, então o card é não-confiável; os 308,52 são a falta de caixa (corretos); fonte confiável é a Planilha do Mês
 - [Duas fórmulas de custo divergem no mês](duas-formulas-de-custo-divergem-no-mes.md) — leitura validada nos 7 meses (112/112); a escrita usa ponderada e erra até R$ 2.582 no mês, R$ 132,69 no ano; fevereiro quebra o encadeamento na própria planilha
 - [Taxa de cartão é despesa do mês](taxa-cartao-e-despesa-do-mes.md) — dono confirmou 26/08; modelo da planilha (lucro.ts) é o certo; o card Receitas/Despesas desconta a taxa duas vezes via `taxas_pagamento`
+- [Saneamento roda em worktrees paralelas](saneamento-em-tres-worktrees.md) — partilha por arquivo (não por tarefa); worktree nova não herda docs/data, node_modules nem .env, e as três falham em silêncio
