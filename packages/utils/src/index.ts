@@ -19,3 +19,4 @@ export * from './serie-diaria';
 export * from './presenca';
 export * from './leitura';
 export * from './cores-planilha';
+export * from './troca-preco';

@@ -8,6 +8,7 @@ import { ResumoExecutivo } from './components/ResumoExecutivo';
 import { DemonstrativoFinanceiro } from './components/DemonstrativoFinanceiro';
 import { AlertasGerenciais } from './components/AlertasGerenciais';
 import { CentroDoMesConectado } from '@/widgets/resumo-mensal';
+import { ImpactoTrocaPreco } from '@/widgets/impacto-troca-preco';
 import { PeriodoFiltro } from './types';
 
 const TelaDashboardProprietario: React.FC = () => {
@@ -84,6 +85,9 @@ const TelaDashboardProprietario: React.FC = () => {
 
       {/* Demonstrativo (Entradas - Saídas = Resultado) */}
       <DemonstrativoFinanceiro dados={dadosAtuais} />
+
+      {/* Impacto das trocas de preço do mês (#61) — some quando o mês não teve troca. */}
+      <ImpactoTrocaPreco postoId={dados.posto?.id ?? null} mesIso={mesSelecionado} />
 
       {/* Alertas e Insights */}
       {dados.alertas.length > 0 && (
