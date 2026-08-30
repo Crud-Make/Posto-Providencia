@@ -2,6 +2,27 @@
 
 ## [Não Lançado]
 
+### 📅 Detalhamento Frentistas ganha a visão "Mês" — 30/08/2026
+
+- Seletor **Dia | Mês** no topo da aba. A visão Mês é o bloco `Caixa Dia 01 a 31`
+  da planilha lido do banco: frentistas em colunas, formas de pagamento em linhas
+  (Pix, Crédito, Débito, Moeda, Notas, Baratão, Dinheiro), `Venda Frentistas`,
+  `Falta` (concentrador − frentistas, positivo = falta) e `% do caixa`, mais a
+  coluna `Caixa` com a soma. Card **Frentista do mês** = maior `Venda Frentistas`,
+  que é o critério da planilha (a linha `Litro Vendido` só divide a venda pelo
+  preço médio, então o ranking é o mesmo).
+- Costura duas peças que já existiam sem consumidor: `fechamentoFrentistaService
+  .getByPeriodo` e `agruparPorFrentista` (`utils/fechamentoMeios`). Hook novo
+  `useResumoMensalFrentistas`, com `montarResumoMensal` puro e testado.
+- **Removido da visão Dia:** botão "Marcar conferido" (a conferência real é a
+  linha Diferença — o badge "OK" da sidebar do dashboard, que só ele acionava,
+  fica sem gatilho até o PWA gravar `[CONFERIDO]`); card "Lucro Total" (era
+  `vendas × 0,18` fixo, margem hardcoded — §6); placeholder "Mais gráficos em
+  breve"; barra "Mobile Sync: Ativo / Última sincronização" (mostrava a hora do
+  render). O gráfico de barras passa a somar cartão aditivo (legado + débito +
+  crédito), como a tabela — antes só o legado entrava.
+- Banco intocado.
+
 ### 🗑️ Aba "Fechamento Financeiro" removida — 30/08/2026
 
 - A aba do Fechamento de Caixa saiu inteira: `TabFinanceiro`, `PainelFinanceiro`
