@@ -2,7 +2,19 @@
 
 ## [Não Lançado]
 
-### 🖼️ A foto do frentista aparece no painel
+### 🖼️ A foto do frentista aparece no painel — e o painel parou de pedir avatar para fora
+
+- Foto em cinco lugares: **Fechamentos do Dia**, o ranking de performance, **Trabalhando agora**,
+  a lista de Frentistas e o detalhe do frentista. Sem foto, iniciais desenhadas localmente.
+- **Removida a chamada a `ui-avatars.com`.** O painel mandava o NOME de cada funcionário para um
+  serviço de terceiros a cada carregamento, e dependia de internet para desenhar um círculo. Agora
+  o avatar sai da coluna `Frentista.foto`, e as iniciais são desenhadas aqui.
+- Removido também `/avatars/{id}.jpg`, que apontava para uma pasta **que nunca existiu** no
+  repositório — aquelas imagens davam 404 desde sempre.
+- Um componente só, `shared/ui/avatar-frentista.tsx`, no lugar de cinco desenhos de círculo
+  diferentes. `PresencaFrentista` (em `packages/utils`) ganhou `foto` **opcional**: nenhuma regra de
+  presença olha para ele — quem decide quem está online continua sendo o `vistoEm`.
+- Golden master rodado por causa do `aggregator.service.ts`: **3233 passando, 0 falhas**.
 
 - A lista de frentistas do painel mostra a foto que o próprio frentista pôs no PWA dele. **Não há
   sincronização**: é a mesma coluna `Frentista.foto`, e o `select('*')` do painel já a trazia — ela

@@ -3,6 +3,7 @@ import { User, Edit, Trash2, Clock } from 'lucide-react';
 import { PerfilFrentista } from '../types';
 import { useHistoricoFrentista } from '../hooks/useHistoricoFrentista';
 import { paraReais as formatarMoeda } from '../../../utils/formatters';
+import { AvatarFrentista } from '../../../shared/ui/avatar-frentista';
 
 interface DetalhesFrentistaProps {
     frentista: PerfilFrentista;
@@ -28,9 +29,7 @@ export const DetalhesFrentista: React.FC<DetalhesFrentistaProps> = ({
             <div className="p-6 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center text-2xl font-bold text-blue-600 dark:text-blue-400">
-                            {frentista.nome.substring(0, 2).toUpperCase()}
-                        </div>
+                        <AvatarFrentista nome={frentista.nome} foto={frentista.foto} tamanho={64} />
                         <div>
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white">{frentista.nome}</h2>
                             <p className="text-gray-500 dark:text-gray-400">Admissão: {new Date(frentista.dataAdmissao).toLocaleDateString('pt-BR')}</p>

@@ -411,7 +411,10 @@ export const aggregatorService = {
         return {
           id: String(f.id),
           name: f.nome,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(f.nome)}&background=random&size=128`,
+          // A foto que o próprio frentista pôs no PWA. Vazio = a UI desenha as
+          // iniciais localmente. Antes daqui saía uma URL do `ui-avatars.com`,
+          // que mandava o nome dos funcionários para fora a cada carregamento.
+          avatar: f.foto ?? '',
           shift: 'Dia', // Sistema simplificado sem turnos
           totalSales: totalSales,
           status: status,
@@ -587,7 +590,10 @@ export const aggregatorService = {
       const attendantsData = frentistas.map((f, idx) => ({
         id: String(f.id),
         name: f.nome,
-        avatar: `/avatars/${f.id}.jpg`,
+        // `/avatars/{id}.jpg` nunca existiu — a pasta não está no repositório e
+        // essas imagens davam 404 desde sempre. Agora é a foto real, ou vazio
+        // para a UI cair nas iniciais.
+        avatar: f.foto ?? '',
         shift: (['Manhã', 'Tarde', 'Noite'])[idx % 3],
         expectedValue: valorPorFrentista,
         declared: {
