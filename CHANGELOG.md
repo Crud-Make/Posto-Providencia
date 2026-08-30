@@ -2,6 +2,54 @@
 
 ## [Não Lançado]
 
+### 📈 Subida × descida de preço: efeito na margem e no valor do estoque (#70)
+
+- A seção "Impacto das trocas de preço" da `/proprietario` agora responde também o que cada
+  troca fez com o LUCRO e com o ESTOQUE: selo de subida/descida por linha, margem BRUTA por
+  litro antes/depois (`preço − custo médio de compra do mês` — o canônico `custoMedioCompra`;
+  a despesa operacional NÃO entra, e mês sem compra fica `null`, nunca zero) e o valor de
+  venda dos litros parados a cada preço. O cabeçalho decompõe o mês em subidas × descidas
+  com o líquido.
+- **`valorEstoqueNovo = valorEstoqueAntigo + ganhoPerda` por construção** — a diferença
+  exibida fecha sempre com o ganho/perda da #61 (arredondar os dois lados separado poderia
+  divergir 1 centavo na tela).
+- Tudo derivado em `packages/utils/src/troca-preco.ts` dos dados que a fórmula já recebia —
+  zero query nova no hook; `resumoPorDirecao` decompõe o total que já existia.
+- **Golden master**: margem antes/depois das trocas de janeiro, maio e junho contra a
+  planilha (`media_lt` de `compra_mensal` × preços de `encerrante_diario` — as duas pontas
+  são da planilha), mais a direção por mês (janeiro: 4 subidas; maio e junho: descidas).
+  Valorização e resumo, sem contrapartida diária na planilha, ficam em unitário (vitest).
+- **Tela redesenhada para bater o olho** (pedido do dono, 30/08): um card por troca com a
+  narrativa da placa do poste — "por X dias o litro saiu a Y; em DD/MM subiu/caiu para Z" —
+  e o veredito dominante LUCRO/PREJUÍZO NO ESTOQUE em número grande; sigla do combustível na
+  cor da planilha (GC/GA/ET/S10 via `corDoProduto`); grade de 3 fatos (tanque, margem/L,
+  valor do estoque). A vigência ("por X dias") é campo novo do módulo puro
+  (`precoAntigoDesde`/`diasComPrecoAntigo`), com unitários e golden (janeiro: 6 dias).
+- **Gráfico "foi só o diesel?"** (pedido do dono, 30/08): barras de variação do preço no mês,
+  uma por combustível — quem não mexeu fica marcado "não mexeu", quem mexeu mostra a barra com
+  ±R$ por litro na cor do combustível (variantes legíveis das cores da planilha, paleta validada
+  pelo script da skill dataviz). A série diária por trás (`seriePrecoDiario`) é função pura nova
+  em `troca-preco.ts`, com unitários; começou como gráfico de linhas e virou barras a pedido.
+- **O lucro que está saindo, não só o parado** (pedido do dono, 30/08): cada troca agora mostra
+  os DOIS efeitos — no estoque parado (uma vez) e **nas vendas desde a troca** (todo encerrante):
+  `litros vendidos desde a troca × Δpreço` já realizado, o ritmo por dia de venda e a projeção
+  de 30 dias, mais o fato "lucro bruto por dia" (média L/dia × margem, antes → depois). O
+  cabeçalho vira EFEITO TOTAL (estoque + vendas), decomposto. Fórmulas novas em `troca-preco.ts`
+  (`ganhoVendasCentavos`, `ritmoMensalCentavos`, `lucroDia*`), com unitários e golden (janeiro:
+  vendas da gasolina comum desde 07/01 contra o encerrante real). As barras de variação falam
+  polaridade (verde subiu / vermelho caiu / cinza não mexeu) — a identidade fica na sigla do eixo.
+- **Card geral do mês** (pedido do dono, 30/08): três blocos no topo da seção — LUCRO NO MÊS
+  (soma de tudo que as trocas renderam), PREJUÍZO NO MÊS (soma de tudo que custaram) e SALDO
+  com a decomposição estoque × vendas. Estoque parado e vendas contam como parcelas
+  independentes porque numa mesma troca podem ter sinais opostos (etanol de janeiro: estoque
+  −R$ 84,42 e vendas +R$ 2.099,12). Fórmula `balancoTrocasCentavos` em `troca-preco.ts`, com
+  unitários; substitui o pill de "efeito total" do cabeçalho.
+- **fix: data com timestamp não quebra mais a véspera.** `Leitura`/`Compra` podem devolver
+  `YYYY-MM-DDTHH:MM:SS`; sem normalizar, o parse da véspera dava "Invalid time value" e — pior —
+  a corrente aceitava régua do PRÓPRIO dia da troca (estoque inflado: 3.737 L onde a véspera
+  tinha 2.088 L). Datas normalizadas com `slice(0, 10)` na fronteira do hook, e a `vesperaDe`
+  virou aritmética pura de calendário (sem `Date`, que o lint proíbe pelo bug do fuso das 21h).
+
 ### 💱 Impacto das trocas de preço na Visão do Proprietário (#61)
 
 - Nova seção na `/proprietario`, abaixo do Demonstrativo Financeiro: uma linha por mudança de

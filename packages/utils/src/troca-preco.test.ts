@@ -4,6 +4,10 @@ import {
     estoqueNaVespera,
     impactoTrocaDePreco,
     totalGanhoPerdaCentavos,
+    resumoPorDirecao,
+    seriePrecoDiario,
+    totalGanhoVendasCentavos,
+    balancoTrocasCentavos,
     type LeituraPrecoDia,
 } from './troca-preco';
 
@@ -109,5 +113,200 @@ describe('impactoTrocaDePreco', () => {
         const impactos = impactoTrocaDePreco(leituras, compras, reguas);
         expect(totalGanhoPerdaCentavos(impactos)).toBe(30_000);
         expect(totalGanhoPerdaCentavos(impactoTrocaDePreco(leituras, compras, []))).toBe(0);
+    });
+});
+
+describe('direção, margem e valorização do estoque (#70)', () => {
+    const leituras = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 500)];
+    const reguas = [{ combustivel: 'gc', data: '2026-01-05', litros: 2000 }];
+    const compras = [{ combustivel: 'gc', data: '2026-01-20', litros: 31_000, valorTotal: 165_700 }];
+
+    it('subida: direção, margem antes/depois e estoque valorizado', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, reguas);
+        const custo = 165_700 / 31_000;
+        expect(i.direcao).toBe('subida');
+        expect(i.margemAntigaLitro).toBeCloseTo(6.28 - custo, 9);
+        expect(i.margemNovaLitro).toBeCloseTo(6.48 - custo, 9);
+        // 1500 L × 6,28 = R$ 9.420,00; + ganho de R$ 300,00 = R$ 9.720,00 (= 1500 × 6,48)
+        expect(i.valorEstoqueAntigoCentavos).toBe(942_000);
+        expect(i.valorEstoqueNovoCentavos).toBe(972_000);
+    });
+
+    it('descida: direção certa e a margem cai junto', () => {
+        const queda = [dia('2026-05-15', 7.38, 100), dia('2026-05-16', 7.18, 100)];
+        const regua = [{ combustivel: 'gc', data: '2026-05-14', litros: 1000 }];
+        const compraMai = [{ combustivel: 'gc', data: '2026-05-02', litros: 32_000, valorTotal: 190_810 }];
+        const [i] = impactoTrocaDePreco(queda, compraMai, regua);
+        expect(i.direcao).toBe('descida');
+        expect(i.margemNovaLitro).toBeCloseTo((i.margemAntigaLitro ?? 0) - 0.20, 9);
+    });
+
+    it('valor novo − valor antigo FECHA com o ganho/perda, mesmo com litros quebrados', () => {
+        const leiturasQuebradas = [dia('2026-01-06', 6.28, 499.445), dia('2026-01-07', 6.48, 500)];
+        const [i] = impactoTrocaDePreco(leiturasQuebradas, compras, reguas);
+        expect(i.valorEstoqueNovoCentavos).not.toBeNull();
+        expect((i.valorEstoqueNovoCentavos ?? 0) - (i.valorEstoqueAntigoCentavos ?? 0)).toBe(i.ganhoPerdaCentavos ?? NaN);
+    });
+
+    it('sem compra no mês: margens null, nunca zero', () => {
+        const [i] = impactoTrocaDePreco(leituras, [], reguas);
+        expect(i.margemAntigaLitro).toBeNull();
+        expect(i.margemNovaLitro).toBeNull();
+    });
+
+    it('sem régua: valorização null, margens continuam apuráveis', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        expect(i.valorEstoqueAntigoCentavos).toBeNull();
+        expect(i.valorEstoqueNovoCentavos).toBeNull();
+        expect(i.margemAntigaLitro).not.toBeNull();
+    });
+});
+
+describe('resumoPorDirecao', () => {
+    const reguas = [
+        { combustivel: 'gc', data: '2026-01-01', litros: 2000 },
+        { combustivel: 'et', data: '2026-01-01', litros: 1000 },
+    ];
+    const leituras = [
+        dia('2026-01-02', 6.28, 100, 'gc'), dia('2026-01-03', 6.48, 100, 'gc'), // subida
+        dia('2026-01-02', 4.98, 100, 'et'), dia('2026-01-03', 4.58, 100, 'et'), // descida
+    ];
+
+    it('separa subidas de descidas e o líquido bate com o total', () => {
+        const impactos = impactoTrocaDePreco(leituras, [], reguas);
+        const resumo = resumoPorDirecao(impactos);
+        // gc: (2000−100) × +0,20 = +R$ 380 · et: (1000−100) × −0,40 = −R$ 360
+        expect(resumo.subidas).toEqual({ quantidade: 1, totalCentavos: 38_000 });
+        expect(resumo.descidas).toEqual({ quantidade: 1, totalCentavos: -36_000 });
+        expect(resumo.liquidoCentavos).toBe(totalGanhoPerdaCentavos(impactos));
+    });
+
+    it('troca sem régua conta na quantidade mas não no total', () => {
+        const impactos = impactoTrocaDePreco([dia('2026-01-02', 6.28), dia('2026-01-03', 6.48)], [], []);
+        const resumo = resumoPorDirecao(impactos);
+        expect(resumo.subidas).toEqual({ quantidade: 1, totalCentavos: 0 });
+        expect(resumo.liquidoCentavos).toBe(0);
+    });
+});
+
+describe('vigência do preço antigo (#70)', () => {
+    it('sem troca anterior: desde o primeiro dia com preço da janela', () => {
+        const ls = [dia('2026-01-01', 6.28), dia('2026-01-02', null), dia('2026-01-06', 6.28), dia('2026-01-07', 6.48)];
+        const [i] = impactoTrocaDePreco(ls, [], []);
+        expect(i.precoAntigoDesde).toBe('2026-01-01');
+        expect(i.diasComPrecoAntigo).toBe(6); // 01..06, pontas inclusas
+    });
+
+    it('com troca anterior: a vigência começa na troca anterior', () => {
+        const ls = [dia('2026-03-01', 6.28), dia('2026-03-10', 6.48), dia('2026-03-20', 6.98)];
+        const impactos = impactoTrocaDePreco(ls, [], []);
+        expect(impactos[1].precoAntigoDesde).toBe('2026-03-10');
+        expect(impactos[1].diasComPrecoAntigo).toBe(10); // 10..19/03
+    });
+
+    it('vigência atravessa a virada do mês sem escorregar dia (UTC puro)', () => {
+        const ls = [dia('2026-02-27', 7.38), dia('2026-03-01', 7.18)];
+        const [i] = impactoTrocaDePreco(ls, [], []);
+        expect(i.precoAntigoDesde).toBe('2026-02-27');
+        expect(i.diasComPrecoAntigo).toBe(2); // 27 e 28/02 (2026 não é bissexto)
+    });
+});
+
+describe('seriePrecoDiario', () => {
+    it('um ponto por dia com preço, na ordem; dia sem preço fica fora', () => {
+        const series = seriePrecoDiario([
+            dia('2026-01-02', 6.28), dia('2026-01-01', 6.28), dia('2026-01-03', null), dia('2026-01-04', 6.48),
+        ]);
+        expect(series).toEqual([{
+            combustivel: 'gc',
+            pontos: [
+                { data: '2026-01-01', preco: 6.28 },
+                { data: '2026-01-02', preco: 6.28 },
+                { data: '2026-01-04', preco: 6.48 },
+            ],
+        }]);
+    });
+
+    it('bicos divergindo no dia: vale o preço de quem vendeu mais (mesma regra da detecção)', () => {
+        const [serie] = seriePrecoDiario([dia('2026-01-01', 6.48, 900), dia('2026-01-01', 6.28, 100)]);
+        expect(serie.pontos).toEqual([{ data: '2026-01-01', preco: 6.48 }]);
+    });
+
+    it('combustíveis separados, ordenados pela chave', () => {
+        const series = seriePrecoDiario([dia('2026-01-01', 4.58, 100, 'et'), dia('2026-01-01', 6.28, 100, 'gc')]);
+        expect(series.map((s) => s.combustivel)).toEqual(['et', 'gc']);
+    });
+});
+
+describe('lucro nas vendas desde a troca (#70)', () => {
+    const compras = [{ combustivel: 'gc', data: '2026-01-20', litros: 31_000, valorTotal: 165_700 }];
+    const leituras = [
+        dia('2026-01-06', 6.28, 500),
+        dia('2026-01-07', 6.48, 300),
+        dia('2026-01-08', 6.48, 200),
+    ];
+    const delta = 6.48 - 6.28;
+
+    it('litros vendidos desde a troca × Δpreço, venda anterior fora', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        expect(i.litrosVendidosDesdeATroca).toBe(500); // 300 + 200; os 500 de 06/01 ficam fora
+        expect(i.ganhoVendasCentavos).toBe(Math.round(500 * delta * 100)); // R$ 100,00
+    });
+
+    it('ritmo: média por dia com venda, efeito por dia e projeção de 30 dias', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        expect(i.mediaLitrosDiaDesdeATroca).toBe(250);
+        expect(i.ganhoPorDiaCentavos).toBe(Math.round(250 * delta * 100));
+        expect(i.ritmoMensalCentavos).toBe(Math.round(250 * delta * 30 * 100));
+    });
+
+    it('lucro bruto por dia antes/depois usa a margem, com a mesma média de litros', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        const custo = 165_700 / 31_000;
+        expect(i.lucroDiaAntigoCentavos).toBe(Math.round(250 * (6.28 - custo) * 100));
+        expect(i.lucroDiaNovoCentavos).toBe(Math.round(250 * (6.48 - custo) * 100));
+    });
+
+    it('sem venda desde a troca: vendas zero, média/ritmo/lucro-dia null — nunca zero disfarçado', () => {
+        const soDiaDaTroca = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 0)];
+        const [i] = impactoTrocaDePreco(soDiaDaTroca, compras, []);
+        expect(i.litrosVendidosDesdeATroca).toBe(0);
+        expect(i.ganhoVendasCentavos).toBe(0);
+        expect(i.mediaLitrosDiaDesdeATroca).toBeNull();
+        expect(i.ganhoPorDiaCentavos).toBeNull();
+        expect(i.lucroDiaAntigoCentavos).toBeNull();
+    });
+
+    it('total das vendas soma todas as trocas', () => {
+        const impactos = impactoTrocaDePreco(leituras, compras, []);
+        expect(totalGanhoVendasCentavos(impactos)).toBe(impactos[0].ganhoVendasCentavos);
+    });
+});
+
+describe('balancoTrocasCentavos', () => {
+    it('queda com estoque e vendas: tudo vira prejuízo, lucro fica zero', () => {
+        const leituras = [dia('2026-05-15', 7.38, 100), dia('2026-05-16', 7.18, 200)];
+        const regua = [{ combustivel: 'gc', data: '2026-05-14', litros: 1000 }];
+        const b = balancoTrocasCentavos(impactoTrocaDePreco(leituras, [], regua));
+        // estoque: (1000 − 100) × −0,20 = −R$ 180 · vendas: 200 × −0,20 = −R$ 40
+        expect(b.lucroCentavos).toBe(0);
+        expect(b.prejuizoCentavos).toBe(-22_000);
+        expect(b.saldoCentavos).toBe(-22_000);
+    });
+
+    it('saldo = estoque líquido + vendas, e subida sem perda não gera prejuízo', () => {
+        const leituras = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 300)];
+        const regua = [{ combustivel: 'gc', data: '2026-01-05', litros: 2000 }];
+        const impactos = impactoTrocaDePreco(leituras, [], regua);
+        const b = balancoTrocasCentavos(impactos);
+        expect(b.prejuizoCentavos).toBe(0);
+        expect(b.saldoCentavos).toBe(totalGanhoPerdaCentavos(impactos) + totalGanhoVendasCentavos(impactos));
+    });
+
+    it('troca sem régua entra só com a parcela de vendas', () => {
+        const leituras = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 300)];
+        const b = balancoTrocasCentavos(impactoTrocaDePreco(leituras, [], []));
+        expect(b.lucroCentavos).toBe(Math.round(300 * (6.48 - 6.28) * 100));
+        expect(b.prejuizoCentavos).toBe(0);
     });
 });

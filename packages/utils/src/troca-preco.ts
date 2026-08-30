@@ -20,6 +20,14 @@
  *    do mês vai junto como CONTEXTO (a margem da época), calculado por
  *    {@link custoMedioCompra} — a mesma média que a planilha (`media_lt`) e a
  *    RPC `get_dashboard_proprietario` usam.
+ * 4. **O que a troca fez com a margem e com o estoque?** (Issue #70) —
+ *    `margemAntigaLitro`/`margemNovaLitro` (margem BRUTA por litro: preço −
+ *    custo médio do mês; a despesa operacional NÃO entra — a margem completa
+ *    dependeria da `Despesa`, hoje refém do replay) e
+ *    `valorEstoqueAntigoCentavos`/`valorEstoqueNovoCentavos` (valor de venda
+ *    dos litros parados a cada preço). {@link resumoPorDirecao} agrega o mês
+ *    em subidas × descidas. Margens cobertas por golden (preço e `media_lt`
+ *    vêm ambos da planilha); valorização é aritmética coberta por unitário.
  *
  * A planilha não tem referência diária de tanque nem data por carga, então o
  * golden cobre a DETECÇÃO e a ARITMÉTICA; `litrosNoTanque` é derivado do
@@ -68,8 +76,14 @@ export interface TrocaDePreco {
     readonly precoNovo: number;
 }
 
-/** Uma troca com o impacto sobre o estoque parado. */
+/** Direção de uma troca de preço. Union de string, sem `enum` (§4 do CLAUDE.md). */
+export const DIRECAO_TROCA = ['subida', 'descida'] as const;
+export type DirecaoTroca = (typeof DIRECAO_TROCA)[number];
+
+/** Uma troca com o impacto sobre o estoque parado e sobre a margem. */
 export interface ImpactoTroca extends TrocaDePreco {
+    /** `'subida'` quando o preço subiu (`precoNovo > precoAntigo`); senão `'descida'`. */
+    readonly direcao: DirecaoTroca;
     /**
      * Litros no tanque no fim da véspera da troca.
      * `null` = sem régua anterior à troca; sem régua não há estoque apurável.
@@ -81,12 +95,79 @@ export interface ImpactoTroca extends TrocaDePreco {
      */
     readonly custoMedioLitro: number | null;
     /**
+     * Primeiro dia em que o preço ANTIGO vigorou, dentro da janela de leituras
+     * fornecida: a troca anterior do mesmo combustível ou, sem troca anterior,
+     * o primeiro dia da janela com preço conhecido. É vigência MÍNIMA — se a
+     * janela começa no meio da vida do preço, conta-se só o que se enxerga.
+     * `null` se não houver dia anterior com preço (não ocorre em troca real,
+     * que exige preço anterior conhecido).
+     */
+    readonly precoAntigoDesde: string | null;
+    /**
+     * Dias corridos em que o preço antigo vigorou (de `precoAntigoDesde` até a
+     * véspera da troca, contando as duas pontas). É o "por X dias o litro saiu
+     * a Y" da tela do proprietário. `null` quando `precoAntigoDesde` é `null`.
+     */
+    readonly diasComPrecoAntigo: number | null;
+    /**
+     * Margem BRUTA por litro ao preço ANTIGO: `precoAntigo − custoMedioLitro`,
+     * em R$/L. Não é dinheiro final → precisão total, sem quantizar (mesma
+     * regra de `custoMedioLitro`). A despesa operacional NÃO entra — decisão
+     * da Issue #70. `null` quando o mês não tem compra.
+     */
+    readonly margemAntigaLitro: number | null;
+    /** Margem bruta por litro ao preço NOVO: `precoNovo − custoMedioLitro`. `null` sem compra no mês. */
+    readonly margemNovaLitro: number | null;
+    /**
+     * Valor de venda do estoque parado AO PREÇO ANTIGO:
+     * `litrosNoTanque × precoAntigo`, em CENTAVOS inteiros.
+     * `null` quando `litrosNoTanque` é `null`.
+     */
+    readonly valorEstoqueAntigoCentavos: number | null;
+    /**
+     * Valor de venda do estoque parado ao preço NOVO. Derivado como
+     * `valorEstoqueAntigoCentavos + ganhoPerdaCentavos` — e não arredondando
+     * `litros × precoNovo` à parte — para que a diferença exibida FECHE SEMPRE
+     * com o ganho/perda (dois arredondamentos independentes poderiam divergir
+     * 1 centavo na tela). `null` quando não apurável.
+     */
+    readonly valorEstoqueNovoCentavos: number | null;
+    /**
      * `litrosNoTanque × (precoNovo − precoAntigo)`, em CENTAVOS inteiros.
      * Positivo = os litros parados renderam mais ao preço novo; negativo =
      * renderam menos (preço caiu sobre estoque já comprado).
      * `null` quando `litrosNoTanque` é `null`.
      */
     readonly ganhoPerdaCentavos: number | null;
+    /**
+     * Litros do combustível VENDIDOS desde o dia da troca (inclusive), dentro
+     * da janela de leituras fornecida — o encerrante realizado ao preço novo.
+     */
+    readonly litrosVendidosDesdeATroca: number;
+    /**
+     * Lucro extra (ou a menos) JÁ REALIZADO nas vendas desde a troca:
+     * `litrosVendidosDesdeATroca × Δpreço`, em CENTAVOS inteiros. O custo
+     * cancela na comparação (mesmo custo nos dois cenários) — sobra o Δpreço.
+     * Zero quando nada foi vendido desde a troca.
+     */
+    readonly ganhoVendasCentavos: number;
+    /**
+     * Média de litros/dia vendidos desde a troca (só dias com venda).
+     * `null` quando ainda não houve dia com venda ao preço novo.
+     */
+    readonly mediaLitrosDiaDesdeATroca: number | null;
+    /** `mediaLitrosDia × Δpreço`, centavos: o efeito da troca por dia de venda. `null` sem venda. */
+    readonly ganhoPorDiaCentavos: number | null;
+    /** `ganhoPorDia × 30`: o ritmo mensal do efeito, no ritmo de venda atual. `null` sem venda. */
+    readonly ritmoMensalCentavos: number | null;
+    /**
+     * Lucro BRUTO por dia de venda AO PREÇO ANTIGO: `mediaLitrosDia ×
+     * margemAntigaLitro`, centavos. "Como fica a cada encerrante": o que um
+     * dia típico rendia antes da troca. `null` sem venda ou sem compra no mês.
+     */
+    readonly lucroDiaAntigoCentavos: number | null;
+    /** Idem ao preço NOVO: `mediaLitrosDia × margemNovaLitro`. `null` sem venda ou sem compra. */
+    readonly lucroDiaNovoCentavos: number | null;
 }
 
 /**
@@ -116,7 +197,9 @@ function precoDominanteDoDia(linhas: readonly LeituraPrecoDia[]): number | null 
  * @remarks Coberto por `troca-preco.golden.spec.ts` contra janeiro, maio e
  *          junho de 2026. Não altere sem rodar `bun run test:golden`.
  */
-export function trocasDePreco(leituras: readonly LeituraPrecoDia[]): TrocaDePreco[] {
+function agruparPorCombustivelEDia(
+    leituras: readonly LeituraPrecoDia[],
+): Map<string, Map<string, LeituraPrecoDia[]>> {
     const porCombustivel = new Map<string, Map<string, LeituraPrecoDia[]>>();
     for (const l of leituras) {
         const dias = porCombustivel.get(l.combustivel) ?? new Map<string, LeituraPrecoDia[]>();
@@ -125,6 +208,11 @@ export function trocasDePreco(leituras: readonly LeituraPrecoDia[]): TrocaDePrec
         dias.set(l.data, doDia);
         porCombustivel.set(l.combustivel, dias);
     }
+    return porCombustivel;
+}
+
+export function trocasDePreco(leituras: readonly LeituraPrecoDia[]): TrocaDePreco[] {
+    const porCombustivel = agruparPorCombustivelEDia(leituras);
 
     const trocas: TrocaDePreco[] = [];
     for (const [combustivel, dias] of [...porCombustivel.entries()].sort(([a], [b]) => a.localeCompare(b))) {
@@ -185,6 +273,32 @@ export function estoqueNaVespera(
     return linha.estoqueTeorico;
 }
 
+/** Dias corridos entre duas datas ISO locais, contando as DUAS pontas. */
+function diasCorridosInclusivos(inicio: string, fim: string): number {
+    // slice(0, 10): aceita 'YYYY-MM-DDTHH:MM:SS' sem virar NaN — o banco já
+    // devolveu timestamp onde se esperava só a data (bug real de 30/08).
+    const [a1, m1, d1] = inicio.slice(0, 10).split('-').map(Number);
+    const [a2, m2, d2] = fim.slice(0, 10).split('-').map(Number);
+    // Date.UTC puro: sem fuso local, que já escorregou leitura em um dia aqui.
+    return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000) + 1;
+}
+
+/**
+ * A véspera de uma data ISO local (`2026-03-01` → `2026-02-28`).
+ * Aritmética pura de calendário — sem `Date`, que o lint proíbe para data de
+ * calendário (`toISOString()` em GMT-3 pula um dia depois das 21h).
+ */
+function vesperaDe(dataIso: string): string {
+    const [a, m, d] = dataIso.slice(0, 10).split('-').map(Number);
+    if (d > 1) return `${a}-${String(m).padStart(2, '0')}-${String(d - 1).padStart(2, '0')}`;
+    const mesAnterior = m === 1 ? 12 : m - 1;
+    const anoDaVespera = m === 1 ? a - 1 : a;
+    const bissexto = (anoDaVespera % 4 === 0 && anoDaVespera % 100 !== 0) || anoDaVespera % 400 === 0;
+    const DIAS_NO_MES = [31, bissexto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const ultimoDia = DIAS_NO_MES[mesAnterior - 1];
+    return `${anoDaVespera}-${String(mesAnterior).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+}
+
 /**
  * O impacto de cada troca de preço do período (Issue #61).
  *
@@ -201,7 +315,23 @@ export function impactoTrocaDePreco(
     compras: readonly CompraComData[],
     reguas: readonly ReguaComData[],
 ): ImpactoTroca[] {
-    return trocasDePreco(leituras).map((troca) => {
+    const trocas = trocasDePreco(leituras);
+
+    const primeiroDiaComPreco = new Map<string, string>();
+    for (const l of leituras) {
+        if (l.precoLitro == null) continue;
+        const atual = primeiroDiaComPreco.get(l.combustivel);
+        if (atual === undefined || l.data < atual) primeiroDiaComPreco.set(l.combustivel, l.data);
+    }
+
+    return trocas.map((troca) => {
+        const trocaAnterior = trocas
+            .filter((t) => t.combustivel === troca.combustivel && t.data < troca.data)
+            .at(-1);
+        const precoAntigoDesde = trocaAnterior?.data ?? primeiroDiaComPreco.get(troca.combustivel) ?? null;
+        const diasComPrecoAntigo = precoAntigoDesde == null
+            ? null
+            : diasCorridosInclusivos(precoAntigoDesde, vesperaDe(troca.data));
         const litrosNoTanque = estoqueNaVespera(troca.combustivel, troca.data, reguas, compras, leituras);
 
         const mesDaTroca = troca.data.slice(0, 7);
@@ -214,11 +344,170 @@ export function impactoTrocaDePreco(
             ? null
             : Math.round(litrosNoTanque * (troca.precoNovo - troca.precoAntigo) * 100);
 
-        return { ...troca, litrosNoTanque, custoMedioLitro, ganhoPerdaCentavos };
+        const direcao: DirecaoTroca = troca.precoNovo > troca.precoAntigo ? 'subida' : 'descida';
+        const margemAntigaLitro = custoMedioLitro == null ? null : troca.precoAntigo - custoMedioLitro;
+        const margemNovaLitro = custoMedioLitro == null ? null : troca.precoNovo - custoMedioLitro;
+        const valorEstoqueAntigoCentavos = litrosNoTanque == null
+            ? null
+            : Math.round(litrosNoTanque * troca.precoAntigo * 100);
+        const valorEstoqueNovoCentavos = valorEstoqueAntigoCentavos == null || ganhoPerdaCentavos == null
+            ? null
+            : valorEstoqueAntigoCentavos + ganhoPerdaCentavos;
+
+        const deltaPreco = troca.precoNovo - troca.precoAntigo;
+        let litrosVendidosDesdeATroca = 0;
+        const diasComVenda = new Set<string>();
+        for (const l of leituras) {
+            if (l.combustivel !== troca.combustivel || l.data < troca.data) continue;
+            litrosVendidosDesdeATroca += l.litrosVendidos;
+            if (l.litrosVendidos > 0) diasComVenda.add(l.data);
+        }
+        const ganhoVendasCentavos = Math.round(litrosVendidosDesdeATroca * deltaPreco * 100);
+        const mediaLitrosDiaDesdeATroca = diasComVenda.size > 0
+            ? litrosVendidosDesdeATroca / diasComVenda.size
+            : null;
+        const ganhoPorDiaCentavos = mediaLitrosDiaDesdeATroca == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * deltaPreco * 100);
+        const ritmoMensalCentavos = mediaLitrosDiaDesdeATroca == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * deltaPreco * 30 * 100);
+        const lucroDiaAntigoCentavos = mediaLitrosDiaDesdeATroca == null || margemAntigaLitro == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * margemAntigaLitro * 100);
+        const lucroDiaNovoCentavos = mediaLitrosDiaDesdeATroca == null || margemNovaLitro == null
+            ? null
+            : Math.round(mediaLitrosDiaDesdeATroca * margemNovaLitro * 100);
+
+        return {
+            ...troca,
+            direcao,
+            precoAntigoDesde,
+            diasComPrecoAntigo,
+            litrosNoTanque,
+            custoMedioLitro,
+            margemAntigaLitro,
+            margemNovaLitro,
+            valorEstoqueAntigoCentavos,
+            valorEstoqueNovoCentavos,
+            ganhoPerdaCentavos,
+            litrosVendidosDesdeATroca,
+            ganhoVendasCentavos,
+            mediaLitrosDiaDesdeATroca,
+            ganhoPorDiaCentavos,
+            ritmoMensalCentavos,
+            lucroDiaAntigoCentavos,
+            lucroDiaNovoCentavos,
+        };
     });
 }
 
 /** Total do período em centavos: soma só das trocas com estoque apurável. */
 export function totalGanhoPerdaCentavos(impactos: readonly ImpactoTroca[]): number {
     return impactos.reduce((soma, i) => soma + (i.ganhoPerdaCentavos ?? 0), 0);
+}
+
+/** Total do lucro extra já realizado nas VENDAS desde as trocas, em centavos. */
+export function totalGanhoVendasCentavos(impactos: readonly ImpactoTroca[]): number {
+    return impactos.reduce((soma, i) => soma + i.ganhoVendasCentavos, 0);
+}
+
+/** O mês das trocas em três números: o que rendeu, o que custou, o saldo. */
+export interface BalancoTrocas {
+    /** Soma das parcelas POSITIVAS (estoque e vendas), em centavos. */
+    readonly lucroCentavos: number;
+    /** Soma das parcelas NEGATIVAS (estoque e vendas), em centavos — sempre ≤ 0. */
+    readonly prejuizoCentavos: number;
+    /** `lucro + prejuizo` — igual a estoque líquido + vendas. */
+    readonly saldoCentavos: number;
+}
+
+/**
+ * Balanço mensal das trocas (card geral da Issue #70): separa em lucro e
+ * prejuízo as parcelas de cada troca. Estoque parado e vendas contam como
+ * parcelas INDEPENDENTES, porque numa mesma troca elas podem ter sinais
+ * opostos (etanol de janeiro/2026: estoque −R$ 84,42 e vendas +R$ 2.099,12).
+ * Troca sem estoque apurável contribui só com a parcela de vendas.
+ */
+export function balancoTrocasCentavos(impactos: readonly ImpactoTroca[]): BalancoTrocas {
+    let lucroCentavos = 0;
+    let prejuizoCentavos = 0;
+    for (const impacto of impactos) {
+        for (const parcela of [impacto.ganhoPerdaCentavos ?? 0, impacto.ganhoVendasCentavos]) {
+            if (parcela >= 0) lucroCentavos += parcela;
+            else prejuizoCentavos += parcela;
+        }
+    }
+    return { lucroCentavos, prejuizoCentavos, saldoCentavos: lucroCentavos + prejuizoCentavos };
+}
+
+/** Um lado do resumo por direção: quantas trocas e quanto somaram. */
+export interface LadoDirecao {
+    /** Número de trocas na direção — inclui as não apuráveis (sem régua). */
+    readonly quantidade: number;
+    /** Soma de `ganhoPerdaCentavos` das trocas APURÁVEIS da direção. */
+    readonly totalCentavos: number;
+}
+
+/** O mês visto por direção de troca (Issue #70). */
+export interface ResumoPorDirecao {
+    readonly subidas: LadoDirecao;
+    readonly descidas: LadoDirecao;
+    /** `subidas.totalCentavos + descidas.totalCentavos` — igual a {@link totalGanhoPerdaCentavos}. */
+    readonly liquidoCentavos: number;
+}
+
+/**
+ * Agrega os impactos do período em subidas × descidas de preço (Issue #70).
+ *
+ * @remarks Troca sem estoque apurável conta na `quantidade` (a troca
+ *          aconteceu), mas não soma no total — mesma regra de
+ *          {@link totalGanhoPerdaCentavos}, que este resumo decompõe.
+ */
+export function resumoPorDirecao(impactos: readonly ImpactoTroca[]): ResumoPorDirecao {
+    const lado = (direcao: DirecaoTroca): LadoDirecao => {
+        const doLado = impactos.filter((i) => i.direcao === direcao);
+        return {
+            quantidade: doLado.length,
+            totalCentavos: doLado.reduce((soma, i) => soma + (i.ganhoPerdaCentavos ?? 0), 0),
+        };
+    };
+    const subidas = lado('subida');
+    const descidas = lado('descida');
+    return { subidas, descidas, liquidoCentavos: totalGanhoPerdaCentavos(impactos) };
+}
+
+/** Um ponto da série diária de preço (gráfico "só o diesel subiu?", Issue #70). */
+export interface PontoPrecoDia {
+    /** Dia em ISO local (`YYYY-MM-DD`). */
+    readonly data: string;
+    /** Preço dominante do dia, em reais/L. */
+    readonly preco: number;
+}
+
+/** A série diária de preço de um combustível. */
+export interface SeriePrecoDiario {
+    readonly combustivel: string;
+    /** Ordenada por data. Dia sem preço registrado fica FORA — nunca vira zero. */
+    readonly pontos: readonly PontoPrecoDia[];
+}
+
+/**
+ * O preço dominante de cada dia, por combustível — a matéria-prima do gráfico
+ * de linhas da seção de trocas ("foi só o diesel ou mexeu tudo?").
+ *
+ * @remarks Mesma regra de dominância de {@link trocasDePreco} (o bico que mais
+ *          vendeu define o preço do dia); a detecção por trás já tem golden, a
+ *          seleção da série é coberta por unitário.
+ */
+export function seriePrecoDiario(leituras: readonly LeituraPrecoDia[]): SeriePrecoDiario[] {
+    return [...agruparPorCombustivelEDia(leituras).entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([combustivel, dias]) => ({
+            combustivel,
+            pontos: [...dias.keys()]
+                .sort()
+                .map((dia) => ({ data: dia, preco: precoDominanteDoDia(dias.get(dia) ?? []) }))
+                .filter((p): p is PontoPrecoDia => p.preco != null),
+        }));
 }

@@ -12,8 +12,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   impactoTrocaDePreco,
-  totalGanhoPerdaCentavos,
+  resumoPorDirecao,
+  seriePrecoDiario,
+  totalGanhoVendasCentavos,
+  balancoTrocasCentavos,
+  type BalancoTrocas,
   type ImpactoTroca,
+  type ResumoPorDirecao,
   type LeituraPrecoDia,
   type CompraComData,
   type ReguaComData,
@@ -38,7 +43,8 @@ interface CompraDoBanco {
 interface ReguaDoBanco {
   readonly tanque_id: number;
   readonly data: string;
-  readonly volume_fisico: number;
+  /** Nulo = medição não feita naquele dia — régua que NÃO existe, nunca 0 L. */
+  readonly volume_fisico: number | null;
 }
 
 interface TanqueDoBanco {
@@ -49,16 +55,40 @@ interface TanqueDoBanco {
 interface CombustivelDoBanco {
   readonly id: number;
   readonly nome: string;
+  /** Sigla da planilha (GC/GA/ET/S10) — chave de `corDoProduto`. */
+  readonly codigo: string | null;
 }
 
 /** Uma troca do mês, pronta para exibição. */
 export interface ImpactoExibivel extends ImpactoTroca {
   readonly nomeCombustivel: string;
+  /** Sigla da planilha (GC/GA/ET/S10), para a cor que o dono reconhece. */
+  readonly codigoCombustivel: string | null;
+}
+
+/** A variação de preço de um combustível no mês (gráfico de barras). */
+export interface BarraVariacao {
+  readonly combustivel: string;
+  readonly nomeCombustivel: string;
+  readonly codigoCombustivel: string | null;
+  /** Primeiro preço do mês com registro (R$/L). */
+  readonly precoInicio: number;
+  /** Último preço do mês com registro (R$/L). */
+  readonly precoFim: number;
+  /** `precoFim − precoInicio` (R$/L). Zero = não mexeu no mês. */
+  readonly variacao: number;
 }
 
 export interface DadosImpactoTrocaPreco {
   readonly impactos: readonly ImpactoExibivel[];
-  readonly totalCentavos: number;
+  /** O mês decomposto em subidas × descidas (Issue #70). O líquido do mês é `resumo.liquidoCentavos`. */
+  readonly resumo: ResumoPorDirecao;
+  /** Quanto cada combustível variou no mês — barras do "foi só o diesel?". */
+  readonly barras: readonly BarraVariacao[];
+  /** Lucro extra já realizado nas VENDAS desde as trocas do mês, em centavos. */
+  readonly totalVendasCentavos: number;
+  /** O card geral: lucro total, prejuízo total e saldo das trocas do mês. */
+  readonly balanco: BalancoTrocas;
 }
 
 /** `2026-03` → `2026-02-01` (início da busca, um mês antes). */
@@ -96,10 +126,11 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
         supabase
           .from('HistoricoTanque')
           .select('tanque_id, data, volume_fisico')
+          .not('volume_fisico', 'is', null)
           .gte('data', inicioBusca)
           .lte('data', periodo.fim),
         supabase.from('Tanque').select('id, combustivel_id').eq('posto_id', postoId),
-        supabase.from('Combustivel').select('id, nome').eq('posto_id', postoId),
+        supabase.from('Combustivel').select('id, nome, codigo').eq('posto_id', postoId),
       ]);
 
       const primeiraFalha = [leiturasRes, comprasRes, reguasRes, tanquesRes, combustiveisRes]
@@ -109,15 +140,17 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
       const combustivelDoTanque = new Map<number, number>(
         ((tanquesRes.data ?? []) as TanqueDoBanco[]).map((t) => [t.id, t.combustivel_id]),
       );
-      const nomeDoCombustivel = new Map<number, string>(
-        ((combustiveisRes.data ?? []) as CombustivelDoBanco[]).map((c) => [c.id, c.nome]),
+      const cadastroCombustiveis = (combustiveisRes.data ?? []) as CombustivelDoBanco[];
+      const nomeDoCombustivel = new Map<number, string>(cadastroCombustiveis.map((c) => [c.id, c.nome]));
+      const codigoDoCombustivel = new Map<number, string | null>(
+        cadastroCombustiveis.map((c) => [c.id, c.codigo]),
       );
 
       // A fronteira do mapper: daqui para baixo é camelCase e domínio puro.
       const leituras: LeituraPrecoDia[] = ((leiturasRes.data ?? []) as unknown as LeituraDoBanco[])
         .filter((l) => l.bico != null)
         .map((l) => ({
-          data: l.data,
+          data: l.data.slice(0, 10),
           combustivel: String(l.bico?.combustivel_id),
           precoLitro: l.preco_litro,
           litrosVendidos: l.litros_vendidos ?? 0,
@@ -125,17 +158,19 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
 
       const compras: CompraComData[] = ((comprasRes.data ?? []) as CompraDoBanco[]).map((c) => ({
         combustivel: String(c.combustivel_id),
-        data: c.data,
+        data: c.data.slice(0, 10),
         litros: c.quantidade_litros,
         valorTotal: c.valor_total,
       }));
 
+      // O filtro de nulo repete o da query de propósito: régua sem medição que
+      // escapasse viraria "tanque com 0 L" lá na corrente (null × n = 0 em JS).
       const reguas: ReguaComData[] = ((reguasRes.data ?? []) as ReguaDoBanco[])
-        .filter((r) => combustivelDoTanque.has(r.tanque_id))
+        .filter((r) => combustivelDoTanque.has(r.tanque_id) && r.volume_fisico != null)
         .map((r) => ({
           combustivel: String(combustivelDoTanque.get(r.tanque_id)),
           data: r.data.slice(0, 10),
-          litros: r.volume_fisico,
+          litros: r.volume_fisico ?? 0,
         }));
 
       const doMes = impactoTrocaDePreco(leituras, compras, reguas)
@@ -143,9 +178,33 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
         .map((i) => ({
           ...i,
           nomeCombustivel: nomeDoCombustivel.get(Number(i.combustivel)) ?? `Combustível ${i.combustivel}`,
+          codigoCombustivel: codigoDoCombustivel.get(Number(i.combustivel)) ?? null,
         }));
 
-      setDados({ impactos: doMes, totalCentavos: totalGanhoPerdaCentavos(doMes) });
+      // Barras: só o mês selecionado (a busca começa no mês anterior por causa da régua).
+      const seriesDoMes = seriePrecoDiario(leituras.filter((l) => l.data.slice(0, 7) === mesIso));
+      const barras: BarraVariacao[] = seriesDoMes
+        .filter((serie) => serie.pontos.length > 0)
+        .map((serie) => {
+          const precoInicio = serie.pontos[0].preco;
+          const precoFim = serie.pontos[serie.pontos.length - 1].preco;
+          return {
+            combustivel: serie.combustivel,
+            nomeCombustivel: nomeDoCombustivel.get(Number(serie.combustivel)) ?? `Combustível ${serie.combustivel}`,
+            codigoCombustivel: codigoDoCombustivel.get(Number(serie.combustivel)) ?? null,
+            precoInicio,
+            precoFim,
+            variacao: precoFim - precoInicio,
+          };
+        });
+
+      setDados({
+        impactos: doMes,
+        resumo: resumoPorDirecao(doMes),
+        barras,
+        totalVendasCentavos: totalGanhoVendasCentavos(doMes),
+        balanco: balancoTrocasCentavos(doMes),
+      });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui apurar as trocas de preço.');
       setDados(null);
