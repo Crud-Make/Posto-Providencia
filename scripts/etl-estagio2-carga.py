@@ -52,6 +52,13 @@ from pathlib import Path
 
 ANO = 2026
 
+# Guardas de dinheiro do `confere()`. Mudam SÓ com planilha nova, no mesmo commit,
+# depois de olhar mês a mês o que mudou — o valor velho fica no comentário de lá.
+DESPESA_PLANILHA_ESPERADA = 161283.22      # jan–ago, planilha de 30/08/2026
+DESPESA_LANCADA_ATE_MES = 8                # até onde a tabela `Despesa` do app foi carregada
+DESPESA_LANCADA_ESPERADA = 210746.40       # jan–ago na tabela `Despesa` do Supabase
+DESPESA_LANCADA_CONFERIDA_EM = "30/08/2026"
+
 # Forma de pagamento na planilha -> coluna de `jan_frentista`. As chaves são lidas
 # do cabeçalho de cada bloco pelo estágio 1 e variam entre meses (o mês 07 traz uma
 # `Venda Concentrador` a mais); só o mês 01 alimenta esta tabela.
@@ -519,8 +526,17 @@ def confere(con: sqlite3.Connection, meses: dict[int, dict]) -> list[str]:
         "SELECT COALESCE(SUM(valor),0) FROM despesa_categoria_mensal "
         "WHERE ano=? AND TRIM(LOWER(COALESCE(categoria,''))) NOT IN ('total','total.','__total__')",
         (ANO,)).fetchone()[0]
-    if abs(limpo - 140456.27) > 0.05:
-        problemas.append(f"despesa limpa {limpo:,.2f} ≠ 140.456,27")
+    # Total fixo DE PROPÓSITO: planilha nova tem de estourar aqui para alguém
+    # olhar o que mudou antes de promover. Foi o que aconteceu em 30/08/2026 —
+    # a planilha de agosto trouxe julho REESCRITO (13.961,00 → 19.271,95: Frete
+    # 3.840 → 4.200, mais taxa de cartão 1.902, CSLL 1.490,72 e IRPJ 1.238,23)
+    # e agosto novo com 15.516,00. Histórico do número, para o próximo que vier:
+    #   140.456,27  jan–jul, planilha de 07/08 (sha abecc283…)
+    #   161.283,22  jan–ago, planilha de 30/08 (sha 3357eed9…)
+    if abs(limpo - DESPESA_PLANILHA_ESPERADA) > 0.05:
+        problemas.append(
+            f"despesa limpa {limpo:,.2f} ≠ {DESPESA_PLANILHA_ESPERADA:,.2f} esperado — "
+            f"planilha nova? confira mês a mês e atualize a constante no mesmo commit")
     if abs(cru - limpo * 2) > 0.05:
         problemas.append(f"despesa crua {cru:,.2f} não é o dobro de {limpo:,.2f}")
 
@@ -528,13 +544,15 @@ def confere(con: sqlite3.Connection, meses: dict[int, dict]) -> list[str]:
     # está incompleta de um jeito que não aparece em nenhum outro número.
     lancada = cur.execute(
         "SELECT COALESCE(SUM(valor),0) FROM despesa_lancada "
-        "WHERE ano=? AND mes BETWEEN 1 AND 7", (ANO,)).fetchone()[0]
+        "WHERE ano=? AND mes BETWEEN 1 AND ?", (ANO, DESPESA_LANCADA_ATE_MES)).fetchone()[0]
     if not lancada:
         problemas.append(
             "despesa_lancada vazia — rode `scripts/etl-despesa-banco.py --saida <staging>` "
             "antes: sem ela o custo por litro sai da lista PARCIAL da planilha")
-    elif abs(lancada - 195230.40) > 0.05:
-        problemas.append(f"despesa lançada {lancada:,.2f} ≠ 195.230,40 (conferido em 12/08)")
+    elif abs(lancada - DESPESA_LANCADA_ESPERADA) > 0.05:
+        problemas.append(
+            f"despesa lançada {lancada:,.2f} ≠ {DESPESA_LANCADA_ESPERADA:,.2f} "
+            f"(banco conferido em {DESPESA_LANCADA_CONFERIDA_EM})")
 
     # A regra canônica do conferido (skill fechamento-posto-providencia):
     # `conferido = pix + credito + debito + moeda + notas + baratao + dinheiro`.
@@ -570,9 +588,14 @@ def confere(con: sqlite3.Connection, meses: dict[int, dict]) -> list[str]:
             problemas.append(
                 f"mês {mes}: resumo_mensal_bico soma {resumo_lt:,.3f} ≠ referência {ref:,.3f}")
 
+        # Mês em curso (`confere_parcial`, estágio 1): o resumo parou num dia e o
+        # diário seguiu. O diário só é comparável com a referência ATÉ esse dia;
+        # depois dele a planilha ainda não apurou nada para comparar.
+        ate_dia = dados["conciliacao"].get("referencia_ate_dia", 31)
         diario = cur.execute(
             "SELECT COALESCE(SUM(litros),0) FROM encerrante_diario "
-            "WHERE ano=? AND mes=? AND dado_incompleto=0", (ANO, mes)).fetchone()[0]
+            "WHERE ano=? AND mes=? AND dado_incompleto=0 AND dia<=?",
+            (ANO, mes, ate_dia)).fetchone()[0]
         lacuna = cur.execute(
             "SELECT COALESCE(SUM(litros_em_lacuna),0) FROM validacao_mensal "
             "WHERE ano=? AND mes=?", (ANO, mes)).fetchone()[0]
@@ -635,8 +658,8 @@ def main() -> int:
         for x in problemas:
             print(f"  - {x}")
         return 2
-    print("\nreconciliação: despesa limpa em 140.456,27 (crua = dobro), e cada mês "
-          "fecha diário + lacuna contra a referência da planilha.")
+    print(f"\nreconciliação: despesa limpa em {DESPESA_PLANILHA_ESPERADA:,.2f} (crua = dobro), "
+          "e cada mês fecha diário + lacuna contra a referência da planilha.")
     return 0
 
 

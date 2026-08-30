@@ -15,17 +15,21 @@
     "sha256": "opcional. Só para conteúdo que NÃO deve mudar sozinho",
     "bytes_minimos": "opcional. Pega 'encolheu' sem exigir conteúdo imutável"
   },
-
   "ativos": [
     {
       "caminho": "~/Downloads/Posto,Jorro, 2026.xlsx",
-      "sha256": "abecc283c2398a9cf66184730066a3de82482b4f2f57bc8c3e66932ad67fc952",
-      "porque": "a fonte auditável de tudo. Nunca esteve em commit nenhum e o git não a devolve; sem ela não há como refazer a cadeia do ETL nem conferir uma fórmula contra o real"
+      "sha256": "3357eed9e56fb5646c3c099a6fafb950f79008e87658700cc743e1e6782614bf",
+      "porque": "a fonte auditável de tudo. Nunca esteve em commit nenhum e o git não a devolve; sem ela não há como refazer a cadeia do ETL nem conferir uma fórmula contra o real. Trocada em 30/08/2026 pela planilha com agosto (julho reescrito, preço de janeiro no resumo 6,48→6,38); a de 07/08 fica só no backup frio"
     },
     {
-      "caminho": "/mnt/dados/backups-posto/Posto,Jorro, 2026.xlsx",
+      "caminho": "/mnt/dados/backups-posto/Posto,Jorro, 2026 (2026-08-07).xlsx",
       "sha256": "abecc283c2398a9cf66184730066a3de82482b4f2f57bc8c3e66932ad67fc952",
-      "porque": "a cópia fria da planilha, criada depois do incidente da lixeira. Se ela divergir da de ~/Downloads, uma das duas foi corrompida ou substituída"
+      "porque": "a planilha de 07/08 (jan–jul, julho até o dia 24), contra a qual o docs/data anterior e o golden de 12/08 foram conferidos. Fica para reproduzir aquele estado"
+    },
+    {
+      "caminho": "/mnt/dados/backups-posto/Posto,Jorro, 2026 (2026-08-30).xlsx",
+      "sha256": "3357eed9e56fb5646c3c099a6fafb950f79008e87658700cc743e1e6782614bf",
+      "porque": "a cópia fria da planilha de 30/08 (jan–ago). Se divergir da de ~/Downloads, uma das duas foi corrompida ou substituída"
     },
     {
       "caminho": "~/.claude/settings.json",

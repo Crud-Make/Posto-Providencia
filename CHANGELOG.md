@@ -2,6 +2,27 @@
 
 ## [Não Lançado]
 
+### 📊 ETL aceita a planilha de 30/08 (janeiro a agosto)
+
+- **Aba de mês duplicada.** A planilha nova trouxe `MES, 08` (cópia velha, 16 dias) e
+  `MES, 08 ` (a viva, com espaço no fim, 29 dias). O estágio 1 deixava a última da ordem
+  do workbook vencer em silêncio; agora fica a com mais dias preenchidos e a descartada vai
+  para `manifesto.json` em `abas_descartadas`.
+- **Mês em curso.** O resumo `POSTO JORRO 2026` de agosto foi apurado no dia 27
+  (33.888,379 L) e a aba diária seguiu até o 29 (36.277,288 L). Isso não é divergência: é
+  referência atrasada. O estágio 1 marca `confere_parcial` com `referencia_ate_dia`, e o
+  estágio 2 compara o diário só até esse dia.
+- **Guardas de despesa viraram constantes datadas** (`DESPESA_PLANILHA_ESPERADA`,
+  `DESPESA_LANCADA_ESPERADA`). Continuam fixas de propósito — planilha nova tem de estourar
+  ali para alguém olhar o que mudou. Desta vez mudou: julho foi reescrito na planilha
+  (13.961,00 → 19.271,95: Frete 3.840 → 4.200, mais taxa de cartão 1.902,00, CSLL 1.490,72
+  e IRPJ 1.238,23), julho ganhou os dias 25–31 e a compra/estoque de julho mudou, e **o
+  preço da gasolina de janeiro no resumo caiu de 6,48 para 6,38**, o que muda a venda e o
+  lucro de janeiro no golden de lucro (fixture `mes01`). O diário de janeiro segue 6,28/6,48.
+- `docs/data/` **não foi promovido** por agente (hook `protege-dados`); o staging validado
+  está em `docs/data-staging/2026-08-30/`. Manifesto de ativos críticos aponta para a
+  planilha de 30/08 e guarda a de 07/08 no backup frio, datada.
+
 ### 📸 Foto de perfil do frentista no PWA
 
 - O frentista escolhe a si mesmo e toca no próprio avatar para pôr ou trocar a foto. A imagem
