@@ -265,7 +265,7 @@ def sql(fechamentos, frentistas_linhas):
         f'{",".join(colunas)},valor_cartao,valor_conferido,encerrante,'
         f'diferenca_calculada,posto_id)\n'
         f'SELECT f.id,v.frentista_id,{",".join("v." + c for c in colunas)},'
-        f'v.valor_cartao,v.valor_conferido,v.encerrante,v.diferenca_calculada,{POSTO_ID}\n'
+        f'v.valor_cartao,v.valor_conferido,v.encerrante::numeric,v.diferenca_calculada::numeric,{POSTO_ID}\n'
         f'FROM (VALUES\n  ' + ',\n  '.join(linhas_filho) + '\n'
         f') AS v(data,frentista_id,{",".join(colunas)},valor_cartao,valor_conferido,'
         f'encerrante,diferenca_calculada)\n'
