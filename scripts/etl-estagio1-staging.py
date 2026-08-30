@@ -641,9 +641,32 @@ def concilia(mes: dict, referencia: dict | None) -> dict:
         # o que falta é leitura que ninguém fez. Estado diferente de DIVERGE —
         # o estágio 2 pode carregar o mês, desde que trate a janela como período.
         fora["status"] = "confere_com_janela"
+    elif (ate := referencia_parcial(mes, ref)) is not None:
+        # Mês em curso: o resumo `POSTO JORRO 2026` foi apurado num dia e a aba
+        # diária seguiu enchendo depois dele. Achado real de 30/08/2026 — agosto
+        # com resumo parado no dia 27 (33.888,379 L) e diário até o 29
+        # (36.277,288 L). Não é divergência: é referência atrasada, e o dia em
+        # que ela parou fica registrado para o estágio 2 conferir só até ele.
+        fora["status"] = "confere_parcial"
+        fora["referencia_ate_dia"] = ate
     else:
         fora["status"] = "DIVERGE"
     return fora
+
+
+def referencia_parcial(mes: dict, ref: float) -> int | None:
+    """Dia em que o acumulado diário bate a referência, quando o resumo da planilha
+    parou ANTES do último dia preenchido. None se nenhum prefixo fecha — aí é
+    divergência de verdade, não atraso."""
+    ultimo_com_dados = max((d["dia"] for d in mes["dias"] if d["bicos"]), default=0)
+    acumulado = 0.0
+    for dia in sorted(mes["dias"], key=lambda d: d["dia"]):
+        for bico in dia["bicos"]:
+            if bico["litros_confiavel"] and bico["litros_planilha"] is not None:
+                acumulado += bico["litros_planilha"]
+        if dia["dia"] < ultimo_com_dados and abs(acumulado - ref) < 0.5:
+            return dia["dia"]
+    return None
 
 
 def main() -> int:
@@ -673,7 +696,13 @@ def main() -> int:
     print(f"{'mês':>4} {'dias':>5} {'c/dados':>8} {'incomp.':>8} "
           f"{'litros somados':>16} {'litros referência':>18} {'delta':>12}  status")
 
-    divergentes = []
+    # Duas abas podem apontar para o MESMO mês — achado real de 30/08/2026:
+    # `MES, 08` (cópia velha, 16 dias) e `MES, 08 ` (a viva, com espaço no fim,
+    # 29 dias). Sem esta escolha, a última da ordem do workbook vencia calada e
+    # o mês inteiro dependia de qual aba o dono criou depois. Fica a que tem mais
+    # dias preenchidos; a outra vai para o manifesto, nunca para o silêncio.
+    por_mes: dict[int, dict] = {}
+    manifesto["abas_descartadas"] = []
     for nome, caminho in pl.abas():
         m = ABA_MES.match(nome)
         if not m:
@@ -681,6 +710,25 @@ def main() -> int:
         mes = int(m.group(1))
         dados = extrai_mes(pl, nome, caminho, mes)
         dados["conciliacao"] = concilia(dados, referencias.get(mes))
+        atual = por_mes.get(mes)
+        if atual is None:
+            por_mes[mes] = dados
+            continue
+        vencedora, perdedora = sorted(
+            (atual, dados), key=lambda d: d["conciliacao"]["dias_com_dados"], reverse=True)
+        por_mes[mes] = vencedora
+        manifesto["abas_descartadas"].append({
+            "mes": mes, "aba": perdedora["aba"],
+            "dias_com_dados": perdedora["conciliacao"]["dias_com_dados"],
+            "ficou": vencedora["aba"],
+            "motivo": "duas abas para o mesmo mês; ficou a com mais dias preenchidos",
+        })
+        print(f"   {mes:>2} ⚠ aba {perdedora['aba']!r} descartada "
+              f"({perdedora['conciliacao']['dias_com_dados']} dias) — ficou "
+              f"{vencedora['aba']!r} ({vencedora['conciliacao']['dias_com_dados']} dias)")
+
+    divergentes = []
+    for mes, dados in sorted(por_mes.items()):
         c = dados["conciliacao"]
 
         destino = args.saida / f"mes_{mes:02d}.json"
@@ -696,6 +744,10 @@ def main() -> int:
               f"{c['dias_incompletos']:>8} {c['litros_somados_dos_dias']:>16,.3f} "
               f"{c.get('litros_referencia', float('nan')):>18,.3f} "
               f"{c.get('delta', float('nan')):>12,.3f}  {c['status']}")
+        if c["status"] == "confere_parcial":
+            print(f"       └─ resumo da planilha parou no dia {c['referencia_ate_dia']}; "
+                  f"o diário segue até o dia {max(d['dia'] for d in dados['dias'] if d['bicos'])}"
+                  f" (mês em curso)")
         for j in (x for x in c["janelas_sem_leitura"]
                   if x["litros_nao_atribuiveis_a_um_dia"]):
             dias_j = j["dias"]

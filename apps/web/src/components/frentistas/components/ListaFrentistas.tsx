@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { PerfilFrentista } from '../types';
+import { AvatarFrentista } from '../../../shared/ui/avatar-frentista';
 
 interface ListaFrentistasProps {
     frentistas: PerfilFrentista[];
@@ -31,12 +32,14 @@ export const ListaFrentistas: React.FC<ListaFrentistasProps> = ({
                         }`}
                 >
                     <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${frentistaSelecionadoId === frentista.id
+                        <AvatarFrentista
+                            nome={frentista.nome}
+                            foto={frentista.foto}
+                            tamanho={48}
+                            className={frentistaSelecionadoId === frentista.id
                                 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                                : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
-                            }`}>
-                            {frentista.nome.substring(0, 2).toUpperCase()}
-                        </div>
+                                : ''}
+                        />
                         <div>
                             <h3 className={`font-medium ${frentistaSelecionadoId === frentista.id ? 'text-blue-900 dark:text-blue-200' : 'text-gray-900 dark:text-white'
                                 }`}>

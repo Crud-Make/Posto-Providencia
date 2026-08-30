@@ -96,6 +96,14 @@ export interface PresencaFrentista {
     readonly frentistaId: number;
     readonly nome: string;
     readonly vistoEm: Date;
+    /**
+     * Avatar em data URL, vindo de `Frentista.foto`.
+     *
+     * @remarks Opcional e puramente visual: nenhuma regra de presença olha para
+     *          ele. Quem decide quem aparece e quem está online continua sendo
+     *          `presencasRelevantes` e `statusPresenca`, pelo `vistoEm`.
+     */
+    readonly foto?: string | null;
 }
 
 /**

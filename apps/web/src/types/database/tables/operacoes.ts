@@ -13,6 +13,8 @@ export interface FrentistaTable {
     /** @deprecated Feature descontinuada em 2026-07-30; coluna zerada em produção. */
     cpf: string | null
     data_admissao: string
+    /** Avatar em data URL JPEG (192px), posto pelo próprio frentista no PWA dele. */
+    foto: string | null
     id: number
     nome: string
     telefone: string | null
