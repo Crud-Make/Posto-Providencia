@@ -69,7 +69,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                            <td className="px-4 py-5 text-right text-gray-500">
                               {paraReais(estoqueHoje * mediaLt)}
                            </td>
-                           <td className="px-4 py-5 text-right text-green-600 font-bold bg-green-50 dark:bg-green-900/10">
+                           <td className={`px-4 py-5 text-right font-bold ${estoqueHoje * lucroLt < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/10' : 'text-green-600 bg-green-50 dark:bg-green-900/10'}`}>
                               {paraReais(estoqueHoje * lucroLt)}
                            </td>
                            <td className="px-3 py-5 min-w-[150px]">
@@ -82,7 +82,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                            </td>
                            <td className="px-4 py-5 text-right font-bold">
                               {percaSobra !== 0 ? (
-                                 <span className={`flex flex-col ${percaSobra > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                 <span className={`flex flex-col ${percaSobra > 0 ? 'text-green-600 bg-green-50 dark:bg-green-900/10 rounded px-2' : 'text-red-600 bg-red-50 dark:bg-red-900/10 rounded px-2'}`}>
                                     <span>{percaSobra > 0 ? '+' : ''}{formatarParaBR(percaSobra, 0)}</span>
                                     <span className="text-[10px] opacity-75 uppercase tracking-wider">
                                        {percaSobra > 0 ? 'SOBRA' : 'PERCA'}
@@ -109,7 +109,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                      <td className="px-4 py-3 text-right bg-gray-700">
                         {paraReais(totais.totalCustoEstoque)}
                      </td>
-                     <td className="px-4 py-3 text-right bg-green-800">
+                     <td className={`px-4 py-3 text-right ${totais.totalLucroEstoque < 0 ? 'bg-red-800' : 'bg-green-800'}`}>
                         {paraReais(totais.totalLucroEstoque)}
                      </td>
                      <td className="px-4 py-3 text-center">
