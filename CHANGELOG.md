@@ -25,6 +25,9 @@
   a que horas, quanto conferiu e se faltou ou sobrou — com a foto de perfil de cada um. Seletor de
   data no topo. O app do dono ganhou navegação (duas abas) junto com ela; antes não havia segunda
   tela e rota teria sido abstração vazia.
+- Diferença **não apurada** (`NULL`) aparece como "sem apurar", não como "bateu". São estados
+  diferentes, e tratar o primeiro como zero afirmaria sobre dinheiro o que ninguém conferiu — a
+  linha do "Posto providencia" em 29/08 é o caso real que revelou isso.
 - A consulta mora em `packages/api-core` (`criarAcessoEnvios`), no molde do `criarAcessoEncerrante` —
   os dois apps olham a mesma lista por motivos diferentes. **Drift encontrado no caminho:** a tabela
   real tem `diferenca_calculada` e não tem `total`; a migration `20251221_create_mobile_tables.sql`

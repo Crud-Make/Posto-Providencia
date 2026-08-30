@@ -63,7 +63,10 @@ export default function EnviosScreen({ dataIso, onTrocarData, onVoltar }: Props)
     // Soma só o que a tela mostra. Não é cálculo de fechamento: é o total do
     // que os frentistas declararam neste dia, para o dono bater de olho.
     const totalConferido = envios.reduce((soma, e) => soma + (e.valor_conferido ?? 0), 0);
-    const comProblema = envios.filter(e => (e.diferenca_calculada ?? 0) !== 0).length;
+    // `null` não entra na conta: diferença NÃO CALCULADA é diferente de zero, e
+    // somá-la como "bateu" esconderia justamente a linha que ninguém apurou.
+    const comProblema = envios.filter(e => e.diferenca_calculada != null && e.diferenca_calculada !== 0).length;
+    const semApurar = envios.filter(e => e.diferenca_calculada == null).length;
 
     return (
         <div className="min-h-screen bg-[#0A0D14] text-slate-100 pb-10">
@@ -97,6 +100,9 @@ export default function EnviosScreen({ dataIso, onTrocarData, onVoltar }: Props)
                         <p className={`text-sm font-semibold ${comProblema ? 'text-amber-400' : 'text-emerald-400'}`}>
                             {comProblema ? `${comProblema} com diferença` : 'todos bateram'}
                         </p>
+                        {semApurar > 0 && (
+                            <p className="text-xs text-slate-500">{semApurar} sem apurar</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -113,8 +119,12 @@ export default function EnviosScreen({ dataIso, onTrocarData, onVoltar }: Props)
                 )}
 
                 {envios.map((envio) => {
+                    // `null` é um terceiro estado, não zero: o envio existe mas a
+                    // diferença nunca foi apurada. Chamar isso de "bateu" seria
+                    // afirmar sobre dinheiro o que ninguém conferiu.
+                    const semApuracao = envio.diferenca_calculada == null;
                     const diferenca = envio.diferenca_calculada ?? 0;
-                    const bateu = diferenca === 0;
+                    const bateu = !semApuracao && diferenca === 0;
                     const sobra = isSobra(diferenca);
                     const nome = envio.frentista?.nome ?? 'Frentista';
 
@@ -136,7 +146,9 @@ export default function EnviosScreen({ dataIso, onTrocarData, onVoltar }: Props)
                             </div>
 
                             <div className="text-right shrink-0">
-                                {bateu ? (
+                                {semApuracao ? (
+                                    <span className="text-slate-500 text-xs font-semibold">sem apurar</span>
+                                ) : bateu ? (
                                     <span className="inline-flex items-center gap-1 text-emerald-400 text-sm font-semibold">
                                         <Check size={14} /> bateu
                                     </span>
