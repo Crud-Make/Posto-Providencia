@@ -1,4 +1,5 @@
 import React from 'react';
+import { corDoProduto } from '@posto/utils';
 import { Droplet, History, Ruler, AlertTriangle } from 'lucide-react';
 import { useDashboardEstoque } from './hooks/useDashboardEstoque';
 import FuelTank from './components/FuelTank';
@@ -95,6 +96,7 @@ const TelaDashboardEstoque: React.FC = () => {
                 key={tanque.id}
                 name={tanque.nome}
                 productName={tanque.combustivel?.nome || 'Produto Indefinido'}
+                productColor={corDoProduto(tanque.combustivel?.codigo).fundo}
                 capacity={tanque.capacidade}
                 currentVolume={tanque.estoque_atual}
               />
