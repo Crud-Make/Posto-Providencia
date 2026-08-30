@@ -1,5 +1,6 @@
 # Memória — Posto Providência
 
+- [Deploy manual some no próximo merge](deploy-manual-some-no-proximo-merge.md) — 30/08: foto e push "sumiram" porque o merge do #63 republicou a main; corrigido pelo PR #65; conferir `target: production` antes de chamar de bug
 - [📍 30/08 — planilha nova auditada, promoção PENDENTE](planilha-30-08-auditoria-e-promocao-pendente.md) — Supabase já tem jan–ago; ETL adaptado em `fix/etl-planilha-30-08`; docs/data não promovido; 11 asserções de golden esperam decisão (jan 6,48→6,38, julho reescrito, tanque 31/01 sobrescrito)
 - [📍 28/08 — zerado, conferido, carga PENDENTE](zerado-28-08-carga-conferida-pendente.md) — banco zerado com backup em /mnt/dados; referência bate com a planilha nos 7 meses; scripts de carga prontos (julho fechamento aborta); dono mandou esperar a auditoria de outra sessão
 
