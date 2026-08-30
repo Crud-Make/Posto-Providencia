@@ -2,6 +2,23 @@
 
 ## [Não Lançado]
 
+### 🔔 Aviso no celular do dono quando o fechamento chega (em construção)
+
+- **Sem Firebase.** Web Push é padrão do navegador: o endpoint da inscrição já aponta para o
+  serviço do fabricante — `web.push.apple.com` no iPhone do dono. Só é preciso um par de chaves
+  VAPID, gerado localmente, sem conta e sem custo. Nem Apple Developer Program: isso é exigência
+  de app nativo, não de Web Push.
+- **Biblioteca verificada antes de escrever a função**, num Deno em container: `npm:web-push@3.6.7`
+  cifra em `aes128gcm` e assina o JWT do VAPID dentro do Deno. Usamos só `generateRequestDetails`
+  + `fetch`, sem tocar na pilha HTTP do Node — que é o que costuma quebrar fora dele.
+- Tabela `InscricaoPush` (endpoint + as duas chaves do navegador). **Não reaproveita a `PushToken`**,
+  que nasceu para Expo, exige `auth.uid()` e está vazia. O `anon` só INSERE: sem SELECT, a lista de
+  aparelhos do dono não vaza para quem tem a `anon key`. O app descobre se já está inscrito pelo
+  próprio navegador, não pelo banco.
+- Edge Function `notifica-dono`: monta a mensagem lendo a linha REAL do `FechamentoFrentista` pelo
+  id — nada do que o cliente envia entra no texto, então ninguém forja um aviso falso. Inscrição que
+  responde 404/410 é desativada, em vez de dar erro em toda notificação futura.
+
 ### 📊 ETL aceita a planilha de 30/08 (janeiro a agosto)
 
 - **Aba de mês duplicada.** A planilha nova trouxe `MES, 08` (cópia velha, 16 dias) e
