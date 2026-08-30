@@ -285,6 +285,8 @@ const TelaFechamentoDiario: React.FC = () => {
                      onUpdateCampo={(tempId, campo, valor) => {
                         alterarCampoFrentista(tempId, campo as keyof SessaoFrentista, valor.toString());
                      }}
+                     postoId={postoAtivoId}
+                     dataSelecionada={selectedDate}
                   />
                ) : activeTab === 'receitas-despesas' ? (
                   <PainelReceitasDespesas />
