@@ -237,7 +237,11 @@ export function trocasDePreco(leituras: readonly LeituraPrecoDia[]): TrocaDePrec
  * véspera (limites: `data > régua` e `data < dataTroca`). A subtração em si é
  * de {@link resumoEstoque} — este módulo só recorta o período.
  *
- * @returns Litros, ou `null` se não houver régua anterior à troca.
+ * @returns Litros, ou `null` quando não há como apurar: sem régua anterior à
+ *          troca, OU corrente NEGATIVA (Issue #72). Tanque negativo não
+ *          existe; teórico < 0 significa corrente cega — no dado real, compras
+ *          da carga histórica carimbadas no fim do mês, invisíveis para troca
+ *          no meio dele. Devolver o negativo era expor "−5.784 L" ao dono.
  */
 export function estoqueNaVespera(
     combustivel: string,
@@ -270,7 +274,8 @@ export function estoqueNaVespera(
         litrosVendidos,
         estoqueMedido: null,
     }]);
-    return linha.estoqueTeorico;
+    // Corrente negativa = não apurável (#72) — mesma semântica de "sem régua".
+    return linha.estoqueTeorico < 0 ? null : linha.estoqueTeorico;
 }
 
 /** Dias corridos entre duas datas ISO locais, contando as DUAS pontas. */

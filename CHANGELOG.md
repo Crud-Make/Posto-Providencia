@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🛢️ Estoque teórico negativo vira "não apurável" (#72)
+
+- **Corrente negativa → `null`**, mesma semântica de "sem régua": tanque negativo não existe;
+  teórico < 0 é corrente cega, não medida. A Visão do Proprietário parava de exibir
+  "Tanque com −5.784 L" e valores de estoque negativos — agora marca "não apurável — sem
+  régua no período, ou corrente incoerente (#72)". O lucro NAS VENDAS segue apurado (não
+  depende de régua). Regra em `estoqueNaVespera` (`packages/utils`), cirúrgica — `resumoEstoque`
+  intocado (outros consumidores continuam vendo o teórico cru).
+- **Diagnóstico registrado na issue**: a causa real é dado — compras da carga histórica todas
+  carimbadas no fim do mês (invisíveis para troca no meio dele; março GC: 3.365 − ~9.150 =
+  −5.784 ✓) e réguas de 31/01 e 31/07 divergentes da referência local, exatamente os meses
+  que a auditoria da planilha de 30/08 marcou. Correção de dado espera a decisão pendente da
+  promoção do `docs/data`.
+
 ### 📈 Subida × descida de preço: efeito na margem e no valor do estoque (#70)
 
 - A seção "Impacto das trocas de preço" da `/proprietario` agora responde também o que cada
