@@ -12,6 +12,7 @@ import {
     Pie,
     Cell
 } from 'recharts';
+import { corDoProduto } from '@posto/utils';
 import { paraReais } from '../../../../utils/formatters';
 import type { DadosCombustivel, DadosPagamentoChart } from '../../services/calculosResumo';
 
@@ -55,7 +56,9 @@ export const ResumoGraficos: React.FC<ResumoGraficosProps> = ({ dadosCombustivel
                                 contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
                                 itemStyle={{ color: '#93C5FD' }}
                             />
-                            <Bar dataKey="litros" fill="#3b82f6" name="Litros" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="litros" fill="#3b82f6" name="Litros" radius={[4, 4, 0, 0]}>
+                                {dadosCombustivel.map((d) => <Cell key={d.nome} fill={corDoProduto(d.codigo).fundo} />)}
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -75,7 +78,9 @@ export const ResumoGraficos: React.FC<ResumoGraficosProps> = ({ dadosCombustivel
                                 contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
                                 itemStyle={{ color: '#6EE7B7' }}
                             />
-                            <Bar dataKey="valor" fill="#10b981" name="Valor" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="valor" fill="#10b981" name="Valor" radius={[4, 4, 0, 0]}>
+                                {dadosCombustivel.map((d) => <Cell key={d.nome} fill={corDoProduto(d.codigo).fundo} />)}
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>

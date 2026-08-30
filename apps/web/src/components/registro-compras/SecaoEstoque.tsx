@@ -1,6 +1,7 @@
 import React from 'react';
 import { DollarSign } from 'lucide-react';
 import { InputFinanceiro } from './InputFinanceiro';
+import { corDoProduto } from '@posto/utils';
 import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
 import { formatarParaBR, paraReais, analisarValor } from '../../utils/formatters';
@@ -49,10 +50,10 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
 
                      return (
                         <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
-                           <td className="px-4 py-5 font-medium text-slate-900 dark:text-white">
+                           <td className="px-4 py-5 font-medium text-slate-900 dark:text-white border-l-8" style={{ borderLeftColor: corDoProduto(c.codigo).fundo }}>
                               <div className="flex flex-col">
                                  <span className="text-base">{c.nome}</span>
-                                 <span className="text-xs text-slate-500 font-mono mt-1">{c.codigo}</span>
+                                 <span className="text-xs font-mono mt-1 px-1.5 py-0.5 rounded self-start" style={{ backgroundColor: corDoProduto(c.codigo).fundo, color: corDoProduto(c.codigo).texto }}>{c.codigo}</span>
                               </div>
                            </td>
                            <td className="px-4 py-5 text-right text-slate-500">
@@ -69,7 +70,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                            <td className="px-4 py-5 text-right text-gray-500">
                               {paraReais(estoqueHoje * mediaLt)}
                            </td>
-                           <td className="px-4 py-5 text-right text-green-600 font-bold bg-green-50 dark:bg-green-900/10">
+                           <td className={`px-4 py-5 text-right font-bold ${estoqueHoje * lucroLt < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/10' : 'text-green-600 bg-green-50 dark:bg-green-900/10'}`}>
                               {paraReais(estoqueHoje * lucroLt)}
                            </td>
                            <td className="px-3 py-5 min-w-[150px]">
@@ -82,7 +83,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                            </td>
                            <td className="px-4 py-5 text-right font-bold">
                               {percaSobra !== 0 ? (
-                                 <span className={`flex flex-col ${percaSobra > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                 <span className={`flex flex-col ${percaSobra > 0 ? 'text-green-600 bg-green-50 dark:bg-green-900/10 rounded px-2' : 'text-red-600 bg-red-50 dark:bg-red-900/10 rounded px-2'}`}>
                                     <span>{percaSobra > 0 ? '+' : ''}{formatarParaBR(percaSobra, 0)}</span>
                                     <span className="text-[10px] opacity-75 uppercase tracking-wider">
                                        {percaSobra > 0 ? 'SOBRA' : 'PERCA'}
@@ -109,7 +110,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                      <td className="px-4 py-3 text-right bg-gray-700">
                         {paraReais(totais.totalCustoEstoque)}
                      </td>
-                     <td className="px-4 py-3 text-right bg-green-800">
+                     <td className={`px-4 py-3 text-right ${totais.totalLucroEstoque < 0 ? 'bg-red-800' : 'bg-green-800'}`}>
                         {paraReais(totais.totalLucroEstoque)}
                      </td>
                      <td className="px-4 py-3 text-center">
@@ -119,7 +120,7 @@ export const SecaoEstoque: React.FC<Props> = ({ combustiveis, updateCombustivel,
                         {(() => {
                            const totalPercaSobra = totais.totalPercaSobra;
                            return totalPercaSobra !== 0 ? (
-                              <span className={totalPercaSobra > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                              <span className={totalPercaSobra > 0 ? 'text-green-400' : 'text-red-400'}>
                                  {totalPercaSobra > 0 ? '+' : ''}{formatarParaBR(totalPercaSobra, 0)}
                               </span>
                            ) : '-';

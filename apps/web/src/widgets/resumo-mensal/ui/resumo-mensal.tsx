@@ -1,4 +1,5 @@
 import React from 'react';
+import { corDeSinal } from '@posto/utils';
 import { Fuel, ShoppingCart, Gauge, AlertTriangle, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@posto/utils';
 import { useResumoMensal } from '../model/use-resumo-mensal';
@@ -205,9 +206,7 @@ export const ResumoMensal: React.FC<ResumoMensalProps> = ({ postoId, mesIso }) =
                   <td
                     className={`${tdNum} ${
                       b.apurado
-                        ? b.lucro >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-red-600 dark:text-red-400'
+                        ? corDeSinal(b.lucro).texto
                         : ''
                     }`}
                   >
@@ -432,9 +431,7 @@ export const ResumoMensal: React.FC<ResumoMensalProps> = ({ postoId, mesIso }) =
                       className={`${tdNum} ${
                         p.percaOuSobra === null
                           ? ''
-                          : p.percaOuSobra < 0
-                            ? 'text-red-600 dark:text-red-400 font-semibold'
-                            : 'text-emerald-600 dark:text-emerald-400'
+                          : `${corDeSinal(p.percaOuSobra).texto} font-semibold`
                       }`}
                     >
                       {p.percaOuSobra === null ? '—' : litros(p.percaOuSobra)}
@@ -451,8 +448,8 @@ export const ResumoMensal: React.FC<ResumoMensalProps> = ({ postoId, mesIso }) =
                   <td className={tdNum}>{litros(estoque.totais.estoqueTeorico)}</td>
                   <td
                     className={`${tdNum} ${
-                      estoque.totais.percaOuSobra !== null && estoque.totais.percaOuSobra < 0
-                        ? 'text-red-600 dark:text-red-400'
+                      estoque.totais.percaOuSobra !== null
+                        ? corDeSinal(estoque.totais.percaOuSobra).texto
                         : ''
                     }`}
                   >

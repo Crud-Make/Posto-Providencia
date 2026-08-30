@@ -75,10 +75,10 @@ const CellDiferenca: React.FC<{ sessao: SessaoFrentista; totalVendasPosto: numbe
   const colorClass = semEncerrante
     ? 'text-amber-400/70 font-normal italic'
     : bateu
-      ? 'text-emerald-400 font-bold'
+      ? 'text-green-400 font-bold'
       : diferenca > 0
         ? 'text-red-400 font-bold'
-        : 'text-amber-400 font-bold';
+        : 'text-green-400 font-bold';
 
   return (
     <td

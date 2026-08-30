@@ -1,4 +1,5 @@
 import React from 'react';
+import { corDoProduto } from '@posto/utils';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 
 interface FuelTankProps {
@@ -19,20 +20,9 @@ const FuelTank: React.FC<FuelTankProps> = ({
 }) => {
   const percentage = capacity > 0 ? Math.min(Math.max((currentVolume / capacity) * 100, 0), 100) : 0;
 
-  // Cores baseadas no produto ou status
-  const getColor = () => {
-    // Mapeamento simples de cores se vierem nomes
-    if (productColor) return productColor;
-    const lowerName = productName.toLowerCase();
-    if (lowerName.includes('gasolina') && lowerName.includes('aditivada')) return '#3B82F6'; // Blue (Aditivada Premium)
-    if (lowerName.includes('gasolina')) return '#F87171'; // Lighter Red (Comum)
-    if (lowerName.includes('etanol')) return '#10B981'; // Green
-    if (lowerName.includes('diesel') && lowerName.includes('s-10')) return '#F59E0B'; // Amber (S10)
-    if (lowerName.includes('diesel')) return '#D97706'; // Darker Amber (S500)
-    return '#6B7280'; // Gray default
-  };
-
-  const color = getColor();
+  // Cor do produto: vem de quem monta o card (a da planilha, pelo código).
+  // A heurística por trecho do nome saiu — era uma das quatro cópias no repo.
+  const color = productColor ?? corDoProduto(undefined).fundo;
 
   // Define status colors for borders/text based on fill level
   const isLow = percentage < 15;

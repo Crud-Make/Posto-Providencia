@@ -200,20 +200,12 @@ export const salesAnalysisService = {
         totalRevenue += item.valor;
         totalProfit += totalLucroProduto;
 
-        // Color classes based on fuel type
-        const colorClasses: Record<string, string> = {
-          'GC': 'bg-green-100 text-green-700',
-          'GA': 'bg-blue-100 text-blue-700',
-          'ET': 'bg-yellow-100 text-yellow-700',
-          'S10': 'bg-red-100 text-red-700',
-          'DIESEL': 'bg-amber-100 text-amber-700',
-        };
-
         return {
           id: String(item.combustivel.id),
           name: item.combustivel.nome,
           code: item.combustivel.codigo,
-          colorClass: colorClasses[item.combustivel.codigo] || 'bg-gray-100 text-gray-700',
+          // Cor do produto sai de corDoProduto(code) na tela, pela planilha; a classe local foi removida.
+          colorClass: '',
           bicos: `Bicos: ${Array.from(item.bicoIds).sort((a, b) => a - b).map(n => String(n).padStart(2, '0')).join(', ')}`,
           readings: {
             start: item.leituraInicial,

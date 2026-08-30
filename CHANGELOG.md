@@ -2,6 +2,50 @@
 
 ## [Não Lançado]
 
+### 🎨 Um padrão de cor para o sistema inteiro
+
+- **Cor do combustível é a da planilha, pelo código** (`corDoProduto` em `@posto/utils`):
+  Gasolina Comum vermelho, Aditivada azul, Etanol verde, Diesel S10 amarelo. Saem **seis mapas
+  concorrentes** — três com GC e S10 trocados (`aggregator.service`, `salesAnalysis.service`) e
+  quatro cópias de "se o nome contém gasolina" (que pintavam Aditivada de vermelho). `Combustivel.cor`
+  do banco deixa de ser lida; a `PALETA` por índice da Planilha do Mês e os `CORES_*` mortos de
+  `types/fechamento.ts` foram apagados. Cobre: fechamento de caixa (leituras, gestão de bicos,
+  gráficos), leituras diárias, dashboard, vendas, análise de custos, estoque, Planilha do Mês,
+  fechamento mensal e o PWA do dono (encerrante por foto — o `select` do `api-core` passou a trazer
+  `codigo`).
+- **Dinheiro com sinal: ganho verde, perda vermelha** (`corDeSinal`/`corDaDiferenca`). Corrige
+  três telas que contradiziam a convenção `diferença positiva = FALTA`: relatório diário (positivo
+  era azul), histórico do PWA do frentista (falta era azul com seta para cima) e o rodapé do
+  fechamento (sobra era âmbar). Sobra no PWA do frentista era laranja; lucro previsto do estoque e
+  card de lucro do dono eram verdes mesmo negativos.
+- **Não mexido, de propósito:** `useResumoCombustivel` chama de "Sobra de Caixa" a diferença
+  positiva de `totalSessoes − totalPagamentos` — precisa de decisão sobre o que essas duas somas
+  são antes de trocar rótulo ou cor.
+
+### 🛒 Registro de Compras — compra e custo explicados, sem o gráfico
+
+- **Saiu a seção "Visão do Período"** (`GraficosCompras.tsx`, dois gráficos Recharts). Não havia
+  estado só dela; removida sem código morto. O que ela explicava foi para dentro da tabela.
+- **"De onde vem o preço do litro" agora mora em "Compra e Custo"**, produto a produto: o grupo
+  *Custo do litro* mostra `Média LT` **+** `Despesa/L` **=** `Custo do litro`, e o grupo *Venda*
+  mostra o `Preço de bomba` e a `Sobra por litro` (verde) ou `abaixo do custo` (vermelho). É a
+  mesma fórmula de `useCalculosRegistro` (`calcValorParaVenda`/`calcLucroLt`), nada novo calculado
+  na view. Uma linha de texto acima da tabela resume a conta.
+- **Despesa do mês** no cabeçalho passa a mostrar também o rateio por litro (`= R$ x,xx/L`).
+- **Fornecedor padrão** deixa de ser "o primeiro da lista" (ordem alfabética) e passa a ser o
+  último com que o posto finalizou uma compra, lembrado no `localStorage` por posto; cai para o
+  primeiro se nunca houve compra ou se o lembrado saiu do cadastro.
+- **Cores tradicionais dos bicos da planilha** (`cores-planilha.ts`, lidas do preenchimento do
+  `.xlsx`): Gasolina Comum vermelho, Aditivada azul, Etanol verde, Diesel amarelo — borda e
+  etiqueta do produto nas três tabelas. `Combustivel.cor` no banco tem outra paleta; não usada.
+- **Lucro por bico mostra a conta**: `lucro/L × litros`, e o lucro/L mostra `preço − custo do
+  litro`. Sem compra dentro do período aparece "sem compra no mês" em vez de "-" — é o que
+  acontece no mês corrente quando a compra está datada depois de hoje.
+- **Cores de lucro e prejuízo unificadas** na tela inteira: lucro/sobra = `green-*`, prejuízo/perca
+  = `red-*`. Antes, lucro aparecia em âmbar na tabela de vendas e em esmeralda na de estoque —
+  esmeralda é a cor de identidade de *venda* nesta tela, não de lucro, e âmbar é alerta. Lucro
+  LT/Bico e o total ficam vermelhos quando negativos.
+
 ### 🏷️ A marca do posto no topo da barra lateral
 
 - O quadrado azul com a bomba deu lugar à `marca-posto@2x.png` (a mesma do login e da aba),

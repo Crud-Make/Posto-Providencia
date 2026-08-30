@@ -202,7 +202,7 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
         async getBicos(postoId: number) {
             const { data, error } = await supabase
                 .from('Bico')
-                .select('id, numero, combustivel_id, combustivel:Combustivel(nome, preco_venda)')
+                .select('id, numero, combustivel_id, combustivel:Combustivel(nome, codigo, preco_venda)')
                 .eq('posto_id', postoId)
                 .eq('ativo', true)
                 .order('numero');

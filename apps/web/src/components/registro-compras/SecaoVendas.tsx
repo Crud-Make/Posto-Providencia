@@ -2,6 +2,7 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { CombustivelHibrido, VendaBicoMes } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
+import { corDoProduto } from '@posto/utils';
 import { formatarParaBR, paraReais } from '../../utils/formatters';
 
 /**
@@ -75,8 +76,8 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
                      <th className="px-4 py-4 text-right">Litros</th>
                      <th className="px-4 py-4 text-right text-emerald-600">Preço do Mês R$</th>
                      <th className="px-4 py-4 text-right text-blue-600">Valor p/ Bico</th>
-                     <th className="px-4 py-4 text-right text-amber-600">Lucro LT R$</th>
-                     <th className="px-4 py-4 text-right text-amber-600">Lucro Bico R$</th>
+                     <th className="px-4 py-4 text-right text-green-600">Lucro LT R$</th>
+                     <th className="px-4 py-4 text-right text-green-600">Lucro Bico R$</th>
                      <th className="px-4 py-4 text-right">Margem %</th>
                      <th className="px-4 py-4 text-right">Prod. Vendido</th>
                      <th className="px-4 py-4 text-right">Produto %</th>
@@ -101,10 +102,10 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
 
                      return (
                         <tr key={b.bicoId} className="hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors">
-                           <td className="px-4 py-4 font-medium text-slate-900 dark:text-white">
+                           <td className="px-4 py-4 font-medium text-slate-900 dark:text-white border-l-8" style={{ borderLeftColor: corDoProduto(produto?.codigo).fundo }}>
                               <div className="flex flex-col">
                                  <span className="text-base">Bico {String(b.numero).padStart(2, '0')}</span>
-                                 <span className="text-xs text-slate-500 mt-0.5">{b.produtoNome}</span>
+                                 <span className="text-xs mt-0.5 px-1.5 py-0.5 rounded self-start" style={{ backgroundColor: corDoProduto(produto?.codigo).fundo, color: corDoProduto(produto?.codigo).texto }}>{b.produtoNome}</span>
                               </div>
                            </td>
                            <td className="px-4 py-4 text-right font-mono text-slate-600 dark:text-slate-300">
@@ -122,13 +123,31 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
                            <td className="px-4 py-4 text-right font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/10">
                               {b.bruto > 0 ? paraReais(b.bruto) : '-'}
                            </td>
-                           <td className="px-4 py-4 text-right text-amber-600">
-                              {lucroLt !== 0 ? paraReais(lucroLt) : '-'}
+                           <td className={`px-4 py-4 text-right ${lucroLt < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {lucroLt !== 0 ? (
+                                 <span className="flex flex-col items-end">
+                                    <span>{paraReais(lucroLt)}</span>
+                                    <span className="text-[10px] text-slate-500 whitespace-nowrap" title="Preço do mês − (custo médio da compra + despesa rateada por litro)">
+                                       {formatarParaBR(preco, 2)} − {formatarParaBR(valorParaVenda, 2)}
+                                    </span>
+                                 </span>
+                              ) : (
+                                 <span className="text-[10px] text-amber-600 whitespace-nowrap" title="Sem compra dentro do período, o custo do litro é desconhecido — não há como apurar lucro">
+                                    {preco > 0 ? 'sem compra no mês' : '-'}
+                                 </span>
+                              )}
                            </td>
-                           <td className="px-4 py-4 text-right font-bold text-amber-700 bg-amber-50 dark:bg-amber-900/10">
-                              {lucroBico !== 0 ? paraReais(lucroBico) : '-'}
+                           <td className={`px-4 py-4 text-right font-bold ${lucroBico < 0 ? 'text-red-700 bg-red-50 dark:bg-red-900/10' : 'text-green-700 bg-green-50 dark:bg-green-900/10'}`}>
+                              {lucroBico !== 0 ? (
+                                 <span className="flex flex-col items-end">
+                                    <span>{paraReais(lucroBico)}</span>
+                                    <span className="text-[10px] font-normal text-slate-500 whitespace-nowrap" title="Lucro por litro × litros vendidos no bico">
+                                       {formatarParaBR(lucroLt, 2)}/L × {formatarParaBR(b.litros, 0)} L
+                                    </span>
+                                 </span>
+                              ) : '-'}
                            </td>
-                           <td className={`px-4 py-4 text-right ${margemPct < 0 ? 'text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                           <td className={`px-4 py-4 text-right ${margemPct < 0 ? 'text-red-600 font-semibold' : 'text-slate-600 dark:text-slate-300'}`}>
                               {margemPct !== 0 ? `${formatarParaBR(margemPct, 2)}%` : '-'}
                            </td>
                            <td className="px-4 py-4 text-right">
@@ -152,7 +171,7 @@ export const SecaoVendas: React.FC<Props> = ({ combustiveis, vendasBicos, calcul
                      </td>
                      <td className="px-4 py-3 text-right bg-blue-900">{paraReais(totais.totalValorBico)}</td>
                      <td className="px-4 py-3 text-right text-slate-400">-</td>
-                     <td className="px-4 py-3 text-right bg-amber-700">{paraReais(totais.totalLucroBico)}</td>
+                     <td className={`px-4 py-3 text-right ${totais.totalLucroBico < 0 ? 'bg-red-800' : 'bg-green-800'}`}>{paraReais(totais.totalLucroBico)}</td>
                      <td className="px-4 py-3 text-right bg-slate-700">{formatarParaBR(totais.margemMedia, 2)}%</td>
                      <td className="px-4 py-3 text-right">{formatarParaBR(totais.totalLitros, 0)}</td>
                      <td className="px-4 py-3 text-right">100,00%</td>

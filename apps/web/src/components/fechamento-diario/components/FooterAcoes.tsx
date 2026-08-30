@@ -43,7 +43,7 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                             porque o cálculo vinha invertido; corrigido o sinal
                             em 16/08/2026, a cor tinha de virar junto — senão
                             falta apareceria em verde. */}
-                        <p className={`text-base font-bold font-mono ${diferenca > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        <p className={`text-base font-bold font-mono ${diferenca > 0 ? 'text-red-400' : 'text-green-400'}`}>
                             {totalFrentistas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
                     </div>
@@ -74,10 +74,10 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
 
                         const borda = semEncerrante
                             ? (diaVazio ? 'border-l-slate-600' : 'border-l-amber-500')
-                            : bateu ? 'border-l-emerald-500' : 'border-l-orange-500/50';
+                            : bateu ? 'border-l-green-500' : diferenca > 0 ? 'border-l-red-500/60' : 'border-l-green-500/60';
                         const cor = semEncerrante
                             ? (diaVazio ? 'text-slate-500' : 'text-amber-400')
-                            : bateu ? 'text-emerald-500' : diferenca > 0 ? 'text-red-500' : 'text-amber-500';
+                            : bateu ? 'text-green-500' : diferenca > 0 ? 'text-red-500' : 'text-green-500';
                         const texto = diaVazio
                             ? 'dia sem lançamento'
                             : semEncerrante

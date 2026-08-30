@@ -225,7 +225,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     if (dif === 0) {
       return <p className="text-green-400 font-medium flex items-center gap-1"><Check size={16} /> Tudo certo!</p>;
     } else if (isSobra(dif)) {
-      return <p className="text-orange-400 font-medium flex items-center gap-1"><AlertCircle size={16} /> ⬆️ Sobra de Caixa (R$ {formattedDiff})</p>;
+      return <p className="text-green-400 font-medium flex items-center gap-1"><AlertCircle size={16} /> ⬆️ Sobra de Caixa (R$ {formattedDiff})</p>;
     }
     return <p className="text-red-400 font-medium flex items-center gap-1"><AlertCircle size={16} /> ⬇️ Quebra de Caixa (R$ {formattedDiff})</p>;
   };
