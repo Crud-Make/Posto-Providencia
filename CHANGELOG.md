@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### 🚀 `scripts/deploy-vercel.sh` — um caminho só para publicar
+
+- `scripts/deploy-vercel.sh <dono|frentista|painel> [--prod] [--dry-run]`. Sai sempre da raiz do
+  repositório, porque os projetos têm Root Directory dentro do monorepo (`apps/pwa-dono`) e deploy
+  de dentro da pasta do app falha com "Root Directory does not exist".
+- Três guardas antes de subir: **(1)** recusa se `docs/`, `.env*` ou `.claude/` fossem entrar no
+  upload — a guarda foi testada com o `.vercelignore` antigo e disparou, listando os 6 arquivos;
+  **(2)** exige a suíte verde; **(3)** `--prod` pede confirmação digitada, porque produção é o app
+  que o dono já usa no celular.
+- Os ids de projeto vão por variável de ambiente, então nenhum `.vercel/` é escrito na raiz.
+- Preview da Vercel fica atrás do SSO: abre no navegador logado, **não** num celular deslogado. O
+  script avisa isso ao terminar, porque é a pegadinha que some quando se esquece.
+
 ### 🔒 `.vercelignore` deixava `docs/data/` e o `.env.local` subirem para a Vercel
 
 - O `.vercelignore` **substitui** o `.gitignore` no upload — a Vercel não volta a consultar o git
