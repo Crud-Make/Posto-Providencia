@@ -39,6 +39,8 @@ export const CentroDoMesConectado: React.FC<CentroDoMesConectadoProps> = ({
   return (
     <CentroDoMes
       totais={dados.venda.totais}
+      produtos={dados.venda.produtos}
+      codigoDoProduto={(produto) => dados.referencias.find((r) => r.produto === produto)?.codigo ?? null}
       despesaDoMes={dados.despesaDoMes}
       temDespesa={dados.venda.temDespesa}
       apurado={dados.venda.apurado}
