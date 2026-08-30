@@ -25,7 +25,10 @@ import sqlite3
 import sys
 from collections import defaultdict
 
-BANCO = 'docs/data/posto_jorro_2026.sqlite'
+import os as _os
+# Base de referencia. Sobreponivel por POSTO_BANCO_REFERENCIA para ler uma
+# extracao ainda nao promovida; a pasta canonica so muda por decisao do dono.
+BANCO = _os.environ.get('POSTO_BANCO_REFERENCIA', 'docs/data/posto_jorro_2026.sqlite')
 ANO = 2026
 
 # Rótulo da planilha -> (bico_id, combustivel_id) em produção.
