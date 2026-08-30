@@ -35,7 +35,15 @@ import sqlite3
 import sys
 from collections import defaultdict
 
-BANCO = 'docs/data/posto_jorro_2026.sqlite'
+import os as _os
+# Base de referencia. Sobreponivel por POSTO_BANCO_REFERENCIA para ler uma
+# extracao ainda nao promovida; a pasta canonica so muda por decisao do dono.
+BANCO = _os.environ.get('POSTO_BANCO_REFERENCIA', 'docs/data/posto_jorro_2026.sqlite')
+
+# Rotulos da tabela de frentistas da planilha que NAO sao pessoas. Ficam aqui em
+# vez de virar cadastro falso: um frentista inventado apareceria no ranking e na
+# conciliacao como se fosse gente. O valor pulado e sempre impresso.
+ROTULOS_NAO_FRENTISTA = {'Posto - Jorro'}
 ANO = 2026
 USUARIO_ID, TURNO_ID, POSTO_ID = 1, 1, 1
 
@@ -92,8 +100,14 @@ def carregar(mes):
 
     # (dia, frentista) -> {coluna: valor}
     grade = defaultdict(lambda: {c: 0.0 for c in FORMAS.values()})
+    pulado_por_rotulo = defaultdict(float)
     for dia, frentista, forma, valor in linhas:
         if dia > dias_reais:
+            continue
+        if frentista in ROTULOS_NAO_FRENTISTA:
+            # Coluna da planilha que nao e pessoa (venda do proprio posto).
+            # Nao vira Frentista falso; o valor e reportado, nunca some calado.
+            pulado_por_rotulo[frentista] += valor or 0.0
             continue
         if frentista not in FRENTISTAS:
             erro(f'frentista fora do cadastro: {frentista!r} (dia {dia})')
@@ -101,6 +115,9 @@ def carregar(mes):
             erro(f'forma de pagamento desconhecida: {forma!r} (dia {dia})')
         if valor:
             grade[(dia, frentista)][FORMAS[forma]] += valor
+
+    for _rotulo, _v in sorted(pulado_por_rotulo.items()):
+        print(f'  PULADO (nao e frentista): {_rotulo!r} = R$ {_v:,.2f}', file=sys.stderr)
 
     # Encerrante atribuído a cada frentista pela planilha (para a diferença
     # individual). Pode ser NULL quando o frentista não trabalhou no dia.
@@ -197,6 +214,10 @@ def carregar(mes):
         'SELECT ROUND(SUM(valor),2) FROM venda_frentista_diaria WHERE ano=? AND mes=? AND dia<=?',
         (ANO, mes, dias_reais)).fetchone()[0]
     total_carga = round(sum(f['total_recebido'] for f in fechamentos), 2)
+    # O que foi pulado por nao ser frentista continua sendo dinheiro da
+    # referencia: entra como 'fora', nunca vira buraco na conciliacao.
+    valor_fora = round(valor_fora + sum(pulado_por_rotulo.values()), 2)
+
     if abs((total_carga + valor_fora) - total_ref) > 0.01:
         erro(f'conferido não fecha: entram {total_carga} + fora {valor_fora} '
              f'!= referência {total_ref}')
@@ -262,7 +283,7 @@ def sql(fechamentos, frentistas_linhas):
         f'{",".join(colunas)},valor_cartao,valor_conferido,encerrante,'
         f'diferenca_calculada,posto_id)\n'
         f'SELECT f.id,v.frentista_id,{",".join("v." + c for c in colunas)},'
-        f'v.valor_cartao,v.valor_conferido,v.encerrante,v.diferenca_calculada,{POSTO_ID}\n'
+        f'v.valor_cartao,v.valor_conferido,v.encerrante::numeric,v.diferenca_calculada::numeric,{POSTO_ID}\n'
         f'FROM (VALUES\n  ' + ',\n  '.join(linhas_filho) + '\n'
         f') AS v(data,frentista_id,{",".join(colunas)},valor_cartao,valor_conferido,'
         f'encerrante,diferenca_calculada)\n'

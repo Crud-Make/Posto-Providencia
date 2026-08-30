@@ -7,6 +7,7 @@
 // [27/01 10:35] Adicionado fechamentoService para buscar dados reais de lucro
 // [01/02 11:25] Integrado receitas extras e categorias dinâmicas; Tipagem estrita aplicada sem uso de 'any'.
 import { useState, useEffect, useCallback } from 'react';
+import { despesasDoPeriodo } from './calculos-financeiro';
 import { FiltrosFinanceiros } from './useFiltrosFinanceiros';
 import {
   leituraService,
@@ -246,13 +247,12 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
       const receitasOperacionais = dadosLucro?.receita_bruta || totalVendas;
       const receitasTotal = receitasOperacionais + totalReceitasExtras;
 
-      // DESPESAS: Usar dados reais dos fechamentos
-      // custo_combustiveis = custo REAL dos litros vendidos (custo médio ponderado)
-      // taxas_pagamento = taxas de cartão calculadas
-      // despesas operacionais = extras cadastradas (energia, manutenção, etc)
-      const despesasTotal = dadosLucro
-        ? (dadosLucro.custo_combustiveis + dadosLucro.taxas_pagamento + dadosLucro.faltas + totalDespesasOps)
-        : (totalDespesasOps + totalCompras);
+      // DESPESAS: custo real dos litros vendidos + faltas + despesas lançadas.
+      // [onda 4.2] `taxas_pagamento` SAIU da soma: taxa de cartão é despesa do
+      // mês (dono, 26/08) — lançada, ela já está em `totalDespesasOps`, e
+      // somar o carimbo junto descontava a taxa duas vezes. Fórmula em
+      // ./calculos-financeiro, coberta por calculos-financeiro.test.ts.
+      const despesasTotal = despesasDoPeriodo(dadosLucro, totalDespesasOps, totalCompras);
 
       // LUCRO: Usar cálculo REAL do sistema
       // lucro_bruto = vendas - custo_combustiveis_vendidos

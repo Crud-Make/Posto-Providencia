@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../../contexts/usePosto';
 import { usePeriodo } from '../../../../contexts/usePeriodo';
-import { leituraService, estoqueService } from '../../../../services/api';
+import { leituraService, estoqueService, despesaService } from '../../../../services/api';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
 import { isSuccess } from '../../../../types/ui/response-types';
-import { corDoProduto, paraIsoLocal } from '@posto/utils';
+import { corDoProduto, paraIsoLocal, serieVendaMensal } from '@posto/utils';
+import { lucroEstimadoDashboard } from './calculos-dashboard-vendas';
 
 export const useDashboardVendas = () => {
   const { postoAtivoId } = usePosto();
@@ -33,19 +34,21 @@ export const useDashboardVendas = () => {
       setLoading(true);
       setError(null);
 
-      // Get all dates for the selected month
+      // Janela de 6 meses terminando no mês selecionado: uma busca só serve o
+      // resumo do mês e o gráfico de evolução — toda barra vem de Leitura real.
       const [year, month] = selectedMonth.split('-').map(Number);
-      const startDate = new Date(year, month - 1, 1);
+      const startJanela = new Date(year, month - 6, 1);
       const endDate = new Date(year, month, 0);
 
-      // Fetch sales summary for the month
       const resLeituras = await leituraService.getByDateRange(
-        paraIsoLocal(startDate),
+        paraIsoLocal(startJanela),
         paraIsoLocal(endDate),
         postoAtivoId
       );
 
-      const allLeituras = isSuccess(resLeituras) ? resLeituras.data : [];
+      const leiturasJanela = isSuccess(resLeituras) ? resLeituras.data : [];
+      // `data` é string ISO — recortar, nunca converter para Date (UTC escorrega um dia).
+      const allLeituras = leiturasJanela.filter(l => l.data.slice(0, 7) === selectedMonth);
 
       // Calculate totals
       const totalLitros = allLeituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
@@ -82,42 +85,48 @@ export const useDashboardVendas = () => {
       }));
       setProductMix(mixData);
 
-      // Calculate estimated profit (using a simple margin estimate)
-      // In a real app, this would come from cost data
-      const resEstoque = await estoqueService.getAll(postoAtivoId);
+      // Lucro estimado canônico (./calculos-dashboard-vendas): receita − litros ×
+      // (custo médio + despesa/L do mês). [onda 3, grupo B] Antes a despesa
+      // operacional ficava fora e o card inflava o lucro exatamente na despesa
+      // do mês (R$ 195.230,40 nos 7 meses reais) — travado no golden ao lado.
+      const [resEstoque, resDespesas] = await Promise.all([
+        estoqueService.getAll(postoAtivoId),
+        despesaService.getByMonth(year, month, postoAtivoId),
+      ]);
       const estoquesData = isSuccess(resEstoque) ? resEstoque.data : [];
+      const despesaDoMes = (isSuccess(resDespesas) ? resDespesas.data : []).reduce(
+        (acc, d) => acc + Number(d.valor || 0),
+        0
+      );
 
-      let totalCost = 0;
-      Object.values(byCombustivel).forEach(item => {
-        const estoque = estoquesData.find(e => e.combustivel_id === item.combustivel.id);
-        if (estoque) {
-          totalCost += item.litros * estoque.custo_medio;
-        }
-      });
-
-      const profit = totalVendas - totalCost;
+      const { profit, margin } = lucroEstimadoDashboard(
+        Object.values(byCombustivel).map(item => {
+          const estoque = estoquesData.find(e => e.combustivel_id === item.combustivel.id);
+          return {
+            litros: item.litros,
+            valor: item.valor,
+            custoMedio: estoque ? estoque.custo_medio : null,
+          };
+        }),
+        despesaDoMes
+      );
       setEstimatedProfit(profit);
-
-      const margin = totalVendas > 0 ? (profit / totalVendas) * 100 : 0;
       setAverageMargin(margin);
 
-      // Generate monthly evolution (last 6 months)
-      const evolutionData: MonthlyData[] = [];
+      // Evolução mensal REAL (últimos 6 meses): antes os 5 meses passados eram
+      // preenchidos com Math.random() e o gráfico mudava a cada render. Agora
+      // mês sem venda lançada aparece como 0 — gráfico vazio é honesto.
       const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(year, month - 1 - i, 1);
-        const monthStr = monthNames[d.getMonth()];
-        const isCurrent = i === 0;
-
-        // For current month, use actual data; for past months, we'd need historical data
-        // Simplified: just use current month data as sample
-        evolutionData.push({
-          month: monthStr,
-          volume: isCurrent ? totalLitros : Math.floor(totalLitros * (0.8 + Math.random() * 0.4)),
-          isCurrent
-        });
-      }
+      const serieMensal = serieVendaMensal(
+        leiturasJanela.map(l => ({ mes: l.data.slice(0, 7), litros: l.litros_vendidos || 0 })),
+        selectedMonth,
+        6
+      );
+      const evolutionData: MonthlyData[] = serieMensal.map((ponto, idx) => ({
+        month: monthNames[Number(ponto.mes.slice(5)) - 1],
+        volume: ponto.litros,
+        isCurrent: idx === serieMensal.length - 1,
+      }));
       setMonthlyEvolution(evolutionData);
 
     } catch (err) {

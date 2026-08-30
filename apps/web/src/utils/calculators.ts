@@ -10,7 +10,16 @@
  */
 
 import type { BicoComDetalhes } from '../types/fechamento';
+import { litrosVendidos, valorDaLeitura } from '@posto/utils';
 import { analisarValor, formatarParaBR, paraReais } from './formatters';
+
+// [onda 3, 3.8] A ARITMÉTICA do encerrante (fechamento − inicial, litros ×
+// preço) delega a `@posto/utils/leitura` (`litrosVendidos`/`valorDaLeitura`),
+// que é a fonte única da fórmula, coberta pelo golden das 1.188 leituras reais.
+// O que fica aqui é adaptação de tela: parse BR, regra do "-" e agrupamento
+// por combustível sobre tipos de UI (`BicoComDetalhes`). O módulo NÃO subiu
+// para packages/utils porque arrastaria esses tipos de UI — e o importador
+// único (`useFechamento`) fica intocado, fora da zona do revert 0f201ef.
 
 /**
  * Resultado de um cálculo com valor numérico e exibição formatada
@@ -49,12 +58,14 @@ export const calcularLitros = (
   const inicial = analisarValor(leituraInicial || '');
   const fechamento = analisarValor(leituraFechamento || '');
 
-  // REGRA DA PLANILHA: Se fechamento ≤ inicial → mostra "-"
-  if (fechamento <= inicial || fechamento === 0) {
+  // Aritmética canônica (piso em zero: bomba não anda para trás).
+  const litros = litrosVendidos({ inicial, fechamento });
+
+  // REGRA DA PLANILHA: Se fechamento ≤ inicial (ou zerado) → mostra "-"
+  if (litros === 0 || fechamento === 0) {
     return { valor: 0, exibicao: '-' };
   }
 
-  const litros = fechamento - inicial;
   return {
     valor: litros,
     exibicao: formatarParaBR(litros, 3)
@@ -88,7 +99,8 @@ export const calcularVenda = (
     return { valor: 0, exibicao: '-' };
   }
 
-  const venda = litros * precoUnitario;
+  // Aritmética canônica: litros × preço, via @posto/utils/leitura.
+  const venda = valorDaLeitura({ inicial: 0, fechamento: litros }, precoUnitario);
   return {
     valor: venda,
     exibicao: paraReais(venda)

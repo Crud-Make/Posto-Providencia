@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { precoMedioPonderadoProduto } from './calculos-estoque-produto';
 import type { InsertTables, UpdateTables, Produto, MovimentacaoEstoque } from '../types/database/index';
 
 export const stockService = {
@@ -83,16 +84,14 @@ export const stockService = {
             let newCost = product.preco_custo;
 
             if (movement.tipo === 'entrada') {
-                // Cálculo do Preço Médio Ponderado
-                if (movement.valor_unitario !== undefined && movement.valor_unitario > 0) {
-                    const totalValorAtual = product.estoque_atual * product.preco_custo;
-                    const totalValorEntrada = movement.quantidade * movement.valor_unitario;
-                    const stockFinal = product.estoque_atual + movement.quantidade;
-
-                    if (stockFinal > 0) {
-                        newCost = (totalValorAtual + totalValorEntrada) / stockFinal;
-                    }
-                }
+                // Preço médio ponderado da loja — fórmula em
+                // ./calculos-estoque-produto, congelada por teste (onda 2.2).
+                newCost = precoMedioPonderadoProduto(
+                    product.estoque_atual,
+                    product.preco_custo,
+                    movement.quantidade,
+                    movement.valor_unitario
+                );
                 newStock += movement.quantidade;
             } else if (movement.tipo === 'saida') {
                 newStock -= movement.quantidade;

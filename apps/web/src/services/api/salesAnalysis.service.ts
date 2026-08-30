@@ -1,4 +1,6 @@
 import { supabase } from '../supabase';
+import { custoMedioCompra, type CompraDoProduto } from '@posto/utils';
+import { compraService } from './compra.service';
 import { despesaService } from './despesa.service';
 import { estoqueService } from './estoque.service';
 import {
@@ -6,6 +8,7 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
+import { despesaPorLitroVendido, linhaLucroProduto } from './calculos-analise-vendas';
 
 export interface SalesAnalysisData {
   products: {
@@ -93,15 +96,38 @@ export const salesAnalysisService = {
 
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
 
-      // Fetch stock data for cost info
-      const estoquesResponse = await estoqueService.getAll(postoId);
+      // [onda 3, grupo B] Custo por litro: a COMPRA DO PRÓPRIO MÊS
+      // (`custoMedioCompra`, canônica da planilha F16 = E16/D16), não mais o
+      // carimbo `Estoque.custo_medio` (média ponderada com estoque anterior),
+      // que deslocava o lucro do mês em até R$ 2.582 — medido no golden
+      // calculos-analise-vendas. O carimbo fica só como FALLBACK de mês sem
+      // compra lançada (mesma política da RPC de custo histórico).
+      const [estoquesResponse, comprasResponse] = await Promise.all([
+        estoqueService.getAll(postoId),
+        compraService.getByDateRange(startDate, endDate, postoId),
+      ]);
       const estoques = estoquesResponse.success ? estoquesResponse.data : [];
-      const custoMedioPorCombustivel: Record<number, number> = {};
+      const custoCarimboPorCombustivel: Record<number, number> = {};
       estoques.forEach(e => {
         if (e.combustivel) {
-          custoMedioPorCombustivel[e.combustivel.id] = e.custo_medio || 0;
+          custoCarimboPorCombustivel[e.combustivel.id] = e.custo_medio || 0;
         }
       });
+
+      const comprasDoMes: Record<number, CompraDoProduto[]> = {};
+      (comprasResponse.success ? comprasResponse.data : []).forEach(c => {
+        if (!c.combustivel_id) return;
+        (comprasDoMes[c.combustivel_id] ??= []).push({
+          litros: Number(c.quantidade_litros) || 0,
+          valorTotal: Number(c.valor_total) || 0,
+        });
+      });
+
+      /** Custo do mês por combustível; carimbo (ou 0) quando o mês não tem compra. */
+      const custoDoMes = (combustivelId: number): number =>
+        custoMedioCompra(comprasDoMes[combustivelId] ?? []) ??
+        custoCarimboPorCombustivel[combustivelId] ??
+        0;
 
       // 2. Aggregate by combustivel & Calculate Total Sales Volume
       let totalSalesVolume = 0;
@@ -132,7 +158,7 @@ export const salesAnalysisService = {
 
       // 3. Calculate Expense Per Liter
       // Se não houver vendas, expensePerLiter seria Infinito, então tratamos como 0
-      const despesaPorLitro = totalSalesVolume > 0 ? totalDespesas / totalSalesVolume : 0;
+      const despesaPorLitro = despesaPorLitroVendido(totalDespesas, totalSalesVolume);
 
       const porCombustivel: Record<string, {
         combustivel: NonNullable<LeituraComBico['bico']>['combustivel'];
@@ -149,7 +175,7 @@ export const salesAnalysisService = {
 
         const codigo = l.bico.combustivel.codigo;
         const combId = l.bico.combustivel.id;
-        const custoMedio = custoMedioPorCombustivel[combId] || 0;
+        const custoMedio = custoDoMes(combId);
         const litrosVendidos = l.litros_vendidos || 0;
         const valorVenda = l.valor_total || 0;
 
@@ -177,24 +203,16 @@ export const salesAnalysisService = {
       let totalProfit = 0;
 
       const products = Object.values(porCombustivel).map(item => {
-        // EXCEL LOGIC IMPLEMENTATION:
-        // 1. Preço Praticado (Actual Price)
-        const precoPraticado = item.litros > 0 ? item.valor / item.litros : (item.combustivel.preco_venda || 0);
-
-        // 2. Valor para Venda Sugerido (Suggested Price) = Custo Médio + Despesa/Litro
-        const suggestedPrice = item.custoMedio + despesaPorLitro;
-
-        // 3. Lucro por Litro = Preço Praticado - Valor Sugerido
-        const profitPerLiter = precoPraticado - suggestedPrice;
-
-        // 4. Lucro Total = Lucro por Litro * Volume
-        const totalLucroProduto = profitPerLiter * item.litros;
-
-        // 5. Margem = Lucro por Litro / Preço Praticado
-        const margin = precoPraticado > 0 ? (profitPerLiter / precoPraticado) * 100 : 0;
-
-        // Custo Total Visualização (Custo Médio * Volume)
-        const cmv = item.litros * item.custoMedio;
+        // "EXCEL LOGIC" legada — fórmula em ./calculos-analise-vendas, exercitada
+        // pelo golden ao lado contra a canônica de @posto/utils (onda 2.2).
+        const { precoPraticado, suggestedPrice, lucroTotal: totalLucroProduto, margin, cmv } =
+          linhaLucroProduto({
+            litros: item.litros,
+            valor: item.valor,
+            custoMedio: item.custoMedio,
+            despesaPorLitro,
+            precoVendaCadastro: item.combustivel.preco_venda || 0,
+          });
 
         totalVolume += item.litros;
         totalRevenue += item.valor;

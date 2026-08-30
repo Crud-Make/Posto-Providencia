@@ -4,6 +4,7 @@ import { usePosto } from '../../../contexts/usePosto';
 import { usePeriodo } from '../../../contexts/usePeriodo';
 import { ProfitabilityItem, Margins } from '../types';
 import { paraMesLocal, deIsoLocal } from '@posto/utils';
+import { calculatePrice, calculateProfit } from './calculos-analise-custos';
 
 export const useAnaliseCustos = () => {
     const { postoAtivoId } = usePosto();
@@ -82,15 +83,8 @@ export const useAnaliseCustos = () => {
         alert("Funcionalidade de atualização de preços em massa está sendo integrada com o serviço de combustível.");
     };
 
-    const calculatePrice = (cost: number, marginPercent: number) => {
-        if (marginPercent >= 100) return cost * 10;
-        return cost / (1 - (marginPercent / 100));
-    };
-
-    const calculateProfit = (suggestedPrice: number, costTotalL: number, volume: number) => {
-        return (suggestedPrice - costTotalL) * volume;
-    };
-
+    // Modelo de markup em ./calculos-analise-custos, exercitado pelo golden
+    // ao lado contra a canônica (onda 2.2).
     return {
         loading,
         data,

@@ -4,4 +4,3 @@
  */
 
 export * from './tables/operacoes';
-export * from './enums';

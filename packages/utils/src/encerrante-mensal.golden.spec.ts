@@ -182,10 +182,10 @@ test('nenhum mês termina num dia sem fechamento', () => {
         const c = consolidadoDoMes(mes);
         for (const b of c.bicos) {
             const linha = db
-                .query<LinhaDiaria, [number, number]>(
+                .query<LinhaDiaria, [number, number, number]>(
                     "SELECT * FROM encerrante_diario WHERE mes = ? AND dia = ? AND bico LIKE '%Bico ' || ? || '%'"
                 )
-                .all(mes, b.ultimoDiaFechado as number, Number(b.bico) as unknown as number);
+                .all(mes, b.ultimoDiaFechado as number, Number(b.bico));
             for (const l of linha) expect(l.fechamento).not.toBeNull();
         }
     }

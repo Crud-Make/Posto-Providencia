@@ -2,6 +2,263 @@
 
 ## [Não Lançado]
 
+### 🗃️ Carga histórica: três defeitos achados ao importar a planilha de 30/08
+
+- **`encerrante` nulo virava erro de tipo.** A partir de abril a planilha deixou de registrar o
+  encerrante por frentista. Com a coluna inteira nula, o Postgres infere `text` para o `VALUES` e
+  recusa gravar em campo `numeric` — abril, maio e junho voltavam `HTTP 400`. Conversão explícita
+  no `SELECT`, que vale para nulo e para número. Março passava só porque ainda tinha valores.
+- **Base de referência agora é sobreponível** por `POSTO_BANCO_REFERENCIA`. Os cinco
+  `carga-historico-*` liam de um caminho fixo em `docs/data/`, que só muda por decisão do dono
+  (§6) — o que impedia carregar a partir de uma extração recém-gerada e ainda não promovida. Sem
+  a variável, o comportamento é idêntico ao de antes, e nada aqui escreve na pasta canônica.
+- **Rótulo que não é frentista deixou de travar a carga.** `'Posto - Jorro'` é uma coluna da
+  tabela de frentistas da planilha, não uma pessoa (julho R$ 162,99, agosto R$ 29,11). As duas
+  saídas óbvias eram ruins: cadastrar um frentista falso o faria aparecer no ranking e na
+  conciliação como se fosse gente; pular calado sumiria com o dinheiro e quebraria a conciliação
+  pelo valor exato pulado. Agora o rótulo é reconhecido, o valor é impresso alto e entra na
+  conciliação como `fora` — o termo que o script já tinha para dinheiro da referência que não
+  vira linha de carga.
+
+### 🔴 Saneamento pré-release — onda 4 (taxa de cartão é despesa do mês — dono, 26/08)
+
+- **/financeiro: a taxa de cartão sai da soma de despesas (4.2).** O card Receitas/Despesas
+  somava o carimbo `taxas_pagamento` JUNTO com as despesas lançadas (`totalDespesasOps`) — e a
+  taxa, quando lançada como despesa do mês, saía do resultado duas vezes. A composição virou a
+  função pura `despesasDoPeriodo` (`calculos-financeiro.ts`), sem a parcela, com teste do
+  antes/depois. **Efeito na tela:** o total de "Despesas" cai exatamente o valor carimbado em
+  `taxas_pagamento` no período — no replay atual esse carimbo está zerado (a UI nunca o grava),
+  então hoje o número visível não muda; com histórico carimbado, muda.
+- **RPC `get_dashboard_proprietario`: o lucro líquido para de descontar taxa chumbada (4.3).**
+  Migration nova e versionada (`20260828_rpc_taxa_cartao_e_despesa_do_mes.sql`):
+  `lucro_liquido = lucro_bruto − total_despesas` (a fórmula do painel do proprietário, validada
+  por `lucro-real.golden.spec.ts`) e `custo_taxas` devolve 0 — a estimativa com `1,2%`/`3,5%`
+  chumbados morre; a taxa real, lançada, já está nas despesas. SECURITY DEFINER, `search_path` e
+  o custo por época (golden `custo-historico`) ficam intactos. **Efeito na tela: nenhum hoje** —
+  `useDashboardProprietario` já neutralizava a coluna e calculava o lucro certo no cliente; o
+  banco passa a dizer o que o cliente já dizia (em julho a estimativa chumbada era R$ 57,50).
+  **Achado:** a tela `/fechamento-mensal` consome OUTRA RPC (`get_fechamento_mensal`, no
+  `legado/`), que ainda desconta os percentuais chumbados POR DIA e ignora despesas — corrigi-la
+  exige decidir o rateio diário de despesa mensal; fica para o dono.
+
+### 🔴 Saneamento pré-release — onda 3, GRUPO B (mudam número em rota viva)
+
+- **Registro de compras: mês sem venda deixa de inventar despesa por litro comprado (sítio 1).**
+  O fallback `litrosBase = vendidos || comprados` saiu de `calcDespesaPorLitroPura`; o rateio é o
+  canônico (despesa ÷ litros VENDIDOS) em todo cenário. **Antes:** digitando a compra num mês sem
+  venda (ex.: julho com 32.000 L digitados e R$ 18.585,76 de despesa), a tela mostrava
+  R$ 0,5808/L de "Despesa/L" e o lucro/L saía R$ 0,5808 menor por produto. **Depois:** mês sem
+  venda rateia R$ 0,00/L — despesa sem litro vendido não vira custo por litro. Os 7 meses reais
+  (todos com venda) não mudam em nada; o golden documenta o antes e afirma o depois.
+- **Dashboard de vendas: o card "Lucro Estimado" desconta a despesa operacional do mês (sítio 3).**
+  Era a maior divergência absoluta das 8 reimplementações: `vendas − custo`, sem despesa. Agora o
+  hook busca a despesa lançada do mês e a conta é a canônica (`lucroCombustivel` com rateio por
+  litro). **Antes → depois** (com o custo do próprio mês): jan R$ 51.133,43 → R$ 15.609,85 ·
+  fev R$ 45.462,21 → R$ 20.774,19 · mar R$ 61.551,09 → R$ 34.756,22 · abr R$ 62.697,45 →
+  R$ 29.329,10 · mai R$ 51.657,19 → R$ 21.463,37 · jun R$ 51.656,26 → R$ 25.580,26 · jul
+  R$ 36.858,07 → R$ 18.272,31. Total mostrado a mais no ano: **R$ 195.230,40**. O custo em
+  produção segue o carimbo `Estoque.custo_medio` (onda 3.9, decisão do dono); item sem estoque
+  cadastrado segue com custo 0 — mudar isso é decisão à parte, documentada no golden.
+- **Insights de IA: "Saldo Operacional" virou lucro real do mês (sítio 6).** A conta aposentada
+  era `vendas − despesas`, sem o custo do produto (~82% da venda). Agora o serviço busca o
+  `lucro_bruto` da RPC `get_dashboard_proprietario` (custo da época) e desconta as despesas do
+  período — a mesma fórmula do painel do proprietário. **Antes → depois (julho):**
+  R$ 189.312,05 → R$ 18.272,31 (o antes contava R$ 171.039,74 de custo de produto como lucro).
+  A métrica exibida passou de "Saldo Operacional" para "Lucro do Mês". Datas da consulta em
+  string local, não `toISOString()` (que pulava de mês às 21h).
+- **Estoque: o "Lucro Previsto Estimado" desconta a despesa operacional por litro (sítio 4).**
+  A conta saiu de `estoque × (preco_venda − preco_custo)` para a projeção canônica
+  `estoque × (preco_venda − preco_custo − despesa/L do mês corrente)`, quantizada. O hook do
+  dashboard de estoque passou a ratear as despesas lançadas do mês pelos litros vendidos do mês
+  (0 sem despesa — nunca um fixo). **Antes → depois (estoque real de julho, 9.628 L):**
+  R$ 11.406,05 → R$ 5.640,91 (o card prometia R$ 5.765,14 a mais — mais que o dobro).
+  Divergência que fica, documentada: o custo é o `preco_custo` de HOJE do cadastro, não o custo
+  médio do mês — decisão à parte.
+- **Análise de vendas: o custo vem da compra do próprio mês, não do carimbo ponderado (sítio 2).**
+  `salesAnalysis.service.ts` deixou de ler `Estoque.custo_medio` (média ponderada com estoque
+  anterior) e passa a calcular `custoMedioCompra` sobre as compras do mês consultado — o modelo
+  da planilha (F16 = E16/D16). O carimbo ficou só como fallback de mês sem compra lançada (mesma
+  política da RPC de custo histórico). **O que muda no lucro do mês mostrado** (depois − antes):
+  jan R$ 0,00 · fev +R$ 1.337,60 · mar −R$ 1.986,18 · abr −R$ 2.582,18 · mai +R$ 1.113,00 ·
+  jun +R$ 1.547,16 · jul +R$ 703,30 — a fonte antiga subestimava fev/mai/jun/jul e superestimava
+  mar/abr. `linhaLucroProduto` agora delega a `lucroCombustivel` e `margemPercentual` (lucro
+  quantizado em centavos).
+
+### 🧰 Saneamento pré-release — onda 3, GRUPO A (consolidações que NÃO mudam número)
+
+- **Registro de compras delega custo, lucro e margem à canônica (sítio 1, grupo A).**
+  `useCalculosRegistro.ts` trocou o trio inline por `custoMedioCompra`, `lucroCombustivel` e
+  `margemPercentual` de `@posto/utils/lucro`. O golden da onda 2 rodou intocado antes e depois
+  (3265 pass) — mesma conta, um dono só. Diferença admitida: a canônica quantiza o lucro do bico
+  em centavos na saída (< meio centavo por produto, dentro da tolerância já travada no golden).
+  O fallback `litrosBase = vendidos || comprados` foi PRESERVADO neste commit — a remoção dele
+  muda número e vai em commit separado, no grupo B.
+- **O "markup" da análise de custos virou a inversa canônica da margem (sítio 5, grupo A).**
+  `precoParaMargem` (custo ÷ (1 − margem%)) entrou em `@posto/utils/lucro` documentada como a
+  inversa de `margemPercentual`, e `calculatePrice`/`calculateProfit` da tela passaram a delegar
+  a ela e a `lucroCombustivel`. O golden ganhou o roundtrip contra julho real (preço de bomba ↔
+  margem canônica fecha nos dois sentidos) e os valores congelados na onda 2 não mudaram.
+  O teto de UI `margem ≥ 100% → custo × 10` foi PRESERVADO, documentado como guarda de tela
+  contra a divergência da curva (margem 100% sobre o preço não tem preço finito).
+- **A última conta de lucro à mão do aggregator delega à canônica (plano 3.2, grupo A).**
+  `fetchProfitabilityData` fazia `receitaBruta − volume × custoTotalL` inline — a MESMA conta de
+  `lucroCombustivel`, no arquivo que já importa a função. Agora delega (com quantização em
+  centavos na saída). A fonte do custo segue o carimbo `Estoque.custo_medio` — trocá-la é a onda
+  3.9, decisão do dono. Vitest do aggregator verde sem mudança (373 pass).
+- **O resumo de pagamentos do fechamento diário lê os meios canônicos (3.8, grupo A).**
+  `calculosResumo.ts` era o último site do painel que somava os baldes de cartão à mão
+  (`valor_cartao_debito + valor_cartao`). Agora o gráfico e a tabela pivô consomem
+  `meiosDaSessao` → `MeiosPagamento`, com os rótulos declarando qual balde exibem. O split
+  débito/crédito da exibição foi preservado (as taxas são diferentes) e o lump legado segue no
+  débito, como sempre — três invariantes novos no vitest travam `débito + crédito = cartao()` e
+  `Σ fatias = conferido()`. Nenhum número muda (mesmo parse, mesmos campos).
+- **A aritmética do encerrante de `calculators.ts` delega a `@posto/utils/leitura` (3.8, grupo A).**
+  `calcularLitros`/`calcularVenda` agora chamam `litrosVendidos`/`valorDaLeitura` — a fonte única
+  coberta pelo golden das 1.188 leituras reais. O módulo NÃO subiu de pasta: mover arrastaria os
+  tipos de UI (`BicoComDetalhes`) para o pacote e mexeria no importador único (`useFechamento`),
+  dentro da zona do revert ilegível `0f201ef`. O que fica no app é adaptação de tela (parse BR,
+  regra do "-", agrupamento). Teste novo (`calculators.test.ts`) trava a equivalência com a
+  canônica. Nenhum número muda.
+
+### 🧪 Saneamento pré-release — onda 2 (rede de teste das fórmulas)
+
+- **`emCentavos` virou export público de `@posto/utils`.** Cinco módulos do pacote carregavam a
+  mesma cópia privada (`lucro`, `fechamento`, `planilha-mensal`, `resumo-produto`, `resumo-compra`,
+  `serie-diaria`) e `useCaixaGeralMes` reimplementava a conta à mão. Agora todos importam a única
+  definição de `lucro.ts`. A de `encerrante-mensal.ts` ficou: ela quantiza para **centavos
+  inteiros** (`×100` sem `÷100`), é outra função. Nenhum número muda — mesma conta, um dono só.
+- **O golden do encadeamento de estoque parou de testar uma cópia (2.1).** A média ponderada que
+  `compra.service.ts` grava em `Estoque.custo_medio` subiu para `@posto/utils/custo-ponderado`
+  (MOVE, mesma conta) e o serviço passou a chamá-la — agora `estoque-encadeamento.golden.spec.ts`
+  exercita o código de produção, e mexer no custo do caminho de escrita quebra o golden. Os 3233
+  não mudaram de valor na migração. **Achado da migração:** a réplica antiga e a produção nunca
+  foram a mesma conta nas bordas — a réplica fazia `Math.max(estoque, 0)` e caía no custo
+  anterior com denominador zero; a produção aceita estoque negativo (que produz custo MAIOR que
+  qualquer preço pago) e cai no custo da compra atual. O dado real de 2026 não exercita as bordas;
+  elas estão congeladas em `custo-ponderado.test.ts`.
+- **Primeiro golden de divergência da onda 2.2: o trio inline do registro de compras.** As
+  funções puras de `useCalculosRegistro.ts` foram exportadas (sem mudar corpo) e
+  `useCalculosRegistro.golden.spec.ts` roda a conta REAL do hook lado a lado com a canônica nos
+  7 meses: empatam a menos da quantização. A divergência é o fallback
+  `litrosBase = vendidos || comprados`: digitando compra num mês sem venda o hook rateia a
+  despesa pelos litros DIGITADOS (R$ 0,5808/L em julho) onde a canônica zera — e compra já
+  salva no mês não entra nem no fallback. O `test:golden` passou a varrer também
+  `apps/web/src/**/*.golden.spec.ts` (via `find`; `**` não expande no shell do script).
+- **Golden da análise de vendas (2.2 sítio 2).** O trio "EXCEL LOGIC" saiu de
+  `salesAnalysis.service.ts` para o módulo puro `calculos-analise-vendas.ts` (MOVE verbatim) e o
+  golden prova: a ESTRUTURA da conta é a canônica (empata com o custo do mês, mesma margem
+  lucro÷receita); a divergência real é a FONTE do custo — o carimbo `Estoque.custo_medio`
+  ponderado desloca o lucro do mês nos mesmos valores do `IMPACTO_MENSAL` (até R$ 2.582 em
+  abril), agora medidos através da função de produção da tela.
+- **Golden do "Lucro Estimado" do dashboard de vendas (2.2 sítio 3).** A conta saiu do hook para
+  `calculos-dashboard-vendas.ts` (MOVE) e o golden congela a maior divergência absoluta das 8
+  reimplementações: o card ignora a despesa operacional e infla o lucro exatamente na despesa do
+  mês — R$ 18.585,76 a R$ 35.523,58/mês, R$ 195.230,40 nos 7 meses. Também congelado: item sem
+  estoque cadastrado entra como lucro 100%, em vez de "custo desconhecido".
+- **Golden do "Lucro Previsto" do dashboard de estoque (2.2 sítio 4).** A fórmula saiu do `.tsx`
+  para `calculos-resumo-financeiro.ts` (MOVE) e o golden mede contra o estoque real de julho:
+  o card promete R$ 11.406,05 onde a projeção canônica (descontando R$ 0,5988/L de despesa) dá
+  R$ 5.640,91 — **R$ 5.765,14 a mais, o dobro do previsto real**, em 9.628 L. Segunda divergência
+  documentada (não medida — o dado de referência não tem série de cadastro): produção usa o
+  `preco_custo` de HOJE, não o custo médio do mês.
+- **Golden do simulador de markup da análise de custos (2.2 sítio 5) — com achado.** As funções
+  saíram do hook para `calculos-analise-custos.ts` (MOVE) e a medição contra julho CONTRARIA o
+  plano: o modelo `custo ÷ (1 − margem%)` NÃO é um terceiro modelo divergente — a margem dele é
+  margem sobre o preço, exatamente a `margemPercentual` canônica, e ele reconstrói o preço de
+  bomba e o lucro canônico de julho. As divergências reais congeladas: interpretação (margem
+  "sobre o custo" daria R$ 0,25/L a mais no exemplo), o teto arbitrário `≥100% → custo × 10`, e
+  os insumos de produção herdarem o carimbo ponderado.
+- **Golden do "Saldo Operacional" dos insights de IA (2.2 sítio 6).** A conta `vendas − despesas`
+  saiu para `calculos-saude-financeira.ts` (MOVE) e o golden congela: em julho ela mostra
+  R$ 189.312,05 onde o lucro real é R$ 18.272,31 — mais de 10× —, e a diferença é exatamente o
+  custo de produto que ela ignora (R$ 171.039,74). É o número que sustenta o insight "Saúde
+  Financeira Estável".
+- **Ponderada da loja congelada e apartada da consolidação (2.2 sítio 8).** O preço médio da
+  conveniência saiu de `stockService.ts` para `calculos-estoque-produto.ts` (MOVE) com teste
+  unitário comparando com a ponderada dos tanques: mesma conta no caso comum, bordas próprias
+  (entrada sem valor unitário não mexe no custo; denominador ≤ 0 mantém o custo anterior, onde o
+  tanque assume o da compra). Recomendação registrada no módulo: loja é mercadoria de revenda,
+  sem modelo mensal na planilha — a onda 3 (que mata a ponderada dos tanques) NÃO a arrasta.
+
+### 🧹 Saneamento pré-release — trilha estrutural
+
+- **Os 3233 golden masters passaram a ser compilados.** O `exclude` do `tsconfig.json` tirava
+  `**/*.golden.spec.ts`: o teste que decide se uma fórmula pode ser mergeada nunca via o `tsc`.
+  Entrou `@types/bun` (`bun:test`, `bun:sqlite`, `import.meta.dir`) e o glob saiu. O compilador
+  achou **um erro real** no primeiro dia: `encerrante-mensal.golden.spec.ts` tipava `db.query`
+  com dois parâmetros para um SQL de três placeholders, e um `as unknown as number` mascarava a
+  diferença. Sem efeito em runtime — o `bun:sqlite` ligava os três —, mas era uma mentira de tipo
+  dentro de um golden.
+- **Os 4 `enum` de `@posto/types` foram apagados.** `StatusFechamento`, `FormaPagamento`,
+  `TipoEscala` e `UserRole` violavam o §4 e nenhum membro era acessado em lugar nenhum. Cuidado
+  registrado: os homônimos que o grep encontra vêm de `apps/web/src/types/database`, a árvore de
+  tipos do próprio app.
+- **O único `any` de produção do repo saiu.** Em `DetalhamentoRow.tsx` a causa não era preguiça:
+  o componente pai já declarava `field` com a união correta e o `CellProps` interno alargava para
+  `string`, o que forçava `(totais as any)[field]`. A união virou `CampoDetalhamento`, usada nos
+  dois, e o cast morreu junto com o `eslint-disable`.
+- **Dois shims de re-export sem importador removidos** — `components/TelaGestaoClientes.tsx` e
+  `components/TelaConfiguracoes.tsx`. O `App.tsx` já importava os componentes reais.
+- **Os 5 aliases FSD passaram a resolver.** `@app`, `@pages`, `@widgets`, `@features` e
+  `@entities` existiam no `tsconfig.json` e não no `vite.config.ts`: quem os usasse **passava no
+  `type-check` e quebrava no build**. Registrados no Vite antes do `@` genérico, porque o
+  resolvedor casa por prefixo seguido de `/`. O `loadEnv` declarado e nunca usado saiu junto.
+
+### 📉 Card "Projeção Mensal" saiu do fechamento mensal (saneamento 0.5)
+
+- A projeção `(lucro ÷ dias passados) × dias do mês` era calculada no corpo do
+  componente (§3 proíbe componente que calcula dinheiro) sobre `lucro_liquido` — coluna
+  carimbada que nenhuma escrita do app grava; hoje o card projetava R$ 0,00 com pompa.
+  Projeção honesta exige o lucro do mês vindo de `packages/utils` (onda 4.4 do
+  saneamento); até lá, número que projeta um zero carimbado não aparece.
+
+### 💸 O fallback de R$ 0,45/L morreu (saneamento 0.4)
+
+- Quando o mês não tinha despesa lançada, o rateio real (despesas ÷ litros = 0) era
+  substituído em silêncio pela config `despesa_operacional_litro` — semeada com 0,45,
+  um número que não vem de lugar nenhum. Com o banco em replay, "mês sem despesa" era o
+  estado normal: todo dashboard estava calculando lucro com custo inventado. Removido dos
+  dois sítios (`despesaOperacionalMensal` e `fetchProfitabilityData`); mês sem despesa
+  lançada agora rateia 0, que é a soma real dos lançamentos (efeito mês-parcial do
+  replay, documentado). Teste novo prova que a config não é mais consultada.
+- Pendência anotada: a UI dizer explicitamente "sem despesa lançada" exige tocar telas
+  da outra trilha do saneamento; fica para depois da convergência.
+
+### 🏆 Ranking de frentistas mostra vendas reais, não "Lucro Est." rateado (saneamento 0.3)
+
+- O card "Performance Frentistas" do dashboard exibia por frentista um lucro estimado
+  calculado como `vendas × margem média global` — o total fechava, mas cada linha era
+  ficção (mesma margem para quem vendeu diesel e gasolina). Lucro por frentista exige
+  venda por produto por frentista, que o modelo de dados não tem. O ranking agora mostra
+  "Vendas do dia" (o conferido canônico, dado real); a ordem do pódio não muda, porque
+  ordenar por `vendas × constante` já era ordenar por vendas.
+
+### 🎲 Gráfico de evolução para de sortear o passado (saneamento 0.2)
+
+- Os 5 meses anteriores do gráfico "Evolução de Vendas" eram preenchidos com
+  `Math.random()` sobre o volume do mês atual — o gráfico mudava sozinho a cada render.
+  Agora a janela de 6 meses inteira vem da `Leitura` real, numa busca só, agregada pela
+  nova `serieVendaMensal` de `@posto/utils` (pura, testada, aritmética de mês sobre a
+  string ISO para não escorregar dia em UTC). Mês sem venda lançada aparece como 0.
+
+### 🚫 Fim do "Lucro Total" de 18% inventado (saneamento 0.1)
+
+- O card "Lucro Total" da conciliação de frentistas mostrava `vendas × 0,18` — margem
+  fixa que não vem de lugar nenhum (§6 proíbe valor hardcoded em cálculo de dinheiro).
+  A tela só tem meios de pagamento por sessão; sem litros, custo médio e despesa do mês
+  não há como calcular lucro de verdade ali. O card saiu; os três restantes
+  (Vendas Totais, Total em Dinheiro, Melhor Vendedor) são todos dados reais.
+
+### 🧹 Código morto do aggregator (saneamento 1.1)
+
+- Apagados os 3 métodos sem consumidor de produção do `aggregator.service.ts`:
+  `fetchClosingData`, `fetchAttendantsData` e `fetchInventoryData` (~460 linhas), junto com
+  as interfaces e imports que só eles usavam. Só o barril `services/api/index.ts` os
+  reexportava; nenhuma tela chamava.
+- O alias morto `legacyService` (e a chave `legacy` do objeto `api`) saiu do barril — zero
+  importadores.
+- `aggregator.attendants.test.ts` foi junto: testava exclusivamente o método apagado
+  (vitest 362 → 359, os 3 do arquivo).
 ### 📊 Centro do mês: litros por produto — 30/08/2026
 
 - O card "Litros vendidos" da Visão Proprietário mostra o total em litro inteiro

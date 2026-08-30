@@ -27,6 +27,7 @@
  */
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
+import { custoMedioPonderado } from './custo-ponderado';
 
 const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
@@ -99,29 +100,31 @@ test('fevereiro repetiu literalmente o saldo de abertura de janeiro', () => {
 // ── 3. As duas fórmulas de custo ────────────────────────────────────────────
 
 /**
- * Réplica da média ponderada do caminho de ESCRITA.
+ * A média ponderada do caminho de ESCRITA — agora a função de PRODUÇÃO.
  *
- * @remarks Cópia deliberada de `apps/web/src/services/api/compra.service.ts:117`
- *          e `apps/web/.../usePersistenciaRegistro.ts:161`, que fazem a mesma
- *          conta em dois lugares. `packages/*` não pode importar de `apps/*`
- *          (§2), e a do hook é closure interna, não exportada — então o que dá
- *          para travar aqui é **o tamanho da divergência**, não a chamada real.
- *          Mexeu no custo em `apps/web`? Este teste não vai te avisar; ele
- *          existe para que o número da divergência esteja escrito em algum lugar
- *          auditável, em vez de vivir só na cabeça de quem mediu.
+ * @remarks Até a onda 2 este bloco era uma RÉPLICA da conta de
+ *          `compra.service.ts`, porque `packages/*` não pode importar de
+ *          `apps/*` (§2) — e réplica fica verde quando o original muda. A
+ *          fórmula subiu para `custo-ponderado.ts` (MOVE, mesma conta) e o
+ *          serviço passou a chamá-la: mexeu no custo do caminho de escrita,
+ *          este golden VÊ. Detalhe de arqueologia: a réplica antiga fazia
+ *          `Math.max(estoque, 0)` e caía no custo ANTERIOR com denominador
+ *          zero — duas bordas que a produção nunca teve. No dado real de 2026
+ *          nada as exercita e os números abaixo não mudaram na migração; as
+ *          bordas de produção estão congeladas em `custo-ponderado.test.ts`.
  */
 const custoPonderado = (
     estoqueAnterior: number,
     custoAnterior: number,
     litrosCompra: number,
     valorCompra: number
-): number => {
-    const estoqueAjustado = Math.max(estoqueAnterior, 0);
-    const totalLitros = estoqueAjustado + litrosCompra;
-    return totalLitros > 0
-        ? (estoqueAjustado * custoAnterior + valorCompra) / totalLitros
-        : custoAnterior;
-};
+): number =>
+    custoMedioPonderado({
+        estoqueAnterior,
+        custoMedioAnterior: custoAnterior,
+        litrosCompra,
+        custoLitroCompra: litrosCompra > 0 ? valorCompra / litrosCompra : 0,
+    });
 
 /**
  * Impacto da troca de fórmula no custo do mês, em reais.

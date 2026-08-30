@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { CombustivelHibrido } from './useCombustiveisHibridos';
+import type { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
+import { custoMedioCompra, despesaOperacionalPorLitro, lucroCombustivel, margemPercentual } from '@posto/utils';
 
 /**
  * Interface que define os resultados dos cálculos de registro de compras e estoque.
@@ -41,9 +42,20 @@ export interface CalculosRegistro {
 // de módulo, o linter não exige (nem deveria) que entrem no array de deps —
 // elas não capturam nenhum estado/prop do componente, só recebem tudo por
 // parâmetro. Nenhuma fórmula foi alterada, apenas o escopo onde vivem.
+//
+// [2026-08-28] Exportadas (sem mudar corpo) para o golden ao lado
+// (`useCalculosRegistro.golden.spec.ts`) exercitar a conta REAL contra a
+// canônica de @posto/utils — §7: divergência se documenta em teste.
+//
+// [2026-08-28, onda 3] Custo, lucro e margem passaram a DELEGAR à canônica de
+// @posto/utils/lucro (`custoMedioCompra`, `lucroCombustivel`,
+// `margemPercentual`) — eliminação de duplicata provada idêntica pelo golden
+// nos 7 meses reais. O que resta inline é adaptação de tela (parse BR,
+// 0 = "mostra -"). O fallback próprio do rateio saiu em commit separado
+// (grupo B) — ver `calcDespesaPorLitroPura`.
 
 /** Calcula os litros vendidos com base em leitura inicial e fechamento */
-function calcLitrosVendidosPura(c: CombustivelHibrido): number {
+export function calcLitrosVendidosPura(c: CombustivelHibrido): number {
     const inicial = parseBRFloat(c.inicial);
     const fechamento = parseBRFloat(c.fechamento);
     if (fechamento <= inicial) return 0;
@@ -59,7 +71,7 @@ function calcLitrosVendidosPura(c: CombustivelHibrido): number {
  *          em 8–11%. Sem leitura no mês, cai para litros × preço, que aí é
  *          tudo do mesmo dia.
  */
-function calcValorPorBicoPura(c: CombustivelHibrido): number {
+export function calcValorPorBicoPura(c: CombustivelHibrido): number {
     if (c.venda_mes_rs > 0) return c.venda_mes_rs;
     const litros = calcLitrosVendidosPura(c);
     const preco = parseBRFloat(c.preco_venda_atual);
@@ -75,27 +87,36 @@ function calcValorPorBicoPura(c: CombustivelHibrido): number {
  *          custo desconhecido aparece como desconhecido, nunca como o
  *          `preco_custo` do cadastro (um preço só, o de hoje).
  */
-function calcMediaLtRsPura(c: CombustivelHibrido): number {
-    const litros = c.compra_mes_lt + parseBRFloat(c.compra_lt);
-    const reais = c.compra_mes_rs + parseBRFloat(c.compra_rs);
-    return litros > 0 ? reais / litros : 0;
+export function calcMediaLtRsPura(c: CombustivelHibrido): number {
+    // Canônica `custoMedioCompra` (@posto/utils/lucro) sobre as duas parcelas do
+    // mês: o já salvo (`compra_mes_*`) + o que está sendo digitado (`compra_*`).
+    // `null` (sem compra) vira 0 aqui só porque a tela usa 0 como "mostra -".
+    return (
+        custoMedioCompra([
+            { litros: c.compra_mes_lt, valorTotal: c.compra_mes_rs },
+            { litros: parseBRFloat(c.compra_lt), valorTotal: parseBRFloat(c.compra_rs) },
+        ]) ?? 0
+    );
 }
 
-/** Calcula a despesa operacional rateada por litro */
-function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
-    const despesasTotal = despesaDoMes;
-    if (despesasTotal === 0) return 0;
-
+/**
+ * Despesa operacional rateada por litro VENDIDO — a canônica
+ * `despesaOperacionalPorLitro` (@posto/utils): despesas do mês ÷ litros
+ * vendidos do mês.
+ *
+ * @remarks [onda 3, grupo B] O fallback `litrosBase = vendidos || comprados`
+ *          SAIU. Ele ratearia a despesa pelos litros DIGITADOS de compra num
+ *          mês sem venda — inventando R$ 0,5808/L (julho/2026) que a canônica
+ *          zera, e ignorando compra já salva no mês. Mês sem venda agora rateia
+ *          0, como em toda outra tela. Antes/depois travado no golden ao lado.
+ */
+export function calcDespesaPorLitroPura(combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const totalLitrosVendidos = combustiveis.reduce((acc, c) => acc + calcLitrosVendidosPura(c), 0);
-    const totalLitrosComprados = combustiveis.reduce((acc, c) => acc + parseBRFloat(c.compra_lt), 0);
-    const litrosBase = totalLitrosVendidos > 0 ? totalLitrosVendidos : totalLitrosComprados;
-
-    if (litrosBase === 0) return 0;
-    return despesasTotal / litrosBase;
+    return despesaOperacionalPorLitro(despesaDoMes, totalLitrosVendidos);
 }
 
 /** Calcula o valor de custo total (produto + despesa) para venda */
-function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+export function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const custoMedio = calcMediaLtRsPura(c);
     const despesaLt = calcDespesaPorLitroPura(combustiveis, despesaDoMes);
     if (custoMedio === 0) return 0;
@@ -103,26 +124,35 @@ function calcValorParaVendaPura(c: CombustivelHibrido, combustiveis: Combustivel
 }
 
 /** Calcula o lucro por litro (Preço Venda - (Custo + Despesa)) */
-function calcLucroLtPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+export function calcLucroLtPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
     const precoVenda = parseBRFloat(c.preco_venda_atual);
     const custoVenda = calcValorParaVendaPura(c, combustiveis, despesaDoMes);
     if (custoVenda === 0) return 0;
     return precoVenda - custoVenda;
 }
 
-/** Calcula o lucro total do bico/combustível */
-function calcLucroBicoPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
-    const litros = calcLitrosVendidosPura(c);
-    const lucroLt = calcLucroLtPura(c, combustiveis, despesaDoMes);
-    return litros * lucroLt;
+/**
+ * Lucro total do bico/combustível — a canônica `lucroCombustivel` (@posto/utils).
+ *
+ * @remarks Sem compra no mês (custo desconhecido) devolve 0 e a tela mostra "-",
+ *          como antes. A canônica quantiza em centavos na saída (§ regra
+ *          `emCentavos`), o que o inline antigo não fazia — diferença sempre
+ *          abaixo de meio centavo por produto, travada no golden ao lado.
+ */
+export function calcLucroBicoPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
+    const custoMedio = calcMediaLtRsPura(c);
+    if (custoMedio === 0) return 0;
+    return lucroCombustivel({
+        litros: calcLitrosVendidosPura(c),
+        precoVenda: parseBRFloat(c.preco_venda_atual),
+        custoMedio,
+        despesaOperacionalLitro: calcDespesaPorLitroPura(combustiveis, despesaDoMes),
+    });
 }
 
-/** Calcula a margem de lucro em porcentagem */
+/** Margem de lucro em porcentagem — a canônica `margemPercentual` (@posto/utils). */
 function calcMargemPctPura(c: CombustivelHibrido, combustiveis: CombustivelHibrido[], despesaDoMes: number): number {
-    const lucroBico = calcLucroBicoPura(c, combustiveis, despesaDoMes);
-    const valorBico = calcValorPorBicoPura(c);
-    if (valorBico === 0) return 0;
-    return (lucroBico / valorBico) * 100;
+    return margemPercentual(calcLucroBicoPura(c, combustiveis, despesaDoMes), calcValorPorBicoPura(c));
 }
 
 /** Calcula a participação do produto no volume total vendido */
@@ -212,8 +242,9 @@ export const useCalculosRegistro = (
             totalPercaSobra += calcPercaSobraPura(c);
         });
 
-        const mediaTotal = totalCompraLt > 0 ? totalCompraRs / totalCompraLt : 0;
-        const margemMedia = totalValorBico > 0 ? (totalLucroBico / totalValorBico) * 100 : 0;
+        const mediaTotal =
+            custoMedioCompra([{ litros: totalCompraLt, valorTotal: totalCompraRs }]) ?? 0;
+        const margemMedia = margemPercentual(totalLucroBico, totalValorBico);
 
         return {
             totalLitros,

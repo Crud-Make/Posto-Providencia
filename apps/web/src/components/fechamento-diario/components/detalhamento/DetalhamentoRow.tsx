@@ -4,6 +4,9 @@ import { paraReais } from '../../../../utils/formatters';
 import { useDetalhamentoFrentista } from '../../hooks/useDetalhamentoFrentista';
 import { Smartphone, CreditCard, FileText, Banknote, Tag, Calculator } from 'lucide-react';
 
+/** Campos de {@link TotaisDetalhamento} que esta tabela sabe exibir. */
+type CampoDetalhamento = 'pix' | 'cartao' | 'nota' | 'dinheiro' | 'baratao' | 'totalVenda';
+
 /**
  * Props do componente DetalhamentoRow
  */
@@ -12,7 +15,7 @@ interface DetalhamentoRowProps {
   colorClass: string; // Classe de cor para o indicador visual
   sessoes: SessaoFrentista[]; // Lista de sessões para renderizar colunas
   totalVendasPosto: number; // Total geral para cálculos
-  field: 'pix' | 'cartao' | 'nota' | 'dinheiro' | 'baratao' | 'totalVenda'; // Campo a ser exibido
+  field: CampoDetalhamento; // Campo a ser exibido
   isTotal?: boolean; // Se true, aplica estilos de destaque para linha de total
   onUpdate?: (tempId: string, valor: number) => void; // Callback para atualização (opcional)
 }
@@ -93,7 +96,7 @@ export const DetalhamentoRow: React.FC<DetalhamentoRowProps> = ({
 interface CellProps {
   sessao: SessaoFrentista;
   totalVendasPosto: number;
-  field: string;
+  field: CampoDetalhamento;
   isTotal?: boolean;
   isEditing: boolean;
   tempValue: string;
@@ -112,9 +115,7 @@ const Cell: React.FC<CellProps> = ({
   isEditing, tempValue, onStartEdit, onCancel, onSave, onChangeTemp
 }) => {
   const totais = useDetalhamentoFrentista(sessao, totalVendasPosto);
-  // Acesso dinâmico ao campo calculado
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const valor = (totais as any)[field];
+  const valor = totais[field];
 
   // Tratamento de eventos de teclado
   const handleKeyDown = (e: React.KeyboardEvent) => {

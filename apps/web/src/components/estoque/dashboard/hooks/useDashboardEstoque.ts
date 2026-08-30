@@ -4,7 +4,7 @@ import { supabase } from '../../../../services/supabase';
 import { tanqueService } from '../../../../services/api';
 import { Tanque, TankHistory } from '../types';
 import { isSuccess } from '../../../../types/ui/response-types';
-import { hojeIso } from '@posto/utils';
+import { despesaOperacionalPorLitro, hojeIso } from '@posto/utils';
 import { estoqueAtualDerivado, type MovimentoLitros, type ReguaTanque } from '../model/estoque-derivado';
 
 interface ReguaRow { tanque_id: number; data: string; volume_fisico: number | string | null }
@@ -15,6 +15,9 @@ export const useDashboardEstoque = () => {
   const { postoAtivoId } = usePosto();
   const [tanques, setTanques] = useState<Tanque[]>([]);
   const [histories, setHistories] = useState<TankHistory>({});
+  // Despesa operacional por litro do mês corrente — alimenta o "Lucro
+  // Previsto" do ResumoFinanceiro (onda 3, grupo B). 0 sem despesa lançada.
+  const [despesaLitro, setDespesaLitro] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Estado para o modal de medição
@@ -42,7 +45,13 @@ export const useDashboardEstoque = () => {
       // As três fontes da regra da corrente. `Leitura` é a única que cresce
       // todo dia; as outras duas são pequenas. Sem filtro de data: a data de
       // corte é a régua de CADA tanque, resolvida em `estoqueAtualDerivado`.
-      const [reguasRes, comprasRes, leiturasRes] = await Promise.all([
+      // Mês corrente em hora local (hojeIso, nunca toISOString): é o período
+      // do rateio de despesa que o card de lucro previsto desconta.
+      const mesCorrente = hojeIso().slice(0, 7);
+      const [anoM, mesM] = mesCorrente.split('-').map(Number);
+      const fimMes = `${mesCorrente}-${String(new Date(anoM, mesM, 0).getDate()).padStart(2, '0')}`;
+
+      const [reguasRes, comprasRes, leiturasRes, despesasRes] = await Promise.all([
         supabase
           .from('HistoricoTanque')
           .select('tanque_id, data, volume_fisico')
@@ -56,6 +65,12 @@ export const useDashboardEstoque = () => {
           .from('Leitura')
           .select('data, litros_vendidos, bico:Bico!inner(combustivel_id)')
           .eq('posto_id', postoAtivoId),
+        supabase
+          .from('Despesa')
+          .select('valor')
+          .eq('posto_id', postoAtivoId)
+          .gte('data', `${mesCorrente}-01`)
+          .lte('data', fimMes),
       ]);
 
       const reguas: ReguaTanque[] = ((reguasRes.data ?? []) as ReguaRow[]).map((r) => ({
@@ -69,6 +84,16 @@ export const useDashboardEstoque = () => {
       const vendas: MovimentoLitros[] = ((leiturasRes.data ?? []) as unknown as LeituraRow[])
         .filter((l) => l.bico !== null)
         .map((l) => ({ combustivelId: (l.bico as { combustivel_id: number }).combustivel_id, data: l.data, litros: Number(l.litros_vendidos ?? 0) }));
+
+      // Rateio canônico do mês corrente: despesas lançadas ÷ litros vendidos.
+      const despesaDoMes = (despesasRes.data ?? []).reduce(
+        (acc, d) => acc + Number((d as { valor: number | null }).valor ?? 0),
+        0
+      );
+      const litrosVendidosMes = vendas
+        .filter((v) => v.data.slice(0, 7) === mesCorrente)
+        .reduce((acc, v) => acc + v.litros, 0);
+      setDespesaLitro(despesaOperacionalPorLitro(despesaDoMes, litrosVendidosMes));
 
       const derivado = estoqueAtualDerivado(
         data.map((t) => ({ id: t.id, combustivelId: t.combustivel_id })),
@@ -178,6 +203,7 @@ export const useDashboardEstoque = () => {
     loading,
     tanques,
     histories,
+    despesaLitro,
     showMedicaoModal,
     setShowMedicaoModal,
     selectedTanque,
