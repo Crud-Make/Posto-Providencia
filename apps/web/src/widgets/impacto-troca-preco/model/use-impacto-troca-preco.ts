@@ -15,6 +15,8 @@ import {
   resumoPorDirecao,
   seriePrecoDiario,
   totalGanhoVendasCentavos,
+  balancoTrocasCentavos,
+  type BalancoTrocas,
   type ImpactoTroca,
   type ResumoPorDirecao,
   type LeituraPrecoDia,
@@ -85,6 +87,8 @@ export interface DadosImpactoTrocaPreco {
   readonly barras: readonly BarraVariacao[];
   /** Lucro extra já realizado nas VENDAS desde as trocas do mês, em centavos. */
   readonly totalVendasCentavos: number;
+  /** O card geral: lucro total, prejuízo total e saldo das trocas do mês. */
+  readonly balanco: BalancoTrocas;
 }
 
 /** `2026-03` → `2026-02-01` (início da busca, um mês antes). */
@@ -199,6 +203,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
         resumo: resumoPorDirecao(doMes),
         barras,
         totalVendasCentavos: totalGanhoVendasCentavos(doMes),
+        balanco: balancoTrocasCentavos(doMes),
       });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui apurar as trocas de preço.');

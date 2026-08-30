@@ -38,6 +38,12 @@
   (`ganhoVendasCentavos`, `ritmoMensalCentavos`, `lucroDia*`), com unitários e golden (janeiro:
   vendas da gasolina comum desde 07/01 contra o encerrante real). As barras de variação falam
   polaridade (verde subiu / vermelho caiu / cinza não mexeu) — a identidade fica na sigla do eixo.
+- **Card geral do mês** (pedido do dono, 30/08): três blocos no topo da seção — LUCRO NO MÊS
+  (soma de tudo que as trocas renderam), PREJUÍZO NO MÊS (soma de tudo que custaram) e SALDO
+  com a decomposição estoque × vendas. Estoque parado e vendas contam como parcelas
+  independentes porque numa mesma troca podem ter sinais opostos (etanol de janeiro: estoque
+  −R$ 84,42 e vendas +R$ 2.099,12). Fórmula `balancoTrocasCentavos` em `troca-preco.ts`, com
+  unitários; substitui o pill de "efeito total" do cabeçalho.
 - **fix: data com timestamp não quebra mais a véspera.** `Leitura`/`Compra` podem devolver
   `YYYY-MM-DDTHH:MM:SS`; sem normalizar, o parse da véspera dava "Invalid time value" e — pior —
   a corrente aceitava régua do PRÓPRIO dia da troca (estoque inflado: 3.737 L onde a véspera

@@ -7,6 +7,7 @@ import {
     resumoPorDirecao,
     seriePrecoDiario,
     totalGanhoVendasCentavos,
+    balancoTrocasCentavos,
     type LeituraPrecoDia,
 } from './troca-preco';
 
@@ -279,5 +280,33 @@ describe('lucro nas vendas desde a troca (#70)', () => {
     it('total das vendas soma todas as trocas', () => {
         const impactos = impactoTrocaDePreco(leituras, compras, []);
         expect(totalGanhoVendasCentavos(impactos)).toBe(impactos[0].ganhoVendasCentavos);
+    });
+});
+
+describe('balancoTrocasCentavos', () => {
+    it('queda com estoque e vendas: tudo vira prejuízo, lucro fica zero', () => {
+        const leituras = [dia('2026-05-15', 7.38, 100), dia('2026-05-16', 7.18, 200)];
+        const regua = [{ combustivel: 'gc', data: '2026-05-14', litros: 1000 }];
+        const b = balancoTrocasCentavos(impactoTrocaDePreco(leituras, [], regua));
+        // estoque: (1000 − 100) × −0,20 = −R$ 180 · vendas: 200 × −0,20 = −R$ 40
+        expect(b.lucroCentavos).toBe(0);
+        expect(b.prejuizoCentavos).toBe(-22_000);
+        expect(b.saldoCentavos).toBe(-22_000);
+    });
+
+    it('saldo = estoque líquido + vendas, e subida sem perda não gera prejuízo', () => {
+        const leituras = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 300)];
+        const regua = [{ combustivel: 'gc', data: '2026-01-05', litros: 2000 }];
+        const impactos = impactoTrocaDePreco(leituras, [], regua);
+        const b = balancoTrocasCentavos(impactos);
+        expect(b.prejuizoCentavos).toBe(0);
+        expect(b.saldoCentavos).toBe(totalGanhoPerdaCentavos(impactos) + totalGanhoVendasCentavos(impactos));
+    });
+
+    it('troca sem régua entra só com a parcela de vendas', () => {
+        const leituras = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 300)];
+        const b = balancoTrocasCentavos(impactoTrocaDePreco(leituras, [], []));
+        expect(b.lucroCentavos).toBe(Math.round(300 * (6.48 - 6.28) * 100));
+        expect(b.prejuizoCentavos).toBe(0);
     });
 });

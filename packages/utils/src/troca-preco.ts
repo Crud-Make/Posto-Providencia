@@ -412,6 +412,35 @@ export function totalGanhoVendasCentavos(impactos: readonly ImpactoTroca[]): num
     return impactos.reduce((soma, i) => soma + i.ganhoVendasCentavos, 0);
 }
 
+/** O mês das trocas em três números: o que rendeu, o que custou, o saldo. */
+export interface BalancoTrocas {
+    /** Soma das parcelas POSITIVAS (estoque e vendas), em centavos. */
+    readonly lucroCentavos: number;
+    /** Soma das parcelas NEGATIVAS (estoque e vendas), em centavos — sempre ≤ 0. */
+    readonly prejuizoCentavos: number;
+    /** `lucro + prejuizo` — igual a estoque líquido + vendas. */
+    readonly saldoCentavos: number;
+}
+
+/**
+ * Balanço mensal das trocas (card geral da Issue #70): separa em lucro e
+ * prejuízo as parcelas de cada troca. Estoque parado e vendas contam como
+ * parcelas INDEPENDENTES, porque numa mesma troca elas podem ter sinais
+ * opostos (etanol de janeiro/2026: estoque −R$ 84,42 e vendas +R$ 2.099,12).
+ * Troca sem estoque apurável contribui só com a parcela de vendas.
+ */
+export function balancoTrocasCentavos(impactos: readonly ImpactoTroca[]): BalancoTrocas {
+    let lucroCentavos = 0;
+    let prejuizoCentavos = 0;
+    for (const impacto of impactos) {
+        for (const parcela of [impacto.ganhoPerdaCentavos ?? 0, impacto.ganhoVendasCentavos]) {
+            if (parcela >= 0) lucroCentavos += parcela;
+            else prejuizoCentavos += parcela;
+        }
+    }
+    return { lucroCentavos, prejuizoCentavos, saldoCentavos: lucroCentavos + prejuizoCentavos };
+}
+
 /** Um lado do resumo por direção: quantas trocas e quanto somaram. */
 export interface LadoDirecao {
     /** Número de trocas na direção — inclui as não apuráveis (sem régua). */

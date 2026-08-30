@@ -22,6 +22,7 @@ import {
   YAxis,
 } from 'recharts';
 import { corDeSinal, corDoProduto } from '@posto/utils';
+import type { BalancoTrocas } from '@posto/utils';
 import {
   useImpactoTrocaPreco,
   type BarraVariacao,
@@ -278,6 +279,51 @@ const CardTroca: React.FC<{ readonly impacto: ImpactoExibivel }> = ({ impacto })
   </li>
 );
 
+/** O card geral do mês: o que as trocas renderam, o que custaram e o saldo. */
+const BalancoMensal: React.FC<{
+  readonly balanco: BalancoTrocas;
+  readonly estoqueCentavos: number;
+  readonly vendasCentavos: number;
+}> = ({ balanco, estoqueCentavos, vendasCentavos }) => {
+  const temLucro = balanco.lucroCentavos > 0;
+  const temPrejuizo = balanco.prejuizoCentavos < 0;
+  const corSaldo = corDeSinal(balanco.saldoCentavos);
+  const neutroTexto = 'text-gray-400 dark:text-gray-500';
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+      <div className={`rounded-2xl px-4 py-3 ${temLucro ? corDeSinal(1).fundo : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+        <div className={`flex items-center gap-1 text-[11px] font-bold tracking-widest ${temLucro ? corDeSinal(1).texto : neutroTexto}`}>
+          <TrendingUp size={13} /> LUCRO NO MÊS
+        </div>
+        <div className={`text-2xl font-extrabold ${temLucro ? corDeSinal(1).texto : neutroTexto}`} style={numeros}>
+          {temLucro ? reaisComSinal(balanco.lucroCentavos) : reais(0)}
+        </div>
+        <div className="text-[11px] text-gray-500 dark:text-gray-400">tudo que as trocas renderam</div>
+      </div>
+      <div className={`rounded-2xl px-4 py-3 ${temPrejuizo ? corDeSinal(-1).fundo : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+        <div className={`flex items-center gap-1 text-[11px] font-bold tracking-widest ${temPrejuizo ? corDeSinal(-1).texto : neutroTexto}`}>
+          <TrendingDown size={13} /> PREJUÍZO NO MÊS
+        </div>
+        <div className={`text-2xl font-extrabold ${temPrejuizo ? corDeSinal(-1).texto : neutroTexto}`} style={numeros}>
+          {temPrejuizo ? reaisComSinal(balanco.prejuizoCentavos) : reais(0)}
+        </div>
+        <div className="text-[11px] text-gray-500 dark:text-gray-400">tudo que as trocas custaram</div>
+      </div>
+      <div className={`rounded-2xl px-4 py-3 ring-1 ring-inset ring-gray-200 dark:ring-gray-600/60 ${corSaldo.fundo}`}>
+        <div className={`text-[11px] font-bold tracking-widest ${corSaldo.texto}`}>
+          {balanco.saldoCentavos >= 0 ? 'SALDO: LUCROU' : 'SALDO: PERDEU'}
+        </div>
+        <div className={`text-2xl font-extrabold ${corSaldo.texto}`} style={numeros}>
+          {reaisComSinal(balanco.saldoCentavos)}
+        </div>
+        <div className="text-[11px] text-gray-500 dark:text-gray-400" style={numeros}>
+          estoque {reaisComSinal(estoqueCentavos)} · vendas {reaisComSinal(vendasCentavos)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ImpactoTrocaPreco: React.FC<Props> = ({ postoId, mesIso }) => {
   const { dados, carregando, erro } = useImpactoTrocaPreco(postoId, mesIso);
 
@@ -302,9 +348,7 @@ export const ImpactoTrocaPreco: React.FC<Props> = ({ postoId, mesIso }) => {
 
   if (!dados || dados.impactos.length === 0) return null;
 
-  const { resumo, totalVendasCentavos } = dados;
-  const efeitoTotal = resumo.liquidoCentavos + totalVendasCentavos;
-  const corMes = corDeSinal(efeitoTotal);
+  const { resumo, totalVendasCentavos, balanco } = dados;
   const lados = [
     resumo.subidas.quantidade > 0 &&
       `${resumo.subidas.quantidade} ${resumo.subidas.quantidade === 1 ? 'subida' : 'subidas'}`,
@@ -322,18 +366,12 @@ export const ImpactoTrocaPreco: React.FC<Props> = ({ postoId, mesIso }) => {
             quando o preço da bomba mudou.
           </p>
         </div>
-        <div className={`rounded-2xl px-4 py-2 text-center ${corMes.fundo}`}>
-          <div className={`text-[11px] font-bold tracking-widest ${corMes.texto}`}>
-            {efeitoTotal >= 0 ? 'EFEITO TOTAL: LUCRO' : 'EFEITO TOTAL: PREJUÍZO'}
-          </div>
-          <div className={`text-xl font-extrabold ${corMes.texto}`} style={numeros}>
-            {reaisComSinal(efeitoTotal)} no mês
-          </div>
-          <div className="text-[11px] text-gray-500 dark:text-gray-400" style={numeros}>
-            estoque {reaisComSinal(resumo.liquidoCentavos)} · vendas {reaisComSinal(totalVendasCentavos)}
-          </div>
-        </div>
       </header>
+      <BalancoMensal
+        balanco={balanco}
+        estoqueCentavos={resumo.liquidoCentavos}
+        vendasCentavos={totalVendasCentavos}
+      />
       <GraficoVariacao barras={dados.barras} />
       <ul className="flex flex-col gap-3 mt-3">
         {dados.impactos.map((impacto) => (
