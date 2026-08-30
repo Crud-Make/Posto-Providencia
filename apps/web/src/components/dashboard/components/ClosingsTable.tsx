@@ -2,6 +2,7 @@
 import React from 'react';
 import { Eye, Edit2 } from 'lucide-react';
 import { AttendantClosing } from '../../../types/ui/dashboard';
+import { AvatarFrentista } from '../../../shared/ui/avatar-frentista';
 
 interface ClosingsTableProps {
   data: AttendantClosing[];
@@ -37,7 +38,12 @@ const ClosingsTable: React.FC<ClosingsTableProps> = ({ data }) => {
                 <tr key={closing.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <img src={closing.avatar} alt={closing.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-600" />
+                      <AvatarFrentista
+                        nome={closing.name}
+                        foto={closing.avatar}
+                        tamanho={40}
+                        className="border border-gray-200 dark:border-gray-600"
+                      />
                       <span className="font-medium text-gray-900 dark:text-white">{closing.name}</span>
                     </div>
                   </td>

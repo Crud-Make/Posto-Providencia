@@ -37,6 +37,22 @@ SELECT (SELECT SUM(venda) FROM resumo_mensal_bico WHERE ano=? AND mes=?),
        (SELECT SUM(venda_bico) FROM encerrante_diario WHERE ano=? AND mes=?);
 ```
 
+**Esta divergência reaparece disfarçada de "divergência de lucro" (28/08/2026).**
+Comparação golden master × banco de produção para janeiro/2026 acusou um delta
+idêntico no lucro bruto e no líquido — sinal de que está na **receita**, não na
+despesa nem no custo. Era exatamente este delta: o golden reproduz a planilha
+(receita do `resumo_mensal_bico`), a produção soma `Leitura.valor_total` (preço
+do dia). Regra de triagem: delta igual no bruto e no líquido ⇒ receita ou custo,
+nunca despesa; se os litros batem, é preço, e cai aqui.
+
+Decomposição — o delta é, bico a bico, `litros dos dias a preço antigo ×
+(preço de fim de mês − preço antigo)`:
+
+```sql
+SELECT bico, valor_lt, SUM(litros), COUNT(*) FROM encerrante_diario
+ WHERE ano=? AND mes=? GROUP BY bico, valor_lt ORDER BY bico, valor_lt;
+```
+
 **Armadilha de rótulo:** o bico 04 aparece como `Ds:.500,Bico 04` em
 `resumo_mensal_bico` e como `DS:.10,Bico 04` em `encerrante_diario` e
 `validacao_mensal`. É o mesmo bico. `JOIN` por nome de bico entre essas tabelas

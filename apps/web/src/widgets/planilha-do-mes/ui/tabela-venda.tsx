@@ -43,7 +43,7 @@ export const TabelaVenda: React.FC<TabelaVendaProps> = ({
 }) => {
     const jaMostrado = new Set<string>();
     const nomeDoProduto = (id: number) => produtos.find((p) => p.id === id)?.nome ?? '—';
-    const corDoProduto = (id: number) => produtos.find((p) => p.id === id)?.cor ?? 'var(--line2)';
+    const corDoProdutoPorId = (id: number) => produtos.find((p) => p.id === id)?.cor ?? 'var(--line2)';
 
     return (
         <div className="pm-rolagem">
@@ -82,7 +82,7 @@ export const TabelaVenda: React.FC<TabelaVendaProps> = ({
                         const primeiroDoProduto = !jaMostrado.has(chave);
                         jaMostrado.add(chave);
 
-                        const cor = corDoProduto(bico.produtoId);
+                        const cor = corDoProdutoPorId(bico.produtoId);
                         // Lucro e margem são saldo: ganham o sinal em cor. Litro,
                         // encerrante e faturamento não — ver `classeDoSinal`.
                         const sinalLucro = classeDoSinal(linha.apurado ? linha.lucro : null);

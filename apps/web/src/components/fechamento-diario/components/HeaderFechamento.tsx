@@ -9,9 +9,8 @@ import { Calendario, modoDia } from '@shared/ui/calendario';
  *          (props deste componente e estado do orquestrador) — adicionar aba exigia lembrar
  *          de editar os dois. `AbaFechamento` agora é a fonte única.
  *
- *          `receitas-despesas` NÃO é `financeiro`: essa chave já pertence à aba "Fechamento
- *          Financeiro", que trata das formas de pagamento do dia. Esta aqui é o painel de
- *          lançamentos por período, herdado da antiga rota `/financeiro`.
+ *          `receitas-despesas` é o painel de lançamentos por período, herdado da antiga
+ *          rota `/financeiro`.
  */
 import { ABAS, type AbaFechamento } from '../abas';
 export type { AbaFechamento };

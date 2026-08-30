@@ -20,13 +20,15 @@ import { tanqueService } from '@/services/api';
 import { isSuccess } from '@/types/ui/response-types';
 import { numeroDoCampo, textoDoCampo } from './campo-numerico';
 import { intervaloDoMes, hojeIso, type Periodo } from '@/utils/periodo';
-import { PALETA } from './estado-planilha';
+import { corDoProduto } from '@posto/utils';
 
 /** Um produto da planilha, montado a partir do cadastro e do movimento do mês. */
 export interface ProdutoDoBanco {
     /** `Combustivel.id`. */
     readonly id: number;
     readonly nome: string;
+    /** `Combustivel.codigo` (GC/GA/ET/S10) — chave da cor da planilha. */
+    readonly codigo: string;
     readonly cor: string;
     /** Tanque que guarda este produto. `null` quando não há tanque cadastrado. */
     readonly tanqueId: number | null;
@@ -536,12 +538,14 @@ export function usePlanilhaDoBanco(postoId: number | null, mesIso: string): Reto
                 v === undefined ? '' : textoDoCampo(v, 3);
 
             setProdutos(
-                combustiveis.map((c, i) => {
+                combustiveis.map((c) => {
                     const compra = compraPorProduto.get(c.id);
                     return {
                         id: c.id,
                         nome: c.nome,
-                        cor: c.cor ?? PALETA[i % PALETA.length],
+                        codigo: c.codigo,
+                        // Cor da planilha pelo código — nem a do cadastro nem paleta por índice.
+                        cor: corDoProduto(c.codigo).fundo,
                         tanqueId: tanqueDoProduto.get(c.id) ?? null,
                         capacidadeTanque: capacidadeDoProduto.get(c.id) ?? null,
                         // Preenchido depois, a partir do agregado por produto.

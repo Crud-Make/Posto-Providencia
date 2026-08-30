@@ -1,7 +1,7 @@
 import React from 'react';
+import { corDoProduto } from '@posto/utils';
 import { Droplet, AlertTriangle, TrendingUp } from 'lucide-react';
 import type { PumpGroup } from '../types';
-import { FUEL_COLORS } from '../types';
 import type { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
 
 // Tipo de retorno do hook
@@ -59,7 +59,7 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({ groups, leituras
               const isVeryHigh = !isInvalid && isVolumeHigh(litrosVal);
               const isValid = !isInvalid && !isVeryHigh && fechamento !== '' && fechamento !== '0,000';
               
-              const colorClass = FUEL_COLORS[bico.combustivel.codigo] || 'bg-gray-100 text-gray-700';
+              const corProduto = corDoProduto(bico.combustivel.codigo);
 
               return (
                 <div 
@@ -73,12 +73,12 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({ groups, leituras
                 >
                   <div className="flex flex-col sm:flex-row h-full">
                     {/* Fuel Indicator Strip */}
-                    <div className={`w-full sm:w-2 ${colorClass.split(' ')[0]}`} />
+                    <div className="w-full sm:w-2" style={{ backgroundColor: corProduto.fundo }} />
 
                     <div className="flex-1 p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-3">
-                          <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wider ${colorClass}`}>
+                          <span className="px-2.5 py-1 rounded-md text-xs font-bold tracking-wider" style={{ backgroundColor: corProduto.fundo, color: corProduto.texto }}>
                             {bico.combustivel.codigo}
                           </span>
                           <span className="font-medium text-gray-900 text-lg">Bico #{bico.numero}</span>

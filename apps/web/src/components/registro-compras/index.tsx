@@ -15,7 +15,6 @@ import { HeaderRegistroCompras } from './HeaderRegistroCompras';
 import { SecaoVendas } from './SecaoVendas';
 import { SecaoCompras } from './SecaoCompras';
 import { SecaoEstoque } from './SecaoEstoque';
-import { GraficosCompras } from './GraficosCompras';
 import { useDespesaDoMes } from './hooks/useDespesaDoMes';
 import { fornecedorService } from '../../services/api';
 import { Database } from '../../types/database/index';
@@ -25,6 +24,28 @@ import { Save, AlertCircle } from 'lucide-react';
 import { intervaloDoMes, ehMesCorrente, hojeIso, mesAtualIso } from '../../utils/periodo';
 
 type Fornecedor = Database['public']['Tables']['Fornecedor']['Row'];
+
+/**
+ * Fornecedor padrão da tela: o ÚLTIMO com que este posto finalizou uma compra
+ * (lembrado no localStorage), não o primeiro da lista — o posto compra quase
+ * sempre do mesmo, e "o primeiro" era só ordem alfabética. Cai para o primeiro
+ * quando nunca houve compra ou quando o lembrado saiu do cadastro.
+ */
+const chaveFornecedorPadrao = (postoId: number) => `registro_compras_fornecedor_padrao_${postoId}`;
+
+function fornecedorPadrao(fornecedores: Fornecedor[], postoId: number | null): number | null {
+    if (fornecedores.length === 0) return null;
+    try {
+        const lembrado = postoId ? Number(localStorage.getItem(chaveFornecedorPadrao(postoId))) : 0;
+        if (lembrado && fornecedores.some(f => f.id === lembrado)) return lembrado;
+    } catch { /* storage indisponível: usa o primeiro */ }
+    return fornecedores[0].id;
+}
+
+function lembrarFornecedor(postoId: number | null, fornecedorId: number | null): void {
+    if (!postoId || !fornecedorId) return;
+    try { localStorage.setItem(chaveFornecedorPadrao(postoId), String(fornecedorId)); } catch { /* sem storage, sem memória */ }
+}
 
 /**
  * Extrai o `data` de uma `ApiResponse` com mensagem de erro consistente.
@@ -132,14 +153,14 @@ const TelaRegistroCompras: React.FC = () => {
             if (dadosSalvos.fornecedorSelecionado && fornecedores.some(f => f.id === dadosSalvos.fornecedorSelecionado)) {
                 setFornecedorSelecionado(dadosSalvos.fornecedorSelecionado);
             } else if (fornecedores.length > 0 && !fornecedorSelecionado) {
-                setFornecedorSelecionado(fornecedores[0].id);
+                setFornecedorSelecionado(fornecedorPadrao(fornecedores, postoAtivoId));
             }
 
             setDadosRestaurados(true);
             console.log('[Compras] Dados restaurados do sessionStorage');
         } else if (fornecedores.length > 0 && !fornecedorSelecionado) {
             // Sem dados salvos, apenas setar fornecedor padrão
-            setFornecedorSelecionado(fornecedores[0].id);
+            setFornecedorSelecionado(fornecedorPadrao(fornecedores, postoAtivoId));
             setDadosRestaurados(true);
         }
     }
@@ -152,6 +173,7 @@ const TelaRegistroCompras: React.FC = () => {
 
     const { saving, salvarDados } = usePersistenciaRegistro(postoAtivoId, async () => {
         // On Success
+        lembrarFornecedor(postoAtivoId, fornecedorRef.current);
         setCombustiveis(prev => prev.map(c => ({
             ...c,
             compra_lt: '',
@@ -252,8 +274,6 @@ const TelaRegistroCompras: React.FC = () => {
                     calculos={calculos}
                     totais={calculos.totais}
                 />
-
-                <GraficosCompras combustiveis={combustiveis} calculos={calculos} />
 
             </main>
         </div>

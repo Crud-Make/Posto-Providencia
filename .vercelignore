@@ -1,3 +1,8 @@
+# ATENÇÃO: este arquivo SUBSTITUI o .gitignore no upload da Vercel — ela não
+# volta a consultar o git quando ele existe. Tudo que não estiver aqui SOBE,
+# mesmo estando protegido no .gitignore. Foi o que quase mandou `docs/data/` e
+# o `.env.local` para fora em 30/08/2026.
+
 node_modules
 build
 dist
@@ -5,3 +10,17 @@ dist
 .trae
 .log
 .figma
+
+# Dado real do posto — nunca sai do disco (CLAUDE.md §6).
+docs/
+
+# Segredos. O .env.local guarda a chave PRIVADA do VAPID; as variáveis de
+# build vêm das Environment Variables do projeto, nunca de arquivo enviado.
+.env
+.env.*
+!.env.example
+
+# Nada disso é necessário para compilar, e só engorda o upload.
+.claude/
+graphify-out/
+supabase/.temp/

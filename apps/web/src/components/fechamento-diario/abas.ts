@@ -6,7 +6,6 @@
  */
 export const ABAS = [
     { chave: 'leituras', rotulo: '⛽ Leituras de Bomba', classeAtiva: 'border-blue-500 text-blue-400' },
-    { chave: 'financeiro', rotulo: '💰 Fechamento Financeiro', classeAtiva: 'border-emerald-500 text-emerald-400' },
     { chave: 'detalhamento', rotulo: '👥 Detalhamento Frentistas', classeAtiva: 'border-purple-500 text-purple-400' },
     { chave: 'gestao-bicos', rotulo: '🚀 Gestão de Bicos', classeAtiva: 'border-indigo-500 text-indigo-400' },
     { chave: 'receitas-despesas', rotulo: '💵 Receitas e Despesas', classeAtiva: 'border-cyan-500 text-cyan-400' },

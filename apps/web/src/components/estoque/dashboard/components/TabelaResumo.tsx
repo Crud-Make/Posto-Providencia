@@ -1,4 +1,5 @@
 import React from 'react';
+import { corDoProduto } from '@posto/utils';
 import { Tanque } from '../types';
 
 interface TabelaResumoProps {
@@ -6,16 +7,6 @@ interface TabelaResumoProps {
 }
 
 const TabelaResumo: React.FC<TabelaResumoProps> = ({ tanques }) => {
-  const getProductColor = (productName: string): string => {
-    const lowerName = productName.toLowerCase();
-    if (lowerName.includes('gasolina') && lowerName.includes('aditivada')) return '#3B82F6'; // Blue
-    if (lowerName.includes('gasolina')) return '#F87171'; // Red
-    if (lowerName.includes('etanol')) return '#10B981'; // Green
-    if (lowerName.includes('diesel') && lowerName.includes('s-10')) return '#F59E0B'; // Amber
-    if (lowerName.includes('diesel')) return '#D97706'; // Dark Amber
-    return '#6B7280'; // Gray
-  };
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
       <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex items-center justify-between">
@@ -38,7 +29,7 @@ const TabelaResumo: React.FC<TabelaResumoProps> = ({ tanques }) => {
         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
           {tanques.map(t => {
             const percent = t.capacidade > 0 ? (t.estoque_atual / t.capacidade) * 100 : 0;
-            const productColor = getProductColor(t.combustivel?.nome || '');
+            const productColor = corDoProduto(t.combustivel?.codigo).fundo;
             return (
               <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{t.nome}</td>

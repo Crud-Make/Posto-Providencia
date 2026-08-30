@@ -38,6 +38,8 @@ export const useFrentistas = () => {
                 status: f.ativo ? 'Ativo' : 'Inativo',
                 dataAdmissao: f.data_admissao,
                 telefone: f.telefone,
+                // Já vinha no `select('*')`; só se perdia aqui, no mapeamento.
+                foto: f.foto ?? null,
                 postoId: f.posto_id
             }));
 

@@ -23,7 +23,7 @@ import {
 interface LinhaPresenca {
   frentista_id: number;
   visto_em: string;
-  frentista: { nome: string } | null;
+  frentista: { nome: string; foto: string | null } | null;
 }
 
 export const presencaService = {
@@ -44,7 +44,7 @@ export const presencaService = {
     try {
       const baseQuery = supabase
         .from('PresencaFrentista')
-        .select('frentista_id, visto_em, frentista:Frentista(nome)');
+        .select('frentista_id, visto_em, frentista:Frentista(nome, foto)');
 
       const { data, error } = await withPostoFilter(baseQuery, postoId);
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
@@ -55,6 +55,7 @@ export const presencaService = {
       const presencas: PresencaFrentista[] = linhas.map(l => ({
         frentistaId: l.frentista_id,
         nome: l.frentista?.nome ?? 'Frentista',
+        foto: l.frentista?.foto ?? null,
         vistoEm: new Date(l.visto_em),
       }));
 
