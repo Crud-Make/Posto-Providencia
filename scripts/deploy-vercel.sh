@@ -74,11 +74,16 @@ alvo='preview'
 if $producao; then
     alvo='PRODUÇÃO'
     aviso "Isto substitui o app que o dono do posto já usa no celular dele."
+    # Sem terminal (agente, CI), a confirmação vem por variável — a palavra
+    # inteira, nunca um `-y`. A trava é contra publicar em produção por
+    # descuido; não contra automação que já teve o "pode" de quem manda.
     if [[ -t 0 ]]; then
         read -r -p "  Digite 'producao' para confirmar: " resposta
         [[ "$resposta" == 'producao' ]] || erro "Cancelado."
+    elif [[ "${CONFIRMA_PRODUCAO:-}" == 'producao' ]]; then
+        aviso "Confirmado por CONFIRMA_PRODUCAO (sem terminal)."
     else
-        erro "--prod exige terminal interativo para confirmar."
+        erro "Sem terminal: exporte CONFIRMA_PRODUCAO=producao para confirmar."
     fi
 fi
 
