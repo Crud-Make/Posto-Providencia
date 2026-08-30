@@ -111,6 +111,28 @@ export const api = {
         return data;
     },
 
+    /**
+     * Avisa o celular do dono que este fechamento chegou.
+     *
+     * @remarks **Nunca lança, e isso é o ponto.** O que importa é o fechamento
+     *          ter sido gravado; o aviso é cortesia. Se uma falha de
+     *          notificação derrubasse o "enviado com sucesso", o frentista
+     *          mandaria tudo de novo e criaria envio em dobro — trocando um
+     *          aviso perdido por um problema de dinheiro.
+     * @remarks Manda só o `id`. A Edge Function monta o texto lendo a linha real
+     *          do banco, para ninguém conseguir forjar um aviso.
+     */
+    async avisarDono(fechamentoFrentistaId: number) {
+        try {
+            const { error } = await supabase.functions.invoke('notifica-dono', {
+                body: { fechamentoFrentistaId },
+            });
+            if (error) console.error('aviso ao dono não saiu:', error.message);
+        } catch (err) {
+            console.error('aviso ao dono não saiu:', err);
+        }
+    },
+
     /** Delegado a `@posto/api-core` — ver o porquê em `encerrante.ts`. */
     consolidarFechamento(fechamentoId: number) {
         return encerrante.consolidarFechamento(fechamentoId);

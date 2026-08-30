@@ -382,7 +382,12 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         observacoes: "Fechamento via PWA Frentista"
       };
 
-      await api.submitFrentistaClosing(payload);
+      const enviado = await api.submitFrentistaClosing(payload) as { id?: number } | null;
+
+      // Dispara e segue, sem `await`: o frentista não deve esperar a rede do
+      // aviso para ver "enviado com sucesso", e `avisarDono` engole os próprios
+      // erros de propósito — o porquê está no JSDoc dela.
+      if (enviado?.id) void api.avisarDono(enviado.id);
 
       setEnviosVersao((v) => v + 1);
       setConfirmarDataDiferente(false);

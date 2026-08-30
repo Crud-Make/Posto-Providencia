@@ -25,6 +25,17 @@
   a que horas, quanto conferiu e se faltou ou sobrou — com a foto de perfil de cada um. Seletor de
   data no topo. O app do dono ganhou navegação (duas abas) junto com ela; antes não havia segunda
   tela e rota teria sido abstração vazia.
+- **Service worker próprio no PWA do dono** (`injectManifest` no lugar de `generateSW`): o SW gerado
+  não tem como receber `push`, e é só por isso que a troca aconteceu. O `src/sw.ts` reproduz de
+  propósito tudo o que o gerado fazia — precache, `skipWaiting`, `clientsClaim` e o `SKIP_WAITING`
+  que o `ReloadPrompt` manda —, mais a navegação offline caindo no `index.html` do precache, que o
+  app instalado precisa para abrir sem rede no posto. Dependência nova: `workbox-precaching`.
+- **A tag da notificação é por envio, não fixa.** Com uma tag só, o aviso do segundo frentista
+  substituiria o do primeiro e o dono nunca saberia que o Paulo também fechou. Com o id do envio,
+  cada um tem o seu e um reenvio do mesmo substitui em vez de duplicar.
+- **O PWA do frentista chama a função depois de gravar**, sem `await` e engolindo os próprios erros:
+  se uma falha de notificação derrubasse o "enviado com sucesso", o frentista mandaria tudo de novo
+  e criaria envio em dobro — trocaria um aviso perdido por um problema de dinheiro.
 - **Botão "Me avisar quando um frentista fechar o caixa"** na tela de envios, e a inscrição no Web
   Push. O pedido de permissão sai de um TOQUE, nunca sozinho ao abrir: no iPhone a
   `requestPermission()` fora de um gesto é recusada em silêncio, e uma negativa só se reverte
