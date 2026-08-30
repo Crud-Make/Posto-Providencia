@@ -44,32 +44,9 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
 
   const hasData = chartData.some(d => d.volume > 0);
 
-  const getFuelColors = (name: string, index: number) => {
-    const lower = name.toLowerCase();
-
-    // Gasolina Comum -> Vermelho
-    if (lower.includes('comum')) return ['#ef4444', '#b91c1c'];
-
-    // Gasolina Aditivada -> Azul (padrão Grid/V-Power Racing as vezes associam a performance/azul)
-    if (lower.includes('aditivada') || lower.includes('grid')) return ['#3b82f6', '#1d4ed8'];
-
-    // Etanol -> Verde
-    if (lower.includes('etanol') || lower.includes('álcool')) return ['#10b981', '#047857'];
-
-    // Diesel S10 -> Laranja/Ambar
-    if (lower.includes('diesel') && lower.includes('s10')) return ['#f59e0b', '#b45309'];
-
-    // Outros Diesels -> Cinza Escuro
-    if (lower.includes('diesel')) return ['#71717a', '#3f3f46'];
-
-    // Fallback colors
-    const fallbacks = [
-      ['#8b5cf6', '#6d28d9'], // Violet
-      ['#ec4899', '#be185d'], // Pink
-      ['#06b6d4', '#0e7490'], // Cyan
-    ];
-    return fallbacks[index % fallbacks.length];
-  };
+  // Cor do combustível vem do dado (`color`, a da planilha pelo código, montada
+  // no aggregator). Antes: heurística por trecho do nome, quarta cópia no repo.
+  const getFuelColors = (d: FuelData): [string, string] => [d.color, `${d.color}99`];
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm h-full flex flex-col">
@@ -97,7 +74,7 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
           <ResponsiveContainer width="99%" height="100%">
             <BarChart
               data={chartData.map((d, i) => {
-                const [start, end] = getFuelColors(d.name, i);
+                const [start, end] = getFuelColors(d);
                 return { ...d, color: start, colorEnd: end };
               })}
               margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
@@ -105,7 +82,7 @@ const FuelVolumeChart: React.FC<FuelVolumeChartProps> = ({ data }) => {
             >
               <defs>
                 {chartData.map((d, i) => {
-                  const [start, end] = getFuelColors(d.name, i);
+                  const [start, end] = getFuelColors(d);
                   return (
                     <linearGradient key={`grad-${i}`} id={`fuel-grad-${i}`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={start} />

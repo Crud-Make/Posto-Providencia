@@ -1,7 +1,7 @@
 import React from 'react';
+import { corDoProduto } from '@posto/utils';
 import { Droplet, DollarSign, BarChart3 } from 'lucide-react';
 import type { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
-import { FUEL_COLORS } from '../types';
 
 type UseLeiturasReturn = ReturnType<typeof useLeituras>;
 
@@ -27,7 +27,7 @@ export const ResumoLeituras: React.FC<ResumoLeiturasProps> = ({ leiturasHook }) 
           {summary.map((item) => (
             <div key={item.codigo} className="flex items-center justify-between p-4 rounded-lg bg-gray-50 border border-gray-100">
               <div className="flex items-center gap-3">
-                <span className={`px-2.5 py-1 rounded text-xs font-bold ${FUEL_COLORS[item.codigo] || 'bg-gray-200 text-gray-700'}`}>
+                <span className="px-2.5 py-1 rounded text-xs font-bold" style={{ backgroundColor: corDoProduto(item.codigo).fundo, color: corDoProduto(item.codigo).texto }}>
                   {item.codigo}
                 </span>
                 <span className="text-sm text-gray-500 font-medium">{item.nome}</span>
