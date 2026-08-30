@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 📈 Subida × descida de preço: efeito na margem e no valor do estoque (#70)
+
+- A seção "Impacto das trocas de preço" da `/proprietario` agora responde também o que cada
+  troca fez com o LUCRO e com o ESTOQUE: selo de subida/descida por linha, margem BRUTA por
+  litro antes/depois (`preço − custo médio de compra do mês` — o canônico `custoMedioCompra`;
+  a despesa operacional NÃO entra, e mês sem compra fica `null`, nunca zero) e o valor de
+  venda dos litros parados a cada preço. O cabeçalho decompõe o mês em subidas × descidas
+  com o líquido.
+- **`valorEstoqueNovo = valorEstoqueAntigo + ganhoPerda` por construção** — a diferença
+  exibida fecha sempre com o ganho/perda da #61 (arredondar os dois lados separado poderia
+  divergir 1 centavo na tela).
+- Tudo derivado em `packages/utils/src/troca-preco.ts` dos dados que a fórmula já recebia —
+  zero query nova no hook; `resumoPorDirecao` decompõe o total que já existia.
+- **Golden master**: margem antes/depois das trocas de janeiro, maio e junho contra a
+  planilha (`media_lt` de `compra_mensal` × preços de `encerrante_diario` — as duas pontas
+  são da planilha), mais a direção por mês (janeiro: 4 subidas; maio e junho: descidas).
+  Valorização e resumo, sem contrapartida diária na planilha, ficam em unitário (vitest).
+
 ### 💱 Impacto das trocas de preço na Visão do Proprietário (#61)
 
 - Nova seção na `/proprietario`, abaixo do Demonstrativo Financeiro: uma linha por mudança de

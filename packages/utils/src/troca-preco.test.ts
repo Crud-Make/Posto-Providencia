@@ -4,6 +4,7 @@ import {
     estoqueNaVespera,
     impactoTrocaDePreco,
     totalGanhoPerdaCentavos,
+    resumoPorDirecao,
     type LeituraPrecoDia,
 } from './troca-preco';
 
@@ -109,5 +110,78 @@ describe('impactoTrocaDePreco', () => {
         const impactos = impactoTrocaDePreco(leituras, compras, reguas);
         expect(totalGanhoPerdaCentavos(impactos)).toBe(30_000);
         expect(totalGanhoPerdaCentavos(impactoTrocaDePreco(leituras, compras, []))).toBe(0);
+    });
+});
+
+describe('direção, margem e valorização do estoque (#70)', () => {
+    const leituras = [dia('2026-01-06', 6.28, 500), dia('2026-01-07', 6.48, 500)];
+    const reguas = [{ combustivel: 'gc', data: '2026-01-05', litros: 2000 }];
+    const compras = [{ combustivel: 'gc', data: '2026-01-20', litros: 31_000, valorTotal: 165_700 }];
+
+    it('subida: direção, margem antes/depois e estoque valorizado', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, reguas);
+        const custo = 165_700 / 31_000;
+        expect(i.direcao).toBe('subida');
+        expect(i.margemAntigaLitro).toBeCloseTo(6.28 - custo, 9);
+        expect(i.margemNovaLitro).toBeCloseTo(6.48 - custo, 9);
+        // 1500 L × 6,28 = R$ 9.420,00; + ganho de R$ 300,00 = R$ 9.720,00 (= 1500 × 6,48)
+        expect(i.valorEstoqueAntigoCentavos).toBe(942_000);
+        expect(i.valorEstoqueNovoCentavos).toBe(972_000);
+    });
+
+    it('descida: direção certa e a margem cai junto', () => {
+        const queda = [dia('2026-05-15', 7.38, 100), dia('2026-05-16', 7.18, 100)];
+        const regua = [{ combustivel: 'gc', data: '2026-05-14', litros: 1000 }];
+        const compraMai = [{ combustivel: 'gc', data: '2026-05-02', litros: 32_000, valorTotal: 190_810 }];
+        const [i] = impactoTrocaDePreco(queda, compraMai, regua);
+        expect(i.direcao).toBe('descida');
+        expect(i.margemNovaLitro).toBeCloseTo((i.margemAntigaLitro ?? 0) - 0.20, 9);
+    });
+
+    it('valor novo − valor antigo FECHA com o ganho/perda, mesmo com litros quebrados', () => {
+        const leiturasQuebradas = [dia('2026-01-06', 6.28, 499.445), dia('2026-01-07', 6.48, 500)];
+        const [i] = impactoTrocaDePreco(leiturasQuebradas, compras, reguas);
+        expect(i.valorEstoqueNovoCentavos).not.toBeNull();
+        expect((i.valorEstoqueNovoCentavos ?? 0) - (i.valorEstoqueAntigoCentavos ?? 0)).toBe(i.ganhoPerdaCentavos ?? NaN);
+    });
+
+    it('sem compra no mês: margens null, nunca zero', () => {
+        const [i] = impactoTrocaDePreco(leituras, [], reguas);
+        expect(i.margemAntigaLitro).toBeNull();
+        expect(i.margemNovaLitro).toBeNull();
+    });
+
+    it('sem régua: valorização null, margens continuam apuráveis', () => {
+        const [i] = impactoTrocaDePreco(leituras, compras, []);
+        expect(i.valorEstoqueAntigoCentavos).toBeNull();
+        expect(i.valorEstoqueNovoCentavos).toBeNull();
+        expect(i.margemAntigaLitro).not.toBeNull();
+    });
+});
+
+describe('resumoPorDirecao', () => {
+    const reguas = [
+        { combustivel: 'gc', data: '2026-01-01', litros: 2000 },
+        { combustivel: 'et', data: '2026-01-01', litros: 1000 },
+    ];
+    const leituras = [
+        dia('2026-01-02', 6.28, 100, 'gc'), dia('2026-01-03', 6.48, 100, 'gc'), // subida
+        dia('2026-01-02', 4.98, 100, 'et'), dia('2026-01-03', 4.58, 100, 'et'), // descida
+    ];
+
+    it('separa subidas de descidas e o líquido bate com o total', () => {
+        const impactos = impactoTrocaDePreco(leituras, [], reguas);
+        const resumo = resumoPorDirecao(impactos);
+        // gc: (2000−100) × +0,20 = +R$ 380 · et: (1000−100) × −0,40 = −R$ 360
+        expect(resumo.subidas).toEqual({ quantidade: 1, totalCentavos: 38_000 });
+        expect(resumo.descidas).toEqual({ quantidade: 1, totalCentavos: -36_000 });
+        expect(resumo.liquidoCentavos).toBe(totalGanhoPerdaCentavos(impactos));
+    });
+
+    it('troca sem régua conta na quantidade mas não no total', () => {
+        const impactos = impactoTrocaDePreco([dia('2026-01-02', 6.28), dia('2026-01-03', 6.48)], [], []);
+        const resumo = resumoPorDirecao(impactos);
+        expect(resumo.subidas).toEqual({ quantidade: 1, totalCentavos: 0 });
+        expect(resumo.liquidoCentavos).toBe(0);
     });
 });

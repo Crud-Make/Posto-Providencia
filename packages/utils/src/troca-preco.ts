@@ -20,6 +20,14 @@
  *    do mês vai junto como CONTEXTO (a margem da época), calculado por
  *    {@link custoMedioCompra} — a mesma média que a planilha (`media_lt`) e a
  *    RPC `get_dashboard_proprietario` usam.
+ * 4. **O que a troca fez com a margem e com o estoque?** (Issue #70) —
+ *    `margemAntigaLitro`/`margemNovaLitro` (margem BRUTA por litro: preço −
+ *    custo médio do mês; a despesa operacional NÃO entra — a margem completa
+ *    dependeria da `Despesa`, hoje refém do replay) e
+ *    `valorEstoqueAntigoCentavos`/`valorEstoqueNovoCentavos` (valor de venda
+ *    dos litros parados a cada preço). {@link resumoPorDirecao} agrega o mês
+ *    em subidas × descidas. Margens cobertas por golden (preço e `media_lt`
+ *    vêm ambos da planilha); valorização é aritmética coberta por unitário.
  *
  * A planilha não tem referência diária de tanque nem data por carga, então o
  * golden cobre a DETECÇÃO e a ARITMÉTICA; `litrosNoTanque` é derivado do
@@ -68,8 +76,14 @@ export interface TrocaDePreco {
     readonly precoNovo: number;
 }
 
-/** Uma troca com o impacto sobre o estoque parado. */
+/** Direção de uma troca de preço. Union de string, sem `enum` (§4 do CLAUDE.md). */
+export const DIRECAO_TROCA = ['subida', 'descida'] as const;
+export type DirecaoTroca = (typeof DIRECAO_TROCA)[number];
+
+/** Uma troca com o impacto sobre o estoque parado e sobre a margem. */
 export interface ImpactoTroca extends TrocaDePreco {
+    /** `'subida'` quando o preço subiu (`precoNovo > precoAntigo`); senão `'descida'`. */
+    readonly direcao: DirecaoTroca;
     /**
      * Litros no tanque no fim da véspera da troca.
      * `null` = sem régua anterior à troca; sem régua não há estoque apurável.
@@ -80,6 +94,29 @@ export interface ImpactoTroca extends TrocaDePreco {
      * `null` = mês sem compra. NÃO entra em `ganhoPerdaCentavos`.
      */
     readonly custoMedioLitro: number | null;
+    /**
+     * Margem BRUTA por litro ao preço ANTIGO: `precoAntigo − custoMedioLitro`,
+     * em R$/L. Não é dinheiro final → precisão total, sem quantizar (mesma
+     * regra de `custoMedioLitro`). A despesa operacional NÃO entra — decisão
+     * da Issue #70. `null` quando o mês não tem compra.
+     */
+    readonly margemAntigaLitro: number | null;
+    /** Margem bruta por litro ao preço NOVO: `precoNovo − custoMedioLitro`. `null` sem compra no mês. */
+    readonly margemNovaLitro: number | null;
+    /**
+     * Valor de venda do estoque parado AO PREÇO ANTIGO:
+     * `litrosNoTanque × precoAntigo`, em CENTAVOS inteiros.
+     * `null` quando `litrosNoTanque` é `null`.
+     */
+    readonly valorEstoqueAntigoCentavos: number | null;
+    /**
+     * Valor de venda do estoque parado ao preço NOVO. Derivado como
+     * `valorEstoqueAntigoCentavos + ganhoPerdaCentavos` — e não arredondando
+     * `litros × precoNovo` à parte — para que a diferença exibida FECHE SEMPRE
+     * com o ganho/perda (dois arredondamentos independentes poderiam divergir
+     * 1 centavo na tela). `null` quando não apurável.
+     */
+    readonly valorEstoqueNovoCentavos: number | null;
     /**
      * `litrosNoTanque × (precoNovo − precoAntigo)`, em CENTAVOS inteiros.
      * Positivo = os litros parados renderam mais ao preço novo; negativo =
@@ -214,11 +251,67 @@ export function impactoTrocaDePreco(
             ? null
             : Math.round(litrosNoTanque * (troca.precoNovo - troca.precoAntigo) * 100);
 
-        return { ...troca, litrosNoTanque, custoMedioLitro, ganhoPerdaCentavos };
+        const direcao: DirecaoTroca = troca.precoNovo > troca.precoAntigo ? 'subida' : 'descida';
+        const margemAntigaLitro = custoMedioLitro == null ? null : troca.precoAntigo - custoMedioLitro;
+        const margemNovaLitro = custoMedioLitro == null ? null : troca.precoNovo - custoMedioLitro;
+        const valorEstoqueAntigoCentavos = litrosNoTanque == null
+            ? null
+            : Math.round(litrosNoTanque * troca.precoAntigo * 100);
+        const valorEstoqueNovoCentavos = valorEstoqueAntigoCentavos == null || ganhoPerdaCentavos == null
+            ? null
+            : valorEstoqueAntigoCentavos + ganhoPerdaCentavos;
+
+        return {
+            ...troca,
+            direcao,
+            litrosNoTanque,
+            custoMedioLitro,
+            margemAntigaLitro,
+            margemNovaLitro,
+            valorEstoqueAntigoCentavos,
+            valorEstoqueNovoCentavos,
+            ganhoPerdaCentavos,
+        };
     });
 }
 
 /** Total do período em centavos: soma só das trocas com estoque apurável. */
 export function totalGanhoPerdaCentavos(impactos: readonly ImpactoTroca[]): number {
     return impactos.reduce((soma, i) => soma + (i.ganhoPerdaCentavos ?? 0), 0);
+}
+
+/** Um lado do resumo por direção: quantas trocas e quanto somaram. */
+export interface LadoDirecao {
+    /** Número de trocas na direção — inclui as não apuráveis (sem régua). */
+    readonly quantidade: number;
+    /** Soma de `ganhoPerdaCentavos` das trocas APURÁVEIS da direção. */
+    readonly totalCentavos: number;
+}
+
+/** O mês visto por direção de troca (Issue #70). */
+export interface ResumoPorDirecao {
+    readonly subidas: LadoDirecao;
+    readonly descidas: LadoDirecao;
+    /** `subidas.totalCentavos + descidas.totalCentavos` — igual a {@link totalGanhoPerdaCentavos}. */
+    readonly liquidoCentavos: number;
+}
+
+/**
+ * Agrega os impactos do período em subidas × descidas de preço (Issue #70).
+ *
+ * @remarks Troca sem estoque apurável conta na `quantidade` (a troca
+ *          aconteceu), mas não soma no total — mesma regra de
+ *          {@link totalGanhoPerdaCentavos}, que este resumo decompõe.
+ */
+export function resumoPorDirecao(impactos: readonly ImpactoTroca[]): ResumoPorDirecao {
+    const lado = (direcao: DirecaoTroca): LadoDirecao => {
+        const doLado = impactos.filter((i) => i.direcao === direcao);
+        return {
+            quantidade: doLado.length,
+            totalCentavos: doLado.reduce((soma, i) => soma + (i.ganhoPerdaCentavos ?? 0), 0),
+        };
+    };
+    const subidas = lado('subida');
+    const descidas = lado('descida');
+    return { subidas, descidas, liquidoCentavos: totalGanhoPerdaCentavos(impactos) };
 }

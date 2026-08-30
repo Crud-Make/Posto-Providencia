@@ -12,8 +12,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   impactoTrocaDePreco,
-  totalGanhoPerdaCentavos,
+  resumoPorDirecao,
   type ImpactoTroca,
+  type ResumoPorDirecao,
   type LeituraPrecoDia,
   type CompraComData,
   type ReguaComData,
@@ -38,7 +39,8 @@ interface CompraDoBanco {
 interface ReguaDoBanco {
   readonly tanque_id: number;
   readonly data: string;
-  readonly volume_fisico: number;
+  /** Nulo = medição não feita naquele dia — régua que NÃO existe, nunca 0 L. */
+  readonly volume_fisico: number | null;
 }
 
 interface TanqueDoBanco {
@@ -58,7 +60,8 @@ export interface ImpactoExibivel extends ImpactoTroca {
 
 export interface DadosImpactoTrocaPreco {
   readonly impactos: readonly ImpactoExibivel[];
-  readonly totalCentavos: number;
+  /** O mês decomposto em subidas × descidas (Issue #70). O líquido do mês é `resumo.liquidoCentavos`. */
+  readonly resumo: ResumoPorDirecao;
 }
 
 /** `2026-03` → `2026-02-01` (início da busca, um mês antes). */
@@ -96,6 +99,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
         supabase
           .from('HistoricoTanque')
           .select('tanque_id, data, volume_fisico')
+          .not('volume_fisico', 'is', null)
           .gte('data', inicioBusca)
           .lte('data', periodo.fim),
         supabase.from('Tanque').select('id, combustivel_id').eq('posto_id', postoId),
@@ -130,12 +134,14 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
         valorTotal: c.valor_total,
       }));
 
+      // O filtro de nulo repete o da query de propósito: régua sem medição que
+      // escapasse viraria "tanque com 0 L" lá na corrente (null × n = 0 em JS).
       const reguas: ReguaComData[] = ((reguasRes.data ?? []) as ReguaDoBanco[])
-        .filter((r) => combustivelDoTanque.has(r.tanque_id))
+        .filter((r) => combustivelDoTanque.has(r.tanque_id) && r.volume_fisico != null)
         .map((r) => ({
           combustivel: String(combustivelDoTanque.get(r.tanque_id)),
           data: r.data.slice(0, 10),
-          litros: r.volume_fisico,
+          litros: r.volume_fisico ?? 0,
         }));
 
       const doMes = impactoTrocaDePreco(leituras, compras, reguas)
@@ -145,7 +151,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
           nomeCombustivel: nomeDoCombustivel.get(Number(i.combustivel)) ?? `Combustível ${i.combustivel}`,
         }));
 
-      setDados({ impactos: doMes, totalCentavos: totalGanhoPerdaCentavos(doMes) });
+      setDados({ impactos: doMes, resumo: resumoPorDirecao(doMes) });
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não consegui apurar as trocas de preço.');
       setDados(null);
