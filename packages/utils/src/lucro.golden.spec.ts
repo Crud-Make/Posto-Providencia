@@ -19,7 +19,40 @@
  *    contradizê-la. Este golden NÃO cobre o caso "taxa de cartão preenchida".
  */
 import { test, expect } from 'bun:test';
-import fixture from '../../../docs/data/fixture_lucro_custo_mes01.json';
+import { readFileSync } from 'node:fs';
+
+// O fixture vem de docs/data/ (gitignored, §6): import estático faria o
+// type-check EXIGIR o arquivo, e a CI roda sem docs/data — foi exatamente o
+// que quebrou o build quando os goldens entraram no tsc. Leitura em runtime:
+// o tipo declara só o que o teste usa, e quem não tem o arquivo falha AQUI,
+// no teste, não na compilação do repo inteiro.
+interface CompraCustoEstoqueMes {
+    readonly produto: string;
+    readonly compra_lt: number;
+    readonly compra_rs: number;
+    readonly media_lt_rs: number;
+}
+interface ProdutoDoMes {
+    readonly produto: string;
+    readonly litros: number;
+    readonly valor_lt_rs: number | null;
+    readonly venda_bico_rs: number;
+    readonly lucro_bico_rs: number;
+}
+interface FixtureLucroCusto {
+    readonly mes_01_compra_custo_estoque: readonly CompraCustoEstoqueMes[];
+    readonly mes_01_despesas_total_rs: number;
+    readonly mes_01_despesa_operacional_por_litro_rs: number;
+    readonly mes_01_por_produto: readonly ProdutoDoMes[];
+    readonly mes_01_total: {
+        readonly litros_vendidos: number;
+        readonly lucro_total_rs: number;
+        readonly venda_total_rs: number;
+    };
+}
+const fixture = JSON.parse(
+    readFileSync(new URL('../../../docs/data/fixture_lucro_custo_mes01.json', import.meta.url), 'utf8')
+) as FixtureLucroCusto;
 import {
     despesaOperacionalPorLitro,
     lucroCombustivel,
