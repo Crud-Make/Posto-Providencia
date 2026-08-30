@@ -11,6 +11,7 @@ import { AlertTriangle, ArrowLeft, Check, RefreshCw, TrendingUp } from 'lucide-r
 import { criarAcessoEnvios, type EnvioDeFechamento } from '@posto/api-core';
 import { isSobra } from '@posto/utils';
 import { supabase } from '../lib/supabase';
+import BotaoNotificacoes from '../components/botao-notificacoes';
 
 const POSTO_ID = 1;
 const acesso = criarAcessoEnvios(supabase);
@@ -105,6 +106,12 @@ export default function EnviosScreen({ dataIso, onTrocarData, onVoltar }: Props)
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* Fica logo abaixo do resumo, não no topo: o dono precisa ver do
+                que se trata a tela antes de decidir ser avisado por ela. */}
+            <div className="px-5 mt-4">
+                <BotaoNotificacoes />
             </div>
 
             <div className="px-5 mt-5 space-y-3">

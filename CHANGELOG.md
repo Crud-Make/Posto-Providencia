@@ -25,6 +25,16 @@
   a que horas, quanto conferiu e se faltou ou sobrou — com a foto de perfil de cada um. Seletor de
   data no topo. O app do dono ganhou navegação (duas abas) junto com ela; antes não havia segunda
   tela e rota teria sido abstração vazia.
+- **Botão "Me avisar quando um frentista fechar o caixa"** na tela de envios, e a inscrição no Web
+  Push. O pedido de permissão sai de um TOQUE, nunca sozinho ao abrir: no iPhone a
+  `requestPermission()` fora de um gesto é recusada em silêncio, e uma negativa só se reverte
+  removendo o app da tela de início e instalando de novo — pedir automático gastaria a única
+  chance boa.
+- A decisão de o que mostrar é pura e testada (10 casos), no molde do `decidirConvite`. O caso que
+  mais importa: no iPhone **fora** da tela de início a `PushManager` nem existe, e ler isso como
+  "seu aparelho não suporta" mandaria o dono desistir de algo que o aparelho dele faz — a tela diz
+  "instale primeiro". Permissão negada também vence inscrição existente, senão a tela diria que
+  está tudo certo enquanto nada chega.
 - Diferença **não apurada** (`NULL`) aparece como "sem apurar", não como "bateu". São estados
   diferentes, e tratar o primeiro como zero afirmaria sobre dinheiro o que ninguém conferiu — a
   linha do "Posto providencia" em 29/08 é o caso real que revelou isso.
