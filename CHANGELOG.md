@@ -19,6 +19,17 @@
   planilha (`media_lt` de `compra_mensal` × preços de `encerrante_diario` — as duas pontas
   são da planilha), mais a direção por mês (janeiro: 4 subidas; maio e junho: descidas).
   Valorização e resumo, sem contrapartida diária na planilha, ficam em unitário (vitest).
+- **Tela redesenhada para bater o olho** (pedido do dono, 30/08): um card por troca com a
+  narrativa da placa do poste — "por X dias o litro saiu a Y; em DD/MM subiu/caiu para Z" —
+  e o veredito dominante LUCRO/PREJUÍZO NO ESTOQUE em número grande; sigla do combustível na
+  cor da planilha (GC/GA/ET/S10 via `corDoProduto`); grade de 3 fatos (tanque, margem/L,
+  valor do estoque). A vigência ("por X dias") é campo novo do módulo puro
+  (`precoAntigoDesde`/`diasComPrecoAntigo`), com unitários e golden (janeiro: 6 dias).
+- **fix: data com timestamp não quebra mais a véspera.** `Leitura`/`Compra` podem devolver
+  `YYYY-MM-DDTHH:MM:SS`; sem normalizar, o parse da véspera dava "Invalid time value" e — pior —
+  a corrente aceitava régua do PRÓPRIO dia da troca (estoque inflado: 3.737 L onde a véspera
+  tinha 2.088 L). Datas normalizadas com `slice(0, 10)` na fronteira do hook, e a `vesperaDe`
+  virou aritmética pura de calendário (sem `Date`, que o lint proíbe pelo bug do fuso das 21h).
 
 ### 💱 Impacto das trocas de preço na Visão do Proprietário (#61)
 

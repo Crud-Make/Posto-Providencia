@@ -95,6 +95,21 @@ export interface ImpactoTroca extends TrocaDePreco {
      */
     readonly custoMedioLitro: number | null;
     /**
+     * Primeiro dia em que o preço ANTIGO vigorou, dentro da janela de leituras
+     * fornecida: a troca anterior do mesmo combustível ou, sem troca anterior,
+     * o primeiro dia da janela com preço conhecido. É vigência MÍNIMA — se a
+     * janela começa no meio da vida do preço, conta-se só o que se enxerga.
+     * `null` se não houver dia anterior com preço (não ocorre em troca real,
+     * que exige preço anterior conhecido).
+     */
+    readonly precoAntigoDesde: string | null;
+    /**
+     * Dias corridos em que o preço antigo vigorou (de `precoAntigoDesde` até a
+     * véspera da troca, contando as duas pontas). É o "por X dias o litro saiu
+     * a Y" da tela do proprietário. `null` quando `precoAntigoDesde` é `null`.
+     */
+    readonly diasComPrecoAntigo: number | null;
+    /**
      * Margem BRUTA por litro ao preço ANTIGO: `precoAntigo − custoMedioLitro`,
      * em R$/L. Não é dinheiro final → precisão total, sem quantizar (mesma
      * regra de `custoMedioLitro`). A despesa operacional NÃO entra — decisão
@@ -222,6 +237,32 @@ export function estoqueNaVespera(
     return linha.estoqueTeorico;
 }
 
+/** Dias corridos entre duas datas ISO locais, contando as DUAS pontas. */
+function diasCorridosInclusivos(inicio: string, fim: string): number {
+    // slice(0, 10): aceita 'YYYY-MM-DDTHH:MM:SS' sem virar NaN — o banco já
+    // devolveu timestamp onde se esperava só a data (bug real de 30/08).
+    const [a1, m1, d1] = inicio.slice(0, 10).split('-').map(Number);
+    const [a2, m2, d2] = fim.slice(0, 10).split('-').map(Number);
+    // Date.UTC puro: sem fuso local, que já escorregou leitura em um dia aqui.
+    return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000) + 1;
+}
+
+/**
+ * A véspera de uma data ISO local (`2026-03-01` → `2026-02-28`).
+ * Aritmética pura de calendário — sem `Date`, que o lint proíbe para data de
+ * calendário (`toISOString()` em GMT-3 pula um dia depois das 21h).
+ */
+function vesperaDe(dataIso: string): string {
+    const [a, m, d] = dataIso.slice(0, 10).split('-').map(Number);
+    if (d > 1) return `${a}-${String(m).padStart(2, '0')}-${String(d - 1).padStart(2, '0')}`;
+    const mesAnterior = m === 1 ? 12 : m - 1;
+    const anoDaVespera = m === 1 ? a - 1 : a;
+    const bissexto = (anoDaVespera % 4 === 0 && anoDaVespera % 100 !== 0) || anoDaVespera % 400 === 0;
+    const DIAS_NO_MES = [31, bissexto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const ultimoDia = DIAS_NO_MES[mesAnterior - 1];
+    return `${anoDaVespera}-${String(mesAnterior).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+}
+
 /**
  * O impacto de cada troca de preço do período (Issue #61).
  *
@@ -238,7 +279,23 @@ export function impactoTrocaDePreco(
     compras: readonly CompraComData[],
     reguas: readonly ReguaComData[],
 ): ImpactoTroca[] {
-    return trocasDePreco(leituras).map((troca) => {
+    const trocas = trocasDePreco(leituras);
+
+    const primeiroDiaComPreco = new Map<string, string>();
+    for (const l of leituras) {
+        if (l.precoLitro == null) continue;
+        const atual = primeiroDiaComPreco.get(l.combustivel);
+        if (atual === undefined || l.data < atual) primeiroDiaComPreco.set(l.combustivel, l.data);
+    }
+
+    return trocas.map((troca) => {
+        const trocaAnterior = trocas
+            .filter((t) => t.combustivel === troca.combustivel && t.data < troca.data)
+            .at(-1);
+        const precoAntigoDesde = trocaAnterior?.data ?? primeiroDiaComPreco.get(troca.combustivel) ?? null;
+        const diasComPrecoAntigo = precoAntigoDesde == null
+            ? null
+            : diasCorridosInclusivos(precoAntigoDesde, vesperaDe(troca.data));
         const litrosNoTanque = estoqueNaVespera(troca.combustivel, troca.data, reguas, compras, leituras);
 
         const mesDaTroca = troca.data.slice(0, 7);
@@ -264,6 +321,8 @@ export function impactoTrocaDePreco(
         return {
             ...troca,
             direcao,
+            precoAntigoDesde,
+            diasComPrecoAntigo,
             litrosNoTanque,
             custoMedioLitro,
             margemAntigaLitro,

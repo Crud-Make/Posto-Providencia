@@ -185,3 +185,26 @@ describe('resumoPorDirecao', () => {
         expect(resumo.liquidoCentavos).toBe(0);
     });
 });
+
+describe('vigência do preço antigo (#70)', () => {
+    it('sem troca anterior: desde o primeiro dia com preço da janela', () => {
+        const ls = [dia('2026-01-01', 6.28), dia('2026-01-02', null), dia('2026-01-06', 6.28), dia('2026-01-07', 6.48)];
+        const [i] = impactoTrocaDePreco(ls, [], []);
+        expect(i.precoAntigoDesde).toBe('2026-01-01');
+        expect(i.diasComPrecoAntigo).toBe(6); // 01..06, pontas inclusas
+    });
+
+    it('com troca anterior: a vigência começa na troca anterior', () => {
+        const ls = [dia('2026-03-01', 6.28), dia('2026-03-10', 6.48), dia('2026-03-20', 6.98)];
+        const impactos = impactoTrocaDePreco(ls, [], []);
+        expect(impactos[1].precoAntigoDesde).toBe('2026-03-10');
+        expect(impactos[1].diasComPrecoAntigo).toBe(10); // 10..19/03
+    });
+
+    it('vigência atravessa a virada do mês sem escorregar dia (UTC puro)', () => {
+        const ls = [dia('2026-02-27', 7.38), dia('2026-03-01', 7.18)];
+        const [i] = impactoTrocaDePreco(ls, [], []);
+        expect(i.precoAntigoDesde).toBe('2026-02-27');
+        expect(i.diasComPrecoAntigo).toBe(2); // 27 e 28/02 (2026 não é bissexto)
+    });
+});

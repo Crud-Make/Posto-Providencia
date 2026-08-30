@@ -51,11 +51,15 @@ interface TanqueDoBanco {
 interface CombustivelDoBanco {
   readonly id: number;
   readonly nome: string;
+  /** Sigla da planilha (GC/GA/ET/S10) — chave de `corDoProduto`. */
+  readonly codigo: string | null;
 }
 
 /** Uma troca do mês, pronta para exibição. */
 export interface ImpactoExibivel extends ImpactoTroca {
   readonly nomeCombustivel: string;
+  /** Sigla da planilha (GC/GA/ET/S10), para a cor que o dono reconhece. */
+  readonly codigoCombustivel: string | null;
 }
 
 export interface DadosImpactoTrocaPreco {
@@ -103,7 +107,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
           .gte('data', inicioBusca)
           .lte('data', periodo.fim),
         supabase.from('Tanque').select('id, combustivel_id').eq('posto_id', postoId),
-        supabase.from('Combustivel').select('id, nome').eq('posto_id', postoId),
+        supabase.from('Combustivel').select('id, nome, codigo').eq('posto_id', postoId),
       ]);
 
       const primeiraFalha = [leiturasRes, comprasRes, reguasRes, tanquesRes, combustiveisRes]
@@ -113,15 +117,17 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
       const combustivelDoTanque = new Map<number, number>(
         ((tanquesRes.data ?? []) as TanqueDoBanco[]).map((t) => [t.id, t.combustivel_id]),
       );
-      const nomeDoCombustivel = new Map<number, string>(
-        ((combustiveisRes.data ?? []) as CombustivelDoBanco[]).map((c) => [c.id, c.nome]),
+      const cadastroCombustiveis = (combustiveisRes.data ?? []) as CombustivelDoBanco[];
+      const nomeDoCombustivel = new Map<number, string>(cadastroCombustiveis.map((c) => [c.id, c.nome]));
+      const codigoDoCombustivel = new Map<number, string | null>(
+        cadastroCombustiveis.map((c) => [c.id, c.codigo]),
       );
 
       // A fronteira do mapper: daqui para baixo é camelCase e domínio puro.
       const leituras: LeituraPrecoDia[] = ((leiturasRes.data ?? []) as unknown as LeituraDoBanco[])
         .filter((l) => l.bico != null)
         .map((l) => ({
-          data: l.data,
+          data: l.data.slice(0, 10),
           combustivel: String(l.bico?.combustivel_id),
           precoLitro: l.preco_litro,
           litrosVendidos: l.litros_vendidos ?? 0,
@@ -129,7 +135,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
 
       const compras: CompraComData[] = ((comprasRes.data ?? []) as CompraDoBanco[]).map((c) => ({
         combustivel: String(c.combustivel_id),
-        data: c.data,
+        data: c.data.slice(0, 10),
         litros: c.quantidade_litros,
         valorTotal: c.valor_total,
       }));
@@ -149,6 +155,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
         .map((i) => ({
           ...i,
           nomeCombustivel: nomeDoCombustivel.get(Number(i.combustivel)) ?? `Combustível ${i.combustivel}`,
+          codigoCombustivel: codigoDoCombustivel.get(Number(i.combustivel)) ?? null,
         }));
 
       setDados({ impactos: doMes, resumo: resumoPorDirecao(doMes) });

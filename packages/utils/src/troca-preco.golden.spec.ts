@@ -206,3 +206,12 @@ test('junho — as 3 trocas de 20/06 são DESCIDAS (comum, aditivada e etanol)',
     expect(resumo.subidas.quantidade).toBe(0);
     expect(resumo.descidas.quantidade).toBe(3);
 });
+
+test('janeiro — o preço antigo vigorou 6 dias (01–06/01) nos 4 combustíveis', () => {
+    const impactos = impactoTrocaDePreco(leiturasDoMes(1), comprasDoMes(1), []);
+    expect(impactos).toHaveLength(4);
+    for (const i of impactos) {
+        expect(i.precoAntigoDesde).toBe('2026-01-01');
+        expect(i.diasComPrecoAntigo).toBe(6);
+    }
+});
