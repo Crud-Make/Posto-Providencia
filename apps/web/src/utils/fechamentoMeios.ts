@@ -146,29 +146,6 @@ export function totaisDasLinhas(linhas: readonly FechamentoRowNumerico[]): Totai
     return totaisDeMeios(linhas.map(meiosFromFechamentoRow));
 }
 
-/**
- * Distribui totais já consolidados sobre as formas de pagamento cadastradas.
- *
- * @param formas - As formas como estão no cadastro, na ordem em que aparecem na tela.
- * @param totais - Saída de {@link totaisPorBalde} / {@link totaisDasLinhas}.
- * @returns A mesma lista, com `valor` preenchido em texto BR (vazio quando zero).
- *
- * @remarks
- * Forma sem balde correspondente ("Vale/Check", "APP") fica **vazia**, não zerada:
- * é a diferença entre "não entrou nada" e "não temos essa informação". Não se
- * inventa valor para forma que o frentista não declara.
- */
-export function distribuirNasFormas<T extends { nome: string }>(
-    formas: readonly T[],
-    totais: TotaisPorBalde
-): (T & { valor: string })[] {
-    return formas.map((forma) => {
-        const balde = baldeDaForma(forma.nome);
-        const valor = balde ? totais[balde] : 0;
-        return { ...forma, valor: valor > 0 ? paraReais(valor) : '' };
-    });
-}
-
 /** Campos de uma linha `FechamentoFrentista` do banco que a UI consome. */
 export interface LinhaFechamentoFrentista extends FechamentoRowNumerico {
     readonly id?: number;
