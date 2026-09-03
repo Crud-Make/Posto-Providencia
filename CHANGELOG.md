@@ -9,6 +9,10 @@
   a Edge Function `notifica-dono` colava `'T00:00:00'` no fim e o `new Date()` estourava. Agora
   recorta o `AAAA-MM-DD` e monta `DD/MM` sem passar por `Date` — também não depende do fuso do
   runtime (a mesma armadilha que já escorregou as leituras em UTC um dia para trás).
+- **Ícone da barra de status era um quadrado branco.** O `badge` da notificação mandava o
+  logo colorido; o Android pinta a silhueta de branco e o fundo branco virava um bloco sem
+  forma. Novo `badge-96x96.png` monocromático só com a gota do logo (`apps/pwa-dono/public`).
+  Logo colorida ali não é possível — regra do sistema, vale para todo app.
 
 ### 🛢️ Estoque teórico negativo vira "não apurável" (#72)
 

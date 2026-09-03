@@ -87,7 +87,11 @@ self.addEventListener('push', (evento) => {
         self.registration.showNotification(aviso.titulo ?? 'Fechamento recebido', {
             body: aviso.corpo ?? 'Toque para ver os envios.',
             icon: '/pwa-192x192.png',
-            badge: '/pwa-192x192.png',
+            // O badge é o ícone da BARRA DE STATUS do Android, e lá o sistema
+            // pinta a silhueta de branco e ignora as cores. Mandar o logo
+            // colorido em fundo branco dava um quadrado branco sem forma. A
+            // gota do "O" do logo é o que sobrevive em 24px.
+            badge: '/badge-96x96.png',
             // Tag por ENVIO, não fixa. Com uma tag só, o aviso do segundo
             // frentista substituiria o do primeiro e o dono nunca saberia que o
             // Paulo também fechou. Assim cada envio tem o seu, e um reenvio do
