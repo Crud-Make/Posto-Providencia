@@ -210,40 +210,4 @@ export const fechamentoService = {
       observacoes,
     });
   },
-
-  /**
-   * Diferenças de caixa dos fechamentos do período, uma por dia.
-   *
-   * @remarks Substitui `getLucroPorPeriodo` (03/09/2026), que lia os carimbos
-   *          `lucro_*`/`custo_combustiveis` — colunas que a UI nunca gravou. O único
-   *          dado que o card Receitas/Despesas tirava de `Fechamento` e que existe de
-   *          verdade é a `diferenca`; quem a transforma em falta é `totalFaltas`
-   *          (§6: positivo é FALTA, negativo é SOBRA — aqui vai crua, sem `abs`).
-   *          Não filtra por `total_vendas > 0`: dia não consolidado tem `diferenca = 0`
-   *          e pesa zero de qualquer jeito.
-   */
-  async getDiferencasPorPeriodo(
-    dataInicio: string,
-    dataFim: string,
-    postoId?: number
-  ): Promise<ApiResponse<readonly number[]>> {
-    try {
-      let query = supabase
-        .from('Fechamento')
-        .select('diferenca')
-        .gte('data', `${dataInicio}T00:00:00Z`)
-        .lte('data', `${dataFim}T23:59:59Z`);
-
-      if (postoId) {
-        query = query.eq('posto_id', postoId);
-      }
-
-      const { data, error } = await query;
-      if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
-
-      return createSuccessResponse(data.map(f => Number(f.diferenca ?? 0)));
-    } catch (err) {
-      return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
-    }
-  },
 };

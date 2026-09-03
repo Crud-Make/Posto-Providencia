@@ -2,8 +2,7 @@
  * Composição do card Receitas/Despesas (aba Financeiro do `/fechamento`).
  *
  * Só soma e subtrai o que já veio calculado: o custo dos litros vem de
- * `custoLitrosVendidos` (`@posto/utils`), as faltas de `totalFaltas`. Nenhuma
- * fórmula de domínio nasce aqui.
+ * `custoLitrosVendidos` (`@posto/utils`). Nenhuma fórmula de domínio nasce aqui.
  *
  * [03/09/2026] Deixou de ler o carimbo `Fechamento.lucro_*`/`custo_combustiveis`.
  * A UI nunca gravou essas colunas: ficavam em 0, o card somava despesa SEM o
@@ -11,6 +10,10 @@
  * incoerente, sem aviso. Agora a receita é a `Leitura`, o custo é o custo médio
  * de compra do período (modelo da planilha) e, sem compra para custear um
  * produto vendido, o resultado é `null` e a tela diz qual produto faltou.
+ * **Falta de caixa não entra na conta** — a planilha registra `Falta.` por dia e
+ * não a desconta do lucro (`J11 = Σ litros × (preço − custo − despesa/L)`);
+ * o card descontava, e o agente `planilha` mostrou em 03/09 que a fórmula só
+ * fecha com a dela ao centavo sem essa parcela. Decisão do dono, 03/09/2026.
  *
  * [onda 4.2, 28/08/2026] A taxa de cartão é DESPESA DO MÊS (decisão do dono,
  * 26/08; `packages/utils/src/lucro.ts`): quando lançada, mora na tabela
@@ -29,8 +32,6 @@ export interface EntradaResumoFinanceiro {
      * algum produto vendido não tem compra para custear (ver `custoLitrosVendidos`).
      */
     readonly custoLitrosVendidos: number | null;
-    /** Faltas de caixa do período (ver {@link totalFaltas}). */
-    readonly faltas: number;
     /** Despesas lançadas na tabela `Despesa` (inclui a taxa de cartão quando lançada). */
     readonly despesasOps: number;
 }
@@ -52,26 +53,15 @@ export interface ResumoFinanceiro {
 }
 
 /**
- * Faltas de caixa do período: soma só das diferenças POSITIVAS.
- *
- * @remarks §6 do CLAUDE.md: `diferenca = concentrador − conferido`, positivo é FALTA,
- *          negativo é SOBRA. Até 03/09/2026 o card somava `Math.abs(diferenca)` e
- *          contava a sobra como se fosse prejuízo.
- */
-export function totalFaltas(diferencas: readonly number[]): number {
-    return emCentavos(diferencas.reduce((acc, d) => acc + Math.max(0, d), 0));
-}
-
-/**
  * Receita, despesa e lucro do período.
  *
  *   bruto   = receita total − custo dos litros vendidos
- *   líquido = bruto − faltas − despesas lançadas
+ *   líquido = bruto − despesas lançadas
  */
 export function resumoFinanceiro(e: EntradaResumoFinanceiro): ResumoFinanceiro {
     const receitaTotal = emCentavos(e.receitaVendas + e.receitasExtras);
     const custo = e.custoLitrosVendidos;
-    const despesasTotal = custo === null ? null : emCentavos(custo + e.faltas + e.despesasOps);
+    const despesasTotal = custo === null ? null : emCentavos(custo + e.despesasOps);
     const bruto = custo === null ? null : emCentavos(receitaTotal - custo);
     const liquido = despesasTotal === null ? null : emCentavos(receitaTotal - despesasTotal);
     return {

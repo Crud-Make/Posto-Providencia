@@ -13,14 +13,18 @@
 - **Agora o card calcula da fonte**, no modelo da planilha: receita = `Leitura`; custo =
   litros vendidos × custo médio de compra do período, por produto (`custoLitrosVendidos`, novo em
   `@posto/utils/lucro`, golden contra o mês 01 pela identidade `lucro = venda − custo − despesas`);
-  despesas = `Despesa` lançada; faltas = diferenças **positivas** dos fechamentos. Janeiro passa a
-  **R$ 12.572,40** de líquido.
-- **Sobra deixou de contar como prejuízo.** As faltas eram `Math.abs(diferenca)` — §6 diz que
-  positivo é FALTA e negativo é SOBRA. Janeiro tinha R$ 518,48 de sobra contados como falta.
+  despesas = `Despesa` lançada. Janeiro passa a **R$ 13.272,20** de líquido.
+- **Falta de caixa saiu da conta do lucro** (decisão do dono, 03/09). O agente `planilha` conferiu
+  janeiro contra a planilha de 30/08: venda, litros, compra e custo dos litros batem ao centavo, e
+  `venda − custo − despesa` fecha em 0,00 com o `J11` dela — **a planilha não desconta `Falta.`**.
+  O card descontava (e com `Math.abs`, contando sobra como falta). O que resta de diferença entre
+  o card e o lucro da planilha é entrada, não fórmula: a planilha usa preço fixo digitado (6,38)
+  onde o card usa o preço do dia, e a lista de despesa (22.158,46 × 35.523,58) segue decisão
+  pendente desde 16/08.
 - **Sem compra de um produto vendido no período, o card mostra "—" e diz qual produto** — nunca
   zero disfarçado de lucro (mesma regra do `custoMedioCompra`).
-- `fechamentoService.getLucroPorPeriodo` saiu (único consumidor era esse card); entrou
-  `getDiferencasPorPeriodo`. A composição do card é pura em `calculos-financeiro.ts`, coberta por
+- `fechamentoService.getLucroPorPeriodo` saiu (único consumidor era esse card; o `Fechamento`
+  deixou de ser lido por ele). A composição é pura em `calculos-financeiro.ts`, coberta por
   `calculos-financeiro.test.ts`. As colunas carimbadas seguem no banco, em 0 — remover é migração
   e fica para decisão à parte.
 

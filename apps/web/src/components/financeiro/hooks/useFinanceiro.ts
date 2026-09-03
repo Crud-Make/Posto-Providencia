@@ -7,21 +7,20 @@
  * [03/09/2026] O lucro deixou de vir do carimbo `Fechamento.lucro_*` (que a UI
  * nunca gravou) e passou a ser calculado da fonte: receita = `Leitura`, custo =
  * litros vendidos × custo médio de compra do período (`custoLitrosVendidos`,
- * modelo da planilha), faltas = diferenças positivas dos fechamentos. A
- * composição mora em `./calculos-financeiro`.
+ * modelo da planilha). Falta de caixa não entra — a planilha não desconta.
+ * A composição mora em `./calculos-financeiro`.
  */
 // [01/02 11:25] Integrado receitas extras e categorias dinâmicas; Tipagem estrita aplicada sem uso de 'any'.
 import { useState, useEffect, useCallback } from 'react';
 import { custoLitrosVendidos, type ProdutoDoPeriodo } from '@posto/utils';
-import { resumoFinanceiro, totalFaltas, type ResumoFinanceiro } from './calculos-financeiro';
+import { resumoFinanceiro, type ResumoFinanceiro } from './calculos-financeiro';
 import { FiltrosFinanceiros } from './useFiltrosFinanceiros';
 import {
   leituraService,
   despesaService,
   receitaService,
   recebimentoService,
-  compraService,
-  fechamentoService
+  compraService
 } from '../../../services/api';
 import { isSuccess } from '../../../types/ui/response-types';
 import type {
@@ -122,8 +121,7 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
     try {
       const { dataInicio, dataFim, postoId } = filtros;
 
-      const [diferencasRes, vendasRes, despesasRes, receitasRes, recebimentosRes, comprasRes] = await Promise.all([
-        fechamentoService.getDiferencasPorPeriodo(dataInicio, dataFim, postoId),
+      const [vendasRes, despesasRes, receitasRes, recebimentosRes, comprasRes] = await Promise.all([
         leituraService.getByDateRange(dataInicio, dataFim, postoId),
         despesaService.getByDateRange(dataInicio, dataFim, postoId),
         receitaService.getByDateRange(dataInicio, dataFim, postoId),
@@ -136,7 +134,6 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
       const receitasExtras = (isSuccess(receitasRes) ? receitasRes.data : []) as Receita[];
       const recebimentos = (isSuccess(recebimentosRes) ? recebimentosRes.data : []) as RecebimentoComJoins[];
       const compras = (isSuccess(comprasRes) ? comprasRes.data : []) as CompraComJoins[];
-      const diferencas = isSuccess(diferencasRes) ? diferencasRes.data : [];
 
       // [27/01 10:38] Processar Transações
       const listaTransacoes: Transacao[] = [];
@@ -241,7 +238,6 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
         receitaVendas: totalVendas,
         receitasExtras: totalReceitasExtras,
         custoLitrosVendidos: custo.custo,
-        faltas: totalFaltas(diferencas),
         despesasOps: totalDespesasOps,
       });
 
