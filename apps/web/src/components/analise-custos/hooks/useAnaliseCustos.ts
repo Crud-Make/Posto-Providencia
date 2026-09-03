@@ -91,10 +91,6 @@ export const useAnaliseCustos = () => {
         document.body.removeChild(link);
     };
 
-    const handleApplyPrices = async () => {
-        alert("Funcionalidade de atualização de preços em massa está sendo integrada com o serviço de combustível.");
-    };
-
     // Modelo de markup em ./calculos-analise-custos, exercitado pelo golden
     // ao lado contra a canônica (onda 2.2).
     return {
@@ -107,7 +103,6 @@ export const useAnaliseCustos = () => {
         handlePrevMonth,
         handleNextMonth,
         exportToCSV,
-        handleApplyPrices,
         calculatePrice,
         calculateProfit
     };

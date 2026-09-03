@@ -5,7 +5,6 @@ import HeaderAnalise from './components/HeaderAnalise';
 import CardCombustivel from './components/CardCombustivel';
 import RankingLucratividade from './components/RankingLucratividade';
 import ResumoEconomico from './components/ResumoEconomico';
-import FooterAcoes from './components/FooterAcoes';
 
 const TelaAnaliseCustos: React.FC = () => {
     const {
@@ -18,7 +17,6 @@ const TelaAnaliseCustos: React.FC = () => {
         handlePrevMonth,
         handleNextMonth,
         exportToCSV,
-        handleApplyPrices,
         calculatePrice,
         calculateProfit
     } = useAnaliseCustos();
@@ -35,7 +33,7 @@ const TelaAnaliseCustos: React.FC = () => {
     const totalProfitSum = data.reduce((acc, item) => acc + (item.lucroTotal || 0), 0);
 
     return (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-24">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans">
             
             <HeaderAnalise
                 currentDate={currentDate}
@@ -72,7 +70,6 @@ const TelaAnaliseCustos: React.FC = () => {
                 <ResumoEconomico data={data} totalProfitSum={totalProfitSum} />
             </div>
 
-            <FooterAcoes onApplyPrices={handleApplyPrices} />
         </div>
     );
 };

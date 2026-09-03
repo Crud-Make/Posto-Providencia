@@ -25,6 +25,9 @@
   Os wrappers de dashboard e rentabilidade viraram funções tipadas; o hook desembrulha com `isSuccess`.
   A tela entrou no **menu lateral** (abaixo de Compras) — só se chegava digitando a URL, e foi assim
   que ninguém viu que estava quebrada.
+  **É simulador, e só** (decisão do dono, 03/09): o rodapé com "Aplicar Novos Preços" (abria um
+  alerta de "em integração") e "Ajuda" (sem ação) saiu. Preço de venda continua sem edição no
+  sistema — quando existir, é feature própria, não botão nesta tela.
   **`fetchSettingsData` ficou no `.bind` de propósito**: tipá-lo expõe que a tela de Configurações lê
   `data?.products` no envelope (sempre vazio) e que o tipo `Produto` dela não é o do service — dois
   consertos fora deste escopo.
