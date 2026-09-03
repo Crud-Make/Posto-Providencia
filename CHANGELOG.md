@@ -23,6 +23,8 @@
   `fetchProfitabilityData` com `.bind()`; sem `strictBindCallApply` o `bind` devolve `any`, o hook
   guardava o envelope `{ success, data }` onde esperava o array e `data.reduce` estourava no render.
   Os wrappers de dashboard e rentabilidade viraram funções tipadas; o hook desembrulha com `isSuccess`.
+  A tela entrou no **menu lateral** (abaixo de Compras) — só se chegava digitando a URL, e foi assim
+  que ninguém viu que estava quebrada.
   **`fetchSettingsData` ficou no `.bind` de propósito**: tipá-lo expõe que a tela de Configurações lê
   `data?.products` no envelope (sempre vazio) e que o tipo `Produto` dela não é o do service — dois
   consertos fora deste escopo.
