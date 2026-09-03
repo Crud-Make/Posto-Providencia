@@ -36,3 +36,10 @@ vivo de Leitura+Compra+Despesa. Ver [[custo-e-por-mes-nao-estoque-anterior]],
 **Se for consertar:** refatorar o card para calcular ao vivo é mexer em dinheiro → tarefa própria
 com golden master (§0.6). Carimbar via script de auditoria também é operação de dinheiro. Decisão
 do dono; não fazer no meio do replay.
+
+**Adendo 03/09/2026 — corrigido na branch `fix/lucro-fonte-unica` (`b38680c` + `88f2fc6`), sem merge.**
+O card calcula da fonte: `Leitura` + `custoLitrosVendidos` (novo em `@posto/utils/lucro`, golden pela
+identidade `lucro = venda − custo − despesas` no mês 01) + `Despesa`. **Falta de caixa saiu da conta**
+por decisão do dono — o agente `planilha` provou que a planilha não desconta `Falta.` e que a fórmula
+fecha em 0,00 com o `J11` dela. Janeiro no card: 13.272,20 (planilha: 25.337,92 — diferença é preço
+fixo 6,38 × preço do dia, e a lista de despesa do app × da planilha, decisão pendente desde 16/08).

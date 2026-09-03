@@ -44,3 +44,11 @@ a tela `/compras` virou mensal e lê tudo do banco (vendas de `Leitura`, custo `
 tortos. O dashboard de tanques deriva o estoque (`estoque-derivado.ts`). Conferido pelo agente
 `planilha` em 26/08: a memória antiga `H19 = D390` estava errada — é `I16 = D286`; leituras do
 resumo são REDIGITADAS na planilha (`D5:E10` literais); Frete = `D20 × 0,12` calculado.
+
+**Adendo 03/09/2026 — corrigido na branch `fix/lucro-fonte-unica` (`ff267b1`), sem merge ainda.**
+As três telas que liam `Estoque.custo_medio` (`/dashboard`, `/analise-custos`, `/vendas/dashboard`)
+passaram a usar a compra do mês via `apps/web/src/services/custo-do-mes.ts`; `compra.service.create`
+parou de carimbar. `custoMedioPonderado` ainda existe em `packages/utils` só para os goldens que
+documentam a divergência — apagar espera o ok do dono. `salesAnalysis.service.ts` ainda usa o carimbo
+(agora congelado em janeiro) como fallback de mês sem compra — pendente. Achado de brinde: a
+`/analise-custos` estava quebrada pelo `.bind()` sem tipo em `services/api/index.ts`.
