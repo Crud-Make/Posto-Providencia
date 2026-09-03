@@ -89,8 +89,9 @@ self.addEventListener('push', (evento) => {
             icon: '/pwa-192x192.png',
             // O badge é o ícone da BARRA DE STATUS do Android, e lá o sistema
             // pinta a silhueta de branco e ignora as cores. Mandar o logo
-            // colorido em fundo branco dava um quadrado branco sem forma. A
-            // nome do posto em duas linhas, vetorial, sem o arco nem a linha do Instagram: é o que dá nitidez em 24dp.
+            // colorido em fundo branco dava um quadrado branco sem forma. O
+            // nome do posto em TRÊS linhas (POSTO / PROVI- / DÊNCIA), vetorial: em 24dp
+            // são ~72 px de largura, e 11 letras numa linha só não ficam legíveis.
             badge: '/badge-96x96.png',
             // Tag por ENVIO, não fixa. Com uma tag só, o aviso do segundo
             // frentista substituiria o do primeiro e o dono nunca saberia que o
