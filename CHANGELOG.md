@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### 🔔 Aviso ao dono mostrava "Invalid Date"
+
+- A notificação "Fulano fechou o caixa" chegava com `Invalid Date · toque para ver os envios`.
+  `Fechamento.data` é `timestamptz`, não `date`: o PostgREST devolve `2026-09-03T00:00:00+00:00`,
+  a Edge Function `notifica-dono` colava `'T00:00:00'` no fim e o `new Date()` estourava. Agora
+  recorta o `AAAA-MM-DD` e monta `DD/MM` sem passar por `Date` — também não depende do fuso do
+  runtime (a mesma armadilha que já escorregou as leituras em UTC um dia para trás).
+- **Ícone da barra de status era um quadrado branco.** O `badge` da notificação mandava o
+  logo colorido; o Android pinta a silhueta de branco e o fundo branco virava um bloco sem
+  forma. Novo `badge-96x96.png` monocromático só com a gota do logo (`apps/pwa-dono/public`).
+  Logo colorida ali não é possível — regra do sistema, vale para todo app.
+
 ### ⛽ Frentista envia a régua do tanque pelo PWA (#74)
 
 - **Nova aba "Tanques" no PWA do frentista**: lista os tanques com a sigla na cor da planilha,
