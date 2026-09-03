@@ -2,6 +2,23 @@
 
 ## [Não Lançado]
 
+### ⛽ Frentista envia a régua do tanque pelo PWA (#74)
+
+- **Nova aba "Tanques" no PWA do frentista**: lista os tanques com a sigla na cor da planilha,
+  o frentista digita os litros medidos e envia — grava em `HistoricoTanque` (upsert por
+  tanque+dia; reenvio do dia substitui, com aviso) e **cai direto no painel** (estoque derivado
+  e impacto de troca de preço leem dessa tabela). Data com os mesmos selects diretos do
+  Registro, com aviso âmbar quando não é hoje. Medição é do tanque, não do frentista — a tela
+  não exige seleção, como a Leitura.
+- **RLS reaberta só no necessário** (decisão do dono, 03/09): a escrita anônima em
+  `HistoricoTanque` tinha sido fechada em 16/08; agora INSERT/UPDATE anon passam **dentro da
+  janela temporal** (mesmo padrão das tabelas que o frentista já insere), com `tanque_id`
+  obrigatório (a coluna anulável furaria o UNIQUE — achado da auditoria) e `volume_fisico ≥ 0`.
+  DELETE anon continua fechado. Migration `20260903_historico_tanque_regua_pelo_frentista.sql`,
+  aplicada em produção.
+- A gravação reconsulta e confere o valor (anti-RLS-silenciosa, regra do `api-core`) — escrita
+  barrada não vira "sucesso" falso.
+
 ### 🛢️ Estoque teórico negativo vira "não apurável" (#72)
 
 - **Corrente negativa → `null`**, mesma semântica de "sem régua": tanque negativo não existe;
