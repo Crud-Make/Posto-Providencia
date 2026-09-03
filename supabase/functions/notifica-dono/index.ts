@@ -39,14 +39,29 @@ const json = (corpo: unknown, status = 200) =>
  */
 function montarAviso(linha: { frentista: { nome: string } | null; data: string | null }) {
   const nome = linha.frentista?.nome ?? 'Um frentista';
-  const dia = linha.data
-    ? new Date(linha.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-    : 'hoje';
+  const dia = formatarDia(linha.data);
 
   return {
     titulo: `${nome} fechou o caixa`,
     corpo: `${dia} · toque para ver os envios`,
   };
+}
+
+/**
+ * `"2026-09-03T00:00:00+00:00"` → `"03/09"`.
+ *
+ * @remarks `Fechamento.data` é `timestamptz`, não `date`: o PostgREST devolve o
+ *          ISO completo. A versão anterior colava `'T00:00:00'` nele e o
+ *          `new Date()` virava `Invalid Date` — foi o que o dono viu no
+ *          celular em 02/09/2026. Recorta o `AAAA-MM-DD` e monta o texto sem
+ *          passar por `Date`: o dia gravado é o dia do fechamento, e converter
+ *          para o fuso do runtime escorregaria um dia para trás.
+ */
+function formatarDia(data: string | null): string {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})/.exec(data ?? '');
+  if (!partes) return 'hoje';
+
+  return `${partes[3]}/${partes[2]}`;
 }
 
 Deno.serve(async (req) => {

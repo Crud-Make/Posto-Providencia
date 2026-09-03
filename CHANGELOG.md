@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🔔 Aviso ao dono mostrava "Invalid Date"
+
+- A notificação "Fulano fechou o caixa" chegava com `Invalid Date · toque para ver os envios`.
+  `Fechamento.data` é `timestamptz`, não `date`: o PostgREST devolve `2026-09-03T00:00:00+00:00`,
+  a Edge Function `notifica-dono` colava `'T00:00:00'` no fim e o `new Date()` estourava. Agora
+  recorta o `AAAA-MM-DD` e monta `DD/MM` sem passar por `Date` — também não depende do fuso do
+  runtime (a mesma armadilha que já escorregou as leituras em UTC um dia para trás).
+
 ### 🛢️ Estoque teórico negativo vira "não apurável" (#72)
 
 - **Corrente negativa → `null`**, mesma semântica de "sem régua": tanque negativo não existe;
