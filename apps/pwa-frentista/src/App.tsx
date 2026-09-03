@@ -3,13 +3,14 @@ import {
   User, Calendar, Smartphone, Banknote,
   Coins, CircleDollarSign, FileText, CreditCard,
   ClipboardList, ShoppingBag, History, ChevronDown,
-  X, Check, AlertCircle, Camera
+  X, Check, AlertCircle, Camera, Fuel
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
 import HistoricoScreen from './screens/HistoricoScreen';
 import VendasScreen from './screens/VendasScreen';
+import TanquesScreen from './screens/TanquesScreen';
 import ReloadPrompt from './components/ReloadPrompt';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
 import { reduzirParaAvatar, iniciais } from './lib/foto';
@@ -17,7 +18,7 @@ import { hojeIso } from '@posto/utils';
 
 const POSTO_ID = 1;
 
-type TabType = 'registro' | 'vendas' | 'historico' | 'perfil';
+type TabType = 'registro' | 'vendas' | 'historico' | 'tanques' | 'perfil';
 
 /**
  * Abas que este app ainda tem.
@@ -29,7 +30,7 @@ type TabType = 'registro' | 'vendas' | 'historico' | 'perfil';
  *          no Registro com a barra inferior sem nada selecionado, e o frentista
  *          veria o app "esquecido" numa aba fantasma.
  */
-const ABAS_VALIDAS: readonly TabType[] = ['registro', 'vendas', 'historico', 'perfil'];
+const ABAS_VALIDAS: readonly TabType[] = ['registro', 'vendas', 'historico', 'tanques', 'perfil'];
 
 const abaSalvaOuPadrao = (valor: string | null): TabType =>
   ABAS_VALIDAS.includes(valor as TabType) ? (valor as TabType) : 'registro';
@@ -427,6 +428,12 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         </div>
         <span className={`text-[9px] font-bold tracking-wide ${activeTab === 'historico' ? 'text-indigo-400' : 'text-slate-400'}`}>Histórico</span>
       </div>
+      <div onClick={() => setActiveTab('tanques')} className="flex flex-col items-center gap-0.5 cursor-pointer">
+        <div className={`w-12 h-6 rounded-full flex items-center justify-center ${activeTab === 'tanques' ? 'bg-cyan-500/10' : ''}`}>
+          <Fuel size={16} className={activeTab === 'tanques' ? 'text-cyan-400' : 'text-slate-400'} />
+        </div>
+        <span className={`text-[9px] font-bold tracking-wide ${activeTab === 'tanques' ? 'text-cyan-400' : 'text-slate-400'}`}>Tanques</span>
+      </div>
     </div>
   );
 
@@ -447,6 +454,19 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
       <>
         <ReloadPrompt />
         <HistoricoScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
+        {renderBottomNav()}
+      </>
+    );
+  }
+
+  // Tela de Tanques (régua física, #74): medição é do TANQUE, não do
+  // frentista — como a Leitura, `HistoricoTanque` não tem coluna de frentista,
+  // então a tela não exige seleção.
+  if (activeTab === 'tanques') {
+    return (
+      <>
+        <ReloadPrompt />
+        <TanquesScreen onVoltar={() => setActiveTab('registro')} />
         {renderBottomNav()}
       </>
     );

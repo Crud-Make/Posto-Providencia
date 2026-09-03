@@ -251,6 +251,59 @@ export const api = {
         return encerrante.salvarLeituras(params);
     },
 
+    /** Tanques do posto com o combustível — a lista da tela de régua (#74). */
+    async getTanques(postoId: number) {
+        const { data, error } = await supabase
+            .from('Tanque')
+            .select('id, combustivel:Combustivel(nome, codigo)')
+            .eq('posto_id', postoId)
+            .order('id');
+        if (error) throw new Error(error.message);
+        return (data ?? []) as unknown as {
+            id: number;
+            combustivel: { nome: string; codigo: string | null } | null;
+        }[];
+    },
+
+    /** Medições de régua já gravadas no dia — para avisar que reenvio substitui. */
+    async getMedicoesDoDia(dataStr: string) {
+        const { data, error } = await supabase
+            .from('HistoricoTanque')
+            .select('tanque_id, volume_fisico')
+            .eq('data', dataStr);
+        if (error) throw new Error(error.message);
+        return (data ?? []) as { tanque_id: number | null; volume_fisico: number | null }[];
+    },
+
+    /**
+     * Grava a medição de régua de um tanque (upsert por tanque+dia, #74).
+     *
+     * @remarks Com o client anon, escrita barrada pela RLS pode voltar SEM
+     *          erro — o mesmo silêncio já documentado do reset. Depois de
+     *          gravar, reconsulta e confere o valor; se não bateu, erro
+     *          explícito (regra herdada de `packages/api-core`).
+     */
+    async salvarMedicaoTanque(tanqueId: number, dataStr: string, volumeFisico: number) {
+        const { error } = await supabase
+            .from('HistoricoTanque')
+            .upsert(
+                { tanque_id: tanqueId, data: dataStr, volume_fisico: volumeFisico },
+                { onConflict: 'tanque_id, data' },
+            );
+        if (error) throw new Error(error.message);
+
+        const { data: gravado, error: erroConfere } = await supabase
+            .from('HistoricoTanque')
+            .select('volume_fisico')
+            .eq('tanque_id', tanqueId)
+            .eq('data', dataStr)
+            .single();
+        if (erroConfere) throw new Error(erroConfere.message);
+        if (gravado == null || Number(gravado.volume_fisico) !== volumeFisico) {
+            throw new Error('A medição não foi gravada (barrada pela segurança do banco). Avise o gerente.');
+        }
+    },
+
     /** Busca vendas de produtos do dia por frentista */
     async getVendasProdutoHoje(frentistaId: number) {
         // `VendaProduto.data` é gravada com `toISOString()` (instante UTC real). O
