@@ -2,6 +2,28 @@
 
 ## [Não Lançado]
 
+### 💸 Card Receitas/Despesas lia lucro carimbado que ninguém grava
+
+- O painel Receitas/Despesas (aba Financeiro do `/fechamento`) somava `Fechamento.custo_combustiveis`,
+  `lucro_bruto` e `lucro_liquido` — colunas que a UI **nunca escreveu** (o único `update` grava
+  status, totais e diferença). Chegavam em 0, os `||` de fallback salvavam alguns campos, e
+  "Despesas Totais" saía **sem o custo do combustível**: janeiro mostrava lucro líquido de
+  **R$ 253.321,08** sobre R$ 290 mil de receita. Número plausível, incoerente (líquido > bruto),
+  sem aviso — a falha silenciosa que a auditoria de entrega mais teme.
+- **Agora o card calcula da fonte**, no modelo da planilha: receita = `Leitura`; custo =
+  litros vendidos × custo médio de compra do período, por produto (`custoLitrosVendidos`, novo em
+  `@posto/utils/lucro`, golden contra o mês 01 pela identidade `lucro = venda − custo − despesas`);
+  despesas = `Despesa` lançada; faltas = diferenças **positivas** dos fechamentos. Janeiro passa a
+  **R$ 12.572,40** de líquido.
+- **Sobra deixou de contar como prejuízo.** As faltas eram `Math.abs(diferenca)` — §6 diz que
+  positivo é FALTA e negativo é SOBRA. Janeiro tinha R$ 518,48 de sobra contados como falta.
+- **Sem compra de um produto vendido no período, o card mostra "—" e diz qual produto** — nunca
+  zero disfarçado de lucro (mesma regra do `custoMedioCompra`).
+- `fechamentoService.getLucroPorPeriodo` saiu (único consumidor era esse card); entrou
+  `getDiferencasPorPeriodo`. A composição do card é pura em `calculos-financeiro.ts`, coberta por
+  `calculos-financeiro.test.ts`. As colunas carimbadas seguem no banco, em 0 — remover é migração
+  e fica para decisão à parte.
+
 ### 🔔 Aviso ao dono mostrava "Invalid Date"
 
 - A notificação "Fulano fechou o caixa" chegava com `Invalid Date · toque para ver os envios`.

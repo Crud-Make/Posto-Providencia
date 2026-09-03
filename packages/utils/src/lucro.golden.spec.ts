@@ -58,6 +58,7 @@ import {
     lucroCombustivel,
     margemPercentual,
     custoMedioCompra,
+    custoLitrosVendidos,
 } from './lucro';
 
 // Custo médio de compra recalculado a partir da compra crua (litros/valor) do
@@ -145,4 +146,55 @@ test('margem = lucro_total / venda_total (definição padrão)', () => {
         fixture.mes_01_total.venda_total_rs
     );
     expect(Math.abs(margem - esperado)).toBeLessThan(1e-9);
+});
+
+// -----------------------------------------------------------------------------
+// custoLitrosVendidos — o custo do período somado por produto (card Receitas/
+// Despesas, 03/09/2026). A planilha não tem essa célula; o que ela tem é a
+// identidade que a define: somando `lucro_bico = venda − litros × (custo + desp/L)`
+// sobre os bicos, `lucro_total = venda_total − custo_dos_litros − despesas_do_mês`.
+// -----------------------------------------------------------------------------
+const compraDoProduto = (produto: string) => {
+    const c = fixture.mes_01_compra_custo_estoque.find(x => x.produto === produto);
+    if (!c) throw new Error(`compra não encontrada: ${produto}`);
+    return [{ litros: c.compra_lt, valorTotal: c.compra_rs }];
+};
+const produtoDoBico = (bico: string): string => {
+    if (bico.startsWith('G,C')) return 'G,Comum.';
+    if (bico.startsWith('G,A')) return 'G,Aditivada.';
+    if (bico.startsWith('Etanol')) return 'Etanol.';
+    if (bico.startsWith('Ds')) return 'Ds.10.';
+    throw new Error(`bico sem produto mapeado: ${bico}`);
+};
+const produtosDoMes01 = fixture.mes_01_por_produto.map(b => ({
+    produto: produtoDoBico(b.produto),
+    litrosVendidos: b.litros,
+    compras: compraDoProduto(produtoDoBico(b.produto)),
+}));
+
+test('custoLitrosVendidos fecha a identidade lucro = venda − custo − despesas no mês 01', () => {
+    const { custo, produtosSemCompra } = custoLitrosVendidos(produtosDoMes01);
+    expect(produtosSemCompra).toEqual([]);
+    expect(custo).not.toBeNull();
+    const lucroPelaIdentidade =
+        fixture.mes_01_total.venda_total_rs - (custo as number) - fixture.mes_01_despesas_total_rs;
+    expect(Math.abs(lucroPelaIdentidade - fixture.mes_01_total.lucro_total_rs)).toBeLessThan(TOL);
+});
+
+test('custoLitrosVendidos: produto vendido sem compra derruba o total para null, nunca zero', () => {
+    const semCompraNoDiesel = produtosDoMes01.map(p =>
+        p.produto === 'Ds.10.' ? { ...p, compras: [] } : p
+    );
+    const r = custoLitrosVendidos(semCompraNoDiesel);
+    expect(r.custo).toBeNull();
+    expect(r.produtosSemCompra).toEqual(['Ds.10.']);
+});
+
+test('custoLitrosVendidos: produto sem venda não pesa, com ou sem compra', () => {
+    const r = custoLitrosVendidos([
+        ...produtosDoMes01,
+        { produto: 'Ds.500.', litrosVendidos: 0, compras: [] },
+    ]);
+    expect(r.produtosSemCompra).toEqual([]);
+    expect(r.custo).toBe(custoLitrosVendidos(produtosDoMes01).custo);
 });

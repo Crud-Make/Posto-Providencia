@@ -211,32 +211,28 @@ export const fechamentoService = {
     });
   },
 
-  // [27/01 10:30] Adicionado método para buscar dados de lucro por período
   /**
-   * Busca dados consolidados de lucro por período
-   * @param dataInicio - Data inicial no formato YYYY-MM-DD
-   * @param dataFim - Data final no formato YYYY-MM-DD
-   * @param postoId - ID do posto (opcional)
-   * @returns Dados agregados de lucro, receitas e despesas
+   * Diferenças de caixa dos fechamentos do período, uma por dia.
+   *
+   * @remarks Substitui `getLucroPorPeriodo` (03/09/2026), que lia os carimbos
+   *          `lucro_*`/`custo_combustiveis` — colunas que a UI nunca gravou. O único
+   *          dado que o card Receitas/Despesas tirava de `Fechamento` e que existe de
+   *          verdade é a `diferenca`; quem a transforma em falta é `totalFaltas`
+   *          (§6: positivo é FALTA, negativo é SOBRA — aqui vai crua, sem `abs`).
+   *          Não filtra por `total_vendas > 0`: dia não consolidado tem `diferenca = 0`
+   *          e pesa zero de qualquer jeito.
    */
-  async getLucroPorPeriodo(dataInicio: string, dataFim: string, postoId?: number): Promise<ApiResponse<{
-    receita_bruta: number;
-    custo_combustiveis: number;
-    lucro_bruto: number;
-    taxas_pagamento: number;
-    faltas: number;
-    lucro_liquido: number;
-    margem_bruta_pct: number;
-    margem_liquida_pct: number;
-    dias_operados: number;
-  }>> {
+  async getDiferencasPorPeriodo(
+    dataInicio: string,
+    dataFim: string,
+    postoId?: number
+  ): Promise<ApiResponse<readonly number[]>> {
     try {
       let query = supabase
         .from('Fechamento')
-        .select('total_vendas, custo_combustiveis, lucro_bruto, taxas_pagamento, diferenca, lucro_liquido, margem_bruta_percentual, margem_liquida_percentual')
+        .select('diferenca')
         .gte('data', `${dataInicio}T00:00:00Z`)
-        .lte('data', `${dataFim}T23:59:59Z`)
-        .gt('total_vendas', 0);  // Apenas dias com movimento
+        .lte('data', `${dataFim}T23:59:59Z`);
 
       if (postoId) {
         query = query.eq('posto_id', postoId);
@@ -245,27 +241,7 @@ export const fechamentoService = {
       const { data, error } = await query;
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
 
-      // Agregar dados
-      const resultado = {
-        receita_bruta: data.reduce((acc, f) => acc + Number(f.total_vendas || 0), 0),
-        custo_combustiveis: data.reduce((acc, f) => acc + Number(f.custo_combustiveis || 0), 0),
-        lucro_bruto: data.reduce((acc, f) => acc + Number(f.lucro_bruto || 0), 0),
-        taxas_pagamento: data.reduce((acc, f) => acc + Number(f.taxas_pagamento || 0), 0),
-        faltas: data.reduce((acc, f) => acc + Math.abs(Number(f.diferenca || 0)), 0),
-        lucro_liquido: data.reduce((acc, f) => acc + Number(f.lucro_liquido || 0), 0),
-        dias_operados: data.length,
-        // Calcular margens médias ponderadas
-        margem_bruta_pct: 0,
-        margem_liquida_pct: 0
-      };
-
-      // Margens calculadas sobre o total (não média aritmética)
-      if (resultado.receita_bruta > 0) {
-        resultado.margem_bruta_pct = (resultado.lucro_bruto / resultado.receita_bruta) * 100;
-        resultado.margem_liquida_pct = (resultado.lucro_liquido / resultado.receita_bruta) * 100;
-      }
-
-      return createSuccessResponse(resultado);
+      return createSuccessResponse(data.map(f => Number(f.diferenca ?? 0)));
     } catch (err) {
       return createErrorResponse(err instanceof Error ? err.message : 'Erro desconhecido');
     }

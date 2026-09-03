@@ -28,6 +28,7 @@ const dados = (transacoes: Transacao[]): DadosFinanceiros => ({
     receitas: { total: 0, vendas: 0, extras: 0 },
     despesas: { total: 0, operacionais: 0, compras: 0 },
     lucro: { bruto: 0, liquido: 0, margem: 0 },
+    produtosSemCompra: [],
     transacoes,
 });
 

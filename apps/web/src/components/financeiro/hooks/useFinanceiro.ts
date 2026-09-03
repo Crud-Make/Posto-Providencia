@@ -3,11 +3,17 @@
  *
  * Busca vendas, despesas, recebimentos e compras do período selecionado,
  * agregando em métricas consolidadas de receita, despesa e lucro.
+ *
+ * [03/09/2026] O lucro deixou de vir do carimbo `Fechamento.lucro_*` (que a UI
+ * nunca gravou) e passou a ser calculado da fonte: receita = `Leitura`, custo =
+ * litros vendidos × custo médio de compra do período (`custoLitrosVendidos`,
+ * modelo da planilha), faltas = diferenças positivas dos fechamentos. A
+ * composição mora em `./calculos-financeiro`.
  */
-// [27/01 10:35] Adicionado fechamentoService para buscar dados reais de lucro
 // [01/02 11:25] Integrado receitas extras e categorias dinâmicas; Tipagem estrita aplicada sem uso de 'any'.
 import { useState, useEffect, useCallback } from 'react';
-import { despesasDoPeriodo } from './calculos-financeiro';
+import { custoLitrosVendidos, type ProdutoDoPeriodo } from '@posto/utils';
+import { resumoFinanceiro, totalFaltas, type ResumoFinanceiro } from './calculos-financeiro';
 import { FiltrosFinanceiros } from './useFiltrosFinanceiros';
 import {
   leituraService,
@@ -31,18 +37,6 @@ import type {
   Fornecedor
 } from '../../../types/database';
 import { Receita } from '../../../services/api/receita.service';
-
-interface LucroData {
-  receita_bruta: number;
-  custo_combustiveis: number;
-  lucro_bruto: number;
-  taxas_pagamento: number;
-  faltas: number;
-  lucro_liquido: number;
-  margem_bruta_pct: number;
-  margem_liquida_pct: number;
-  dias_operados: number;
-}
 
 // Extensão de tipos para incluir joins
 type RecebimentoComJoins = Recebimento & {
@@ -77,26 +71,13 @@ export interface Transacao {
 
 /**
  * Interface com os dados financeiros agregados.
+ *
+ * `despesas.total`, `despesas.compras` e `lucro.*` são `null` quando o custo não é
+ * apurável — algum produto vendido sem compra no período (`produtosSemCompra` diz qual).
  */
-export interface DadosFinanceiros {
-  /** Métricas de Receitas */
-  receitas: {
-    total: number;
-    vendas: number;
-    extras: number;
-  };
-  /** Métricas de Despesas */
-  despesas: {
-    total: number;
-    operacionais: number;
-    compras: number;
-  };
-  /** Métricas de Lucratividade */
-  lucro: {
-    bruto: number;
-    liquido: number;
-    margem: number;
-  };
+export interface DadosFinanceiros extends ResumoFinanceiro {
+  /** Produtos com venda e sem compra no período — o motivo de o lucro vir `null`. */
+  produtosSemCompra: readonly string[];
   /** Lista de transações detalhadas */
   transacoes: Transacao[];
 }
@@ -119,6 +100,7 @@ const DADOS_INICIAIS: DadosFinanceiros = {
   receitas: { total: 0, vendas: 0, extras: 0 },
   despesas: { total: 0, operacionais: 0, compras: 0 },
   lucro: { bruto: 0, liquido: 0, margem: 0 },
+  produtosSemCompra: [],
   transacoes: []
 };
 
@@ -140,11 +122,8 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
     try {
       const { dataInicio, dataFim, postoId } = filtros;
 
-      console.log('[useFinanceiro] Filtros:', { dataInicio, dataFim, postoId });
-
-      // [27/01 10:36] Buscar dados reais de lucro dos fechamentos + dados detalhados
-      const [lucroRes, vendasRes, despesasRes, receitasRes, recebimentosRes, comprasRes] = await Promise.all([
-        fechamentoService.getLucroPorPeriodo(dataInicio, dataFim, postoId),
+      const [diferencasRes, vendasRes, despesasRes, receitasRes, recebimentosRes, comprasRes] = await Promise.all([
+        fechamentoService.getDiferencasPorPeriodo(dataInicio, dataFim, postoId),
         leituraService.getByDateRange(dataInicio, dataFim, postoId),
         despesaService.getByDateRange(dataInicio, dataFim, postoId),
         receitaService.getByDateRange(dataInicio, dataFim, postoId),
@@ -157,9 +136,7 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
       const receitasExtras = (isSuccess(receitasRes) ? receitasRes.data : []) as Receita[];
       const recebimentos = (isSuccess(recebimentosRes) ? recebimentosRes.data : []) as RecebimentoComJoins[];
       const compras = (isSuccess(comprasRes) ? comprasRes.data : []) as CompraComJoins[];
-
-      console.log('[useFinanceiro] Despesas encontradas:', despesas.length, despesas);
-      console.log('[useFinanceiro] Dados de Lucro (Fechamento):', lucroRes);
+      const diferencas = isSuccess(diferencasRes) ? diferencasRes.data : [];
 
       // [27/01 10:38] Processar Transações
       const listaTransacoes: Transacao[] = [];
@@ -222,8 +199,8 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
         });
       });
 
-      // 4. Compras (Despesa) - Usar custo real dos fechamentos
-      const totalCompras = compras.reduce((acc, c) => acc + (c.valor_total || 0), 0);
+      // 5. Compras — entram na lista como saída de caixa; no lucro o que pesa é o
+      // custo dos LITROS VENDIDOS (abaixo), não a compra paga no período.
       compras.forEach(c => {
         listaTransacoes.push({
           id: `compra-${c.id}`,
@@ -236,38 +213,36 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
         });
       });
 
-      // [27/01 10:45] Usar dados REAIS de lucro dos Fechamentos
-      // CORREÇÃO CRÍTICA: NÃO somar vendas + recebimentos (duplicação!)
-      // Recebimentos JÁ estão contabilizados nas vendas via formas de pagamento
-      const dadosLucro = (isSuccess(lucroRes) ? lucroRes.data : null) as LucroData | null;
+      // Custo dos litros vendidos: por produto, litros da Leitura × custo médio de
+      // compra do período (modelo da planilha). Sem compra de um produto vendido, o
+      // custo é `null` e o card diz qual — nunca zero disfarçado de lucro.
+      const litrosPorProduto = new Map<string, number>();
+      for (const v of vendas) {
+        const produto = v.bico.combustivel.nome;
+        litrosPorProduto.set(produto, (litrosPorProduto.get(produto) ?? 0) + Number(v.litros_vendidos || 0));
+      }
+      const comprasPorProduto = new Map<string, { litros: number; valorTotal: number }[]>();
+      for (const c of compras) {
+        const produto = c.combustivel?.nome;
+        if (!produto) continue;
+        const lista = comprasPorProduto.get(produto) ?? [];
+        lista.push({ litros: Number(c.quantidade_litros || 0), valorTotal: Number(c.valor_total || 0) });
+        comprasPorProduto.set(produto, lista);
+      }
+      const produtos: ProdutoDoPeriodo[] = [...litrosPorProduto].map(([produto, litrosVendidos]) => ({
+        produto,
+        litrosVendidos,
+        compras: comprasPorProduto.get(produto) ?? [],
+      }));
+      const custo = custoLitrosVendidos(produtos);
 
-      console.log('[useFinanceiro] Dados de Lucro (Fechamentos):', dadosLucro);
-
-      // RECEITAS: Usar receita_bruta dos fechamentos + receitas extras
-      const receitasOperacionais = dadosLucro?.receita_bruta || totalVendas;
-      const receitasTotal = receitasOperacionais + totalReceitasExtras;
-
-      // DESPESAS: custo real dos litros vendidos + faltas + despesas lançadas.
-      // [onda 4.2] `taxas_pagamento` SAIU da soma: taxa de cartão é despesa do
-      // mês (dono, 26/08) — lançada, ela já está em `totalDespesasOps`, e
-      // somar o carimbo junto descontava a taxa duas vezes. Fórmula em
-      // ./calculos-financeiro, coberta por calculos-financeiro.test.ts.
-      const despesasTotal = despesasDoPeriodo(dadosLucro, totalDespesasOps, totalCompras);
-
-      // LUCRO: Usar cálculo REAL do sistema
-      // lucro_bruto = vendas - custo_combustiveis_vendidos
-      // lucro_liquido = lucro_bruto - taxas - faltas - despesas_ops
-      const lucroBruto = dadosLucro?.lucro_bruto || (receitasTotal - totalCompras);
-      const lucroLiquido = dadosLucro?.lucro_liquido || (receitasTotal - despesasTotal);
-      const margem = dadosLucro?.margem_liquida_pct || (receitasTotal > 0 ? (lucroLiquido / receitasTotal) * 100 : 0);
-
-      console.log('[useFinanceiro] Resumo Calculado:', {
-        receitasTotal,
-        despesasTotal,
-        lucroBruto,
-        lucroLiquido,
-        margem,
-        dadosLucro
+      // Recebimentos NÃO entram na receita: já estão nas vendas via formas de pagamento.
+      const resumo = resumoFinanceiro({
+        receitaVendas: totalVendas,
+        receitasExtras: totalReceitasExtras,
+        custoLitrosVendidos: custo.custo,
+        faltas: totalFaltas(diferencas),
+        despesasOps: totalDespesasOps,
       });
 
       // Ordenar transações por data (decrescente)
@@ -283,23 +258,9 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
         transacoesFiltradas = transacoesFiltradas.filter(t => t.categoria === filtros.categoria);
       }
 
-      // [27/01 10:42] Dados ajustados para usar lucro REAL do sistema
       setDados({
-        receitas: {
-          total: receitasTotal,
-          vendas: receitasOperacionais,
-          extras: totalReceitasExtras
-        },
-        despesas: {
-          total: despesasTotal,
-          operacionais: totalDespesasOps,
-          compras: dadosLucro?.custo_combustiveis || totalCompras  // Custo REAL vendido
-        },
-        lucro: {
-          bruto: lucroBruto,     // Lucro bruto REAL (vendas - custo combustíveis)
-          liquido: lucroLiquido, // Lucro líquido REAL (bruto - taxas - faltas - despesas)
-          margem                 // Margem líquida %
-        },
+        ...resumo,
+        produtosSemCompra: custo.produtosSemCompra,
         transacoes: transacoesFiltradas
       });
 
