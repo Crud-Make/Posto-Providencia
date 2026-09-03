@@ -23,7 +23,9 @@ interface DashboardKpis {
   avgTicket: number;
   totalDivergence: number;
   totalVolume?: number;
-  totalProfit?: number;
+  /** `null` = produto vendido sem compra no mês (ver `produtosSemCompra`). */
+  totalProfit?: number | null;
+  produtosSemCompra?: readonly string[];
 }
 
 /**

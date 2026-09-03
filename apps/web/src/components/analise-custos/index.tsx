@@ -11,6 +11,7 @@ const TelaAnaliseCustos: React.FC = () => {
     const {
         loading,
         data,
+        produtosSemCompra,
         margins,
         setMargins,
         currentDate,
@@ -42,6 +43,14 @@ const TelaAnaliseCustos: React.FC = () => {
                 onNextMonth={handleNextMonth}
                 onExport={exportToCSV}
             />
+
+            {produtosSemCompra.length > 0 && (
+                <div className="rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700 px-6 py-4 text-sm text-yellow-800 dark:text-yellow-200">
+                    <strong>Sem compra de {produtosSemCompra.join(', ')} neste mês.</strong> Sem compra não há
+                    custo, e sem custo não há lucro para analisar — esses produtos ficaram fora dos cards e do
+                    ranking. Lance a compra do mês em Registro de Compras para eles entrarem.
+                </div>
+            )}
 
             {/* Main Grid: Analysis Cards */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

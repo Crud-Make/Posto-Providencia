@@ -21,7 +21,7 @@ const ResumoEconomico: React.FC<ResumoEconomicoProps> = ({ data, totalProfitSum 
                     <p className="text-2xl font-black text-gray-900 dark:text-white mt-1">R$ {totalProfitSum.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
                     <div className="flex items-center gap-1 text-green-500 text-xs font-bold mt-2">
                         <ArrowUp size={16} />
-                        <span>Calculado via PEPS/Custo Médio</span>
+                        <span>Custo da compra do mês</span>
                     </div>
                 </div>
 
@@ -42,7 +42,7 @@ const ResumoEconomico: React.FC<ResumoEconomicoProps> = ({ data, totalProfitSum 
                         Base de Cálculo
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                        As margens exibidas consideram o <strong>Custo Médio Ponderado</strong> de estoque e o rateio real das despesas registradas no mês.
+                        As margens exibidas usam o <strong>custo médio da compra do mês</strong> (o mesmo da planilha) e o rateio real das despesas registradas no mês. Produto vendido sem compra no mês fica fora — sem custo não há margem.
                     </p>
                 </div>
             </div>

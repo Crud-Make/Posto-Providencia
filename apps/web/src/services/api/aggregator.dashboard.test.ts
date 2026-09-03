@@ -13,6 +13,7 @@ vi.mock('./leitura.service', () => ({ leituraService: { getByDateRange: vi.fn() 
 vi.mock('./fechamentoFrentista.service', () => ({ fechamentoFrentistaService: { getByDate: vi.fn() } }));
 vi.mock('./despesa.service', () => ({ despesaService: { getByMonth: vi.fn() } }));
 vi.mock('./configuracao.service', () => ({ configuracaoService: { getValorNumerico: vi.fn() } }));
+vi.mock('./compra.service', () => ({ compraService: { getByDateRange: vi.fn() } }));
 
 import { aggregatorService } from './aggregator.service';
 import { estoqueService } from './estoque.service';
@@ -22,6 +23,7 @@ import { leituraService } from './leitura.service';
 import { fechamentoFrentistaService } from './fechamentoFrentista.service';
 import { despesaService } from './despesa.service';
 import { configuracaoService } from './configuracao.service';
+import { compraService } from './compra.service';
 
 const GASOLINA_COMUM = { id: 1, codigo: 'GC', nome: 'Gasolina Comum', cor: '#22c55e', preco_venda: 6, preco_custo: 5 };
 const ETANOL = { id: 2, codigo: 'ET', nome: 'Etanol', cor: '#eab308', preco_venda: 4, preco_custo: 3 };
@@ -64,6 +66,7 @@ describe('aggregatorService.fetchDashboardData — fonte do gráfico "Volume Ven
         vi.mocked(fechamentoFrentistaService.getByDate).mockResolvedValue(ok([]) as never);
         vi.mocked(despesaService.getByMonth).mockResolvedValue(ok([]) as never);
         vi.mocked(configuracaoService.getValorNumerico).mockResolvedValue(ok(0.45) as never);
+        vi.mocked(compraService.getByDateRange).mockResolvedValue(ok([]) as never);
     });
 
     it('plota os litros VENDIDOS no período, não o que sobrou no tanque', async () => {

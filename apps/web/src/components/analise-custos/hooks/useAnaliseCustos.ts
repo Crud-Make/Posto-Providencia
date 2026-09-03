@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchProfitabilityData } from '../../../services/api';
+import { isSuccess } from '../../../types/ui/response-types';
 import { usePosto } from '../../../contexts/usePosto';
 import { usePeriodo } from '../../../contexts/usePeriodo';
 import { ProfitabilityItem, Margins } from '../types';
@@ -10,6 +11,8 @@ export const useAnaliseCustos = () => {
     const { postoAtivoId } = usePosto();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<ProfitabilityItem[]>([]);
+    /** Produtos vendidos no mês sem compra — sem custo, fora da análise. */
+    const [produtosSemCompra, setProdutosSemCompra] = useState<readonly string[]>([]);
     const [margins, setMargins] = useState<Margins>({});
     // O mês vem do contexto: é o mesmo período das demais telas de análise. A tela pensa em
     // `Date`, então ele é derivado do mês compartilhado — sempre pelo dia 1, em hora local.
@@ -21,12 +24,21 @@ export const useAnaliseCustos = () => {
             setLoading(true);
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
+            // [03/09] Desembrulha o envelope: o wrapper era `.bind` (tipo `any`) e o
+            // objeto `{ success, data }` ia parar em `data` — a tela estourava no render.
             const result = await fetchProfitabilityData(year, month, postoAtivoId);
-            setData(result);
+            if (!isSuccess(result)) {
+                setData([]);
+                setProdutosSemCompra([]);
+                return;
+            }
+            const { itens, produtosSemCompra: semCompra } = result.data;
+            setData(itens);
+            setProdutosSemCompra(semCompra);
 
             // Inicializa margens simuladas com a margem bruta real
             const initialMargins: Margins = {};
-            result.forEach((item: ProfitabilityItem) => {
+            itens.forEach((item) => {
                 const currentMarginPercent = item.precoVenda > 0 ? (item.margemBrutaL / item.precoVenda) * 100 : 0;
                 initialMargins[item.combustivelId] = Math.max(0, Math.round(currentMarginPercent * 10) / 10);
             });
@@ -88,6 +100,7 @@ export const useAnaliseCustos = () => {
     return {
         loading,
         data,
+        produtosSemCompra,
         margins,
         setMargins,
         currentDate,

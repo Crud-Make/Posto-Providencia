@@ -2,6 +2,40 @@
 
 ## [Não Lançado]
 
+### ⛽ Três telas de lucro liam um custo congelado em janeiro
+
+- `/dashboard` (Lucro Estimado), `/analise-custos` e `/vendas/dashboard` (Lucro Estimado) liam
+  `Estoque.custo_medio` — o carimbo da média ponderada com estoque anterior (`custoMedioPonderado`,
+  legada), que a carga histórica gravou uma vez e nunca mais mudou. Em agosto o Diesel saía a
+  **R$ 5,38/L** quando a compra do mês custou **R$ 6,50/L**; a Comum a 5,35 contra 5,56. A planilha
+  custeia a venda pela compra do **mesmo mês** (`custoMedioCompra`, F16 = E16/D16), e o resto do
+  sistema já fazia assim — duas fórmulas, dois lucros para o mesmo mês.
+- **Agora as três telas usam a compra do mês**, por produto, via `services/custo-do-mes.ts`
+  (`custoMedioPorCombustivel`) e `mesCivil` (`utils/periodo.ts`, mês inteiro — não recortado em hoje,
+  para a compra lançada no fim do mês não sumir). `compra.service.create` **parou de carimbar**
+  `Estoque.custo_medio` (só soma litros). Conferido em 3015 contra o banco: agosto GC 5,5565 →
+  5,56 · GA 5,6525 → 5,65 · Etanol 3,5445 → 3,54 · Diesel 6,50.
+- **Produto vendido sem compra no mês → "—" e o nome do produto**, nunca custo zero: no `/dashboard`
+  e no `/vendas/dashboard` o card vira traço com o motivo; na `/analise-custos` o produto sai dos
+  cards e do ranking com um aviso no topo (com custo 0 ele seria o "mais lucrativo" da tela).
+  Golden em `calculos-dashboard-vendas.golden.spec.ts` e vitest em `aggregator.service.test.ts`.
+- **`/analise-custos` estava quebrada e ninguém viu.** `services/api/index.ts` exportava
+  `fetchProfitabilityData` com `.bind()`; sem `strictBindCallApply` o `bind` devolve `any`, o hook
+  guardava o envelope `{ success, data }` onde esperava o array e `data.reduce` estourava no render.
+  Os wrappers de dashboard e rentabilidade viraram funções tipadas; o hook desembrulha com `isSuccess`.
+  **`fetchSettingsData` ficou no `.bind` de propósito**: tipá-lo expõe que a tela de Configurações lê
+  `data?.products` no envelope (sempre vazio) e que o tipo `Produto` dela não é o do service — dois
+  consertos fora deste escopo.
+- `custoMedioPonderado` (`packages/utils/src/custo-ponderado.ts`) **ainda existe**, sem consumidor de
+  produção: os goldens `estoque-encadeamento` e `calculos-analise-vendas` a usam para documentar a
+  divergência. Apagar é o próximo passo, com o ok do dono. `salesAnalysis.service.ts` ainda usa o
+  carimbo como fallback de mês sem compra — agora congelado; trocar por `null` é o mesmo trabalho
+  das três telas, pendente.
+- **Achados não corrigidos**, registrados aqui para não sumirem: `/vendas/dashboard` busca 6 meses
+  de `Leitura` numa query (1.092 linhas em Mar–Ago) e o Supabase corta em 1.000 — agosto mostra
+  17.706 L onde o `/dashboard` mostra 36.277 L (provável, não confirmado); `/dashboard` rateia a
+  despesa pelo mês corrente, não pelo filtrado (Issue #27).
+
 ### 💸 Card Receitas/Despesas lia lucro carimbado que ninguém grava
 
 - O painel Receitas/Despesas (aba Financeiro do `/fechamento`) somava `Fechamento.custo_combustiveis`,
