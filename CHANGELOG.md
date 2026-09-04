@@ -19,6 +19,10 @@
   `consolidacao.service.ts` → a mesma `consolidarFechamento` do PWA). Era o buraco principal: o
   dono digitava os 6 bicos e nada recalculava o pai. A mensagem de sucesso agora diz o resultado
   ("Dia apurado: FALTA de R$ 24,76" / "faltam bicos" / "nenhum frentista enviou ainda").
+- **Aplicada em produção em 04/09** com `bun scripts/aplica-migration.ts <arquivo>` (novo — API de
+  management, token do `settings.local.json`, nada na linha de comando). Resultado: 7 pais `ABERTO`
+  → `null`; reconsolidação de 28/08 a 03/09: **28/08 FALTA R$ 119,77, 29/08 SOBRA R$ 3,96**, 30/08 a
+  03/09 não apurados (sem encerrante).
 - **Dado que entra por SQL tem porta própria**: `bun scripts/reconsolidar-dia.ts 2026-08-28..2026-08-31`.
   Decisão consciente contra trigger no banco: a fórmula de dinheiro mora em `@posto/utils` e uma
   cópia em SQL ficaria sem golden (não há Postgres local).
