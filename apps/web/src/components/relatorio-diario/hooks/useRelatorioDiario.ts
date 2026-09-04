@@ -188,7 +188,13 @@ export const useRelatorioDiario = () => {
                     const fechamentosTurno = fechamentos.filter(f => f.turno_id === turno.id);
 
                     const totalVendasFechamento = fechamentosTurno.reduce((acc, f) => acc + Number(f.total_vendas || 0), 0);
-                    const totalDiferencaFechamento = fechamentosTurno.reduce((acc, f) => acc + Number(f.diferenca || 0), 0);
+                    // [04/09/2026] `diferenca` NULA é "não apurado" (sem encerrante completo),
+                    // não zero — e não se soma com zero: um pai não apurado deixa o turno
+                    // inteiro não apurado. Antes o `|| 0` transformava isso em "bateu".
+                    const naoApurado = fechamentosTurno.some(f => f.diferenca === null || f.diferenca === undefined);
+                    const totalDiferencaFechamento = naoApurado
+                        ? null
+                        : fechamentosTurno.reduce((acc, f) => acc + Number(f.diferenca), 0);
 
                     const leiturasTurno = leituras.filter(l => l.turno_id === turno.id);
 
@@ -222,7 +228,7 @@ export const useRelatorioDiario = () => {
                     // 2×totalVendas < 5 — 0 de 201 fechamentos do histórico a satisfaziam),
                     // e o próprio ato de zerar, que apaga da tela justamente o número que o
                     // sistema existe para acusar. O estado agora é pergunta, não reescrita.
-                    const diferencaFinal = totalDiferencaFechamento;
+                    const diferencaFinal: number | null = totalDiferencaFechamento;
 
                     // 'Aberto'   = o turno nem começou (nenhum fechamento criado).
                     // 'Pendente' = o frentista lançou pelo PWA, mas ninguém fechou o dia no
@@ -234,7 +240,7 @@ export const useRelatorioDiario = () => {
                     const statusLabel: 'Aberto' | 'Fechado' | 'Pendente' =
                         fechamentosTurno.length === 0
                             ? 'Aberto'
-                            : !consolidado || semLancamento(totalVendas, totalDiferencaFechamento)
+                            : !consolidado || totalDiferencaFechamento === null || semLancamento(totalVendas, totalDiferencaFechamento)
                                 ? 'Pendente'
                                 : 'Fechado';
 
@@ -263,7 +269,10 @@ export const useRelatorioDiario = () => {
             const totalVendas = processedShifts.reduce((acc, curr) => acc + curr.vendas, 0);
             const totalLitros = processedShifts.reduce((acc, curr) => acc + curr.litros, 0);
             const totalLucro = processedShifts.reduce((acc, curr) => acc + curr.lucro, 0);
-            const totalDiferenca = processedShifts.reduce((acc, curr) => acc + curr.diferenca, 0);
+            // Um turno não apurado deixa o dia não apurado — nada de somar `null` como zero.
+            const totalDiferenca: number | null = processedShifts.some(s => s.diferenca === null)
+                ? null
+                : processedShifts.reduce((acc, curr) => acc + (curr.diferenca as number), 0);
 
             setTotals({
                 vendas: totalVendas,
@@ -287,7 +296,9 @@ export const useRelatorioDiario = () => {
     }, [loadData]);
 
     // Format currency helper
-    const fmtMoney = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    /** `null` sai como "não apurado" — nunca como R$ 0,00, que leria como "bateu". */
+    const fmtMoney = (val: number | null) =>
+        val === null ? 'não apurado' : val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const fmtLitros = (val: number) => val.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' L';
 
     return {

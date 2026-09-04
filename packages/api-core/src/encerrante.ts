@@ -25,6 +25,7 @@ import {
     valorDaLeitura,
     meiosFromFechamentoRow,
     totaisDoDia,
+    type TotaisDoDia,
 } from '@posto/utils';
 
 /**
@@ -187,8 +188,19 @@ export interface AcessoEncerrante {
         usuarioId?: number;
         linhas: LinhaParaGravar[];
     }): Promise<unknown>;
-    consolidarFechamento(fechamentoId: number): Promise<unknown>;
+    /**
+     * Recalcula os totais do pai a partir dos filhos e das leituras do dia.
+     *
+     * @returns `apurado: true` com os totais gravados quando todos os bicos foram
+     *          lidos; `apurado: false` quando o dia ficou sem encerrante completo
+     *          (o pai recebe `null` em venda e diferença); `null` quando a
+     *          consolidação falhou — o erro vai para o console, nunca derruba o envio.
+     */
+    consolidarFechamento(fechamentoId: number): Promise<ConsolidacaoDoDia | null>;
 }
+
+/** Resultado de {@link AcessoEncerrante.consolidarFechamento}. */
+export type ConsolidacaoDoDia = TotaisDoDia & { readonly apurado: boolean };
 
 /**
  * Monta o acesso ao encerrante sobre um cliente Supabase já configurado.
@@ -585,6 +597,16 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                 // fantasma — cobrada contra o frentista, que entregou dinheiro
                 // de combustível que o sistema acha que não foi vendido.
                 //
+                // [04/09/2026] E "NÃO GRAVAR" NÃO BASTA. Sem encerrante o update
+                // deixava `total_vendas`/`diferenca` como estavam — e como o pai
+                // nasce com 0 nos dois, o dia não apurado tinha exatamente a cara
+                // do dia apurado que bateu. Agora o ramo sem encerrante grava
+                // `null` nos dois, de propósito: é o único valor que nenhuma
+                // tela consegue confundir com "bateu", e se uma leitura for
+                // apagada depois de apurado, o dia volta a "não apurado" em vez
+                // de congelar um número velho. Migration
+                // `20260904_fechamento_nao_apurado_e_nulo.sql`.
+                //
                 // O total de bicos vem do cadastro, não de constante: bico novo
                 // muda o que "completo" significa, e constante apodreceria em
                 // silêncio.
@@ -620,7 +642,7 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                     .from('Fechamento')
                     .update(
                         semEncerrante
-                            ? { total_recebido: totais.totalRecebido }
+                            ? { total_vendas: null, total_recebido: totais.totalRecebido, diferenca: null }
                             : {
                                 total_vendas: totais.totalVendas,
                                 total_recebido: totais.totalRecebido,
@@ -630,7 +652,7 @@ export function criarAcessoEncerrante(supabase: SupabaseClient): AcessoEncerrant
                     .eq('id', fechamentoId);
                 if (erroUpdate) throw new Error(erroUpdate.message);
 
-                return totais;
+                return semEncerrante ? { ...totais, apurado: false as const } : { ...totais, apurado: true as const };
             } catch (e) {
                 // Ver o @remarks: consolidação é acessório do envio, não condição.
                 console.error('Falha ao consolidar o fechamento do dia:', e);

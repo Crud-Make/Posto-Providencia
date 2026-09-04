@@ -141,12 +141,13 @@ export interface FechamentoTable {
   Row: {
     createdAt: string
     data: string
-    diferenca: number
+    /** concentrador − conferido; positivo = FALTA. `null` = não apurado (sem encerrante completo). 0 = bateu. */
+    diferenca: number | null
     id: number
     observacoes: string | null
     status: DatabaseEnums["StatusFechamento"]
     total_recebido: number
-    total_vendas: number
+    total_vendas: number | null
     turno_id: number | null
     updatedAt: string
     usuario_id: number
@@ -161,12 +162,12 @@ export interface FechamentoTable {
   Insert: {
     createdAt?: string
     data: string
-    diferenca: number
+    diferenca: number | null
     id?: number
     observacoes?: string | null
     status?: DatabaseEnums["StatusFechamento"]
     total_recebido: number
-    total_vendas: number
+    total_vendas: number | null
     turno_id?: number | null
     updatedAt?: string
     usuario_id: number
@@ -181,12 +182,12 @@ export interface FechamentoTable {
   Update: {
     createdAt?: string
     data?: string
-    diferenca?: number
+    diferenca?: number | null
     id?: number
     observacoes?: string | null
     status?: DatabaseEnums["StatusFechamento"]
     total_recebido?: number
-    total_vendas?: number
+    total_vendas?: number | null
     turno_id?: number | null
     updatedAt?: string
     usuario_id?: number

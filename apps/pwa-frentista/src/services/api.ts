@@ -82,9 +82,11 @@ export const api = {
                 posto_id: postoId,
                 data: dataStr,
                 turno_id: turnoId,
-                total_vendas: 0,
+                // Venda e diferença nascem NULAS: "não apurado". Nasciam em 0 e o
+                // dia sem encerrante tinha a cara do dia que bateu (04/09/2026).
+                total_vendas: null,
                 total_recebido: 0,
-                diferenca: 0,
+                diferenca: null,
                 status: 'ABERTO',
                 usuario_id: usuarioId
             })

@@ -2,6 +2,44 @@
 
 ## [Não Lançado]
 
+### 🧾 Dia não apurado deixa de parecer dia que bateu
+
+- **O pai do dia nascia com `diferenca = 0`** porque a coluna era NOT NULL — não existia
+  "ainda não sei", só zero. `consolidarFechamento` estava certa em não gravar venda sem os 6 bicos,
+  mas "não gravar" deixava o zero de nascimento. Medido em 04/09: os 7 dias reais desde 30/08 estão
+  `ABERTO` com `diferenca = 0`, e 28–29/08 têm as 6 leituras no banco e o pai zerado do mesmo jeito
+  (R$ 115,81 de diferença não acusada). O relatório diário rotulava "Pendente" mas mostrava
+  R$ 0,00 em cinza; `aiService` somava o zero nas médias como caixa que bateu.
+- **`Fechamento.total_vendas` e `diferenca` aceitam NULL** — migration
+  `20260904_fechamento_nao_apurado_e_nulo.sql`, com backfill dos pais `ABERTO` zerados. `null` =
+  não apurado; `0` = apurado e bateu. PWA e painel criam o pai com `null`; a consolidação grava
+  `null` de propósito quando faltam bicos (e volta a `null` se uma leitura for apagada depois).
+  `status` **não** muda por consolidação automática: continua sendo "o dono fechou no painel".
+- **O painel passou a reconsolidar ao salvar leituras** (`useLeiturasDiarias` →
+  `consolidacao.service.ts` → a mesma `consolidarFechamento` do PWA). Era o buraco principal: o
+  dono digitava os 6 bicos e nada recalculava o pai. A mensagem de sucesso agora diz o resultado
+  ("Dia apurado: FALTA de R$ 24,76" / "faltam bicos" / "nenhum frentista enviou ainda").
+- **Aplicada em produção em 04/09** com `bun scripts/aplica-migration.ts <arquivo>` (novo — API de
+  management, token do `settings.local.json`, nada na linha de comando). Resultado: 7 pais `ABERTO`
+  → `null`; reconsolidação de 28/08 a 03/09: **28/08 FALTA R$ 119,77, 29/08 SOBRA R$ 3,96**, 30/08 a
+  03/09 não apurados (sem encerrante).
+- **Dado que entra por SQL tem porta própria**: `bun scripts/reconsolidar-dia.ts 2026-08-28..2026-08-31`.
+  Decisão consciente contra trigger no banco: a fórmula de dinheiro mora em `@posto/utils` e uma
+  cópia em SQL ficaria sem golden (não há Postgres local).
+- Leitores tratam `null`: relatório diário mostra **"não apurado"** em âmbar (turno com um pai nulo
+  fica nulo, não soma zero); `aiService` só entra com dia apurado. `'ABERTO'` entrou no enum
+  manual — o gerado já conhecia, e por isso nenhum código do painel testava por ele.
+- `packages/api-core` ganhou o primeiro teste (`encerrante.test.ts`, 4 casos: sem leitura, parcial,
+  completo com falta, completo batido → zero).
+- **`@supabase/supabase-js` alinhado em `^2.97.0` na raiz** (era 2.93.3; `api-core` e `pwa-dono` já
+  estavam em 2.97) — o painel não conseguia passar seu client para `criarAcessoEncerrante` por
+  classe nominal diferente. Decisão do dono.
+- **Achados não corrigidos**: `aiService` avisa "quebra de caixa" quando `totalDiferenca < −50`,
+  mas §6 diz que falta é POSITIVA — o sinal está invertido; dashboard "Fechamentos do dia" pinta
+  `OK` para `0 < |diferença| ≤ 50` (`aggregator.service.ts:350`); bug 3a (relatório diário filtra
+  leitura por `turno_id`, e o painel grava `null`) segue aberto; a consolidação por `anon` falha em
+  silêncio fora da janela de edição.
+
 ### ⛽ Três telas de lucro liam um custo congelado em janeiro
 
 - `/dashboard` (Lucro Estimado), `/analise-custos` e `/vendas/dashboard` (Lucro Estimado) liam

@@ -158,11 +158,12 @@ export const fechamentoService = {
    */
   async create(fechamento: Omit<InsertTables<'Fechamento'>, 'diferenca' | 'total_recebido' | 'total_vendas'> & Partial<Pick<InsertTables<'Fechamento'>, 'diferenca' | 'total_recebido' | 'total_vendas'>>): Promise<ApiResponse<Fechamento>> {
     try {
+      // Venda e diferença nascem NULAS ("não apurado") — 0 significaria "bateu".
       const payload: InsertTables<'Fechamento'> = {
         ...fechamento,
-        diferenca: fechamento.diferenca ?? 0,
+        diferenca: fechamento.diferenca ?? null,
         total_recebido: fechamento.total_recebido ?? 0,
-        total_vendas: fechamento.total_vendas ?? 0,
+        total_vendas: fechamento.total_vendas ?? null,
       } as InsertTables<'Fechamento'>;
 
       const { data, error } = await supabase
