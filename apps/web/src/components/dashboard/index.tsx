@@ -87,6 +87,7 @@ const TelaDashboard: React.FC = () => {
     totalDivergence: 0,
     totalVolume: 0,
     totalProfit: 0,
+    produtosSemCompra: [],
   };
 
   return (
@@ -168,9 +169,13 @@ const TelaDashboard: React.FC = () => {
         />
         <KPICard
           title="LUCRO ESTIMADO"
-          value={`R$ ${kpis.totalProfit?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}`}
+          value={kpis.totalProfit === null
+            ? '—'
+            : `R$ ${(kpis.totalProfit ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           trendValue="0%"
-          trendLabel="Baseado na margem média"
+          trendLabel={kpis.produtosSemCompra?.length
+            ? `sem compra de ${kpis.produtosSemCompra.join(', ')} no mês`
+            : 'Custo da compra do mês'}
           isNegativeTrend={false}
           Icon={TrendingUp}
           iconBgColor="bg-green-50"

@@ -1,7 +1,6 @@
 import { supabase } from '../supabase';
 import type { Compra as CompraRow, Combustivel, Fornecedor, InsertTables } from '../../types/database/index';
 import { estoqueService } from './estoque.service';
-import { custoMedioPonderado } from '@posto/utils';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -83,9 +82,13 @@ export const compraService = {
   },
 
   /**
-   * Cria uma nova compra e atualiza o estoque automaticamente
+   * Cria uma nova compra e soma os litros ao estoque.
    * @param compra - Dados da compra
-   * @remarks Calcula custo por litro e atualiza custo médio ponderado do estoque
+   * @remarks Calcula `custo_por_litro` da própria compra. **Não carimba mais
+   *          `Estoque.custo_medio`** (03/09/2026): a média ponderada com estoque
+   *          anterior divergia do custo canônico da planilha (compra do mesmo mês,
+   *          `custoMedioCompra`), e as telas de lucro passaram a calcular dele —
+   *          ver `services/custo-do-mes.ts`. A coluna segue no banco, congelada.
    */
   async create(compra: CompraInsert): Promise<ApiResponse<Compra>> {
     try {
@@ -109,22 +112,8 @@ export const compraService = {
 
         if (estoqueResponse.success && estoqueResponse.data) {
           const estoque = estoqueResponse.data;
-          const estoqueAtual = estoque.quantidade_atual;
-          const novaQuantidade = compra.quantidade_litros;
-
-          // Média ponderada LEGADA (fórmula em @posto/utils, exercitada pelo
-          // golden estoque-encadeamento) — diverge do custo canônico da
-          // planilha; a troca é a onda 3.9 do saneamento, decisão do dono.
-          const novoCustoMedio = custoMedioPonderado({
-            estoqueAnterior: estoqueAtual,
-            custoMedioAnterior: estoque.custo_medio || 0,
-            litrosCompra: novaQuantidade,
-            custoLitroCompra: custo_por_litro,
-          });
-
           await estoqueService.update(estoque.id, {
-            quantidade_atual: estoqueAtual + novaQuantidade,
-            custo_medio: novoCustoMedio,
+            quantidade_atual: estoque.quantidade_atual + compra.quantidade_litros,
           });
         }
       }

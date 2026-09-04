@@ -30,11 +30,11 @@ export interface SerieFluxoCaixa {
 interface UseFluxoCaixaReturn {
   /** Array de séries temporais para gráficos */
   series: SerieFluxoCaixa[];
-  /** Totais consolidados do período */
+  /** Totais consolidados do período (`null` = custo não apurável, ver `useFinanceiro`) */
   totais: {
     entradas: number;
-    saidas: number;
-    saldo: number;
+    saidas: number | null;
+    saldo: number | null;
   };
 }
 

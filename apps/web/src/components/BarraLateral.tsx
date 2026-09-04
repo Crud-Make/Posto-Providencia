@@ -14,7 +14,8 @@ import {
   Crown,
   Table2,
   Menu,
-  LogOut
+  LogOut,
+  Calculator
 } from 'lucide-react';
 import { useTheme } from '../contexts/useTheme';
 import { useAuth } from '../contexts/useAuth';
@@ -60,6 +61,9 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
     { path: '/fechamento', label: 'Fechamento de Caixa', icon: ShoppingCart },
     { path: '/relatorio-diario', label: 'Relatório Diário', icon: ClipboardList },
     { path: '/compras', label: 'Compras', icon: ShoppingBag },
+    // [03/09] Estava fora do menu — só se chegava digitando a URL, e a tela passou
+    // semanas quebrada sem ninguém notar. Custo da compra do mês + simulador de preço.
+    { path: '/analise-custos', label: 'Análise de Custos', icon: Calculator },
     { path: '/frentistas', label: 'Frentistas', icon: Users },
     { path: '/clientes', label: 'Clientes / Fiado', icon: Users },
     { path: '/estoque/tanques', label: 'Tanques (Combustível)', icon: Fuel },

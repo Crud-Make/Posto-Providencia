@@ -8,6 +8,9 @@ import { frentistaService } from './frentista.service';
 import { leituraService } from './leitura.service';
 import { fechamentoFrentistaService } from './fechamentoFrentista.service';
 import { despesaService } from './despesa.service';
+import { compraService } from './compra.service';
+import { custoMedioPorCombustivel } from '../custo-do-mes';
+import { mesCivil } from '../../utils/periodo';
 import type { Combustivel, FechamentoFrentista, Leitura } from '../../types/database/index';
 import {
   ApiResponse,
@@ -142,12 +145,15 @@ interface DashboardAggregatedData {
     avgTicket: number;
     totalDivergence: number;
     totalVolume: number;
-    totalProfit: number;
+    /** `null` quando algum produto vendido não tem compra no mês — ver `produtosSemCompra`. */
+    totalProfit: number | null;
+    /** Produtos vendidos no período sem compra no mês para custear. */
+    produtosSemCompra: readonly string[];
   };
 }
 
 /** Item de retorno de {@link aggregatorService.fetchProfitabilityData}. */
-interface ProfitabilityItem {
+export interface ProfitabilityItem {
   id: number;
   combustivelId: number;
   nome: string;
@@ -162,6 +168,14 @@ interface ProfitabilityItem {
   margemLiquidaL: number;
   margemBrutaL: number;
   cor: string;
+}
+
+/** Retorno de {@link aggregatorService.fetchProfitabilityData}. */
+export interface ProfitabilityResult {
+  /** Produtos com custo apurável no mês (compra lançada). */
+  itens: ProfitabilityItem[];
+  /** Produtos vendidos no mês sem compra para custear — ficam fora de `itens`. */
+  produtosSemCompra: string[];
 }
 
 export const aggregatorService = {
@@ -235,16 +249,21 @@ export const aggregatorService = {
       const hoje = new Date();
 
       // Onda única de queries: nenhuma depende do resultado de outra
-      const [estoqueRes, frentistasRes, formasPagamentoRes, leiturasDataRes, fechamentosFrentistaHojeRes, despesaOpLitro] = await Promise.all([
+      // Custo do litro: a compra do MÊS de `dataInicio` (canônico da planilha), não mais o
+      // carimbo `Estoque.custo_medio` — ver `services/custo-do-mes.ts` (03/09/2026).
+      const mesDoCusto = mesCivil(dataInicio);
+      const [estoqueRes, frentistasRes, formasPagamentoRes, leiturasDataRes, fechamentosFrentistaHojeRes, despesaOpLitro, comprasRes] = await Promise.all([
         estoqueService.getAll(postoId),
         frentistaService.getAll(postoId),
         formaPagamentoService.getAll(postoId),
         leituraService.getByDateRange(dataInicio, dataFim, postoId),
         fechamentoFrentistaService.getByDate(dataInicio, postoId),
         despesaOperacionalMensal(hoje, postoId),
+        compraService.getByDateRange(mesDoCusto.inicio, mesDoCusto.fim, postoId),
       ]);
 
       const estoque = extractData(estoqueRes);
+      const custoDoMes = custoMedioPorCombustivel(extractData(comprasRes));
       const frentistas = extractData(frentistasRes);
       const formasPagamento = extractData(formasPagamentoRes);
       const leiturasData = extractData(leiturasDataRes);
@@ -345,21 +364,26 @@ export const aggregatorService = {
         };
       });
 
-      // Lucro estimado — despesa operacional REAL do mês (despesas/litros), não mais 0,45 fixo
-      let totalLucroEstimado = 0;
-      if (vendas.porCombustivel) {
-        totalLucroEstimado = vendas.porCombustivel.reduce((acc, item) => {
-          const est = estoque.find(e => e.combustivel_id === item.combustivel.id);
-          const custoMedio = est?.custo_medio || 0;
-          const lucroItem = lucroCombustivel({
-            litros: item.litros,
-            precoVenda: item.litros > 0 ? item.valor / item.litros : 0,
-            custoMedio,
-            despesaOperacionalLitro: despesaOpLitro,
-          });
-          return acc + lucroItem;
-        }, 0);
+      // Lucro estimado — despesa operacional REAL do mês (despesas/litros), não mais 0,45 fixo.
+      // Produto vendido sem compra no mês não tem custo: o total vira `null`, nunca um
+      // lucro inflado com custo zero.
+      const produtosSemCompra: string[] = [];
+      let somaLucro = 0;
+      for (const item of vendas.porCombustivel) {
+        if (item.litros <= 0) continue;
+        const custoMedio = custoDoMes(item.combustivel.id);
+        if (custoMedio === null) {
+          produtosSemCompra.push(item.combustivel.nome);
+          continue;
+        }
+        somaLucro += lucroCombustivel({
+          litros: item.litros,
+          precoVenda: item.valor / item.litros,
+          custoMedio,
+          despesaOperacionalLitro: despesaOpLitro,
+        });
       }
+      const totalLucroEstimado = produtosSemCompra.length > 0 ? null : somaLucro;
 
       // PerformanceData — ranking pelas VENDAS conferidas, que são dado real por
       // frentista. Antes mostrava "Lucro Est." = vendas × margem média global do
@@ -394,6 +418,7 @@ export const aggregatorService = {
           totalDivergence: 0,
           totalVolume: vendas.totalLitros || 0,
           totalProfit: totalLucroEstimado,
+          produtosSemCompra,
         },
       });
     } catch (error) {
@@ -407,9 +432,14 @@ export const aggregatorService = {
    * @param year - Ano de referência
    * @param month - Mês de referência
    * @param postoId - ID do posto (opcional)
-   * @returns Métricas de rentabilidade (LUCRO LÍQUIDO, MARGEM, CUSTOS)
+   * @returns Métricas de rentabilidade (LUCRO LÍQUIDO, MARGEM, CUSTOS) por produto, mais a
+   *          lista dos produtos que ficaram sem custo (vendidos sem compra no mês).
+   * @remarks [03/09/2026] O custo é a compra do MÊS por produto (`custoMedioCompra`,
+   *          canônico da planilha) — ver `services/custo-do-mes.ts`; antes era o carimbo
+   *          `Estoque.custo_medio`. Produto vendido sem compra não entra em `itens`: com
+   *          custo 0 ele apareceria como o mais lucrativo da tela.
    */
-  async fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1, postoId?: number): Promise<ApiResponse<ProfitabilityItem[]>> {
+  async fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1, postoId?: number): Promise<ApiResponse<ProfitabilityResult>> {
     try {
       const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
       const fimMesStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
@@ -422,10 +452,11 @@ export const aggregatorService = {
 
       if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
 
-      const [estoqueRes, leiturasMes, despesasRes] = await Promise.all([
+      const [estoqueRes, leiturasMes, despesasRes, comprasRes] = await Promise.all([
         estoqueService.getAll(postoId),
         queryLeitura,
-        despesaService.getByMonth(year, month, postoId)
+        despesaService.getByMonth(year, month, postoId),
+        compraService.getByDateRange(inicioMesStr, fimMesStr, postoId),
       ]);
 
       if (leiturasMes.error) return createErrorResponse(leiturasMes.error.message);
@@ -433,6 +464,7 @@ export const aggregatorService = {
       const leituras = (leiturasMes.data || []) as LeituraWithRelations[];
       const estoque = extractData(estoqueRes);
       const despesas = extractData(despesasRes);
+      const custoDoMes = custoMedioPorCombustivel(extractData(comprasRes));
 
       const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
       const totalVolumeVendido = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
@@ -441,19 +473,23 @@ export const aggregatorService = {
       // Mês sem despesa lançada fica em 0 — nunca o fallback fixo de 0,45 (§6).
       const despOperacional = despesaOperacionalPorLitro(totalDespesas, totalVolumeVendido);
 
-      return createSuccessResponse(estoque.map(e => {
+      const itens: ProfitabilityItem[] = [];
+      const produtosSemCompra: string[] = [];
+      for (const e of estoque) {
         const vendasComb = leituras.filter(l => l.bico?.combustivel_id === e.combustivel_id);
         const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
         const receitaBruta = vendasComb.reduce((acc, l) => acc + (l.valor_total || 0), 0);
 
-        const custoMedio = e.custo_medio || 0;
+        const custoMedio = custoDoMes(e.combustivel_id);
+        if (custoMedio === null) {
+          if (volumeVendido > 0) produtosSemCompra.push(e.combustivel?.nome || 'N/A');
+          continue;
+        }
         const custoTotalL = custoMedio + despOperacional;
 
         // [onda 3, grupo A] Era `receitaBruta − volume × custoTotalL` inline —
         // a MESMA conta canônica, à mão, no arquivo que já importa a função.
         // Agora delega (e quantiza em centavos na saída, como o resto do lucro).
-        // O custo segue vindo do carimbo `Estoque.custo_medio` — a fonte é a
-        // decisão da onda 3.9 (dono), não deste commit.
         const lucroTotal = lucroCombustivel({
           litros: volumeVendido,
           precoVenda: volumeVendido > 0 ? receitaBruta / volumeVendido : 0,
@@ -463,7 +499,7 @@ export const aggregatorService = {
         const margemLiquidaL = volumeVendido > 0 ? lucroTotal / volumeVendido : 0;
         const margemBrutaL = (e.combustivel?.preco_venda || 0) - custoMedio;
 
-        return {
+        itens.push({
           id: e.id,
           combustivelId: e.combustivel_id,
           nome: e.combustivel?.nome || 'N/A',
@@ -478,8 +514,10 @@ export const aggregatorService = {
           margemLiquidaL,
           margemBrutaL,
           cor: corDoProduto(e.combustivel?.codigo).fundo
-        };
-      }));
+        });
+      }
+
+      return createSuccessResponse({ itens, produtosSemCompra });
     } catch (error) {
       return createErrorResponse(error instanceof Error ? error.message : 'Erro ao calcular rentabilidade');
     }

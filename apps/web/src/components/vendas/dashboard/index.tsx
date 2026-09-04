@@ -23,6 +23,7 @@ const TelaDashboardVendas: React.FC = () => {
     productMix,
     averageMargin,
     estimatedProfit,
+    produtosSemCompra,
     loadData,
     formatCurrency,
     formatNumber,
@@ -92,6 +93,7 @@ const TelaDashboardVendas: React.FC = () => {
         salesSummary={salesSummary}
         estimatedProfit={estimatedProfit}
         averageMargin={averageMargin}
+        produtosSemCompra={produtosSemCompra}
         formatNumber={formatNumber}
         formatCurrency={formatCurrency}
       />

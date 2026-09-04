@@ -7,11 +7,12 @@
  * por mês no dado real de 2026, R$ 195.230,40 nos 7 meses de lucro mostrado a
  * mais. O antes/depois está travado no golden ao lado.
  *
- * O que fica igual, de propósito (não é a decisão deste commit):
- * - o custo por litro segue vindo do carimbo `Estoque.custo_medio` (média
- *   ponderada) — a fonte é a onda 3.9, decisão do dono;
- * - item sem estoque cadastrado entra na receita com custo 0 (o card sempre
- *   fez assim); os litros dele ENTRAM no rateio da despesa.
+ * [03/09/2026] O custo por litro passou a ser a COMPRA DO MÊS por produto
+ * (`custoMedioCompra`, canônico da planilha) — ver `services/custo-do-mes.ts`;
+ * o carimbo `Estoque.custo_medio` (média ponderada) deixou de ser gravado.
+ * Produto vendido sem compra no mês não tem custo: o lucro do card vira `null`
+ * e a tela diz qual produto faltou. Antes entrava com custo 0 — lucro de 100%
+ * em silêncio. Os litros dele continuam no rateio da despesa.
  */
 import {
     despesaOperacionalPorLitro,
@@ -22,18 +23,22 @@ import {
 
 /** Um combustível agregado no mês, como o hook o monta. */
 export interface ItemLucroDashboard {
+    /** Nome do produto — volta em `produtosSemCompra`. */
+    readonly produto: string;
     /** Litros vendidos no mês. */
     readonly litros: number;
     /** Receita real do produto no mês (Σ `Leitura.valor_total`), em reais. */
     readonly valor: number;
-    /** R$/L do carimbo `Estoque.custo_medio`; `null` quando não há estoque cadastrado. */
+    /** R$/L da compra do mês (`custoMedioCompra`); `null` sem compra no mês. */
     readonly custoMedio: number | null;
 }
 
-/** Resultado do card: lucro estimado e margem média. */
+/** Resultado do card. `null` = custo não apurável (ver `produtosSemCompra`). */
 export interface LucroEstimadoDashboard {
-    readonly profit: number;
-    readonly margin: number;
+    readonly profit: number | null;
+    readonly margin: number | null;
+    /** Produtos vendidos no mês sem compra para custear. */
+    readonly produtosSemCompra: readonly string[];
 }
 
 /**
@@ -49,20 +54,26 @@ export function lucroEstimadoDashboard(
     const litrosTotal = itens.reduce((s, i) => s + i.litros, 0);
     const despLt = despesaOperacionalPorLitro(despesaDoMes, litrosTotal);
 
-    const profit = emCentavos(
-        itens.reduce(
-            (s, i) =>
-                s +
-                lucroCombustivel({
-                    litros: i.litros,
-                    precoVenda: i.litros > 0 ? i.valor / i.litros : 0,
-                    custoMedio: i.custoMedio ?? 0,
-                    despesaOperacionalLitro: despLt,
-                }),
-            0
-        )
-    );
+    const produtosSemCompra: string[] = [];
+    let soma = 0;
+    for (const i of itens) {
+        if (i.litros <= 0) continue;
+        if (i.custoMedio === null) {
+            produtosSemCompra.push(i.produto);
+            continue;
+        }
+        soma += lucroCombustivel({
+            litros: i.litros,
+            precoVenda: i.valor / i.litros,
+            custoMedio: i.custoMedio,
+            despesaOperacionalLitro: despLt,
+        });
+    }
+    if (produtosSemCompra.length > 0) {
+        return { profit: null, margin: null, produtosSemCompra };
+    }
 
+    const profit = emCentavos(soma);
     const totalVendas = itens.reduce((s, i) => s + i.valor, 0);
-    return { profit, margin: margemPercentual(profit, totalVendas) };
+    return { profit, margin: margemPercentual(profit, totalVendas), produtosSemCompra };
 }

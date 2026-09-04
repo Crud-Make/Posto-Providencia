@@ -4,8 +4,10 @@ import { SalesSummary } from '../types';
 
 interface CardsKpiProps {
   salesSummary: SalesSummary;
-  estimatedProfit: number;
-  averageMargin: number;
+  /** `null` = produto vendido sem compra no mês (ver `produtosSemCompra`). */
+  estimatedProfit: number | null;
+  averageMargin: number | null;
+  produtosSemCompra: readonly string[];
   formatNumber: (value: number) => string;
   formatCurrency: (value: number) => string;
 }
@@ -14,6 +16,7 @@ const CardsKpi: React.FC<CardsKpiProps> = ({
   salesSummary,
   estimatedProfit,
   averageMargin,
+  produtosSemCompra,
   formatNumber,
   formatCurrency
 }) => {
@@ -60,10 +63,12 @@ const CardsKpi: React.FC<CardsKpiProps> = ({
           <span className="text-sm font-bold">Lucro Estimado</span>
         </div>
         <div className="relative z-10">
-          <h3 className="text-3xl font-black text-blue-600">{formatCurrency(estimatedProfit)}</h3>
+          <h3 className="text-3xl font-black text-blue-600">{estimatedProfit === null ? '—' : formatCurrency(estimatedProfit)}</h3>
           <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white text-green-600 text-xs font-bold mt-2 shadow-sm border border-blue-100">
             <TrendingUp size={14} />
-            Baseado no custo médio
+            {produtosSemCompra.length > 0
+              ? `sem compra de ${produtosSemCompra.join(', ')} no mês`
+              : 'Custo da compra do mês'}
           </div>
         </div>
       </div>
@@ -75,12 +80,14 @@ const CardsKpi: React.FC<CardsKpiProps> = ({
           <span className="text-sm font-bold text-gray-600 dark:text-gray-400">Margem Média</span>
         </div>
         <div>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white">{averageMargin.toFixed(1)}%</h3>
-          <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold mt-2 ${averageMargin >= 10 ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
-            }`}>
-            {averageMargin >= 10 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-            {averageMargin >= 10 ? 'Saudável' : 'Atenção'}
-          </div>
+          <h3 className="text-3xl font-black text-gray-900 dark:text-white">{averageMargin === null ? '—' : `${averageMargin.toFixed(1)}%`}</h3>
+          {averageMargin !== null && (
+            <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold mt-2 ${averageMargin >= 10 ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+              }`}>
+              {averageMargin >= 10 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {averageMargin >= 10 ? 'Saudável' : 'Atenção'}
+            </div>
+          )}
         </div>
       </div>
     </div>

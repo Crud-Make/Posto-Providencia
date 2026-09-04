@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../../contexts/usePosto';
 import { usePeriodo } from '../../../../contexts/usePeriodo';
-import { leituraService, estoqueService, despesaService } from '../../../../services/api';
+import { leituraService, despesaService, compraService } from '../../../../services/api';
+import { custoMedioPorCombustivel } from '../../../../services/custo-do-mes';
 import { SalesSummary, MonthlyData, ProductMixItem } from '../types';
 import { Combustivel } from '../../../../types/database/index';
 import { isSuccess } from '../../../../types/ui/response-types';
@@ -24,8 +25,9 @@ export const useDashboardVendas = () => {
 
   const [monthlyEvolution, setMonthlyEvolution] = useState<MonthlyData[]>([]);
   const [productMix, setProductMix] = useState<ProductMixItem[]>([]);
-  const [averageMargin, setAverageMargin] = useState<number>(0);
-  const [estimatedProfit, setEstimatedProfit] = useState<number>(0);
+  const [averageMargin, setAverageMargin] = useState<number | null>(0);
+  const [estimatedProfit, setEstimatedProfit] = useState<number | null>(0);
+  const [produtosSemCompra, setProdutosSemCompra] = useState<readonly string[]>([]);
 
   const loadData = useCallback(async () => {
     if (!postoAtivoId) return;
@@ -89,29 +91,30 @@ export const useDashboardVendas = () => {
       // (custo médio + despesa/L do mês). [onda 3, grupo B] Antes a despesa
       // operacional ficava fora e o card inflava o lucro exatamente na despesa
       // do mês (R$ 195.230,40 nos 7 meses reais) — travado no golden ao lado.
-      const [resEstoque, resDespesas] = await Promise.all([
-        estoqueService.getAll(postoAtivoId),
+      // [03/09] O custo é a compra do MÊS (`services/custo-do-mes`), não mais o
+      // carimbo `Estoque.custo_medio`.
+      const [resCompras, resDespesas] = await Promise.all([
+        compraService.getByDateRange(paraIsoLocal(new Date(year, month - 1, 1)), paraIsoLocal(endDate), postoAtivoId),
         despesaService.getByMonth(year, month, postoAtivoId),
       ]);
-      const estoquesData = isSuccess(resEstoque) ? resEstoque.data : [];
+      const custoDoMes = custoMedioPorCombustivel(isSuccess(resCompras) ? resCompras.data : []);
       const despesaDoMes = (isSuccess(resDespesas) ? resDespesas.data : []).reduce(
         (acc, d) => acc + Number(d.valor || 0),
         0
       );
 
-      const { profit, margin } = lucroEstimadoDashboard(
-        Object.values(byCombustivel).map(item => {
-          const estoque = estoquesData.find(e => e.combustivel_id === item.combustivel.id);
-          return {
-            litros: item.litros,
-            valor: item.valor,
-            custoMedio: estoque ? estoque.custo_medio : null,
-          };
-        }),
+      const lucro = lucroEstimadoDashboard(
+        Object.values(byCombustivel).map(item => ({
+          produto: item.combustivel.nome,
+          litros: item.litros,
+          valor: item.valor,
+          custoMedio: custoDoMes(item.combustivel.id),
+        })),
         despesaDoMes
       );
-      setEstimatedProfit(profit);
-      setAverageMargin(margin);
+      setEstimatedProfit(lucro.profit);
+      setAverageMargin(lucro.margin);
+      setProdutosSemCompra(lucro.produtosSemCompra);
 
       // Evolução mensal REAL (últimos 6 meses): antes os 5 meses passados eram
       // preenchidos com Math.random() e o gráfico mudava a cada render. Agora
@@ -166,6 +169,7 @@ export const useDashboardVendas = () => {
     productMix,
     averageMargin,
     estimatedProfit,
+    produtosSemCompra,
     loadData,
     formatCurrency,
     formatNumber,

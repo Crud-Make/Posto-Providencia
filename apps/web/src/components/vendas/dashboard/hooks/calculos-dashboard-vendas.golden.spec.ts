@@ -98,7 +98,7 @@ for (const mes of MESES) {
 
         // 1. A conta REAL do card, alimentada com o custo do próprio mês.
         const doCard = lucroEstimadoDashboard(
-            vendas.map((v) => ({ litros: v.litros, valor: v.valor, custoMedio: custos[v.produto] })),
+            vendas.map((v) => ({ produto: v.produto, litros: v.litros, valor: v.valor, custoMedio: custos[v.produto] })),
             despesa
         );
 
@@ -114,13 +114,14 @@ for (const mes of MESES) {
             0
         );
 
-        expect(doCard.profit).toBeCloseTo(canonico, 2);
+        expect(doCard.produtosSemCompra).toEqual([]);
+        expect(doCard.profit as number).toBeCloseTo(canonico, 2);
 
         // 2. O modelo APOSENTADO (vendas − Σ litros × custo, sem despesa),
         // reproduzido aqui só para documentar o antes/depois em reais.
         const antes =
             totalVendas - vendas.reduce((s, v) => s + v.litros * custos[v.produto], 0);
-        expect(antes - doCard.profit).toBeCloseTo(ANTES_MOSTRAVA_A_MAIS[mes], 1);
+        expect(antes - (doCard.profit as number)).toBeCloseTo(ANTES_MOSTRAVA_A_MAIS[mes], 1);
         // …e a régua é a despesa lançada de verdade, ao centavo.
         expect(ANTES_MOSTRAVA_A_MAIS[mes]).toBeCloseTo(despesa, 2);
     });
@@ -131,15 +132,26 @@ test('nos 7 meses o card antigo mostrava R$ 195.230,40 a mais de lucro do que o 
     expect(total).toBeCloseTo(195_230.4, 1);
 });
 
-test('item sem estoque cadastrado segue com custo 0, mas os litros entram no rateio da despesa', () => {
-    // 1.000 L vendidos a R$ 6.000, sem estoque cadastrado e sem despesa no mês:
-    // semântica preservada do card (custo 0 → lucro 100%). Mudar isso para
-    // "custo desconhecido" é decisão à parte, fora deste commit.
-    const semDespesa = lucroEstimadoDashboard([{ litros: 1000, valor: 6000, custoMedio: null }], 0);
-    expect(semDespesa.profit).toBe(6000);
-    expect(semDespesa.margin).toBe(100);
+test('produto vendido sem compra no mês derruba o card para null — nunca lucro de 100%', () => {
+    // 1.000 L vendidos a R$ 6.000 sem compra no mês. Até 03/09/2026 entrava com
+    // custo 0 e o card mostrava R$ 6.000 de lucro (margem 100%) em silêncio.
+    const r = lucroEstimadoDashboard(
+        [{ produto: 'Etanol', litros: 1000, valor: 6000, custoMedio: null }],
+        0
+    );
+    expect(r.profit).toBeNull();
+    expect(r.margin).toBeNull();
+    expect(r.produtosSemCompra).toEqual(['Etanol']);
+});
 
-    // Com R$ 500 de despesa no mês, o rateio desconta R$ 0,50/L também dele.
-    const comDespesa = lucroEstimadoDashboard([{ litros: 1000, valor: 6000, custoMedio: null }], 500);
-    expect(comDespesa.profit).toBe(5500);
+test('produto sem venda não derruba o card, com ou sem compra', () => {
+    const r = lucroEstimadoDashboard(
+        [
+            { produto: 'Gasolina Comum', litros: 1000, valor: 6000, custoMedio: 5 },
+            { produto: 'Diesel S10', litros: 0, valor: 0, custoMedio: null },
+        ],
+        0
+    );
+    expect(r.produtosSemCompra).toEqual([]);
+    expect(r.profit).toBe(1000);
 });

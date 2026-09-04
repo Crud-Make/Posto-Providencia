@@ -69,7 +69,14 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
 
   // `paraReais` no lugar de um `Intl.NumberFormat` local: mesma saída para número válido
   // (mesmas opções), e devolve string vazia em vez de "R$ NaN" quando o valor não é número.
-  const formatPercent = (val: number) => `${val.toFixed(1)}%`;
+  // [03/09] `null` é "custo não apurável" (produto vendido sem compra no período) e sai
+  // como traço, com o motivo na legenda — nunca como zero, que leria como lucro.
+  const semCusto = dados.produtosSemCompra.length > 0;
+  const motivoSemCusto = semCusto
+    ? `sem compra de ${dados.produtosSemCompra.join(', ')} no período`
+    : undefined;
+  const reaisOuTraco = (val: number | null) => (val === null ? '—' : paraReais(val));
+  const formatPercent = (val: number | null) => (val === null ? '—' : `${val.toFixed(1)}%`);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -85,7 +92,8 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
 
       <CartaoIndicador
         titulo="Despesas Totais"
-        valor={paraReais(dados.despesas.total)}
+        valor={reaisOuTraco(dados.despesas.total)}
+        legenda={motivoSemCusto}
         Icone={TrendingDown}
         corFundoIcone="bg-red-500/15"
         corIcone="text-red-400"
@@ -93,9 +101,9 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
 
       <CartaoIndicador
         titulo="Lucro Líquido"
-        valor={paraReais(dados.lucro.liquido)}
-        legenda={`Margem líquida: ${formatPercent(dados.lucro.margem)}`}
-        negativo={dados.lucro.liquido < 0}
+        valor={reaisOuTraco(dados.lucro.liquido)}
+        legenda={motivoSemCusto ?? `Margem líquida: ${formatPercent(dados.lucro.margem)}`}
+        negativo={dados.lucro.liquido !== null && dados.lucro.liquido < 0}
         Icone={Wallet}
         corFundoIcone="bg-blue-500/15"
         corIcone="text-blue-400"
@@ -104,7 +112,7 @@ export const ResumoFinanceiro: React.FC<ResumoFinanceiroProps> = ({ dados, carre
       <CartaoIndicador
         titulo="Margem de Lucro"
         valor={formatPercent(dados.lucro.margem)}
-        legenda="Eficiência operacional"
+        legenda={motivoSemCusto ?? 'Eficiência operacional'}
         Icone={TrendingUp}
         corFundoIcone="bg-purple-500/15"
         corIcone="text-purple-400"

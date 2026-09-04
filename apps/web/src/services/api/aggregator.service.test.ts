@@ -18,10 +18,15 @@ vi.mock('./configuracao.service', () => ({
     configuracaoService: { getValorNumerico: vi.fn() },
 }));
 
+vi.mock('./compra.service', () => ({
+    compraService: { getByDateRange: vi.fn() },
+}));
+
 import { aggregatorService } from './aggregator.service';
 import { estoqueService } from './estoque.service';
 import { despesaService } from './despesa.service';
 import { configuracaoService } from './configuracao.service';
+import { compraService } from './compra.service';
 
 interface LeituraFake {
     data: string;
@@ -57,7 +62,7 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
             data: [{
                 id: 1,
                 combustivel_id: 10,
-                custo_medio: 3,
+                custo_medio: 9.99,
                 combustivel: { nome: 'Gasolina', codigo: 'G', preco_venda: 5.5, cor: 'red' },
             }],
             timestamp: new Date().toISOString(),
@@ -66,6 +71,15 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
         vi.mocked(despesaService.getByMonth).mockResolvedValue({
             success: true,
             data: [{ valor: 50 }],
+            timestamp: new Date().toISOString(),
+        } as never);
+
+        // [03/09] O custo vem da compra do mês (R$ 3,00/L), não mais do carimbo
+        // `custo_medio` do estoque — que fica no fixture acima só para provar que
+        // é ignorado.
+        vi.mocked(compraService.getByDateRange).mockResolvedValue({
+            success: true,
+            data: [{ combustivel_id: 10, quantidade_litros: 1000, valor_total: 3000 }],
             timestamp: new Date().toISOString(),
         } as never);
 
@@ -99,7 +113,7 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
         expect(result.success).toBe(true);
         if (!result.success) return;
 
-        const item = result.data.find(i => i.combustivelId === 10);
+        const item = result.data.itens.find(i => i.combustivelId === 10);
         expect(item?.despOperacional).toBe(0);
         // custoTotalL = custo do produto, sem parcela operacional inventada
         expect(item?.custoTotalL).toBe(3);
@@ -115,8 +129,25 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
         expect(result.success).toBe(true);
         if (!result.success) return;
 
-        const item = result.data.find(i => i.combustivelId === 10);
+        const item = result.data.itens.find(i => i.combustivelId === 10);
         expect(item?.volumeVendido).toBe(100);
         expect(item?.receitaBruta).toBe(550);
+    });
+
+    it('produto vendido sem compra no mês fica fora dos itens e é nomeado em produtosSemCompra', async () => {
+        vi.mocked(compraService.getByDateRange).mockResolvedValue({
+            success: true,
+            data: [],
+            timestamp: new Date().toISOString(),
+        } as never);
+
+        const result = await aggregatorService.fetchProfitabilityData(2026, 1);
+
+        expect(result.success).toBe(true);
+        if (!result.success) return;
+
+        // Antes: custo 0 → lucro = receita inteira (550), o produto "mais lucrativo" da tela.
+        expect(result.data.itens).toEqual([]);
+        expect(result.data.produtosSemCompra).toEqual(['Gasolina']);
     });
 });

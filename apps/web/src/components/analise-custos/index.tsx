@@ -5,19 +5,18 @@ import HeaderAnalise from './components/HeaderAnalise';
 import CardCombustivel from './components/CardCombustivel';
 import RankingLucratividade from './components/RankingLucratividade';
 import ResumoEconomico from './components/ResumoEconomico';
-import FooterAcoes from './components/FooterAcoes';
 
 const TelaAnaliseCustos: React.FC = () => {
     const {
         loading,
         data,
+        produtosSemCompra,
         margins,
         setMargins,
         currentDate,
         handlePrevMonth,
         handleNextMonth,
         exportToCSV,
-        handleApplyPrices,
         calculatePrice,
         calculateProfit
     } = useAnaliseCustos();
@@ -34,7 +33,7 @@ const TelaAnaliseCustos: React.FC = () => {
     const totalProfitSum = data.reduce((acc, item) => acc + (item.lucroTotal || 0), 0);
 
     return (
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans pb-24">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans">
             
             <HeaderAnalise
                 currentDate={currentDate}
@@ -42,6 +41,14 @@ const TelaAnaliseCustos: React.FC = () => {
                 onNextMonth={handleNextMonth}
                 onExport={exportToCSV}
             />
+
+            {produtosSemCompra.length > 0 && (
+                <div className="rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700 px-6 py-4 text-sm text-yellow-800 dark:text-yellow-200">
+                    <strong>Sem compra de {produtosSemCompra.join(', ')} neste mês.</strong> Sem compra não há
+                    custo, e sem custo não há lucro para analisar — esses produtos ficaram fora dos cards e do
+                    ranking. Lance a compra do mês em Registro de Compras para eles entrarem.
+                </div>
+            )}
 
             {/* Main Grid: Analysis Cards */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -63,7 +70,6 @@ const TelaAnaliseCustos: React.FC = () => {
                 <ResumoEconomico data={data} totalProfitSum={totalProfitSum} />
             </div>
 
-            <FooterAcoes onApplyPrices={handleApplyPrices} />
         </div>
     );
 };

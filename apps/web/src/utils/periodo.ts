@@ -49,6 +49,21 @@ export function intervaloDoMes(mesIso: string, hoje: string): Periodo {
   return { inicio, fim: ehMesCorrente ? hoje : ultimoDia };
 }
 
+/**
+ * O mês civil inteiro de uma data, em ISO local — do dia 1 ao último dia, sem recorte em hoje.
+ *
+ * @param dataIso - Qualquer data `aaaa-mm-dd` (ou mês `aaaa-mm`) dentro do mês.
+ * @remarks É o intervalo da COMPRA do mês para o custo canônico (`custoMedioCompra`): a
+ *          compra é lançada com a data da nota, que pode ser depois de hoje no mês corrente
+ *          (a carga histórica carimba no fim do mês). Recortar em hoje, como faz
+ *          {@link intervaloDoMes} para a venda, esconderia essa compra e o mês nasceria
+ *          "sem custo" até virar — foi o que aconteceu em 30/08 com as compras de agosto.
+ */
+export function mesCivil(dataIso: string): Periodo {
+  const inicio = `${dataIso.slice(0, 7)}-01`;
+  return { inicio, fim: ultimoDiaDoMes(deIsoLocal(inicio)) };
+}
+
 /** `true` quando `mesIso` (`aaaa-mm`) é o mês em que `hoje` cai. */
 export function ehMesCorrente(mesIso: string, hoje: string): boolean {
   return mesIso === hoje.slice(0, 7);

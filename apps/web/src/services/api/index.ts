@@ -43,11 +43,22 @@ export { tanqueService } from './tanque.service';
 export { resetService } from './reset.service';
 export { aggregatorService } from './aggregator.service';
 
-// Exporta funções de compatibilidade (legacy) para uso direto
+// Funções de compatibilidade (legacy) para uso direto.
+// [03/09/2026] Eram `.bind(aggregatorService)`: sem `strictBindCallApply` o `bind`
+// devolve `any`, e o hook da `/analise-custos` guardou o envelope `{ success, data }`
+// onde esperava o array — a rota estourava no render e o tsc não via. Wrapper
+// explícito preserva o tipo de retorno.
 import { aggregatorService } from './aggregator.service';
+export type { ProfitabilityItem, ProfitabilityResult } from './aggregator.service';
+// `fetchSettingsData` segue no `.bind` DE PROPÓSITO: tipá-lo expõe que
+// `useConfiguracoesData` lê `data?.products` no envelope (sempre `undefined`) e que o
+// tipo local `Produto` da tela não é o do service — duas correções fora deste escopo,
+// registradas no CHANGELOG de 03/09. Quem tipar esta linha precisa consertar as duas.
 export const fetchSettingsData = aggregatorService.fetchSettingsData.bind(aggregatorService);
-export const fetchDashboardData = aggregatorService.fetchDashboardData.bind(aggregatorService);
-export const fetchProfitabilityData = aggregatorService.fetchProfitabilityData.bind(aggregatorService);
+export const fetchDashboardData: typeof aggregatorService.fetchDashboardData =
+  (...args) => aggregatorService.fetchDashboardData(...args);
+export const fetchProfitabilityData: typeof aggregatorService.fetchProfitabilityData =
+  (...args) => aggregatorService.fetchProfitabilityData(...args);
 
 // Importa para montar objeto api
 import { postoService } from './posto.service';
