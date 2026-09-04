@@ -7,7 +7,8 @@ export interface ShiftData {
     vendas: number;
     litros: number;
     lucro: number;
-    diferenca: number;
+    /** `null` = não apurado: sem encerrante completo no dia (não é zero). */
+    diferenca: number | null;
     frentistas: string[];
 }
 
@@ -17,7 +18,8 @@ export interface DailyTotals {
     lucro: number;
     despesas: number;
     lucroLiquido: number;
-    diferenca: number;
+    /** `null` = não apurado: sem encerrante completo no dia (não é zero). */
+    diferenca: number | null;
     projetadoMensal: number;
 }
 

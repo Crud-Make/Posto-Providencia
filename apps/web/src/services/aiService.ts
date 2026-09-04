@@ -60,7 +60,11 @@ export const aiService = {
             .gte('data', startOfMonth)
             .lte('data', endOfMonth);
 
-        const totalVendas = fechamentos?.reduce((acc, curr) => acc + curr.total_vendas, 0) || 0;
+        // [04/09/2026] Só dia APURADO entra na conta: `total_vendas`/`diferenca` nulos
+        // são "sem encerrante completo", e somá-los como zero puxava a média para
+        // baixo e afirmava que o caixa bateu num dia que ninguém conferiu.
+        const apurados = (fechamentos ?? []).filter(f => f.total_vendas !== null && f.diferenca !== null);
+        const totalVendas = apurados.reduce((acc, curr) => acc + Number(curr.total_vendas), 0);
         const totalDespesas = despesas?.reduce((acc, curr) => acc + curr.valor, 0) || 0;
 
         // [onda 3, grupo B] Lucro REAL do mês: lucro_bruto da RPC (custo da
@@ -110,7 +114,7 @@ export const aiService = {
         }
 
         // Micro Insight: Cash Differences
-        const totalDiferenca = fechamentos?.reduce((acc, curr) => acc + curr.diferenca, 0) || 0;
+        const totalDiferenca = apurados.reduce((acc, curr) => acc + Number(curr.diferenca), 0);
         if (totalDiferenca < -50) { // Tolerância de R$ 50
             insights.push({
                 id: 'micro-cash-break',
@@ -145,8 +149,10 @@ export const aiService = {
         const salesByDay = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] } as Record<number, number[]>;
 
         salesHistory.forEach(sale => {
+            // Dia não apurado (venda nula) fica fora da média — não é venda zero.
+            if (sale.total_vendas === null) return;
             const day = new Date(sale.data).getDay();
-            salesByDay[day].push(sale.total_vendas);
+            salesByDay[day].push(Number(sale.total_vendas));
         });
 
         const avgByDay = Object.keys(salesByDay).map(day => {

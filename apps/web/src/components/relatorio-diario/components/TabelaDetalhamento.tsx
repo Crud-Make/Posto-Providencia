@@ -6,7 +6,7 @@ import { ShiftData, DailyTotals } from '../types';
 interface TabelaDetalhamentoProps {
     shiftsData: ShiftData[];
     totals: DailyTotals;
-    fmtMoney: (val: number) => string;
+    fmtMoney: (val: number | null) => string;
     fmtLitros: (val: number) => string;
 }
 
@@ -61,7 +61,7 @@ const TabelaDetalhamento: React.FC<TabelaDetalhamentoProps> = ({
                                 <td className={`px-6 py-4 text-right font-black ${corDeSinal(shift.lucro).texto}`}>
                                     {fmtMoney(shift.lucro)}
                                 </td>
-                                <td className={`px-6 py-4 text-right font-bold ${corDaDiferenca(shift.diferenca).texto}`}>
+                                <td className={`px-6 py-4 text-right font-bold ${shift.diferenca === null ? 'text-amber-600' : corDaDiferenca(shift.diferenca).texto}`}>
                                     {fmtMoney(shift.diferenca)}
                                 </td>
                             </tr>
@@ -73,7 +73,7 @@ const TabelaDetalhamento: React.FC<TabelaDetalhamentoProps> = ({
                             <td className="px-6 py-4 text-right">{fmtMoney(totals.vendas)}</td>
                             <td className="px-6 py-4 text-right">{fmtLitros(totals.litros)}</td>
                             <td className={`px-6 py-4 text-right ${corDeSinal(totals.lucro).texto}`}>{fmtMoney(totals.lucro)}</td>
-                            <td className={`px-6 py-4 text-right ${corDaDiferenca(totals.diferenca).texto}`}>
+                            <td className={`px-6 py-4 text-right ${totals.diferenca === null ? 'text-amber-600' : corDaDiferenca(totals.diferenca).texto}`}>
                                 {fmtMoney(totals.diferenca)}
                             </td>
                         </tr>

@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { bicoService, leituraService } from '../../../services/api';
+import { reconsolidarDia } from '../../../services/api/consolidacao.service';
+import { isFalta } from '@posto/utils';
 import { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
 import { numeroDoEncerrante } from '../model/encerrante-digitado';
 import { USUARIO_SISTEMA_ID } from '@shared/constants/usuario-sistema';
@@ -125,7 +127,12 @@ export function useLeiturasDiarias(postoAtivoId: number | null) {
 
             await leituraService.bulkCreate(leiturasParaSalvar);
 
-            setMsgSucesso(`${leiturasParaSalvar.length} leituras salvas com sucesso!`);
+            // [04/09/2026] A leitura é a outra metade do dia: sem reconsolidar, o pai
+            // ficava com venda e diferença "não apuradas" mesmo com os 6 bicos no banco.
+            // A mensagem diz o que aconteceu com a diferença — é para isso que o dono
+            // digitou o encerrante.
+            const consolidacao = await reconsolidarDia(postoAtivoId, selectedDate);
+            setMsgSucesso(`${leiturasParaSalvar.length} leituras salvas. ${mensagemDaConsolidacao(consolidacao)}`);
 
             // Recarrega para confirmar
             await carregarLeituras();
@@ -167,4 +174,14 @@ export function useLeiturasDiarias(postoAtivoId: number | null) {
         setMsgErro,
         setMsgSucesso
     };
+}
+
+/** Frase de fecho do dia para a mensagem de sucesso. */
+function mensagemDaConsolidacao(r: Awaited<ReturnType<typeof reconsolidarDia>>): string {
+    if (r.situacao === 'sem-pai') return 'Nenhum frentista enviou o caixa ainda — o dia será apurado no primeiro envio.';
+    if (r.situacao === 'falhou') return 'Não foi possível apurar o dia (veja o console).';
+    if (!r.totais.apurado) return 'Dia ainda não apurado: faltam bicos no encerrante.';
+    const d = r.totais.diferenca;
+    const valor = Math.abs(d).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    return d === 0 ? 'Dia apurado: caixa bateu.' : `Dia apurado: ${isFalta(d) ? 'FALTA' : 'SOBRA'} de ${valor}.`;
 }
