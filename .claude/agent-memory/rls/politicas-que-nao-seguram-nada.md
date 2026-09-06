@@ -34,12 +34,30 @@ O advisor lista isso como `multiple_permissive_policies` (performance), mas o ef
 ## 4. `TO public` é `anon` também
 
 `public` inclui `anon`. Política `TO public USING (true)` = tabela aberta ao mundo, mesmo sem a
-palavra `anon` em lugar nenhum. Vale para `CategoriaFinanceira`, `Receita`, `HistoricoTanque`
-(`"Public Access"`), `Notificacao`, `ganhos`, `parcelas`, `frentistas_old_backup`.
+palavra `anon` em lugar nenhum. Vale para `CategoriaFinanceira`, `Receita`, `Notificacao`,
+`ganhos`, `parcelas`, `frentistas_old_backup`.
+
+**Atualizado 30/08/2026:** `HistoricoTanque` saiu desta lista — a `"Public Access"` deu lugar a
+duas políticas: leitura anon `USING (true)` + `"Escrita só de usuário autenticado"` (ALL, `TO
+public`, `auth.role()='authenticated'`), ou seja, caiu no padrão do item 1: escrita fechada para
+anon (o upsert do painel em modo visitante falha), aberta `USING (true)` para logado.
 
 ## 5. As janelas temporais (`dentro_da_janela_de_escrita` / `_de_edicao`) seguram de verdade
 
-Únicas políticas do banco com restrição efetiva contra o anon: limitam INSERT a 7 dias e UPDATE ao
-mês anterior. Aplicadas em `Leitura`, `Fechamento`, `FechamentoFrentista`, `Recebimento`. **Não são
+Únicas políticas do banco com restrição efetiva contra o anon. Aplicadas em `Leitura`,
+`Fechamento`, `FechamentoFrentista`, `Recebimento`, `Despesa` (DELETE). **Não são
 `SECURITY DEFINER`, e isso está certo.** Não mexer nelas sem entender que são a única trava de
 escrita que o PWA do frentista respeita — ver [[anon-e-o-painel]].
+
+**Atualizado 30/08/2026:** as duas funções hoje têm corpo IDÊNTICO — `quando >= DATE '2025-12-31'
+AND quando < CURRENT_DATE + 2 days` — a janela do replay, não os "7 dias" que o nome
+`_insert_janela_7d` sugere. Nome de policy mente; ler sempre o `pg_get_functiondef`. Quando o
+replay acabar, o corpo deve voltar a encolher.
+
+## 6. UNIQUE não limita spam se a coluna-chave é nullable
+
+`HistoricoTanque` tem `UNIQUE (tanque_id, data)`, mas `tanque_id` é **nullable** e NULL não
+colide em UNIQUE: INSERT aberto sem `tanque_id IS NOT NULL` no `WITH CHECK` permite linhas
+infinitas com tanque nulo. Apurado em 30/08/2026 ao desenhar a policy de INSERT do frentista.
+Vale conferir em qualquer tabela onde o "1 por dia" dependa de um UNIQUE parcial de colunas
+anuláveis.
