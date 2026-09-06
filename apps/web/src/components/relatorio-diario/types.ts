@@ -6,7 +6,8 @@ export interface ShiftData {
     status: 'Aberto' | 'Fechado' | 'Pendente';
     vendas: number;
     litros: number;
-    lucro: number;
+    /** Lucro bruto (venda − litros × custo do mês). `null` = produto sem compra no mês. */
+    lucro: number | null;
     /** `null` = não apurado: sem encerrante completo no dia (não é zero). */
     diferenca: number | null;
     frentistas: string[];
@@ -15,9 +16,10 @@ export interface ShiftData {
 export interface DailyTotals {
     vendas: number;
     litros: number;
-    lucro: number;
+    /** Lucro bruto (venda − litros × custo do mês). `null` = produto sem compra no mês. */
+    lucro: number | null;
     despesas: number;
-    lucroLiquido: number;
+    lucroLiquido: number | null;
     /** `null` = não apurado: sem encerrante completo no dia (não é zero). */
     diferenca: number | null;
     projetadoMensal: number;

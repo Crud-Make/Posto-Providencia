@@ -58,7 +58,7 @@ const TabelaDetalhamento: React.FC<TabelaDetalhamentoProps> = ({
                                 <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400 font-medium">
                                     {fmtLitros(shift.litros)}
                                 </td>
-                                <td className={`px-6 py-4 text-right font-black ${corDeSinal(shift.lucro).texto}`}>
+                                <td className={`px-6 py-4 text-right font-black ${shift.lucro === null ? 'text-amber-600' : corDeSinal(shift.lucro).texto}`}>
                                     {fmtMoney(shift.lucro)}
                                 </td>
                                 <td className={`px-6 py-4 text-right font-bold ${shift.diferenca === null ? 'text-amber-600' : corDaDiferenca(shift.diferenca).texto}`}>
@@ -72,7 +72,7 @@ const TabelaDetalhamento: React.FC<TabelaDetalhamentoProps> = ({
                             <td className="px-6 py-4"></td>
                             <td className="px-6 py-4 text-right">{fmtMoney(totals.vendas)}</td>
                             <td className="px-6 py-4 text-right">{fmtLitros(totals.litros)}</td>
-                            <td className={`px-6 py-4 text-right ${corDeSinal(totals.lucro).texto}`}>{fmtMoney(totals.lucro)}</td>
+                            <td className={`px-6 py-4 text-right ${totals.lucro === null ? 'text-amber-600' : corDeSinal(totals.lucro).texto}`}>{fmtMoney(totals.lucro)}</td>
                             <td className={`px-6 py-4 text-right ${totals.diferenca === null ? 'text-amber-600' : corDaDiferenca(totals.diferenca).texto}`}>
                                 {fmtMoney(totals.diferenca)}
                             </td>

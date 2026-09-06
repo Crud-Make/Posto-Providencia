@@ -62,7 +62,7 @@ const ResumoKPIs: React.FC<ResumoKPIsProps> = ({ totals, expensesCount, fmtMoney
                 <div className="mt-2 h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${Math.min(100, totals.lucro > 0 ? (totals.lucroLiquido / totals.lucro) * 100 : 0)}%` }}
+                        style={{ width: `${Math.min(100, totals.lucro !== null && totals.lucroLiquido !== null && totals.lucro > 0 ? (totals.lucroLiquido / totals.lucro) * 100 : 0)}%` }}
                     />
                 </div>
             </div>

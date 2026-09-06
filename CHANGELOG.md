@@ -12,9 +12,11 @@
 - Agora o dia é a unidade: todos os fechamentos e todas as leituras do dia numa linha "Dia";
   coluna "Turno" virou "Período". Conferido em 3015: 28/08 → R$ 9.530,13 · 1.380 L · diferença
   R$ 119,77 · PENDENTE.
-- **Achado, não corrigido:** o "Lucro Líquido (Real)" desta tela vem de `vendaLucroDaLeitura`, que
-  custeia pelo `preco_custo` do **cadastro** — o custo congelado em janeiro que o #80 tirou de três
-  telas. É a mesma correção (`custo-do-mes.ts`), pendente aqui.
+- **O lucro da tela custeia pela compra do mês do dia**, não mais pelo `preco_custo` do cadastro
+  (congelado em janeiro — o mesmo carimbo que o #80 tirou de três telas). `vendaLucroDaLeitura`
+  recebe o custo injetado (`custo-do-mes.ts`); produto sem compra no mês deixa o lucro do dia
+  **"não apurado"**, nunca custo zero. Conferido em 3015 × banco: 28/07 → R$ 1.563,71 ao centavo
+  com o custo de julho. Vitest: 7 casos (dois novos: custo do mês ≠ cadastro; sem compra → null).
 
 ### 📉 Dashboard de Vendas perdia leituras do mês — corte silencioso em 1.000 linhas
 

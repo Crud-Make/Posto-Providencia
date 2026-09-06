@@ -16,8 +16,11 @@ import { usePeriodo } from '../../../contexts/usePeriodo';
 import {
     fechamentoService,
     leituraService,
+    compraService,
     despesaService
 } from '../../../services/api';
+import { custoMedioPorCombustivel } from '../../../services/custo-do-mes';
+import { mesCivil } from '../../../utils/periodo';
 import { ShiftData, DailyTotals, ExpenseData } from '../types';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
@@ -62,33 +65,42 @@ interface LeituraDiaria {
     valor_total?: number | null;
     bico?: {
         combustivel?: {
+            id?: number;
             preco_venda?: number | null;
-            preco_custo?: number | null;
         } | null;
     } | null;
 }
 
 /**
- * Venda e lucro de uma leitura, a preço DO DIA.
+ * Venda e lucro bruto de uma leitura, a preço DO DIA e a custo DO MÊS.
  *
  * @remarks
  * O preço vem do que foi carimbado na própria leitura (`preco_litro`/
  * `valor_total`); o `preco_venda` do cadastro é só fallback para linha antiga
  * sem preço gravado. Era daqui que saía o bug do "preço único": dia de janeiro
  * (R$ 6,28) exibido a preço de agosto (R$ 6,98) — o cadastro guarda um preço
- * só, o de hoje. O custo segue vindo do cadastro por falta de custo carimbado
- * na leitura (o custo histórico correto vive na RPC `get_dashboard_proprietario`);
- * o lucro daqui é aproximação de tela, não fórmula canônica.
+ * só, o de hoje.
+ *
+ * [06/09/2026] O custo tinha o mesmo defeito, do outro lado da conta: vinha do
+ * `preco_custo` do cadastro, congelado em janeiro (o #80 tirou esse carimbo de
+ * três telas). Agora é injetado — custo médio da compra do MÊS do dia, por
+ * combustível (`custo-do-mes.ts`, modelo da planilha). Sem compra do produto no
+ * mês, `lucro` é `null`: não apurável, nunca "custo zero = lucro cheio". Lucro
+ * bruto por litro, sem rateio de despesa: a despesa do dia é subtraída no total.
+ *
+ * @param custoLitro - R$/L da compra do mês para o combustível da leitura; `null` sem compra.
  */
-export function vendaLucroDaLeitura(l: LeituraDiaria): { volume: number; venda: number; lucro: number } {
+export function vendaLucroDaLeitura(
+    l: LeituraDiaria,
+    custoLitro: number | null
+): { volume: number; venda: number; lucro: number | null } {
     const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
     if (volume <= 0) return { volume: 0, venda: 0, lucro: 0 };
 
     const precoDoDia = Number(l.preco_litro ?? l.bico?.combustivel?.preco_venda ?? 0);
-    const precoCusto = Number(l.bico?.combustivel?.preco_custo ?? 0);
     const venda = l.valor_total != null ? Number(l.valor_total) : volume * precoDoDia;
 
-    return { volume, venda, lucro: volume * (precoDoDia - precoCusto) };
+    return { volume, venda, lucro: custoLitro === null ? null : volume * (precoDoDia - custoLitro) };
 }
 
 /**
@@ -145,14 +157,18 @@ export const useRelatorioDiario = () => {
 
             // 1. Load basic data
             // [18/01 10:34] Extraído payload de ApiResponse para evitar `filter is not a function` em despesas.
-            const [fechamentosRes, leiturasRes, despesasRes] = await Promise.all([
+            // Custo do litro: compra do MÊS do dia, por combustível (ver `vendaLucroDaLeitura`).
+            const mesDoDia = mesCivil(selectedDate);
+            const [fechamentosRes, leiturasRes, despesasRes, comprasRes] = await Promise.all([
                 fechamentoService.getByDate(selectedDate, postoAtivoId),
                 leituraService.getByDate(selectedDate, postoAtivoId),
-                despesaService.getAll(postoAtivoId)
+                despesaService.getAll(postoAtivoId),
+                compraService.getByDateRange(mesDoDia.inicio, mesDoDia.fim, postoAtivoId)
             ]);
 
             const fechamentos = extractApiData(fechamentosRes as ApiResponse<FechamentoDiario[]>);
             const leituras = extractApiData(leiturasRes as ApiResponse<LeituraDiaria[]>);
+            const custoDoMes = custoMedioPorCombustivel(isSuccess(comprasRes) ? comprasRes.data : []);
             // [18/01 10:40] Ajustado mapeamento de Despesa do banco para UI (id string).
             const despesasDb = extractApiData(despesasRes as ApiResponse<DBDespesa[]>);
             const despesas = despesasDb.map(mapDbDespesaToUi);
@@ -183,16 +199,19 @@ export const useRelatorioDiario = () => {
 
                     const leiturasTurno = leituras;
 
-                    // Calculate Fuel Sales & Profit from Readings
+                    // Venda, litros e lucro bruto a partir das leituras. Um produto sem
+                    // compra no mês deixa o lucro do dia inteiro não apurável (`null`).
                     let litrosTurno = 0;
-                    let lucroTurno = 0;
+                    let lucroTurno: number | null = 0;
                     let vendasLeituras = 0;
 
                     leiturasTurno.forEach(l => {
-                        const { volume, venda, lucro } = vendaLucroDaLeitura(l);
+                        const combustivelId = l.bico?.combustivel?.id;
+                        const custo = combustivelId === undefined ? null : custoDoMes(combustivelId);
+                        const { volume, venda, lucro } = vendaLucroDaLeitura(l, custo);
                         litrosTurno += volume;
                         vendasLeituras += venda;
-                        lucroTurno += lucro;
+                        lucroTurno = lucroTurno === null || lucro === null ? null : lucroTurno + lucro;
                     });
 
                     // O total do `Fechamento` só vale depois que o dia foi CONSOLIDADO pelo
@@ -253,7 +272,9 @@ export const useRelatorioDiario = () => {
             // 3. Calculate Totals
             const totalVendas = processedShifts.reduce((acc, curr) => acc + curr.vendas, 0);
             const totalLitros = processedShifts.reduce((acc, curr) => acc + curr.litros, 0);
-            const totalLucro = processedShifts.reduce((acc, curr) => acc + curr.lucro, 0);
+            const totalLucro: number | null = processedShifts.some(s => s.lucro === null)
+                ? null
+                : processedShifts.reduce((acc, curr) => acc + (curr.lucro as number), 0);
             // Um turno não apurado deixa o dia não apurado — nada de somar `null` como zero.
             const totalDiferenca: number | null = processedShifts.some(s => s.diferenca === null)
                 ? null
@@ -264,7 +285,7 @@ export const useRelatorioDiario = () => {
                 litros: totalLitros,
                 lucro: totalLucro,
                 despesas: totalDespesas,
-                lucroLiquido: totalLucro - totalDespesas,
+                lucroLiquido: totalLucro === null ? null : totalLucro - totalDespesas,
                 diferenca: totalDiferenca,
                 projetadoMensal: totalVendas * 30 // Naive projection
             });
