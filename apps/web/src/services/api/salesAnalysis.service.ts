@@ -1,8 +1,7 @@
 import { supabase } from '../supabase';
-import { custoMedioCompra, type CompraDoProduto } from '@posto/utils';
 import { compraService } from './compra.service';
 import { despesaService } from './despesa.service';
-import { estoqueService } from './estoque.service';
+import { custoMedioPorCombustivel } from '../custo-do-mes';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -20,13 +19,14 @@ export interface SalesAnalysisData {
     readings: { start: number; end: number };
     volume: number;
     price: number;
-    cost: number;
+    /** CMV (litros × custo do mês). `null` = produto sem compra no mês. */
+    cost: number | null;
     total: number;
-    profit: number;
-    margin: number;
-    suggestedPrice?: number;
+    profit: number | null;
+    margin: number | null;
+    suggestedPrice?: number | null;
     expensePerLiter?: number;
-    avgCost?: number;
+    avgCost?: number | null;
   }[];
   profitability: {
     name: string;
@@ -38,10 +38,13 @@ export interface SalesAnalysisData {
   totals: {
     volume: number;
     revenue: number;
-    profit: number;
-    avgMargin: number;
-    avgProfitPerLiter: number;
+    /** `null` = algum produto vendido sem compra no mês (ver `produtosSemCompra`). */
+    profit: number | null;
+    avgMargin: number | null;
+    avgProfitPerLiter: number | null;
   };
+  /** Produtos vendidos no período sem compra no mês para custear. */
+  produtosSemCompra: string[];
   previousPeriod?: {
     volume: number;
     revenue: number;
@@ -96,38 +99,14 @@ export const salesAnalysisService = {
 
       if (error) return createErrorResponse(error.message, 'FETCH_ERROR');
 
-      // [onda 3, grupo B] Custo por litro: a COMPRA DO PRÓPRIO MÊS
-      // (`custoMedioCompra`, canônica da planilha F16 = E16/D16), não mais o
-      // carimbo `Estoque.custo_medio` (média ponderada com estoque anterior),
-      // que deslocava o lucro do mês em até R$ 2.582 — medido no golden
-      // calculos-analise-vendas. O carimbo fica só como FALLBACK de mês sem
-      // compra lançada (mesma política da RPC de custo histórico).
-      const [estoquesResponse, comprasResponse] = await Promise.all([
-        estoqueService.getAll(postoId),
-        compraService.getByDateRange(startDate, endDate, postoId),
-      ]);
-      const estoques = estoquesResponse.success ? estoquesResponse.data : [];
-      const custoCarimboPorCombustivel: Record<number, number> = {};
-      estoques.forEach(e => {
-        if (e.combustivel) {
-          custoCarimboPorCombustivel[e.combustivel.id] = e.custo_medio || 0;
-        }
-      });
-
-      const comprasDoMes: Record<number, CompraDoProduto[]> = {};
-      (comprasResponse.success ? comprasResponse.data : []).forEach(c => {
-        if (!c.combustivel_id) return;
-        (comprasDoMes[c.combustivel_id] ??= []).push({
-          litros: Number(c.quantidade_litros) || 0,
-          valorTotal: Number(c.valor_total) || 0,
-        });
-      });
-
-      /** Custo do mês por combustível; carimbo (ou 0) quando o mês não tem compra. */
-      const custoDoMes = (combustivelId: number): number =>
-        custoMedioCompra(comprasDoMes[combustivelId] ?? []) ??
-        custoCarimboPorCombustivel[combustivelId] ??
-        0;
+      // Custo por litro: a COMPRA DO PRÓPRIO MÊS (`custoMedioCompra`, canônica da
+      // planilha F16 = E16/D16) — `services/custo-do-mes.ts`, a mesma porta das outras
+      // telas. [06/09/2026] O fallback no carimbo `Estoque.custo_medio` saiu: a coluna
+      // parou de ser gravada no #80 e o `|| 0` transformava "sem compra" em custo ZERO
+      // (lucro = receita inteira). Sem compra do produto no mês, o custo é `null` e a
+      // tela diz qual produto ficou sem — nunca um lucro inflado.
+      const comprasResponse = await compraService.getByDateRange(startDate, endDate, postoId);
+      const custoDoMes = custoMedioPorCombustivel(comprasResponse.success ? comprasResponse.data : []);
 
       // 2. Aggregate by combustivel & Calculate Total Sales Volume
       let totalSalesVolume = 0;
@@ -165,7 +144,7 @@ export const salesAnalysisService = {
         bicoIds: Set<number>;
         litros: number;
         valor: number;
-        custoMedio: number;
+        custoMedio: number | null;
         leituraInicial: number;
         leituraFinal: number;
       }> = {};
@@ -200,9 +179,39 @@ export const salesAnalysisService = {
       // Calculate totals
       let totalVolume = 0;
       let totalRevenue = 0;
-      let totalProfit = 0;
+      let totalProfit: number | null = 0;
+      const produtosSemCompra: string[] = [];
 
       const products = Object.values(porCombustivel).map(item => {
+        totalVolume += item.litros;
+        totalRevenue += item.valor;
+
+        // Produto vendido sem compra no mês: sem custo, sem lucro — `null` em tudo
+        // que depende do custo, e o total do período fica não apurável.
+        if (item.custoMedio === null) {
+          if (item.litros > 0) {
+            produtosSemCompra.push(item.combustivel.nome);
+            totalProfit = null;
+          }
+          return {
+            id: String(item.combustivel.id),
+            name: item.combustivel.nome,
+            code: item.combustivel.codigo,
+            colorClass: '',
+            bicos: `Bicos: ${Array.from(item.bicoIds).sort((a, b) => a - b).map(n => String(n).padStart(2, '0')).join(', ')}`,
+            readings: { start: item.leituraInicial, end: item.leituraFinal },
+            volume: item.litros,
+            price: item.litros > 0 ? item.valor / item.litros : item.combustivel.preco_venda || 0,
+            cost: null,
+            total: item.valor,
+            profit: null,
+            margin: null,
+            suggestedPrice: null,
+            expensePerLiter: despesaPorLitro,
+            avgCost: null,
+          };
+        }
+
         // "EXCEL LOGIC" legada — fórmula em ./calculos-analise-vendas, exercitada
         // pelo golden ao lado contra a canônica de @posto/utils (onda 2.2).
         const { precoPraticado, suggestedPrice, lucroTotal: totalLucroProduto, margin, cmv } =
@@ -214,9 +223,7 @@ export const salesAnalysisService = {
             precoVendaCadastro: item.combustivel.preco_venda || 0,
           });
 
-        totalVolume += item.litros;
-        totalRevenue += item.valor;
-        totalProfit += totalLucroProduto;
+        if (totalProfit !== null) totalProfit += totalLucroProduto;
 
         return {
           id: String(item.combustivel.id),
@@ -251,13 +258,18 @@ export const salesAnalysisService = {
         'DIESEL': '#f59e0b',
       };
 
-      const profitability = products.map(p => ({
-        name: p.name,
-        value: p.profit,
-        percentage: totalProfit > 0 ? (p.profit / totalProfit) * 100 : 0,
-        margin: p.margin,
-        color: profitColors[p.code] || '#888888',
-      })).sort((a, b) => b.value - a.value);
+      // Só produtos com custo entram no ranking; a participação só faz sentido
+      // com o total apurado.
+      const profitability = products
+        .filter((p): p is typeof p & { profit: number; margin: number } => p.profit !== null && p.margin !== null)
+        .map(p => ({
+          name: p.name,
+          value: p.profit,
+          percentage: totalProfit !== null && totalProfit > 0 ? (p.profit / totalProfit) * 100 : 0,
+          margin: p.margin,
+          color: profitColors[p.code] || '#888888',
+        }))
+        .sort((a, b) => b.value - a.value);
 
       // Get previous month for comparison
       const prevMonth = month === 1 ? 12 : month - 1;
@@ -287,9 +299,10 @@ export const salesAnalysisService = {
           volume: totalVolume,
           revenue: totalRevenue,
           profit: totalProfit,
-          avgMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
-          avgProfitPerLiter: totalVolume > 0 ? totalProfit / totalVolume : 0,
+          avgMargin: totalProfit === null ? null : totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+          avgProfitPerLiter: totalProfit === null ? null : totalVolume > 0 ? totalProfit / totalVolume : 0,
         },
+        produtosSemCompra,
         previousPeriod,
       });
     } catch (err) {

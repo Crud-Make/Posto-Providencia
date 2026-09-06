@@ -7,13 +7,14 @@ export interface ProductData {
   readings: { start: number; end: number };
   volume: number;
   price: number;
-  cost: number;
+  /** CMV (litros × custo do mês). `null` = produto sem compra no mês. */
+  cost: number | null;
   total: number;
-  profit: number;
-  margin: number;
-  suggestedPrice?: number;
+  profit: number | null;
+  margin: number | null;
+  suggestedPrice?: number | null;
   expensePerLiter?: number;
-  avgCost?: number;
+  avgCost?: number | null;
 }
 
 export interface ProfitabilityData {
@@ -27,9 +28,10 @@ export interface ProfitabilityData {
 export interface Totals {
   volume: number;
   revenue: number;
-  profit: number;
-  avgMargin: number;
-  avgProfitPerLiter: number;
+  /** `null` = algum produto vendido sem compra no mês. */
+  profit: number | null;
+  avgMargin: number | null;
+  avgProfitPerLiter: number | null;
 }
 
 export interface PeriodData {

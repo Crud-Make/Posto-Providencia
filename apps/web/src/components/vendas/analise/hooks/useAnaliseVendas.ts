@@ -21,6 +21,8 @@ export const useAnaliseVendas = () => {
     avgProfitPerLiter: 0
   });
   const [previousPeriod, setPreviousPeriod] = useState<PeriodData | null>(null);
+  /** Produtos vendidos sem compra no mês — sem custo, fora do lucro (ver `salesAnalysis`). */
+  const [produtosSemCompra, setProdutosSemCompra] = useState<string[]>([]);
 
   // O mês vem do contexto: é o mesmo período das demais telas de análise. O serviço pede ano e
   // mês em número, então eles são derivados daqui — o estado guardado continua sendo um só.
@@ -47,6 +49,7 @@ export const useAnaliseVendas = () => {
       setProfitability(data.profitability);
       setTotals(data.totals);
       setPreviousPeriod(data.previousPeriod || null);
+      setProdutosSemCompra(data.produtosSemCompra ?? []);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar dados de análise. Verifique sua conexão.');
@@ -67,7 +70,7 @@ export const useAnaliseVendas = () => {
     return {
       volume: previousPeriod.volume > 0 ? ((totals.volume - previousPeriod.volume) / previousPeriod.volume) * 100 : 0,
       revenue: previousPeriod.revenue > 0 ? ((totals.revenue - previousPeriod.revenue) / previousPeriod.revenue) * 100 : 0,
-      profit: previousPeriod.profit > 0 ? ((totals.profit - previousPeriod.profit) / previousPeriod.profit) * 100 : 0,
+      profit: totals.profit !== null && previousPeriod.profit > 0 ? ((totals.profit - previousPeriod.profit) / previousPeriod.profit) * 100 : 0,
     };
   }, [totals, previousPeriod]);
 
@@ -84,10 +87,21 @@ export const useAnaliseVendas = () => {
       return result;
     }
 
-    // Find best and worst products
-    const sortedByProfit = [...products].sort((a, b) => b.profit - a.profit);
+    // [06/09/2026] Produto sem compra no mês não tem custo nem lucro: avisa antes de
+    // qualquer ranking, e fica fora dos rankings de lucro/margem abaixo.
+    if (produtosSemCompra.length > 0) {
+      result.push({
+        type: 'warning',
+        title: `Sem compra de ${produtosSemCompra.join(', ')} no mês`,
+        message: 'Sem compra não há custo, e sem custo não há lucro para analisar. Lance a compra do mês em Registro de Compras.'
+      });
+    }
 
-    if (sortedByProfit.length > 0) {
+    // Find best and worst products
+    const comLucro = products.filter((p): p is typeof p & { profit: number; margin: number } => p.profit !== null && p.margin !== null);
+    const sortedByProfit = [...comLucro].sort((a, b) => b.profit - a.profit);
+
+    if (sortedByProfit.length > 0 && totals.profit !== null) {
       const best = sortedByProfit[0];
       const percentage = totals.profit > 0 ? (best.profit / totals.profit * 100).toFixed(1) : '0';
       result.push({
@@ -98,7 +112,7 @@ export const useAnaliseVendas = () => {
     }
 
     // Low margin alert
-    const lowMarginProducts = products.filter(p => p.margin < 10 && p.margin > 0);
+    const lowMarginProducts = comLucro.filter(p => p.margin < 10 && p.margin > 0);
     if (lowMarginProducts.length > 0) {
       const product = lowMarginProducts[0];
       result.push({
@@ -121,7 +135,7 @@ export const useAnaliseVendas = () => {
     }
 
     return result;
-  }, [products, totals]);
+  }, [products, totals, produtosSemCompra]);
 
   return {
     loading,

@@ -82,10 +82,18 @@ const TabelaVendas: React.FC<TabelaVendasProps> = ({ products, totals }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`inline-block px-2 py-1 text-xs font-bold rounded ${item.margin < 10 ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'}`}>
-                        {formatarMoeda(item.profit)}
-                      </span>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{item.margin.toFixed(1)}% margem</p>
+                      {item.profit === null || item.margin === null ? (
+                        <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-amber-50 text-amber-700" title="Sem compra deste produto no mês: sem custo, sem lucro">
+                          sem compra no mês
+                        </span>
+                      ) : (
+                        <>
+                          <span className={`inline-block px-2 py-1 text-xs font-bold rounded ${item.margin < 10 ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'}`}>
+                            {formatarMoeda(item.profit)}
+                          </span>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{item.margin.toFixed(1)}% margem</p>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -101,7 +109,7 @@ const TabelaVendas: React.FC<TabelaVendasProps> = ({ products, totals }) => {
                   {formatarMoeda(totals.revenue)}
                 </td>
                 <td className="px-6 py-4 text-right font-bold text-blue-600 text-sm">
-                  {formatarMoeda(totals.profit)}
+                  {totals.profit === null ? '—' : formatarMoeda(totals.profit)}
                 </td>
               </tr>
             </tfoot>

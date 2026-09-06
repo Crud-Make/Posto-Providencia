@@ -1,6 +1,12 @@
 /**
- * Golden master do ENCADEAMENTO de estoque entre meses, e da divergência entre
- * as duas fórmulas de custo que o sistema tem hoje.
+ * Golden master do ENCADEAMENTO de estoque entre meses.
+ *
+ * [06/09/2026] A seção 3 ("as duas fórmulas de custo") saiu junto com
+ * `custoMedioPonderado`: a fórmula legada não tem mais consumidor de produção
+ * desde o #80. A prova da divergência (até R$ 2.582/mês) vive em
+ * `apps/web/src/services/api/calculos-analise-vendas.golden.spec.ts`, que a
+ * mede atravessando a função de produção da tela. Fica aqui o que era de
+ * estoque — e a prova documental de que a planilha custeia pela compra do mês.
  *
  * Fonte: `docs/data/posto_jorro_2026.sqlite`.
  *
@@ -27,7 +33,6 @@
  */
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { custoMedioPonderado } from './custo-ponderado';
 
 const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
@@ -97,75 +102,12 @@ test('fevereiro repetiu literalmente o saldo de abertura de janeiro', () => {
     }
 });
 
-// ── 3. As duas fórmulas de custo ────────────────────────────────────────────
-
-/**
- * A média ponderada do caminho de ESCRITA — agora a função de PRODUÇÃO.
- *
- * @remarks Até a onda 2 este bloco era uma RÉPLICA da conta de
- *          `compra.service.ts`, porque `packages/*` não pode importar de
- *          `apps/*` (§2) — e réplica fica verde quando o original muda. A
- *          fórmula subiu para `custo-ponderado.ts` (MOVE, mesma conta) e o
- *          serviço passou a chamá-la: mexeu no custo do caminho de escrita,
- *          este golden VÊ. Detalhe de arqueologia: a réplica antiga fazia
- *          `Math.max(estoque, 0)` e caía no custo ANTERIOR com denominador
- *          zero — duas bordas que a produção nunca teve. No dado real de 2026
- *          nada as exercita e os números abaixo não mudaram na migração; as
- *          bordas de produção estão congeladas em `custo-ponderado.test.ts`.
- */
-const custoPonderado = (
-    estoqueAnterior: number,
-    custoAnterior: number,
-    litrosCompra: number,
-    valorCompra: number
-): number =>
-    custoMedioPonderado({
-        estoqueAnterior,
-        custoMedioAnterior: custoAnterior,
-        litrosCompra,
-        custoLitroCompra: litrosCompra > 0 ? valorCompra / litrosCompra : 0,
-    });
-
-/**
- * Impacto da troca de fórmula no custo do mês, em reais.
- * Positivo = o ponderado superestima o custo, logo subestima o lucro.
- */
-const IMPACTO_MENSAL: Readonly<Record<number, number>> = {
-    1: 0,
-    2: 1337.6,
-    3: -1986.18,
-    4: -2582.18,
-    5: 1113.0,
-    6: 1547.16,
-    7: 703.3,
-};
-
-const PRODUTO_DO_BICO: Readonly<Record<string, string>> = {
-    'G,C. Bico 01': 'G,Comum.',
-    'G,C, Bico 05': 'G,Comum.',
-    'G,C. Bico 06': 'G,Comum.',
-    'G,A.Bico 02': 'G,Aditivada.',
-    'Etanol,Bico 03': 'Etanol.',
-    'Ds:.500,Bico 04': 'Ds.10.',
-};
-
-function litrosVendidosPorProduto(mes: number): Map<string, number> {
-    const linhas = db
-        .query('SELECT bico, litros FROM resumo_mensal_bico WHERE mes = ?')
-        .all(mes) as { bico: string; litros: number }[];
-    const mapa = new Map<string, number>();
-    for (const l of linhas) {
-        const produto = PRODUTO_DO_BICO[l.bico];
-        const atual = mapa.get(produto) ?? 0;
-        mapa.set(produto, (Math.round(atual * 1000) + Math.round(l.litros * 1000)) / 1000);
-    }
-    return mapa;
-}
+// ── 3. A planilha custeia pela compra do próprio mês ────────────────────────
 
 test('a planilha custeia pela compra do próprio mês, sem estoque anterior', () => {
     // `media_lt` da fonte é exatamente compra_rs ÷ compra_lt em todos os meses.
     // É a prova de que o estoque anterior NÃO entra no custo — que é o ponto em
-    // que o caminho de escrita diverge.
+    // que o caminho de escrita (a média ponderada, já apagada) divergia.
     const linhas = db
         .query('SELECT mes, produto, compra_lt, compra_rs, media_lt FROM compra_mensal')
         .all() as { mes: number; produto: string; compra_lt: number; compra_rs: number; media_lt: number }[];
@@ -174,38 +116,4 @@ test('a planilha custeia pela compra do próprio mês, sem estoque anterior', ()
     for (const l of linhas) {
         expect(l.media_lt).toBeCloseTo(l.compra_rs / l.compra_lt, 9);
     }
-});
-
-test('divergência conhecida: o custo ponderado erra o lucro do mês em até R$ 2.582', () => {
-    const custoCorrente = new Map<string, number>();
-    let acumulado = 0;
-
-    for (const mes of [1, 2, 3, 4, 5, 6, 7]) {
-        const compras = db
-            .query('SELECT produto, compra_lt, compra_rs, media_lt FROM compra_mensal WHERE mes = ?')
-            .all(mes) as { produto: string; compra_lt: number; compra_rs: number; media_lt: number }[];
-        const estoques = new Map(estoqueDoMes(mes).map((l) => [l.produto, l]));
-        const vendidos = litrosVendidosPorProduto(mes);
-
-        let impactoMes = 0;
-        for (const c of compras) {
-            const anterior = custoCorrente.get(c.produto) ?? c.media_lt;
-            const ponderado = custoPonderado(
-                estoques.get(c.produto)!.ano_passado,
-                anterior,
-                c.compra_lt,
-                c.compra_rs
-            );
-            custoCorrente.set(c.produto, ponderado);
-            impactoMes += (ponderado - c.media_lt) * (vendidos.get(c.produto) ?? 0);
-        }
-
-        expect(impactoMes).toBeCloseTo(IMPACTO_MENSAL[mes], 1);
-        acumulado += impactoMes;
-    }
-
-    // No ano as duas fórmulas quase empatam — R$ 132,69 sobre R$ 1.541.032
-    // comprados. É por isso que a divergência passou despercebida: só aparece
-    // quando se olha o mês, que é justamente o que o dono olha.
-    expect(acumulado).toBeCloseTo(132.69, 1);
 });

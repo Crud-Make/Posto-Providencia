@@ -79,7 +79,7 @@ const ResumoCards: React.FC<ResumoCardsProps> = ({ totals, variations }) => {
         </div>
         <div className="relative z-10">
           <h3 className="text-2xl font-black text-blue-900">
-            {formatarMoeda(totals.profit)}
+            {totals.profit === null ? '—' : formatarMoeda(totals.profit)}
           </h3>
           {renderVariation(variations.profit)}
         </div>
@@ -92,7 +92,7 @@ const ResumoCards: React.FC<ResumoCardsProps> = ({ totals, variations }) => {
           <span className="text-xs font-bold uppercase tracking-wider">Margem Média</span>
         </div>
         <div>
-          <h3 className="text-2xl font-black text-gray-900">{totals.avgMargin.toFixed(2)}%</h3>
+          <h3 className="text-2xl font-black text-gray-900">{totals.avgMargin === null ? '—' : `${totals.avgMargin.toFixed(2)}%`}</h3>
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-bold mt-1">
             <Minus size={12} />
             Estável
@@ -108,7 +108,7 @@ const ResumoCards: React.FC<ResumoCardsProps> = ({ totals, variations }) => {
         </div>
         <div>
           <h3 className="text-2xl font-black text-gray-900">
-            {formatarMoeda(totals.avgProfitPerLiter)}
+            {totals.avgProfitPerLiter === null ? '—' : formatarMoeda(totals.avgProfitPerLiter)}
           </h3>
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-bold mt-1">
             <Minus size={12} />
