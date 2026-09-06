@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### 🔐 `ler-encerrante` em produção: v11 com as guardas e `verify_jwt = true`
+
+- Produção rodava a **v9 de 26/07** — anterior ao fix de 16/08 (`9d08350`: limite de taxa, teto
+  de 2 MiB, CORS por lista) e aberta a chamada sem JWT. Deploy feito em 06/09 pela CLI
+  (`supabase functions deploy ler-encerrante`). A primeira tentativa (v10) subiu as guardas mas
+  **preservou `verify_jwt = false`**: sem `supabase/config.toml`, a CLI mantém o valor que já está na
+  função. O arquivo entrou (mínimo, só `project_id` e as duas funções com `verify_jwt = true`) e a
+  **v11** subiu certa.
+- Provado na função viva: sem token → **401**; com a anon key, `ping` → **200** `{"pong":true}` —
+  o app do dono chama por `supabase.functions.invoke`, que já manda o JWT, então nada muda para ele.
+- `SEGREDO_ENCERRANTE` e `ORIGENS_PERMITIDAS` seguem **sem** configurar, de propósito: o cliente não
+  manda o header do segredo (setar quebraria o app), e sem lista o CORS fica `*` como sempre foi.
+
 ### ⚙️ Configurações mostrava "Nenhum produto cadastrado" desde fevereiro
 
 - `useConfiguracoesData` lia `data?.products` **no envelope** `{ success, data }` de
