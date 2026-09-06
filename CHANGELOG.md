@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🔒 Travas do MCP do Supabase de volta
+
+- `--read-only` reposto no `.mcp.json` e `mcp__supabase__apply_migration` na `deny` de
+  `.claude/settings.json` — estavam fora desde 13/08, por decisão do dono, para carga e migration
+  sem colar SQL no chat. Esse caso de uso agora é `bun scripts/aplica-migration.ts <arquivo>`
+  (só aceita arquivo de `supabase/migrations/`), então o MCP volta a ser só leitura. 131 casos de
+  `testa-hooks.py` passam.
+
 ### 🔐 `ler-encerrante` em produção: v11 com as guardas e `verify_jwt = true`
 
 - Produção rodava a **v9 de 26/07** — anterior ao fix de 16/08 (`9d08350`: limite de taxa, teto
