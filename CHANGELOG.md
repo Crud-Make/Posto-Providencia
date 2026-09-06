@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 📊 Dashboard rateava a despesa pelo mês de HOJE, não pelo mês filtrado
+
+- `fetchDashboardData` chamava `despesaOperacionalMensal(new Date())`: o dashboard de agosto,
+  aberto em setembro, rateava a despesa de **setembro** (zero até lançarem) e mostrava
+  **R$ 50.948** de lucro estimado onde a Análise de Custos, com a despesa de agosto, mostra
+  **R$ 35.432**. Duas telas, dois lucros para o mesmo mês — o mesmo padrão do custo, corrigido no #80.
+- Agora o rateio usa o mês de `dataInicio`, o mesmo do custo da compra. As duas telas passam a
+  fazer a mesma conta (leituras, compra e despesa do mês; preço = receita ÷ litros por produto).
+  Vitest em `aggregator.dashboard.test.ts` exige a despesa de janeiro para o dashboard de janeiro.
+
 ### 🧾 Dia não apurado deixa de parecer dia que bateu
 
 - **O pai do dia nascia com `diferenca = 0`** porque a coluna era NOT NULL — não existia

@@ -1,4 +1,4 @@
-import { conferido, corDoProduto, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel } from '@posto/utils';
+import { conferido, corDoProduto, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel, deIsoLocal } from '@posto/utils';
 import { supabase } from '../supabase';
 import { combustivelService } from './combustivel.service';
 import { bicoService } from './bico.service';
@@ -243,10 +243,12 @@ export const aggregatorService = {
     postoId?: number
   ): Promise<ApiResponse<DashboardAggregatedData>> {
     try {
-      // Mês de referência do rateio de despesa operacional. Continua sendo o mês corrente,
-      // não o do período filtrado — comportamento preservado da versão anterior de propósito:
-      // mudá-lo altera o custo por litro (dinheiro) e exige golden master. Ver Issue #27.
-      const hoje = new Date();
+      // Mês de referência do rateio de despesa operacional: o MÊS DO PERÍODO FILTRADO.
+      // [06/09/2026] Era `new Date()` (mês corrente) por herança da versão anterior: o
+      // dashboard de agosto, aberto em setembro, rateava a despesa de SETEMBRO (zero até
+      // lançarem) e mostrava R$ 50.948 de lucro onde a Análise de Custos, com a despesa de
+      // agosto, mostra R$ 35.432. Mesmo mês que o custo da compra, logo abaixo.
+      const mesDoRateio = deIsoLocal(dataInicio);
 
       // Onda única de queries: nenhuma depende do resultado de outra
       // Custo do litro: a compra do MÊS de `dataInicio` (canônico da planilha), não mais o
@@ -258,7 +260,7 @@ export const aggregatorService = {
         formaPagamentoService.getAll(postoId),
         leituraService.getByDateRange(dataInicio, dataFim, postoId),
         fechamentoFrentistaService.getByDate(dataInicio, postoId),
-        despesaOperacionalMensal(hoje, postoId),
+        despesaOperacionalMensal(mesDoRateio, postoId),
         compraService.getByDateRange(mesDoCusto.inicio, mesDoCusto.fim, postoId),
       ]);
 

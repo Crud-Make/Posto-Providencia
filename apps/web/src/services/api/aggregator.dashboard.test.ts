@@ -91,4 +91,11 @@ describe('aggregatorService.fetchDashboardData — fonte do gráfico "Volume Ven
         const somaGrafico = result.data.fuelData.reduce((acc, f) => acc + f.volume, 0);
         expect(somaGrafico).toBe(result.data.kpis.totalVolume);
     });
+
+    it('rateia a despesa pelo mês do período filtrado, não pelo mês corrente', async () => {
+        // Dashboard de janeiro aberto em qualquer outro mês: a despesa é a de janeiro.
+        // Antes era `new Date()` — agosto aberto em setembro rateava a despesa de setembro.
+        await aggregatorService.fetchDashboardData('2026-01-15', '2026-01-15');
+        expect(despesaService.getByMonth).toHaveBeenCalledWith(2026, 1, undefined);
+    });
 });
