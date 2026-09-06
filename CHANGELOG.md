@@ -2,7 +2,14 @@
 
 ## [Não Lançado]
 
-_(vazio — próxima rodada)_
+### 🔑 Chave do Google Gemini removida do repositório
+
+- `check_llms.py` (script solto de 22/02, `a433006`, que listava os modelos da API do Gemini)
+  carregava uma chave `AIzaSy…` em texto puro. Apagado. A chave foi **revogada no Google AI
+  Studio** no mesmo dia — o histórico do git ainda a contém, mas morta; reescrever histórico
+  exigiria `push --force` (§9) e não vale por uma chave que já não abre nada. Achado na varredura
+  de 06/09 antes de decidir o que abrir do perfil do GitHub: este repo segue **privado** porque
+  carrega o financeiro real do posto (CHANGELOG, testes, memória).
 
 ## [4.0.0] - 2026-09-06 — Release: fecha a fase de auditoria e saneamento
 
