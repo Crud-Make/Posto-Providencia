@@ -1,0 +1,19 @@
+# Configuração da CLI do Supabase para este projeto.
+#
+# Mínima de propósito: o repo não roda stack local (não há `supabase start`), então
+# só o que a CLI precisa para deployar Edge Functions com o `verify_jwt` certo. Sem
+# este arquivo, `supabase functions deploy` preserva o `verify_jwt` que já estava na
+# função em produção — foi assim que o `ler-encerrante` subiu a v10 (06/09/2026) com
+# as guardas novas e continuou aberto a chamada sem JWT.
+#
+# `verify_jwt = true` exige um JWT válido do projeto na chamada. Os apps chamam por
+# `supabase.functions.invoke`, que já manda a anon key (um JWT) — nada muda para eles;
+# o que muda é que `curl` sem token deixa de acionar o OCR (que custa dinheiro).
+
+project_id = "kilndogpsffkgkealkaq"
+
+[functions.ler-encerrante]
+verify_jwt = true
+
+[functions.notifica-dono]
+verify_jwt = true
