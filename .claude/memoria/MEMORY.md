@@ -1,6 +1,6 @@
 # Memória — Posto Providência
 
-- [📍 COMECE AQUI 04/09 — veredito PROTÓTIPO e 3 bugs de dinheiro](auditoria-03-09-veredito-e-bugs-de-dinheiro.md) — frentistas em produção real, dono não fecha o ciclo; PR #80 mergeado, PR #81 aberto com migration JÁ aplicada; lista do que ficou registrado e não feito
+- [📍 COMECE AQUI 06/09 — veredito PROTÓTIPO, 10 PRs de saneamento mergeados](auditoria-03-09-veredito-e-bugs-de-dinheiro.md) — frentistas em produção real, dono não fecha o ciclo; #80–#89 na main (custo de uma fonte só, dia não apurado = NULL, ler-encerrante v11, travas MCP de volta); o que ficou por decisão
 - [Deploy manual some no próximo merge](deploy-manual-some-no-proximo-merge.md) — 30/08: foto e push "sumiram" porque o merge do #63 republicou a main; corrigido pelo PR #65; conferir `target: production` antes de chamar de bug
 - [📍 30/08 — planilha nova auditada, promoção PENDENTE](planilha-30-08-auditoria-e-promocao-pendente.md) — Supabase já tem jan–ago; ETL adaptado em `fix/etl-planilha-30-08`; docs/data não promovido; 11 asserções de golden esperam decisão (jan 6,48→6,38, julho reescrito, tanque 31/01 sobrescrito)
 - [📍 28/08 — zerado, conferido, carga PENDENTE](zerado-28-08-carga-conferida-pendente.md) — banco zerado com backup em /mnt/dados; referência bate com a planilha nos 7 meses; scripts de carga prontos (julho fechamento aborta); dono mandou esperar a auditoria de outra sessão
