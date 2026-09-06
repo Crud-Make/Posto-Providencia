@@ -43,3 +43,12 @@ sessão viva**: `deny` e argumentos são lidos quando o servidor MCP conecta.
 Para testar: `/mcp` → reconectar `supabase`, e ver se `apply_migration` aparece.
 Se aparecer com a `deny` limpa e o `--read-only` de volta, o §14 está certo e a
 frase pode ficar. Se não aparecer, **o §14 está errado e precisa ser corrigido**.
+
+**Adendo 06/09/2026 — REPOSTAS, decisão do dono.** `--read-only` de volta no `.mcp.json` e
+`mcp__supabase__apply_migration` na `deny` de `.claude/settings.json` (branch
+`chore/travas-mcp-de-volta`). O que justificava deixar aberto — aplicar migration e carga sem
+colar SQL no chat — hoje é `bun scripts/aplica-migration.ts <arquivo>` (API de management, token do
+`settings.local.json`), que só aceita arquivo de `supabase/migrations/`. Leitura pelo MCP
+(`execute_sql` de SELECT) continua funcionando. Se uma sessão precisar escrever pelo MCP de novo, o
+caminho é tirar o flag, fazer, e **repor no mesmo turno** — e não commitar sem ele (o hook
+`higiene` avisa na abertura da sessão).
