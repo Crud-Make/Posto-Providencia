@@ -13,8 +13,6 @@ import {
 } from '@posto/utils';
 import { somarDias, deIsoLocal } from '@posto/utils';
 import { supabase } from '@/services/supabase';
-import { compraService, tanqueService } from '@/services/api';
-import { isSuccess } from '@/types/ui/response-types';
 import { intervaloDoMes, type Periodo } from '@/utils/periodo';
 import { hojeIso } from '@/utils/periodo';
 
@@ -71,31 +69,13 @@ export interface Fornecedor {
   readonly nome: string;
 }
 
-/** Lançamento de compra, como a tela coleta. */
-export interface EntradaCompra {
-  readonly combustivelId: number;
-  readonly fornecedorId: number;
-  readonly litros: number;
-  readonly valor: number;
-  readonly data: string;
-}
 
-/** Medição física de um tanque numa data. */
-export interface EntradaMedicao {
-  readonly tanqueId: number;
-  readonly data: string;
-  readonly volumeFisico: number;
-}
 
 interface RetornoHook {
   dados: DadosResumoMensal | null;
   carregando: boolean;
   erro: string | null;
   recarregar: () => Promise<void>;
-  /** @returns Mensagem de erro, ou `null` em caso de sucesso. */
-  lancarCompra: (entrada: EntradaCompra) => Promise<string | null>;
-  /** @returns Mensagem de erro, ou `null` em caso de sucesso. */
-  salvarMedicao: (entrada: EntradaMedicao) => Promise<string | null>;
 }
 
 interface BicoDoBanco {
@@ -136,23 +116,6 @@ interface MedicaoDoBanco {
 }
 
 const num = (valor: number | string | null | undefined): number => Number(valor ?? 0);
-
-/**
- * Traduz a recusa da RLS para uma frase que o dono entenda.
- *
- * @remarks O painel roda como `anon` (não há login em `apps/web`), e a policy da
- *          tabela `Compra` só libera `authenticated`. O Postgres devolve
- *          "new row violates row-level security policy", que não diz nada a
- *          quem está tentando lançar uma nota. Sem esta tradução o dono vê
- *          jargão e conclui que o sistema está quebrado — quando é permissão.
- */
-function mensagemDeErro(erro: string): string {
-    const rls = /row-level security|42501|violates row-level/i.test(erro);
-    return rls
-        ? 'O painel não tem permissão para gravar esta tabela (a RLS recusou a escrita para esta conta). ' +
-              'É preciso liberar a permissão no banco antes de lançar por aqui.'
-        : erro;
-}
 
 /**
  * Dia do mês a partir do timestamp do banco, **sem** passar por fuso.
@@ -377,66 +340,7 @@ export function useResumoMensal(postoId: number | null, mesIso: string): Retorno
     carregar();
   }, [carregar]);
 
-  /**
-   * Lança uma compra de combustível.
-   *
-   * @remarks Vai pelo `compraService.create`, que já calcula o custo por litro e
-   *          atualiza o custo médio ponderado do estoque. Escrever direto na
-   *          tabela daqui criaria um segundo dono da mesma regra — foi assim que
-   *          `valor_conferido` acabou duplicado em seis lugares.
-   */
-  const lancarCompra = useCallback(
-    async (entrada: EntradaCompra): Promise<string | null> => {
-      if (!postoId) return 'Nenhum posto selecionado.';
-      if (entrada.litros <= 0) return 'Informe os litros comprados.';
-      if (entrada.valor <= 0) return 'Informe o valor da compra.';
-
-      const resposta = await compraService.create({
-        posto_id: postoId,
-        combustivel_id: entrada.combustivelId,
-        fornecedor_id: entrada.fornecedorId,
-        data: entrada.data,
-        quantidade_litros: entrada.litros,
-        valor_total: entrada.valor,
-        // O service recalcula e sobrescreve este campo — é ele quem manda. Vai
-        // preenchido porque o tipo `Insert` da tabela o exige.
-        custo_por_litro: entrada.valor / entrada.litros,
-      });
-
-      if (!isSuccess(resposta)) return mensagemDeErro(resposta.error);
-
-      await carregar();
-      return null;
-    },
-    [postoId, carregar]
-  );
-
-  /**
-   * Salva a medição física de um tanque numa data (upsert por tanque + data).
-   *
-   * @remarks É a régua do tanque, digitada por gente — não sai de cálculo
-   *          nenhum. Salvar na data de abertura alimenta o `Ano passado.` do
-   *          período; na data de fim, o `Estoque Tanque.` que revela a perda.
-   */
-  const salvarMedicao = useCallback(
-    async (entrada: EntradaMedicao): Promise<string | null> => {
-      if (entrada.volumeFisico < 0) return 'O volume medido não pode ser negativo.';
-
-      const resposta = await tanqueService.saveHistory({
-        tanque_id: entrada.tanqueId,
-        data: entrada.data,
-        volume_fisico: entrada.volumeFisico,
-      });
-
-      if (!isSuccess(resposta)) return mensagemDeErro(resposta.error);
-
-      await carregar();
-      return null;
-    },
-    [carregar]
-  );
-
-  return { dados, carregando, erro, recarregar: carregar, lancarCompra, salvarMedicao };
+  return { dados, carregando, erro, recarregar: carregar };
 }
 
 /**

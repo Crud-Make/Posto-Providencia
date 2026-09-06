@@ -12,10 +12,9 @@ interface CentroDoMesConectadoProps {
 /**
  * O centro do mês ligado ao banco — despesa → custo do litro → lucro.
  *
- * @remarks Existe separado de {@link ResumoMensal} porque os dois vivem em telas
- *          diferentes: a corrente resumida fica na Visão do Proprietário, e as
- *          três tabelas da planilha ganharam tela própria. Ambos leem o mesmo
- *          hook, então nunca divergem.
+ * @remarks Vive na Visão do Proprietário; as três tabelas da planilha têm tela
+ *          própria (`/planilha`). O `ResumoMensal` que existia ao lado foi
+ *          apagado em 06/09/2026 — nenhuma rota o montava. O hook é o mesmo.
  */
 export const CentroDoMesConectado: React.FC<CentroDoMesConectadoProps> = ({
   postoId,
