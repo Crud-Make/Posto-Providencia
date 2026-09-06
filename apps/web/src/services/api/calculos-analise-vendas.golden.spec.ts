@@ -18,7 +18,6 @@
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import {
-    custoMedioPonderado,
     despesaOperacionalPorLitro,
     lucroCombustivel,
     margemPercentual,
@@ -134,6 +133,26 @@ const IMPACTO_MENSAL: Readonly<Record<number, number>> = {
     7: 703.3,
 };
 
+/**
+ * A fórmula MORTA, reconstruída só para este teste: média ponderada do estoque
+ * anterior com a compra, que `compra.service.ts` carimbava em `Estoque.custo_medio`
+ * até 03/09/2026. `custoMedioPonderado` foi apagada de `@posto/utils` em
+ * 06/09/2026 (sem consumidor de produção); ela vive aqui como arqueologia, para
+ * a divergência abaixo continuar medida contra a função de produção da tela.
+ * Não é réplica (§7): não há mais original para divergir dela.
+ */
+const custoPonderadoLegado = (i: {
+    estoqueAnterior: number;
+    custoMedioAnterior: number;
+    litrosCompra: number;
+    custoLitroCompra: number;
+}): number => {
+    const total = i.estoqueAnterior + i.litrosCompra;
+    return total > 0
+        ? (i.estoqueAnterior * i.custoMedioAnterior + i.litrosCompra * i.custoLitroCompra) / total
+        : i.custoLitroCompra;
+};
+
 test('a fonte antiga (carimbo ponderado) errava o lucro do mês em até R$ 2.582 — a troca desfaz isso', () => {
     const custoCarimbado = new Map<string, number>();
 
@@ -159,7 +178,7 @@ test('a fonte antiga (carimbo ponderado) errava o lucro do mês em até R$ 2.582
         for (const c of compras) {
             custoCarimbado.set(
                 c.produto,
-                custoMedioPonderado({
+                custoPonderadoLegado({
                     estoqueAnterior: reguas.get(c.produto)!,
                     custoMedioAnterior: custoCarimbado.get(c.produto) ?? custos[c.produto],
                     litrosCompra: c.compra_lt,

@@ -2,6 +2,22 @@
 
 ## [Não Lançado]
 
+### 🧹 A fórmula legada de custo morreu — e o último leitor do carimbo foi junto
+
+- `custoMedioPonderado` (`packages/utils/src/custo-ponderado.ts`) e seu teste **apagados**: desde o
+  #80 nenhum código de produção a chamava. Dos quatro testes que a importavam, dois ficaram sem a
+  legada (`estoque-encadeamento` guarda só a corrente de litros e a prova de que a planilha custeia
+  pela compra do mês; `calculos-estoque-produto` testa a loja com valores absolutos) e o golden da
+  divergência (`calculos-analise-vendas`, até R$ 2.582/mês) **fica**: é a única prova numérica do #80
+  atravessando a função de produção da tela, com a fórmula morta inlinada como arqueologia — não é
+  réplica, porque não há mais original.
+- **`/vendas/analise` era o último leitor de `Estoque.custo_medio`**, como fallback de mês sem
+  compra. Com a coluna congelada desde o #80 e o `|| 0`, "sem compra" virava custo ZERO e lucro
+  igual à receita. Agora usa `custo-do-mes.ts` como as outras telas: produto sem compra no mês vira
+  "sem compra no mês" na tabela, "—" nos totais, fica fora do ranking e ganha um aviso nos insights.
+  Conferido em 3015 × banco: julho 40.363 L · R$ 271.087,36 · lucro R$ 29.318,12.
+- `Estoque.custo_medio` segue no banco sem leitor (só o reset a zera). Dropar é migration à parte.
+
 ### 🗓️ Relatório Diário deixa de filtrar leitura por turno (bug 3a)
 
 - O sistema decidiu não ter turno (PR #53), mas `useRelatorioDiario` ainda carregava a tabela

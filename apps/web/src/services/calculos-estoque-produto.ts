@@ -2,13 +2,13 @@
  * Preço médio ponderado do estoque de PRODUTO (loja/conveniência) — o sítio 8
  * da onda 2, tratado À PARTE dos combustíveis de propósito.
  *
- * É a mesma média ponderada móvel de `custoMedioPonderado` (`@posto/utils`),
- * mas sobre `Produto.preco_custo` — mercadoria de revenda, OUTRO domínio:
- * a planilha do posto não tem modelo de "custo do mês" para a loja, e média
- * ponderada móvel é o modelo usual de custeio de mercadoria. Por isso este
- * módulo NÃO é candidato automático à consolidação da onda 3 (que mata a
- * ponderada dos combustíveis) — trocar o custeio da loja seria decisão de
- * negócio própria, não arrasto da decisão dos tanques.
+ * Média ponderada móvel sobre `Produto.preco_custo` — mercadoria de revenda,
+ * OUTRO domínio: a planilha do posto não tem modelo de "custo do mês" para a
+ * loja, e média ponderada móvel é o modelo usual de custeio de mercadoria. Os
+ * combustíveis tinham uma ponderada igual (`custoMedioPonderado`), apagada em
+ * 06/09/2026 porque a planilha custeia pela compra do mês; este módulo NÃO a
+ * seguiu de propósito — trocar o custeio da loja seria decisão de negócio
+ * própria, não arrasto da decisão dos tanques.
  *
  * Movida (sem mudar a conta) para fora de `stockService.ts` para que
  * `calculos-estoque-produto.test.ts` congele a semântica (§7). Bordas
