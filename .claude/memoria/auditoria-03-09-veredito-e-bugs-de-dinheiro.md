@@ -45,3 +45,34 @@ aplicada — confirmar se o Elias loga no painel antes); `ler-encerrante` v9 de 
 consolidação — e com 2 semanas medidas de correções por falha do sistema. Nada de código resolve
 isso. Ver [[card-receitas-despesas-le-coluna-carimbada]], [[duas-formulas-de-custo-divergem-no-mes]],
 [[doze-dias-nunca-fechados]].
+
+## Fechamento 06/09/2026 — a lista de código da auditoria acabou
+
+**10 PRs mergeados (#80–#89)**, tudo na `main`. Além dos três de 03–04/09: #82 dashboard rateia
+despesa pelo mês filtrado; #83 vendas/dashboard sem o corte de 1.000 linhas; #84 relatório diário
+sem turno e custeando pela compra do mês (bug 3a); #85 `custoMedioPonderado` apagada e
+`/vendas/analise` sem o carimbo; #86 `ResumoMensal` morto apagado (−806 linhas); #87 Configurações
+voltou a listar produtos/bicos/formas (vazia desde 22/02); #88 `ler-encerrante` **v11 em produção**
+com guardas e `verify_jwt=true` (deploy pela CLI, feito pelo dono na mão; `supabase/config.toml`
+novo); #89 `--read-only` e `apply_migration` na `deny` de volta.
+
+**Estado do custo/lucro:** uma fórmula (`custoMedioCompra`), uma porta (`custo-do-mes.ts`),
+nenhuma tela lendo cadastro ou carimbo. Julho dá R$ 29.318,1x na Visão Proprietário e na
+`/vendas/analise` — pela primeira vez o mesmo número em duas telas.
+
+**O que ficou (por decisão, não por falta de tempo):**
+- Despesa aberta para anon — migration de 16/08 pronta; aplicar depende de "o Elias lança despesa
+  logado no painel?" (sem login, quebra a tela de despesas dele).
+- Cosméticos: formas de pagamento todas "Outros" em Configurações; `aiService` com sinal da quebra
+  invertido; dashboard pinta OK para 0<|dif|≤50; consolidação por anon falha em silêncio fora da
+  janela de edição; UNIQUE `(data, turno_id)` sem `posto_id` (2º posto).
+- `Estoque.custo_medio` e `Fechamento.lucro_*` seguem no banco sem escritor de UI — dropar é
+  migration à parte.
+- **O que nenhum código resolve:** o Elias mandar o encerrante todo dia. Sem isso, setembro segue
+  "não apurado" — honesto, mas não é o número que ele precisa. Veredito continua PROTÓTIPO até
+  duas semanas de uso medido.
+
+**Permissões:** o classificador do modo automático barra deploy/DDL em produção e barra o agente
+escrever a própria regra em `settings.local.json`. O que funcionou: migration pelo
+`bun scripts/aplica-migration.ts` (coberto por `Bash(bun *)`); deploy de função só pelo dono com
+`! supabase functions deploy …` no prompt.
