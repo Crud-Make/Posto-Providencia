@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🪦 `ResumoMensal` apagado — 490 linhas que nenhuma rota montava
+
+- `widgets/resumo-mensal/ui/resumo-mensal.tsx` tinha zero importadores desde 16/08 (a `/proprietario`
+  monta `CentroDoMesConectado`) e ainda recebeu commit de cor em 30/08 sem ninguém poder ver.
+  Foram junto `FormCompra` e `FormMedicao` (só ele os usava; compra se lança em `/compras`, régua na
+  aba Tanques do PWA e em `/estoque/tanques`) e, do hook, `lancarCompra`/`salvarMedicao`/`mensagemDeErro`,
+  que só os formulários chamavam. −806 linhas; `useResumoMensal` e o Centro do Mês ficam intactos.
+
 ### 🧹 A fórmula legada de custo morreu — e o último leitor do carimbo foi junto
 
 - `custoMedioPonderado` (`packages/utils/src/custo-ponderado.ts`) e seu teste **apagados**: desde o
