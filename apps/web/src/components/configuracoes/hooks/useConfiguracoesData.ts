@@ -1,6 +1,7 @@
 // [10/01 17:46] Criado durante refatoração Issue #16
 import { useState, useEffect, useCallback } from 'react';
 import { fetchSettingsData } from '../../../services/api';
+import { isSuccess } from '../../../types/ui/response-types';
 import { usePosto } from '../../../contexts/usePosto';
 import { Produto, Bico, FormaPagamento } from '../types';
 
@@ -22,10 +23,16 @@ export const useConfiguracoesData = () => {
 
         setLoading(true);
         try {
-            const data = await fetchSettingsData(postoAtivoId);
-            setProducts(data?.products || []);
-            setNozzles(data?.nozzles || []);
-            setPaymentMethods(data?.paymentMethods || []);
+            // [06/09/2026] `fetchSettingsData` devolve o envelope `{ success, data }`.
+            // Desde 22/02 (`ad89a73`) isto lia `data?.products` NO ENVELOPE — sempre
+            // `undefined` — e o `|| []` trocou o crash por três listas vazias: a tela
+            // dizia "Nenhum produto cadastrado" num posto com 4 combustíveis, 6 bicos
+            // e 9 formas de pagamento. Compilava porque o wrapper era `.bind` (`any`).
+            const resposta = await fetchSettingsData(postoAtivoId);
+            const data = isSuccess(resposta) ? resposta.data : null;
+            setProducts(data?.products ?? []);
+            setNozzles(data?.nozzles ?? []);
+            setPaymentMethods(data?.paymentMethods ?? []);
         } catch (error) {
             console.error("Failed to fetch settings", error);
         } finally {

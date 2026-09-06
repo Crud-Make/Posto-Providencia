@@ -1,7 +1,6 @@
 // [10/01 17:46] Criado durante refatoração Issue #16
 
 import { ProductConfig, NozzleConfig, PaymentMethodConfig } from '../../types';
-import type { Produto as ProdutoDomain } from '@posto/types';
 
 /**
  * Tipo de pagamento suportado pelo sistema.
@@ -9,10 +8,14 @@ import type { Produto as ProdutoDomain } from '@posto/types';
 export type PaymentType = 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'outros';
 
 /**
- * Interface para configuração de produto (combustível).
- * Reutiliza a interface ProductConfig do sistema.
+ * Produto (combustível) como a tela o consome: `id`, `name`, `type`, `price` —
+ * exatamente o que `fetchSettingsData` entrega.
+ *
+ * @remarks [06/09/2026] Era `ProductConfig & Omit<ProdutoDomain, …>`: exigia 15
+ *          campos (`nome`, `preco_venda`, `categoria`…) que nenhum componente da
+ *          fatia lê. O tipo só compilava porque o wrapper do service era `any`.
  */
-export type Produto = ProductConfig & Omit<ProdutoDomain, keyof ProductConfig>;
+export type Produto = ProductConfig;
 
 /**
  * Tipo para configuração de bico.

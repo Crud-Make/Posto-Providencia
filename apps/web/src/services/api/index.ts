@@ -50,11 +50,8 @@ export { aggregatorService } from './aggregator.service';
 // explícito preserva o tipo de retorno.
 import { aggregatorService } from './aggregator.service';
 export type { ProfitabilityItem, ProfitabilityResult } from './aggregator.service';
-// `fetchSettingsData` segue no `.bind` DE PROPÓSITO: tipá-lo expõe que
-// `useConfiguracoesData` lê `data?.products` no envelope (sempre `undefined`) e que o
-// tipo local `Produto` da tela não é o do service — duas correções fora deste escopo,
-// registradas no CHANGELOG de 03/09. Quem tipar esta linha precisa consertar as duas.
-export const fetchSettingsData = aggregatorService.fetchSettingsData.bind(aggregatorService);
+export const fetchSettingsData: typeof aggregatorService.fetchSettingsData =
+  (...args) => aggregatorService.fetchSettingsData(...args);
 export const fetchDashboardData: typeof aggregatorService.fetchDashboardData =
   (...args) => aggregatorService.fetchDashboardData(...args);
 export const fetchProfitabilityData: typeof aggregatorService.fetchProfitabilityData =
