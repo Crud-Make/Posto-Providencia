@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 📉 Dashboard de Vendas perdia leituras do mês — corte silencioso em 1.000 linhas
+
+- `useDashboardVendas` buscava os 6 meses da janela numa query só. Mar–Ago/2026 são 1.092
+  leituras; o PostgREST devolve no máximo 1.000 e **não avisa**. Ordenado por data, quem perdia
+  era o mês selecionado: agosto mostrava **17.706 L** onde o `/dashboard` mostra **36.277 L** —
+  litros, faturamento, mix e lucro estimado, todos pela metade.
+- Agora é uma query por mês, em paralelo (um mês tem ~190 leituras). Conferido em 3015: agosto
+  36.277 L. Sem teste automatizado: o corte é do servidor, não da função — o que protege é não
+  pedir mais de 1.000 linhas numa query, e o comentário no hook diz por quê.
+
 ### 📊 Dashboard rateava a despesa pelo mês de HOJE, não pelo mês filtrado
 
 - `fetchDashboardData` chamava `despesaOperacionalMensal(new Date())`: o dashboard de agosto,

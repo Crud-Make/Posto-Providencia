@@ -36,19 +36,24 @@ export const useDashboardVendas = () => {
       setLoading(true);
       setError(null);
 
-      // Janela de 6 meses terminando no mês selecionado: uma busca só serve o
-      // resumo do mês e o gráfico de evolução — toda barra vem de Leitura real.
+      // Janela de 6 meses terminando no mês selecionado: serve o resumo do mês e o
+      // gráfico de evolução — toda barra vem de Leitura real.
+      // [06/09/2026] UMA QUERY POR MÊS, em paralelo. A busca única de 6 meses passava
+      // de 1.000 linhas (Mar–Ago/2026: 1.092) e o PostgREST corta em 1.000 sem avisar —
+      // ordenado por data, o mês selecionado era o que perdia linhas: agosto mostrava
+      // 17.706 L onde o Dashboard mostra 36.277 L. Um mês tem no máximo ~190 leituras.
       const [year, month] = selectedMonth.split('-').map(Number);
-      const startJanela = new Date(year, month - 6, 1);
       const endDate = new Date(year, month, 0);
+      const mesesDaJanela = Array.from({ length: 6 }, (_, i) => {
+        const inicio = new Date(year, month - 6 + i, 1);
+        const fim = new Date(year, month - 5 + i, 0);
+        return { inicio: paraIsoLocal(inicio), fim: paraIsoLocal(fim) };
+      });
 
-      const resLeituras = await leituraService.getByDateRange(
-        paraIsoLocal(startJanela),
-        paraIsoLocal(endDate),
-        postoAtivoId
+      const resPorMes = await Promise.all(
+        mesesDaJanela.map(m => leituraService.getByDateRange(m.inicio, m.fim, postoAtivoId))
       );
-
-      const leiturasJanela = isSuccess(resLeituras) ? resLeituras.data : [];
+      const leiturasJanela = resPorMes.flatMap(r => (isSuccess(r) ? r.data : []));
       // `data` é string ISO — recortar, nunca converter para Date (UTC escorrega um dia).
       const allLeituras = leiturasJanela.filter(l => l.data.slice(0, 7) === selectedMonth);
 
