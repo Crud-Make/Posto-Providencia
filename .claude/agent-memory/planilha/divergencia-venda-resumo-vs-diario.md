@@ -58,3 +58,20 @@ SELECT bico, valor_lt, SUM(litros), COUNT(*) FROM encerrante_diario
 `validacao_mensal`. É o mesmo bico. `JOIN` por nome de bico entre essas tabelas
 perde a linha do diesel em silêncio — junte por posição/ordem, não por string.
 Ver [[tabelas-que-existem-de-fato]].
+
+**Correção 03/09/2026 — o sinal do delta não é fixo.** Na planilha de 30/08 o
+`Valor LT R$` do resumo de janeiro (`POSTO JORRO 2026!G5`, e `G6=G5`, `G9=G5`,
+`H10=F10*G9`) é um preço único que **não coincide com o preço de fim de mês**
+do diário — o dono trocou o valor à mão. Aí o resumo fica **menor** que o
+diário. Regra durável: o resumo é `Σ litros × G5` (um preço só, editado à mão);
+o diário é `Σ litros_dia × preço_dia`. Compare sempre pelos dois caminhos e não
+assuma "resumo maior".
+
+**Lucro do resumo não desconta falta de caixa.** `I5 = G5 − G16`, com
+`G16 = F16 + I19` (média de compra + `Desp,Mês ÷ litros`), `J5 = I5 × F5`,
+`J11 = SUM(J5:J10)`. `I16 = D321` é o total da seção `Despeza, 2026.` (linha
+321), não a tabela `Despesa` do app. A `Falta.` do bloco diário
+(`D68 = D67 − D66`, concentrador − frentista, por frentista) não entra em
+lugar nenhum do resumo. Logo `lucro_planilha = Σ H − Σ litros×F_compra − D321`
+fecha ao centavo — e qualquer card que subtraia falta ou use a lista do app
+diverge por construção, não por bug de fórmula.

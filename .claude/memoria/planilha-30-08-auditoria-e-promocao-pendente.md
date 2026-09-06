@@ -44,3 +44,16 @@ julho 5,802 → 5,806. Golden contra a base nova roda com `scratchpad/prep-golde
 
 **How to apply:** não promova nem "conserte" golden sem o ok; a diferença é da planilha, não do
 código. Ver [[zerado-28-08-carga-conferida-pendente]], [[duas-formulas-de-custo-divergem-no-mes]].
+
+
+**Adendo 30/08 (noite), via #72:** a investigação do estoque negativo confirmou no banco vivo
+os dois meses que esta auditoria marcou — a régua de **31/01** no Supabase é cópia da abertura
+de 31/12 (7.392/4.124/1.752/2.415) e a de **31/07** (5.340/469/150/485) diverge do docs/data
+atual (4.921/1.870/1.317/1.520). O código já se defende (corrente negativa → "não apurável",
+PR #73, mergeado), mas **a correção das réguas em produção espera a decisão da promoção** — e
+as compras da carga histórica seguem todas carimbadas no último dia do mês (limitação da
+planilha, sem data por carga). Issue #72 está FECHADA; o que sobrou de dado mora aqui.
+**30/08 (mais tarde): a régua de 31/01 FOI corrigida em produção** (ok do dono) para a medição
+original — 5.672/1.937/2.631/2.034 — porque o valor da planilha nova era célula sobrescrita
+(idêntico à abertura nos 4 combustíveis). Restam pendentes: **julho** (reescrito de propósito na
+nova; banco já reflete a nova) e as datas de compra no fim do mês — os dois esperam a promoção.

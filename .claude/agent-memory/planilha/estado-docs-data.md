@@ -1,6 +1,6 @@
 ---
 name: estado-docs-data
-description: docs/data/ voltou parcialmente em 16/08/2026 — só 3 arquivos; staging do ETL, scripts e xlsx continuam ausentes
+description: docs/data/ tem 3 arquivos da planilha VELHA (07/08); a planilha NOVA (30/08) tem staging completo em docs/data-staging/2026-08-30/ e o xlsx em ~/Downloads
 metadata:
   type: project
 ---
@@ -33,3 +33,22 @@ hash antes de usar). **Não está em `docs/data/`**; o caminho da instrução
 [[mapa-aba-posto-jorro-2026]] para a estrutura já mapeada.
 
 Ver [[tabelas-que-existem-de-fato]] e [[onde-para-cada-fonte]].
+
+**Atualização 03/09/2026 — existem DUAS planilhas, e `docs/data/` é a velha.**
+`docs/data/*.sqlite` continua sendo o ETL da planilha de 07/08 (não promovido).
+A planilha de 30/08 (jan–ago, sha256 `3357eed9…`, caminho canônico em
+`.claude/ativos-criticos.json`, hoje `~/Downloads/Posto,Jorro, 2026.xlsx`) tem
+staging **completo** em `docs/data-staging/2026-08-30/staging.json/`:
+`mes_01..08.json` (dia a dia, com `totais.falta` por frentista), `resumo.json`
+(aba `POSTO JORRO 2026`: venda/compra/estoque por mês + seção `despesa` da
+`Despeza, 2026.` + `custo_historico`), `despesa_lancada.json` (dump da tabela
+`Despesa` do Supabase, por mês) e `manifesto.json` (hash + conciliação por mês).
+Ao lado, `docs/data-staging/2026-08-30/posto_jorro_2026.sqlite/` guarda os 3
+arquivos que substituiriam `docs/data/` na promoção.
+
+**How to apply:** pergunta "contra a planilha nova" → staging de 30/08 (ou o
+xlsx por `zipfile`, como `scripts/etl-estagio1-staging.py`); pergunta "contra o
+que o golden usa hoje" → `docs/data/`. Dizer qual das duas foi usada, sempre —
+a de 30/08 mudou o preço de janeiro no resumo e reescreveu julho. O hash
+`abecc283…` citado acima é o da planilha velha, hoje só em
+`/mnt/dados/backups-posto/`.
