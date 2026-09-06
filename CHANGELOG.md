@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### ⚙️ Configurações mostrava "Nenhum produto cadastrado" desde fevereiro
+
+- `useConfiguracoesData` lia `data?.products` **no envelope** `{ success, data }` de
+  `fetchSettingsData` — sempre `undefined`. Em 22/02 (`ad89a73`) um `|| []` trocou o crash por
+  três listas vazias: a tela dizia "Nenhum produto cadastrado", "Nenhum bico configurado" e
+  "Nenhuma forma de pagamento" num posto com 4 combustíveis, 6 bicos e 9 formas. Compilava porque o
+  wrapper em `services/api/index.ts` era `.bind()` (tipo `any`) — o último dos três que o #80
+  tipou; este ficou de fora porque expunha também o tipo local `Produto` errado.
+- Agora o hook desembrulha com `isSuccess`; `Produto` da fatia virou `ProductConfig` (era
+  `ProductConfig & Omit<ProdutoDomain, …>`: 15 campos exigidos, 11 que nenhum componente lê); o
+  wrapper é função tipada. Primeiro teste do módulo (`useConfiguracoesData.test.ts`): monta o hook
+  com o envelope real e exige as listas cheias — a asserção que o `|| []` escondia.
+- Cosmético, não corrigido: todas as formas de pagamento aparecem com tipo "Outros" (o `tipo` do
+  banco não casa com a lista que a tela conhece).
+
 ### 🪦 `ResumoMensal` apagado — 490 linhas que nenhuma rota montava
 
 - `widgets/resumo-mensal/ui/resumo-mensal.tsx` tinha zero importadores desde 16/08 (a `/proprietario`
