@@ -2,6 +2,22 @@
 
 ## [Não Lançado]
 
+### 🗓️ Relatório Diário deixa de filtrar leitura por turno (bug 3a)
+
+- O sistema decidiu não ter turno (PR #53), mas `useRelatorioDiario` ainda carregava a tabela
+  `Turno`, agrupava por ela e filtrava fechamento **e leitura** por `turno_id === turno.id`. O painel
+  grava `Leitura.turno_id = null` — a primeira leitura salva por ele (que desde o #81 apura o dia)
+  **sumia da tela**: 0 L e R$ 0,00 num dia com 6 bicos. E o dia aparecia rotulado "Manhã", porque a
+  tabela só tem Manhã/Tarde/Noite e o `isDiario` nunca casava.
+- Agora o dia é a unidade: todos os fechamentos e todas as leituras do dia numa linha "Dia";
+  coluna "Turno" virou "Período". Conferido em 3015: 28/08 → R$ 9.530,13 · 1.380 L · diferença
+  R$ 119,77 · PENDENTE.
+- **O lucro da tela custeia pela compra do mês do dia**, não mais pelo `preco_custo` do cadastro
+  (congelado em janeiro — o mesmo carimbo que o #80 tirou de três telas). `vendaLucroDaLeitura`
+  recebe o custo injetado (`custo-do-mes.ts`); produto sem compra no mês deixa o lucro do dia
+  **"não apurado"**, nunca custo zero. Conferido em 3015 × banco: 28/07 → R$ 1.563,71 ao centavo
+  com o custo de julho. Vitest: 7 casos (dois novos: custo do mês ≠ cadastro; sem compra → null).
+
 ### 📉 Dashboard de Vendas perdia leituras do mês — corte silencioso em 1.000 linhas
 
 - `useDashboardVendas` buscava os 6 meses da janela numa query só. Mar–Ago/2026 são 1.092

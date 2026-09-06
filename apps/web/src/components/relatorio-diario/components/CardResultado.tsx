@@ -4,7 +4,7 @@ import { DailyTotals } from '../types';
 
 interface CardResultadoProps {
     totals: DailyTotals;
-    fmtMoney: (val: number) => string;
+    fmtMoney: (val: number | null) => string;
 }
 
 const CardResultado: React.FC<CardResultadoProps> = ({ totals, fmtMoney }) => {
@@ -33,7 +33,7 @@ const CardResultado: React.FC<CardResultadoProps> = ({ totals, fmtMoney }) => {
                         <span>{fmtMoney(totals.lucroLiquido)}</span>
                     </div>
                     <p className="text-[10px] opacity-60 mt-1 uppercase font-bold text-right">
-                        {totals.lucroLiquido > 0 ? "Saldo Positivo" : "Saldo Negativo"}
+                        {totals.lucroLiquido === null ? "Sem custo do mês" : totals.lucroLiquido > 0 ? "Saldo Positivo" : "Saldo Negativo"}
                     </p>
                 </div>
 
