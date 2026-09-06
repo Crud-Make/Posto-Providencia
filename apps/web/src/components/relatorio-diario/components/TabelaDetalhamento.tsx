@@ -28,7 +28,7 @@ const TabelaDetalhamento: React.FC<TabelaDetalhamentoProps> = ({
                 <table className="w-full text-left font-sans">
                     <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 uppercase text-xs font-bold tracking-wider">
                         <tr>
-                            <th className="px-6 py-4">Turno</th>
+                            <th className="px-6 py-4">Período</th>
                             <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4 text-right">Vendas</th>
                             <th className="px-6 py-4 text-right">Volume</th>

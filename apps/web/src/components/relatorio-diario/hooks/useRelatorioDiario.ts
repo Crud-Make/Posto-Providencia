@@ -2,7 +2,13 @@
  * Hook do Relatório Diário.
  *
  * @remarks
- * Carrega fechamentos, leituras, turnos e despesas do posto e consolida totais do dia.
+ * Carrega fechamentos, leituras e despesas do posto e consolida totais do dia.
+ *
+ * [06/09/2026] O turno saiu daqui. O sistema decidiu não ter turno (PR #53), mas este hook
+ * ainda agrupava por `Turno` e filtrava fechamento E leitura por `turno_id === turno.id`.
+ * O painel grava `Leitura.turno_id = null` — a primeira leitura salva por ele sumia da
+ * tela (0 L num dia com 6 bicos), e o dia aparecia rotulado "Manhã" porque a tabela só
+ * tem Manhã/Tarde/Noite. Agora o dia é a unidade: tudo do dia, uma linha só.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
@@ -10,7 +16,6 @@ import { usePeriodo } from '../../../contexts/usePeriodo';
 import {
     fechamentoService,
     leituraService,
-    turnoService,
     despesaService
 } from '../../../services/api';
 import { ShiftData, DailyTotals, ExpenseData } from '../types';
@@ -23,7 +28,7 @@ import { semLancamento } from '@posto/utils';
  * Fechamento com os campos necessários para o relatório diário.
  */
 interface FechamentoDiario {
-    turno_id: number;
+    turno_id?: number | null;
     total_vendas?: number | null;
     diferenca?: number | null;
     /**
@@ -48,7 +53,7 @@ interface FechamentoDiario {
  * Leitura com os campos necessários para cálculo de volume e lucro.
  */
 interface LeituraDiaria {
-    turno_id: number;
+    turno_id?: number | null;
     leitura_inicial: number;
     leitura_final: number;
     /** Preço do litro NO DIA da leitura, carimbado na submissão. */
@@ -84,14 +89,6 @@ export function vendaLucroDaLeitura(l: LeituraDiaria): { volume: number; venda: 
     const venda = l.valor_total != null ? Number(l.valor_total) : volume * precoDoDia;
 
     return { volume, venda, lucro: volume * (precoDoDia - precoCusto) };
-}
-
-/**
- * Turno do posto.
- */
-interface TurnoDiario {
-    id: number;
-    nome: string;
 }
 
 /**
@@ -148,16 +145,14 @@ export const useRelatorioDiario = () => {
 
             // 1. Load basic data
             // [18/01 10:34] Extraído payload de ApiResponse para evitar `filter is not a function` em despesas.
-            const [fechamentosRes, leiturasRes, turnosRes, despesasRes] = await Promise.all([
+            const [fechamentosRes, leiturasRes, despesasRes] = await Promise.all([
                 fechamentoService.getByDate(selectedDate, postoAtivoId),
                 leituraService.getByDate(selectedDate, postoAtivoId),
-                turnoService.getAll(postoAtivoId),
                 despesaService.getAll(postoAtivoId)
             ]);
 
             const fechamentos = extractApiData(fechamentosRes as ApiResponse<FechamentoDiario[]>);
             const leituras = extractApiData(leiturasRes as ApiResponse<LeituraDiaria[]>);
-            const turnos = extractApiData(turnosRes as ApiResponse<TurnoDiario[]>);
             // [18/01 10:40] Ajustado mapeamento de Despesa do banco para UI (id string).
             const despesasDb = extractApiData(despesasRes as ApiResponse<DBDespesa[]>);
             const despesas = despesasDb.map(mapDbDespesaToUi);
@@ -173,19 +168,9 @@ export const useRelatorioDiario = () => {
             setExpensesDay(dayExpenses);
             const totalDespesas = dayExpenses.reduce((sum, d) => sum + Number(d.valor), 0);
 
-            // 2. Process Shifts
-            const processedShifts: ShiftData[] = turnos
-                .filter(turno => {
-                    const hasFechamento = fechamentos.some(f => f.turno_id === turno.id);
-                    const hasLeituras = leituras.some(l => l.turno_id === turno.id);
-                    const isDiario = turno.nome.toLowerCase().includes('diário') || turno.nome.toLowerCase().includes('diario');
-
-                    // Mostra o turno se for o 'Diário' (padrão) OU se tiver dados (histórico/uso)
-                    return isDiario || hasFechamento || hasLeituras;
-                })
-                .map(turno => {
-                    // Agrega todos os fechamentos do turno (caso haja múltiplos fragmentados)
-                    const fechamentosTurno = fechamentos.filter(f => f.turno_id === turno.id);
+            // 2. O dia inteiro numa linha só — sem filtro por turno (ver cabeçalho).
+            const processedShifts: ShiftData[] = [(() => {
+                    const fechamentosTurno = fechamentos;
 
                     const totalVendasFechamento = fechamentosTurno.reduce((acc, f) => acc + Number(f.total_vendas || 0), 0);
                     // [04/09/2026] `diferenca` NULA é "não apurado" (sem encerrante completo),
@@ -196,7 +181,7 @@ export const useRelatorioDiario = () => {
                         ? null
                         : fechamentosTurno.reduce((acc, f) => acc + Number(f.diferenca), 0);
 
-                    const leiturasTurno = leituras.filter(l => l.turno_id === turno.id);
+                    const leiturasTurno = leituras;
 
                     // Calculate Fuel Sales & Profit from Readings
                     let litrosTurno = 0;
@@ -252,8 +237,8 @@ export const useRelatorioDiario = () => {
                     const frentistasUnicos = [...new Set(frentistasNomes)];
 
                     return {
-                        turnoName: turno.nome,
-                        turnoId: turno.id,
+                        turnoName: 'Dia',
+                        turnoId: 0,
                         status: statusLabel,
                         vendas: totalVendas,
                         litros: litrosTurno,
@@ -261,7 +246,7 @@ export const useRelatorioDiario = () => {
                         diferenca: diferencaFinal,
                         frentistas: frentistasUnicos
                     };
-                });
+                })()];
 
             setShiftsData(processedShifts);
 
