@@ -2,6 +2,13 @@
 
 ## [Não Lançado]
 
+_(vazio — próxima rodada)_
+
+## [4.0.0] - 2026-09-06 — Release: fecha a fase de auditoria e saneamento
+
+Tudo abaixo desta linha até a `[1.0.0]` entrou nesta release (497 commits desde a `v3.0.0` de
+18/01/2026). O que a versão garante, e a prova, está no `README.md` → **Release 4.0.0**.
+
 ### 🔒 Travas do MCP do Supabase de volta
 
 - `--read-only` reposto no `.mcp.json` e `mcp__supabase__apply_migration` na `deny` de
