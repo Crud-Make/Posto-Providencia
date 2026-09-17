@@ -15,10 +15,15 @@ O que existe hoje e onde cada regra abaixo se encaixa:
 * **Banco:** `banco/init/*.sql` é o esquema inteiro de produção, gerado por
   `scripts/extrai-esquema-do-catalogo.py`; `docker-compose.yml` sobe Postgres 17 em `:5433`.
   Ver `banco/README.md`. O Supabase continua servindo os apps até o cutover (Issue #60).
-* **Backend Laravel 13:** nasce em `backend/` (issue própria). **Os §5, §6 e §7 (CQRS, PHPMD,
-  PHPStan, Deptrac, Pest ≥ 85 %, Locust, `pre-commit` PHP) entram em vigor no dia em que `backend`
-  existir.** Até lá o gate de PR é o atual, rodado em `frontend/`: `bun run lint` (oxlint; `lint:eslint` é a
-  passada completa), `bun run type-check`, `bun run test`, `bun run test:golden`. Caminhos `app/...` citados abaixo leem-se `backend/app/...`.
+* **Backend Laravel 13** em `backend/` (desde 17/09, #96): Postgres do compose, `GET /api/saude`,
+  Laravel Boost instalado (diretrizes em `backend/CLAUDE.md`, gerado pelo Boost). **Os §5, §6 e §7
+  estão em vigor.** Gates, rodados em `backend/`: `composer gates` = Pint + PHPStan (Larastan, nível 6)
+  + PHPMD (CCN ≤ 10) + Deptrac (camadas do Design Doc §2) + Pest. Cobertura ≥ 85 % por
+  `composer test:cobertura`, cobrada a partir da #97 (hoje não há domínio para cobrir).
+  `pre-commit` versionado em `scripts/hooks/` (instala com `scripts/instala-hooks.sh`) roda os gates
+  PHP só quando há `.php` no índice e o oxlint só quando há `.ts`. Caminhos `app/...` citados
+  abaixo leem-se `backend/app/...`. Gate do lado TS, em `frontend/`: `bun run lint` (oxlint;
+  `lint:eslint` é a passada completa), `bun run type-check`, `bun run test`, `bun run test:golden`.
 * **Documentação:** Design Doc de cada módulo em `docs/design/<slug>.md`; `docs/architecture.md` é
   o mapa vivo. `docs/data/` **não é lugar de documento**: é dado real, gitignored, nunca versionar.
 * **Invariantes de dinheiro que não mudaram com a versão:** nenhuma fórmula muda sem golden master

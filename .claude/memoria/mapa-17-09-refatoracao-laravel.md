@@ -52,3 +52,21 @@ push/PR; Root Directory dos 3 projetos Vercel no painel (`frontend`, `frontend/a
 (Laravel em `backend/`, exige ok para o composer). Armadilha vista: `bun add` fora de `frontend/` cria
 package.json na raiz — sempre `cd frontend` antes.
 
+**17/09, madrugada — #96 feita, sem push.** Branch `chore/#96-backend-laravel` sobre a #95: `backend/`
+Laravel 13.32, `composer gates` (Pint, Larastan 6, PHPMD, Deptrac, Pest) verde, Boost instalado,
+`docker compose up api` saudável. **Armadilha:** `artisan serve` descarta env do worker (lista fixa
+`passthroughVariables`); no container usar `php -S`. Decisão 5: uma instalação por posto; banco
+compartilhado "talvez sim" → `posto_id NOT NULL` + escopo global desde a #97. Pendências do dono:
+ok para push/PRs (3 branches empilhadas), `fase-a` + proteção da main, Root Directory na Vercel.
+Próxima: #97 (models do cadastro).
+
+**17/09 — enviado.** `fase-a` criada da `main` e protegida (PR obrigatória, checks `build`+`backend`,
+sem force push, sem delete); `main` com a mesma proteção. PRs empilhadas: **#107** (esquema → fase-a),
+**#108** (raiz → #60), **#109** (backend → #95). CI roda em toda PR. Vercel faz preview por PR (falha
+esperada nas de layout novo; produção só sai da `main`). Dois incidentes evitados, ambos por ferramenta:
+(1) o cache do PHPStan serializa o ambiente com segredos — a proteção de push do GitHub barrou, história
+reescrita antes de sair, `storage/framework/phpstan/` no .gitignore; (2) um `reset --soft` rodou na
+branch errada (`fase-a`) porque um comando anterior falhou no meio — restaurado de `origin/fase-a`.
+**Regra minha:** `git branch --show-current` antes de qualquer reset; nunca encadear checkout+reset num
+comando que pode falhar antes.
+
