@@ -17,8 +17,8 @@ O que existe hoje e onde cada regra abaixo se encaixa:
   Ver `banco/README.md`. O Supabase continua servindo os apps até o cutover (Issue #60).
 * **Backend Laravel 13:** nasce em `backend/` (issue própria). **Os §5, §6 e §7 (CQRS, PHPMD,
   PHPStan, Deptrac, Pest ≥ 85 %, Locust, `pre-commit` PHP) entram em vigor no dia em que `backend`
-  existir.** Até lá o gate de PR é o atual: `bun run lint`, `bun run type-check`, `bun run test`,
-  `bun run test:golden`. Caminhos `app/...` citados abaixo leem-se `backend/app/...`.
+  existir.** Até lá o gate de PR é o atual, rodado em `frontend/`: `bun run lint` (oxlint; `lint:eslint` é a
+  passada completa), `bun run type-check`, `bun run test`, `bun run test:golden`. Caminhos `app/...` citados abaixo leem-se `backend/app/...`.
 * **Documentação:** Design Doc de cada módulo em `docs/design/<slug>.md`; `docs/architecture.md` é
   o mapa vivo. `docs/data/` **não é lugar de documento**: é dado real, gitignored, nunca versionar.
 * **Invariantes de dinheiro que não mudaram com a versão:** nenhuma fórmula muda sem golden master

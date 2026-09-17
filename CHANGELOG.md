@@ -2,6 +2,15 @@
 
 ## [Não Lançado]
 
+### ⚡ oxlint como lint padrão do frontend
+
+- `bun add -d oxlint` (1.83.0) em `frontend/`, a pedido do dono: a base é grande e o oxlint é mais
+  rápido. Medido em 17/09: **0,17 s** contra **23 s** do eslint na mesma árvore. `bun run lint`
+  passa a ser `oxlint .`; o eslint continua em `bun run lint:eslint` e o CI roda os dois.
+  Baseline do oxlint: só avisos do plugin `unicorn` (thenable em mock de teste, fallback vazio em
+  spread), zero erro. Primeiro `bun add` caiu na raiz por engano e criou um `package.json` solto;
+  desfeito antes do commit.
+
 ### 🗂️ Raiz organizada: `frontend/` e `backend/` (#95)
 
 - `apps/`, `packages/` e toda a toolchain TS (`package.json`, `bun.lock`, `bunfig.toml`, `vite.config.ts`,

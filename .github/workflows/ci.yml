@@ -27,8 +27,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Lint
+      # oxlint é o lint padrão (0,2 s contra 23 s do eslint na base de 17/09); o eslint fica
+      # como passada completa no CI, onde o tempo não pesa.
+      - name: Lint (oxlint)
         run: bun run lint
+
+      - name: Lint (eslint, passada completa)
+        run: bun run lint:eslint
 
       - name: Type-check
         run: bun run type-check
