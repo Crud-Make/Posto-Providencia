@@ -284,7 +284,7 @@ def main() -> None:
     if velho:
         avisos.append(
             f"· O {velho} — os hooks post-commit/post-checkout podem ter parado. "
-            "Rebuild da raiz numa passada só: `graphify update . --force` (§12 — "
+            "Rebuild da raiz numa passada só: `graphify update . --force` (CLAUDE.md §0 — "
             "nunca indexar sub-pasta e juntar com merge-graphs)."
         )
 
@@ -302,7 +302,7 @@ def main() -> None:
             "· 👻 O CLAUDE.md manda usar plugin que não está instalado: "
             + ", ".join(fantasmas)
             + ". Skill ausente não dá erro — ela só não carrega, e o trabalho segue "
-            "com uma orientação a menos. Ou instale, ou tire a linha do §13: tabela "
+            "com uma orientação a menos. Ou instale, ou tire a linha do CLAUDE.md: tabela "
             "que cita ferramenta inexistente é pior que tabela sem a linha."
         )
 

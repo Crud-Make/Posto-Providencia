@@ -13,3 +13,5 @@
 - [Onde para cada fonte](onde-para-cada-fonte.md) — como separar "dia vazio" de "dia faltando" entre sqlite, staging, xlsx e produção
 - [Consultar Leitura em produção](consulta-leitura-producao.md) — SELECT somente leitura pela API de management, sem MCP; AuditoriaDados é a caixa-preta
 - [venda_bico lixo em dia incompleto](venda-bico-lixo-em-dia-incompleto.md) — SUM(venda_bico)/venda_concentrador_total exige dado_incompleto=0; planilha rateia despesa÷litros, não 0,45 fixo; manifesto tem referencia_ate_dia
+- [Lucro bruto e folha: onde ficam](lucro-bruto-e-folha-onde-ficam.md) — lucro bruto = Σlucro_bico + despesa_mensal (fecha ao centavo); folha = rubrica "Nome = dia" na planilha / categoria no app; ago do app é cópia
+- [Custo fixo só no histórico](custo-operacional-fixo-so-no-historico.md) — I19/H22 são despesa÷litros em 2025 e 2026; G digitado por ano no bloco "Ano 17 a 26"; bloco anual da planilha 2025 é lixo (dez vazio)

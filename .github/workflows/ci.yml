@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [ main, release, fase-a ]
+  # Toda PR roda CI, inclusive as empilhadas (base em outra branch de trabalho): a proteção da
+  # main e da fase-a exige os checks `build` e `backend` verdes.
   pull_request:
-    branches: [ main, release, fase-a ]
 
 jobs:
   build:

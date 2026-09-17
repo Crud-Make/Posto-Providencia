@@ -63,7 +63,7 @@ VALIDADE = 24 * 3600  # arquivo de sessão mais velho que isto é lixo
 MOTIVO = (
     "Bloqueado pelo hook forca-delegacao: {n} leituras já nesta thread "
     "principal (teto {teto}).\n\n"
-    "Isto não é erro seu — é a parada obrigatória do CLAUDE.md §13. Varredura "
+    "Isto não é erro seu — é a parada obrigatória do CLAUDE.md §0 (delegação). Varredura "
     "larga é trabalho de subagente, que **lê muito e devolve pouco**; feita "
     "aqui, ela empurra o contexto inteiro para dentro da thread e é o que faz a "
     "sessão inchar.\n\n"

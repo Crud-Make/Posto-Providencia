@@ -1,36 +1,42 @@
 ---
 name: anon-e-o-painel
-description: Os três apps falam com o banco como anon; o login do painel (16/08/2026) é opcional por causa do modo visitante, então o caminho anon nunca fecha sozinho
+description: Quem fala com o banco como anon e quem fala como authenticated — o painel exige login desde 19/08/2026 (modo visitante removido); os dois PWAs seguem anon por decisão do dono
 metadata:
   type: project
 ---
 
-**Três** apps usam a mesma `anon key`: `apps/web`, `apps/pwa-frentista` e `apps/pwa-dono`
-(este último criado em 16/08/2026). Nenhum deles obriga login.
+**Quem é `anon` e quem é `authenticated` hoje** (conferido no código em 17/09/2026):
 
-**O painel ganhou login em 16/08/2026** (`apps/web/src/contexts/AuthContext.tsx`,
-`components/login/`) — mas com `modoVisitante`, uma saída explícita que segue falando como
-`anon`. Correção da memória anterior, que dizia "não há login em funcionamento": há, e mesmo
-assim **o caminho anon continua aberto e é o caminho padrão**. Enquanto o modo visitante
-existir, revogar `anon` derruba o painel do mesmo jeito.
+- `apps/web` (painel): **exige login** — `AuthContext.tsx` só tem `signInWithPassword`, e
+  `App.tsx` abre a porta só com sessão. Fala como **`authenticated`**.
+- `apps/pwa-frentista` e `apps/pwa-dono`: **sem autenticação nenhuma** (zero `signIn`,
+  zero `getSession`). Falam como **`anon`**, com a mesma anon key.
 
-**Why:** toda recomendação de `REVOKE ... FROM anon` é, ao mesmo tempo, correção de exposição e
-quebra de tela. A decisão é do dono, mas precisa ser informada — e a proposta de PIN/senha no PWA
-já foi decidida contra, não relitigar.
+**Correção de memória anterior (16/08/2026):** o painel teve um `modoVisitante`
+("Continuar sem entrar") entre 16/08 e **19/08/2026**, quando foi removido — CHANGELOG
+"O modo visitante sai — sem senha não há meia-entrada". Motivo registrado: como `anon` a
+RLS devolvia lista vazia **sem erro** em `Fornecedor`/`Compra` e o painel mostrava número
+incompleto sem avisar. Toda memória/relatório que diga "o painel fala como anon" está
+desatualizada desde então.
+
+**Why:** a pergunta "revogar `anon` derruba o quê?" mudou de resposta. Antes derrubava o
+painel inteiro; hoje derruba **os dois PWAs** (envio do frentista, régua de tanque,
+encerrante por foto, inscrição push). O painel só cai se o que for revogado for de
+`authenticated` — ou se a policy for `TO anon` sem par para `authenticated` (caso real:
+`InscricaoPush` INSERT é só `TO anon`; `fechamento_frentista_delete_janela_edicao`,
+`recebimento_delete_janela_edicao` e `despesa_delete_janela_edicao` são só `TO anon` — o
+painel logado **não** passa por elas, passa pelas policies `auth.role()='authenticated'`
+quando existem).
 
 **How to apply:**
-- Separar sempre, na recomendação, o que é **remoção de privilégio que ninguém usa** (aplicável
-  já, sem custo) do que é **fechar o que a tela consome** (só com login antes).
-- O login abre um caminho **mais** privilegiado, não menos: em `Fechamento` o `authenticated`
-  tem `DELETE USING (true)` — sem janela nenhuma —, enquanto o `anon` não tem policy de DELETE.
-  Logar remove a trava de janela para apagar fechamento.
-- Grants inúteis que dá para tirar sem quebrar nada, porque o app só lê: `INSERT/UPDATE/DELETE`
-  do anon nas tabelas de cadastro (`Bico`, `Bomba`, `Combustivel`, `Tanque`, `Posto`, `Turno`,
-  `FormaPagamento`, `Maquininha`, `Estoque`).
-- Escrita que os apps **realmente** usam como anon: `Leitura`, `Fechamento`, `FechamentoFrentista`,
-  `Recebimento`, `Despesa`, `NotaFrentista`, `PresencaFrentista`, `VendaProduto`, `Frentista`.
-- Conferir o consumo com `grep -rhoE "\.from\(['\"]TABELA['\"]\)" apps packages` antes de afirmar
-  que algo é inútil. Tabela citada só em `types/database/generated.ts` não é uso.
+- Separar sempre a recomendação em: privilégio que ninguém usa (tirar já) × o que o PWA
+  consome como `anon` × o que o painel consome como `authenticated`.
+- Escrita que os PWAs **realmente** usam como anon (grep `.from(` em 17/09/2026):
+  `FechamentoFrentista`, `Fechamento`, `HistoricoTanque`, `VendaProduto`, `Frentista`,
+  `PresencaFrentista`, `InscricaoPush`, e via `packages/api-core`: `Leitura`, `Bico`.
+- Conferir o consumo com `grep -rhoE "\.from\(['\"]TABELA['\"]\)" apps packages` antes de
+  afirmar que algo é inútil. Tabela citada só em `types/database/generated.ts` não é uso.
+- A proposta de PIN/senha no PWA do frentista já foi decidida contra pelo dono — não relitigar.
 
 App novo com a mesma chave **não amplia privilégio de banco**: [[app-novo-nao-amplia-privilegio]].
 Redações de política que enganam nessa avaliação: [[politicas-que-nao-seguram-nada]].

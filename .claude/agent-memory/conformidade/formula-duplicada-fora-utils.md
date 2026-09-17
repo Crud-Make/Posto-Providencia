@@ -1,69 +1,85 @@
 ---
 name: formula-duplicada-fora-utils
-description: As 5 formas que a fórmula de lucro duplicada fora de packages/utils assume neste repo — trio inline, margem hardcoded, fallback 0,45, rateio proporcional e o lucro sem despesa
+description: As formas que a fórmula de lucro fora de packages/utils assume neste repo — trio inline (hoje em módulo com golden), margem hardcoded, lucro sem despesa; fallback 0,45 e rateio proporcional JÁ SAÍRAM do aggregator (17/09/2026)
 metadata:
   type: project
 ---
 
-A consolidação em `@posto/utils` já está **largamente feita** (dezenas de arquivos
-importam `conferido`/`diferenca`/`cartao`; 6 sites já usam
-`lucroCombustivel`/`despesaOperacionalPorLitro`/`margemPercentual`). O que sobra é
-resíduo, e ele tem **cinco formas recorrentes**. Reconhecer a forma é o que economiza
-a varredura — o grep sozinho não distingue nenhuma delas.
+A consolidação em `@posto/utils` está **largamente feita** (102 arquivos em `apps/`
+importam `@posto/utils` em 17/09/2026 — reconte com
+`grep -rl "from '@posto/utils'" apps --include='*.ts' --include='*.tsx' | wc -l`).
+O que sobra é resíduo, e reconhecer a forma é o que economiza a varredura — o grep
+sozinho não distingue nenhuma delas.
 
 O canônico é `packages/utils/src/lucro.ts`:
 `lucro = receita − litros × (custoMedio + despesaOperacionalPorLitro)`, quantizado
 por `emCentavos`. Toda forma abaixo é um desvio dele.
 
-**Forma 1 — o trio do lucro reimplementado inline.** Um service/hook calcula à mão
-`despesa/litro`, `preço sugerido = custoMedio + despesa/litro`, `lucro/litro =
-praticado − sugerido` e `margem = lucro/praticado × 100`. Algebricamente equivalente
-mas **pula o `emCentavos`** — a divergência é de arredondamento, portanto silenciosa.
-Os dois concentradores desta forma, conferidos 28/08/2026:
+**Forma 1 — o trio do lucro reimplementado inline.** `despesa/litro`, `preço sugerido
+= custoMedio + despesa/litro`, `lucro/litro = praticado − sugerido`, `margem`.
+**Estado em 17/09/2026:** os dois concentradores viraram módulos que **delegam** o
+lucro total à canônica e mantêm inline só o que não é dinheiro final
+(`suggestedPrice`, `profitPerLiter`, `cmv`), cada um com `*.golden.spec.ts` ao lado.
+Continuam **fora de `packages/utils`** — é dívida de locality, não de fórmula errada:
 ```bash
-grep -n 'suggestedPrice\|profitPerLiter\|despesaPorLitro' apps/web/src/services/api/salesAnalysis.service.ts
-grep -n 'Pura(' apps/web/src/components/registro-compras/hooks/useCalculosRegistro.ts
+grep -nE 'suggestedPrice|profitPerLiter|cmv' apps/web/src/services/api/calculos-analise-vendas.ts
+grep -nE 'Pura\(|precoVenda - custoVenda' apps/web/src/components/registro-compras/hooks/useCalculosRegistro.ts
+ls apps/web/src/services/api/calculos-analise-vendas.golden.spec.ts apps/web/src/components/registro-compras/hooks/useCalculosRegistro.golden.spec.ts
 ```
+O inventário de "módulo de fórmula em app, com ou sem teste" sai deste laço — é o
+que responde "quanto ainda mora fora de utils":
+```bash
+for f in apps/web/src/services/*.ts apps/web/src/services/api/calculos-*.ts apps/web/src/utils/*.ts; do case $f in *test.ts|*spec.ts) continue;; esac; echo "$f golden=$(ls ${f%.ts}.golden.spec.ts 2>/dev/null) test=$(ls ${f%.ts}.test.ts 2>/dev/null) utils=$(grep -c '@posto/utils' $f)"; done
+```
+Em 17/09 só `aiService.ts` (272 L) e `stockService.ts` (140 L) estavam sem teste e sem
+`@posto/utils` — e os dois delegam a conta a um `calculos-*.ts` testado; a
+aritmética própria deles é de estoque em litros, não de dinheiro.
 
-**Forma 2 — a margem inventada.** Um percentual fixo multiplicando a venda para
-exibir "Lucro" (§6 proíbe: custo por litro nunca é valor fixo). Caçar por:
+**Forma 2 — a margem inventada.** Percentual fixo multiplicando a venda (§6 proíbe).
 ```bash
 grep -rnE '\*\s*0\.[0-9]+' apps --include='*.tsx' --include='*.ts' \
   | grep -viE 'opacity|scale|duration|rgba|delay|width|height|blur'
 ```
-O filtro de CSS não é opcional: sem ele o hit útil se perde em `0.5` de Tailwind.
+O filtro de CSS não é opcional. Em 17/09 os 3 hits restantes são `fontSize * 0.36`
+(avatar) e `avg * 0.6` (heurística de dia fraco no `aiService`) — **nenhum é dinheiro**.
 
-**Forma 3 — o fallback hardcoded DEPOIS da chamada canônica.** A mais traiçoeira,
-porque o arquivo importa `despesaOperacionalPorLitro` e o grep de fórmula passa
-limpo: chama a função certa, e quando ela devolve 0 (mês sem despesa lançada)
-substitui por um número fixo. Viola §6 do mesmo jeito, e o mês sem despesa é
-justamente o mês em replay. Caçar por:
+**Forma 3 — fallback hardcoded DEPOIS da chamada canônica** (config
+`despesa_operacional_litro` = 0,45). **REMOVIDA** — o `@remarks` de
+`despesaOperacionalMensal` em `aggregator.service.ts` documenta a remoção. Reconfirmar
+que segue fora (vazio = removido):
 ```bash
-grep -rn "despesa_operacional_litro\|=== 0" apps/web/src/services/api/aggregator.service.ts
+grep -n "despesa_operacional_litro" apps/web/src/services/api/aggregator.service.ts | grep -v '^\s*[0-9]*:\s*\*'
 ```
 
-**Forma 4 — o rateio proporcional inventado.** Calcula um lucro total correto e
-depois **distribui** entre frentistas/dias multiplicando pela venda de cada um
-(`profit = totalSales × margemMedia`). O total fecha, cada linha é ficção: o
-frentista que vendeu diesel e o que vendeu gasolina recebem a mesma margem.
+**Forma 4 — o rateio proporcional** (`profit = totalSales × margemMedia`).
+**REMOVIDA** — o `performanceData` do aggregator hoje ranqueia por venda conferida e
+o comentário explica por quê. Reconfirmar (vazio = removido):
 ```bash
-grep -rn 'margemMedia\|totalLucroEstimado' apps/web/src/services/api/aggregator.service.ts
+grep -n 'margemMedia' apps/web/src/services/api/aggregator.service.ts
 ```
 
-**Forma 5 — o lucro sem a despesa operacional.** `volume × (preçoVenda − custo)`,
-sem o rateio. Sempre otimista. Aparece em tela de estoque e de vendas. **Um dos
-sites já se declara aproximação num `@remarks`** (`useRelatorioDiario.ts`) — esse é
-desvio consciente, não achado; os outros não se declaram.
+**Forma 5 — o lucro sem a despesa operacional.** `volume × (preçoVenda − custo)`.
+Em 17/09 resta **um** site, e ele se declara: `useRelatorioDiario.ts` diz no JSDoc
+"lucro bruto por litro, sem rateio; a despesa do dia é subtraída no total". Desvio
+consciente, não achado — só vira achado se aparecer outro sem o `@remarks`.
 ```bash
-grep -rnE '(preco_venda|precoVenda|precoDoDia).*-.*(preco_custo|custoMedio|precoCusto)' apps --include='*.ts' --include='*.tsx'
+grep -rnE '(preco_venda|precoVenda|precoDoDia)\s*-\s*(preco_custo|custoMedio|precoCusto|custoLitro)' apps --include='*.ts' --include='*.tsx' | grep -vE 'test\.|spec\.'
 ```
 
-**Onde NÃO procurar.** A soma dos 7 baldes de pagamento (`valor_pix + valor_dinheiro
-+ …`) já foi consolidada em `conferido(meiosFromFechamentoRow(...))`. Os hits que
-restam nesse formato são, na maioria, **um balde só por vez** para alimentar
-gráfico/coluna — isso não é a fórmula de `valor_conferido`, é projeção de campo.
-Só conta como violação quando os baldes são somados **entre si**.
+**Forma em SQL — lucro bruto dentro de RPC.** `get_dashboard_proprietario`
+(`supabase/migrations/20260828_rpc_taxa_cartao_e_despesa_do_mes.sql`) calcula
+`Σ litros × (preco_litro − custo_da_época)` em plpgsql. O golden
+`packages/utils/src/custo-historico.golden.spec.ts` cobre a **reimplementação em TS**
+da mesma conta, não o SQL — a RPC em si não tem teste que a execute. Consumida por:
+```bash
+grep -rn "rpc('get_dashboard_proprietario'" apps --include='*.ts' --include='*.tsx'
+```
 
-Ver [[golden-master-como-conferir]] (nenhuma destas formas tem golden — consolidar
-exige escrever o teste contra as duas implementações ANTES, §7) e
-[[taxa-cartao-deduzida-duas-vezes]].
+**Onde NÃO procurar.** A soma dos baldes de pagamento já é
+`conferido(meiosFromFechamentoRow(...))` — o grep `valor_x + valor_y` dá **zero** em
+17/09. Os `reduce` que restam (`TabelaConciliacaoFrentistas.tsx`, `useFinanceiro.ts`,
+`useDashboardProprietario.ts`) somam **um balde por vez** ou **uma coluna já gravada**
+— projeção de campo, não fórmula. Só conta quando os baldes são somados entre si.
+
+Ver [[residuo-na-fronteira-hook-utils]] (6ª forma), [[taxa-cartao-deduzida-duas-vezes]]
+e [[golden-master-como-conferir]].

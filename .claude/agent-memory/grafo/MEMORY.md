@@ -8,4 +8,6 @@
 - [Despesa da tela de Compras ≠ lucro da Planilha do Mês](despesa-tela-compras-vs-planilha-mes.md) — input "Despesas do Mês" é local/efêmero, não persiste, não afeta useCustoMensal/tabela Despesa
 - [Mapa das implementações de custo](mapa-implementacoes-de-custo.md) — canônica (mês) × ponderada de escrita × leitores do carimbo; 3 modelos de taxa; 3 métodos mortos no aggregator
 - [Grep por caminho perde import relativo](grep-por-caminho-perde-import-relativo.md) — "não tem chamador" exige busca pelo símbolo; o caminho da pasta já produziu um falso "código morto"
+- [Multi-posto: onde vive e onde está cravado](multi-posto-onde-vive-e-onde-esta-cravado.md) — banco e web já têm Posto/posto_id/PostoContext; PWAs cravam POSTO_ID=1; RLS anon não filtra posto; DDL de Bico fora do repo
+- [Superfície Supabase por app](superficie-supabase-por-app.md) — script from/rpc/invoke/realtime/auth; `rg -g *.ts` sem aspas quebra tudo; onde vive cada acoplamento
 - [api-core não lê Compra nem HistoricoTanque](api-core-nao-le-compra-nem-tanque.md) — leitura mensal dessas tabelas vive em widgets do web; api-core só tem Leitura/Bico/Fechamento
