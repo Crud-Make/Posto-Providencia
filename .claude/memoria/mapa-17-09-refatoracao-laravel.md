@@ -52,3 +52,11 @@ push/PR; Root Directory dos 3 projetos Vercel no painel (`frontend`, `frontend/a
 (Laravel em `backend/`, exige ok para o composer). Armadilha vista: `bun add` fora de `frontend/` cria
 package.json na raiz — sempre `cd frontend` antes.
 
+**17/09, madrugada — #96 feita, sem push.** Branch `chore/#96-backend-laravel` sobre a #95: `backend/`
+Laravel 13.32, `composer gates` (Pint, Larastan 6, PHPMD, Deptrac, Pest) verde, Boost instalado,
+`docker compose up api` saudável. **Armadilha:** `artisan serve` descarta env do worker (lista fixa
+`passthroughVariables`); no container usar `php -S`. Decisão 5: uma instalação por posto; banco
+compartilhado "talvez sim" → `posto_id NOT NULL` + escopo global desde a #97. Pendências do dono:
+ok para push/PRs (3 branches empilhadas), `fase-a` + proteção da main, Root Directory na Vercel.
+Próxima: #97 (models do cadastro).
+
