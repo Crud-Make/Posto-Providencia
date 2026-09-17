@@ -1,21 +1,21 @@
 ---
 name: taxa-cartao-deduzida-duas-vezes
-description: A taxa de cartão é despesa do mês (dono confirmou 26/08), mas 3 sites do fechamento diário a deduzem por transação — o modelo do painel contradiz o de packages/utils
+description: A taxa de cartão é despesa do mês (dono confirmou 26/08), mas 3 sites do fechamento diário a deduzem por transação — o modelo do painel contradiz o de frontend/packages/utils
 metadata:
   type: project
 ---
 
 **A taxa de cartão NÃO é dedução por transação.** É mais um item da lista de
 despesas mensais que alimenta `despesaOperacionalPorLitro`. Está escrito no
-cabeçalho de `packages/utils/src/lucro.ts` e o dono confirmou em **26/08/2026**.
+cabeçalho de `frontend/packages/utils/src/lucro.ts` e o dono confirmou em **26/08/2026**.
 
 **Mesmo assim, três sites do painel deduzem `valor × taxa/100` do recebido** e
 chamam o resto de "valor líquido". Onde o mesmo fechamento também entra no rateio
 mensal de despesa, a taxa sai **duas vezes** do lucro.
 Reconferir (conferido 28/08/2026 — 3 hits, 2 arquivos):
 ```bash
-grep -rn 'taxa / 100\|p.taxa) / 100\|taxa / 100)' apps/web/src/components/fechamento-diario/hooks/
-grep -n 'A "taxa de cartão"' packages/utils/src/lucro.ts
+grep -rn 'taxa / 100\|p.taxa) / 100\|taxa / 100)' frontend/apps/web/src/components/fechamento-diario/hooks/
+grep -n 'A "taxa de cartão"' frontend/packages/utils/src/lucro.ts
 ```
 
 **Por que isto não é um bug para consertar direto:** é uma **divergência de modelo

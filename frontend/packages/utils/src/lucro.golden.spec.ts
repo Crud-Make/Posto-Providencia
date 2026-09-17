@@ -51,7 +51,7 @@ interface FixtureLucroCusto {
     };
 }
 const fixture = JSON.parse(
-    readFileSync(new URL('../../../docs/data/fixture_lucro_custo_mes01.json', import.meta.url), 'utf8')
+    readFileSync(new URL('../../../../docs/data/fixture_lucro_custo_mes01.json', import.meta.url), 'utf8')
 ) as FixtureLucroCusto;
 import {
     despesaOperacionalPorLitro,

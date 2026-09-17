@@ -20,7 +20,7 @@ import { Database } from 'bun:sqlite';
 import { despesaOperacionalPorLitro, lucroCombustivel, somarDespesas } from '@posto/utils';
 import { lucroEstimadoDashboard } from './calculos-dashboard-vendas';
 
-const SQLITE = `${import.meta.dir}/../../../../../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 const MESES = [1, 2, 3, 4, 5, 6, 7] as const;

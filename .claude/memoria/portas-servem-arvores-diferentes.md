@@ -26,6 +26,6 @@ Duas armadilhas irmãs, da mesma tarde:
 - **O `cd` do shell persiste entre comandos.** Um `cd` para o repo principal fez
   as checagens seguintes rodarem lá sem eu perceber, e eu quase reportei que
   `supabase/` não era versionado — era, só não estava onde eu estava olhando.
-- **Vite não recarrega mudança em `packages/`** quando ela está fora da raiz do
+- **Vite não recarrega mudança em `frontend/packages/`** quando ela está fora da raiz do
   app. Deu `api.diasEmFalta is not a function` com o type-check limpo. Reinicie
   o servidor em vez de duvidar do código.

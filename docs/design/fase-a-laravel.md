@@ -19,7 +19,7 @@ Issue: #94 (mãe: #60) · Estado: **aprovado** (dono, 17/09/2026) · Data: 17/09
 | Supabase | banco, auth, RLS, realtime, edge | **desligado no cutover (#105)** |
 | Planilha / ETL (`scripts/*.py`) | Management API | `psql` direto no Postgres próprio |
 
-O que **não** muda: as três telas, `packages/utils` (fórmulas, 18 golden), o esquema do banco
+O que **não** muda: as três telas, `frontend/packages/utils` (fórmulas, 18 golden), o esquema do banco
 (`banco/init/01-esquema-base.sql` é o contrato de dados).
 
 ## 2. Subsistemas — monólito modular em `backend/`
@@ -66,8 +66,8 @@ agora do que com Laravel no meio. **Aprovado (A) em 17/09.**
 
 ### DECISÃO 2 — onde `totaisDoDia` roda (#101)
 
-Hoje a consolidação do fechamento do dia (`packages/api-core/src/encerrante.ts:551-655`) roda
-**no cliente**: soma `Leitura.valor_total`, chama `totaisDoDia(sessões)` de `packages/utils` e
+Hoje a consolidação do fechamento do dia (`frontend/packages/api-core/src/encerrante.ts:551-655`) roda
+**no cliente**: soma `Leitura.valor_total`, chama `totaisDoDia(sessões)` de `frontend/packages/utils` e
 grava `total_vendas/total_recebido/diferenca` no `Fechamento`.
 
 | | A. continua no cliente (TS) | B. vai para o servidor (PHP) |

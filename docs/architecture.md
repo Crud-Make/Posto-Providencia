@@ -9,9 +9,9 @@
 
 ```mermaid
 flowchart LR
-    F[Frentista<br/>celular] -->|PWA| PF[apps/pwa-frentista]
-    D[Dono<br/>celular] -->|PWA| PD[apps/pwa-dono]
-    G[Gerente<br/>navegador] -->|painel| W[apps/web]
+    F[Frentista<br/>celular] -->|PWA| PF[frontend/apps/pwa-frentista]
+    D[Dono<br/>celular] -->|PWA| PD[frontend/apps/pwa-dono]
+    G[Gerente<br/>navegador] -->|painel| W[frontend/apps/web]
     PF & PD & W -->|PostgREST + anon key| SB[(Supabase MAY-DAY<br/>Postgres 17.6)]
     W -->|e-mail/senha PKCE| SBA[Supabase Auth]
     PF -->|invoke| EF2[Edge notifica-dono]
@@ -25,20 +25,20 @@ flowchart LR
 ## 2. Estado atual e alvo (nível 2)
 
 **Hoje:** três SPAs falam direto com o Postgres do Supabase; a autorização é RLS (103 policies,
-nenhuma filtra posto); o cálculo de dinheiro roda no cliente (`packages/utils`) e, em três RPCs,
+nenhuma filtra posto); o cálculo de dinheiro roda no cliente (`frontend/packages/utils`) e, em três RPCs,
 dentro do banco.
 
 **Alvo (Issue #60, Fase A):** as três SPAs continuam como estão e passam a falar com uma API
 Laravel 13; o banco é Postgres próprio (esquema em `banco/init/`); autenticação e autorização
-saem da RLS e vão para a aplicação; `packages/utils` permanece a fonte do cálculo.
+saem da RLS e vão para a aplicação; `frontend/packages/utils` permanece a fonte do cálculo.
 
 ```mermaid
 flowchart LR
     subgraph hoje
-        A1[apps/*] --> S1[(Supabase)]
+        A1[frontend/apps/*] --> S1[(Supabase)]
     end
     subgraph alvo
-        A2[apps/* — inalterados] --> API[apps/api<br/>Laravel 13]
+        A2[frontend/apps/* — inalterados] --> API[backend<br/>Laravel 13]
         API --> PG[(Postgres 17<br/>docker-compose)]
         API --> GEM2[Gemini]
         API -->|fila| PUSH[Web Push]
@@ -49,19 +49,19 @@ flowchart LR
 
 | Componente | Responsabilidade | Depende de | Tamanho (17/09) |
 |---|---|---|---|
-| `apps/web` | painel do gerente: 17 rotas, fechamento, leituras, compras, despesas, estoque | `@posto/utils`, `@posto/types`, `@posto/api-core`, supabase-js | 345 arquivos, 43 k linhas |
-| `apps/pwa-frentista` | envio do fechamento do turno, tanques, vendas de loja, presença | `@posto/utils`, `@posto/api-core`, supabase-js | 19 arquivos, 2,8 k |
-| `apps/pwa-dono` | encerrante por foto (OCR), envios do dia, push | `@posto/utils`, `@posto/api-core`, supabase-js | 19 arquivos, 2,5 k |
-| `packages/utils` | domínio puro: `fechamento`, `lucro`, `leitura`, `planilha-mensal`, `troca-preco`… | `@posto/types` | 16 módulos, 18 golden |
-| `packages/api-core` | consolidação do fechamento do dia e acesso ao OCR; recebe o client injetado | utils, types, supabase-js | 4 arquivos, 897 linhas |
-| `packages/types` | tipos compartilhados | — | 7 arquivos |
+| `frontend/apps/web` | painel do gerente: 17 rotas, fechamento, leituras, compras, despesas, estoque | `@posto/utils`, `@posto/types`, `@posto/api-core`, supabase-js | 345 arquivos, 43 k linhas |
+| `frontend/apps/pwa-frentista` | envio do fechamento do turno, tanques, vendas de loja, presença | `@posto/utils`, `@posto/api-core`, supabase-js | 19 arquivos, 2,8 k |
+| `frontend/apps/pwa-dono` | encerrante por foto (OCR), envios do dia, push | `@posto/utils`, `@posto/api-core`, supabase-js | 19 arquivos, 2,5 k |
+| `frontend/packages/utils` | domínio puro: `fechamento`, `lucro`, `leitura`, `planilha-mensal`, `troca-preco`… | `@posto/types` | 16 módulos, 18 golden |
+| `frontend/packages/api-core` | consolidação do fechamento do dia e acesso ao OCR; recebe o client injetado | utils, types, supabase-js | 4 arquivos, 897 linhas |
+| `frontend/packages/types` | tipos compartilhados | — | 7 arquivos |
 | `banco/` | esquema completo (45 tabelas, 22 funções, 103 policies) + compose | Postgres 17 | gerado |
 | `supabase/functions` | `ler-encerrante` (Gemini), `notifica-dono` (Web Push, `service_role`) | Deno | 2 funções |
 | `scripts/` | ETL da planilha (2 estágios), cargas históricas, extração do esquema | Python stdlib, Management API | 11 scripts |
-| `apps/api` | **a criar** — persistência, auth, autorização, OCR, push, agregações | Laravel 13, Postgres | — |
+| `backend` | **a criar** — persistência, auth, autorização, OCR, push, agregações | Laravel 13, Postgres | — |
 
-**Regra de dependência:** `apps/*` importa de `packages/*`; `packages/*` nunca importa de app;
-`apps/*` nunca se importam entre si. `apps/api` não importa nada do lado TS.
+**Regra de dependência:** `frontend/apps/*` importa de `frontend/packages/*`; `frontend/packages/*` nunca importa de app;
+`frontend/apps/*` nunca se importam entre si. `backend` não importa nada do lado TS.
 
 ## 4. Comportamento: fechamento do dia (nível 4)
 
@@ -92,5 +92,5 @@ No alvo, os passos de `DB` e `EF` passam pela API; a decisão de onde `totaisDoD
 Os contratos de entrada e saída da API são definidos no Design Doc de cada módulo em
 `docs/design/`. Hoje o contrato de dados é o esquema em `banco/init/01-esquema-base.sql`
 (colunas, tipos `numeric`, enums `Role` e `StatusFechamento`) e os tipos de
-`packages/types`. Convenção de dinheiro: `numeric(15,2)` no banco, reais-float quantizado por
+`frontend/packages/types`. Convenção de dinheiro: `numeric(15,2)` no banco, reais-float quantizado por
 `emCentavos` na fronteira de toda fórmula em TS.

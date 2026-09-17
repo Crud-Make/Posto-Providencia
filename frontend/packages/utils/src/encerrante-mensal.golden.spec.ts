@@ -28,7 +28,7 @@ import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { encerranteMensal, type LeituraDiariaBico } from './encerrante-mensal';
 
-const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Litros são exatos ao mililitro — tolerância só cobre ruído de float da fonte. */

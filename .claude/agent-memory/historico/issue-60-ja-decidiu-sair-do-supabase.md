@@ -11,7 +11,7 @@ metadata:
 - **Issue #60** (28/08/2026, aberta, zero comentários): *"migrar a API para Laravel com
   banco próprio em VPS (Fase A)"*. Motivo declarado: 63 policies de RLS como furo de
   isolamento, custo previsível, backup próprio — "não é performance". Fase A = Laravel só
-  como persistência/auth/autorização, `packages/utils` intocado; Fase B (cálculo em PHP)
+  como persistência/auth/autorização, `frontend/packages/utils` intocado; Fase B (cálculo em PHP)
   é issue separada e **não pode ser feita junto**. Risco escrito nela: "efeito segundo
   sistema — reescrever o backend antes do primeiro cliente rodando e pagando".
 - **Não está no CHANGELOG nem em commit** — `grep -n '#60\|VPS\|Laravel' CHANGELOG.md`

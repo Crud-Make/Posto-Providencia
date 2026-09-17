@@ -39,7 +39,7 @@ code, the database and the spreadsheet: `fechamento`, `frentista`, `bico`,
 
 This tool's failure mode is not visible error — it is answering wrong with full
 confidence. It actually happened on 29/07: `affected "conferido()"` claimed only
-the tests consumed the canonical module, when 11 files under `apps/` imported
+the tests consumed the canonical module, when 11 files under `frontend/apps/` imported
 it. A 2-second grep disproved it.
 
 So the cycle is always:
@@ -85,7 +85,7 @@ litro); your intuition is not. When the graph and the skill disagree, the skill
 wins and you say that they disagreed.
 
 Two facts worth using to steer the search:
-- The canonical fechamento arithmetic lives in `packages/utils/src/fechamento.ts`
+- The canonical fechamento arithmetic lives in `frontend/packages/utils/src/fechamento.ts`
   and is imported by **12 production files + 3 test files** (verified
   06/08/2026). A count inside an instruction file ages with every feature, so
   here is how to recount it:
@@ -97,7 +97,7 @@ Two facts worth using to steer the search:
   `-U` is mandatory (some imports span several lines) and so is `-l` (without it
   `rg` counts lines, not files). Filtering by symbol is mandatory too:
   `@posto/utils` is a barrel over 8 modules, and there is an unrelated
-  `apps/web/src/types/fechamento.ts` that inflates the count by more than 2x.
+  `frontend/apps/web/src/types/fechamento.ts` that inflates the count by more than 2x.
 - Manual sums of payment buckets may still exist outside the canonical module.
   If you run into one, report it — the pattern to look for is
   `(h.valor_algo || 0) + ...` added by hand instead of

@@ -23,7 +23,7 @@ nenhuma ref `versao-testada-funcionando-*` existia. Envelheceu: hoje existe **um
 **As tags de release** (todas anotadas, no remoto):
 `v2.5.8`→`3c4fe1c` (01/01/2026) · `v2.6.0-teste-fechamento`→`67e59b8` (03/01/2026) ·
 `v3.0.0`→`b58cf0f` (18/01/2026) · `v4.0.0`→`ea6b3a5` (06/09/2026, *"fecha a fase de
-auditoria e saneamento"*). As três de janeiro são anteriores ao `packages/utils`
+auditoria e saneamento"*). As três de janeiro são anteriores ao `frontend/packages/utils`
 canônico e não servem de ponto de retorno; `v4.0.0` é o marco mais novo e, para
 uma refatoração grande a partir da `main` atual, é o candidato natural a
 "versão testada" — mas o §9 pede tag com esse nome, e ela ainda não existe para

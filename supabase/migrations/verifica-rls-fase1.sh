@@ -50,7 +50,7 @@ le_env() { # arquivo chave -> valor
 
 URL="${SUPABASE_URL:-}"
 KEY="${SUPABASE_ANON_KEY:-}"
-for arq in .env .env.local apps/web/.env apps/web/.env.local; do
+for arq in frontend/.env frontend/.env.local frontend/apps/web/.env frontend/apps/web/.env.local; do
   [ -n "$URL" ] || URL=$(le_env "$arq" VITE_SUPABASE_URL)
   [ -n "$KEY" ] || KEY=$(le_env "$arq" VITE_SUPABASE_ANON_KEY)
 done

@@ -21,5 +21,5 @@ de ativos, symlink de memória) — tudo isso foi descartado por ele.
 cocoapods`), Node 24 via fnm, Bun, `gh auth login`. Projeto de RN nasce com **Expo**; Metro pode
 rodar no Arch com Expo Go no celular, o Mac entra só em `expo run:ios` e build de loja. Em 8 GB,
 fechar o Chrome durante build do Xcode. Decisão em aberto: app de RN em repo separado ou
-`apps/mobile` no monorepo do posto (repo separado é o caminho sem atrito). Nenhum projeto de RN
+`frontend/apps/mobile` no monorepo do posto (repo separado é o caminho sem atrito). Nenhum projeto de RN
 existe ainda em `~/Projetos` (conferido 07/09).

@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A toolchain TS mora em frontend/ desde a #95 (17/09/2026); backend/ (Laravel) ganha job próprio na #96.
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       - uses: actions/checkout@v5

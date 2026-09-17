@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-`apps/web/src/services/api/aggregator.service.ts` — **963 linhas em 28/08/2026,
+`frontend/apps/web/src/services/api/aggregator.service.ts` — **963 linhas em 28/08/2026,
 20 commits em toda a vida.**
 
 **Nasceu como sobra, não como projeto.** `4a908c1` (09/01/2026,
@@ -19,7 +19,7 @@ coube virou `legacy.service.ts`. No dia seguinte `548a19c` (10/01/2026,
 > - Updates index exports preserving legacy alias
 
 Ou seja: **o resto foi promovido a padrão de projeto em vez de dissolvido.** O
-alias sobreviveu — `apps/web/src/services/api/index.ts:45` ainda exporta
+alias sobreviveu — `frontend/apps/web/src/services/api/index.ts:45` ainda exporta
 `aggregatorService as legacyService`, e `:117` mantém `legacy: aggregatorService`.
 
 **Nunca houve tentativa abandonada de quebrá-lo.** Não existe branch, PR ou
@@ -40,5 +40,5 @@ fórmula de escrita ponderada vaza para o painel — ver
 **How to apply:** ao propor quebrar o aggregator, saber que não se está
 desfazendo uma decisão de arquitetura — o "Facade" de `548a19c` é etiqueta
 posterior colada num resto de refactor. E que o caminho já validado nesta base é
-**extrair a fórmula para `packages/utils` primeiro**, deixando o arquivo grande
+**extrair a fórmula para `frontend/packages/utils` primeiro**, deixando o arquivo grande
 onde está (ordem que o §2 do CLAUDE.md também exige).

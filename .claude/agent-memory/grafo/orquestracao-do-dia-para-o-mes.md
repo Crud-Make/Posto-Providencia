@@ -14,7 +14,7 @@ diferenca`. Semana e mês **não têm tabela, view nem cache** — são recalcul
 cada abertura de tela, sempre a partir de `Leitura` cru.
 
 **O que mudou desde as memórias anteriores:**
-- `consolidarFechamento` migrou para `packages/api-core/src/encerrante.ts` e é
+- `consolidarFechamento` migrou para `frontend/packages/api-core/src/encerrante.ts` e é
   chamado pelos **dois** PWAs. O "pai que nasce zerado e nunca é atualizado"
   **acabou**: todo filho gravado reconsolida o pai.
 - O filtro por turno saiu do `salvarLeituras` **e** da leitura de `Leitura` no
@@ -25,7 +25,7 @@ cada abertura de tela, sempre a partir de `Leitura` cru.
   Não existem mais duas convenções de sinal vivas.
 
 **Armadilhas que custam caro e não se deduzem lendo o código de relance:**
-- `apps/pwa-dono` grava sempre em `hojeIso()` — **não tem seletor de data**.
+- `frontend/apps/pwa-dono` grava sempre em `hojeIso()` — **não tem seletor de data**.
   Quem precisa de data retroativa usa o painel web ou o PWA do frentista (esse
   tem `<input type="date">`).
 - `salvarLeituras` **apaga o dia inteiro** (`.eq('data').eq('posto_id')`, sem
@@ -44,11 +44,11 @@ cada abertura de tela, sempre a partir de `Leitura` cru.
 # quem escreve o agregado diário
 rg -n "total_vendas|total_recebido" apps packages scripts -g '*.ts' -g '*.tsx' -g '!*.test.*'
 # de quais tabelas cada tela mensal come
-rg -n "\.from\('[A-Za-z]+'\)" apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts
+rg -n "\.from\('[A-Za-z]+'\)" frontend/apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts
 # a RPC do painel do dono soma Leitura, não Fechamento
 rg -n "FROM \"Leitura\"|SUM\(" supabase/migrations/20260802_rpc_custo_historico_security_definer.sql
 # não existe agregado semanal: só agrupamento em memória
-rg -n "semanal" apps/web/src/components/financeiro/hooks/useFluxoCaixa.ts
+rg -n "semanal" frontend/apps/web/src/components/financeiro/hooks/useFluxoCaixa.ts
 ```
 
 Relacionado: [[janela-7-dias-bloqueia-lancamento-retroativo]], [[preco-por-litro-duas-fontes]].

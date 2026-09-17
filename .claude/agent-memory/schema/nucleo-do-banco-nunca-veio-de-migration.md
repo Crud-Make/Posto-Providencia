@@ -51,7 +51,7 @@ número:
 
 ```bash
 cd /home/thygas/Projetos/trabalho/Posto-Providencia
-comm -23 <(grep -oE '^      [A-Za-z_]+: \{$' apps/web/src/types/database/generated.ts | tr -d ' {:' | sort -u) \
+comm -23 <(grep -oE '^      [A-Za-z_]+: \{$' frontend/apps/web/src/types/database/generated.ts | tr -d ' {:' | sort -u) \
          <(grep -rhoiE 'CREATE TABLE (IF NOT EXISTS )?(public\.)?"?[A-Za-z_]+"?' supabase/migrations \
             | sed -E 's/CREATE TABLE (IF NOT EXISTS )?(public\.)?"?//I; s/"//' | sort -u)
 ```

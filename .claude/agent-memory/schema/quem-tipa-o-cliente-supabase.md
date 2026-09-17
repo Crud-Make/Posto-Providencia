@@ -1,6 +1,6 @@
 ---
 name: quem-tipa-o-cliente-supabase
-description: Quatro definições de esquema convivem; o cliente Supabase do apps/web é tipado pelo schema ESCRITO À MÃO, não pelo generated.ts
+description: Quatro definições de esquema convivem; o cliente Supabase do frontend/apps/web é tipado pelo schema ESCRITO À MÃO, não pelo generated.ts
 metadata:
   type: project
 ---
@@ -10,12 +10,12 @@ que vale. Conferido em **12/08/2026**.
 
 | Arquivo | Origem | Quem usa |
 |---|---|---|
-| `apps/web/src/types/database/generated.ts` | Supabase CLI | **ninguém tipa o client com ele** |
-| `apps/web/src/types/database/schema.ts` + `tables/*.ts` | **mão** | **é o `Database` do `createClient`** |
-| `packages/types/src/database.types.ts` | Supabase CLI | **zero importadores** (órfão) |
-| `packages/types/src/database/tables/operacoes.ts` | mão | só `Frentista`, `Produto`, `Escala`, `NotaFrentista` |
+| `frontend/apps/web/src/types/database/generated.ts` | Supabase CLI | **ninguém tipa o client com ele** |
+| `frontend/apps/web/src/types/database/schema.ts` + `tables/*.ts` | **mão** | **é o `Database` do `createClient`** |
+| `frontend/packages/types/src/database.types.ts` | Supabase CLI | **zero importadores** (órfão) |
+| `frontend/packages/types/src/database/tables/operacoes.ts` | mão | só `Frentista`, `Produto`, `Escala`, `NotaFrentista` |
 
-**Why:** `apps/web/src/services/supabase.ts:2` faz
+**Why:** `frontend/apps/web/src/services/supabase.ts:2` faz
 `import type { Database } from '../types/database'` — que resolve para o
 `schema.ts` manual. O `generated.ts` é o único quase em dia com o catálogo e
 **não tipa nada**. Corrigir drift regenerando o `generated.ts` não conserta
@@ -25,23 +25,23 @@ consulta nenhuma.
 no manual é o que quebra em runtime; drift no `generated.ts` é cosmético
 enquanto ele não for plugado no `createClient`.
 
-O `apps/pwa-frentista` chama `createClient` **sem genérico**
-(`apps/pwa-frentista/src/lib/supabase.ts:6`) — sem tipagem alguma. **Idem o
-`apps/pwa-dono`** (`apps/pwa-dono/src/lib/supabase.ts:6`), reconferido em
+O `frontend/apps/pwa-frentista` chama `createClient` **sem genérico**
+(`frontend/apps/pwa-frentista/src/lib/supabase.ts:6`) — sem tipagem alguma. **Idem o
+`frontend/apps/pwa-dono`** (`frontend/apps/pwa-dono/src/lib/supabase.ts:6`), reconferido em
 **17/09/2026**. Os dois PWAs somam nove tabelas em `.from()` sem tipo — entre
 elas `InscricaoPush` e `PresencaFrentista`, que **nem o `generated.ts` conhece**.
 
-Também em 17/09/2026: o `generated.ts` do `apps/web` foi gerado pela última vez
-em **02/08/2026** (commit `09eb717`) e o `database.types.ts` do `packages/types`
+Também em 17/09/2026: o `generated.ts` do `frontend/apps/web` foi gerado pela última vez
+em **02/08/2026** (commit `09eb717`) e o `database.types.ts` do `frontend/packages/types`
 em **25/01/2026** (`c38351c`). Nenhum dos dois reflete as migrations de 13/08 em
 diante. O schema **manual** (`schema.ts`) é o único que já tem `PresencaFrentista`
 — e é o único que falta `AuditoriaDados`. Comando que mede isso, em vez de lista:
 
 ```bash
-git log -1 --format='%h %ad' --date=short -- apps/web/src/types/database/generated.ts
-git log -1 --format='%h %ad' --date=short -- packages/types/src/database.types.ts
-diff <(sed -E 's/^[[:space:]]+//' packages/types/src/database.types.ts) \
-     <(sed -E 's/^[[:space:]]+//' apps/web/src/types/database/generated.ts) | grep -cE '^[<>]'
+git log -1 --format='%h %ad' --date=short -- frontend/apps/web/src/types/database/generated.ts
+git log -1 --format='%h %ad' --date=short -- frontend/packages/types/src/database.types.ts
+diff <(sed -E 's/^[[:space:]]+//' frontend/packages/types/src/database.types.ts) \
+     <(sed -E 's/^[[:space:]]+//' frontend/apps/web/src/types/database/generated.ts) | grep -cE '^[<>]'
 ```
 (o `sed` é obrigatório: um arquivo indenta com 2 espaços, o outro com 4, e o
 `diff -u` cru marca as 4.128 linhas como diferentes.)

@@ -28,6 +28,6 @@ Preço por litro no sistema tem **duas fontes** (confirmado 14/08/2026):
 
 **How to apply / reconferir:**
 ```bash
-rg -n "preco_venda" apps/web/src --type ts -g '!*.test.*' | rg -v "types/|generated"
+rg -n "preco_venda" frontend/apps/web/src --type ts -g '!*.test.*' | rg -v "types/|generated"
 rg -n "preco_litro" apps packages supabase -g '*.ts' -g '*.sql'
 ```

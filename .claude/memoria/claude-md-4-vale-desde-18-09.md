@@ -15,7 +15,7 @@ gates PHPMD/PHPStan/Deptrac/Pest 85 %, workflows ultracode). Eu apontei o que el
 valer"**. Ficou assim:
 
 - `CLAUDE.md` = versão 4.0. Ganhou um **§0 "Ponte"** que diz o que existe no repo hoje, que os
-  §5–§7 (ferramental PHP) só entram em vigor quando `apps/api` existir, e que os invariantes de
+  §5–§7 (ferramental PHP) só entram em vigor quando `backend` existir, e que os invariantes de
   dinheiro (golden master, `docs/data` gitignored, nunca `bun test` puro, skills de domínio) e de
   git (nunca main, sem force push, CHANGELOG, sem push sem ok) continuam.
 - O 3.3 inteiro está em `.claude/docs/claude-md-3.3-arquivado.md`.

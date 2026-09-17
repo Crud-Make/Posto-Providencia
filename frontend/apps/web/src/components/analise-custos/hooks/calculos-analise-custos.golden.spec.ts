@@ -29,7 +29,7 @@ import {
 import { precoParaMargem } from '@posto/utils';
 import { calculatePrice, calculateProfit } from './calculos-analise-custos';
 
-const SQLITE = `${import.meta.dir}/../../../../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 const PRODUTO_DO_BICO: Readonly<Record<string, string>> = {

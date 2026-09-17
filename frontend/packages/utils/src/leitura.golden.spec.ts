@@ -19,7 +19,7 @@ import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { litrosVendidos, valorDaLeitura, motivoImplausivel } from './leitura';
 
-const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Litros são exatos ao mililitro; a folga cobre só ruído de float da fonte. */

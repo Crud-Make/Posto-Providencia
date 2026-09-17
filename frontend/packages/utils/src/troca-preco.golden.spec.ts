@@ -29,7 +29,7 @@ import {
     type TrocaDePreco,
 } from './troca-preco';
 
-const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Mesmo mapeamento bico→combustível do lucro.golden.spec.ts. */

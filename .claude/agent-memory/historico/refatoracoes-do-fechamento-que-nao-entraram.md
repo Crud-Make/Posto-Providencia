@@ -49,7 +49,7 @@ gh pr diff 6   > /tmp/pr6-refactor-fechamento.patch
 gh pr diff 29  > /tmp/pr29-sprints-4-5.patch
 ```
 Vale como leitura de "o que já se tentou"; os caminhos são pré-monorepo
-(`components/…`, não `apps/web/src/…`).
+(`components/…`, não `frontend/apps/web/src/…`).
 
 **How to apply:** ao propor extrair componentes/hooks do fechamento, dizer que
 isso já foi tentado (#6) e por que morreu — PR gigante de bot, aberto 7 meses,

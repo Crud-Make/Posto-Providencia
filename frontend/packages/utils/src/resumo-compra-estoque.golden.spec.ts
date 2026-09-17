@@ -26,7 +26,7 @@ import { resumoCompra, type EntradaCompraProduto } from './resumo-compra';
 import { resumoEstoque, type EntradaEstoqueProduto } from './resumo-estoque';
 import { despesaOperacionalPorLitro } from './lucro';
 
-const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Litros são exatos ao mililitro; a tolerância cobre só ruído da fonte. */

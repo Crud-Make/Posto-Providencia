@@ -28,7 +28,7 @@ Fatos que não estão no repo:
 **Why:** o dono é quem decide o rumo, mas as decisões (#60 × #93, fórmula em TS ou PHP) ainda estavam abertas ao fim de 17/09.
 **How to apply:** antes de qualquer fatia de Laravel, conferir se o token foi renovado, se o dump
 entrou no repo, e qual CLAUDE.md está valendo. Caminho recomendado: strangler, Postgres em Docker
-primeiro, Edge Functions + RPCs como primeira fatia, `apps/web` por último. Ver [[segundo-posto-cliente-novo]].
+primeiro, Edge Functions + RPCs como primeira fatia, `frontend/apps/web` por último. Ver [[segundo-posto-cliente-novo]].
 
 **Decisão do dono em 17/09:** foco só neste repo; toda referência ao projeto Laravel anterior foi apagada do repo e da memória a pedido dele. Não reintroduzir.
 
@@ -36,7 +36,7 @@ primeiro, Edge Functions + RPCs como primeira fatia, `apps/web` por último. Ver
 = Laravel no backend, telas como estão, banco em Docker. Criados e validados: `banco/init/*.sql`
 (esquema completo, 45 tabelas), `banco/dados/cadastros.sql` (gitignored), `docker-compose.yml`
 (Postgres 17 em :5433), `banco/README.md`, CHANGELOG. Container `posto-postgres` ficou no ar.
-Próxima fatia proposta: `apps/api` Laravel no mesmo compose, começando pelas 2 Edge Functions e 3 RPCs.
+Próxima fatia proposta: `backend` Laravel no mesmo compose, começando pelas 2 Edge Functions e 3 RPCs.
 Pendente do dono: o `CLAUDE.md` sobrescrito; PHP 8.5 e Composer 2.10 já estão na máquina.
 
 **17/09, fim do dia:** milestone "Fase A — backend Laravel" e issues #94–#106 abertas (mãe: #60).

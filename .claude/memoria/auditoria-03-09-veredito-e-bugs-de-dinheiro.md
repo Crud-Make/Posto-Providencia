@@ -20,7 +20,7 @@ consolidado. Elias ciente; a planilha de 30/08 ainda tinha agosto preenchido em 
   diferença é preço fixo 6,38 × preço do dia, e lista de despesa app × planilha (decisão pendente).
 - `/dashboard`, `/analise-custos`, `/vendas/dashboard` liam `Estoque.custo_medio` congelado em
   janeiro (Diesel a 5,38 com compra de agosto a 6,50). Agora compra do mês via
-  `apps/web/src/services/custo-do-mes.ts`; `compra.service` parou de carimbar. `/analise-custos`
+  `frontend/apps/web/src/services/custo-do-mes.ts`; `compra.service` parou de carimbar. `/analise-custos`
   estava **quebrada** (`.bind()` sem tipo → envelope no lugar do array) e entrou no menu, só simulador.
 
 **Corrigido, PR #81 aberto (`fix/fechamento-nao-apurado-e-nulo`) — bug 3b:**

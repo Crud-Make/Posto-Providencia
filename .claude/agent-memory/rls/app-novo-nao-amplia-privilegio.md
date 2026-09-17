@@ -11,9 +11,9 @@ O que o `anon` pode fazer já está decidido por grants + policies; um app é s�
 que usa o que já estava liberado. A resposta correta quase sempre é: *o privilégio é idêntico,
 o que muda é a distribuição da chave e a facilidade operacional*.
 
-**Why:** apurado em 16/08/2026 com o `apps/pwa-dono`. Ele parecia introduzir `DELETE`+`INSERT`
+**Why:** apurado em 16/08/2026 com o `frontend/apps/pwa-dono`. Ele parecia introduzir `DELETE`+`INSERT`
 em `Leitura` e `UPDATE` em `Fechamento` como anônimo. Não introduzia: as seis operações moram
-em `packages/api-core/src/encerrante.ts`, **compartilhado**, e o `apps/pwa-frentista` já
+em `frontend/packages/api-core/src/encerrante.ts`, **compartilhado**, e o `frontend/apps/pwa-frentista` já
 importava o mesmo módulo — além de o painel em modo visitante já fazer tudo isso. Contar telas
 teria produzido um "aumenta a exposição" falso, e teria escondido que a exposição real já
 estava no ar havia semanas.
@@ -21,7 +21,7 @@ estava no ar havia semanas.
 **How to apply:**
 - Para saber se o app adiciona algo, comparar **conjunto de operações do papel `anon`** antes e
   depois — não a lista de telas do app novo.
-- `packages/api-core` é compartilhado entre os apps: um método exportado lá pode estar **sem uso
+- `frontend/packages/api-core` é compartilhado entre os apps: um método exportado lá pode estar **sem uso
   de UI** num app e em uso no outro. Confirmar com grep em `.tsx`, não em `.ts` de serviço.
   Em 16/08/2026 o `pwa-frentista` exportava `salvarLeituras`/`lerEncerrante` sem nenhuma tela
   chamando — export morto, não superfície ativa.

@@ -1,11 +1,11 @@
 ---
 name: implementar-feature-posto-providencia
-description: Como implementar feature nova no monorepo do Posto Providência — onde o código nasce (slice FSD), o que já está instalado e o que NÃO está, qual teste cobre, e quando parar antes de escrever a primeira linha. Use ao adicionar tela, hook, componente, service, endpoint, tabela ou módulo novo em apps/web, apps/pwa-frentista ou packages/*, e sempre que a pergunta for "onde eu coloco isso?", "como começo essa feature?", "qual padrão sigo aqui?". NÃO use monólito modular genérico (domain/application/infrastructure/interfaces) — não é o padrão daqui. Antes de tocar dinheiro, pare e vá para fechamento-posto-providencia.
+description: Como implementar feature nova no monorepo do Posto Providência — onde o código nasce (slice FSD), o que já está instalado e o que NÃO está, qual teste cobre, e quando parar antes de escrever a primeira linha. Use ao adicionar tela, hook, componente, service, endpoint, tabela ou módulo novo em frontend/apps/web, frontend/apps/pwa-frentista ou frontend/packages/*, e sempre que a pergunta for "onde eu coloco isso?", "como começo essa feature?", "qual padrão sigo aqui?". NÃO use monólito modular genérico (domain/application/infrastructure/interfaces) — não é o padrão daqui. Antes de tocar dinheiro, pare e vá para fechamento-posto-providencia.
 ---
 
 # Implementar Feature — Posto Providência
 
-Contexto: dev único, monorepo Bun (`apps/web`, `apps/pwa-frentista`, `packages/*`), Supabase.
+Contexto: dev único, monorepo Bun (`frontend/apps/web`, `frontend/apps/pwa-frentista`, `frontend/packages/*`), Supabase.
 Otimize para *leverage* — mudança pequena com impacto real —, não para camadas de arquitetura de
 time grande. O `CLAUDE.md` manda no processo; esta skill diz **onde o código novo nasce e o que o
 segura**.
@@ -20,12 +20,12 @@ conferido no disco em **16/08/2026** — se divergir, reconfira antes de tratar 
 
 | Item | Padrão-alvo | Estado real (16/08/2026) | O que fazer hoje |
 |---|---|---|---|
-| **Feature-Sliced Design** | `app → pages → widgets → features → entities → shared` | Aliases `@app/ @pages/ @widgets/ @features/ @entities/ @shared/` existem no `tsconfig.json` da raiz, mas **só `apps/web/src/shared/` existe**. O resto do web é `components/`, `services/`, `contexts/`, `layouts/`, `utils/` | Código **novo** nasce em FSD — criar a pasta pela primeira vez é esperado. Mover código velho em massa é **proibido** (§2) enquanto houver validação de dado real |
+| **Feature-Sliced Design** | `app → pages → widgets → features → entities → shared` | Aliases `@app/ @pages/ @widgets/ @features/ @entities/ @shared/` existem no `tsconfig.json` da raiz, mas **só `frontend/apps/web/src/shared/` existe**. O resto do web é `components/`, `services/`, `contexts/`, `layouts/`, `utils/` | Código **novo** nasce em FSD — criar a pasta pela primeira vez é esperado. Mover código velho em massa é **proibido** (§2) enquanto houver validação de dado real |
 | **React Compiler** | Sem `useMemo`/`useCallback` manual | **NÃO instalado.** `vite.config.ts` da raiz é `plugins: [react()]`, sem `babel-plugin-react-compiler` | `useMemo`/`useCallback` manuais **continuam válidos e necessários**. Não remova memoização existente |
 | **TanStack Query v5** | Todo estado de servidor | **NÃO instalado.** Ausente do `package.json` | Fetch novo segue o padrão do arquivo vizinho (`useState` + `useEffect` + service). Adotar TanStack é **instalar dependência** → §0.2, pergunte ao dono primeiro |
-| **`strict` / `verbatimModuleSyntax`** | Ligados em tudo | Ligados em `packages/*` e `apps/pwa-frentista`. **Desligados em `apps/web`** (herda o `tsconfig.json` da raiz, que não tem `strict`) | Em `packages/*` e no PWA o compilador te protege. Em `apps/web` **não conte com ele** — `bun run type-check` passa em coisa que quebraria sob strict |
+| **`strict` / `verbatimModuleSyntax`** | Ligados em tudo | Ligados em `frontend/packages/*` e `frontend/apps/pwa-frentista`. **Desligados em `frontend/apps/web`** (herda o `tsconfig.json` da raiz, que não tem `strict`) | Em `frontend/packages/*` e no PWA o compilador te protege. Em `frontend/apps/web` **não conte com ele** — `bun run type-check` passa em coisa que quebraria sob strict |
 | **`type-fest` / `MergeDeep`** | Corrigir Views que o Supabase infere nulas | **NÃO instalado** | Não escreva `MergeDeep` — não compila. Se precisar, é decisão + instalação explícita |
-| **Tipos do banco** | Gerados pela Supabase CLI | O gerado existe em dois lugares (`packages/types/src/database.types.ts`, `apps/web/src/types/database/generated.ts`) e **nenhum dos dois tipa o client**. Quem tipa é `apps/web/src/types/database/schema.ts` + `tables/*`, **escrito à mão** | Tabela nova → a mão, em `types/database/tables/<área>.ts`, e registrada no `schema.ts`. Use o gerado para **conferir drift**, não como autoridade — trocar a autoridade é decisão à parte, nunca efeito colateral de feature |
+| **Tipos do banco** | Gerados pela Supabase CLI | O gerado existe em dois lugares (`frontend/packages/types/src/database.types.ts`, `frontend/apps/web/src/types/database/generated.ts`) e **nenhum dos dois tipa o client**. Quem tipa é `frontend/apps/web/src/types/database/schema.ts` + `tables/*`, **escrito à mão** | Tabela nova → a mão, em `types/database/tables/<área>.ts`, e registrada no `schema.ts`. Use o gerado para **conferir drift**, não como autoridade — trocar a autoridade é decisão à parte, nunca efeito colateral de feature |
 
 Regra geral desta seção: **se a tabela diz "NÃO instalado", a skill não te autoriza a instalar.**
 
@@ -53,20 +53,20 @@ Decida pelo escopo real, não pelo maior possível:
 - Composição de várias features numa área de tela → `widgets/<nome>/`
 - Modelo/regra de negócio reusada em mais de um lugar → `entities/<nome>/`
 - Utilitário sem estado e sem regra de negócio → `shared/`
-- **Cálculo de dinheiro → `packages/utils/`, nunca no slice** (§1 do CLAUDE.md, sem exceção)
+- **Cálculo de dinheiro → `frontend/packages/utils/`, nunca no slice** (§1 do CLAUDE.md, sem exceção)
 
 Cada slice expõe API pública por `index.ts`; import profundo em slice alheio é violação. Import
 lateral entre fatias da mesma camada também — suba para `widgets`/`pages` para compor.
 
 Não crie `entities/` para algo usado uma vez. Comece em `features/` e suba de camada quando um
-**segundo** lugar precisar. `apps/web` e `apps/pwa-frentista` nunca se importam; o que os dois
-usam mora em `packages/`.
+**segundo** lugar precisar. `frontend/apps/web` e `frontend/apps/pwa-frentista` nunca se importam; o que os dois
+usam mora em `frontend/packages/`.
 
 ### 3.2 Tipos antes da implementação
 Contrato primeiro: `interface`/`type`, `readonly` no que não muda, sem `any`, sem `enum` do TS
 (use `as const` + union). Dinheiro em **centavos inteiros**.
 
-Tabela nova ou coluna nova: escreva o tipo à mão em `apps/web/src/types/database/tables/` e
+Tabela nova ou coluna nova: escreva o tipo à mão em `frontend/apps/web/src/types/database/tables/` e
 registre no `schema.ts` — é ele que tipa o client (ver §1). Para saber se o que você escreveu bate
 com o banco vivo, use o agente `schema`, não o olho.
 
@@ -94,7 +94,7 @@ entre chaves: `ref={(el) => { ref.current = el }}`, senão o React 19 lê o reto
 limpeza.
 
 Componente que calcula dinheiro está errado por definição: o cálculo vem pronto de
-`packages/utils`.
+`frontend/packages/utils`.
 
 ### 3.6 Teste — qual runner, e o comando exato
 Os dois runners coexistem e **não se misturam**:
@@ -102,7 +102,7 @@ Os dois runners coexistem e **não se misturam**:
 - Unitário/componente → **Vitest**, arquivo ao lado do código (`fechamento.test.ts`).
   Comando: `bun run test`
 - Golden master → **`bun:test` + `bun:sqlite`**, e só em
-  `packages/utils/src/*.golden.spec.ts` — é esse glob que o script roda.
+  `frontend/packages/utils/src/*.golden.spec.ts` — é esse glob que o script roda.
   Comando: `bun run test:golden`
 
 **Nunca `bun test` puro** (§7): ele varre o repo e tenta executar os arquivos de Vitest, onde `vi`
@@ -114,7 +114,7 @@ Reconte antes de chamar de regressão.
 
 ### 3.7 Antes de commitar
 - [ ] Slice na camada certa, sem import profundo nem lateral
-- [ ] Cálculo de dinheiro em `packages/utils`, em centavos, fora de componente
+- [ ] Cálculo de dinheiro em `frontend/packages/utils`, em centavos, fora de componente
 - [ ] Nenhum `snake_case` de banco além da fronteira do mapper
 - [ ] Sem `any`, sem `enum` do TS, sem `../../../`
 - [ ] RLS escrita, versionada e conferida pelo agente `rls` (se tabela nova/alterada)

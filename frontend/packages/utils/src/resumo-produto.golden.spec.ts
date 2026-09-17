@@ -32,7 +32,7 @@ import { Database } from 'bun:sqlite';
 import { resumoPorProduto, type EntradaBicoMes } from './resumo-produto';
 import { despesaOperacionalPorLitro } from './lucro';
 
-const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Bate ao centavo; a tolerância só cobre o arredondamento da fonte. */

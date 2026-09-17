@@ -27,4 +27,4 @@ ao `anon` por default de schema — a próxima view criada recria o buraco em si
 `pg_relation_is_updatable` e grant ao `anon` (consultas em [[consultas-de-enumeracao]]).
 Uma tabela pode estar corretamente fechada e mesmo assim ser gravável por fora, via view.
 Antes de recomendar `DROP VIEW`, confira se o app usa: em 12/08/2026 as duas só apareciam
-em `apps/web/src/types/database/generated.ts` (tipo gerado), nenhuma consulta real.
+em `frontend/apps/web/src/types/database/generated.ts` (tipo gerado), nenhuma consulta real.

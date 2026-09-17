@@ -1,5 +1,5 @@
 # Memória — Posto Providência
-- [🔴 CLAUDE.md 4.0 vale desde 18/09](claude-md-4-vale-desde-18-09.md) — regras da refatoração Laravel (spec-driven, gates PHP quando apps/api existir); §0 Ponte guarda golden/docs-data/git; 3.3 arquivado; não propor reverter
+- [🔴 CLAUDE.md 4.0 vale desde 18/09](claude-md-4-vale-desde-18-09.md) — regras da refatoração Laravel (spec-driven, gates PHP quando backend existir); §0 Ponte guarda golden/docs-data/git; 3.3 arquivado; não propor reverter
 - [📍 17/09 — mapa para refatoração Laravel/Docker](mapa-17-09-refatoracao-laravel.md) — consolidado em .claude/docs/mapa-do-sistema-17-09-2026.md; #60 × #93 colidem; token MCP vencido; CLAUDE.md sobrescrito por template genérico
 - [🔴 Contexto de vida: entregador, quer sair](situacao-entregador-quer-sair.md) — 07/09: prioridade é o que traz dinheiro pelo código (Elias, 2º posto, candidatura); ele já é programador, falta cobrar e aplicar
 - [Comprou Mac M1 2020](mac-m1-comprado.md) — 07/09: segunda máquina, destrava iOS pro app da barbearia; no Mac não vale pacman/sudo -A, é Homebrew
@@ -30,7 +30,7 @@
 
 - [📍 COMECE AQUI — validação final, onde parei](validacao-final-onde-parei.md) — 16/08 fim: `test/validacao-final`, 30 commits, 300 vitest + 3204 golden; banco ZERADO com só as leituras de abertura de 31/12 e 16/08; a fila do que fazer está lá, começando por carregar janeiro
 - [Salvar travado pelas linhas semeadas](salvar-travado-linhas-semeadas.md) — corrigido E validado 19/08; a branch também ganhou o "salvou, avança"; falta PR/merge; atenção: replay sem aba Financeiro cria 0 Recebimento e zera as taxas do lucro
-- [App do dono nasceu](app-do-dono-nasceu.md) — terceiro app: `apps/pwa-dono`, o encerrante por foto; a aba saiu do PWA do frentista; ainda SEM seletor de data
+- [App do dono nasceu](app-do-dono-nasceu.md) — terceiro app: `frontend/apps/pwa-dono`, o encerrante por foto; a aba saiu do PWA do frentista; ainda SEM seletor de data
 - [Encerrante não tem turno](encerrante-nao-tem-turno.md) — `Leitura` é por dia e por bico; filtrar por `turno_id` já produziu 3 bugs de uma vez
 - [Portas servem árvores diferentes](portas-servem-arvores-diferentes.md) — 3015/3016/3017 podem ser worktrees distintas; confira o `cwd` do pid antes de concluir
 

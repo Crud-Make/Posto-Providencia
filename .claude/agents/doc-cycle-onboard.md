@@ -18,8 +18,8 @@ thread principal aplica.
 - Mapa vivo: `docs/architecture.md` (5 níveis de zoom do `CLAUDE.md` §2: contexto, subsistemas,
   componentes, comportamento, contratos). Design Docs: `docs/design/<slug>.md`.
 - Levantamento completo e datado: `.claude/docs/mapa-do-sistema-17-09-2026.md`.
-- Regras de dependência: `apps/*` importa de `packages/*`; `packages/*` nunca importa de app;
-  `apps/*` nunca se importam entre si; `apps/api` (Laravel) não importa nada do lado TS.
+- Regras de dependência: `frontend/apps/*` importa de `frontend/packages/*`; `frontend/packages/*` nunca importa de app;
+  `frontend/apps/*` nunca se importam entre si; `backend` (Laravel) não importa nada do lado TS.
 - `docs/data/` é dado real, gitignored: **nunca** proponha escrever documento lá.
 
 ## O ciclo
@@ -32,7 +32,7 @@ thread principal aplica.
    ou chamada assíncrona (4)? um contrato de entrada/saída, DTO, Form Request, coluna (5)?
 3. **Confirme no arquivo.** Grafo e diff localizam; `grep`/`Read` confirmam. Nada entra no patch
    sem `arquivo:linha`.
-4. **Cheque a regra de dependência.** Import lateral entre apps, `packages/*` importando app,
+4. **Cheque a regra de dependência.** Import lateral entre apps, `frontend/packages/*` importando app,
    ciclo entre módulos do Laravel: se o diff introduz, o patch **rejeita** com o motivo e o
    `arquivo:linha` (`CLAUDE.md` §3, regra de aceite).
 5. **Escreva o patch.** Só o que o diff muda: um diagrama Mermaid alterado, uma linha da tabela

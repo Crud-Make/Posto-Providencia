@@ -17,7 +17,7 @@ infechável. RLS não tinha culpa (janelas alargadas para `>= 2025-12-31`).
 Branch `fix/fechamento-linhas-vazias`, **validada em uso real pelo dono em 19/08**:
 - `85a4478` — linha sem lançamento = "não trabalhou hoje": não bloqueia, não vira registro.
   Critério puro `sessaoSemMovimento`/`sessaoBloqueiaFechamento` em
-  `apps/web/src/utils/fechamentoMeios.ts`.
+  `frontend/apps/web/src/utils/fechamentoMeios.ts`.
 - `ecd3575` — pedido do dono na sequência: salvou, a tela avança para o dia seguinte e as
   iniciais herdam as finais (semeadura já existia no `useLeituras`; o avanço usa
   `somarDias`/`deIsoLocal` de `@posto/utils/data-local`). Se o dia salvo é hoje, não avança.

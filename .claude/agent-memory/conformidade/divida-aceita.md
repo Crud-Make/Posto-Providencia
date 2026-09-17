@@ -9,11 +9,11 @@ Estas violações são **estado conhecido e aceito**. Relatá-las como achado no
 a atenção do dono e enterra o que é acionável. Citar o número, dizer que é aceito,
 seguir adiante.
 
-**Organização por tipo técnico em `apps/web/src`** (`components/`, `services/`,
+**Organização por tipo técnico em `frontend/apps/web/src`** (`components/`, `services/`,
 `utils/` em vez das camadas FSD). Está escrito no §2 do CLAUDE.md como estado
 conhecido. A reorganização em massa de pasta é **proibida** enquanto houver validação
 de dado real em curso — destrói `git blame` onde a auditoria precisa dele. Ordem
-correta: consolidar lógica em `packages/utils` primeiro, mover pastas depois.
+correta: consolidar lógica em `frontend/packages/utils` primeiro, mover pastas depois.
 **Nunca propor a mudança em massa de pasta.**
 
 **kebab-case (§8) nos nomes de arquivo.** Mais da metade dos arquivos usa
@@ -29,7 +29,7 @@ find apps packages -type d | grep -vE 'node_modules|/dist/|graphify-out' | grep 
 ```
 
 **Import relativo profundo (§8).** É consequência do alias `@/` não estar wired no
-`apps/web` (ver [[falsos-positivos-varredura]]), não de descuido por arquivo. Tratar
+`frontend/apps/web` (ver [[falsos-positivos-varredura]]), não de descuido por arquivo. Tratar
 como **um** item de dívida com uma causa única, nunca como N achados — listar cada
 ocorrência afoga o relatório.
 

@@ -35,7 +35,7 @@ import {
 import type { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
 
-const SQLITE = `${import.meta.dir}/../../../../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 const MESES = [1, 2, 3, 4, 5, 6, 7] as const;

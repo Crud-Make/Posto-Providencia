@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 🗂️ Raiz organizada: `frontend/` e `backend/` (#95)
+
+- `apps/`, `packages/` e toda a toolchain TS (`package.json`, `bun.lock`, `bunfig.toml`, `vite.config.ts`,
+  `vitest.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vercel.json`, `.env*`) foram para
+  `frontend/` num commit só de movimento (504 renames 100 %; `git blame` e `log --follow` intactos).
+  `scripts/reconsolidar-dia.ts` foi junto porque resolve `@posto/*` pelo `node_modules` do workspace.
+  Na raiz ficam `banco/`, `docs/`, `scripts/` (Python e deploy), `supabase/`, `docker-compose.yml`.
+  `backend/` (Laravel) nasce na #96. Tag de retorno: `versao-testada-funcionando-pre-raiz`.
+- Ajustes que o inventário do agente `grafo` apontou: os **18 golden masters** sobem um `../` a mais
+  até `docs/data/` (sem isso estourariam em silêncio); `checklist-commit.py` ancorava `^packages/`
+  e deixaria de ver fórmula; CI ganha `working-directory: frontend`; `deploy-vercel.sh` e
+  `verifica-rls-fase1.sh` com os caminhos novos; docs, skills, agentes e memórias reescritos
+  (`apps/` → `frontend/apps/`, `packages/` → `frontend/packages/`, `apps/api` → `backend/`).
+- Apagados por mortos: `types.ts` da raiz (ninguém importava; cópia usada é
+  `packages/types/src/ui/legacy-types.ts`) e `turbo.json` (turbo nunca foi instalado).
+- **Pendente fora do repo:** Root Directory dos 3 projetos Vercel no painel: `.` → `frontend`,
+  `apps/pwa-frentista` → `frontend/apps/pwa-frentista`, `apps/pwa-dono` → `frontend/apps/pwa-dono`.
+
 ### 🗂️ Milestone "Fase A — backend Laravel": 13 issues abertas (#94–#106)
 
 - #60 virou a issue-mãe com o checklist; #93 entrou no milestone. Ordem: #94 Design Doc →

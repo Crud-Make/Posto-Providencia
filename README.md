@@ -13,17 +13,17 @@ Sistema de operação e gestão de caixa para o Posto Providência. Monorepo com
 ## 🏗️ Estrutura do monorepo
 
 ```
-apps/web              Painel do gerente/dono (React 19 + Vite)
-apps/pwa-frentista    PWA onde o frentista envia o fechamento de caixa e a régua dos tanques
-apps/pwa-dono         PWA do dono: encerrante dos bicos por foto (OCR) e avisos de fechamento
-packages/types        Tipos compartilhados (incluindo os gerados pelo Supabase)
-packages/utils        Lógica de domínio pura e compartilhada (fechamento, lucro, custo, estoque)
-packages/api-core     Cliente Supabase e acesso a dados desacoplado (consolidação do dia)
+frontend/apps/web              Painel do gerente/dono (React 19 + Vite)
+frontend/apps/pwa-frentista    PWA onde o frentista envia o fechamento de caixa e a régua dos tanques
+frontend/apps/pwa-dono         PWA do dono: encerrante dos bicos por foto (OCR) e avisos de fechamento
+frontend/packages/types        Tipos compartilhados (incluindo os gerados pelo Supabase)
+frontend/packages/utils        Lógica de domínio pura e compartilhada (fechamento, lucro, custo, estoque)
+frontend/packages/api-core     Cliente Supabase e acesso a dados desacoplado (consolidação do dia)
 supabase/             Migrations versionadas e Edge Functions (`ler-encerrante`, `notifica-dono`)
 scripts/              ETL da planilha, carga histórica, `reconsolidar-dia`, `aplica-migration`
 ```
 
-Cálculo de domínio (fechamento de caixa, lucro, custo, encerrantes, estoque) mora em `packages/utils` — é compartilhado entre os três apps e coberto por **golden master contra a planilha real do posto** (3.296 asserções em 06/09/2026). A planilha é a fonte de verdade: em conflito, ela decide.
+Cálculo de domínio (fechamento de caixa, lucro, custo, encerrantes, estoque) mora em `frontend/packages/utils` — é compartilhado entre os três apps e coberto por **golden master contra a planilha real do posto** (3.296 asserções em 06/09/2026). A planilha é a fonte de verdade: em conflito, ela decide.
 
 ## 📊 Funcionalidades
 
@@ -96,7 +96,7 @@ Fecha a fase de auditoria e saneamento (PRs #80–#90). O que esta versão garan
 | Garantia | Prova |
 |---|---|
 | Fórmula de fechamento e de lucro iguais às da planilha | golden master: **3.296** asserções contra a planilha real; janeiro fecha ao centavo (`lucro = venda − custo − despesas`) |
-| Um custo só, em todas as telas | `packages/utils` + `services/custo-do-mes.ts`; julho dá o mesmo lucro na Visão do Proprietário e na Análise de Vendas |
+| Um custo só, em todas as telas | `frontend/packages/utils` + `services/custo-do-mes.ts`; julho dá o mesmo lucro na Visão do Proprietário e na Análise de Vendas |
 | Dia não apurado nunca parece dia batido | `Fechamento.diferenca` nula até os 6 bicos serem lidos; tela mostra "não apurado" |
 | Uso real | 4 frentistas enviando o caixa pelo PWA todo dia desde 30/08/2026 |
 | Suíte | **446** testes Vitest · **3.296** golden · `tsc` limpo |

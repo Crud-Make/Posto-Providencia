@@ -22,7 +22,7 @@ import {
     meiosFromFechamentoRow,
 } from './fechamento';
 
-const DB_PATH = `${import.meta.dir}/../../../docs/data/janeiro_referencia.sqlite`;
+const DB_PATH = `${import.meta.dir}/../../../../docs/data/janeiro_referencia.sqlite`;
 const db = new Database(DB_PATH, { readonly: true });
 
 interface LinhaFrentista {

@@ -5,7 +5,7 @@
 #   docker compose down -v                 # zera (o volume é apagado; o init roda de novo)
 #
 # Porta 5433 no host para não brigar com um Postgres local em 5432.
-# O serviço `api` (Laravel) entra aqui quando existir apps/api.
+# O serviço `api` (Laravel) entra aqui quando existir backend.
 
 services:
   postgres:

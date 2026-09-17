@@ -24,7 +24,7 @@ repo. O `--read-only` do `.mcp.json` **não** é a causa — ele restringe o pap
 (`list_migrations`). Se devolver `Unauthorized`, não tente a CLI nem a REST — as
 três dependem da mesma credencial ausente ou de uma proibida. Reporte a ausência
 no "Não conferido" com o texto do erro e siga com o que o repo prova sozinho:
-`generated.ts` (datado por `git log -1 --format=%ad -- apps/web/src/types/database/generated.ts`)
+`generated.ts` (datado por `git log -1 --format=%ad -- frontend/apps/web/src/types/database/generated.ts`)
 e as notas datadas em `.claude/memoria/` (13/08: 44 tabelas, última migration
 `20260802225627`).
 

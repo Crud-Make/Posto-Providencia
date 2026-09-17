@@ -1,8 +1,9 @@
 /**
  * Reconsolida o `Fechamento` pai de um ou mais dias — para dado que entrou por SQL.
  *
- * Uso:  bun scripts/reconsolidar-dia.ts 2026-08-28 2026-08-29
- *       bun scripts/reconsolidar-dia.ts 2026-08-01..2026-08-31
+ * Uso (a partir de frontend/, onde estão o node_modules e o .env.local):
+ *       cd frontend && bun scripts/reconsolidar-dia.ts 2026-08-28 2026-08-29
+ *       cd frontend && bun scripts/reconsolidar-dia.ts 2026-08-01..2026-08-31
  *
  * @remarks
  * A carga histórica insere `Leitura` e `FechamentoFrentista` direto no banco, e

@@ -28,7 +28,7 @@ import { Database } from 'bun:sqlite';
 import { test, expect } from 'bun:test';
 import { totaisDoDia, isFalta, isSobra, type MeiosPagamento } from './fechamento';
 
-const DB_PATH = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const DB_PATH = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(DB_PATH, { readonly: true });
 
 const ANO = 2026;

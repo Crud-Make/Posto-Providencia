@@ -50,7 +50,7 @@
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 
-const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Dinheiro arredonda ao centavo por bico; R$ 0,05 cobre o acúmulo em 6 bicos. */

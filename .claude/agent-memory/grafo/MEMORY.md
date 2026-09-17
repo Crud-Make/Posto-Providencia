@@ -11,3 +11,4 @@
 - [Multi-posto: onde vive e onde está cravado](multi-posto-onde-vive-e-onde-esta-cravado.md) — banco e web já têm Posto/posto_id/PostoContext; PWAs cravam POSTO_ID=1; RLS anon não filtra posto; DDL de Bico fora do repo
 - [Superfície Supabase por app](superficie-supabase-por-app.md) — script from/rpc/invoke/realtime/auth; `rg -g *.ts` sem aspas quebra tudo; onde vive cada acoplamento
 - [api-core não lê Compra nem HistoricoTanque](api-core-nao-le-compra-nem-tanque.md) — leitura mensal dessas tabelas vive em widgets do web; api-core só tem Leitura/Bico/Fechamento
+- [Mover frontend/apps/+frontend/packages/ para frontend/ (#95)](mover-apps-packages-para-frontend.md) — goldens acham docs/data por `../`; checklist-commit ancora `^frontend/packages/`, portao-golden não; Root Directory Vercel só no painel; types.ts raiz órfão

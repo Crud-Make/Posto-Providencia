@@ -19,7 +19,7 @@ import { Database } from 'bun:sqlite';
 import { despesaOperacionalPorLitro, somarDespesas } from '@posto/utils';
 import { lucroPrevistoEstoque, valorBrutoEstoque } from './calculos-resumo-financeiro';
 
-const SQLITE = `${import.meta.dir}/../../../../../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 const PRODUTO_DO_BICO: Readonly<Record<string, string>> = {

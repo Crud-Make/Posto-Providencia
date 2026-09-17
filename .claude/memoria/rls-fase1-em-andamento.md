@@ -53,7 +53,7 @@ A `anon key` está no bundle publicado do painel.
 ## A correção do agente que estava errada
 
 O agente `rls` pôs **`get_frentistas_with_email`** na Fase 1 dizendo que nada
-quebraria. **Falso:** `apps/web/src/services/api/frentista.service.ts:24` a chama.
+quebraria. **Falso:** `frontend/apps/web/src/services/api/frentista.service.ts:24` a chama.
 Revogar derruba a tela de frentistas. Ficou de fora, para junto do login.
 
 `abrir_caixa` só aparece como tipo em `generated.ts`, sem nenhum `.rpc()` real —

@@ -34,7 +34,7 @@
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 
-const SQLITE = `${import.meta.dir}/../../../docs/data/posto_jorro_2026.sqlite`;
+const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Litros são exatos ao mililitro; a tolerância cobre só ruído da fonte. */

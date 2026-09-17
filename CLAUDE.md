@@ -9,16 +9,16 @@ Este arquivo estabelece os padrões rigorosos, o fluxo de trabalho agêntico e o
 
 O que existe hoje e onde cada regra abaixo se encaixa:
 
-* **Monorepo Bun (TypeScript):** `apps/web` (painel), `apps/pwa-frentista`, `apps/pwa-dono`,
-  `packages/utils` (domínio, 18 golden masters), `packages/api-core`, `packages/types`. Toolchain
+* **Monorepo Bun (TypeScript):** `frontend/apps/web` (painel), `frontend/apps/pwa-frentista`, `frontend/apps/pwa-dono`,
+  `frontend/packages/utils` (domínio, 18 golden masters), `frontend/packages/api-core`, `frontend/packages/types`. Toolchain
   do lado TS segue sendo **Bun** — nunca npm/yarn/pnpm. **Telas ficam como estão** (decisão de 17/09).
 * **Banco:** `banco/init/*.sql` é o esquema inteiro de produção, gerado por
   `scripts/extrai-esquema-do-catalogo.py`; `docker-compose.yml` sobe Postgres 17 em `:5433`.
   Ver `banco/README.md`. O Supabase continua servindo os apps até o cutover (Issue #60).
-* **Backend Laravel 13:** nasce em `apps/api/` (issue própria). **Os §5, §6 e §7 (CQRS, PHPMD,
-  PHPStan, Deptrac, Pest ≥ 85 %, Locust, `pre-commit` PHP) entram em vigor no dia em que `apps/api`
+* **Backend Laravel 13:** nasce em `backend/` (issue própria). **Os §5, §6 e §7 (CQRS, PHPMD,
+  PHPStan, Deptrac, Pest ≥ 85 %, Locust, `pre-commit` PHP) entram em vigor no dia em que `backend`
   existir.** Até lá o gate de PR é o atual: `bun run lint`, `bun run type-check`, `bun run test`,
-  `bun run test:golden`. Caminhos `app/...` citados abaixo leem-se `apps/api/app/...`.
+  `bun run test:golden`. Caminhos `app/...` citados abaixo leem-se `backend/app/...`.
 * **Documentação:** Design Doc de cada módulo em `docs/design/<slug>.md`; `docs/architecture.md` é
   o mapa vivo. `docs/data/` **não é lugar de documento**: é dado real, gitignored, nunca versionar.
 * **Invariantes de dinheiro que não mudaram com a versão:** nenhuma fórmula muda sem golden master
@@ -71,9 +71,9 @@ Refatorações de grande escala devem ser executadas utilizando **Workflows Din�
 
 * **Modo Ultracode**: escreva `ultracode` no prompt (ou "use a workflow") para tarefas extensas de refatoração. O Claude Code orquestrará sub-agentes em background com revisões adversariais. Não há comando `/effort ultracode`.
 * **Workflows Comuns para Refatoração**:  
-  * **Auditoria de Complexidade &amp; Regras**: `ultracode: audit every module under apps/api/app/ for cyclomatic complexity violations, architectural leaks and missing validation contracts`
-  * **Migração/Refatoração em Paralelo**: `use a workflow to refactor every controller under apps/api/app/Http/Controllers/ to use FormRequests and CQRS Commands, working on each file in an isolated copy`
-  * **Loop de Correção de Análise Estática**: `use a workflow to run apps/api/vendor/bin/phpstan and PHPMD and keep fixing reported issues until zero errors remain`
+  * **Auditoria de Complexidade &amp; Regras**: `ultracode: audit every module under backend/app/ for cyclomatic complexity violations, architectural leaks and missing validation contracts`
+  * **Migração/Refatoração em Paralelo**: `use a workflow to refactor every controller under backend/app/Http/Controllers/ to use FormRequests and CQRS Commands, working on each file in an isolated copy`
+  * **Loop de Correção de Análise Estática**: `use a workflow to run backend/vendor/bin/phpstan and PHPMD and keep fixing reported issues until zero errors remain`
 * **Prompt Caching**: Sub-agentes paralelos reutilizam o prefixo de cache (TTL de 5 min a 1 hora), reduzindo custos e latência em execuções *fan-out*.
 
 ---
