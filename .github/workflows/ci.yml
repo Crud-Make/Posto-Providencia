@@ -53,8 +53,26 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: posto
+          POSTGRES_PASSWORD: posto
+          POSTGRES_DB: posto
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U posto -d posto"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DB_PORT: 5432
     steps:
       - uses: actions/checkout@v5
+      # Os testes de Feature rodam contra o esquema real de produção (banco/init), sem migration.
+      - name: Carrega o esquema do posto no Postgres do job
+        run: |
+          psql "postgresql://posto:posto@localhost:5432/posto" -v ON_ERROR_STOP=1 \
+            -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:

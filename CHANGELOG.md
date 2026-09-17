@@ -2,6 +2,33 @@
 
 ## [Não Lançado]
 
+### 🧱 Módulo Cadastro no backend: models, escopo por posto, policy e catálogo só leitura (#97)
+
+- `App\Cadastro\Domain` (Posto, Combustivel, Tanque, Bomba, Bico, Turno, Frentista,
+  FormaPagamento, Maquininha, Fornecedor) e `App\Pessoas\Domain` (Usuario, UsuarioPosto) sobre as
+  tabelas **existentes**, gerados a partir do catálogo de 17/09: `$table` CamelCase real, timestamps só
+  onde a tabela tem (`Usuario` usa `createdAt`/`updatedAt`; `Tanque` e `UsuarioPosto` só `created_at`),
+  dinheiro `numeric` → cast `decimal:2` (string, nunca float; `preco_custo` sem escala → `decimal:4`),
+  `Frentista.foto` e `Usuario.senha` ocultos. Enums PHP `Role`, `StatusFechamento`, `PapelNoPosto`
+  espelham o banco.
+- **`PertenceAoPosto` + `PostoAtual`**: escopo global `posto_id = atual` em todo model de domínio e
+  preenchimento ao criar. É o filtro por posto que a RLS nunca teve (DECISÃO 5). Compartilhado não
+  conhece Domain: a relação `posto()` mora em cada model (Deptrac cobrou).
+- **`PostoPolicy`** (`ver`/`gerir`): ADMIN global, senão vínculo ativo em `UsuarioPosto`; gerir exige
+  papel admin/gerente. Registrada no Gate; nas rotas só na #102 (sem usuário autenticado ainda).
+- **`GET /api/postos/{posto}/{combustiveis,tanques,bombas,bicos,turnos,frentistas,formas-pagamento,maquininhas,fornecedores}`**
+  via `DefinePostoAtual` (404 se o posto não existe) → `CatalogoDoPosto` (eager loading, sem N+1) →
+  Resources. Públicos até a #102, igual ao PostgREST de hoje.
+- Testes Pest **contra o Postgres real do compose** (esquema de produção, `DatabaseTransactions`, sem
+  migration): escopo por posto, 404, cada endpoint, foto nunca sai, policy, **todas as relações
+  percorridas** (prova os nomes de FK), casts, enums. 28 testes, 99 asserções, **cobertura 100 %**;
+  `composer gates` passa a cobrar ≥ 85 %. CI ganha serviço Postgres 17 e carrega `banco/init/*.sql`
+  com `psql` antes do Pest. Incidente: uma rodada sem transação gravou 37 postos sintéticos no banco
+  local — zerado e ressemeado; a regra `DatabaseTransactions` no `Pest.php` é o que impede.
+- Deptrac: `Http → Domain` liberado só para tipar/serializar; camada `Factories` permitida do Domain.
+  PHPMD: `UnusedFormalParameter` fora (assinaturas do framework), `ShortMethodName` mínimo 2,
+  `CouplingBetweenObjects` suprimido só em `Posto` (raiz do cadastro).
+
 ### 🐘🐘 `backend/` nasceu: Laravel 13 no docker-compose com os quality gates de saída (#96)
 
 - `composer create-project laravel/laravel backend` (Laravel 13.32, PHP 8.5.10), a pedido do dono.
