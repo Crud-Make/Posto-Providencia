@@ -101,12 +101,23 @@ ROTAS: list[tuple[str, str, re.Pattern[str]]] = [
             r"|(isso|essa ideia|esse caminho) ja foi tentad[oa]"
         ),
     ),
+    (
+        "doc-cycle-onboard",
+        "documentacao de arquitetura — se esta em dia com o codigo e qual patch aplicar",
+        re.compile(
+            r"(a )?(doc|docs|documentacao|architecture\.md|design doc)[^.?!]{0,30}(esta|estao|ta|tao) (em dia|desatualizad|defasad)"
+            r"|atualiza(r)? (a |o )?(doc|docs|documentacao|architecture\.md|design doc|mapa de dependencia)"
+            r"|o que mudou (na|de|em) arquitetura"
+            r"|(esse|este|o) diff (muda|altera|mexe n[oa]) (a |o )?(arquitetura|mapa|documentacao|dependencia)"
+            r"|doc-cycle"
+        ),
+    ),
 ]
 
 MOLDE = (
     "[hook roteia-consulta] Esta pergunta é de {assunto}. Use o agente `{agente}` "
     "(Agent tool, subagent_type=\"{agente}\") em vez de grep/leitura direta: ele lê "
-    "muito e devolve pouco, que é o critério do CLAUDE.md §13. Vale a regra do §12 — "
+    "muito e devolve pouco, que é o critério do CLAUDE.md §0. Vale a regra do §0 sobre o grafo — "
     "o que ele devolver é hipótese até a evidência que ele mesmo cita fechar: grep no "
     "arquivo, hash do commit, linha do diff, saída da consulta."
 )

@@ -1,0 +1,32 @@
+# Banco local do Posto Providência — Postgres 17, mesma major do projeto Supabase (17.6).
+#
+#   docker compose up -d --wait            # sobe e aplica banco/init/*.sql na primeira vez
+#   docker compose exec -T postgres psql -U posto -d posto < banco/dados/cadastros.sql
+#   docker compose down -v                 # zera (o volume é apagado; o init roda de novo)
+#
+# Porta 5433 no host para não brigar com um Postgres local em 5432.
+# O serviço `api` (Laravel) entra aqui quando existir apps/api.
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: posto-postgres
+    environment:
+      POSTGRES_USER: posto
+      POSTGRES_PASSWORD: posto
+      POSTGRES_DB: posto
+      TZ: America/Sao_Paulo
+      PGTZ: America/Sao_Paulo
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./banco/init:/docker-entrypoint-initdb.d:ro
+      - posto-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U posto -d posto"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  posto-pg:
