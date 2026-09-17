@@ -1,0 +1,53 @@
+# Deptrac — quality gate 2 do CLAUDE.md §6: estrutura de dependências.
+#
+# Camadas do Design Doc (docs/design/fase-a-laravel.md §2), válidas dentro de cada módulo
+# (App\Cadastro, App\Fechamento, App\Financeiro, App\Estoque, App\Pessoas, App\Notificacao,
+# App\Ocr) e no que sobrou do esqueleto (App\Http, App\Models):
+#
+#   Http  →  Application (Commands/Queries)  →  Domain (Models, Services)  →  Compartilhado
+#
+# Controller só chama Application; Application não conhece Http; Domain não conhece nada
+# acima dele. Ciclo entre módulos = PR rejeitado (CLAUDE.md §3).
+deptrac:
+  paths:
+    - ./app
+  exclude_files:
+    - '#.*/Providers/.*#'   # bootstrap do framework: liga tudo, não é camada
+  layers:
+    - name: Http
+      collectors:
+        - type: classLike
+          value: 'App\\([A-Za-z]+\\)?Http\\.*'
+    - name: Application
+      collectors:
+        - type: classLike
+          value: 'App\\[A-Za-z]+\\Application\\.*'
+    - name: Domain
+      collectors:
+        - type: classLike
+          value: 'App\\[A-Za-z]+\\Domain\\.*'
+        - type: classLike
+          value: 'App\\Models\\.*'
+    - name: Compartilhado
+      collectors:
+        - type: classLike
+          value: 'App\\Compartilhado\\.*'
+    - name: Framework
+      collectors:
+        - type: classLike
+          value: '(Illuminate|Laravel|Carbon|Symfony|Psr)\\.*'
+  ruleset:
+    Http:
+      - Application
+      - Compartilhado
+      - Framework
+    Application:
+      - Domain
+      - Compartilhado
+      - Framework
+    Domain:
+      - Compartilhado
+      - Framework
+    Compartilhado:
+      - Framework
+    Framework: ~

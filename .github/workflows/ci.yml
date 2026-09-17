@@ -45,6 +45,26 @@ jobs:
       - name: Build
         run: bun run build
 
+  backend:
+    # Quality gates do CLAUDE.md §6 para o Laravel (backend/): Pint, PHPStan, PHPMD, Deptrac, Pest.
+    # Cobertura mínima (85 %) entra quando houver código de domínio para cobrir (#97).
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, intl, mbstring, zip
+          coverage: xdebug
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Gates (pint, phpstan, phpmd, deptrac, pest)
+        run: composer gates
+
   # Os golden masters (`bun run test:golden`) NÃO rodam aqui de propósito: dependem de
   # docs/data/*.sqlite, que é fonte auditável local e ficou gitignored em 2026-07-29
   # (dado financeiro real nunca vai pro git). Continuam sendo o portão obrigatório de

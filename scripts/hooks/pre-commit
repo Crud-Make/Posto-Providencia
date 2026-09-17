@@ -1,0 +1,20 @@
+#!/bin/sh
+# pre-commit do Posto Providência (CLAUDE.md §7): gates do PHP só quando há .php no índice.
+# O lado TS não é bloqueado por ferramenta PHP, e vice-versa. Instalar: scripts/instala-hooks.sh
+raiz="$(git rev-parse --show-toplevel)"
+php_no_indice="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^backend/.*\.php$' || true)"
+if [ -n "$php_no_indice" ]; then
+    echo "[pre-commit] .php no índice — rodando Pint, PHPStan, PHPMD e Deptrac em backend/"
+    cd "$raiz/backend" || exit 1
+    composer lint --quiet     || { echo "[pre-commit] Pint reprovou: rode 'composer lint:corrige'"; exit 1; }
+    composer analise --quiet  || { echo "[pre-commit] PHPStan reprovou"; exit 1; }
+    composer md --quiet       || { echo "[pre-commit] PHPMD reprovou (CCN > 10?)"; exit 1; }
+    composer deptrac --quiet  || { echo "[pre-commit] Deptrac reprovou: dependência fora das camadas"; exit 1; }
+fi
+ts_no_indice="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^frontend/.*\.(ts|tsx)$' || true)"
+if [ -n "$ts_no_indice" ]; then
+    echo "[pre-commit] .ts/.tsx no índice — rodando oxlint em frontend/"
+    cd "$raiz/frontend" || exit 1
+    bun run lint >/dev/null || { echo "[pre-commit] oxlint reprovou"; exit 1; }
+fi
+exit 0

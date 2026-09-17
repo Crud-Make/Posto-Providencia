@@ -1,0 +1,15 @@
+# PHPStan via Larastan — quality gate 1 do CLAUDE.md §6 (legibilidade/tipagem).
+# Nível 6 de saída: tipos de retorno e parâmetros obrigatórios, sem ainda cobrar generics
+# nos relacionamentos do Eloquent. Sobe um nível por issue quando o backend crescer.
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+    paths:
+        - app
+        - routes
+        - tests
+    tmpDir: storage/framework/phpstan
+    # Design Doc §2: módulos em App\<Modulo>\{Http,Application,Domain} — sem exceção declarada.
+    ignoreErrors: []
