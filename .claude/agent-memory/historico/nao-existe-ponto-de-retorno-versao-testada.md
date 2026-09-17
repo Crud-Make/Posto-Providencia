@@ -1,31 +1,35 @@
 ---
 name: nao-existe-ponto-de-retorno-versao-testada
-description: Não há tag nem branch versao-testada-funcionando-* neste repo (conferido 28/08/2026); as 3 tags existentes são todas de janeiro/2026 e anteriores ao monorepo atual
+description: A única tag versao-testada-funcionando-* é `versao-testada-funcionando-custo-lucro` → 834e2d7 (26/08/2026), leve e SÓ LOCAL (não está no origin, conferido 17/09/2026); as 3 tags de janeiro/2026 não servem de retorno
 metadata:
   type: project
 ---
 
-**Conferido em 28/08/2026** com `git for-each-ref` sobre **todas** as refs
-(locais, remotas e tags) e `git ls-remote origin`: **nenhuma** ref casa com
-`versao-testada-funcionando-*`. O §9 do CLAUDE.md pede essa tag antes de
-refatoração grande, e ela **nunca foi criada nesta base**.
+**Corrigido em 17/09/2026.** A versão anterior desta nota (28/08/2026) dizia que
+nenhuma ref `versao-testada-funcionando-*` existia. Envelheceu: hoje existe **uma**.
 
-**As 3 tags que existem são todas de janeiro/2026:**
-- `v2.5.8` → `3c4fe1c` (01/01/2026)
-- `v2.6.0-teste-fechamento` → `67e59b8` (03/01/2026)
-- `v3.0.0` → `b58cf0f` (18/01/2026, *"release: v3.0.0 - Refatoração Completa"*)
+- `versao-testada-funcionando-custo-lucro` → `834e2d7` (26/08/2026, *"Merge pull
+  request #59 from Crud-Make/fix/logo-ao-lado-do-hamburguer"*). Tag **leve**
+  (`cat-file -t` = `commit`), portanto sem data de criação própria nem autor.
+- Foi criada depois de 28/08: o plano `.claude/docs/saneamento-pre-release.md:19`
+  (commit `9f6f85e`, 28/08) manda criá-la exatamente nesse commit e afirma na
+  linha 23 que ainda não existia.
+- **Só local.** `gh api repos/Crud-Make/Posto-Providencia/tags` em 17/09 devolve
+  apenas `v2.5.8`, `v2.6.0-teste-fechamento`, `v3.0.0`, `v4.0.0`. Clone novo não
+  a recebe; `git push origin versao-testada-funcionando-custo-lucro` é decisão do dono.
+- `834e2d7` é ancestral de `main` (142 commits atrás em 17/09). Serve de retorno
+  para o **saneamento de custo/lucro** (PRs #63–#89), não para o que veio antes.
 
-Todas anteriores ao `packages/utils` canônico de julho — **nenhuma serve de
-ponto de retorno** para trabalho em custo/lucro. `v3.0.0` é a mais nova e já
-está ~7 meses atrás.
+**As tags de release** (todas anotadas, no remoto):
+`v2.5.8`→`3c4fe1c` (01/01/2026) · `v2.6.0-teste-fechamento`→`67e59b8` (03/01/2026) ·
+`v3.0.0`→`b58cf0f` (18/01/2026) · `v4.0.0`→`ea6b3a5` (06/09/2026, *"fecha a fase de
+auditoria e saneamento"*). As três de janeiro são anteriores ao `packages/utils`
+canônico e não servem de ponto de retorno; `v4.0.0` é o marco mais novo e, para
+uma refatoração grande a partir da `main` atual, é o candidato natural a
+"versão testada" — mas o §9 pede tag com esse nome, e ela ainda não existe para
+o estado de 06/09.
 
-**Refs vivas em 28/08/2026** (o repo é enxuto: o remoto só tem `main`, branch
-mergeada é apagada):
-`main` = `origin/main` = `834e2d7`; `feat/redesenho-login` (+1);
-`docs/memoria-skill-venda-elias` (+3); e um `refs/stash` órfão `8c53dcd`
-(*"On refactor/remove-turno-do-sistema: zerado antes dos testes 2026-08-19"*).
-
-**How to apply:** sempre que a pergunta for "tem de onde voltar?", a resposta
-neste repo é **não, crie a tag antes** — e a tag tem de sair de `main`, no
-commit imediatamente anterior ao trabalho. Reconferir com `for-each-ref` antes
-de repetir esta afirmação: ela envelhece assim que alguém criar a primeira.
+**How to apply:** quando a pergunta for "tem de onde voltar?", a resposta é
+"para custo/lucro, `834e2d7`; para o estado de release, `v4.0.0`; para
+refatoração nova, **crie a tag antes**, a partir de `main`". Reconferir com
+`git for-each-ref` e com a API do GitHub — tag leve local some com a máquina.

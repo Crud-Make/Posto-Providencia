@@ -2,6 +2,53 @@
 
 ## [Não Lançado]
 
+### 🗂️ Milestone "Fase A — backend Laravel": 13 issues abertas (#94–#106)
+
+- #60 virou a issue-mãe com o checklist; #93 entrou no milestone. Ordem: #94 Design Doc →
+  #95 raiz (`frontend/` + `backend/`) → #96 Laravel no compose → #97 models → #98 OCR → #99 push
+  → #100 agregações (mata a fórmula em plpgsql) → #101 fechamento do frentista → #102 auth →
+  #103 painel por módulo → #104 realtime → #105 cutover → #106 regras.
+- `docs/design/fase-a-laravel.md` rascunhado (#94) com 4 DECISÕES para o dono: raiz, onde
+  `totaisDoDia` roda, fila só para push/OCR, identidade do frentista no PWA.
+
+### 📜 CLAUDE.md 4.0 — regras da refatoração Laravel valem a partir de 18/09
+
+- O dono substituiu o `CLAUDE.md` 3.3 pelas regras da refatoração (spec-driven, 5 níveis de
+  zoom, monólito modular Laravel 13 + CQRS, quality gates PHPMD/PHPStan/Deptrac/Pest ≥ 85 %,
+  workflows `ultracode`). Ganhou um **§0 "Ponte"**: o que existe no repo hoje, que os §5–§7 só
+  entram em vigor quando `apps/api` existir, e os invariantes que não mudam (golden master,
+  `docs/data` gitignored, nunca `bun test` puro, skills de domínio, nunca `main`, sem force push).
+  Corrigidas 5 referências que não existiam aqui (`/effort ultracode`, `app/` → `apps/api/app/`,
+  exemplo Stripe → fechamento duplicado). O 3.3 inteiro está em
+  `.claude/docs/claude-md-3.3-arquivado.md`. `testa-hooks.py`: todos os casos passam.
+- `docs/architecture.md` criado (Mermaid dos 5 níveis + tabela de dependências) e agente
+  `doc-cycle-onboard` para mantê-lo (somente leitura; devolve patch). Rota no `roteia-consulta`.
+
+### 🐘 O esquema do banco entrou no repo, e o Postgres local nasceu (#60, #93)
+
+- **Decisão de 17/09/2026:** Laravel no backend, telas como estão, banco próprio em Docker.
+  É a Fase A da #60. Primeiro passo é o que as duas issues tinham como bloqueio nº 1: o DDL do
+  núcleo não existia no repo (24 de 43 tabelas sem `CREATE TABLE`; `Fechamento`, `Leitura`,
+  `Frentista`, `Bico`, `Tanque`, `Combustivel` só dentro do Supabase).
+- `banco/init/01-esquema-base.sql` — o `public` inteiro, **gerado** por
+  `scripts/extrai-esquema-do-catalogo.py` a partir do catálogo vivo (Postgres 17.6): 45 tabelas,
+  141 constraints, 130 índices, 22 funções, 2 views, 9 triggers, 103 policies, grants.
+  `banco/init/00-papeis-e-stubs.sql` — os 3 papéis e o mínimo de `auth` que o esquema cita.
+  `banco/dados/cadastros.sql` — posto, bicos, formas de pagamento, frentistas; **gitignored**
+  (nome/CPF/telefone, regra do §6).
+- `docker-compose.yml` — Postgres 17 em `localhost:5433`. Subiu limpo; contagens locais iguais
+  às de produção; `get_dashboard_proprietario` e as janelas de escrita executam.
+- Por que não `supabase db dump`: exige IPv6 ou `supabase link` com a senha do banco. A
+  Management API roda como `supabase_read_only_user` com `transaction_read_only = on`, então
+  o gerador não tem como escrever em produção. Token renovado em `.claude/settings.local.json`.
+- Medido no catálogo vivo, corrigindo o que o mapa de 17/09 tinha como "n/d": 103 versões em
+  `schema_migrations` (última `20260819161647`), 16 usuários no Auth, 4.517 linhas de
+  auditoria, 1.410 leituras, 1.197 sessões de frentista, 254 fechamentos; realtime publica só
+  `Fechamento`, `FechamentoFrentista`, `Leitura`. O grant por coluna em `Fechamento` que a
+  memória de 16/08 descrevia **não está no banco** (`attacl` vazio em todas as tabelas).
+- Mapa completo do sistema em `.claude/docs/mapa-do-sistema-17-09-2026.md`. Branch
+  `feat/#60-laravel-fase-a-esquema` (renomeada da `feat/#93-esquema-base`, que estava vazia).
+
 ### 🔑 Chave do Google Gemini removida do repositório
 
 - `check_llms.py` (script solto de 22/02, `a433006`, que listava os modelos da API do Gemini)
@@ -2243,8 +2290,6 @@ Tudo abaixo desta linha até a `[1.0.0]` entrou nesta release (497 commits desde
   os golden masters abrem. Sumiu de novo, a sessão avisa na primeira linha. Antes disso nada
   avisava — diretório gitignored deixa o `git status` limpo enquanto a prova de auditoria não
   existe.
-- ⚠️ Achado de brinde, **não corrigido**: o §0.5 aponta o ProvControl em `../ProvControl`, que
-  também não existe nesta máquina. Decisão sua se o caminho mudou ou se o repo se foi junto.
 
 ### 🕳️ Quatro instruções que sobreviveram às ferramentas — e o hook que fecha o padrão
 - **[07/08/2026]** `claude-mem` e `mattpocock-skills` **não estão instalados** (zero rastro em

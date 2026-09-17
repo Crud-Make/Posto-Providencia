@@ -30,9 +30,6 @@ reconciling what each `frentista` collected per payment method against what the
 `bicos` (pump nozzles, via their `encerrante` readings) indicate, producing
 `diferenca` (sobra/falta) and `valor_conferido`.
 
-⚠️ Do not confuse this with **ProvControl** (Laravel, paused, lives in
-`../ProvControl`) — different projects and codebases, same business domain.
-
 ## Consolidation status — done
 
 `valor_conferido`/`diferenca` was once **duplicated across ~6 implementations**

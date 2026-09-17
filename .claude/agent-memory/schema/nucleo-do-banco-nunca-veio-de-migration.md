@@ -44,4 +44,22 @@ WHERE table_schema='public' AND table_type='BASE TABLE'
 cada migration aqui é **um blob só** — use `regexp_matches(...,'g')` ou o
 resultado sai inflado. Errei assim na primeira passada.
 
+**Sem acesso ao banco** (ver [[portas-de-leitura-do-catalogo]]), a mesma pergunta
+se responde pelo lado do repo, cruzando o `generated.ts` (snapshot do catálogo,
+datado) com os `.sql` versionados. Conferido em **17/09/2026** — o comando, não o
+número:
+
+```bash
+cd /home/thygas/Projetos/trabalho/Posto-Providencia
+comm -23 <(grep -oE '^      [A-Za-z_]+: \{$' apps/web/src/types/database/generated.ts | tr -d ' {:' | sort -u) \
+         <(grep -rhoiE 'CREATE TABLE (IF NOT EXISTS )?(public\.)?"?[A-Za-z_]+"?' supabase/migrations \
+            | sed -E 's/CREATE TABLE (IF NOT EXISTS )?(public\.)?"?//I; s/"//' | sort -u)
+```
+(inclui nomes de função e view do bloco `Functions`/`Views` na primeira lista —
+filtrar à mão.) Atenção: `20251221_create_mobile_tables.sql` tem um
+`CREATE TABLE "FechamentoFrentista"` com colunas de dinheiro em
+`double precision` e sem `posto_id`, `valor_moedas`, `baratao` — é uma **versão
+antiga** da tabela, não o DDL da atual; contar esse arquivo como "DDL existe" é
+falso positivo.
+
 Ver [[quem-tipa-o-cliente-supabase]].

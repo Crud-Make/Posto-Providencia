@@ -26,7 +26,25 @@ no manual é o que quebra em runtime; drift no `generated.ts` é cosmético
 enquanto ele não for plugado no `createClient`.
 
 O `apps/pwa-frentista` chama `createClient` **sem genérico**
-(`apps/pwa-frentista/src/lib/supabase.ts:6`) — sem tipagem alguma.
+(`apps/pwa-frentista/src/lib/supabase.ts:6`) — sem tipagem alguma. **Idem o
+`apps/pwa-dono`** (`apps/pwa-dono/src/lib/supabase.ts:6`), reconferido em
+**17/09/2026**. Os dois PWAs somam nove tabelas em `.from()` sem tipo — entre
+elas `InscricaoPush` e `PresencaFrentista`, que **nem o `generated.ts` conhece**.
+
+Também em 17/09/2026: o `generated.ts` do `apps/web` foi gerado pela última vez
+em **02/08/2026** (commit `09eb717`) e o `database.types.ts` do `packages/types`
+em **25/01/2026** (`c38351c`). Nenhum dos dois reflete as migrations de 13/08 em
+diante. O schema **manual** (`schema.ts`) é o único que já tem `PresencaFrentista`
+— e é o único que falta `AuditoriaDados`. Comando que mede isso, em vez de lista:
+
+```bash
+git log -1 --format='%h %ad' --date=short -- apps/web/src/types/database/generated.ts
+git log -1 --format='%h %ad' --date=short -- packages/types/src/database.types.ts
+diff <(sed -E 's/^[[:space:]]+//' packages/types/src/database.types.ts) \
+     <(sed -E 's/^[[:space:]]+//' apps/web/src/types/database/generated.ts) | grep -cE '^[<>]'
+```
+(o `sed` é obrigatório: um arquivo indenta com 2 espaços, o outro com 4, e o
+`diff -u` cru marca as 4.128 linhas como diferentes.)
 
 Reconferir:
 ```bash

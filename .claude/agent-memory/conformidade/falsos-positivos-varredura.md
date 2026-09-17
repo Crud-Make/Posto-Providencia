@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-Os falsos positivos confirmados até **28/08/2026**, por check. Abrir o arquivo antes
+Os falsos positivos confirmados até **17/09/2026**, por check. Abrir o arquivo antes
 de contar continua sendo a regra; isto só diz onde a armadilha mora.
 
 **§2 "apps/web ↔ apps/pwa-frentista"** — os únicos hits do grep são **comentários
@@ -20,18 +20,18 @@ grep -rn "apps/web" apps/pwa-frentista/src apps/pwa-dono/src --include='*.ts' --
 grep -rnE "from ['\"].*apps/" packages --include='*.ts' --include='*.tsx'
 ```
 
-**§4 `enum`** — `FormaPagamento` é **homônimo**. Existem três coisas com esse nome:
-o `enum` morto em `packages/types/src/database/enums.ts`, um **tipo de tabela** do
-Supabase usado em `services/api/formaPagamento.service.ts`, e um tipo de config em
-`components/configuracoes/types.ts`. Grep por `FormaPagamento` devolve dezenas de
-hits que **não** são uso do enum. O que prova uso de enum é o acesso ao membro:
+**§4 `enum`** — em **17/09/2026 o check devolve ZERO**: os 4 enums mortos de
+`packages/types/src/database/enums.ts` (`StatusFechamento`, `TipoEscala`, `UserRole`,
+`FormaPagamento`) foram apagados no commit `270c05c`. Se o grep voltar a acusar algo,
+lembrar que `FormaPagamento` é **homônimo** (tipo de tabela do Supabase em
+`formaPagamento.service.ts` e tipo de config em `components/configuracoes/types.ts`)
+e que só o acesso ao membro prova uso de enum:
 ```bash
-grep -rnE '\b(StatusFechamento|TipoEscala|UserRole)\.[A-Z_]+' apps packages --include='*.ts' --include='*.tsx'
+grep -rnE '^\s*(export\s+)?(const\s+)?enum ' apps packages --include='*.ts' --include='*.tsx' | grep -vE 'node_modules|/dist/|generated.ts|database.types.ts'
+git log --oneline -1 -- packages/types/src/database/enums.ts   # 270c05c = apagado
 ```
-Vazio = os 4 enums são código morto (reconfirmado 28/08), apesar de o arquivo ser
-reexportado por `packages/types/src/database/index.ts:7`.
 
-**§4 `any`** — `apps/web/src/types/database/enums.ts` **não** é enum de TS: é
+**§4 `any`** — em 17/09/2026 o check devolve **7 linhas, todas em `*.test.ts`** (5× o idioma `(globalThis as any).IS_REACT_ACT_ENVIRONMENT`, 2× fixture em `useFechamento.test.ts`) — zero em código de produção. Os dois arquivos gerados têm **zero** `any` também. `apps/web/src/types/database/enums.ts` **não** é enum de TS: é
 `interface DatabaseEnums` com union de string, ou seja, já está no padrão. Não
 confundir com o arquivo homônimo de `packages/types`.
 
