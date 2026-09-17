@@ -8,7 +8,7 @@ metadata:
 O estado do golden master **decide se um achado de fórmula é acionável ou
 bloqueado**, e é o fato que mais apodrece nas instruções deste agente.
 
-**Fato:** reconferido em **17/09/2026** — o golden master segue **verde** (18 arquivos `*.golden.spec.ts`, 5 deles em `apps/web`; o número de testes não vai aqui). `docs/data/`
+**Fato:** reconferido em **17/09/2026** — o golden master segue **verde** (18 arquivos `*.golden.spec.ts`, 5 deles em `frontend/apps/web`; o número de testes não vai aqui). `docs/data/`
 está no disco (`fixture_lucro_custo_mes01.json`, `janeiro_referencia.sqlite`,
 `posto_jorro_2026.sqlite`) e a suíte passa em 11 arquivos `*.golden.spec.ts`, zero
 falhas. Já estava verde em 12/08, 16/08 e 28/08 — quatro medições seguidas.
@@ -37,7 +37,7 @@ ETL roda** — divergiu, reconte antes de chamar de regressão; por isso o núme
 está escrito aqui.
 
 **O golden verde NÃO significa que a fórmula da tela está coberta.** Ele cobre
-`packages/utils`. As reimplementações fora de `packages/utils` (ver
+`frontend/packages/utils`. As reimplementações fora de `frontend/packages/utils` (ver
 [[formula-duplicada-fora-utils]]) não têm golden nenhum — consolidar cada uma
 exige escrever o teste contra as DUAS implementações antes (§7), e isso é o que
 transforma o achado em tarefa de categoria domínio.

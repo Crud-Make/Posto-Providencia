@@ -7,7 +7,7 @@ metadata:
 
 O campo **"Despesas do Mês (R$)"** da tela Registro de Compras (seção Compra e Custo /
 `SecaoCompras`) é `useState<string>('')` digitado à mão em
-`apps/web/src/components/registro-compras/index.tsx:38`. **Não lê a tabela `Despesa`**
+`frontend/apps/web/src/components/registro-compras/index.tsx:38`. **Não lê a tabela `Despesa`**
 e **não persiste no banco**: `handleSave`→`salvarDados` (`usePersistenciaRegistro.ts`)
 grava só `Compra` + histórico de tanque + `Combustivel.preco_custo`; a despesa não entra
 no payload. Só sobrevive em `sessionStorage` (`usePersistenciaFormulario`). É simulador de
@@ -18,7 +18,7 @@ O lucro da **Planilha do Mês** (aba Gestão de Bicos, `fechamento-diario`) vem 
 caminho: `useCustoMensal` lê a tabela `Despesa` via supabase e usa
 `despesaOperacionalPorLitro` de `@posto/utils`. **Digitar naquele input não afeta o lucro
 da Planilha do Mês.** São dois cálculos de rateio despesa/litro independentes — o da tela
-de Compras é uma reimplementação local fora de `packages/utils`.
+de Compras é uma reimplementação local fora de `frontend/packages/utils`.
 
 **Why:** pergunta de dinheiro recorrente ("alterar despesa ali muda o lucro?"). Resposta: não.
 **How to apply:** ao investigar lucro/custo por litro, a fonte canônica é `useCustoMensal` +
@@ -26,6 +26,6 @@ tabela `Despesa` + `@posto/utils`; a tela de Compras é preview isolado.
 
 Reconfirmar (19/08/2026):
 ```
-grep -rn "Despesa\|useCustoMensal\|despesaService" apps/web/src/components/registro-compras/   # deve dar zero de tabela Despesa
-grep -n "despesasMes" apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts # deve dar zero
+grep -rn "Despesa\|useCustoMensal\|despesaService" frontend/apps/web/src/components/registro-compras/   # deve dar zero de tabela Despesa
+grep -n "despesasMes" frontend/apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts # deve dar zero
 ```

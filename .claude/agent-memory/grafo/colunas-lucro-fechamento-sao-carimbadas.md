@@ -5,14 +5,14 @@ metadata:
   type: project
 ---
 
-`fechamentoService.getLucroPorPeriodo` (`apps/web/src/services/api/fechamento.service.ts:222`)
+`fechamentoService.getLucroPorPeriodo` (`frontend/apps/web/src/services/api/fechamento.service.ts:222`)
 **não é RPC** — faz `.from('Fechamento').select(...)` e reduz em JS. Lê como
 **colunas já gravadas**: `total_vendas`, `custo_combustiveis`, `lucro_bruto`,
 `taxas_pagamento`, `diferenca`, `lucro_liquido`, margens. `faltas = SUM(abs(diferenca))`.
 
 Quem preenche cada coluna de `Fechamento` (confirmado 21/08/2026 por grep):
 - `total_vendas`, `total_recebido`, `diferenca`, `status`: a submissão da UI —
-  `apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts:223`
+  `frontend/apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts:223`
   (`fechamentoService.update`). `total_vendas` = venda **cheia do encerrante/concentrador**
   (`totaisLeituras.valor` em `useFechamento.ts:242`), não o conferido.
 - `custo_combustiveis`, `lucro_bruto`, `lucro_liquido`, margens: **só** o script offline

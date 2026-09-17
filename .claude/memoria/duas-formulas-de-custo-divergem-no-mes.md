@@ -13,7 +13,7 @@ perda de −3.712,21 L de Comum em janeiro). Já era coberto pelo
 `resumo-compra-estoque.golden.spec.ts`, que **já varria os 7 meses** — não só janeiro, como
 eu tinha suposto.
 
-**A escrita usa outra fórmula.** `apps/web/src/services/api/compra.service.ts:117` e
+**A escrita usa outra fórmula.** `frontend/apps/web/src/services/api/compra.service.ts:117` e
 `usePersistenciaRegistro.ts:161` fazem a **mesma** média ponderada com o estoque anterior,
 duas vezes, em dois arquivos, a partir de bases diferentes (`Estoque.custo_medio` num,
 `Combustivel.preco_custo` no outro). A planilha custeia pela compra do próprio mês. Medido:
@@ -31,10 +31,10 @@ régua, nunca o teórico. Vale de março a julho. **Fevereiro/2026 quebra**: rep
 `ano_passado` de janeiro em vez de herdar o medido (Δ +2.187 L de Aditivada, +1.720 de Comum),
 e é isso que produz a perda fantasma de −2.070,25 L. Erro **da planilha**, não do código.
 
-Tudo travado em `packages/utils/src/estoque-encadeamento.golden.spec.ts` (24 casos, escrito
-neste dia). O teste **replica** a ponderada em vez de chamar a real — `packages/*` não importa
-de `apps/*` (§2) e a do hook é closure não exportada. Trava o tamanho da divergência, não a
-chamada: mexeu no custo em `apps/web`, ele não avisa.
+Tudo travado em `frontend/packages/utils/src/estoque-encadeamento.golden.spec.ts` (24 casos, escrito
+neste dia). O teste **replica** a ponderada em vez de chamar a real — `frontend/packages/*` não importa
+de `frontend/apps/*` (§2) e a do hook é closure não exportada. Trava o tamanho da divergência, não a
+chamada: mexeu no custo em `frontend/apps/web`, ele não avisa.
 
 **[26/08/2026, tarde]** Branch `feat/tanque-derivado-compras-graficos` (3 commits, sem PR):
 a tela `/compras` virou mensal e lê tudo do banco (vendas de `Leitura`, custo `Σ R$ ÷ Σ L` da
@@ -47,8 +47,8 @@ resumo são REDIGITADAS na planilha (`D5:E10` literais); Frete = `D20 × 0,12` c
 
 **Adendo 03/09/2026 — corrigido na branch `fix/lucro-fonte-unica` (`ff267b1`), sem merge ainda.**
 As três telas que liam `Estoque.custo_medio` (`/dashboard`, `/analise-custos`, `/vendas/dashboard`)
-passaram a usar a compra do mês via `apps/web/src/services/custo-do-mes.ts`; `compra.service.create`
-parou de carimbar. `custoMedioPonderado` ainda existe em `packages/utils` só para os goldens que
+passaram a usar a compra do mês via `frontend/apps/web/src/services/custo-do-mes.ts`; `compra.service.create`
+parou de carimbar. `custoMedioPonderado` ainda existe em `frontend/packages/utils` só para os goldens que
 documentam a divergência — apagar espera o ok do dono. `salesAnalysis.service.ts` ainda usa o carimbo
 (agora congelado em janeiro) como fallback de mês sem compra — pendente. Achado de brinde: a
 `/analise-custos` estava quebrada pelo `.bind()` sem tipo em `services/api/index.ts`.

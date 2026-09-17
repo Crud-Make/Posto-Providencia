@@ -67,16 +67,16 @@ So the cycle is:
 cd /home/thygas/Projetos/trabalho/Posto-Providencia
 SCRATCH="${TMPDIR:-/tmp}/schema-$$"; mkdir -p "$SCRATCH"
 # grave a saída de generate_typescript_types em "$SCRATCH/vivo.ts", depois:
-diff -u packages/types/src/database.types.ts "$SCRATCH/vivo.ts" | head -80
-diff -u apps/web/src/types/database/generated.ts "$SCRATCH/vivo.ts" | head -80
+diff -u frontend/packages/types/src/database.types.ts "$SCRATCH/vivo.ts" | head -80
+diff -u frontend/apps/web/src/types/database/generated.ts "$SCRATCH/vivo.ts" | head -80
 ```
 
 Comparing the two repo files against **each other** is the cheapest check and
 usually the first finding:
 
 ```bash
-diff -u <(grep -oE '^\s+[a-z_]+: ' packages/types/src/database.types.ts | sort -u) \
-        <(grep -oE '^\s+[a-z_]+: ' apps/web/src/types/database/generated.ts | sort -u)
+diff -u <(grep -oE '^\s+[a-z_]+: ' frontend/packages/types/src/database.types.ts | sort -u) \
+        <(grep -oE '^\s+[a-z_]+: ' frontend/apps/web/src/types/database/generated.ts | sort -u)
 ```
 
 ## The state you are auditing
@@ -85,11 +85,11 @@ These are dated facts, not permanent ones. **Reconfirm before repeating any of
 them**, with the command that follows each.
 
 - **There are two generated type files, not one** (07/08/2026):
-  `apps/web/src/types/database/generated.ts` (2517 l.) and
-  `packages/types/src/database.types.ts` (1611 l.). Both open with the same
+  `frontend/apps/web/src/types/database/generated.ts` (2517 l.) and
+  `frontend/packages/types/src/database.types.ts` (1611 l.). Both open with the same
   `Json` type, so both came from the Supabase CLI — one schema, two outputs, two
   chances to be stale. §4 says generated types are never written by hand; §1 says
-  shared types live in `packages/types`. The duplicate under `apps/web` is
+  shared types live in `frontend/packages/types`. The duplicate under `frontend/apps/web` is
   therefore the suspect, but **confirm who imports which** before recommending a
   deletion: `grep -rn "types/database/generated" apps packages | grep -v node_modules`
 - **The `.sql` files were consolidated into one folder** (13/08/2026). They used to

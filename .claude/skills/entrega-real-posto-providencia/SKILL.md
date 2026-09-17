@@ -293,7 +293,7 @@ O **coordenador não recalcula nada** — só consolida os relatórios num vered
   subagente-mês precisa carregar sozinho o mês, o caminho da fonte e a regra de
   comparação — ou nasce adivinhando.
 - Módulos e goldens que já existem para os dois campos:
-  `packages/utils/src/lucro.ts` + `lucro.golden.spec.ts`,
+  `frontend/packages/utils/src/lucro.ts` + `lucro.golden.spec.ts`,
   `encerrante-mensal.ts` + `encerrante-mensal.golden.spec.ts`, mais
   `lucro-real`, `custo-historico` e `fechamento`. O backtest **não substitui**
   esses goldens — ele estende a cobertura de dia isolado para o período todo.

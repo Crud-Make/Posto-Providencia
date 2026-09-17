@@ -9,7 +9,7 @@ metadata:
 ---
 
 **[26/08/2026]** Pergunta feita ao dono: "a taxa do cartão você põe na lista de despesas do
-mês?" — **sim**. Logo, o modelo certo é o de `packages/utils/src/lucro.ts`: taxa NÃO é
+mês?" — **sim**. Logo, o modelo certo é o de `frontend/packages/utils/src/lucro.ts`: taxa NÃO é
 dedução por transação, é mais uma despesa mensal rateada por litro. Compras e Planilha do
 Mês já fazem isso (leem só a tabela `Despesa`).
 

@@ -7,7 +7,7 @@
 #   1. O `.vercelignore` SUBSTITUI o `.gitignore` no upload. Se ele não excluir
 #      `docs/` e `.env*`, os .sqlite reais do posto e a chave PRIVADA do VAPID
 #      sobem junto. Estar no .gitignore NÃO protege aqui.
-#   2. Os projetos têm Root Directory dentro do monorepo (`apps/pwa-dono`), então
+#   2. Os projetos têm Root Directory dentro do monorepo (`frontend/apps/pwa-dono`), então
 #      o deploy tem de sair da RAIZ. Rodar de dentro da pasta do app falha com
 #      "The specified Root Directory does not exist".
 #
@@ -21,9 +21,9 @@ readonly ORG_ID='team_upqRo75tSm2qtK7kPuAAqU8c'
 
 # app        -> id do projeto na Vercel  (Root Directory)
 declare -A PROJETOS=(
-    [dono]='prj_eeMdcprmOStC5PnfBotQXbLPecHV'       # pwa-dono          -> apps/pwa-dono
-    [frentista]='prj_eZMuNiEujRE1pUmu6GSu3HctBbFB'  # pwa               -> apps/pwa-frentista
-    [painel]='prj_tTsFoELV3Gx3OgwIXMrsgHClcgex'     # posto-providencia -> . (raiz)
+    [dono]='prj_eeMdcprmOStC5PnfBotQXbLPecHV'       # pwa-dono          -> frontend/apps/pwa-dono
+    [frentista]='prj_eZMuNiEujRE1pUmu6GSu3HctBbFB'  # pwa               -> frontend/apps/pwa-frentista
+    [painel]='prj_tTsFoELV3Gx3OgwIXMrsgHClcgex'     # posto-providencia -> frontend
 )
 
 erro() { printf '\n\033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
@@ -65,7 +65,7 @@ if $seco; then
     aviso "--dry-run: pulando os testes"
 else
     printf '  rodando a suíte…\n'
-    bun run test >/dev/null 2>&1 || erro "Testes falhando. Não se publica assim."
+    (cd frontend && bun run test) >/dev/null 2>&1 || erro "Testes falhando. Não se publica assim."
     ok "Suíte verde"
 fi
 

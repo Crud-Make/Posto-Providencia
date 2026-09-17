@@ -28,8 +28,8 @@ COMMIT = re.compile(r"^git\s+commit\b")
 TUDO = re.compile(r"(^|\s)(-\w*a\w*|--all)(\s|$)")
 
 FORMULA = re.compile(
-    r"^packages/utils/src/(?!.*\.(test|spec)\.ts$)[\w.-]+\.ts$"
-    r"|^apps/web/src/services/api/aggregator\.service\.ts$"
+    r"^frontend/packages/utils/src/(?!.*\.(test|spec)\.ts$)[\w.-]+\.ts$"
+    r"|^frontend/apps/web/src/services/api/aggregator\.service\.ts$"
 )
 # Mudança que não pede CHANGELOG: doc, config de editor, o próprio changelog.
 DISPENSA_CHANGELOG = re.compile(

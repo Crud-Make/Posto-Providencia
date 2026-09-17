@@ -19,7 +19,7 @@ Issue: #94 (mãe: #60) · Estado: **aprovado** (dono, 17/09/2026) · Data: 17/09
 | Supabase | banco, auth, RLS, realtime, edge | **desligado no cutover (#105)** |
 | Planilha / ETL (`scripts/*.py`) | Management API | `psql` direto no Postgres próprio |
 
-O que **não** muda: as três telas, `packages/utils` (fórmulas, 18 golden), o esquema do banco
+O que **não** muda: as três telas, `frontend/packages/utils` (fórmulas, 18 golden), o esquema do banco
 (`banco/init/01-esquema-base.sql` é o contrato de dados).
 
 ## 2. Subsistemas — monólito modular em `backend/`
@@ -66,8 +66,8 @@ agora do que com Laravel no meio. **Aprovado (A) em 17/09.**
 
 ### DECISÃO 2 — onde `totaisDoDia` roda (#101)
 
-Hoje a consolidação do fechamento do dia (`packages/api-core/src/encerrante.ts:551-655`) roda
-**no cliente**: soma `Leitura.valor_total`, chama `totaisDoDia(sessões)` de `packages/utils` e
+Hoje a consolidação do fechamento do dia (`frontend/packages/api-core/src/encerrante.ts:551-655`) roda
+**no cliente**: soma `Leitura.valor_total`, chama `totaisDoDia(sessões)` de `frontend/packages/utils` e
 grava `total_vendas/total_recebido/diferenca` no `Fechamento`.
 
 | | A. continua no cliente (TS) | B. vai para o servidor (PHP) |
@@ -93,6 +93,24 @@ cutover (#105), meta "12 frentistas fechando no mesmo minuto". **Aprovado em 17/
 Hoje: anon key + frentista escolhido em `localStorage`. Opções: (a) token de aparelho emitido
 pelo gerente no painel (QR), guardado no PWA; (b) PIN por frentista. **Aprovado (a) em 17/09.** Recomendação: (a), porque
 não muda a tela do frentista (decisão de 17/09) e dá ao backend um `posto_id` confiável.
+
+### DECISÃO 5 — um posto por instalação, e a porta do banco compartilhado fica aberta
+
+Dito pelo dono em 17/09: **mesmo código e mesma lógica, instalado no Posto Providência e em
+outros postos separados** — o modelo anterior (um projeto Supabase montado à mão por cliente)
+não escala. Se um dia um banco compartilhado (multi-tenant) vai existir, **"ainda não sei,
+talvez sim"**. O desenho, portanto:
+
+- **Padrão de entrega:** uma instalação por posto = `docker compose up` (Postgres + api) + seed do
+  posto (`banco/dados/`, gerado por script a partir do cadastro levantado com o dono). Dentro de
+  cada instalação o posto é `posto_id = 1`, como hoje; golden e ETL não mudam. A #93 vira
+  "instalador do posto novo", não "segundo projeto Supabase".
+- **Porta aberta, barata agora e cara depois:** `posto_id NOT NULL` em toda tabela de domínio
+  (medido em 17/09: 31 de 45 têm a coluna, só 4 como NOT NULL; 4 sem FK; `AuditoriaDados` e
+  `InscricaoPush` sem a coluna) e o escopo global `PertenceAoPosto` em todo model. Com isso, ligar
+  vários postos no mesmo banco vira configuração + token, não migração de esquema.
+- **O que NÃO se faz enquanto a decisão estiver aberta:** schema por tenant, resolução de tenant
+  por subdomínio, billing. **Em aberto; revisitar no cutover (#105).**
 
 ### Componentes fixos (não são decisão)
 
@@ -166,4 +184,5 @@ Assíncrono: só o push e o OCR. Tudo o mais responde na requisição.
 ## Aprovação
 
 - [x] DECISÃO 1 (raiz: A) · [x] DECISÃO 2 (`totaisDoDia`: A) · [x] DECISÃO 3 (fila só push/OCR) · [x] DECISÃO 4 (token de aparelho)
+- [~] DECISÃO 5 (instalação por posto; banco compartilhado em aberto — "talvez sim") — registrada em 17/09, não fecha
 - [x] Dono marcou este doc como **aprovado** em 17/09/2026 → #95 abre branch.

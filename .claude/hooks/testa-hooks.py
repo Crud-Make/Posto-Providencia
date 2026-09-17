@@ -145,10 +145,10 @@ CASOS_GOLDEN = [
 # Checklist de commit: arquivos no commit → quantas pendências. Testa a função pura,
 # porque o hook inteiro depende do índice do git e não dá para fixar aqui.
 CASOS_CHECKLIST = [
-    (["packages/utils/src/fechamento.ts"], 2),          # fórmula + changelog
-    (["packages/utils/src/fechamento.ts", "CHANGELOG.md"], 1),  # só fórmula
-    (["apps/web/src/App.tsx"], 1),                      # só changelog
-    (["apps/web/src/App.tsx", "CHANGELOG.md"], 0),
+    (["frontend/packages/utils/src/fechamento.ts"], 2),          # fórmula + changelog
+    (["frontend/packages/utils/src/fechamento.ts", "CHANGELOG.md"], 1),  # só fórmula
+    (["frontend/apps/web/src/App.tsx"], 1),                      # só changelog
+    (["frontend/apps/web/src/App.tsx", "CHANGELOG.md"], 0),
     (["docs/notas.md"], 0),
     ([".claude/hooks/roteia-consulta.py"], 0),
     ([], 0),

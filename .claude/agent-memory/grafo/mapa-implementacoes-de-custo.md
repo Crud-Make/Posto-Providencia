@@ -8,10 +8,10 @@ metadata:
 **[28/08/2026]** Levantamento do raio de impacto para consolidar custo. Três famílias,
 não duas — a divisão que importa não é "packages vs. apps", é **qual regra cada uma aplica**.
 
-**A) Canônica — média do próprio mês** (`packages/utils/src/lucro.ts`):
+**A) Canônica — média do próprio mês** (`frontend/packages/utils/src/lucro.ts`):
 `custoMedioCompra` = Σ valor ÷ Σ litros das compras DO MÊS, devolve `null` sem compra (nunca 0);
 `despesaOperacionalPorLitro` = despesas do mês ÷ litros vendidos do mês.
-Reexportada pelo barril `packages/utils/src/index.ts`.
+Reexportada pelo barril `frontend/packages/utils/src/index.ts`.
 
 **B) Ponderada com estoque anterior — só na ESCRITA**, e é a que diverge da planilha:
 `compra.service.ts` (grava `Estoque.custo_medio`) e `stockService.ts` (grava

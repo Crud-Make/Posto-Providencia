@@ -1,11 +1,11 @@
 ---
 name: tres-parsers-de-encerrante-no-web
-description: O apps/web tem 3 parsers diferentes para a MESMA string de encerrante; um deles (useLeiturasDiarias) usa replace('.','') sem /g e divide por 1000 os bicos acima de 1 milhão
+description: O frontend/apps/web tem 3 parsers diferentes para a MESMA string de encerrante; um deles (useLeiturasDiarias) usa replace('.','') sem /g e divide por 1000 os bicos acima de 1 milhão
 metadata:
   type: project
 ---
 
-O `apps/web` converte a string de encerrante (`leituras[bicoId].inicial` /
+O `frontend/apps/web` converte a string de encerrante (`leituras[bicoId].inicial` /
 `.fechamento`, tipo `Leitura` de `fechamento-diario/hooks/useLeituras.ts`) para
 número por **três caminhos diferentes**, e um deles está errado.
 

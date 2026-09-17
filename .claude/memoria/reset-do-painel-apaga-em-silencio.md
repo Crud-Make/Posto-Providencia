@@ -9,7 +9,7 @@ metadata:
 ---
 
 **Medido em produção em 14/08/2026**, quando o dono clicou no reset
-(`apps/web/src/components/configuracoes/` → `reset.service.ts`) e o app disse
+(`frontend/apps/web/src/components/configuracoes/` → `reset.service.ts`) e o app disse
 "não apagou nada". Mentira dupla:
 
 1. **Apagou, em silêncio parcial:** 152 `FechamentoFrentista` (julho inteiro +

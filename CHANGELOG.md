@@ -2,6 +2,53 @@
 
 ## [Não Lançado]
 
+### 🐘🐘 `backend/` nasceu: Laravel 13 no docker-compose com os quality gates de saída (#96)
+
+- `composer create-project laravel/laravel backend` (Laravel 13.32, PHP 8.5.10), a pedido do dono.
+  `.env` aponta para o Postgres do compose (`127.0.0.1:5433` do host; `postgres:5432` no container);
+  sessão, cache e fila em `file`/`sync` até a #102 decidir; locale `pt_BR`. `GET /api/saude` responde
+  `{status, banco, versao}` e é o healthcheck do serviço `api` no compose (imagem dev
+  `php:8.5-cli-alpine` + `pdo_pgsql`, código por volume, `artisan serve` em `:8000`).
+- Testes e gates do `CLAUDE.md` §6 instalados como dev: **Pest 5** (no lugar do PHPUnit) com
+  `pest-plugin-laravel`, **Larastan 3** (PHPStan 2, nível 6), **PHPMD 2.15** (CCN ≤ 10, `phpmd.xml`),
+  **Deptrac 4.7** (camadas Http → Application → Domain → Compartilhado do Design Doc, mais `Framework`),
+  **Pint** e **Laravel Boost 2.9** (`boost:install --guidelines --skills --mcp`: gravou
+  `backend/CLAUDE.md`, `backend/AGENTS.md` e `backend/.mcp.json`; o `.mcp.json` da raiz ficou
+  intacto). `composer gates` roda os cinco; `composer test:cobertura` cobra 85 % a partir da #97.
+- CI ganha o job `backend` (PHP 8.5 + `composer gates`). `scripts/hooks/pre-commit` versionado
+  (`scripts/instala-hooks.sh`): gates PHP só com `.php` no índice, oxlint só com `.ts`. Não usa
+  `core.hooksPath` para não derrubar os hooks do graphify.
+- Design Doc ganha a **DECISÃO 5**: mesmo código, **uma instalação por posto** (compose + seed);
+  banco compartilhado "talvez sim", então `posto_id NOT NULL` e escopo `PertenceAoPosto` entram
+  desde já para não fechar a porta. A #93 passa a ser "instalador do posto novo".
+
+### ⚡ oxlint como lint padrão do frontend
+
+- `bun add -d oxlint` (1.83.0) em `frontend/`, a pedido do dono: a base é grande e o oxlint é mais
+  rápido. Medido em 17/09: **0,17 s** contra **23 s** do eslint na mesma árvore. `bun run lint`
+  passa a ser `oxlint .`; o eslint continua em `bun run lint:eslint` e o CI roda os dois.
+  Baseline do oxlint: só avisos do plugin `unicorn` (thenable em mock de teste, fallback vazio em
+  spread), zero erro. Primeiro `bun add` caiu na raiz por engano e criou um `package.json` solto;
+  desfeito antes do commit.
+
+### 🗂️ Raiz organizada: `frontend/` e `backend/` (#95)
+
+- `apps/`, `packages/` e toda a toolchain TS (`package.json`, `bun.lock`, `bunfig.toml`, `vite.config.ts`,
+  `vitest.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vercel.json`, `.env*`) foram para
+  `frontend/` num commit só de movimento (504 renames 100 %; `git blame` e `log --follow` intactos).
+  `scripts/reconsolidar-dia.ts` foi junto porque resolve `@posto/*` pelo `node_modules` do workspace.
+  Na raiz ficam `banco/`, `docs/`, `scripts/` (Python e deploy), `supabase/`, `docker-compose.yml`.
+  `backend/` (Laravel) nasce na #96. Tag de retorno: `versao-testada-funcionando-pre-raiz`.
+- Ajustes que o inventário do agente `grafo` apontou: os **18 golden masters** sobem um `../` a mais
+  até `docs/data/` (sem isso estourariam em silêncio); `checklist-commit.py` ancorava `^packages/`
+  e deixaria de ver fórmula; CI ganha `working-directory: frontend`; `deploy-vercel.sh` e
+  `verifica-rls-fase1.sh` com os caminhos novos; docs, skills, agentes e memórias reescritos
+  (`apps/` → `frontend/apps/`, `packages/` → `frontend/packages/`, `apps/api` → `backend/`).
+- Apagados por mortos: `types.ts` da raiz (ninguém importava; cópia usada é
+  `packages/types/src/ui/legacy-types.ts`) e `turbo.json` (turbo nunca foi instalado).
+- **Pendente fora do repo:** Root Directory dos 3 projetos Vercel no painel: `.` → `frontend`,
+  `apps/pwa-frentista` → `frontend/apps/pwa-frentista`, `apps/pwa-dono` → `frontend/apps/pwa-dono`.
+
 ### 🗂️ Milestone "Fase A — backend Laravel": 13 issues abertas (#94–#106)
 
 - #60 virou a issue-mãe com o checklist; #93 entrou no milestone. Ordem: #94 Design Doc →

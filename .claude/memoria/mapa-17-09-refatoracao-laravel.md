@@ -28,7 +28,7 @@ Fatos que não estão no repo:
 **Why:** o dono é quem decide o rumo, mas as decisões (#60 × #93, fórmula em TS ou PHP) ainda estavam abertas ao fim de 17/09.
 **How to apply:** antes de qualquer fatia de Laravel, conferir se o token foi renovado, se o dump
 entrou no repo, e qual CLAUDE.md está valendo. Caminho recomendado: strangler, Postgres em Docker
-primeiro, Edge Functions + RPCs como primeira fatia, `apps/web` por último. Ver [[segundo-posto-cliente-novo]].
+primeiro, Edge Functions + RPCs como primeira fatia, `frontend/apps/web` por último. Ver [[segundo-posto-cliente-novo]].
 
 **Decisão do dono em 17/09:** foco só neste repo; toda referência ao projeto Laravel anterior foi apagada do repo e da memória a pedido dele. Não reintroduzir.
 
@@ -36,10 +36,37 @@ primeiro, Edge Functions + RPCs como primeira fatia, `apps/web` por último. Ver
 = Laravel no backend, telas como estão, banco em Docker. Criados e validados: `banco/init/*.sql`
 (esquema completo, 45 tabelas), `banco/dados/cadastros.sql` (gitignored), `docker-compose.yml`
 (Postgres 17 em :5433), `banco/README.md`, CHANGELOG. Container `posto-postgres` ficou no ar.
-Próxima fatia proposta: `apps/api` Laravel no mesmo compose, começando pelas 2 Edge Functions e 3 RPCs.
+Próxima fatia proposta: `backend` Laravel no mesmo compose, começando pelas 2 Edge Functions e 3 RPCs.
 Pendente do dono: o `CLAUDE.md` sobrescrito; PHP 8.5 e Composer 2.10 já estão na máquina.
 
 **17/09, fim do dia:** milestone "Fase A — backend Laravel" e issues #94–#106 abertas (mãe: #60).
 Sprint começa por #94 (Design Doc `docs/design/fase-a-laravel.md`, rascunhado, 4 DECISÕES
 pendentes do dono) e #95 (raiz: `frontend/` + `backend/`, recomendação A). Dono disse "depois vamos
 começar a sprint" — o próximo passo é ele aprovar o doc e as decisões.
+
+**17/09, noite — #95 feita, sem push.** Branch `chore/#95-raiz-frontend-backend` (8 commits acima da
+main, empilhada sobre `feat/#60-laravel-fase-a-esquema`): `frontend/` tem apps/, packages/ e a toolchain
+TS; raiz tem banco/, docs/, scripts/, supabase/, compose. Tag `versao-testada-funcionando-pre-raiz`.
+oxlint é o `bun run lint` (0,17 s); eslint em `lint:eslint`. Tudo verde. **Pendente do dono:** ok para
+push/PR; Root Directory dos 3 projetos Vercel no painel (`frontend`, `frontend/apps/pwa-*`). Próxima: #96
+(Laravel em `backend/`, exige ok para o composer). Armadilha vista: `bun add` fora de `frontend/` cria
+package.json na raiz — sempre `cd frontend` antes.
+
+**17/09, madrugada — #96 feita, sem push.** Branch `chore/#96-backend-laravel` sobre a #95: `backend/`
+Laravel 13.32, `composer gates` (Pint, Larastan 6, PHPMD, Deptrac, Pest) verde, Boost instalado,
+`docker compose up api` saudável. **Armadilha:** `artisan serve` descarta env do worker (lista fixa
+`passthroughVariables`); no container usar `php -S`. Decisão 5: uma instalação por posto; banco
+compartilhado "talvez sim" → `posto_id NOT NULL` + escopo global desde a #97. Pendências do dono:
+ok para push/PRs (3 branches empilhadas), `fase-a` + proteção da main, Root Directory na Vercel.
+Próxima: #97 (models do cadastro).
+
+**17/09 — enviado.** `fase-a` criada da `main` e protegida (PR obrigatória, checks `build`+`backend`,
+sem force push, sem delete); `main` com a mesma proteção. PRs empilhadas: **#107** (esquema → fase-a),
+**#108** (raiz → #60), **#109** (backend → #95). CI roda em toda PR. Vercel faz preview por PR (falha
+esperada nas de layout novo; produção só sai da `main`). Dois incidentes evitados, ambos por ferramenta:
+(1) o cache do PHPStan serializa o ambiente com segredos — a proteção de push do GitHub barrou, história
+reescrita antes de sair, `storage/framework/phpstan/` no .gitignore; (2) um `reset --soft` rodou na
+branch errada (`fase-a`) porque um comando anterior falhou no meio — restaurado de `origin/fase-a`.
+**Regra minha:** `git branch --show-current` antes de qualquer reset; nunca encadear checkout+reset num
+comando que pode falhar antes.
+

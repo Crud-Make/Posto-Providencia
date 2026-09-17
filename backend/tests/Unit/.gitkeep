@@ -1,0 +1,1 @@
+# git não versiona pasta vazia; o phpunit.xml exige tests/Unit. Testes unitários (PHP puro) nascem aqui.

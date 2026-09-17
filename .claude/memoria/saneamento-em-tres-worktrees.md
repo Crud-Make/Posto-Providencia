@@ -26,7 +26,7 @@ falham em silêncio:
    mexa em `package.json`, **rodar `bun install` de novo**: o `type-check` quebra com erro que
    parece de código (`Property 'dir' does not exist on type 'ImportMeta'`) quando na verdade é
    dependência faltando.
-3. **`.env` fica em `apps/web/.env` e na raiz** (não `.env.local`), também gitignored — sem ele o
+3. **`.env` fica em `frontend/apps/web/.env` e na raiz** (não `.env.local`), também gitignored — sem ele o
    `bun run dev` sobe mas o Supabase não conecta.
 
 Ordem de merge que usamos: a trilha estrutural (menor, sem dinheiro) primeiro, a de fórmula em cima.

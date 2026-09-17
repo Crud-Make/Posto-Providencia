@@ -11,7 +11,7 @@ dois registros para o mesmo bico no mesmo dia. `leitura_inicial`/`leitura_final`
 são `numeric(15,3)`; `preco_litro` `numeric(10,2)`; `valor_total` `numeric(15,2)`.
 
 **Why:** em 16/08/2026 apareceu um bug de parse confirmado em
-`apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts` (`.replace('.','')` sem `/g`,
+`frontend/apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts` (`.replace('.','')` sem `/g`,
 só o primeiro ponto de milhar sai) que grava o encerrante do bico 01 mil vezes menor. Sem trava no
 banco, a única defesa é detecção depois do fato — e a pergunta "isso já contaminou produção?"
 volta a cada regressão de parse.

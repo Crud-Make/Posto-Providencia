@@ -5,7 +5,8 @@
 #   docker compose down -v                 # zera (o volume é apagado; o init roda de novo)
 #
 # Porta 5433 no host para não brigar com um Postgres local em 5432.
-# O serviço `api` (Laravel) entra aqui quando existir apps/api.
+# `api` é o backend Laravel (backend/), em modo dev: código montado por volume, `artisan serve`.
+#   docker compose up -d --wait api            # sobe postgres + api; http://localhost:8000/api/saude
 
 services:
   postgres:
@@ -26,6 +27,27 @@ services:
       test: ["CMD-SHELL", "pg_isready -U posto -d posto"]
       interval: 3s
       timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    container_name: posto-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      APP_URL: http://localhost:8000
+      PHP_CLI_SERVER_WORKERS: 4
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(str_contains(file_get_contents(\"http://127.0.0.1:8000/api/saude\"), \"ok\") ? 0 : 1);'"]
+      interval: 5s
+      timeout: 5s
       retries: 20
 
 volumes:

@@ -6,7 +6,7 @@ metadata:
 ---
 
 O bug do `replace('.', '')` sem `/g` em
-`apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts` **nunca
+`frontend/apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts` **nunca
 foi corrigido antes de 16/08/2026**. Blame de `6c89f1d^` nas linhas 90-98:
 100% `b58cf0f` (18/01/2026), sem um único commit intermediário.
 
@@ -37,7 +37,7 @@ produção**.
 
 **A consolidação de `f2c212c`** (16/08/2026, `model/campo-numerico.ts`, "três
 cópias do parser") **não podia ter pego este arquivo**: as 3 cópias eram todas
-de `apps/web/src/widgets/planilha-do-mes/` (hook, célula editável, gravação da
+de `frontend/apps/web/src/widgets/planilha-do-mes/` (hook, célula editável, gravação da
 régua). Os 5 arquivos do commit vivem inteiros nesse widget. `leituras-diarias/`
 é outra fatia — alcançá-la seria import lateral (§2), e foi o mesmo motivo pelo
 qual `6c89f1d` criou `model/encerrante-digitado.ts` em vez de importar o

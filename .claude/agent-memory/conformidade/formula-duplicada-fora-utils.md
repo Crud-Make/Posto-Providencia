@@ -1,17 +1,17 @@
 ---
 name: formula-duplicada-fora-utils
-description: As formas que a fórmula de lucro fora de packages/utils assume neste repo — trio inline (hoje em módulo com golden), margem hardcoded, lucro sem despesa; fallback 0,45 e rateio proporcional JÁ SAÍRAM do aggregator (17/09/2026)
+description: As formas que a fórmula de lucro fora de frontend/packages/utils assume neste repo — trio inline (hoje em módulo com golden), margem hardcoded, lucro sem despesa; fallback 0,45 e rateio proporcional JÁ SAÍRAM do aggregator (17/09/2026)
 metadata:
   type: project
 ---
 
-A consolidação em `@posto/utils` está **largamente feita** (102 arquivos em `apps/`
+A consolidação em `@posto/utils` está **largamente feita** (102 arquivos em `frontend/apps/`
 importam `@posto/utils` em 17/09/2026 — reconte com
 `grep -rl "from '@posto/utils'" apps --include='*.ts' --include='*.tsx' | wc -l`).
 O que sobra é resíduo, e reconhecer a forma é o que economiza a varredura — o grep
 sozinho não distingue nenhuma delas.
 
-O canônico é `packages/utils/src/lucro.ts`:
+O canônico é `frontend/packages/utils/src/lucro.ts`:
 `lucro = receita − litros × (custoMedio + despesaOperacionalPorLitro)`, quantizado
 por `emCentavos`. Toda forma abaixo é um desvio dele.
 
@@ -20,16 +20,16 @@ por `emCentavos`. Toda forma abaixo é um desvio dele.
 **Estado em 17/09/2026:** os dois concentradores viraram módulos que **delegam** o
 lucro total à canônica e mantêm inline só o que não é dinheiro final
 (`suggestedPrice`, `profitPerLiter`, `cmv`), cada um com `*.golden.spec.ts` ao lado.
-Continuam **fora de `packages/utils`** — é dívida de locality, não de fórmula errada:
+Continuam **fora de `frontend/packages/utils`** — é dívida de locality, não de fórmula errada:
 ```bash
-grep -nE 'suggestedPrice|profitPerLiter|cmv' apps/web/src/services/api/calculos-analise-vendas.ts
-grep -nE 'Pura\(|precoVenda - custoVenda' apps/web/src/components/registro-compras/hooks/useCalculosRegistro.ts
-ls apps/web/src/services/api/calculos-analise-vendas.golden.spec.ts apps/web/src/components/registro-compras/hooks/useCalculosRegistro.golden.spec.ts
+grep -nE 'suggestedPrice|profitPerLiter|cmv' frontend/apps/web/src/services/api/calculos-analise-vendas.ts
+grep -nE 'Pura\(|precoVenda - custoVenda' frontend/apps/web/src/components/registro-compras/hooks/useCalculosRegistro.ts
+ls frontend/apps/web/src/services/api/calculos-analise-vendas.golden.spec.ts frontend/apps/web/src/components/registro-compras/hooks/useCalculosRegistro.golden.spec.ts
 ```
 O inventário de "módulo de fórmula em app, com ou sem teste" sai deste laço — é o
 que responde "quanto ainda mora fora de utils":
 ```bash
-for f in apps/web/src/services/*.ts apps/web/src/services/api/calculos-*.ts apps/web/src/utils/*.ts; do case $f in *test.ts|*spec.ts) continue;; esac; echo "$f golden=$(ls ${f%.ts}.golden.spec.ts 2>/dev/null) test=$(ls ${f%.ts}.test.ts 2>/dev/null) utils=$(grep -c '@posto/utils' $f)"; done
+for f in frontend/apps/web/src/services/*.ts frontend/apps/web/src/services/api/calculos-*.ts frontend/apps/web/src/utils/*.ts; do case $f in *test.ts|*spec.ts) continue;; esac; echo "$f golden=$(ls ${f%.ts}.golden.spec.ts 2>/dev/null) test=$(ls ${f%.ts}.test.ts 2>/dev/null) utils=$(grep -c '@posto/utils' $f)"; done
 ```
 Em 17/09 só `aiService.ts` (272 L) e `stockService.ts` (140 L) estavam sem teste e sem
 `@posto/utils` — e os dois delegam a conta a um `calculos-*.ts` testado; a
@@ -48,14 +48,14 @@ O filtro de CSS não é opcional. Em 17/09 os 3 hits restantes são `fontSize * 
 `despesaOperacionalMensal` em `aggregator.service.ts` documenta a remoção. Reconfirmar
 que segue fora (vazio = removido):
 ```bash
-grep -n "despesa_operacional_litro" apps/web/src/services/api/aggregator.service.ts | grep -v '^\s*[0-9]*:\s*\*'
+grep -n "despesa_operacional_litro" frontend/apps/web/src/services/api/aggregator.service.ts | grep -v '^\s*[0-9]*:\s*\*'
 ```
 
 **Forma 4 — o rateio proporcional** (`profit = totalSales × margemMedia`).
 **REMOVIDA** — o `performanceData` do aggregator hoje ranqueia por venda conferida e
 o comentário explica por quê. Reconfirmar (vazio = removido):
 ```bash
-grep -n 'margemMedia' apps/web/src/services/api/aggregator.service.ts
+grep -n 'margemMedia' frontend/apps/web/src/services/api/aggregator.service.ts
 ```
 
 **Forma 5 — o lucro sem a despesa operacional.** `volume × (preçoVenda − custo)`.
@@ -69,7 +69,7 @@ grep -rnE '(preco_venda|precoVenda|precoDoDia)\s*-\s*(preco_custo|custoMedio|pre
 **Forma em SQL — lucro bruto dentro de RPC.** `get_dashboard_proprietario`
 (`supabase/migrations/20260828_rpc_taxa_cartao_e_despesa_do_mes.sql`) calcula
 `Σ litros × (preco_litro − custo_da_época)` em plpgsql. O golden
-`packages/utils/src/custo-historico.golden.spec.ts` cobre a **reimplementação em TS**
+`frontend/packages/utils/src/custo-historico.golden.spec.ts` cobre a **reimplementação em TS**
 da mesma conta, não o SQL — a RPC em si não tem teste que a execute. Consumida por:
 ```bash
 grep -rn "rpc('get_dashboard_proprietario'" apps --include='*.ts' --include='*.tsx'

@@ -16,7 +16,7 @@ não envelhece é o **script**, não o número — recontar sempre.
 ```bash
 R() { rg -g '*.ts' -g '*.tsx' -g '!*.test.*' -g '!*.spec.*' -g '!**/dist/**' "$@"; }
 # tabelas por app (contagem de chamadas .from)
-for a in apps/web apps/pwa-frentista apps/pwa-dono packages/api-core supabase/functions; do
+for a in frontend/apps/web frontend/apps/pwa-frentista frontend/apps/pwa-dono frontend/packages/api-core supabase/functions; do
   echo "-- $a"; R -o "\.from\(\s*['\"]([A-Za-z_]+)['\"]" -r '$1' $a | awk -F: '{print $NF}' | sort | uniq -c | sort -rn; done
 R -n -o "\.rpc\(\s*['\"]([A-Za-z_]+)['\"]" -r '$1' apps packages           # RPCs chamadas
 R -n -o "functions\.invoke\(\s*['\"]([a-z_-]+)['\"]" -r '$1' apps packages   # Edge Functions
@@ -26,14 +26,14 @@ R -n "\.storage\.|storage\.from" apps packages                               # s
 ```
 
 **Onde cada acoplamento vive (confirmado por grep em 17/09/2026):**
-- Único `createClient` do web: `apps/web/src/services/supabase.ts` (`flowType: 'pkce'`).
-  PWAs têm o seu em `apps/pwa-*/src/lib/supabase.ts`; `packages/api-core` recebe o client
+- Único `createClient` do web: `frontend/apps/web/src/services/supabase.ts` (`flowType: 'pkce'`).
+  PWAs têm o seu em `frontend/apps/pwa-*/src/lib/supabase.ts`; `frontend/packages/api-core` recebe o client
   injetado (`criarAcessoEncerrante(supabase)`).
-- `auth.*` só em `apps/web/src/contexts/AuthContext.tsx`; PWAs rodam como `anon`.
+- `auth.*` só em `frontend/apps/web/src/contexts/AuthContext.tsx`; PWAs rodam como `anon`.
 - Realtime só no web: `fechamento-diario/index.tsx` (FechamentoFrentista, Leitura),
   `useCarregamentoDados.ts` (Fechamento), `frentistas/hooks/useFrentistas.ts` (Frentista).
-- Push: `apps/pwa-dono/src/lib/push.ts` grava `InscricaoPush`; `supabase/functions/notifica-dono`
-  lê com `SERVICE_ROLE_KEY` e assina VAPID. Disparo: `apps/pwa-frentista/src/services/api.ts` (`avisarDono`).
+- Push: `frontend/apps/pwa-dono/src/lib/push.ts` grava `InscricaoPush`; `supabase/functions/notifica-dono`
+  lê com `SERVICE_ROLE_KEY` e assina VAPID. Disparo: `frontend/apps/pwa-frentista/src/services/api.ts` (`avisarDono`).
 - RPC `get_frentistas_with_email` é chamada (`frentista.service.ts`) e **não tem definição em
   `supabase/migrations/`**; `get_encerrantes_mensal` (legado) está definida e sem chamador.
 

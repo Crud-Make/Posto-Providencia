@@ -7,9 +7,9 @@ metadata:
 
 **Quem é `anon` e quem é `authenticated` hoje** (conferido no código em 17/09/2026):
 
-- `apps/web` (painel): **exige login** — `AuthContext.tsx` só tem `signInWithPassword`, e
+- `frontend/apps/web` (painel): **exige login** — `AuthContext.tsx` só tem `signInWithPassword`, e
   `App.tsx` abre a porta só com sessão. Fala como **`authenticated`**.
-- `apps/pwa-frentista` e `apps/pwa-dono`: **sem autenticação nenhuma** (zero `signIn`,
+- `frontend/apps/pwa-frentista` e `frontend/apps/pwa-dono`: **sem autenticação nenhuma** (zero `signIn`,
   zero `getSession`). Falam como **`anon`**, com a mesma anon key.
 
 **Correção de memória anterior (16/08/2026):** o painel teve um `modoVisitante`
@@ -33,7 +33,7 @@ quando existem).
   consome como `anon` × o que o painel consome como `authenticated`.
 - Escrita que os PWAs **realmente** usam como anon (grep `.from(` em 17/09/2026):
   `FechamentoFrentista`, `Fechamento`, `HistoricoTanque`, `VendaProduto`, `Frentista`,
-  `PresencaFrentista`, `InscricaoPush`, e via `packages/api-core`: `Leitura`, `Bico`.
+  `PresencaFrentista`, `InscricaoPush`, e via `frontend/packages/api-core`: `Leitura`, `Bico`.
 - Conferir o consumo com `grep -rhoE "\.from\(['\"]TABELA['\"]\)" apps packages` antes de
   afirmar que algo é inútil. Tabela citada só em `types/database/generated.ts` não é uso.
 - A proposta de PIN/senha no PWA do frentista já foi decidida contra pelo dono — não relitigar.

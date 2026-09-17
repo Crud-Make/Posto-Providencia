@@ -12,7 +12,7 @@ metadata:
 R$ 22.466,98 e não os R$ 22.158,46 lançados (ver [[replay-janeiro-compras-despesas-lancadas]]).
 
 **Causa (confirmada por grafo + teste de banco):** `getLucroPorPeriodo`
-(`apps/web/src/services/api/fechamento.service.ts:222`) NÃO calcula nada — só faz `SUM` de
+(`frontend/apps/web/src/services/api/fechamento.service.ts:222`) NÃO calcula nada — só faz `SUM` de
 colunas **já gravadas** em `Fechamento`: `custo_combustiveis`, `lucro_bruto`,
 `taxas_pagamento`, `lucro_liquido`. Essas colunas só são preenchidas pelo script offline
 `scripts/auditoria-lucro-mes.py` (aplicado à mão via `--sql`). A gravação da UI

@@ -2,13 +2,13 @@
 name: fechamento-posto-providencia
 description: >-
   Fonte de verdade do domínio de fechamento de caixa do Posto Providência
-  (monorepo Bun, apps/web + apps/pwa-frentista + packages/utils, Supabase).
+  (monorepo Bun, frontend/apps/web + frontend/apps/pwa-frentista + frontend/packages/utils, Supabase).
   Use SEMPRE que houver dúvida sobre regra de negócio, cálculo, nomenclatura
   ou estrutura do fechamento ("como calcula X?", "de onde vem esse
   valor/nome", "qual é a fórmula certa"), ao mexer em qualquer lugar que
   calcule `valor_conferido`/`diferenca` (PWA, hooks do web, services,
-  aggregator), ou ao mexer no módulo canônico packages/utils/src/fechamento.ts
-  e nos arquivos de apps/ que o consomem. Em conflito entre intuição e
+  aggregator), ou ao mexer no módulo canônico frontend/packages/utils/src/fechamento.ts
+  e nos arquivos de frontend/apps/ que o consomem. Em conflito entre intuição e
   o dado real de janeiro (docs/data/janeiro_referencia.sqlite), o dado real
   decide. Toda fórmula aplicada exige teste golden master correspondente
   antes de a tarefa ser considerada pronta — e NUNCA consolide as
@@ -33,10 +33,10 @@ reconciling what each `frentista` collected per payment method against what the
 ## Consolidation status — done
 
 `valor_conferido`/`diferenca` was once **duplicated across ~6 implementations**
-scattered over `apps/pwa-frentista`, `apps/web` hooks, services and the
+scattered over `frontend/apps/pwa-frentista`, `frontend/apps/web` hooks, services and the
 aggregator. Today the calculation is single, in
-`packages/utils/src/fechamento.ts`. Dead code removed:
-`packages/utils/src/calculators.ts` and `dates.ts` no longer exist.
+`frontend/packages/utils/src/fechamento.ts`. Dead code removed:
+`frontend/packages/utils/src/calculators.ts` and `dates.ts` no longer exist.
 
 The **last two places** that summed buckets by hand were closed on 02/08/2026 —
 `aggregator.service.ts` and
@@ -46,13 +46,13 @@ submitted) instead of recomputing. Before that they omitted moedas/baratão and
 flagged `'Divergente'` on correct sessions. **Both files carry a comment
 explaining the decision — do not "fix" them back into manual sums.**
 
-> Consumer count verified on 06/08/2026: **12 production files under `apps/`**
+> Consumer count verified on 06/08/2026: **12 production files under `frontend/apps/`**
 > import the canonical module, plus **3 test files**. (Counting the
-> `packages/utils/src/index.ts` barrel that re-exports it, 13 production files
+> `frontend/packages/utils/src/index.ts` barrel that re-exports it, 13 production files
 > repo-wide.) This number ages with every feature — recount with the command in
 > `.claude/agents/grafo.md`, and do not trust this line on its own. Filtering by
 > symbol is mandatory: `@posto/utils` is a barrel over 8 modules, and there is
-> an unrelated `apps/web/src/types/fechamento.ts` that inflates a naive count by
+> an unrelated `frontend/apps/web/src/types/fechamento.ts` that inflates a naive count by
 > more than 2x.
 
 **The rule that outlives the consolidation:** this codebase's recurring failure
@@ -67,7 +67,7 @@ consolidating.** Mandatory order:
    by real data.
 3. Where they disagree with each other → **stop and confirm with the owner**
    which one is right before choosing — one of them may be a bug, do not assume.
-4. Only then point everyone at `packages/utils/src/fechamento.ts`, swapping call
+4. Only then point everyone at `frontend/packages/utils/src/fechamento.ts`, swapping call
    sites **one at a time** and running the same golden master after each swap —
    never in bulk.
 
@@ -78,15 +78,15 @@ Function. The logic must be **pure and I/O-free** so it can be tested in
 isolation:
 
 ```
-packages/utils/src/fechamento.ts    ← pure functions. The real API today:
+frontend/packages/utils/src/fechamento.ts    ← pure functions. The real API today:
                                         cartao(), conferido(), diferenca(),
                                         isFalta(), isSobra(), breakdown(),
                                         meiosFromFechamentoRow(),
                                         meiosFromPwaPayments().
                                         No fetch, no Supabase client,
                                         no side effects.
-packages/utils/src/fechamento.test.ts         ← vitest, unit
-packages/utils/src/fechamento.golden.spec.ts  ← bun:test against real data
+frontend/packages/utils/src/fechamento.test.ts         ← vitest, unit
+frontend/packages/utils/src/fechamento.golden.spec.ts  ← bun:test against real data
 ```
 
 ⚠️ **There is no `valorConferido()` and no `litros()`** — the name of the
@@ -99,7 +99,7 @@ vitest and run under `bun run test`; the golden `.golden.spec.ts` files are
 sweeps the whole repo, tries to execute the vitest files and produces failures
 that are not bugs.
 
-Components in `apps/web` and `apps/pwa-frentista` **call** these functions —
+Components in `frontend/apps/web` and `frontend/apps/pwa-frentista` **call** these functions —
 they never reimplement the formula locally. A formula inside a component, hook
 or service is debt: flag it before replicating it.
 
@@ -189,7 +189,7 @@ golden master.
 
 - [ ] I checked the formula against `janeiro_referencia.sqlite` (or this skill),
       instead of assuming from intuition
-- [ ] The logic lives in `packages/utils`, pure, I/O-free — not duplicated in
+- [ ] The logic lives in `frontend/packages/utils`, pure, I/O-free — not duplicated in
       PWA/web/service/aggregator
 - [ ] I wrote a `bun:test` golden master (`*.golden.spec.ts`) comparing against
       January (where applicable), and ran it with `bun run test:golden` — never

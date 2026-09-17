@@ -44,7 +44,7 @@ reescrita — o gosto vale, a estrutura mudou):
   descrito com o que existe no `.claude/` do Posto-Providencia — manter verificável.
 - Posto-Providencia fica **privado** (financeiro real do Elias no CHANGELOG/testes/memória); no
   perfil entra descrito + link do sistema em produção `https://posto-providencia.vercel.app` (sem
-  sessão só mostra login — `apps/web/src/App.tsx:87`). Repo
+  sessão só mostra login — `frontend/apps/web/src/App.tsx:87`). Repo
   `-Axxy-Finaaceiro` renomeado para `axxy-finance`.
 
 **Pendências dele:** fixar os 4 repos na web (a API não permite mais), LinkedIn (vai recriar —

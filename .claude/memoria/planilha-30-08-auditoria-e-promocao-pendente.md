@@ -28,7 +28,7 @@ commits `5272df2`/`0214af6`). Checklist contra a planilha nova:
 - **Estoque vivo** é derivado (`estoque-derivado.ts`), `Tanque.estoque_atual`=0 é irrelevante.
   Régua de agosto gravada como 31/08 embora o resumo tenha parado no dia 27.
 - **30/08, com ok do dono:** `Compra` 73–76 e `Despesa` 262–270 de agosto redatadas de 31/08
-  para **05/08** por SQL. Motivo: `intervaloDoMes` (`apps/web/src/utils/periodo.ts`) corta o
+  para **05/08** por SQL. Motivo: `intervaloDoMes` (`frontend/apps/web/src/utils/periodo.ts`) corta o
   mês corrente em *hoje*, e lançamento no último dia ficava invisível na Visão Proprietário
   (custo/litro "—", "sem despesa", só lucro bruto). **Carga futura: nunca datar no dia 31** —
   usar uma data ≤ hoje, ou o mês nasce "sem despesa" até virar.

@@ -28,7 +28,7 @@ process:
    as done — never after.
 
 **Never mix the two in the same task.** If a structural refactor exposes an
-untested formula (e.g. promoting `projectedProfit` into `packages/utils` for
+untested formula (e.g. promoting `projectedProfit` into `frontend/packages/utils` for
 reuse), it automatically becomes category 2 and needs a golden master before
 merge — even if the original intent was only to organise.
 
@@ -119,5 +119,5 @@ do not block a "Strong" one while waiting to decide the others.
   `fechamento-posto-providencia`; when it is "what was this number in reality",
   it is the `planilha` agent.
 - The monorepo's `CLAUDE.md` — general structural rules (FSD, domain calculation
-  in `packages/utils`, naming conventions). This skill assumes those rules but
+  in `frontend/packages/utils`, naming conventions). This skill assumes those rules but
   does not replace them; in case of conflict, the repo's `CLAUDE.md` decides.

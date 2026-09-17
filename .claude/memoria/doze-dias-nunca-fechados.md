@@ -21,7 +21,7 @@ contraexemplos dos dois lados. Dias afetados: 26/07 e 02, 03, 04, 05, 06, 07, 08
 
 ## Por que acontece
 
-O PWA (`apps/pwa-frentista/src/services/api.ts`, `getOrCreateFechamento`) cria o
+O PWA (`frontend/apps/pwa-frentista/src/services/api.ts`, `getOrCreateFechamento`) cria o
 `Fechamento` pai **zerado** (`total_vendas`, `total_recebido`, `diferenca` = 0,
 status `'ABERTO'`) e insere só o filho — nunca atualiza o pai. Quem grava os
 totais é o **passo 5 de `useSubmissaoFechamento.ts`**, que só roda ao salvar pelo

@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-Terceira forma do resíduo de fórmula fora de `packages/utils`, achada em
+Terceira forma do resíduo de fórmula fora de `frontend/packages/utils`, achada em
 **16/08/2026** no widget `planilha-do-mes`. As duas primeiras estão em
 [[formula-duplicada-fora-utils]]; esta é mais difícil de ver porque **o arquivo
 importa o módulo canônico** — a varredura por `grep` de fórmula passa limpo.
@@ -27,8 +27,8 @@ lacuna, o preço sai mais baixo, e o preço alimenta `lucroLitro`. Medido com um
 de lacuna interior: divergência de **−18,7% no preço** e milhares de reais a menos
 no lucro do bico. Reproduzir a medição (não decorar o número):
 ```bash
-grep -n 'precoMedio\|litrosLancados\|litrosEmLacuna' packages/utils/src/encerrante-mensal.ts
-grep -n 'interface BicoDoBanco' -A12 apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts
+grep -n 'precoMedio\|litrosLancados\|litrosEmLacuna' frontend/packages/utils/src/encerrante-mensal.ts
+grep -n 'interface BicoDoBanco' -A12 frontend/apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts
 ```
 
 **Nuance que impede chamar de bug simples:** `resumo-produto.ts` usa a convenção
@@ -42,7 +42,7 @@ e que morre na `interface` do app.
 ```bash
 grep -rn 'temLacuna\|litrosEmLacuna\|litrosLancados' apps --include='*.ts' --include='*.tsx'
 ```
-Quem consome é `apps/web/src/components/fechamento-mensal/index.tsx` (mostra a lacuna
+Quem consome é `frontend/apps/web/src/components/fechamento-mensal/index.tsx` (mostra a lacuna
 em vermelho, com os dias no `title`) — é o **sibling validado**. Tela nova de dinheiro
 que não exibe lacuna está escondendo a condição em que o próprio número dela erra.
 
