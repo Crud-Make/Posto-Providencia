@@ -43,3 +43,12 @@ Pendente do dono: o `CLAUDE.md` sobrescrito; PHP 8.5 e Composer 2.10 já estão 
 Sprint começa por #94 (Design Doc `docs/design/fase-a-laravel.md`, rascunhado, 4 DECISÕES
 pendentes do dono) e #95 (raiz: `frontend/` + `backend/`, recomendação A). Dono disse "depois vamos
 começar a sprint" — o próximo passo é ele aprovar o doc e as decisões.
+
+**17/09, noite — #95 feita, sem push.** Branch `chore/#95-raiz-frontend-backend` (8 commits acima da
+main, empilhada sobre `feat/#60-laravel-fase-a-esquema`): `frontend/` tem apps/, packages/ e a toolchain
+TS; raiz tem banco/, docs/, scripts/, supabase/, compose. Tag `versao-testada-funcionando-pre-raiz`.
+oxlint é o `bun run lint` (0,17 s); eslint em `lint:eslint`. Tudo verde. **Pendente do dono:** ok para
+push/PR; Root Directory dos 3 projetos Vercel no painel (`frontend`, `frontend/apps/pwa-*`). Próxima: #96
+(Laravel em `backend/`, exige ok para o composer). Armadilha vista: `bun add` fora de `frontend/` cria
+package.json na raiz — sempre `cd frontend` antes.
+
