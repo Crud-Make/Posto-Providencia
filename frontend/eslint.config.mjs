@@ -3,6 +3,7 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import neverthrow from "@bufferings/eslint-plugin-neverthrow";
 import globals from "globals";
 
 export default [
@@ -16,6 +17,9 @@ export default [
       "scripts/**", // scripts ad-hoc, não fazem parte do build dos apps
       "spikes/**", // spikes descartáveis
       "**/dist/**",
+      // Canários das travas (PROC-5). Violam regra de propósito e são lintados só pelo
+      // teste ao lado, com `--no-ignore`. Ver apps/web/src/__canarios__/travas.test.ts.
+      "**/__canarios__/**",
     ],
   },
   // Código de app/pacote (apps/*, packages/*) — TS/TSX, ESM, React.
@@ -26,12 +30,24 @@ export default [
       ecmaVersion: 2022,
       sourceType: "module",
       parser: tsParser,
+      // Type-aware linting. Sem isto o typescript-eslint não enxerga TIPO, e toda regra
+      // que dependa dele vira no-op silencioso — foi o que a sonda de 17/09 mostrou: o
+      // oxlint ACEITA `no-floating-promises` na config e reporta zero, porque lê sintaxe
+      // e não tipos. `neverthrow/must-use-result` é uma dessas: precisa do tipo de
+      // retorno para saber que a função devolve um `Result`.
+      // Exige `strict` no tsconfig (ligado em 18/09) — sem `strictNullChecks` o
+      // typescript-eslint DESLIGA as regras type-aware com um aviso e segue.
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
       globals: globals.browser,
     },
     plugins: {
       "@typescript-eslint": tsPlugin,
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
+      neverthrow,
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -68,6 +84,21 @@ export default [
             "Data de calendário via toISOString() usa UTC e pula um dia depois das 21h (GMT-3). Use hojeIso()/paraIsoLocal() de utils/periodo.",
         },
       ],
+      // Result Pattern (docs/arquitetura/regras.md, RES-2). Um `Result` devolvido e não
+      // consumido é um erro engolido: o caminho de falha simplesmente não acontece, e
+      // ninguém fica sabendo. A regra obriga `.match()`, `.unwrapOr()` ou, quando for
+      // mesmo o caso, `._unsafeUnwrap()` — que ao menos é explícito no nome.
+      //
+      // Entra VERDE: hoje nenhuma função do monorepo devolve `Result`. É trava para o
+      // código novo, não migração. Converter o que existe (RES-1: falha de negócio
+      // retorna Result, `throw` só para infraestrutura) muda assinatura de função de
+      // domínio e não toca dinheiro sem golden verde antes e depois.
+      //
+      // Plugin: o `eslint-plugin-neverthrow` oficial está parado desde maio/2022, é
+      // anterior ao flat config e depende de `eslint-utils@3`/`tsutils` legados. O fork
+      // `@ninoseki` é o mais novo mas exige eslint >= 10 (estamos no 9). O `@bufferings`
+      // pede eslint >= 9 e parser >= 8.48, que é o que temos.
+      "neverthrow/must-use-result": "error",
       "react-hooks/set-state-in-effect": "error",
       "react-hooks/exhaustive-deps": "error",
       "react-hooks/static-components": "error",
