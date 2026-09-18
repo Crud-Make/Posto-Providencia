@@ -53,7 +53,7 @@
   "apps/web/src/components/dashboard/components/PerformanceSidebar.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/dashboard/hooks/useDashboard.ts|@typescript-eslint/no-floating-promises": 2,
   "apps/web/src/components/dashboard/hooks/useDashboard.ts|@typescript-eslint/strict-boolean-expressions": 4,
-  "apps/web/src/components/dashboard/index.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/dashboard/index.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/despesas/components/FormDespesa.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/despesas/components/FormDespesa.tsx|@typescript-eslint/strict-boolean-expressions": 7,
   "apps/web/src/components/escalas/EscalaTable.tsx|@typescript-eslint/strict-boolean-expressions": 2,

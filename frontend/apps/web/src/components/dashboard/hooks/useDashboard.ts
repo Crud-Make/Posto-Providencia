@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
 import { usePeriodo } from '../../../contexts/usePeriodo';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
+import type { JanelaDoRateio } from '../../../services/api/dashboard.api';
 import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
 import { hojeIso } from '../../../utils/periodo';
@@ -26,6 +27,11 @@ interface DashboardKpis {
   /** `null` = produto vendido sem compra no mês (ver `produtosSemCompra`). */
   totalProfit?: number | null;
   produtosSemCompra?: readonly string[];
+  /**
+   * Mês civil de onde saíram a compra e a despesa rateada. Pela API Laravel, em período que
+   * atravessa meses, cobre mais de um mês (decisão do dono, 18/09/2026) — a tela avisa.
+   */
+  janelaDoRateio?: JanelaDoRateio;
 }
 
 /**

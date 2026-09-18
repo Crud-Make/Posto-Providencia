@@ -3,7 +3,7 @@
 > Mapa vivo exigido pelo `CLAUDE.md` §3. Atualizado a cada refatoração pelo subagente
 > `doc-cycle-onboard` (ele propõe, a thread aplica). Levantamento completo e datado em
 > [`.claude/docs/mapa-do-sistema-17-09-2026.md`](../.claude/docs/mapa-do-sistema-17-09-2026.md).
-> **Última atualização:** 18/09/2026 (#100 fatia 1: nasce o módulo Agregacao, `GET /api/postos/{posto}/dashboard` só leitura, devolve insumo bruto com rateio no mês civil e sem lucro no PHP; ver `docs/design/agregacao.md`). Anterior: 18/09/2026 (ciclo Cadastro ↔ Pessoas desfeito, `Posto` em `App\Compartilhado`).
+> **Última atualização:** 18/09/2026 (#100 fatia 2: o dashboard do dono passa a ler `GET /api/postos/{posto}/dashboard` quando `VITE_API_URL` está definida — `services/api/dashboard.api.ts` + `insumosDaApi` em `aggregator.service.ts`; tela mista em `localhost`; ver `docs/design/agregacao.md`). Anterior: 18/09/2026 (#100 fatia 1: nasce o módulo Agregacao, endpoint só leitura, insumo bruto com rateio no mês civil e sem lucro no PHP).
 
 ## 1. Contexto geral (nível 1)
 
@@ -87,11 +87,19 @@ sequenceDiagram
 No alvo, os passos de `DB` e `EF` passam pela API; a decisão de onde `totaisDoDia` roda
 (cliente TS ou servidor PHP com golden portado) é da issue do fechamento pela API.
 
-**Dashboard do proprietário pela API (#100, fatia 1, endpoint existe e ainda sem consumidor):**
+**Dashboard do proprietário pela API (#100, fatia 2, endpoint com consumidor real):**
 `DefinePostoAtual` → `DashboardRequest::periodo()` → `DadosDoPeriodo` (venda por `combustivel_id`
 no período, compra e rateio no `Periodo::mesCivil()`, dia de `Leitura`/`Compra` tomado em UTC) →
-`DashboardResource` (sem envelope `data`). O cálculo continua no cliente: `custoLitrosVendidos()` →
-`despesaOperacionalPorLitro()` → `lucroCombustivel()` de `frontend/packages/utils`. O call site do painel ainda é `aggregator.service.ts`.
+`DashboardResource` (sem envelope `data`). No painel, `fetchDashboardData` (`aggregator.service.ts`)
+escolhe a fonte por `urlDaApi()`: com `VITE_API_URL` e posto ativo, `insumosDaApi` lê o endpoint via
+`frontend/apps/web/src/services/api/dashboard.api.ts` (schema Zod do §5 do Design Doc, `ResultAsync`,
+reshape puro em `paraInsumosDeAgregacao`); sem a variável (a Vercel não a define), `insumosDoSupabase`,
+o caminho de sempre. O cálculo continua no cliente: `custoMedioPorCombustivel()`
+(`services/custo-do-mes.ts`) → `despesaOperacionalPorLitro()` → `lucroCombustivel()` de
+`frontend/packages/utils`, as mesmas funções pelas duas fontes. A troca é parcial: a cor do combustível
+(`codigo`), estoque, frentistas, formas de pagamento e fechamentos seguem no Supabase, então em
+`localhost` com `VITE_API_URL` a tela é **mista** (venda/lucro do Postgres local, frentistas e
+fechamentos da produção). Falha da API derruba o dashboard com `FETCH_ERROR`, sem cair na fonte antiga.
 
 ## 5. Contratos (nível 5)
 

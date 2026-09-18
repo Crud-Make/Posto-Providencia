@@ -27,6 +27,7 @@ import { useDashboard } from './hooks/useDashboard';
 import { usePresencaFrentistas } from './hooks/usePresencaFrentistas';
 import { usePosto } from '../../contexts/usePosto';
 import { useNavigate } from 'react-router-dom';
+import { legendaDoLucro } from './rotulos';
 
 // [14/01 07:00] Refatorado para usar useNavigate em vez de prop callback.
 // Permite navegação direta para a rota de fechamento.
@@ -173,9 +174,7 @@ const TelaDashboard: React.FC = () => {
             ? '—'
             : `R$ ${(kpis.totalProfit ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           trendValue="0%"
-          trendLabel={kpis.produtosSemCompra?.length
-            ? `sem compra de ${kpis.produtosSemCompra.join(', ')} no mês`
-            : 'Custo da compra do mês'}
+          trendLabel={legendaDoLucro(kpis.produtosSemCompra, kpis.janelaDoRateio)}
           isNegativeTrend={false}
           Icon={TrendingUp}
           iconBgColor="bg-green-50"

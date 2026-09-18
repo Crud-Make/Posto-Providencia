@@ -2,6 +2,48 @@
 
 ## [Não Lançado]
 
+### 🖥️ Dashboard do dono lê `GET /api/postos/{posto}/dashboard` — fatia 2 da #100
+
+- **Segundo consumidor real do `backend/`.** `fetchDashboardData` passa a buscar venda por produto,
+  compra e rateio na API Laravel quando `VITE_API_URL` está definida e há posto ativo. Sem a variável
+  (a Vercel não a define) o caminho é o de sempre, no Supabase: as mesmas 7 consultas, numa leva só —
+  provado em `aggregator.dashboard.test.ts` ("uma leva só de consultas"), que prende cada service numa
+  promessa adiada e confere que as 7 já foram chamadas antes de qualquer uma resolver (com a API ligada,
+  a leitura da API e o cadastro correm em paralelo com estoque, frentistas, formas e fechamentos). Uma
+  primeira versão desta fatia esperava os insumos para só então pedir o resto; a 2ª revisão pegou. A
+  falha do Supabase nesse caminho vira `Err` tipado (`tipo: 'fonte_antiga'`) em vez de exceção pega
+  pelo `catch`: o texto para a tela é o mesmo de antes (o `error` cru do service), só o `code` passa de
+  `ERROR` para o `FETCH_ERROR` dos demais erros de insumo — ninguém em `components/dashboard` lê o
+  `code`. Os asserts antigos do teste não mudaram; só o setup foi mexido: saiu o mock morto de
+  `configuracaoService` (o fallback de 0,45 já não existia no código) e o builder inline da query de
+  `Leitura` virou o helper `leiturasDoMesNoSupabase`, reaproveitado pelos testes de paridade.
+- **`services/api/dashboard.api.ts`**, no molde do `fornecedor.api.ts`: schema Zod espelhando o §5 do
+  Design Doc (`agregacao.md`; string decimal, sem envelope `data`), `lerDashboardDaApi(posto, inicio, fim)`
+  em `ResultAsync` e `paraInsumosDeAgregacao`, que só faz `Number()` e reshape. Nenhuma conta de
+  dinheiro nasceu: custo médio, despesa por litro e lucro continuam nas funções de `packages/utils` e em
+  `services/custo-do-mes.ts`, e a prova é o teste de paridade Supabase × API em
+  `aggregator.dashboard.test.ts` — a mesma venda/compra/despesa pelas duas fontes dá os mesmos KPIs. O
+  golden master (`bun run test:golden`) seguiu 3296/0, mas ele cobre análise de custos e vendas, não o
+  dashboard: aqui é guarda de `packages/utils`, não prova desta fatia. `JanelaDoRateio` tem uma
+  declaração só, em `dashboard.api.ts` (o contrato); `rotulos.ts` e `useDashboard.ts` importam de lá.
+- **Em período que atravessa meses o número muda com `VITE_API_URL` — decisão do dono, teste nomeado em
+  `aggregator.dashboard.test.ts`.** A API soma compra e rateio de todos os meses civis do período
+  (`Periodo::mesCivil()`); o Supabase usa só o mês de `dataInicio`. Os dois comportamentos estão presos
+  em testes nomeados, e o card "Lucro Estimado" passa a dizer `Custo e despesa de jan–fev/2026` (ou
+  `sem compra de X em jan–fev/2026`) quando a janela tem mais de um mês — `kpis.janelaDoRateio` é novo.
+- **Paridade provada dentro de um mês:** a mesma venda/compra/despesa sintética pelas duas fontes dá os
+  mesmos KPIs e o mesmo gráfico; o lucro esperado (R$ 900,00) é calculado à mão no teste e conferido com
+  `lucroCombustivel`. Produto vendido sem compra → `totalProfit` `null` e nome em `produtosSemCompra`
+  nas duas fontes.
+- **Troca parcial deliberada:** a cor do combustível precisa do `codigo`, que a API não devolve, e vem
+  do cadastro (`combustivelService.getAll`, Supabase). Estoque, frentistas, formas de pagamento e
+  fechamentos também continuam no Supabase — em `localhost` a tela fica mista (venda/lucro do Postgres
+  local, frentistas da produção). `GET /api/combustiveis` é fatia futura.
+- Sessão executora com o modelo Fable, por regra do dono (18/09): o hook `so-fable-na-formula.py` não
+  existe nesta worktree, então a regra "só o Fable edita `aggregator.service.ts`" foi disciplina, não gate.
+- Catraca do ESLint baixou 1 ponto (`components/dashboard/index.tsx`) e o `.catraca/eslint.json` foi
+  regravado; `.catraca/tsc.json` inalterado.
+
 ### 📊 `GET /api/postos/{posto}/dashboard` — fatia 1 da #100, rateio no mês civil
 
 - **Nasce `App\Agregacao`**, só leitura, com query builder sobre `Leitura`, `Compra`, `Despesa` e
