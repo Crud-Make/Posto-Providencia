@@ -2,6 +2,26 @@
 
 ## [Não Lançado]
 
+### 🧱 Nenhum módulo do backend depende de outro — `Posto` vai para `Compartilhado` (#120)
+
+- **O ciclo `Cadastro ↔ Pessoas` passava pelo Deptrac com 0 violações.** O Deptrac junta o `Domain`
+  de todos os módulos numa camada só, então `Posto::usuarios()` e a `PostoPolicy` (em Cadastro,
+  usando Pessoas) e `Usuario`/`UsuarioPosto` (em Pessoas, usando o `Posto`) nunca reprovaram. O Design
+  Doc diz que módulos só se falam por `Application`, e o dono decidiu em 18/09 que a regra **não ganha
+  exceção**.
+- **Saída:** `Posto::usuarios()` removido (o vínculo é navegado por `Usuario::postos()`); `PostoPolicy`
+  em `App\Pessoas\Domain\Policies`; `Posto` em `App\Compartilhado`, raiz do tenant, **sem nenhuma
+  relação de saída** (as 9 `hasMany` não tinham consumidor). Nenhuma rota muda.
+- **Travas novas no Pest Arch**, cada uma vista vermelha com canário antes do verde: cada módulo não
+  usa outro (mapa vazio); `Compartilhado` não usa módulo; `PostoFactory` não usa módulo;
+  `Compartilhado` só conhece a `PostoFactory`. As duas últimas fecham o caminho
+  `Compartilhado → factory → Domain` aberto pela linha de `Factories` no `deptrac.yaml`.
+- **Contratos presos por teste antes de mover:** decimais como string, `cpf`/`user_id` fora do
+  `FrentistaResource`, ordem das listas, relações aninhadas na resposta (o `whenLoaded` tira o campo
+  em silêncio se o `with()` sair) e o papel Admin no posto gerindo só o próprio posto.
+- Esta entrada entrou depois do commit do código: o `checklist-commit.py` não cobrou porque `git add`
+  e `git commit` estavam no mesmo comando (defeito registrado para correção).
+
 ### 🚦 Vercel: produção está no ar, e o "conserto de 17/09" nunca existiu
 
 - **Produção nunca caiu.** Os 3 sites respondem HTTP 200 e servem o deploy `READY` de **06/09/2026
