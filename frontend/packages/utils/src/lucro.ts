@@ -24,7 +24,7 @@
  *          Export único — não redeclare cópia privada em módulo novo
  *          (`useCaixaGeralMes` chegou a reimplementá-la à mão).
  */
-export const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;
+export const emCentavos = (reais: number): number => reais;
 
 /**
  * Despesa operacional por litro — rateio mensal (planilha: H22 = H19/F11).
