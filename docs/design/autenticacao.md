@@ -150,15 +150,15 @@ flowchart TD
     AUTH -->|não| E401["401"]
     AUTH -->|sim| U["Usuario autenticado<br/>(Pessoas/Domain)"]
 
-    U --> ATIVO{"Usuario.ativo?"}
-    ATIVO -->|não| E403["403"]
-    ATIVO -->|sim| MW["DefinePostoAtual<br/>resolve {posto} da rota"]
+    U --> MW["DefinePostoAtual<br/>resolve {posto} da rota"]
 
     MW --> EXISTE{posto existe?}
     EXISTE -->|não| E404["404"]
     EXISTE -->|sim| POL["PostoPolicy::ver"]
 
-    POL --> ADMIN{"Usuario.role<br/>= ADMIN?"}
+    POL --> ATIVO{"Usuario.ativo?<br/>⚠️ hoje vem DEPOIS do ADMIN"}
+    ATIVO -->|não| E403["403"]
+    ATIVO -->|sim| ADMIN{"Usuario.role<br/>= ADMIN?"}
     ADMIN -->|sim| OK["autorizado"]
     ADMIN -->|não| VINC{"UsuarioPosto ativo<br/>para este posto?"}
     VINC -->|não| E403
@@ -175,7 +175,16 @@ flowchart TD
     style SQL fill:#1e3a5f,color:#fff
 ```
 
-Duas coisas que o desenho deixa explícitas e o texto não:
+Três coisas que o desenho deixa explícitas e o texto não:
+
+- **⚠️ `ADMIN` inativo passa hoje — a #102 corrige no código.** O desenho acima é o alvo: `ativo`
+  é a primeira pergunta da policy. A `PostoPolicy` da #97 faz o contrário — `ver` e `gerir` devolvem
+  `true` para `ADMIN` **antes** de olhar `ativo`, que só é conferido dentro de `vinculoAtivo()`, no
+  ramo de quem não é ADMIN. Um ADMIN desativado continua vendo e gerindo todos os postos. Hoje é
+  inócuo (nenhuma rota usa a policy), mas vira buraco no dia em que a #102 a pendura nas rotas.
+  Tarefa da #102: conferir `Usuario.ativo` antes do ramo ADMIN, nos dois métodos, com o teste
+  "ADMIN inativo → 403" (ver Testes). O login também recusa inativo, mas a policy não pode contar
+  com isso: sessão aberta antes da desativação continua válida.
 
 - **`gerir` não aparece aqui.** O fluxo acima é o de leitura (`ver`). A escrita exige `gerir`, que
   além do vínculo ativo cobra `UsuarioPosto.role` ∈ {`admin`, `gerente`}. Como a #102 não entrega
@@ -239,6 +248,8 @@ vazio). Não há rede de segurança herdada; tudo nasce aqui.
 
 - Login válido, inválido, usuário inativo.
 - **Usuário sem `UsuarioPosto` não vê nada** — o aceite da issue, como teste.
+- **`ADMIN` inativo → 403** em `ver` e em `gerir` — falha contra a `PostoPolicy` da #97; é o teste
+  que prova a correção da ordem (ver "Papéis ganham dente").
 - `OPERADOR` não faz o que `GERENTE` faz; `ADMIN` atravessa; usuário do posto A não lê o posto B
   (reaproveita o teste de escopo da #97, agora com usuário de verdade).
 - Rota sem sessão → 401. Rota do PWA frentista → segue acessível.
