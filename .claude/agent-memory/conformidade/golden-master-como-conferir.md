@@ -43,3 +43,12 @@ exige escrever o teste contra as DUAS implementações antes (§7), e isso é o 
 transforma o achado em tarefa de categoria domínio.
 
 Ver [[formula-duplicada-fora-utils]].
+
+**Anomalia de 17/09/2026 (noite), NÃO reproduzida:** uma execução devolveu **380
+falhas** (`calculos-dashboard-vendas.golden.spec.ts`, `Expected 1000 / Received
+1000.02`) e as **6 execuções seguintes deram 3296 pass / 0 fail**. A asserção que
+falhou chama uma função pura com entrada literal — esse resultado é impossível
+contra o código em disco, e `git diff packages/utils/src/lucro.ts` estava vazio (o
+`M` do `git status` era mtime, não conteúdo). **Regra que fica:** uma única passada
+verde não basta antes de mexer em fórmula — rodar duas vezes; se divergir, olhar
+`git diff frontend/packages/utils/src/` antes de culpar o teste.
