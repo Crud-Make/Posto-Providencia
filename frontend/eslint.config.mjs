@@ -98,6 +98,11 @@ export default [
       // anterior ao flat config e depende de `eslint-utils@3`/`tsutils` legados. O fork
       // `@ninoseki` é o mais novo mas exige eslint >= 10 (estamos no 9). O `@bufferings`
       // pede eslint >= 9 e parser >= 8.48, que é o que temos.
+      // TS-3 do registro. Custo ZERO hoje: medido em 18/09, zero ocorrências no
+      // monorepo. As irmãs ficaram de fora porque não são de graça, e a medição está
+      // na issue: strict-boolean-expressions = 433 erros, no-floating-promises = 69,
+      // require-await = 25. Entram uma por vez, cada uma com seu PR.
+      "@typescript-eslint/await-thenable": "error",
       "neverthrow/must-use-result": "error",
       "react-hooks/set-state-in-effect": "error",
       "react-hooks/exhaustive-deps": "error",
