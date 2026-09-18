@@ -68,6 +68,10 @@ function modulos(): array
 function direcaoPermitidaEntreModulos(): array
 {
     return [
+        // Agregação lê tabela com query builder, não model de módulo (agregacao.md §2, CA-7).
+        // Canário 18/09/2026: `use App\Cadastro\Domain\Combustivel` com uso real em
+        // DadosDoPeriodo deixou só a regra de Agregacao vermelha.
+        'Agregacao' => [],
         'Cadastro' => [],
         'Pessoas' => [],
     ];
