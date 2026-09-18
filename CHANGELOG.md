@@ -2,6 +2,29 @@
 
 ## [Não Lançado]
 
+### 📐 Design Docs de toda a Fase A e primeiro gate de complexidade do frontend
+
+- **8 Design Docs** em `docs/design/`, um por issue de #98 a #105, cada um com as decisões fechadas e
+  a justificativa: `ocr-encerrante` (#98), `push-do-dono` (#99), `agregacao` (#100),
+  `fechamento-frentista-api` (#101), `autenticacao` (#102), `painel-pela-api` (#103), `realtime`
+  (#104), `cutover` (#105).
+- **`docs/planilha-formulas.md`** — a planilha decodificada com célula e fórmula literal, para não
+  reabrir o `.xlsx` a cada dúvida. Três achados que mudam código: vendeu-sem-comprar é **custo
+  informado pelo usuário** (fev/2026, Ds.10: `D50=1`, `E50=5`), não `null` nem `preco_custo`; a taxa
+  de cartão chega ao lucro **uma vez só**, diluída no custo por litro (`C294`→`D321`→`I16`→`I19`);
+  e **lucro líquido por dia não existe na planilha** — só mensal, por bico, já líquido de despesa.
+- **`frontend/.oxlintrc.json` nasce** e com ele o Gate 1 do §6 no lado TS, que nunca existiu:
+  `eslint/complexity` em **20** para código novo, `max-lines` em 900. Os 13 arquivos legados acima de
+  20 entram como `overrides` nomeados — dívida que encolhe, não teto frouxo. Medido: 2.272 funções de
+  produção, mediana de CCN **1**, p95 8, só 69 acima de 10 e maior do monorepo 34. Catraca: 20 → 15 →
+  10. `oxlint --rules` imprime zero linhas nesta versão e faz parecer que a regra não existe — ela
+  existe.
+- Auditoria de estrutura: **zero ciclo de import**, zero acoplamento entre apps, zero violação de
+  camada FSD, 21 de 23 módulos com um único importador externo. Veredito: refatorável módulo a
+  módulo. Correções de número que vão para as issues: a #103 diz 52 arquivos e são **45** (o 52 conta
+  `Array.from(`), e o aceite da #100 ("mesma saída da RPC") congelaria o bug da `get_fechamento_mensal`.
+- `supabase/.temp/` sai do versionamento — guarda o ref do projeto e é estado local do CLI.
+
 ### 🧱 Módulo Cadastro no backend: models, escopo por posto, policy e catálogo só leitura (#97)
 
 - `App\Cadastro\Domain` (Posto, Combustivel, Tanque, Bomba, Bico, Turno, Frentista,
