@@ -1,0 +1,69 @@
+#!/bin/sh
+# pre-push do Posto Providência (CLAUDE.md §7 e a trava geral da refatoração Laravel).
+#
+# REGRA: não se dá push antes de o sistema estar rodando. O painel e os dois PWAs estão em
+# produção com dinheiro real do posto; push de árvore quebrada quebra o posto, não o repo.
+#
+# Roda a suíte INTEIRA, não só o que mudou — "o sistema está rodando" é uma afirmação sobre o
+# sistema, não sobre o diff. Push é raro; esperar aqui é barato perto de derrubar o Elias.
+#
+# Instalar: scripts/instala-hooks.sh
+#
+# Emergência: `git push --no-verify` passa por cima (é do git, não dá para impedir). Se você
+# usar, o combinado é dizer no PR por que usou.
+
+raiz="$(git rev-parse --show-toplevel)"
+falhou=0
+
+# ── 1. main é proibida (CLAUDE.md §0) ──────────────────────────────────────────
+while read -r _ref_local _sha_local ref_remoto _sha_remoto; do
+    case "$ref_remoto" in
+        refs/heads/main|refs/heads/master)
+            echo "[pre-push] BLOQUEADO: push direto para $ref_remoto."
+            echo "[pre-push] O CLAUDE.md §0 proíbe: branch por issue e PR, sempre."
+            exit 1
+            ;;
+    esac
+done
+
+# ── 2. o lado TS tem de estar verde ────────────────────────────────────────────
+if [ -d "$raiz/frontend" ]; then
+    cd "$raiz/frontend" || exit 1
+
+    echo "[pre-push] oxlint (inclui o gate de complexidade do §6)…"
+    bun run lint >/dev/null 2>&1 || { echo "[pre-push] ✗ oxlint reprovou — rode 'bun run lint'"; falhou=1; }
+
+    echo "[pre-push] type-check…"
+    bun run type-check >/dev/null 2>&1 || { echo "[pre-push] ✗ type-check reprovou"; falhou=1; }
+
+    echo "[pre-push] testes unitários (vitest)…"
+    bun run test >/dev/null 2>&1 || { echo "[pre-push] ✗ 'bun run test' reprovou"; falhou=1; }
+
+    # O golden é a trava do dinheiro. NUNCA trocar por 'bun test' puro: ele varre o repo
+    # inteiro, tenta executar os arquivos de vitest e falha por motivo que não é bug.
+    echo "[pre-push] golden masters (bun run test:golden)…"
+    bun run test:golden >/dev/null 2>&1 || {
+        echo "[pre-push] ✗ GOLDEN MASTER REPROVOU — alguma fórmula de dinheiro mudou de resultado."
+        echo "[pre-push]   Isto não se resolve ajustando o teste. Rode 'bun run test:golden' e leia."
+        falhou=1
+    }
+fi
+
+# ── 3. o backend tem de passar nos gates ───────────────────────────────────────
+if [ -f "$raiz/backend/composer.json" ]; then
+    cd "$raiz/backend" || exit 1
+    echo "[pre-push] composer gates (Pint, PHPStan, PHPMD, Deptrac, Pest)…"
+    composer gates >/dev/null 2>&1 || { echo "[pre-push] ✗ 'composer gates' reprovou — rode em backend/"; falhou=1; }
+fi
+
+if [ "$falhou" -ne 0 ]; then
+    echo ""
+    echo "[pre-push] ══════════════════════════════════════════════════════════════"
+    echo "[pre-push] PUSH BLOQUEADO: o sistema não está rodando."
+    echo "[pre-push] Conserte antes de subir — tem posto em produção do outro lado."
+    echo "[pre-push] ══════════════════════════════════════════════════════════════"
+    exit 1
+fi
+
+echo "[pre-push] ✓ sistema verde — push liberado."
+exit 0

@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### 🔒 Trava de push: não se sobe com o sistema quebrado
+
+- **`scripts/hooks/pre-push` nasce.** O §7 mandava desde sempre e a linha era só texto: a suíte
+  nunca rodava no push. Agora recusa push para a `main` e recusa qualquer push se `bun run lint`
+  (com o gate de complexidade), `type-check`, `test`, **`test:golden`** ou `composer gates`
+  reprovarem. Roda a suíte **inteira**, não o diff — "o sistema está rodando" é afirmação sobre o
+  sistema, não sobre o que mudou. Custo medido: **~1m30s**; push é raro e tem posto em produção do
+  outro lado.
+- Conferido nos dois sentidos, não só no feliz: push para `main` → bloqueado; `emCentavos` sabotado
+  com `+ 0.01` → golden reprova e o hook **sai com código 1**. `lucro.ts` restaurado depois do teste.
+- `scripts/instala-hooks.sh` passa a instalar os dois hooks. Segue sem `core.hooksPath`, para não
+  derrubar os hooks do graphify.
+
 ### 📐 Design Docs de toda a Fase A e primeiro gate de complexidade do frontend
 
 - **8 Design Docs** em `docs/design/`, um por issue de #98 a #105, cada um com as decisões fechadas e
