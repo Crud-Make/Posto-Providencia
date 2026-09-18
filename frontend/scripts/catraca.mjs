@@ -93,10 +93,19 @@ export function comparar(atuais, congelado, noEscopo = () => true) {
   };
 }
 
+/**
+ * Argumentos do ESLint na catraca. `--no-inline-config` é a trava contra `eslint-disable`:
+ * sem ele, um comentário no arquivo apagava o erro antes de a catraca contá-lo, e qualquer
+ * regra passava (achado da revisão do PR #119, 18/09). Com ele, o erro suprimido aparece e
+ * conta como qualquer outro — o que já existia foi congelado na lista, o novo reprova.
+ * Exportado para o canário testar exatamente estes argumentos.
+ */
+export const ARGS_ESLINT = ['--format', 'json', '--no-warn-ignored', '--no-inline-config'];
+
 function coletar(ferramenta, arquivos) {
   if (ferramenta === 'tsc') return parseTsc(rodar(path.join(BIN, 'tsc'), ['--noEmit', '--pretty', 'false']));
   const alvos = arquivos.length > 0 ? arquivos : ['apps', 'packages'];
-  return parseEslint(rodar(path.join(BIN, 'eslint'), ['--format', 'json', '--no-warn-ignored', ...alvos]));
+  return parseEslint(rodar(path.join(BIN, 'eslint'), [...ARGS_ESLINT, ...alvos]));
 }
 
 function ler(ferramenta) {

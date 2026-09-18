@@ -144,13 +144,15 @@ export default [
           ],
         },
       ],
-      // Public API do slice: de fora, só pelo index. `@widgets/x/ui/y` fura o encapsulamento.
+      // Public API do slice: de fora, só pelo index. `@widgets/x/ui/y` fura o encapsulamento —
+      // e `@/widgets/x/ui/y` também: o tsconfig tem os dois aliases (`@/*` e `@widgets/*`), e a
+      // primeira versão desta regex só olhava o segundo (revisão do PR #119, 18/09).
       "no-restricted-imports": [
         "error",
         {
           patterns: [
             {
-              regex: "^(@(pages|widgets|features|entities)/[^/]+/.+|(\\.\\./)+(pages|widgets|features|entities)/[^/]+/.+)$",
+              regex: "^(@/?(pages|widgets|features|entities)/[^/]+/.+|(\\.\\./)+(pages|widgets|features|entities)/[^/]+/.+)$",
               message: "Importe o slice pela Public API (o index.ts dele), não o arquivo interno.",
             },
           ],
