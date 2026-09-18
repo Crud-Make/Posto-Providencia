@@ -2,6 +2,22 @@
 
 ## [Não Lançado]
 
+### 🔌 Painel lê a primeira coisa da API Laravel: fornecedores da tela de compras (#103)
+
+- **Primeiro consumidor real do `backend/`.** `fornecedorService.getAll` passa a ler
+  `GET /api/postos/{posto}/fornecedores` quando `VITE_API_URL` está definida. Sem ela, segue no
+  Supabase, e a Vercel não define a variável: **a produção não muda** até o cutover (#105).
+- **Adaptador no `base.ts`**, como manda a DECISÃO 1 do `painel-pela-api.md`: `urlDaApi()` é a chave do
+  strangler e `buscarNaApi(caminho, schema)` faz o GET, valida a resposta com **Zod** (dependência
+  nova, autorizada pelo dono) e devolve `ResultAsync` do neverthrow com erro discriminado
+  (`sem_api | rede | http | formato`). As próximas fatias da #103 entram pelo mesmo ponto.
+- **Paridade com a query antiga:** a API não filtra `ativo`, então o mapper filtra; a ordem por `nome`
+  é a mesma; `posto_id` vem do posto da rota. Conferido: a API local e o Supabase de produção têm o
+  mesmo fornecedor (id 3), então o id lido na API e gravado em `Compra` no Supabase é o mesmo.
+- Por que fornecedores e não outro recurso do catálogo: é o único lido por uma tela (`/compras`) sem
+  conta de dinheiro e sem mudança de backend. Maquininha, bomba e turno não têm tela; combustível,
+  tanque, bico e forma de pagamento entram em conta de dinheiro; frentista exigiria mandar `foto`.
+
 ### 🧱 Nenhum módulo do backend depende de outro — `Posto` vai para `Compartilhado` (#120)
 
 - **O ciclo `Cadastro ↔ Pessoas` passava pelo Deptrac com 0 violações.** O Deptrac junta o `Domain`
