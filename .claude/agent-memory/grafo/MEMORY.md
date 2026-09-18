@@ -7,8 +7,10 @@
 - [Colunas de lucro do Fechamento são carimbadas](colunas-lucro-fechamento-sao-carimbadas.md) — getLucroPorPeriodo só LÊ; custo/lucro vêm do script auditoria-lucro-mes.py; taxas_pagamento não tem escritor nenhum
 - [Despesa da tela de Compras ≠ lucro da Planilha do Mês](despesa-tela-compras-vs-planilha-mes.md) — input "Despesas do Mês" é local/efêmero, não persiste, não afeta useCustoMensal/tabela Despesa
 - [Mapa das implementações de custo](mapa-implementacoes-de-custo.md) — canônica (mês) × ponderada de escrita × leitores do carimbo; 3 modelos de taxa; 3 métodos mortos no aggregator
+- [Estrutura de dependências do frontend](estrutura-dependencias-frontend.md) — resolvedor próprio para ciclos/fan-in; god-nodes só devolve PHP; `affected` lista arquivo morto; `.from(` sem aspas pega `Array.from`
 - [Grep por caminho perde import relativo](grep-por-caminho-perde-import-relativo.md) — "não tem chamador" exige busca pelo símbolo; o caminho da pasta já produziu um falso "código morto"
 - [Multi-posto: onde vive e onde está cravado](multi-posto-onde-vive-e-onde-esta-cravado.md) — banco e web já têm Posto/posto_id/PostoContext; PWAs cravam POSTO_ID=1; RLS anon não filtra posto; DDL de Bico fora do repo
+- [Superfície de autenticação do painel](superficie-autenticacao-web.md) — todo `supabase.auth.*` cabe no AuthContext.tsx; PWAs são `anon` puro; gate é um componente, não rota; `Usuario` entra por embedded select
 - [Superfície Supabase por app](superficie-supabase-por-app.md) — script from/rpc/invoke/realtime/auth; `rg -g *.ts` sem aspas quebra tudo; onde vive cada acoplamento
 - [api-core não lê Compra nem HistoricoTanque](api-core-nao-le-compra-nem-tanque.md) — leitura mensal dessas tabelas vive em widgets do web; api-core só tem Leitura/Bico/Fechamento
 - [Mover frontend/apps/+frontend/packages/ para frontend/ (#95)](mover-apps-packages-para-frontend.md) — goldens acham docs/data por `../`; checklist-commit ancora `^frontend/packages/`, portao-golden não; Root Directory Vercel só no painel; types.ts raiz órfão

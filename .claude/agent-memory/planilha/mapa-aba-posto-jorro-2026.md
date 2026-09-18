@@ -52,3 +52,27 @@ o que torna a reconciliação da skill de ETL uma checagem real e não uma
 tautologia — e é onde nasce divergência entre resumo e diário.
 
 Ver [[divergencia-venda-resumo-vs-diario]] e [[onde-para-cada-fonte]].
+
+---
+
+**Remapeado em 17/09/2026 na planilha de 30/08** (md5
+`15cb9fe84b4f3163dec9b71af4601f54`). **As linhas e o número da sheet mudaram** —
+o mapa acima é do arquivo de 07/08 e leva a célula errada se aplicado ao novo.
+
+- **Abas, na ordem:** `Mes, 01.` `Mes, 02.` `Mes, 03.` `Mes, 04.` `MES, 05`
+  `MES, 06` `MES, 07` `MES, 08` `MES, 08 ` (**sim, duas: a segunda com espaço
+  no fim** — a sheet8 parece parcial e a sheet9 completa; desambiguar antes de
+  usar) `-26` `POSTO JORRO 2026` `AFERICAO` `Sheet4`. Sumiram `Plan1` e
+  `Planilha1`.
+- **`POSTO JORRO 2026` agora é `xl/worksheets/sheet11.xml`**, não a sheet9.
+  Nunca endereçar aba por número de arquivo; ler `xl/workbook.xml` +
+  `xl/_rels/workbook.xml.rels`.
+- **Títulos de bloco na coluna B:** mês 01 em `B2`, passo de 31 linhas até o
+  **mês 08 em `B219`**; anual `Posto Jorro, Ano 26.` em `B256`;
+  `Despeza, 2026.` em `B291` (grade de rubricas `C293:O320`, `Total.` na linha
+  321); `Posto Providencia,C, J, Ano, 17 a 26.` em `B327`;
+  `Lubrificante, Ano.` em `B361`; bloco-rascunho órfão `Posto Jorro, mês 0.`
+  em `B461`.
+- Dentro do bloco do mês: venda `C+2`…, compra `C+12`/`C+13`, estoque `C+21`
+  (mês 01: venda 4–11, compra 14–20, estoque 23–28). `Desp,Mês` do mês 01 passou
+  a ser `I16 = D321` (era `D286`).
