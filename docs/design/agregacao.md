@@ -1,6 +1,6 @@
 # Agregação — Design Doc
 
-Issue: #100 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Revisado: 18/09/2026 (§2 e §3 alinhados à CA-7; §4–§5: rateio no mês civil)
+Issue: #100 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Revisado: 18/09/2026 (§2 e §3 alinhados à CA-7; §4–§5: rateio no mês civil; fatia 2: o painel lê o endpoint — §1, §3, §4 Fluxo, §5, Testes e Riscos)
 
 > A issue que tira a fórmula de lucro de dentro do banco. Não é migração mecânica: as RPCs de hoje
 > **não calculam a mesma coisa entre si**, e portar qualquer uma "como está" carimba um número errado.
@@ -27,6 +27,15 @@ Para o dono, nada deveria mudar em `/proprietario`. Em `/fechamento-mensal` **o 
 mudar de valor**, porque a tela hoje mostra um número que não desconta despesa. Isso não é regressão
 desta issue — é a issue parando de mentir. Precisa ser avisado antes, não descoberto na tela.
 
+**Fatia 2 (18/09/2026) — o que o dono vê no `/dashboard` do painel:** a troca de fonte só acontece onde
+`VITE_API_URL` está definida (hoje `localhost`; a Vercel não a define, então a produção segue no
+Supabase até o cutover). Dentro de um mês o número é o mesmo pelas duas fontes (paridade provada em
+teste). Em período que atravessa meses o lucro **muda** e a legenda do card "Lucro Estimado" avisa
+(`Custo e despesa de jan–fev/2026`). Se a API falhar, o dashboard mostra erro (`FETCH_ERROR`) em vez
+de cair no Supabase — **escolha registrada**: um fallback silencioso esconderia a API quebrada atrás do
+número antigo, e o strangler perderia o sinal. Em `localhost` a tela é **mista**: venda, compra e
+rateio do Postgres local; estoque, frentistas, formas de pagamento e fechamentos da produção.
+
 ## 2. Subsistema
 
 `App\Agregacao` — modelo **só de leitura**, sem escrita, sem Command. Lê as tabelas (`Leitura`,
@@ -51,6 +60,13 @@ No mapa do Pest Arch (`direcaoPermitidaEntreModulos()`), `Agregacao => []`.
 - Nada em `Domain`: não há entidade nova, só leitura agregada sobre as tabelas existentes.
 - Quem escreve código que soma ou calcula dinheiro, aqui e no `aggregator.service.ts`, é o **Fable**
   (decisão do dono, 18/09/2026; hook `so-fable-na-formula.py`).
+- **Lado do painel (fatia 2):** `frontend/apps/web/src/services/api/dashboard.api.ts` — schema Zod do
+  §5 (string decimal, sem envelope `data`), `lerDashboardDaApi()` em `ResultAsync<DashboardDaApi, ErroDaApi>`
+  e `paraInsumosDeAgregacao()`, que só faz `Number()` e reshape. Em `aggregator.service.ts`,
+  `insumosDaApi()` combina o endpoint com o cadastro de combustíveis (Supabase, só para `id → codigo`)
+  e devolve `ResultAsync<InsumosDeAgregacao, ErroDaApi | { tipo: 'cadastro' }>`; `fetchDashboardData`
+  consome com `isErr()` — sem `throw` na regra. A legenda do card ("Custo e despesa de jan–fev/2026")
+  é lógica pura em `components/dashboard/rotulos.ts`, com teste.
 
 ## 4. Comportamento
 
@@ -131,7 +147,10 @@ GET /api/postos/{posto}/dashboard?inicio&fim
     CIVIL que contém o período, por combustivel_id (§5); rateio = Despesa (competência) E litros de
     todos os combustíveis, os dois somados no MESMO mês civil — nenhuma divisão no PHP
   → Resource (dinheiro em string decimal, nunca float)
-  → cliente: custoLitrosVendidos() → despesaOperacionalPorLitro() → lucroCombustivel()
+  → painel (fatia 2, com VITE_API_URL): lerDashboardDaApi() valida com Zod → paraInsumosDeAgregacao()
+    → insumosDaApi() junta o `codigo` do cadastro → fetchDashboardData: custoMedioPorCombustivel()
+    → despesaOperacionalPorLitro() → lucroCombustivel() — as mesmas funções do caminho Supabase;
+    Err da API ou do cadastro → ApiResponse FETCH_ERROR, sem cair no Supabase
 ```
 
 ## 5. Contratos
@@ -188,16 +207,40 @@ convidava a isso; `DashboardTest` afirma a ausência).
   seja `numeric(15,2)`; `litros_vendidos` já é `numeric(15,3)`. Reais sempre escala 2. Tudo cast
   no SQL (`::numeric(18,3)` / `::numeric(18,2)`) e entregue como string pelo PDO — zero float.
 
-**Campo a campo, quem consome** (call site de hoje → função canônica; linhas conferidas em 18/09/2026):
+**Campo a campo, quem consome** (fatia 2, 18/09/2026: o `/dashboard` do painel já lê o endpoint quando
+`VITE_API_URL` existe — `services/api/dashboard.api.ts` valida com Zod e faz o reshape em
+`paraInsumosDeAgregacao`; `aggregator.service.ts` consome `InsumosDeAgregacao` sem saber a fonte):
 
-| Campo do contrato | Hoje no `aggregator.service.ts` | Função canônica (`packages/utils/src/lucro.ts`) |
-|---|---|---|
-| `produtos[].litros_vendidos` | `:287` `acc[codigo].litros` | `custoLitrosVendidos` (`:104`, `:110`) e `lucroCombustivel` via `litros` (`:382` → `:135`) |
-| `produtos[].receita` | `:288` `acc[codigo].valor` | `precoVenda = valor / litros` (`:383` → `:136`) |
-| `produtos[].compras.{litros,valor_total}` | `:256`/`:264` compra do `mesCivil`, `:268` `custoMedioPorCombustivel` (`services/custo-do-mes.ts:31`, `:46`) | `custoMedioCompra` (`:59-64`) |
-| `rateio.despesas_total` | `:53` `despesaService.getByMonth` → `:57` `totalDespesas` | `despesaOperacionalPorLitro`, 1º argumento (`:37`) |
-| `rateio.litros_vendidos` | `:49` `Leitura` do mês inteiro, sem filtro de combustível → `:58` `totalLitros` | `despesaOperacionalPorLitro`, 2º argumento (`:38`) |
-| `rateio.mes_civil` | `:44-47` `inicioMesStr`/`fimMesStr` | — (`Periodo::mesCivil()`, `Periodo.php:29-35`) |
+| Campo do contrato | Caminho Supabase (`aggregator.service.ts`, `insumosDoSupabase`) | Caminho API (`dashboard.api.ts` → `insumosDaApi`) | Função canônica (`packages/utils/src/lucro.ts`) |
+|---|---|---|---|
+| `produtos[].litros_vendidos` | `acc[codigo].litros` das leituras | `Number()` → `VendaPorCombustivel.litros`; `Σ` → `kpis.totalVolume` e `fuelData[].volume` | `lucroCombustivel` via `litros` — o dashboard **não** usa `custoLitrosVendidos` (essa é a `/analise-custos`) |
+| `produtos[].receita` | `acc[codigo].valor` das leituras | `Number()` → `VendaPorCombustivel.valor`; `Σ` → `kpis.totalSales` | `precoVenda = valor / litros` dentro do laço de lucro |
+| `produtos[].compras.{litros,valor_total}` | `compraService.getByDateRange(mesCivil(dataInicio))` | `Number()` → `CompraParaCusto` (um por produto, `0/0` quando sem compra) | `custoMedioPorCombustivel` (`services/custo-do-mes.ts`) → `custoMedioCompra`; `null` → `produtosSemCompra` |
+| `rateio.despesas_total` | `despesaService.getByMonth` → `totalDespesas` | `Number()` → `rateio.despesasTotal` | `despesaOperacionalPorLitro`, 1º argumento |
+| `rateio.litros_vendidos` | `Leitura` do mês inteiro, sem filtro de combustível → `totalLitros` | `Number()` → `rateio.litros` | `despesaOperacionalPorLitro`, 2º argumento |
+| `rateio.mes_civil` | `mesCivil(dataInicio)` — só o mês de `inicio` | `janelaDoRateio` → `kpis.janelaDoRateio` → legenda do card "Lucro Estimado" | — (`Periodo::mesCivil()`, `Periodo.php`) |
+| `produtos[].produto` | `bico.combustivel.nome` | `fuelData[].name` | — |
+
+**Fatia 2 — decisões registradas (18/09/2026):**
+
+- **Cor do combustível vem do cadastro, não da API.** `fuelData[].color = corDoProduto(codigo)` precisa do
+  `codigo`, que `ProdutoAgregadoResource` não devolve. Com `VITE_API_URL`, `insumosDaApi` lê
+  `combustivelService.getAll(postoId)` (Supabase) só para o mapa `id → codigo`; combustível fora do
+  cadastro cai em `corDoProduto(undefined)` (cinza). Preferido ao `Estoque` porque produto com venda e sem
+  linha de estoque perderia a cor. Migrar para `GET /api/combustiveis` é fatia futura — um call site por vez.
+- **Troca parcial, e é a única possível:** venda, compra e rateio migram juntos (invariante
+  `Σ fuelData = totalVolume`); estoque (`maxCapacity`), frentistas, formas de pagamento e fechamentos
+  continuam no Supabase — a API de agregação não os entrega. Em `localhost` com `VITE_API_URL` a tela
+  fica **mista**: venda/lucro do Postgres local, frentistas e fechamentos da produção.
+- **Período que atravessa meses muda número na tela — e a tela avisa.** `kpis.janelaDoRateio` chega ao
+  card "Lucro Estimado": dentro de um mês a legenda é a de sempre; em mais de um mês vira
+  `Custo e despesa de jan–fev/2026` (ou `sem compra de X em jan–fev/2026`). Teste nomeado em
+  `aggregator.dashboard.test.ts` ('período que atravessa meses (API) …'), ao lado do que prende o
+  comportamento do Supabase ('… (Supabase): compra e rateio vêm só do mês de dataInicio').
+- **Paridade provada dentro de um mês:** mesma venda/compra/despesa sintética pelas duas fontes →
+  mesmos `totalSales`, `totalVolume`, `totalProfit`, `produtosSemCompra` e `fuelData` (ordem das barras
+  pode diferir: a API ordena por nome, o Supabase pela primeira leitura). O lucro esperado é calculado à
+  mão no teste e conferido com `lucroCombustivel`, não copiado da saída.
 
 `GET /api/postos/{posto}/fechamento-mensal/{ano}/{mes}`
 
@@ -234,6 +277,10 @@ entrega. Fica registrado aqui para não virar endpoint órfão.
   RPC só é afirmada em mês cheio, com o motivo escrito no teste.
 - `bun run test:golden` verde antes e depois da troca de cada call site — **um por vez**, nunca em
   lote (regra da skill).
+- **Paridade Supabase × API no painel** (`aggregator.dashboard.test.ts`): a mesma venda/compra/despesa
+  sintética pelas duas fontes dá os mesmos KPIs e o mesmo gráfico; o período que atravessa meses tem os
+  dois comportamentos nomeados; falha da API e falha do cadastro de combustíveis viram `ApiResponse`
+  de erro (`FETCH_ERROR`), sem exceção e sem cair no Supabase. Rótulos do card em `rotulos.test.ts`.
 
 ## Riscos e decisões em aberto
 
@@ -247,6 +294,13 @@ entrega. Fica registrado aqui para não virar endpoint órfão.
 - ⚠️ **`docs/data/` é gitignored** e já se perdeu uma vez. Os goldens de paridade dependem dele
   existir na máquina; confirmar se o CI consegue rodá-los ou se ficam sendo gate local.
 - As 3 RPCs **permanecem no banco** sem chamador até o cutover (#105). Não dropar nesta issue.
+- 📌 **ACHADO da validação local da fatia 2 (18/09/2026) — não é para corrigir nesta fatia.** Com o
+  janeiro real carregado no Postgres do compose, a receita pela API é **R$ 290.062,94** (soma de
+  `Leitura.valor_total`, a preço do dia), **R$ 2.337,66 menor** que a venda do golden
+  (**R$ 292.400,60**, preço único por bico). Litros, compras e rateio batem com o golden. É o desvio
+  conhecido do "preço único", anterior à #100: o caminho antigo da tela soma a mesma coluna
+  (`insumosDoSupabase`, `acc[codigo].valor += l.valor_total`), então a troca de fonte **não muda esse
+  número** — só o torna visível ao lado do golden.
 - **Corrigido em 18/09/2026:** `Leitura.data` e `Compra.data` **são `timestamptz`**, não `date`
   (`01-esquema-base.sql:306` e `:138`), gravados em **00:00 UTC** (memória
   `timestamps-leitura-em-utc`, 1.230/1.230 linhas). Só `Despesa.data` e `Fechamento.data` são
