@@ -1,6 +1,6 @@
 # Agregação — Design Doc
 
-Issue: #100 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Revisado: 18/09/2026 (§2 e §3 alinhados à CA-7)
+Issue: #100 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Revisado: 18/09/2026 (§2 e §3 alinhados à CA-7; §4–§5: rateio no mês civil)
 
 > A issue que tira a fórmula de lucro de dentro do banco. Não é migração mecânica: as RPCs de hoje
 > **não calculam a mesma coisa entre si**, e portar qualquer uma "como está" carimba um número errado.
@@ -61,9 +61,11 @@ A issue deixou em aberto e a resposta é firme: **devolver dado**. Calcular em P
 TS. A skill nomeia exatamente esse modo de falha — *"a NEW copy of the formula being born inside a
 hook or a service"*. A Fase A é migrar a API, não reescrever a fórmula.
 
-Consequência: o endpoint entrega `litros_vendidos`, `receita`, `compras` e `despesas` do período, e
-`custoLitrosVendidos()` + `despesaOperacionalPorLitro()` + `lucroCombustivel()` seguem sendo a
-autoridade, com os goldens que já existem cobrindo-os.
+Consequência: o endpoint entrega `litros_vendidos`, `receita` e `compras` por produto, mais o
+`rateio` (despesa e litros do mês civil), e `custoLitrosVendidos()` + `despesaOperacionalPorLitro()`
++ `lucroCombustivel()` seguem sendo a autoridade, com os goldens que já existem cobrindo-os. O
+cliente faz `despesaOperacionalPorLitro(Number(rateio.despesas_total), Number(rateio.litros_vendidos))`;
+**o PHP não divide**.
 
 ### DECISÃO 2 — produto vendido sem compra no mês: **nenhuma das duas**. É custo informado.
 
@@ -104,8 +106,8 @@ A taxa chega ao lucro **uma vez só, diluída no custo por litro**. A taxa calcu
 existe em todo bloco de dia (`I19`/`N10`), mas **não é referenciada por fórmula nenhuma** — é
 conferência. E o `Total Liquido` do mês 01 (`J1138`) é beco sem saída, não existe nos meses 02–08.
 
-O endpoint **não devolve `custo_taxas`**. A taxa existe uma vez, dentro de `despesas_total`. A
-coluna morre junto com a RPC.
+O endpoint **não devolve `custo_taxas`**. A taxa existe uma vez, dentro de `rateio.despesas_total`.
+A coluna morre junto com a RPC.
 
 ### DECISÃO 4 — o endpoint diário **não expõe lucro líquido**. A planilha não tem esse conceito.
 
@@ -125,8 +127,9 @@ só mensal.**
 ```
 GET /api/postos/{posto}/dashboard?inicio&fim
   → DefinePostoAtual (404 se posto não existe)
-  → DadosDoPeriodo: agrega Leitura por combustivel_id; Compra do MESMO período por combustivel_id;
-    Despesa somada no período
+  → DadosDoPeriodo: agrega a VENDA (Leitura) por combustivel_id no período exato; Compra do MÊS
+    CIVIL que contém o período, por combustivel_id (§5); rateio = Despesa (competência) E litros de
+    todos os combustíveis, os dois somados no MESMO mês civil — nenhuma divisão no PHP
   → Resource (dinheiro em string decimal, nunca float)
   → cliente: custoLitrosVendidos() → despesaOperacionalPorLitro() → lucroCombustivel()
 ```
@@ -143,9 +146,58 @@ GET /api/postos/{posto}/dashboard?inicio&fim
       "litros_vendidos": "12345.678", "receita": "74074.07",
       "compras": { "litros": "15000.000", "valor_total": "82500.00" } }
   ],
-  "despesas_total": "22158.46"
+  "rateio": {
+    "mes_civil": { "inicio": "2026-01-01", "fim": "2026-01-31" },
+    "despesas_total": "22158.46",
+    "litros_vendidos": "45678.901"
+  }
 }
 ```
+
+Não existe `despesas_total` na raiz: o bloco `rateio` cola a janela, a despesa e os litros no mesmo
+lugar, para que nenhum cliente divida despesa de um mês por litros de um período (o campo solto
+convidava a isso; `DashboardTest` afirma a ausência).
+
+**Decisões do dono em 18/09/2026** (fatia 1 implementada em `App\Agregacao`, `DadosDoPeriodo`):
+
+- **Envelope:** o contrato acima é a raiz do JSON — sem `data` (`DashboardResource::$wrap = null`).
+- **Quais produtos entram:** todo combustível que teve venda **ou** compra na janela. Produto só
+  com compra sai com `litros_vendidos = "0.000"` e `receita = "0.00"`; `custoLitrosVendidos()`
+  ignora litros 0. Ordem: `Combustivel.nome`, depois `id`.
+- **Produto vendido sem compra:** `compras` sai zerado — `{"litros": "0.000", "valor_total": "0.00"}`,
+  nunca `null` e nunca `preco_custo` (DECISÃO 2). `custoMedioCompra([{0, 0}])` já devolve `null`.
+- **Janela da compra E do rateio = mês civil que contém o período:** `[dia 1 do mês de inicio,
+  último dia do mês de fim]` (`Periodo::mesCivil()`). Só a **venda por produto** fica no período
+  exato. Decisões 1 e 2 do dono, 18/09/2026: despesa do mês ÷ litros do mês, igual à tela de hoje
+  (`aggregator.service.ts:43-61`, `despesaOperacionalMensal`) e à planilha (`H22 = H19/F11`); compra
+  do mês, igual a `mesCivil(dataInicio)` (`aggregator.service.ts:256-264`) e a `F16 = E16/D16`.
+  Quando `inicio` e `fim` caem no mesmo mês, é idêntico ao de hoje.
+- **Divergência decidida** (era "nomeada, não decidida"): o `/dashboard` do painel usa `Calendario`
+  em `modoIntervalo`, sem trava de mês, então um período que atravessa meses é possível. O aggregator
+  de hoje usa **só o mês de `dataInicio`** para a compra e para o rateio (`aggregator.service.ts:251`
+  `mesDoRateio`, `:256` `mesDoCusto`, `:263-264`; `utils/periodo.ts:62-65` recebe UMA data). O
+  endpoint usa **todos os meses civis** que o período toca. Logo, em período que atravessa meses, a
+  troca do call site **vai mudar número na tela** — por decisão do dono, não por regressão; ele tem
+  de ser avisado antes de ver a tela. A frase "a troca do call site não pode mudar nenhum número na
+  tela" vale **só para período dentro de um mês**. Regra presa em `DashboardTest` ("período que
+  atravessa meses": compras 8000.000/46800.00, despesas 2749.50, litros 1900.500).
+- **Paridade com a RPC só no mês cheio:** `get_dashboard_proprietario` filtra a despesa no período
+  exato (`01-esquema-base.sql:1166-1167`); o teste de paridade de despesa bate porque
+  `PERIODO_JANEIRO` é mês cheio. Para período menor que um mês os dois divergem por decisão.
+- **Escala:** `compras.litros` sai com escala 3 (como o exemplo acima) embora `Compra.quantidade_litros`
+  seja `numeric(15,2)`; `litros_vendidos` já é `numeric(15,3)`. Reais sempre escala 2. Tudo cast
+  no SQL (`::numeric(18,3)` / `::numeric(18,2)`) e entregue como string pelo PDO — zero float.
+
+**Campo a campo, quem consome** (call site de hoje → função canônica; linhas conferidas em 18/09/2026):
+
+| Campo do contrato | Hoje no `aggregator.service.ts` | Função canônica (`packages/utils/src/lucro.ts`) |
+|---|---|---|
+| `produtos[].litros_vendidos` | `:287` `acc[codigo].litros` | `custoLitrosVendidos` (`:104`, `:110`) e `lucroCombustivel` via `litros` (`:382` → `:135`) |
+| `produtos[].receita` | `:288` `acc[codigo].valor` | `precoVenda = valor / litros` (`:383` → `:136`) |
+| `produtos[].compras.{litros,valor_total}` | `:256`/`:264` compra do `mesCivil`, `:268` `custoMedioPorCombustivel` (`services/custo-do-mes.ts:31`, `:46`) | `custoMedioCompra` (`:59-64`) |
+| `rateio.despesas_total` | `:53` `despesaService.getByMonth` → `:57` `totalDespesas` | `despesaOperacionalPorLitro`, 1º argumento (`:37`) |
+| `rateio.litros_vendidos` | `:49` `Leitura` do mês inteiro, sem filtro de combustível → `:58` `totalLitros` | `despesaOperacionalPorLitro`, 2º argumento (`:38`) |
+| `rateio.mes_civil` | `:44-47` `inicioMesStr`/`fimMesStr` | — (`Periodo::mesCivil()`, `Periodo.php:29-35`) |
 
 `GET /api/postos/{posto}/fechamento-mensal/{ano}/{mes}`
 
@@ -177,6 +229,9 @@ entrega. Fica registrado aqui para não virar endpoint órfão.
   §0; exigir "mesma saída da RPC" como aceite, como a issue escreveu, **congelaria o bug**. O aceite
   correto é: bate com `lucro.ts` + os goldens de janeiro.
 - Pest com Postgres real do compose, `DatabaseTransactions`, sem migration (padrão da #97).
+- **"Período que atravessa meses" é regra, não divergência:** `DashboardTest` prende compra e rateio
+  de todos os meses civis do período (decisões 1 e 2 do dono, 18/09/2026). A paridade de despesa com a
+  RPC só é afirmada em mês cheio, com o motivo escrito no teste.
 - `bun run test:golden` verde antes e depois da troca de cada call site — **um por vez**, nunca em
   lote (regra da skill).
 
@@ -192,5 +247,13 @@ entrega. Fica registrado aqui para não virar endpoint órfão.
 - ⚠️ **`docs/data/` é gitignored** e já se perdeu uma vez. Os goldens de paridade dependem dele
   existir na máquina; confirmar se o CI consegue rodá-los ou se ficam sendo gate local.
 - As 3 RPCs **permanecem no banco** sem chamador até o cutover (#105). Não dropar nesta issue.
-- `Leitura.data` é `date`; `Fechamento.data` também. Sem fuso envolvido aqui — mas
-  `timestamps-leitura-em-utc` vale para `Leitura.created_at`, que esta issue não usa.
+- **Corrigido em 18/09/2026:** `Leitura.data` e `Compra.data` **são `timestamptz`**, não `date`
+  (`01-esquema-base.sql:306` e `:138`), gravados em **00:00 UTC** (memória
+  `timestamps-leitura-em-utc`, 1.230/1.230 linhas). Só `Despesa.data` e `Fechamento.data` são
+  `date`. O endpoint toma o dia em UTC: `(data AT TIME ZONE 'UTC')::date BETWEEN inicio AND fim`.
+  A RPC `get_dashboard_proprietario` compara `timestamptz >= date` cru: em sessão UTC (Supabase)
+  funciona; em Postgres fora de UTC (o compose está em `America/Sao_Paulo`) o dia 1º cai fora,
+  porque `'2026-01-01 00:00+00' >= '2026-01-01'::date` é falso. Medido no cenário sintético de
+  `DashboardTest`: RPC em UTC `volume_total 1800.500 / total_vendas 10953.00`; em
+  `America/Sao_Paulo` `800.500 / 4953.00` (perdeu a leitura de 01/01: 1000,000 L, R$ 6.000,00).
+  O endpoint devolve 1800.500 nos dois fusos.

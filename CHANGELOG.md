@@ -2,6 +2,27 @@
 
 ## [Não Lançado]
 
+### 📊 `GET /api/postos/{posto}/dashboard` — fatia 1 da #100, rateio no mês civil
+
+- **Nasce `App\Agregacao`**, só leitura, com query builder sobre `Leitura`, `Compra`, `Despesa` e
+  `Combustivel` — nenhum model de módulo (CA-7, `Agregacao => []` no Pest Arch, canário visto
+  vermelho em 18/09). O endpoint devolve **insumo bruto** em string decimal: nenhum lucro, custo médio
+  ou divisão em PHP (DECISÃO 1 do Design Doc `agregacao.md`); quem calcula segue sendo `lucro.ts`.
+- **Duas decisões do dono (18/09/2026) viraram código:** compra por produto **e** rateio (despesa +
+  litros) saem do **mês civil** que contém o período — despesa do mês ÷ litros do mês, como a planilha
+  (`H22 = H19/F11`) e como a tela de hoje. Só a venda por produto fica no período exato.
+- **`despesas_total` saiu da raiz** e entrou o bloco `rateio { mes_civil, despesas_total,
+  litros_vendidos }`: janela, despesa e litros colados no mesmo lugar, para nenhum cliente dividir
+  despesa de um mês por litros de um período. O campo antigo ainda não tinha consumidor.
+- **Divergência decidida, não regressão:** em período que atravessa meses o aggregator de hoje usa só
+  o mês de `dataInicio`; o endpoint usa todos os meses civis do período. Na troca do call site
+  (fatia futura) o número na tela vai mudar nesse caso, e o dono precisa ser avisado antes.
+- Produto vendido sem compra sai com `compras` zerado, nunca `preco_custo` (DECISÃO 2); sem
+  `custo_taxas` (DECISÃO 3); dia da leitura tomado em UTC, porque `Leitura.data` é `timestamptz`
+  gravado em 00:00 UTC e o Postgres do compose está em `America/Sao_Paulo`.
+- 25 testes Pest contra o Postgres real, com paridade nomeada contra `get_dashboard_proprietario`
+  (receita e volume batem ao centavo; a despesa só bate em mês cheio, e o teste diz por quê).
+
 ### 🚦 Vercel: produção está no ar, e o "conserto de 17/09" nunca existiu
 
 - **Produção nunca caiu.** Os 3 sites respondem HTTP 200 e servem o deploy `READY` de **06/09/2026

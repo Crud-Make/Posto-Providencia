@@ -3,7 +3,7 @@
 > Mapa vivo exigido pelo `CLAUDE.md` §3. Atualizado a cada refatoração pelo subagente
 > `doc-cycle-onboard` (ele propõe, a thread aplica). Levantamento completo e datado em
 > [`.claude/docs/mapa-do-sistema-17-09-2026.md`](../.claude/docs/mapa-do-sistema-17-09-2026.md).
-> **Última atualização:** 18/09/2026 (ciclo Cadastro ↔ Pessoas desfeito: PostoPolicy de Cadastro para Pessoas, `Posto` de Cadastro para `App\Compartilhado`, nenhum módulo depende de outro; ver `docs/design/cadastro.md`). Anterior: 17/09/2026 (#97: módulo Cadastro).
+> **Última atualização:** 18/09/2026 (#100 fatia 1: nasce o módulo Agregacao, `GET /api/postos/{posto}/dashboard` só leitura, devolve insumo bruto com rateio no mês civil e sem lucro no PHP; ver `docs/design/agregacao.md`). Anterior: 18/09/2026 (ciclo Cadastro ↔ Pessoas desfeito, `Posto` em `App\Compartilhado`).
 
 ## 1. Contexto geral (nível 1)
 
@@ -58,7 +58,7 @@ flowchart LR
 | `banco/` | esquema completo (45 tabelas, 22 funções, 103 policies) + compose | Postgres 17 | gerado |
 | `supabase/functions` | `ler-encerrante` (Gemini), `notifica-dono` (Web Push, `service_role`) | Deno | 2 funções |
 | `scripts/` | ETL da planilha (2 estágios), cargas históricas, extração do esquema | Python stdlib, Management API | 11 scripts |
-| `backend/` | Laravel 13.32: `GET /api/saude`; **Cadastro** (#97: 9 models + `Posto` em Compartilhado, `PertenceAoPosto`, catálogo só leitura em `/api/postos/{posto}/…`) e **Pessoas** (Usuario, UsuarioPosto, `PostoPolicy` — movida de Cadastro em 18/09 para desfazer o ciclo; sem dependência entre módulos, cobrada pelo Pest Arch); demais módulos nas #98+ | Postgres do compose, Pest (cobertura 100 %), PHPStan, PHPMD, Deptrac | 2 módulos |
+| `backend/` | Laravel 13.32: `GET /api/saude`; **Cadastro** (#97: 9 models + `Posto` em Compartilhado, `PertenceAoPosto`, catálogo só leitura em `/api/postos/{posto}/…`), **Pessoas** (Usuario, UsuarioPosto, `PostoPolicy`, movida de Cadastro em 18/09 para desfazer o ciclo) e **Agregacao** (#100 fatia 1: `GET /api/postos/{posto}/dashboard`, só leitura. `DadosDoPeriodo` usa query builder sobre `Leitura`, `Compra`, `Despesa` e `Combustivel`, sem model de módulo. Devolve venda por produto no período exato, compra e `rateio` no mês civil, tudo em string decimal, sem lucro nem divisão no PHP). Nenhum módulo depende de outro, e o Pest Arch cobra isso. Demais módulos nas #98+ | Postgres do compose, Pest (cobertura 100 %), PHPStan, PHPMD, Deptrac | 3 módulos |
 
 **Regra de dependência:** `frontend/apps/*` importa de `frontend/packages/*`; `frontend/packages/*` nunca importa de app;
 `frontend/apps/*` nunca se importam entre si. `backend` não importa nada do lado TS.
@@ -87,10 +87,17 @@ sequenceDiagram
 No alvo, os passos de `DB` e `EF` passam pela API; a decisão de onde `totaisDoDia` roda
 (cliente TS ou servidor PHP com golden portado) é da issue do fechamento pela API.
 
+**Dashboard do proprietário pela API (#100, fatia 1, endpoint existe e ainda sem consumidor):**
+`DefinePostoAtual` → `DashboardRequest::periodo()` → `DadosDoPeriodo` (venda por `combustivel_id`
+no período, compra e rateio no `Periodo::mesCivil()`, dia de `Leitura`/`Compra` tomado em UTC) →
+`DashboardResource` (sem envelope `data`). O cálculo continua no cliente: `custoLitrosVendidos()` →
+`despesaOperacionalPorLitro()` → `lucroCombustivel()` de `frontend/packages/utils`. O call site do painel ainda é `aggregator.service.ts`.
+
 ## 5. Contratos (nível 5)
 
 Os contratos de entrada e saída da API são definidos no Design Doc de cada módulo em
-`docs/design/`. Hoje o contrato de dados é o esquema em `banco/init/01-esquema-base.sql`
+`docs/design/` (`GET /api/postos/{posto}/dashboard`: `docs/design/agregacao.md` §5, com o bloco
+`rateio { mes_civil, despesas_total, litros_vendidos }` e sem `despesas_total` na raiz). Hoje o contrato de dados é o esquema em `banco/init/01-esquema-base.sql`
 (colunas, tipos `numeric`, enums `Role` e `StatusFechamento`) e os tipos de
 `frontend/packages/types`. Convenção de dinheiro: `numeric(15,2)` no banco, reais-float quantizado por
 `emCentavos` na fronteira de toda fórmula em TS.
