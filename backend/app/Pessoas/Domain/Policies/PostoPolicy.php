@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Cadastro\Domain\Policies;
+namespace App\Pessoas\Domain\Policies;
 
-use App\Cadastro\Domain\Posto;
 use App\Compartilhado\Enums\Role;
+use App\Compartilhado\Posto;
 use App\Pessoas\Domain\Usuario;
 use App\Pessoas\Domain\UsuarioPosto;
 

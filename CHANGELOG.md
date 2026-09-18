@@ -18,6 +18,26 @@
   conta de dinheiro e sem mudança de backend. Maquininha, bomba e turno não têm tela; combustível,
   tanque, bico e forma de pagamento entram em conta de dinheiro; frentista exigiria mandar `foto`.
 
+### 🧱 Nenhum módulo do backend depende de outro — `Posto` vai para `Compartilhado` (#120)
+
+- **O ciclo `Cadastro ↔ Pessoas` passava pelo Deptrac com 0 violações.** O Deptrac junta o `Domain`
+  de todos os módulos numa camada só, então `Posto::usuarios()` e a `PostoPolicy` (em Cadastro,
+  usando Pessoas) e `Usuario`/`UsuarioPosto` (em Pessoas, usando o `Posto`) nunca reprovaram. O Design
+  Doc diz que módulos só se falam por `Application`, e o dono decidiu em 18/09 que a regra **não ganha
+  exceção**.
+- **Saída:** `Posto::usuarios()` removido (o vínculo é navegado por `Usuario::postos()`); `PostoPolicy`
+  em `App\Pessoas\Domain\Policies`; `Posto` em `App\Compartilhado`, raiz do tenant, **sem nenhuma
+  relação de saída** (as 9 `hasMany` não tinham consumidor). Nenhuma rota muda.
+- **Travas novas no Pest Arch**, cada uma vista vermelha com canário antes do verde: cada módulo não
+  usa outro (mapa vazio); `Compartilhado` não usa módulo; `PostoFactory` não usa módulo;
+  `Compartilhado` só conhece a `PostoFactory`. As duas últimas fecham o caminho
+  `Compartilhado → factory → Domain` aberto pela linha de `Factories` no `deptrac.yaml`.
+- **Contratos presos por teste antes de mover:** decimais como string, `cpf`/`user_id` fora do
+  `FrentistaResource`, ordem das listas, relações aninhadas na resposta (o `whenLoaded` tira o campo
+  em silêncio se o `with()` sair) e o papel Admin no posto gerindo só o próprio posto.
+- Esta entrada entrou depois do commit do código: o `checklist-commit.py` não cobrou porque `git add`
+  e `git commit` estavam no mesmo comando (defeito registrado para correção).
+
 ### 🚦 Vercel: produção está no ar, e o "conserto de 17/09" nunca existiu
 
 - **Produção nunca caiu.** Os 3 sites respondem HTTP 200 e servem o deploy `READY` de **06/09/2026
@@ -75,6 +95,21 @@
   módulo. Correções de número que vão para as issues: a #103 diz 52 arquivos e são **45** (o 52 conta
   `Array.from(`), e o aceite da #100 ("mesma saída da RPC") congelaria o bug da `get_fechamento_mensal`.
 - `supabase/.temp/` sai do versionamento — guarda o ref do projeto e é estado local do CLI.
+### 🐘 Travas do backend: Pest Arch, PHPStan 9, Eloquent estrito e hook do Claude
+
+- `tests/Arch/ArquiteturaTest.php` (suíte `Arch` no phpunit.xml): strict_types em todo `app/`, sem
+  `dd`/`dump`/`ray`, `env()` só em config, sem função insegura (eval, md5, rand, unserialize…),
+  controller sem model e sem `Request` cru, controller com sufixo, enum string-backed. Namespaces
+  de módulo descobertos no disco. Mutação: toda regra reprova com a violação plantada.
+- Dois gates mortos achados por mutação: `expect([lista de namespaces])` e a forma com closure
+  `arch('…', fn () => …)` passam VERDE com violação. Só a forma encadeada, um namespace por regra.
+- PHPStan 6 → **9**. 8 erros reais corrigidos (7 testes com `->is()` em relação anulável, `/saude`
+  com `mixed`); `tests/Arch` fora da análise, com o motivo no phpstan.neon.
+- `AppServiceProvider`: `preventLazyLoading`, `preventAccessingMissingAttributes`,
+  `preventSilentlyDiscardingAttributes` fora de produção; `Http::preventStrayRequests()` em todo
+  teste. Canários em `tests/Feature/TravasDoEloquentTest.php` (4/4 reprovam com as travas desligadas).
+- `pre-commit` roda Pest Arch com `.php` no índice. Hook do Claude `trava-php.py`: Pint (corrige),
+  PHPStan, PHPMD, Deptrac `--no-cache` e Pest Arch no arquivo editado (~5,5 s), exit 2 se reprovar.
 
 ### 🧱 Módulo Cadastro no backend: models, escopo por posto, policy e catálogo só leitura (#97)
 
@@ -115,6 +150,8 @@
 - Hook do Claude `trava-ts.py` (PostToolUse): lint do arquivo editado, erro novo volta com exit 2.
 - Canários em `apps/web/src/__canarios__/travas.test.ts` e `testa-hooks.py`; teste de mutação
   confirmou que desligar as travas reprova 5 canários.
+
+
 - **Três furos da revisão, fechados com canário (18/09):**
   - FSD: a regex da Public API só olhava `@widgets/x/…`; `@/widgets/x/ui/y` (o tsconfig tem os dois
     aliases) passava. Nenhum import real furava — medido na varredura inteira.

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Cadastro\Domain\Posto;
 use App\Compartilhado\Enums\PapelNoPosto;
+use App\Compartilhado\Posto;
 use App\Pessoas\Domain\Usuario;
 use App\Pessoas\Domain\UsuarioPosto;
 use Illuminate\Database\Eloquent\Factories\Factory;

@@ -1,15 +1,20 @@
 # PHPStan via Larastan — quality gate 1 do CLAUDE.md §6 (legibilidade/tipagem).
-# Nível 6 de saída: tipos de retorno e parâmetros obrigatórios, sem ainda cobrar generics
-# nos relacionamentos do Eloquent. Sobe um nível por issue quando o backend crescer.
+# Nível 9 desde 18/09/2026 (medido: 0 erros no 6, 8 e 9; o 10 dá 1). `mixed` só passa
+# explicitamente estreitado. Subir para 10 é issue própria.
 includes:
     - vendor/larastan/larastan/extension.neon
 
 parameters:
-    level: 6
+    level: 9
     paths:
         - app
         - routes
         - tests
     tmpDir: storage/framework/phpstan
+    # tests/Arch é DSL do Pest Arch: `arch()->expect()` passa por um proxy que o PHPStan não
+    # enxerga, e a única forma que ele entende (closure) deixa as regras MORTAS — ver o
+    # cabeçalho de tests/Arch/ArquiteturaTest.php. Único arquivo fora da análise.
+    excludePaths:
+        - tests/Arch
     # Design Doc §2: módulos em App\<Modulo>\{Http,Application,Domain} — sem exceção declarada.
     ignoreErrors: []

@@ -496,6 +496,57 @@ def main() -> int:
         finally:
             sujo.unlink(missing_ok=True)
 
+    print("── trava-php (escopo) ──")
+    trava_php = carrega("trava-php.py")
+    back = RAIZ / "backend"
+    for caminho, esperado in [
+        (f"{back}/app/Cadastro/Domain/Posto.php", "app/Cadastro/Domain/Posto.php"),
+        (f"{back}/tests/Feature/SaudeTest.php", "tests/Feature/SaudeTest.php"),
+        (f"{back}/config/app.php", None),
+        (f"{back}/vendor/laravel/framework/src/x.php", None),
+        (f"{back}/resources/views/welcome.blade.php", None),
+        (f"{RAIZ}/frontend/apps/web/src/App.tsx", None),
+    ]:
+        obtido = trava_php.alvo(caminho)
+        obtido = obtido[1] if obtido else None
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {caminho.removeprefix(str(RAIZ) + '/'):60} {obtido}")
+
+    # Canário de verdade, os dois lados: classe com dd() TEM de voltar exit 2 (e prova que o
+    # Pest Arch está vivo), arquivo existente TEM de passar.
+    print("── trava-php (canário, roda os gates de verdade) ──")
+    if not (back / "vendor/bin/phpstan").exists():
+        falhas += 1
+        print("  ✗ backend/vendor ausente — canário não roda (composer install em backend/)")
+    else:
+        sujo = back / "app/Compartilhado/CanarioTravaPhp.php"
+        try:
+            sujo.write_text(
+                "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Compartilhado;\n\n"
+                "final class CanarioTravaPhp\n{\n    public static function x(): void\n    {\n        dd(1);\n    }\n}\n"
+            )
+            # Em sequência, e o sujo apagado ANTES do caso limpo: o Pest Arch varre o app/
+            # inteiro, então com o sujo ainda no disco o caso limpo reprovaria por ele.
+            for rotulo, arquivo, codigo in [
+                ("classe com dd() → exit 2", sujo, 2),
+                ("arquivo existente limpo → exit 0", back / "app/Compartilhado/PostoAtual.php", 0),
+            ]:
+                if codigo == 0:
+                    sujo.unlink(missing_ok=True)
+                r = subprocess.run(
+                    ["python3", str(HOOKS / "trava-php.py")],
+                    input=json.dumps({"tool_input": {"file_path": str(arquivo)}}),
+                    capture_output=True, text=True, timeout=180,
+                )
+                ok = r.returncode == codigo and (codigo == 0 or "Pest Arch" in r.stderr)
+                falhas += not ok
+                print(f"  {'✓' if ok else '✗'} {rotulo:60} exit {r.returncode}")
+                if not ok:
+                    print(f"      stderr: {r.stderr.strip()[:300]}")
+        finally:
+            sujo.unlink(missing_ok=True)
+
     print(f"\n{'TODOS OS CASOS PASSARAM' if not falhas else f'{falhas} FALHA(S)'}")
     return 1 if falhas else 0
 

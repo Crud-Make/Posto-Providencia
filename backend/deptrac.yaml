@@ -7,7 +7,11 @@
 #   Http  →  Application (Commands/Queries)  →  Domain (Models, Services)  →  Compartilhado
 #
 # Controller só chama Application; Application não conhece Http; Domain não conhece nada
-# acima dele. Ciclo entre módulos = PR rejeitado (CLAUDE.md §3).
+# acima dele. Ciclo entre módulos = PR rejeitado (CLAUDE.md §3) — mas ESTE arquivo não o
+# detecta: a camada Domain abaixo junta o Domain de todos os módulos numa só, então o ciclo
+# Cadastro\Domain ↔ Pessoas\Domain (desfeito em 18/09: Posto foi para App\Compartilhado) passou
+# aqui com 0 violações. A direção entre módulos é cobrada pelo Pest Arch
+# (tests/Arch/ArquiteturaTest.php, direcaoPermitidaEntreModulos()).
 deptrac:
   paths:
     - ./app
@@ -55,6 +59,7 @@ deptrac:
       - Factories     # convenção do Laravel: o model conhece a própria factory (newFactory)
       - Framework
     Compartilhado:
+      - Factories     # convenção do Laravel: o model conhece a própria factory (newFactory) — Posto mora aqui
       - Framework
     Factories:
       - Domain

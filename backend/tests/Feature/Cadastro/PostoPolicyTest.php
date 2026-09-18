@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Cadastro\Domain\Posto;
 use App\Compartilhado\Enums\PapelNoPosto;
 use App\Compartilhado\Enums\Role;
+use App\Compartilhado\Posto;
 use App\Pessoas\Domain\Usuario;
 use App\Pessoas\Domain\UsuarioPosto;
 use Illuminate\Support\Facades\Gate;
@@ -38,6 +38,18 @@ it('gerente do posto gere o posto; vínculo inativo não vale', function (): voi
     UsuarioPosto::query()->where('usuario_id', $gerente->id)->update(['ativo' => false]);
 
     expect(Gate::forUser($gerente)->allows('ver', $posto))->toBeFalse();
+});
+
+it('admin DO POSTO (papel no vínculo, não Role global) gere só esse posto', function (): void {
+    $seu = Posto::factory()->create();
+    $outro = Posto::factory()->create();
+    $adminDoPosto = Usuario::factory()->create(['role' => Role::Operador, 'ativo' => true]);
+    UsuarioPosto::factory()->create(['usuario_id' => $adminDoPosto->id, 'posto_id' => $seu->id, 'role' => PapelNoPosto::Admin]);
+
+    expect(Gate::forUser($adminDoPosto)->allows('gerir', $seu))->toBeTrue()
+        ->and(Gate::forUser($adminDoPosto)->allows('ver', $seu))->toBeTrue()
+        ->and(Gate::forUser($adminDoPosto)->allows('gerir', $outro))->toBeFalse()
+        ->and(Gate::forUser($adminDoPosto)->allows('ver', $outro))->toBeFalse();
 });
 
 it('usuário desativado não vê nada, nem com vínculo', function (): void {
