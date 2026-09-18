@@ -5,16 +5,19 @@ Issue: #105 (mãe: #60) · Estado: **rascunho — pendências do dono: VPS, back
 > Último passo da Fase A, e o único irreversível. Todo o resto desta fase pode ser revertido com um
 > `git revert`; este não.
 
-## 1. Pré-requisito que já está quebrado hoje
+## 1. Pré-requisito: o deploy da Vercel
 
-🔴 **Os três projetos da Vercel estão com deploy falhando desde o move da #95** (`posto-providencia`,
-`pwa`, `pwa-dono`). Conferido na linha do tempo: passavam na PR #107 e quebraram a partir da branch
-que moveu `apps/` e `packages/` para `frontend/`. O `vercel.json` hoje está em `frontend/`; os
-projetos provavelmente ainda apontam o Root Directory para os caminhos antigos.
+Os três projetos (`posto-providencia`, `pwa`, `pwa-dono`) quebraram a partir do move da #95:
+passavam na PR #107 e falharam em toda PR depois dela, porque o `vercel.json` foi para `frontend/` e
+o Root Directory dos projetos seguiu apontando para os caminhos antigos.
 
-É configuração no painel da Vercel, não código. **Mas não dá para fazer cutover com o deploy do
-frontend vermelho** — e está vermelho há dias, em toda PR. Consertar isso é pré-requisito, não
-tarefa do cutover.
+**Corrigido em 17/09 por outra sessão** (configuração no painel da Vercel, não código).
+
+⚠️ **Ainda não confirmado por deploy real.** Os últimos deploys registrados no GitHub são de
+17/09 11:39 e 11:41 — o push da #111 — e estão como `failure`; mudar o Root Directory não
+reexecuta deploy antigo. **A confirmação vem no próximo push**, e é ele que precisa vir verde antes
+de qualquer passo do cutover. Não marcar este item como resolvido só pela configuração ter sido
+salva.
 
 ## 2. Ordem — cada passo é reversível até o último
 
