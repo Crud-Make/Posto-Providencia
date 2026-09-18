@@ -5,19 +5,74 @@ Issue: #105 (mãe: #60) · Estado: **rascunho — pendências do dono: VPS, back
 > Último passo da Fase A, e o único irreversível. Todo o resto desta fase pode ser revertido com um
 > `git revert`; este não.
 
-## 1. Pré-requisito: o deploy da Vercel
+## 1. Pré-requisito: o Root Directory da Vercel
 
-Os três projetos (`posto-providencia`, `pwa`, `pwa-dono`) quebraram a partir do move da #95:
-passavam na PR #107 e falharam em toda PR depois dela, porque o `vercel.json` foi para `frontend/` e
-o Root Directory dos projetos seguiu apontando para os caminhos antigos.
+### Produção está no ar. O que está vermelho é preview.
 
-**Corrigido em 17/09 por outra sessão** (configuração no painel da Vercel, não código).
+Medido em 17/09 contra a API da Vercel, não contra o GitHub:
 
-⚠️ **Ainda não confirmado por deploy real.** Os últimos deploys registrados no GitHub são de
-17/09 11:39 e 11:41 — o push da #111 — e estão como `failure`; mudar o Root Directory não
-reexecuta deploy antigo. **A confirmação vem no próximo push**, e é ele que precisa vir verde antes
-de qualquer passo do cutover. Não marcar este item como resolvido só pela configuração ter sido
-salva.
+| Projeto | Produção viva | Estado | Deploy de |
+|---|---|---|---|
+| `posto-providencia` | `posto-providencia.vercel.app` → HTTP 200 | `READY` | 06/09/2026 20:06, `main` @ `6662b24` |
+| `pwa` | `pwa-sandy-rho.vercel.app` → HTTP 200 | `READY` | 06/09/2026 20:06 |
+| `pwa-dono` | `pwa-dono.vercel.app` → HTTP 200 | `READY` | 06/09/2026 20:06 |
+
+Todos os deploys em `ERROR` desde a #95 têm `target: null` — são **preview**, de branch de trabalho
+(`feat/#97`, `chore/#95`, `chore/#96`, `fase-a`). **Nenhum deploy de produção falhou.** Build
+quebrado na Vercel não derruba o deploy vivo: ele apenas não é promovido. A produção não caiu, ficou
+**congelada em 06/09** — e é isso que o cutover precisa descongelar, não consertar.
+
+### ❌ Correção de 17/09: NÃO aconteceu
+
+Uma versão anterior deste doc afirmava *"corrigido em 17/09 por outra sessão (configuração no painel
+da Vercel)"*. **Falso.** Conferido na API em 17/09 com o token do CLI:
+
+| Projeto | `rootDirectory` real | `updatedAt` |
+|---|---|---|
+| `posto-providencia` | `None` (raiz do repo) | 06/09/2026 20:06 |
+| `pwa` | `apps/pwa-frentista` | 06/09/2026 20:06 |
+| `pwa-dono` | `apps/pwa-dono` | 06/09/2026 20:06 |
+
+Os três seguem nos caminhos de antes do move e **nenhum registrou alteração de configuração desde
+06/09**. O erro do build diz o mesmo, com todas as letras:
+
+```
+pwa      → The specified Root Directory "apps/pwa-frentista" does not exist.
+painel   → Skipping build cache since Package Manager changed from "bun" to "npm"
+           sh: vite: command not found  /  Error: Command "vite build" exited with 127
+```
+
+O painel nem chega a reclamar de diretório porque o `rootDirectory` dele é a raiz — que existe, mas
+depois da #95 não tem mais `package.json` nem `bun.lock`. Sem install, `vite` não existe no PATH.
+
+### ⚠️ Não mudar o Root Directory antes do merge na `main`
+
+O conserto é de uma linha em cada projeto — e é exatamente por isso que é perigoso fazer cedo:
+
+| | `main` (produção hoje) | `fase-a` (refatoração) |
+|---|---|---|
+| Layout | `apps/`, `packages/`, `vercel.json` na raiz | tudo sob `frontend/` |
+| Root Directory que funciona | raiz · `apps/pwa-frentista` · `apps/pwa-dono` | `frontend` · `frontend/apps/pwa-frentista` · `frontend/apps/pwa-dono` |
+
+**As duas configurações não podem estar certas ao mesmo tempo**, porque `rootDirectory` é do projeto
+e não da branch. Trocar agora deixa as previews da `fase-a` verdes e tira da `main` a capacidade de
+deployar produção — se o dono reportar um bug antes do cutover, **não sobe hotfix**. Preview vermelha
+de branch de refatoração é ruído; `main` não deployável é risco de dinheiro real.
+
+**Decisão: a troca do Root Directory é um passo DESTE cutover** (passo 6 do §2), executado na
+mesma janela em que a `fase-a` entra na `main` e os dois layouts convergem. Até lá, preview vermelha
+fica vermelha, e o gate que vale é o do §7 do CLAUDE.md — CI (`build`, `backend`) e `pre-push`, que
+rodam a suíte inteira e estão verdes.
+
+### 🔎 Duas heranças a arrumar na mesma janela
+
+Achadas ao ler as settings, não mordem hoje mas são armadilha:
+
+* `pwa` e `pwa-dono` têm `outputDirectory: "apps/web/dist"` nas settings — o diretório do **painel**,
+  não o deles. Só não quebra porque o `vercel.json` de cada um traz `"outputDirectory": "dist"`, e o
+  `vercel.json` vence sobre o painel. Apagar esse `vercel.json` quebraria em silêncio.
+* `pwa` tem `buildCommand: "npm run build"`, contra a regra de toolchain Bun do §0. Trocar por Bun ou
+  zerar o campo e deixar o framework preset decidir.
 
 ## 2. Ordem — cada passo é reversível até o último
 
@@ -26,13 +81,23 @@ salva.
 2. Deploy do backend na VPS (Docker Compose) — sem tráfego ainda
 3. Migração dos dados de movimento → conferência (§3)
 4. Locust: 12 frentistas fechando no mesmo minuto
-5. Vercel: VITE_API_URL de produção nos 3 projetos
-6. Janela de convivência: Supabase em LEITURA por 1 semana (§4)
-7. Remoção do Supabase do código
-8. Cancelar o projeto Supabase   ← único passo irreversível
+5. Merge da fase-a na main  ─┐  mesma janela, nesta ordem, sem intervalo:
+6. Root Directory dos 3      │  a main passa a ter o layout frontend/ e a
+   projetos → frontend/...  ─┘  configuração da Vercel passa a casar com ela
+7. Deploy de produção verde nos 3 — CONFIRMA o §1 (é aqui, e só aqui)
+8. Vercel: VITE_API_URL de produção nos 3 projetos
+9. Janela de convivência: Supabase em LEITURA por 1 semana (§4)
+10. Remoção do Supabase do código
+11. Cancelar o projeto Supabase   ← único passo irreversível
 ```
 
-O passo 8 só acontece depois de **um dia inteiro de operação real** sem o Supabase, como a issue
+**Passos 5 a 7 são um bloco.** Entre o merge e a troca do Root Directory a produção fica sem poder
+deployar — a janela existe, e a regra é fechá-la em minutos, não deixar para depois. Valores exatos
+por projeto na tabela do §1. Se o passo 7 vier vermelho, o caminho de volta é `git revert` do merge
+**e** devolver os três `rootDirectory` aos valores de 06/09 — os dois, sempre juntos, porque um sem
+o outro é o estado quebrado.
+
+O passo 11 só acontece depois de **um dia inteiro de operação real** sem o Supabase, como a issue
 pede. E depois de o backup do passo 1 ter sido restaurado em algum lugar pelo menos uma vez — backup
 não testado não é backup.
 
@@ -63,11 +128,11 @@ Combinar com o dono, antes de migrar, o que é a verdade a preservar: o banco at
 A issue diz "Supabase em leitura por 1 semana". **Leitura precisa ser aplicada, não combinada.**
 
 Uma aba esquecida aberta no painel antigo, ou um PWA que não recarregou, continua escrevendo no
-sistema morto — e esse dado some no passo 8, sem ninguém perceber. É o mesmo modo de falha do
+sistema morto — e esse dado some no passo 11, sem ninguém perceber. É o mesmo modo de falha do
 "apaga em silêncio", só que com uma semana de atraso.
 
 Concretamente: revogar `INSERT`/`UPDATE`/`DELETE` dos papéis `anon` e `authenticated` no Supabase
-assim que o passo 5 terminar. Erro de escrita visível é melhor que escrita perdida.
+assim que o passo 8 terminar. Erro de escrita visível é melhor que escrita perdida.
 
 ## 5. Limpeza — o aceite é um grep
 

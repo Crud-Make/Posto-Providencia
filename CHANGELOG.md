@@ -2,6 +2,28 @@
 
 ## [Não Lançado]
 
+### 🚦 Vercel: produção está no ar, e o "conserto de 17/09" nunca existiu
+
+- **Produção nunca caiu.** Os 3 sites respondem HTTP 200 e servem o deploy `READY` de **06/09/2026
+  20:06** (`main` @ `6662b24`). Todo deploy em `ERROR` desde a #95 é **preview** (`target: null`) de
+  branch de trabalho. Build quebrado na Vercel não derruba o deploy vivo — só não promove o novo. A
+  produção não está quebrada, está **congelada**, e é isso que o cutover descongela.
+- **O `cutover.md` afirmava um conserto que não aconteceu.** Lido na API da Vercel: os três
+  `rootDirectory` seguem nos caminhos de antes do move (`None`, `apps/pwa-frentista`,
+  `apps/pwa-dono`) e nenhum projeto registra alteração de configuração desde 06/09. O build diz o
+  mesmo: `The specified Root Directory "apps/pwa-frentista" does not exist` no PWA, e
+  `vite: command not found` (exit 127) no painel, que aponta para uma raiz que depois da #95 não tem
+  mais `package.json` nem `bun.lock`. §1 reescrito com a medição.
+- **Decisão: não mexer no Root Directory antes do merge na `main`.** `rootDirectory` é do projeto, não
+  da branch — a configuração que deixa a `fase-a` verde é a mesma que tira da `main` a capacidade de
+  deployar produção. Preview vermelha de branch de refatoração é ruído; `main` não deployável é risco
+  de dinheiro real, porque bug do dono não espera cutover. A troca virou **passo 6 do §2**, num bloco
+  indivisível com o merge (5) e o deploy de confirmação (7); o rollback derruba os dois juntos.
+- Duas heranças achadas nas settings, sem mordida hoje: `pwa` e `pwa-dono` carregam
+  `outputDirectory: "apps/web/dist"` — o diretório do painel — salvo só pelo `vercel.json` de cada um,
+  que vence sobre o dashboard; e o `buildCommand` do `pwa` é `npm run build`, contra a regra de
+  toolchain Bun do §0.
+
 ### 🔒 Trava de push: não se sobe com o sistema quebrado
 
 - **`scripts/hooks/pre-push` nasce.** O §7 mandava desde sempre e a linha era só texto: a suíte

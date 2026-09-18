@@ -1,4 +1,5 @@
 # Memória — Posto Providência
+- [🚦 Vercel: produção no ar, Root Directory não pode mudar cedo](vercel-root-directory-nao-mexer-antes-do-merge.md) — 17/09 medido na API: prod é o deploy de 06/09 e responde 200; vermelhas são preview; os 3 rootDirectory seguem no layout antigo (o "conserto de 17/09" do cutover.md era falso); trocar só no passo 6 do cutover
 - [🔴 CLAUDE.md 4.0 vale desde 18/09](claude-md-4-vale-desde-18-09.md) — regras da refatoração Laravel (spec-driven, gates PHP quando backend existir); §0 Ponte guarda golden/docs-data/git; 3.3 arquivado; não propor reverter
 - [📍 17/09 — mapa para refatoração Laravel/Docker](mapa-17-09-refatoracao-laravel.md) — consolidado em .claude/docs/mapa-do-sistema-17-09-2026.md; #60 × #93 colidem; token MCP vencido; CLAUDE.md sobrescrito por template genérico
 - [🔴 Contexto de vida: entregador, quer sair](situacao-entregador-quer-sair.md) — 07/09: prioridade é o que traz dinheiro pelo código (Elias, 2º posto, candidatura); ele já é programador, falta cobrar e aplicar
