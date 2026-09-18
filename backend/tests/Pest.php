@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /*
@@ -10,4 +11,6 @@ use Tests\TestCase;
 | Cobertura mínima de 85 % é cobrada por `composer test:cobertura` (CLAUDE.md §6).
 */
 
-pest()->extend(TestCase::class)->in('Feature');
+pest()->extend(TestCase::class)
+    ->use(DatabaseTransactions::class)
+    ->in('Feature');

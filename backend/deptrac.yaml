@@ -32,6 +32,10 @@ deptrac:
       collectors:
         - type: classLike
           value: 'App\\Compartilhado\\.*'
+    - name: Factories
+      collectors:
+        - type: classLike
+          value: 'Database\\Factories\\.*'
     - name: Framework
       collectors:
         - type: classLike
@@ -39,6 +43,7 @@ deptrac:
   ruleset:
     Http:
       - Application
+      - Domain        # só para tipar e serializar (Resources, middleware que resolve rota); escrita passa por Application
       - Compartilhado
       - Framework
     Application:
@@ -47,7 +52,12 @@ deptrac:
       - Framework
     Domain:
       - Compartilhado
+      - Factories     # convenção do Laravel: o model conhece a própria factory (newFactory)
       - Framework
     Compartilhado:
+      - Framework
+    Factories:
+      - Domain
+      - Compartilhado
       - Framework
     Framework: ~

@@ -24,11 +24,22 @@
     <rule ref="rulesets/codesize.xml/ExcessiveClassComplexity"/>
 
     <rule ref="rulesets/design.xml"/>
-    <rule ref="rulesets/unusedcode.xml"/>
+    <!-- UnusedFormalParameter fora: assinaturas do framework (JsonResource::toArray(Request $request),
+         handle(Request, Closure)) obrigam parâmetros que nem sempre se usam. -->
+    <rule ref="rulesets/unusedcode.xml">
+        <exclude name="UnusedFormalParameter"/>
+    </rule>
 
     <!-- naming: sem ShortVariable ($id, $e) nem LongVariable — nomes em pt-BR são longos. -->
     <rule ref="rulesets/naming.xml">
         <exclude name="ShortVariable"/>
         <exclude name="LongVariable"/>
+        <exclude name="ShortMethodName"/>
+    </rule>
+    <!-- id() é nome legítimo (PostoAtual::id); mínimo 2 em vez do padrão 3. -->
+    <rule ref="rulesets/naming.xml/ShortMethodName">
+        <properties>
+            <property name="minimum" value="2"/>
+        </properties>
     </rule>
 </ruleset>

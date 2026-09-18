@@ -82,7 +82,7 @@
             "@analise",
             "@md",
             "@deptrac",
-            "@test"
+            "@test:cobertura"
         ]
     },
     "extra": {

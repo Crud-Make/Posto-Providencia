@@ -1,4 +1,5 @@
 # Memória — Posto Providência
+- [🚦 Vercel: produção no ar, Root Directory não pode mudar cedo](vercel-root-directory-nao-mexer-antes-do-merge.md) — 17/09 medido na API: prod é o deploy de 06/09 e responde 200; vermelhas são preview; os 3 rootDirectory seguem no layout antigo (o "conserto de 17/09" do cutover.md era falso); trocar só no passo 6 do cutover
 - [🔴 CLAUDE.md 4.0 vale desde 18/09](claude-md-4-vale-desde-18-09.md) — regras da refatoração Laravel (spec-driven, gates PHP quando backend existir); §0 Ponte guarda golden/docs-data/git; 3.3 arquivado; não propor reverter
 - [📍 17/09 — mapa para refatoração Laravel/Docker](mapa-17-09-refatoracao-laravel.md) — consolidado em .claude/docs/mapa-do-sistema-17-09-2026.md; #60 × #93 colidem; token MCP vencido; CLAUDE.md sobrescrito por template genérico
 - [🔴 Contexto de vida: entregador, quer sair](situacao-entregador-quer-sair.md) — 07/09: prioridade é o que traz dinheiro pelo código (Elias, 2º posto, candidatura); ele já é programador, falta cobrar e aplicar
@@ -12,7 +13,7 @@
 - [Formação: Gestão Pública + Ciência de Dados + pós em Finanças/Controladoria](formacao-gestao-publica-financas-controladoria.md) — 07/09: posicionar como finanças que programa; o Posto é sistema de controladoria
 - [Python é a âncora; quant é a prática](python-paixao-quant-pula-de-galho.md) — 07/09: ama Python, sonha em quant, nunca praticou, pula de galho; decisão: Python só, FastAPI ao lado do Supabase, quant como projeto de treino, sem dinheiro real cedo
 - [Portfólio de dados — o que 30 vagas pedem](portfolio-dados-o-que-as-vagas-pedem.md) — 07/09: cursa Ciência de Dados na Estácio; Python 18/20, SQL 13/20, LLM 8/20, Power BI só 6/20; plano de 3 projetos (posto, quant, agente com eval)
-- [⏰ Assinatura Max acaba 20/09 — troca automática p/ OpenRouter](assinatura-max-acaba-20-09-troca-openrouter.md) — timer systemd + `claude-provedor`; FALTA a chave em ~/.config/openrouter/chave; só modelo chinês barato: padrão GLM 5.3, opus→DeepSeek V4 Pro, haiku→DeepSeek V4 Flash
+- [⏰ Max expira quarta 23/09 — troca p/ OpenRouter pronta](assinatura-max-acaba-20-09-troca-openrouter.md) — chave gravada e testada, timer corrigido p/ 23/09, `claude-provedor` nos 3 slots em DeepSeek V4.1 Flash; saldo US$ 5,85; PENDENTE: a chave expira 24/09, gerar outra sem validade
 - [📍 06/09 — segundo posto, cliente novo, 12 bicos](segundo-posto-cliente-novo.md) — **Issue #93, EM ESPERA até fechar contrato**; instalação separada (Supabase + Vercel próprios), não multi-tenant; bloqueio nº 1: DDL do núcleo não está no repo, precisa `supabase db dump`; seed por SQL; RPC legada por nome de combustível é risco
 - [Busca de vagas com o MCP jobspy](busca-de-vagas-jobspy.md) — instalado 06/09; Indeed precisa de country_indeed=Brazil; LinkedIn ignora "Brasil" e devolve EUA; comando docker direto quando a ferramenta não está na sessão; resultsWanted 25 estoura o limite, parsear com python (campos camelCase)
 

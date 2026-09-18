@@ -3,7 +3,7 @@
 > Mapa vivo exigido pelo `CLAUDE.md` §3. Atualizado a cada refatoração pelo subagente
 > `doc-cycle-onboard` (ele propõe, a thread aplica). Levantamento completo e datado em
 > [`.claude/docs/mapa-do-sistema-17-09-2026.md`](../.claude/docs/mapa-do-sistema-17-09-2026.md).
-> **Última atualização:** 17/09/2026 (#96: `backend/` criado).
+> **Última atualização:** 17/09/2026 (#97: módulo Cadastro; ver `docs/design/cadastro.md`).
 
 ## 1. Contexto geral (nível 1)
 
@@ -58,7 +58,7 @@ flowchart LR
 | `banco/` | esquema completo (45 tabelas, 22 funções, 103 policies) + compose | Postgres 17 | gerado |
 | `supabase/functions` | `ler-encerrante` (Gemini), `notifica-dono` (Web Push, `service_role`) | Deno | 2 funções |
 | `scripts/` | ETL da planilha (2 estágios), cargas históricas, extração do esquema | Python stdlib, Management API | 11 scripts |
-| `backend/` | Laravel 13.32 (#96): `GET /api/saude`; módulos nascem nas #97+ — persistência, auth, autorização, OCR, push, agregações | Postgres do compose, Pest/PHPStan/PHPMD/Deptrac | esqueleto |
+| `backend/` | Laravel 13.32: `GET /api/saude`; **Cadastro** (#97: 10 models, `PertenceAoPosto`, `PostoPolicy`, catálogo só leitura em `/api/postos/{posto}/…`) e **Pessoas** (Usuario, UsuarioPosto); demais módulos nas #98+ | Postgres do compose, Pest (cobertura 100 %), PHPStan, PHPMD, Deptrac | 2 módulos |
 
 **Regra de dependência:** `frontend/apps/*` importa de `frontend/packages/*`; `frontend/packages/*` nunca importa de app;
 `frontend/apps/*` nunca se importam entre si. `backend` não importa nada do lado TS.

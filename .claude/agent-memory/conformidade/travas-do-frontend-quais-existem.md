@@ -1,0 +1,70 @@
+---
+name: travas-do-frontend-quais-existem
+description: Quais regras de arquitetura do frontend têm trava automática e quais só existem como texto — e o fato-raiz de que o CLAUDE.md 4.0 vigente NÃO contém mais as regras de FSD/any/enum/kebab
+metadata:
+  type: project
+---
+
+Levantado em **17/09/2026**. Responde "isto depende de boa vontade?" sem reabrir a
+investigação toda.
+
+## O fato-raiz: as regras do frontend saíram do CLAUDE.md vigente
+
+O `CLAUDE.md` **4.0** (vale desde 18/09/2026) é inteiro sobre a refatoração
+Laravel/CQRS. Ele **não menciona** FSD, `any`, `enum`, kebab-case nem "cálculo de
+domínio mora em `frontend/packages/utils`". Essas regras existem só no **3.3
+arquivado**, em `.claude/docs/claude-md-3.3-arquivado.md` (§1 cálculo em
+`packages/utils`, §2 FSD, §4 `any`/`enum`/dinheiro, §8 kebab-case).
+
+Consequência prática ao auditar: **citar "§2/§4/§8" sem dizer que são do 3.3
+arquivado induz o dono a procurar no arquivo errado.** Sempre nomear a fonte.
+```bash
+grep -nEi 'fsd|kebab|\benum\b|packages/utils' CLAUDE.md          # ~1 hit, só um caminho
+grep -nEi 'fsd|kebab|enum|packages/utils' .claude/docs/claude-md-3.3-arquivado.md
+```
+
+## Onde cada trava mora (conferir, não decorar)
+
+Quatro camadas, e elas **não** cobrem as mesmas regras:
+
+- `frontend/.oxlintrc.json` — **só** `eslint/complexity` (20; override 35 p/ 13
+  arquivos) e `eslint/max-lines` (900). Sondado: oxlint com essa config **não** pega
+  `any` nem `enum`.
+- `frontend/eslint.config.mjs` — é onde mora `@typescript-eslint/no-explicit-any:
+  error` e a regra `no-restricted-syntax` do `toISOString().split()`. **Não** roda no
+  pre-commit nem no pre-push (os dois chamam só `bun run lint` = oxlint); roda
+  **só no CI**, no passo `lint:eslint`.
+- `scripts/hooks/pre-commit` (versionado) — oxlint quando há `.ts` no índice.
+- `scripts/hooks/pre-push` — oxlint + type-check + vitest + **`test:golden`** + gates
+  PHP. **Em 17/09/2026 estava NÃO versionado (`?? scripts/hooks/pre-push`)**: a trava
+  do golden existia só nesta máquina. Reconferir antes de contar com ela:
+  `git status --porcelain scripts/hooks/`
+- `.github/workflows/ci.yml` — oxlint, eslint completo, type-check, vitest, build.
+  **Não roda `test:golden` de propósito** (depende de `docs/data/`, gitignored).
+- `.claude/hooks/*.py` — `portao-golden` e `checklist-commit` **avisam/perguntam** e
+  só valem para mim, dentro do Claude Code. Não são gate do repositório.
+
+## Sem trava nenhuma (só texto do 3.3 arquivado)
+
+Regra de dependência do FSD · import cruzado entre os 3 apps · fórmula de dinheiro
+fora de `frontend/packages/utils` · quantização por `emCentavos` · `enum` do TS ·
+kebab-case · import relativo profundo. Nenhum Deptrac/Pest-Arch/regra de
+`no-restricted-imports` existe no lado TS — o Deptrac do §6 é só do `backend/`.
+
+Sondar se alguma trava nova pegou `any`/`enum` (saída vazia = não pega):
+```bash
+cd frontend && printf 'export enum T { A="a" }\nexport const f=(x:any):any=>x as any;\n' > /tmp/sonda.ts
+./node_modules/.bin/oxlint -c .oxlintrc.json /tmp/sonda.ts
+```
+
+## O dinheiro NÃO é centavo inteiro neste repo
+
+O 3.3 §4 foi **corrigido em 28/08/2026**: a regra real é "dinheiro em **reais
+(float)**, quantizado por `emCentavos` na fronteira de saída de toda fórmula";
+centavo inteiro só no parse de entrada do PWA. A redação antiga ("centavos inteiros")
+descrevia um repo que nunca existiu. Portanto **`parseFloat` e `/ 100` não são
+violação por si** — o achado é *float cru sem `emCentavos` na saída de fórmula*.
+Minhas próprias instruções de prompt ainda trazem a redação velha.
+
+Ver [[divida-aceita]], [[formula-duplicada-fora-utils]], [[medir-complexidade-ccn]],
+[[golden-master-como-conferir]].

@@ -81,5 +81,28 @@ grep -rn "rpc('get_dashboard_proprietario'" apps --include='*.ts' --include='*.t
 `useDashboardProprietario.ts`) somam **um balde por vez** ou **uma coluna já gravada**
 — projeção de campo, não fórmula. Só conta quando os baldes são somados entre si.
 
+**Forma 7 — o quantizador/parser de dinheiro reinlinado (não é fórmula, é a entrada
+do dinheiro).** Achada em **17/09/2026**. Duas variantes, as duas com canônico pronto
+em `frontend/packages/utils`:
+- **máscara de centavos**: `parseInt(x.replace(/\D/g,''),10)/100` escrito inline no
+  `frontend/apps/pwa-frentista/src/App.tsx` — e o canônico `centavosParaReais` existe em
+  `frontend/packages/utils/src/fechamento.ts`, **mas não é exportado** (é `const` de módulo, só
+  serve o `meiosFromPwaPayments` ao lado). O PWA já importa `@posto/utils` na mesma
+  linha 9, então o custo de consolidar é exportar uma função, não wiring.
+- **`emCentavos` reinlinado**: `Math.round(x * 100) / 100` escrito à mão em arquivo que
+  **não importa** `emCentavos` de `frontend/packages/utils/src/lucro.ts`.
+```bash
+cd frontend
+grep -c "replace(/\\D/g, ''), 10) / 100" apps/pwa-frentista/src/App.tsx
+grep -n 'centavosParaReais' packages/utils/src/fechamento.ts   # sem 'export' = ainda privado
+grep -rnE 'Math\.round\([^)]*\*\s*100\)\s*/\s*100' apps packages --include=*.ts --include=*.tsx | grep -v lucro.ts
+```
+Por que importa: é **estrutural**, não domínio — `Math.round(x*100)/100` e
+`emCentavos` são a mesma expressão, byte a byte. Consolidar não muda número nenhum,
+então **não precisa de golden master novo**; é o achado de maior alavancagem com menor
+risco do grupo "dinheiro fora de utils".
+
+Ver [[medir-complexidade-ccn]].
+
 Ver [[residuo-na-fronteira-hook-utils]] (6ª forma), [[taxa-cartao-deduzida-duas-vezes]]
 e [[golden-master-como-conferir]].

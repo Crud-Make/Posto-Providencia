@@ -1,21 +1,35 @@
 ---
 name: assinatura-max-acaba-20-09-troca-openrouter
-description: Assinatura Claude Max termina em 20/09/2026; timer systemd troca o Claude Code para a OpenRouter sozinho; script claude-provedor faz ida e volta
+description: Max expira quarta 23/09/2026; troca automática para OpenRouter + DeepSeek V4.1 Flash já configurada e testada
 metadata: 
   node_type: memory
   type: project
-  originSessionId: b3a911db-56c8-43da-9f99-21e4cb4a2283
-  modified: 2026-09-07T19:31:42.268Z
+  originSessionId: d3c6922a-da1d-4350-a972-3028421b10b0
+  modified: 2026-09-17T23:27:37.578Z
 ---
 
-A assinatura Claude Pro/Max do usuário termina em **20/09/2026** e ele não sabe quando renova (só quando um projeto pagar). Decisão de 07/09/2026: usar a assinatura ao máximo até lá e trocar para a API da OpenRouter automaticamente.
+**A assinatura Max expira quarta-feira, 23/09/2026.** A cota semanal renova quinta 24/09 — ou seja,
+**a renovação nunca chega**: os 30 % que sobraram em 17/09 são tudo.
 
-**O que existe na máquina (fora do repo):**
-- `~/.local/bin/claude-provedor {openrouter|anthropic|status}` — edita o bloco `env` e o `model` do `~/.claude/settings.json` (backup em `.bak` antes de cada troca). Ida e volta testadas em 07/09, settings volta idêntico.
-- Timer `claude-openrouter.timer` (systemd --user, `Persistent=true`) dispara `claude-provedor openrouter` em **20/09/2026 23:59**.
-- A chave da OpenRouter tem que estar em `~/.config/openrouter/chave` (chmod 600, começa com `sk-or-`). **Em 07/09 ainda não estava lá** — sem ela o timer recusa a troca e avisa via notify-send.
-- **Decisão do dono (07/09): nada de modelo Anthropic depois da troca — só modelos chineses baratos (GLM, Qwen, DeepSeek).** Padrão: `z-ai/glm-5.3` (US$ 1,40/4,40), slot opus `deepseek/deepseek-v4-pro-0813`, slot haiku `deepseek/deepseek-v4-flash-0731`. Escolhidos por preço + contexto ≥ 1M + tools, não por benchmark — o dono troca com `/model` (picker da gateway ligado). O endpoint Anthropic-compatível da OpenRouter aceita qualquer modelo do catálogo; a doc só diz que a garantia é para Anthropic.
+Configurado e testado em 17/09:
 
-**Why:** o Claude Code não tem fallback de provedor — assinatura vencida vira `401`/"Login expired" e nada troca sozinho. Precedência confirmada na doc: `ANTHROPIC_AUTH_TOKEN` > `ANTHROPIC_API_KEY` > login da assinatura. A OpenRouter fala a Messages API nativa em `https://openrouter.ai/api` (sem proxy), com `ANTHROPIC_API_KEY=""` explicitamente vazia.
+- Chave da OpenRouter em `~/.config/openrouter/chave` (0600). Saldo real: **US$ 5,85**
+  (36 comprados − 30,15 já usados).
+- `claude-openrouter.timer` corrigido de 20/09 para **23/09 23:59** — a data antiga jogava fora
+  segunda, terça e quarta já pagas.
+- `~/.local/bin/claude-provedor`: os três slots agora apontam para **`deepseek/deepseek-v4.1-flash`**
+  (US$ 0,15 / 0,60 por MTok, 1M de contexto). Haiku segue em `deepseek-v4-flash-0731` (0,06 / 0,12).
+  Saíram GLM 5.3 e `deepseek-v4-pro-0813`: no DeepSWE v1.1 o Pro faz 63 % a US$ 1,67/tarefa contra
+  **74,2 % a US$ 0,60** do V4.1 Flash — pior e 4x mais caro.
+- Testado de verdade: o slug resolve, responde em pt-BR. **78 % dos tokens de saída foram
+  `reasoning`**, e saída custa 4x a entrada — é aí que o saldo vai embora.
 
-**How to apply:** depois de 20/09, se aparecer erro de auth ou "model not found", rode `claude-provedor status` antes de investigar. Quando renovar a assinatura: `claude-provedor anthropic` e `/login`. O `model` global `claude-fable-5-1[1m]` só existe na Anthropic — não deixe esse nome no settings com base_url da OpenRouter.
+**PENDENTE — a chave expira em 2026-09-24T23:24Z**, menos de um dia depois de a troca disparar.
+Precisa gerar outra na OpenRouter **sem data de expiração** e substituir o arquivo.
+
+Modelos avaliados e descartados em 17/09, com motivo: Muse Code/Spark (decisão do dono — reviews de
+código ruim; batem com o 1.2, que faz 55 % no DeepSWE; só o 1.3 subiu para 75,4 %), Antigravity CLI
+(edita arquivo sem mostrar diff, queima cota, sem memória de `.md`), GLM Coding Plan (US$ 18/mês,
+69 %), Trae (IDE da ByteDance; SOLO só no Pro de US$ 10, não no Lite de US$ 5).
+
+Ver [[situacao-entregador-quer-sair]] e [[claude-md-4-vale-desde-18-09]].
