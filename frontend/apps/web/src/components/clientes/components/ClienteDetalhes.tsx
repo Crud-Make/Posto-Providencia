@@ -26,6 +26,11 @@ export const ClienteDetalhes: React.FC<ClienteDetalhesProps> = ({
         );
     }
 
+    // `limite_credito` e nulo quando o cliente nao tem limite de fiado cadastrado.
+    // Nulo NAO e zero: aqui a linha do limite simplesmente nao aparece, em vez de
+    // exibir um "R$ 0,00" que o cadastro nunca afirmou.
+    const limiteCredito: number | null = cliente.limite_credito;
+
     return (
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col h-[600px]">
             {/* Header do Cliente */}
@@ -81,9 +86,9 @@ export const ClienteDetalhes: React.FC<ClienteDetalhesProps> = ({
                         <p className={`text-3xl font-bold ${cliente.saldo_devedor > 0 ? 'text-red-600' : 'text-green-600'}`}>
                             {cliente.saldo_devedor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
-                        {cliente.limite_credito > 0 && (
+                        {limiteCredito !== null && limiteCredito > 0 && (
                             <p className="text-xs text-gray-400 mt-1">
-                                Limite: {cliente.limite_credito.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                Limite: {limiteCredito.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </p>
                         )}
                     </div>

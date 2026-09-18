@@ -182,7 +182,11 @@ export const useSessoesFrentistas = (
           // `aggregator.service.ts` → `sessionStatus`, mesmo padrão). Reconstrói aqui pra não
           // perder o estado ao recarregar a tela.
           status: (fs.observacoes || '').includes('[CONFERIDO]') ? 'conferido' : 'pendente',
-          data_hora_envio: fs.data_hora_envio
+          // O banco devolve `null` quando o envio não veio do app; `SessaoFrentista` modela
+          // essa ausência como campo opcional. Converter para `undefined` mantém o mesmo
+          // comportamento de tela (ambos caem no ramo "—" de `EnviosMobile`) sem inventar data.
+          // Mesmo tratamento já usado em `utils/fechamentoMeios.ts`.
+          data_hora_envio: fs.data_hora_envio ?? undefined
         }));
 
         const frentistasEnviados = new Set(mapeadas.map(m => m.frentistaId));

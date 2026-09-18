@@ -37,7 +37,10 @@ export const useFrentistas = () => {
                 nome: f.nome,
                 status: f.ativo ? 'Ativo' : 'Inativo',
                 dataAdmissao: f.data_admissao,
-                telefone: f.telefone,
+                // `PerfilFrentista.telefone` é opcional (`string | undefined`);
+                // a coluna é `string | null`. Ambos significam "sem telefone" —
+                // normaliza para `undefined`, que é o vocabulário do tipo.
+                telefone: f.telefone ?? undefined,
                 // Já vinha no `select('*')`; só se perdia aqui, no mapeamento.
                 foto: f.foto ?? null,
                 postoId: f.posto_id
@@ -70,8 +73,11 @@ export const useFrentistas = () => {
         };
     }, [carregarFrentistas]);
 
-    const salvarFrentista = async (dados: DadosFormularioFrentista, id?: string) => {
-        if (!postoAtivoId) return;
+    const salvarFrentista = async (dados: DadosFormularioFrentista, id?: string): Promise<boolean> => {
+        // Sem posto ativo nada foi gravado: devolve `false` para o formulário
+        // continuar aberto. Antes devolvia `undefined`, falsy do mesmo jeito —
+        // o comportamento em tela não muda, só o contrato fica honesto.
+        if (!postoAtivoId) return false;
 
         setSaving(true);
         try {
