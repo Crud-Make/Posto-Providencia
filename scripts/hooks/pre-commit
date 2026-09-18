@@ -16,5 +16,17 @@ if [ -n "$ts_no_indice" ]; then
     echo "[pre-commit] .ts/.tsx no índice — rodando oxlint em frontend/"
     cd "$raiz/frontend" || exit 1
     bun run lint >/dev/null || { echo "[pre-commit] oxlint reprovou"; exit 1; }
+    # oxlint lê sintaxe, não tipos: `any`, neverthrow, promise solta, FSD e toISOString só o
+    # ESLint type-aware vê. Até 18/09 ele rodava só no CI. Aqui roda só nos arquivos do
+    # índice (~3 s) e pela catraca: dívida congelada passa, erro novo reprova.
+    # O hook é instalado uma vez em .git/hooks e vale para TODAS as worktrees; branch anterior
+    # à catraca não tem o script, e aí o passo é pulado com aviso em vez de travar o commit.
+    if [ -f scripts/catraca.mjs ]; then
+        arquivos="$(printf '%s\n' "$ts_no_indice" | sed 's#^frontend/##')"
+        # shellcheck disable=SC2086
+        bun scripts/catraca.mjs eslint $arquivos || { echo "[pre-commit] ESLint reprovou: erro novo nos arquivos acima"; exit 1; }
+    else
+        echo "[pre-commit] aviso: branch sem scripts/catraca.mjs — ESLint type-aware pulado"
+    fi
 fi
 exit 0

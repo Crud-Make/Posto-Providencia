@@ -79,7 +79,9 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
                 type="number"
                 step="0.01"
                 name="preco_custo"
-                defaultValue={editingProduct?.preco_custo}
+                // Custo ausente deixa o campo VAZIO (com `required`), em vez de
+                // pré-preencher 0 e gravar um custo falso de R$ 0,00.
+                defaultValue={editingProduct?.preco_custo ?? undefined}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 required
               />
