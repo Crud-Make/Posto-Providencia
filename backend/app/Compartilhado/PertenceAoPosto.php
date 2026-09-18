@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Model;
  * É o filtro por posto que a RLS nunca teve (mapa de 17/09, §5): nenhuma policy alcançável
  * pelos apps filtrava `posto_id`. `posto_id` NULL é tratado como "não é deste posto".
  *
- * A relação `posto()` fica em cada model, não aqui: Compartilhado não conhece Domain (Deptrac).
+ * A relação `posto()` fica em cada model, não aqui: trait não carrega relação. O {@see Posto}
+ * mora neste mesmo namespace, sem relação de volta — Compartilhado não conhece Domain (Deptrac).
  *
  * @mixin Model
  */

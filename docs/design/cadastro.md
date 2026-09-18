@@ -1,6 +1,6 @@
 # Cadastro — Design Doc
 
-Issue: #97 (mãe: #60) · Estado: **aprovado por derivação** (é o §2/§3 do Design Doc da Fase A, aprovado em 17/09) · Data: 17/09/2026
+Issue: #97 (mãe: #60) · Estado: **aprovado por derivação** (é o §2/§3 do Design Doc da Fase A, aprovado em 17/09) · Data: 17/09/2026 · Atualizado: 18/09/2026 (PostoPolicy movida para Pessoas; ciclo Cadastro ↔ Pessoas desfeito)
 
 > Primeiro módulo do backend. Só leitura nesta issue; escrita de cadastro é issue própria.
 > Fonte dos tipos: `banco/init/01-esquema-base.sql` (catálogo de produção de 17/09).
@@ -12,9 +12,10 @@ equivalentes na API; a troca de consumidor acontece por app (#101 para o PWA, #1
 
 ## 2. Subsistema
 
-`App\Cadastro` (Posto, Combustivel, Tanque, Bomba, Bico, Turno, Frentista, FormaPagamento,
-Maquininha, Fornecedor) e `App\Pessoas` (Usuario, UsuarioPosto) — os dois nascem aqui porque a
-policy de posto precisa do vínculo usuário↔posto. `App\Compartilhado` recebe o que os dois usam.
+`App\Cadastro` (Combustivel, Tanque, Bomba, Bico, Turno, Frentista, FormaPagamento, Maquininha,
+Fornecedor) e `App\Pessoas` (Usuario, UsuarioPosto) — os dois nascem aqui porque a policy de posto
+precisa do vínculo usuário↔posto. `App\Compartilhado` recebe o que os dois usam: `Posto` (raiz do
+tenant), `PostoAtual`, `PertenceAoPosto` e os `Enums`.
 
 ## 3. Componentes
 
@@ -23,8 +24,9 @@ policy de posto precisa do vínculo usuário↔posto. `App\Compartilhado` recebe
 | Compartilhado | `PostoAtual` | singleton por requisição: qual posto está em foco (definido pela rota) |
 | Compartilhado | `PertenceAoPosto` (trait) | escopo global `posto_id = PostoAtual` em todo model de domínio; preenche `posto_id` ao criar. **É o filtro que a RLS nunca teve** (DECISÃO 5) |
 | Compartilhado | `Enums\Role`, `Enums\StatusFechamento`, `Enums\PapelNoPosto` | espelham `"Role"`, `"StatusFechamento"` do banco e o `varchar` de `UsuarioPosto.role` |
-| Cadastro\Domain | 10 models Eloquent | `$table` com o nome CamelCase real; sem `$timestamps` onde a tabela não tem; dinheiro `numeric` → cast `decimal:2` (string, nunca float); `foto` de Frentista oculta |
-| Cadastro\Domain | `Policies\PostoPolicy` | `ver` (ADMIN global ou vínculo ativo) e `gerir` (ADMIN ou papel admin/gerente no posto). Registrada no Gate; **aplicada nas rotas só a partir da #102**, quando existir usuário autenticado |
+| Compartilhado | `Posto` | raiz do tenant; sem relação de saída (Compartilhado não conhece módulo). Os filhos chegam pelo escopo `PertenceAoPosto`, cada model de Cadastro tem o `belongsTo(Posto)` |
+| Cadastro\Domain | 9 models Eloquent | `$table` com o nome CamelCase real; sem `$timestamps` onde a tabela não tem; dinheiro `numeric` → cast `decimal:2` (string, nunca float); `foto` de Frentista oculta |
+| Pessoas\Domain | `Policies\PostoPolicy` | `ver` (ADMIN global ou vínculo ativo) e `gerir` (ADMIN ou papel admin/gerente no posto). Responde "o que este `Usuario` pode", por isso mora em Pessoas e usa `Posto` só como alvo (desde 18/09; antes estava em Cadastro e fechava um ciclo Cadastro ↔ Pessoas). Registrada no Gate; **aplicada nas rotas só a partir da #102**, quando existir usuário autenticado |
 | Cadastro\Application | `CatalogoDoPosto` | consultas de leitura por recurso, já com eager loading (sem N+1) |
 | Cadastro\Http | `Middleware\DefinePostoAtual` | resolve `{posto}` da rota → 404 se não existe → `PostoAtual` |
 | Cadastro\Http | `Controllers\CatalogoController` + `Resources\*` | `GET /api/postos/{posto}/{combustiveis,tanques,bombas,bicos,turnos,frentistas,formas-pagamento,maquininhas,fornecedores}` |
@@ -32,6 +34,21 @@ policy de posto precisa do vínculo usuário↔posto. `App\Compartilhado` recebe
 
 Regra Deptrac ajustada: `Http` pode depender de `Domain` **para tipar e serializar** (Resources);
 escrita continua passando por `Application`.
+
+**Nenhum módulo depende de outro.** `Posto` mora em `App\Compartilhado` (raiz do tenant); Pessoas e
+Cadastro apontam para ele, e não um para o outro. `Posto::usuarios()` não existe — o vínculo
+usuário↔posto é navegado só pelo lado Pessoas (`Usuario::postos()` com o pivô `role`/`ativo`,
+`Usuario::vinculos()` para o registro `UsuarioPosto`). Mapa `direcaoPermitidaEntreModulos()` =
+`[Cadastro => [], Pessoas => []]`; `App\Compartilhado` não usa módulo (regra própria no Pest Arch e,
+no Deptrac, o ruleset de `Compartilhado` sem `Domain`). O Deptrac não enxerga ciclo entre módulos
+(junta o `Domain` de todos numa camada só); quem cobra é o Pest Arch
+(`backend/tests/Arch/ArquiteturaTest.php`).
+
+**`Compartilhado → Factories` (18/09/2026):** o `Posto` conhece a própria factory (`newFactory()`),
+então o ruleset de `Compartilhado` no `deptrac.yaml` ganhou `Factories`, igual ao de `Domain`. Como
+`Factories` pode depender de `Domain`, isso abriria o caminho `Compartilhado → factory → Domain de
+módulo`. Duas regras do Pest Arch fecham: a `PostoFactory` não usa nenhum módulo, e
+`App\Compartilhado` não usa nenhuma factory além da `PostoFactory`. As duas têm canário.
 
 ## 4. Comportamento
 

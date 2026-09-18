@@ -6,6 +6,7 @@
 #   2. ts-arvore-suja  → índice limpo, árvore com `any`.   Tem de LIBERAR (a antiga barrava à toa).
 #   3. php-indice-sujo → índice com PHP fora do Pint, árvore limpa. Tem de BARRAR.
 #   4. php-arvore-suja → índice limpo, árvore com PHP fora do Pint. Tem de LIBERAR.
+#   5. php-arch-indice-sujo → índice com Cadastro usando Pessoas (CA-7). Tem de BARRAR pelo Pest Arch.
 #
 # Tudo acontece numa worktree descartável, destacada no HEAD: o índice de verdade de quem
 # roda o teste não é tocado. Nada é commitado. Uso: scripts/hooks/testa-pre-commit.sh [hook]
@@ -83,5 +84,34 @@ python3 -c 'import sys; p, a, b = sys.argv[1:4]; t = open(p).read(); open(p, "w"
     "$oficina/$php" "$php_sadio // canário: índice limpo" "$php_sujo"
 conferir php-arvore-suja 0
 
-[ "$erros" -eq 0 ] && echo "pre-commit: os quatro canários se comportaram." || echo "pre-commit: CANÁRIO FALHOU."
+# 5. Fronteira entre módulos (CA-7): PHP limpo para Pint, PHPStan, PHPMD e Deptrac — o Deptrac junta o
+# Domain de todos os módulos numa camada só e deixa passar — mas Cadastro usando Pessoas. Só o Pest Arch
+# pega. No índice e fora da árvore: tem de BARRAR, e pelo Pest Arch, não por outro gate.
+arch="backend/app/Cadastro/Domain/CanarioArch.php"
+zerar
+cat > "$oficina/$arch" <<'PHP'
+<?php
+
+declare(strict_types=1);
+
+namespace App\Cadastro\Domain;
+
+use App\Pessoas\Domain\Usuario;
+
+final class CanarioArch
+{
+    public function idDe(Usuario $usuario): int
+    {
+        return $usuario->id;
+    }
+}
+PHP
+git -C "$oficina" add "$arch"
+rm "$oficina/$arch"
+conferir php-arch-indice-sujo 1
+grep -q 'Pest Arch reprovou' "$oficina.php-arch-indice-sujo.log" \
+    || { echo "✗ php-arch-indice-sujo não foi barrado pelo Pest Arch — log em $oficina.php-arch-indice-sujo.log"; erros=1; }
+git -C "$oficina" rm --cached --quiet "$arch"
+
+[ "$erros" -eq 0 ] && echo "pre-commit: os cinco canários se comportaram." || echo "pre-commit: CANÁRIO FALHOU."
 exit "$erros"

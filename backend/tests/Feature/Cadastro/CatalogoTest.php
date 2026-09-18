@@ -9,9 +9,9 @@ use App\Cadastro\Domain\FormaPagamento;
 use App\Cadastro\Domain\Fornecedor;
 use App\Cadastro\Domain\Frentista;
 use App\Cadastro\Domain\Maquininha;
-use App\Cadastro\Domain\Posto;
 use App\Cadastro\Domain\Tanque;
 use App\Cadastro\Domain\Turno;
+use App\Compartilhado\Posto;
 
 use function Pest\Laravel\getJson;
 
@@ -96,3 +96,100 @@ it('nunca expõe a foto do frentista pelo catálogo', function (): void {
         ->assertOk()
         ->assertJsonMissingPath('data.0.foto');
 });
+
+// user_id tem FK para auth.users (01-esquema-base.sql:696), então fica sem valor: se o Resource
+// o emitisse, a chave viria como null e o assertJsonMissingPath reprovaria do mesmo jeito.
+it('nunca expõe cpf nem user_id do frentista pelo catálogo', function (): void {
+    $c = cenarioDoisPostos();
+    Frentista::factory()->create(['posto_id' => $c['postoA']->id, 'cpf' => '12345678901']);
+
+    getJson("/api/postos/{$c['postoA']->id}/frentistas")
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonMissingPath('data.0.cpf')
+        ->assertJsonMissingPath('data.0.user_id');
+});
+
+/**
+ * Taxa, capacidade e estoque são colunas numeric do banco: saem como string decimal de escala 2
+ * (cast decimal:2 dos models), nunca float. O módulo não faz conta; só serializa.
+ */
+it('devolve taxa, capacidade e estoque como string decimal de escala 2', function (string $rota, string $model, string $campo): void {
+    $c = cenarioDoisPostos();
+    $model::factory()->create(['posto_id' => $c['postoA']->id]);
+
+    $valor = getJson("/api/postos/{$c['postoA']->id}/{$rota}")->assertOk()->json("data.0.{$campo}");
+
+    expect($valor)->toBeString()->toMatch('/^\d+\.\d{2}$/');
+})->with([
+    'taxa da forma de pagamento' => ['formas-pagamento', FormaPagamento::class, 'taxa'],
+    'taxa da maquininha' => ['maquininhas', Maquininha::class, 'taxa'],
+    'capacidade do tanque' => ['tanques', Tanque::class, 'capacidade'],
+    'estoque atual do tanque' => ['tanques', Tanque::class, 'estoque_atual'],
+]);
+
+it('ordena bicos por numero, não por id', function (): void {
+    $c = cenarioDoisPostos();
+    foreach ([2, 1] as $numero) {
+        Bico::factory()->create([
+            'posto_id' => $c['postoA']->id,
+            'bomba_id' => $c['bombaA']->id,
+            'combustivel_id' => $c['combustivelA']->id,
+            'tanque_id' => $c['tanqueA']->id,
+            'numero' => $numero,
+        ]);
+    }
+    $c['bicoA']->delete();
+
+    $numeros = getJson("/api/postos/{$c['postoA']->id}/bicos")->assertOk()->json('data.*.numero');
+
+    expect($numeros)->toBe([1, 2]);
+});
+
+it('ordena combustíveis por nome, não por id', function (): void {
+    $posto = Posto::factory()->create();
+    Combustivel::factory()->create(['posto_id' => $posto->id, 'nome' => 'Etanol']);
+    Combustivel::factory()->create(['posto_id' => $posto->id, 'nome' => 'Diesel']);
+
+    $nomes = getJson("/api/postos/{$posto->id}/combustiveis")->assertOk()->json('data.*.nome');
+
+    expect($nomes)->toBe(['Diesel', 'Etanol']);
+});
+
+/**
+ * Os Resources usam whenLoaded, que nunca faz lazy load: se alguém tirar um with() do
+ * CatalogoDoPosto, o campo aninhado simplesmente some do JSON. Este teste prende o eager loading.
+ */
+it('cada item aninha as relações que o contrato promete', function (string $rota, array $estruturaDoItem, callable $semeia): void {
+    $c = cenarioDoisPostos();
+    $semeia($c);
+
+    getJson("/api/postos/{$c['postoA']->id}/{$rota}")
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonStructure(['data' => ['*' => $estruturaDoItem]]);
+})->with([
+    'bicos: bomba, combustivel e tanque' => [
+        'bicos',
+        ['id', 'numero', 'ativo', 'bomba' => ['id'], 'combustivel' => ['id'], 'tanque' => ['id']],
+        fn (array $c) => Bico::factory()->create([
+            'posto_id' => $c['postoA']->id,
+            'bomba_id' => $c['bombaA']->id,
+            'combustivel_id' => $c['combustivelA']->id,
+            'tanque_id' => $c['tanqueA']->id,
+        ]),
+    ],
+    'tanques: combustivel' => [
+        'tanques',
+        ['id', 'nome', 'combustivel' => ['id']],
+        fn (array $c) => Tanque::factory()->create(['posto_id' => $c['postoA']->id, 'combustivel_id' => $c['combustivelA']->id]),
+    ],
+    'frentistas: turno' => [
+        'frentistas',
+        ['id', 'nome', 'turno' => ['id']],
+        function (array $c): void {
+            $turno = Turno::factory()->create(['posto_id' => $c['postoA']->id]);
+            Frentista::factory()->count(2)->create(['posto_id' => $c['postoA']->id, 'turno_id' => $turno->id]);
+        },
+    ],
+]);
