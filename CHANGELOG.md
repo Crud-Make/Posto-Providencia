@@ -43,6 +43,22 @@
 - Esta entrada entrou depois do commit do código: o `checklist-commit.py` não cobrou porque `git add`
   e `git commit` estavam no mesmo comando (defeito registrado para correção).
 
+### 🔌 Painel lê a primeira coisa da API Laravel: fornecedores da tela de compras (#103)
+
+- **Primeiro consumidor real do `backend/`.** `fornecedorService.getAll` passa a ler
+  `GET /api/postos/{posto}/fornecedores` quando `VITE_API_URL` está definida. Sem ela, segue no
+  Supabase, e a Vercel não define a variável: **a produção não muda** até o cutover (#105).
+- **Adaptador no `base.ts`**, como manda a DECISÃO 1 do `painel-pela-api.md`: `urlDaApi()` é a chave do
+  strangler e `buscarNaApi(caminho, schema)` faz o GET, valida a resposta com **Zod** (dependência
+  nova, autorizada pelo dono) e devolve `ResultAsync` do neverthrow com erro discriminado
+  (`sem_api | rede | http | formato`). As próximas fatias da #103 entram pelo mesmo ponto.
+- **Paridade com a query antiga:** a API não filtra `ativo`, então o mapper filtra; a ordem por `nome`
+  é a mesma; `posto_id` vem do posto da rota. Conferido: a API local e o Supabase de produção têm o
+  mesmo fornecedor (id 3), então o id lido na API e gravado em `Compra` no Supabase é o mesmo.
+- Por que fornecedores e não outro recurso do catálogo: é o único lido por uma tela (`/compras`) sem
+  conta de dinheiro e sem mudança de backend. Maquininha, bomba e turno não têm tela; combustível,
+  tanque, bico e forma de pagamento entram em conta de dinheiro; frentista exigiria mandar `foto`.
+
 ### 🚦 Vercel: produção está no ar, e o "conserto de 17/09" nunca existiu
 
 - **Produção nunca caiu.** Os 3 sites respondem HTTP 200 e servem o deploy `READY` de **06/09/2026
