@@ -51,6 +51,27 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
   const { theme, toggleTheme } = useTheme();
   const { autenticado, sair } = useAuth();
 
+  // Recolhida, a barra vira faixa de ícones. Antes isto eram 16 ternários de
+  // `recolhida` espalhados pelo JSX — um por slot de estilo —, e cada um contava
+  // para a complexidade da função (CCN 22, acima do teto de 20 do gate). A decisão
+  // é uma só, então é tomada uma vez; o JSX só consome o resultado.
+  const estreita = recolhida
+    ? {
+      aside: 'lg:w-16',
+      cabecalho: 'lg:p-3 lg:justify-center',
+      marca: 'lg:hidden',
+      nav: 'lg:px-2',
+      item: 'lg:justify-center lg:px-0 lg:gap-0',
+      rotulo: 'lg:hidden',
+      rodape: 'lg:p-2',
+    }
+    : { aside: '', cabecalho: '', marca: '', nav: '', item: '', rotulo: '', rodape: '' };
+
+  // Tooltip nativa só faz sentido quando o rótulo sumiu da tela.
+  const dica = (texto: string) => (recolhida ? texto : undefined);
+
+  const modoAlvo = theme === 'light' ? 'Escuro' : 'Claro';
+
   // Definição dos itens do menu lateral
   const menuItems = [
     { path: '/proprietario', label: 'Visão Proprietário', icon: Crown },
@@ -76,12 +97,12 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
 
   return (
     <>
-      <aside className={`w-64 ${recolhida ? 'lg:w-16' : ''} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col h-screen overflow-y-auto overflow-x-hidden sticky top-0 z-40 transition-[width,transform] duration-200 ${className}`}>
+      <aside className={`w-64 ${estreita.aside} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col h-screen overflow-y-auto overflow-x-hidden sticky top-0 z-40 transition-[width,transform] duration-200 ${className}`}>
         {/* Logo, botão de recolher (desktop) e botão de fechar (mobile) */}
-        <div className={`p-6 flex items-center justify-between ${recolhida ? 'lg:p-3 lg:justify-center' : ''}`}>
+        <div className={`p-6 flex items-center justify-between ${estreita.cabecalho}`}>
           {/* A marca do posto (mesma do login e da aba). O PNG tem fundo branco, então vai
               num tile branco de propósito — no modo escuro vira um cartão, não um recorte. */}
-          <div className={`flex items-center ${recolhida ? 'lg:hidden' : ''}`}>
+          <div className={`flex items-center ${estreita.marca}`}>
             <h1 className="bg-white rounded-lg px-2 py-1 shadow-sm ring-1 ring-gray-200 dark:ring-gray-600">
               <img
                 src="/marca-posto@2x.png"
@@ -115,7 +136,7 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 px-4 py-6 space-y-1 ${recolhida ? 'lg:px-2' : ''}`}>
+        <nav className={`flex-1 px-4 py-6 space-y-1 ${estreita.nav}`}>
           {menuItems.map((item) => (
             <NavLink
               key={item.path}
@@ -123,10 +144,10 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
               onClick={onClose}
               // Recolhida, o rótulo some da tela — o `title` é o que sobra para
               // identificar o ícone (tooltip nativa, sem dependência de tooltip).
-              title={recolhida ? item.label : undefined}
+              title={dica(item.label)}
               className={({ isActive }) => `
                 w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group
-                ${recolhida ? 'lg:justify-center lg:px-0 lg:gap-0' : ''}
+                ${estreita.item}
                 ${isActive
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
@@ -139,7 +160,7 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
                     size={20}
                     className={`shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}
                   />
-                  <span className={recolhida ? 'lg:hidden' : ''}>{item.label}</span>
+                  <span className={estreita.rotulo}>{item.label}</span>
                 </>
               )}
             </NavLink>
@@ -147,14 +168,14 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
         </nav>
 
         {/* Bottom Actions */}
-        <div className={`p-4 border-t border-gray-200 dark:border-gray-700 mt-auto ${recolhida ? 'lg:p-2' : ''}`}>
+        <div className={`p-4 border-t border-gray-200 dark:border-gray-700 mt-auto ${estreita.rodape}`}>
           <button
             onClick={toggleTheme}
-            title={recolhida ? `Modo ${theme === 'light' ? 'Escuro' : 'Claro'}` : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${recolhida ? 'lg:justify-center lg:px-0 lg:gap-0' : ''}`}
+            title={dica(`Modo ${modoAlvo}`)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${estreita.item}`}
           >
             {theme === 'light' ? <Moon size={18} className="shrink-0" /> : <Sun size={18} className="shrink-0" />}
-            <span className={recolhida ? 'lg:hidden' : ''}>Modo {theme === 'light' ? 'Escuro' : 'Claro'}</span>
+            <span className={estreita.rotulo}>Modo {modoAlvo}</span>
           </button>
 
           {/* `sair()` existia no AuthContext desde o início e nunca teve porta
@@ -163,11 +184,11 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
           {autenticado && (
             <button
               onClick={() => { void sair(); onClose?.(); }}
-              title={recolhida ? 'Sair da conta' : undefined}
-              className={`mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors ${recolhida ? 'lg:justify-center lg:px-0 lg:gap-0' : ''}`}
+              title={dica('Sair da conta')}
+              className={`mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors ${estreita.item}`}
             >
               <LogOut size={18} className="shrink-0" />
-              <span className={recolhida ? 'lg:hidden' : ''}>Sair</span>
+              <span className={estreita.rotulo}>Sair</span>
             </button>
           )}
         </div>
