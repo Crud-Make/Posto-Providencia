@@ -17,8 +17,16 @@ cd frontend && export PATH="$HOME/.bun/bin:$PATH"
 echo '{ "rules": { "eslint/complexity": ["error", 10], "eslint/max-lines": ["error", 400] } }' > /tmp/ox.json
 ./node_modules/.bin/oxlint -c /tmp/ox.json packages/utils/src/troca-preco.ts
 ```
-Não existe `.oxlintrc.json` no repo — então `bun run lint` (= `oxlint .`) roda só o
-preset de *correctness* padrão. **Complexidade não é medida por nenhum gate hoje.**
+**DESATUALIZADO desde 17/09/2026 (commit `04fe282`): o `.oxlintrc.json` PASSOU A EXISTIR**
+em `frontend/.oxlintrc.json`, com `eslint/complexity` em **20** e `eslint/max-lines` em
+**900**, mais um `overrides` que afrouxa 13 arquivos para **35**. Como `bun run lint` é
+`oxlint .` e o oxlint lê esse arquivo sozinho, **a complexidade PASSOU a ser medida** pelo
+pre-commit, pelo pre-push e pelo CI. O teto não é o ≤ 10 do §6 do CLAUDE.md — é 20, com
+escape hatch por arquivo. Reconferir teto e lista de exceções:
+```bash
+cat frontend/.oxlintrc.json
+```
+(Antes de 17/09 o arquivo não existia e nada media complexidade no TS.)
 
 **Receita do ESLint para o histograma completo.** A regra `complexity` só reporta
 quem passa do teto; com `max: 0` ela reporta **toda** função com o CCN no texto, que é
