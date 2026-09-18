@@ -100,10 +100,18 @@ Origem: *domain-driven-hexagon* (Sairyss), *Clean architecture with TypeScript: 
 | CA-4 | Complexidade ciclomática no backend ≤ 10 | `phpmd` via `composer gates` | `backend/phpmd.xml` | ✅ ATIVA |
 | CA-5 | Complexidade ciclomática no frontend ≤ 20 | `oxlint` | `frontend/.oxlintrc.json` | ⚠️ PARCIAL — **13 arquivos isentos em 35**. O teto do `CLAUDE.md` §6 é 10; no teto 10 há 70 funções fora |
 | CA-6 | Domínio TS isolado, sem dependência externa | `dependency-cruiser` | — | 🔜 DECIDIDA — não há camada de domínio TS formal hoje; a canônica é `packages/utils` |
+| CA-7 | Backend: módulos só se falam por `Application`; o `Domain` de um módulo nunca importa o `Domain` de outro, e ciclo entre módulos reprova o PR. **Sem exceção** (dono, 18/09/2026) | Pest Arch, uma regra encadeada por módulo | `backend/tests/Arch/ArquiteturaTest.php` | 🔜 DECIDIDA — a trava nasce na branch `refactor/cadastro-sem-ciclo`, que desfaz o ciclo `Cadastro ↔ Pessoas`. Violação conhecida: `Pessoas\Domain\Usuario` e `UsuarioPosto` importam `Cadastro\Domain\Posto`; sai quando `Posto` for para `App\Compartilhado` |
 
 > **CA-2 é a regra que este registro existe para não deixar morrer.** A correção é quebrar
 > `Http` em dois no Deptrac: `HttpControllers` (sem acesso a `Domain`) e `HttpBorda`
 > (`Resources` + `Middleware`, com acesso). A regra sai do comentário e entra no ruleset.
+
+> **CA-7 não cabe no Deptrac.** O `deptrac.yaml` junta o `Domain` de todos os módulos numa
+> camada só, então `Cadastro\Domain → Pessoas\Domain` é "Domain → Domain" e passa com 0
+> violações. Foi assim que o ciclo de 18/09 entrou sem nenhum gate reprovar. A trava é o Pest
+> Arch, na forma encadeada (`arch()->expect('App\Cadastro')->not->toUse(...)`), com um
+> namespace por regra. A forma com lista ou com closure passa verde com a violação presente.
+> Canário: a própria violação `Pessoas → Cadastro`, enquanto existir.
 
 ## RES — Result Pattern
 
