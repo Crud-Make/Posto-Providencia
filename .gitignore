@@ -131,3 +131,6 @@ __pycache__/
 # então já está fora do versionamento. `.claude/logs/` fica ignorado como
 # retaguarda, para o caso de o hook rodar fora de um repositório git.
 .claude/logs/
+
+# estado local do CLI do Supabase — nunca versionar
+supabase/.temp/

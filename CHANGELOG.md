@@ -2,6 +2,90 @@
 
 ## [Não Lançado]
 
+### 🚦 Vercel: produção está no ar, e o "conserto de 17/09" nunca existiu
+
+- **Produção nunca caiu.** Os 3 sites respondem HTTP 200 e servem o deploy `READY` de **06/09/2026
+  20:06** (`main` @ `6662b24`). Todo deploy em `ERROR` desde a #95 é **preview** (`target: null`) de
+  branch de trabalho. Build quebrado na Vercel não derruba o deploy vivo — só não promove o novo. A
+  produção não está quebrada, está **congelada**, e é isso que o cutover descongela.
+- **O `cutover.md` afirmava um conserto que não aconteceu.** Lido na API da Vercel: os três
+  `rootDirectory` seguem nos caminhos de antes do move (`None`, `apps/pwa-frentista`,
+  `apps/pwa-dono`) e nenhum projeto registra alteração de configuração desde 06/09. O build diz o
+  mesmo: `The specified Root Directory "apps/pwa-frentista" does not exist` no PWA, e
+  `vite: command not found` (exit 127) no painel, que aponta para uma raiz que depois da #95 não tem
+  mais `package.json` nem `bun.lock`. §1 reescrito com a medição.
+- **Decisão: não mexer no Root Directory antes do merge na `main`.** `rootDirectory` é do projeto, não
+  da branch — a configuração que deixa a `fase-a` verde é a mesma que tira da `main` a capacidade de
+  deployar produção. Preview vermelha de branch de refatoração é ruído; `main` não deployável é risco
+  de dinheiro real, porque bug do dono não espera cutover. A troca virou **passo 6 do §2**, num bloco
+  indivisível com o merge (5) e o deploy de confirmação (7); o rollback derruba os dois juntos.
+- Duas heranças achadas nas settings, sem mordida hoje: `pwa` e `pwa-dono` carregam
+  `outputDirectory: "apps/web/dist"` — o diretório do painel — salvo só pelo `vercel.json` de cada um,
+  que vence sobre o dashboard; e o `buildCommand` do `pwa` é `npm run build`, contra a regra de
+  toolchain Bun do §0.
+
+### 🔒 Trava de push: não se sobe com o sistema quebrado
+
+- **`scripts/hooks/pre-push` nasce.** O §7 mandava desde sempre e a linha era só texto: a suíte
+  nunca rodava no push. Agora recusa push para a `main` e recusa qualquer push se `bun run lint`
+  (com o gate de complexidade), `type-check`, `test`, **`test:golden`** ou `composer gates`
+  reprovarem. Roda a suíte **inteira**, não o diff — "o sistema está rodando" é afirmação sobre o
+  sistema, não sobre o que mudou. Custo medido: **~1m30s**; push é raro e tem posto em produção do
+  outro lado.
+- Conferido nos dois sentidos, não só no feliz: push para `main` → bloqueado; `emCentavos` sabotado
+  com `+ 0.01` → golden reprova e o hook **sai com código 1**. `lucro.ts` restaurado depois do teste.
+- `scripts/instala-hooks.sh` passa a instalar os dois hooks. Segue sem `core.hooksPath`, para não
+  derrubar os hooks do graphify.
+
+### 📐 Design Docs de toda a Fase A e primeiro gate de complexidade do frontend
+
+- **8 Design Docs** em `docs/design/`, um por issue de #98 a #105, cada um com as decisões fechadas e
+  a justificativa: `ocr-encerrante` (#98), `push-do-dono` (#99), `agregacao` (#100),
+  `fechamento-frentista-api` (#101), `autenticacao` (#102), `painel-pela-api` (#103), `realtime`
+  (#104), `cutover` (#105).
+- **`docs/planilha-formulas.md`** — a planilha decodificada com célula e fórmula literal, para não
+  reabrir o `.xlsx` a cada dúvida. Três achados que mudam código: vendeu-sem-comprar é **custo
+  informado pelo usuário** (fev/2026, Ds.10: `D50=1`, `E50=5`), não `null` nem `preco_custo`; a taxa
+  de cartão chega ao lucro **uma vez só**, diluída no custo por litro (`C294`→`D321`→`I16`→`I19`);
+  e **lucro líquido por dia não existe na planilha** — só mensal, por bico, já líquido de despesa.
+- **`frontend/.oxlintrc.json` nasce** e com ele o Gate 1 do §6 no lado TS, que nunca existiu:
+  `eslint/complexity` em **20** para código novo, `max-lines` em 900. Os 13 arquivos legados acima de
+  20 entram como `overrides` nomeados — dívida que encolhe, não teto frouxo. Medido: 2.272 funções de
+  produção, mediana de CCN **1**, p95 8, só 69 acima de 10 e maior do monorepo 34. Catraca: 20 → 15 →
+  10. `oxlint --rules` imprime zero linhas nesta versão e faz parecer que a regra não existe — ela
+  existe.
+- Auditoria de estrutura: **zero ciclo de import**, zero acoplamento entre apps, zero violação de
+  camada FSD, 21 de 23 módulos com um único importador externo. Veredito: refatorável módulo a
+  módulo. Correções de número que vão para as issues: a #103 diz 52 arquivos e são **45** (o 52 conta
+  `Array.from(`), e o aceite da #100 ("mesma saída da RPC") congelaria o bug da `get_fechamento_mensal`.
+- `supabase/.temp/` sai do versionamento — guarda o ref do projeto e é estado local do CLI.
+
+### 🧱 Módulo Cadastro no backend: models, escopo por posto, policy e catálogo só leitura (#97)
+
+- `App\Cadastro\Domain` (Posto, Combustivel, Tanque, Bomba, Bico, Turno, Frentista,
+  FormaPagamento, Maquininha, Fornecedor) e `App\Pessoas\Domain` (Usuario, UsuarioPosto) sobre as
+  tabelas **existentes**, gerados a partir do catálogo de 17/09: `$table` CamelCase real, timestamps só
+  onde a tabela tem (`Usuario` usa `createdAt`/`updatedAt`; `Tanque` e `UsuarioPosto` só `created_at`),
+  dinheiro `numeric` → cast `decimal:2` (string, nunca float; `preco_custo` sem escala → `decimal:4`),
+  `Frentista.foto` e `Usuario.senha` ocultos. Enums PHP `Role`, `StatusFechamento`, `PapelNoPosto`
+  espelham o banco.
+- **`PertenceAoPosto` + `PostoAtual`**: escopo global `posto_id = atual` em todo model de domínio e
+  preenchimento ao criar. É o filtro por posto que a RLS nunca teve (DECISÃO 5). Compartilhado não
+  conhece Domain: a relação `posto()` mora em cada model (Deptrac cobrou).
+- **`PostoPolicy`** (`ver`/`gerir`): ADMIN global, senão vínculo ativo em `UsuarioPosto`; gerir exige
+  papel admin/gerente. Registrada no Gate; nas rotas só na #102 (sem usuário autenticado ainda).
+- **`GET /api/postos/{posto}/{combustiveis,tanques,bombas,bicos,turnos,frentistas,formas-pagamento,maquininhas,fornecedores}`**
+  via `DefinePostoAtual` (404 se o posto não existe) → `CatalogoDoPosto` (eager loading, sem N+1) →
+  Resources. Públicos até a #102, igual ao PostgREST de hoje.
+- Testes Pest **contra o Postgres real do compose** (esquema de produção, `DatabaseTransactions`, sem
+  migration): escopo por posto, 404, cada endpoint, foto nunca sai, policy, **todas as relações
+  percorridas** (prova os nomes de FK), casts, enums. 28 testes, 99 asserções, **cobertura 100 %**;
+  `composer gates` passa a cobrar ≥ 85 %. CI ganha serviço Postgres 17 e carrega `banco/init/*.sql`
+  com `psql` antes do Pest. Incidente: uma rodada sem transação gravou 37 postos sintéticos no banco
+  local — zerado e ressemeado; a regra `DatabaseTransactions` no `Pest.php` é o que impede.
+- Deptrac: `Http → Domain` liberado só para tipar/serializar; camada `Factories` permitida do Domain.
+  PHPMD: `UnusedFormalParameter` fora (assinaturas do framework), `ShortMethodName` mínimo 2,
+  `CouplingBetweenObjects` suprimido só em `Posto` (raiz do cadastro).
 ### 🔒 Travas de TS, ESLint e FSD sob catraca
 
 - `frontend/scripts/catraca.mjs`: regra nova entra ligada, o erro que já existe fica congelado em

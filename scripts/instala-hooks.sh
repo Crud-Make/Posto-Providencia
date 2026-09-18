@@ -5,3 +5,4 @@
 raiz="$(git rev-parse --show-toplevel)"
 hooks="$(git rev-parse --path-format=absolute --git-common-dir)/hooks"
 install -m 0755 "$raiz/scripts/hooks/pre-commit" "$hooks/pre-commit" && echo "pre-commit instalado em $hooks"
+install -m 0755 "$raiz/scripts/hooks/pre-push"   "$hooks/pre-push"   && echo "pre-push instalado em $hooks"

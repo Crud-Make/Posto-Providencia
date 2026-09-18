@@ -32,6 +32,13 @@ O que existe hoje e onde cada regra abaixo se encaixa:
   `diferenca = concentrador − conferido`; dinheiro quantizado por `emCentavos`.
 * **Git:** nunca na `main`; branch por issue (`feat/#NN-...`); Conventional Commits em pt-BR;
   `push --force` proibido; `CHANGELOG.md` a cada entrega; nenhum merge ou push sem "ok" explícito.
+* **🔒 TRAVA DA REFATORAÇÃO (18/09):** **não se dá push nem merge com o sistema quebrado.** O painel
+  e os dois PWAs estão em produção com dinheiro real do posto — push de árvore vermelha não quebra o
+  repositório, quebra o posto. A trava é o `pre-push` de `scripts/hooks/` (instala com
+  `scripts/instala-hooks.sh`): recusa push para a `main`, e recusa qualquer push se `bun run lint`,
+  `type-check`, `test`, **`test:golden`** ou `composer gates` reprovarem. Roda a suíte inteira, não o
+  diff: "o sistema está rodando" é afirmação sobre o sistema. Custo medido: **~1m30s**. `--no-verify`
+  passa por cima porque é do git — quem usar, diz no PR por quê.
 * **Travas automáticas** em `.claude/hooks/` (dados, git, golden, delegação, memória) continuam
   ativas e independem deste arquivo. `python3 .claude/hooks/testa-hooks.py` confere.
 * **Grafo:** `graphify-out/` é hipótese; grep confirma. Agente `grafo` é a porta de entrada.
@@ -132,6 +139,8 @@ Nenhum código refatorado deve ser mesclado sem aprovação nos 4 Quality Gates 
 ## 7\. Git Hooks e Automação CI/CD
 
 * **`pre-commit`**: Executa PHPMD (Análise de Complexidade Ciclomática), Deptrac, PHPStan e linter de TypeScript.
-* **`pre-push`**: Executa a suíte de testes TDD determinísticos e validação de schemas de dados.
+* **`pre-push`**: Existe de verdade desde 18/09 (`scripts/hooks/pre-push`) — antes era só esta linha,
+  e a suíte nunca rodava no push. Executa lint, type-check, vitest, **golden masters** e
+  `composer gates`, e bloqueia push para a `main`. É a trava do §0.
 * **Revisão Automatizada em PRs**: Agentes no CI/CD revisam os Pull Requests e aplicam os 4 Quality Gates antes de autorizar o merge.
 

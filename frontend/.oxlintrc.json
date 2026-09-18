@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/database.types.ts",
+    "**/types/database/generated.ts"
+  ],
+  "rules": {
+    "eslint/complexity": ["error", 20],
+    "eslint/max-lines": ["error", 900]
+  },
+  "overrides": [
+    {
+      "files": [
+        "apps/pwa-dono/src/screens/EncerranteScreen.tsx",
+        "apps/pwa-frentista/src/App.tsx",
+        "apps/web/src/components/BarraLateral.tsx",
+        "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts",
+        "apps/web/src/components/leituras-diarias/components/TabelaLeituras.tsx",
+        "apps/web/src/components/login/index.tsx",
+        "apps/web/src/components/registro-compras/SecaoVendas.tsx",
+        "apps/web/src/services/api/aggregator.service.ts",
+        "apps/web/src/services/api/reset.service.ts",
+        "apps/web/src/shared/ui/ValidationAlert.tsx",
+        "apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts",
+        "apps/web/src/widgets/planilha-do-mes/ui/planilha-do-mes.tsx",
+        "packages/utils/src/troca-preco.ts"
+      ],
+      "rules": {
+        "eslint/complexity": ["error", 35]
+      }
+    }
+  ]
+}

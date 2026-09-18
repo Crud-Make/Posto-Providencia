@@ -1,5 +1,7 @@
 <?php
 
+use App\Cadastro\Http\Controllers\CatalogoController;
+use App\Cadastro\Http\Middleware\DefinePostoAtual;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -33,4 +35,20 @@ Route::get('/saude', function () {
         'versao' => app()->version(),
         'motivo' => $motivo,
     ]), $banco === 'indisponivel' ? 503 : 200);
+});
+
+/*
+| Catálogo do posto — só leitura (#97, docs/design/cadastro.md). `{posto}` vira o PostoAtual;
+| autorização por PostoPolicy entra nas rotas na #102, quando houver usuário autenticado.
+*/
+Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(function (): void {
+    Route::get('combustiveis', [CatalogoController::class, 'combustiveis']);
+    Route::get('tanques', [CatalogoController::class, 'tanques']);
+    Route::get('bombas', [CatalogoController::class, 'bombas']);
+    Route::get('bicos', [CatalogoController::class, 'bicos']);
+    Route::get('turnos', [CatalogoController::class, 'turnos']);
+    Route::get('frentistas', [CatalogoController::class, 'frentistas']);
+    Route::get('formas-pagamento', [CatalogoController::class, 'formasPagamento']);
+    Route::get('maquininhas', [CatalogoController::class, 'maquininhas']);
+    Route::get('fornecedores', [CatalogoController::class, 'fornecedores']);
 });
