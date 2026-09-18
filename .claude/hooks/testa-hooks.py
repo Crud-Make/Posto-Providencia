@@ -450,6 +450,52 @@ def main() -> int:
     if r.stderr.strip():
         print(f"      stderr: {r.stderr.strip()[:80]}")
 
+    print("── trava-ts (escopo) ──")
+    trava = carrega("trava-ts.py")
+    front = RAIZ / "frontend"
+    for caminho, esperado in [
+        (f"{front}/apps/web/src/App.tsx", "apps/web/src/App.tsx"),
+        (f"{front}/packages/utils/src/fechamento.ts", "packages/utils/src/fechamento.ts"),
+        (f"{front}/apps/web/src/vite-env.d.ts", None),
+        (f"{front}/apps/web/src/__canarios__/x.fixture.ts", None),
+        (f"{front}/scripts/reconsolidar-dia.ts", None),
+        (f"{front}/eslint.config.mjs", None),
+        (f"{RAIZ}/backend/app/Models/Posto.php", None),
+    ]:
+        obtido = trava.alvo(caminho)
+        obtido = obtido[1] if obtido else None
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {caminho.removeprefix(str(RAIZ) + '/'):60} {obtido}")
+
+    # Canário de verdade: arquivo novo com `any` TEM de voltar com exit 2, e arquivo
+    # existente sem mudança TEM de passar (a dívida dele está congelada). Sem os dois
+    # lados, "sempre 2" e "sempre 0" passariam por trava funcionando.
+    print("── trava-ts (canário, roda o eslint de verdade) ──")
+    if not (front / "node_modules/.bin/eslint").exists():
+        falhas += 1
+        print("  ✗ frontend/node_modules ausente — canário não roda (bun install em frontend/)")
+    else:
+        sujo = front / "apps/web/src/shared/lib/canario-trava-ts-temporario.ts"
+        try:
+            sujo.write_text("export const x = (v: any): any => v;\n")
+            for rotulo, arquivo, codigo in [
+                ("arquivo novo com any → exit 2", sujo, 2),
+                ("arquivo existente, dívida congelada → exit 0", front / "apps/web/src/App.tsx", 0),
+            ]:
+                r = subprocess.run(
+                    ["python3", str(HOOKS / "trava-ts.py")],
+                    input=json.dumps({"tool_input": {"file_path": str(arquivo)}}),
+                    capture_output=True, text=True, timeout=120,
+                )
+                ok = r.returncode == codigo
+                falhas += not ok
+                print(f"  {'✓' if ok else '✗'} {rotulo:60} exit {r.returncode}")
+                if not ok:
+                    print(f"      stderr: {r.stderr.strip()[:200]}")
+        finally:
+            sujo.unlink(missing_ok=True)
+
     print(f"\n{'TODOS OS CASOS PASSARAM' if not falhas else f'{falhas} FALHA(S)'}")
     return 1 if falhas else 0
 

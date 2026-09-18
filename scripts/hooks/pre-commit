@@ -16,5 +16,11 @@ if [ -n "$ts_no_indice" ]; then
     echo "[pre-commit] .ts/.tsx no índice — rodando oxlint em frontend/"
     cd "$raiz/frontend" || exit 1
     bun run lint >/dev/null || { echo "[pre-commit] oxlint reprovou"; exit 1; }
+    # oxlint lê sintaxe, não tipos: `any`, neverthrow, promise solta, FSD e toISOString só o
+    # ESLint type-aware vê. Até 18/09 ele rodava só no CI. Aqui roda só nos arquivos do
+    # índice (~3 s) e pela catraca: dívida congelada passa, erro novo reprova.
+    arquivos="$(printf '%s\n' "$ts_no_indice" | sed 's#^frontend/##')"
+    # shellcheck disable=SC2086
+    bun scripts/catraca.mjs eslint $arquivos || { echo "[pre-commit] ESLint reprovou: erro novo nos arquivos acima"; exit 1; }
 fi
 exit 0

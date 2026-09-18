@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🔒 Travas de TS, ESLint e FSD sob catraca
+
+- `frontend/scripts/catraca.mjs`: regra nova entra ligada, o erro que já existe fica congelado em
+  `frontend/.catraca/{tsc,eslint}.json` por (arquivo, regra), e só erro NOVO reprova. `--atualizar`
+  só deixa a lista descer; subir exige `--aceitar-divida`. `type-check` e `lint:eslint` passam por ela.
+- tsconfig ganha `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals`,
+  `noUnusedParameters`, `noImplicitReturns` — **558 erros congelados** (321 em `packages/utils`).
+- ESLint ganha `strict-boolean-expressions` (`allowNumber: false`, **545**), `no-floating-promises`
+  (**69**) e FSD via `eslint-plugin-boundaries` + Public API por `no-restricted-imports` (**0**).
+- `pre-commit` roda ESLint type-aware nos `.ts/.tsx` do índice (antes só o CI rodava).
+- Hook do Claude `trava-ts.py` (PostToolUse): lint do arquivo editado, erro novo volta com exit 2.
+- Canários em `apps/web/src/__canarios__/travas.test.ts` e `testa-hooks.py`; teste de mutação
+  confirmou que desligar as travas reprova 5 canários.
+
 ### 🐘🐘 `backend/` nasceu: Laravel 13 no docker-compose com os quality gates de saída (#96)
 
 - `composer create-project laravel/laravel backend` (Laravel 13.32, PHP 8.5.10), a pedido do dono.

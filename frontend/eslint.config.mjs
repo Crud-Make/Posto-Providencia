@@ -4,6 +4,7 @@ import tsParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import neverthrow from "@bufferings/eslint-plugin-neverthrow";
+import boundaries from "eslint-plugin-boundaries";
 import globals from "globals";
 
 export default [
@@ -43,11 +44,24 @@ export default [
       },
       globals: globals.browser,
     },
+    settings: {
+      // Camadas do FSD em apps/web/src. Cada pasta dentro da camada é um slice (elemento).
+      "boundaries/elements": [
+        { type: "app", pattern: "apps/web/src/app" },
+        { type: "pages", pattern: "apps/web/src/pages/*" },
+        { type: "widgets", pattern: "apps/web/src/widgets/*" },
+        { type: "features", pattern: "apps/web/src/features/*" },
+        { type: "entities", pattern: "apps/web/src/entities/*" },
+        { type: "shared", pattern: "apps/web/src/shared" },
+      ],
+      "import/resolver": { typescript: { project: import.meta.dirname + "/tsconfig.json" } },
+    },
     plugins: {
       "@typescript-eslint": tsPlugin,
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
       neverthrow,
+      boundaries,
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -103,6 +117,45 @@ export default [
       // na issue: strict-boolean-expressions = 433 erros, no-floating-promises = 69,
       // require-await = 25. Entram uma por vez, cada uma com seu PR.
       "@typescript-eslint/await-thenable": "error",
+      // Entraram em 18/09/2026 sob CATRACA (scripts/catraca.mjs, lista em .catraca/eslint.json):
+      // o erro que já existia fica congelado, o NOVO reprova. Custo medido na entrada:
+      // strict-boolean-expressions ≈ 433, no-floating-promises ≈ 69.
+      //
+      // strict-boolean-expressions: `if (valor)` com número é o bug clássico do dinheiro —
+      // R$ 0,00 é falsy e o ramo "não tem valor" roda para um valor que existe. Por isso
+      // `allowNumber: false`: o padrão da regra DEIXA número passar, e o canário mostrou que
+      // assim ela não acusava `valor ? … : …` — o caso que motivou a trava.
+      "@typescript-eslint/strict-boolean-expressions": ["error", { allowNumber: false }],
+      // Promise solta é erro engolido: a gravação falha e a tela diz que salvou.
+      "@typescript-eslint/no-floating-promises": "error",
+      // FSD (docs/arquitetura/regras.md). Camada só importa camada ABAIXO; slice não importa
+      // slice vizinho da mesma camada. Pastas fora das camadas (components/, services/,
+      // utils/…) são o legado do strangler e ficam fora da regra até migrarem.
+      "boundaries/dependencies": [
+        "error",
+        {
+          default: "allow",
+          policies: [
+            { from: { element: { type: "shared" } }, disallow: { to: { element: { types: { anyOf: ["entities", "features", "widgets", "pages", "app"] } } } } },
+            { from: { element: { type: "entities" } }, disallow: { to: { element: { types: { anyOf: ["entities", "features", "widgets", "pages", "app"] } } } } },
+            { from: { element: { type: "features" } }, disallow: { to: { element: { types: { anyOf: ["features", "widgets", "pages", "app"] } } } } },
+            { from: { element: { type: "widgets" } }, disallow: { to: { element: { types: { anyOf: ["widgets", "pages", "app"] } } } } },
+            { from: { element: { type: "pages" } }, disallow: { to: { element: { types: { anyOf: ["pages", "app"] } } } } },
+          ],
+        },
+      ],
+      // Public API do slice: de fora, só pelo index. `@widgets/x/ui/y` fura o encapsulamento.
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^(@(pages|widgets|features|entities)/[^/]+/.+|(\\.\\./)+(pages|widgets|features|entities)/[^/]+/.+)$",
+              message: "Importe o slice pela Public API (o index.ts dele), não o arquivo interno.",
+            },
+          ],
+        },
+      ],
       "neverthrow/must-use-result": "error",
       "react-hooks/set-state-in-effect": "error",
       "react-hooks/exhaustive-deps": "error",
