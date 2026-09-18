@@ -48,7 +48,7 @@ import FechamentoMensal from '../fechamento-mensal';
 // [31/07] Painel herdado da antiga rota /financeiro ("Gestão Financeira"), agora aba daqui.
 import { PainelReceitasDespesas } from '../financeiro';
 import { FooterAcoes } from './components/FooterAcoes';
-import { ProgressIndicator } from '@shared/ui/ValidationAlert';
+import { ProgressIndicator } from '@shared/ui/ProgressIndicator';
 import { hojeIso, conferido, deIsoLocal, somarDias } from '@posto/utils';
 import { useEstadoPersistido } from '@shared/lib/estado-persistido';
 import { meiosDaSessao } from '../../utils/fechamentoMeios';
