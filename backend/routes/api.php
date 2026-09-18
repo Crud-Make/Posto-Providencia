@@ -23,7 +23,9 @@ Route::get('/saude', function () {
     $banco = 'indisponivel';
     $motivo = null;
     try {
-        $banco = DB::selectOne('select current_database() as nome')->nome;
+        // selectOne devolve mixed: estreita em vez de confiar (PHPStan nível 9).
+        $linha = DB::selectOne('select current_database() as nome');
+        $banco = is_object($linha) && isset($linha->nome) && is_string($linha->nome) ? $linha->nome : 'indisponivel';
     } catch (Throwable $erro) {
         report($erro);
         $motivo = config('app.debug') ? $erro->getMessage() : null;

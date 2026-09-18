@@ -10,6 +10,9 @@ if [ -n "$php_no_indice" ]; then
     composer analise --quiet  || { echo "[pre-commit] PHPStan reprovou"; exit 1; }
     composer md --quiet       || { echo "[pre-commit] PHPMD reprovou (CCN > 10?)"; exit 1; }
     composer deptrac --quiet  || { echo "[pre-commit] Deptrac reprovou: dependência fora das camadas"; exit 1; }
+    # Pest Arch (tests/Arch): strict_types, dd(), env(), controller sem model/Request cru.
+    # ~1 s e sem banco — cabe no commit. A suíte inteira com cobertura fica no pre-push.
+    vendor/bin/pest --compact tests/Arch >/dev/null || { echo "[pre-commit] Pest Arch reprovou: rode 'vendor/bin/pest tests/Arch'"; exit 1; }
 fi
 ts_no_indice="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^frontend/.*\.(ts|tsx)$' || true)"
 if [ -n "$ts_no_indice" ]; then
