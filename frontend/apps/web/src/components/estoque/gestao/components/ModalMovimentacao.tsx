@@ -78,7 +78,10 @@ const ModalMovimentacao: React.FC<ModalMovimentacaoProps> = ({
                 type="number"
                 name="valor_unitario"
                 step="0.01"
-                defaultValue={product.preco_custo}
+                // Sem custo cadastrado o campo fica VAZIO: o usuário digita o
+                // custo da entrada em vez de o form sugerir 0 e contaminar o
+                // custo médio.
+                defaultValue={product.preco_custo ?? undefined}
                 className="w-full px-3 py-2 border border-blue-200 bg-blue-50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
               <p className="text-xs text-blue-600 mt-1">Este valor será usado para recalcular o custo médio.</p>

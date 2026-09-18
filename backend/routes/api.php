@@ -1,5 +1,6 @@
 <?php
 
+use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,9 @@ Route::get('/saude', function () {
     $banco = 'indisponivel';
     $motivo = null;
     try {
-        $banco = DB::selectOne('select current_database() as nome')->nome;
+        // selectOne devolve mixed: estreita em vez de confiar (PHPStan nível 9).
+        $linha = DB::selectOne('select current_database() as nome');
+        $banco = is_object($linha) && isset($linha->nome) && is_string($linha->nome) ? $linha->nome : 'indisponivel';
     } catch (Throwable $erro) {
         report($erro);
         $motivo = config('app.debug') ? $erro->getMessage() : null;
@@ -51,4 +54,8 @@ Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(func
     Route::get('formas-pagamento', [CatalogoController::class, 'formasPagamento']);
     Route::get('maquininhas', [CatalogoController::class, 'maquininhas']);
     Route::get('fornecedores', [CatalogoController::class, 'fornecedores']);
+
+    // Agregação — dado bruto do período para o dashboard do proprietário (#100,
+    // docs/design/agregacao.md §5). Sem lucro no servidor: quem calcula é packages/utils.
+    Route::get('dashboard', [AgregacaoController::class, 'dashboard']);
 });

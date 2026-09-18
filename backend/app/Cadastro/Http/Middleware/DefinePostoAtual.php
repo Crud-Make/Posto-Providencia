@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Cadastro\Http\Middleware;
 
-use App\Cadastro\Domain\Posto;
+use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
 use Closure;
 use Illuminate\Http\Request;

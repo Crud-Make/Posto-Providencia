@@ -1,20 +1,84 @@
 #!/bin/sh
 # pre-commit do Posto Providência (CLAUDE.md §7): gates do PHP só quando há .php no índice.
 # O lado TS não é bloqueado por ferramenta PHP, e vice-versa. Instalar: scripts/instala-hooks.sh
+#
+# ── O QUE ESTE HOOK TESTA (18/09/2026) ────────────────────────────────────────
+# O ÍNDICE — o que o commit vai gravar —, nunca o working tree. Até aqui os gates rodavam na
+# árvore: `git add` de um arquivo com erro seguido de conserto sem `git add` passava verde e
+# gravava o erro; o inverso (índice limpo, árvore suja) reprovava à toa.
+#
+# Por isso o índice é extraído com `git checkout-index` para uma pasta descartável (~0,2 s,
+# 13 MB) e os gates rodam lá. `git checkout-index` respeita o GIT_INDEX_FILE que o git exporta
+# em `git commit <arquivos>` / `git commit -a` — é exatamente o índice que vai virar commit.
+#
+# Dependências são INSTALADAS no snapshot, nunca em symlink (memória
+# worktree-nao-herda-dependencias): vendor/ linkado carrega App\ da árvore de origem pelo
+# autoload do Composer, e node_modules/@posto/* é link relativo que resolve na origem.
+# Custo medido: bun install ~0,8 s; composer install ~8 s, só em commit que tem .php.
+# O snapshot fica em ~/.cache, no mesmo disco do cache do bun (instala por hardlink).
+#
+# Canários do próprio hook: scripts/hooks/testa-pre-commit.sh
 raiz="$(git rev-parse --show-toplevel)"
-php_no_indice="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^backend/.*\.php$' || true)"
+principal="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+
+no_indice="$(git diff --cached --name-only --diff-filter=ACMR)"
+php_no_indice="$(printf '%s\n' "$no_indice" | grep -E '^backend/.*\.php$' || true)"
+ts_no_indice="$(printf '%s\n' "$no_indice" | grep -E '^frontend/.*\.(ts|tsx)$' || true)"
+[ -z "$php_no_indice" ] && [ -z "$ts_no_indice" ] && exit 0
+
+base_snap="${XDG_CACHE_HOME:-$HOME/.cache}/posto-pre-commit"
+mkdir -p "$base_snap" || exit 1
+snap="$(mktemp -d "$base_snap/indice.XXXXXX")" || exit 1
+trap 'rm -rf "$snap"' EXIT INT TERM
+git checkout-index -a --prefix="$snap/" || { echo "[pre-commit] ✗ não consegui extrair o índice"; exit 1; }
+
+# $1 = rótulo · resto = comando. Mostra o fim da saída quando reprova.
+passo() {
+    rotulo="$1"
+    shift
+    log="$snap/.log"
+    if "$@" >"$log" 2>&1; then
+        return 0
+    fi
+    echo "[pre-commit] ✗ $rotulo. Últimas linhas:"
+    tail -n 25 "$log" | sed 's/^/[pre-commit]     /'
+    return 1
+}
+
 if [ -n "$php_no_indice" ]; then
-    echo "[pre-commit] .php no índice — rodando Pint, PHPStan, PHPMD e Deptrac em backend/"
-    cd "$raiz/backend" || exit 1
-    composer lint --quiet     || { echo "[pre-commit] Pint reprovou: rode 'composer lint:corrige'"; exit 1; }
-    composer analise --quiet  || { echo "[pre-commit] PHPStan reprovou"; exit 1; }
-    composer md --quiet       || { echo "[pre-commit] PHPMD reprovou (CCN > 10?)"; exit 1; }
-    composer deptrac --quiet  || { echo "[pre-commit] Deptrac reprovou: dependência fora das camadas"; exit 1; }
+    echo "[pre-commit] .php no índice — rodando Pint, PHPStan, PHPMD e Deptrac no índice"
+    cd "$snap/backend" || exit 1
+    # .env não é versionado; vem desta árvore ou, numa worktree que não tem, do checkout principal.
+    for origem in "$raiz/backend/.env" "$principal/backend/.env"; do
+        [ -f "$origem" ] && { cp "$origem" .env; break; }
+    done
+    passo "composer install no snapshot falhou" composer install --no-interaction --prefer-dist || exit 1
+    passo "Pint reprovou: rode 'composer lint:corrige'" composer lint || exit 1
+    passo "PHPStan reprovou" composer analise || exit 1
+    passo "PHPMD reprovou (CCN > 10?)" composer md || exit 1
+    passo "Deptrac reprovou: dependência fora das camadas" composer deptrac || exit 1
+    # Pest Arch (tests/Arch): strict_types, dd(), env(), controller sem model/Request cru e a
+    # fronteira entre módulos (CA-7). ~1 s e sem banco — cabe no commit; roda no snapshot do
+    # índice, como os outros. A suíte inteira com cobertura fica no pre-push.
+    passo "Pest Arch reprovou: rode 'vendor/bin/pest tests/Arch'" vendor/bin/pest --compact tests/Arch || exit 1
 fi
-ts_no_indice="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^frontend/.*\.(ts|tsx)$' || true)"
+
 if [ -n "$ts_no_indice" ]; then
-    echo "[pre-commit] .ts/.tsx no índice — rodando oxlint em frontend/"
-    cd "$raiz/frontend" || exit 1
-    bun run lint >/dev/null || { echo "[pre-commit] oxlint reprovou"; exit 1; }
+    echo "[pre-commit] .ts/.tsx no índice — rodando oxlint e ESLint (catraca) no índice"
+    cd "$snap/frontend" || exit 1
+    passo "bun install no snapshot falhou" bun install --frozen-lockfile || exit 1
+    passo "oxlint reprovou" bun run lint || exit 1
+    # oxlint lê sintaxe, não tipos: `any`, neverthrow, promise solta, FSD e toISOString só o
+    # ESLint type-aware vê. Roda só nos arquivos do índice e pela catraca: dívida congelada
+    # passa, erro novo reprova.
+    # O hook é instalado uma vez em .git/hooks e vale para TODAS as worktrees; branch anterior
+    # à catraca não tem o script, e aí o passo é pulado com aviso em vez de travar o commit.
+    if [ -f scripts/catraca.mjs ]; then
+        arquivos="$(printf '%s\n' "$ts_no_indice" | sed 's#^frontend/##')"
+        # shellcheck disable=SC2086
+        passo "ESLint reprovou: erro novo nos arquivos do índice" bun scripts/catraca.mjs eslint $arquivos || exit 1
+    else
+        echo "[pre-commit] aviso: branch sem scripts/catraca.mjs — ESLint type-aware pulado"
+    fi
 fi
 exit 0

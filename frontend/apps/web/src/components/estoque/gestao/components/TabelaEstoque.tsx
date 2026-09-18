@@ -3,6 +3,14 @@ import { Package, AlertTriangle, ArrowUpCircle, Edit2, Loader2 } from 'lucide-re
 import { Produto } from '../types';
 import { formatarMoeda } from '../../../../utils/formatters';
 
+/**
+ * `estoque_minimo` é NOT NULL DEFAULT 0 no banco; o tipo de domínio o declara
+ * anulável. Sem mínimo cadastrado vale o default do banco (0): só fica "baixo"
+ * quem está zerado ou negativo — nunca alarme falso.
+ */
+const estaComEstoqueBaixo = (product: Produto): boolean =>
+  product.estoque_atual <= (product.estoque_minimo ?? 0);
+
 interface TabelaEstoqueProps {
   loading: boolean;
   products: Produto[];
@@ -55,11 +63,11 @@ const TabelaEstoque: React.FC<TabelaEstoqueProps> = ({
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex flex-col items-center">
-                      <span className={`font-bold text-base ${product.estoque_atual <= product.estoque_minimo ? 'text-red-600' : 'text-gray-900'
+                      <span className={`font-bold text-base ${estaComEstoqueBaixo(product) ? 'text-red-600' : 'text-gray-900'
                         }`}>
                         {product.estoque_atual} {product.unidade_medida}
                       </span>
-                      {product.estoque_atual <= product.estoque_minimo && (
+                      {estaComEstoqueBaixo(product) && (
                         <span className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-0.5">
                           <AlertTriangle size={10} /> Baixo
                         </span>

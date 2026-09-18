@@ -82,8 +82,17 @@ export const GraficoFluxoCaixa: React.FC<GraficoFluxoCaixaProps> = ({ series, al
               fontSize={12}
             />
             <Tooltip
-              formatter={(value: number) => formatCurrency(value)}
-              labelFormatter={(label: string) => formatarDataBR(label.slice(0, 10))}
+              /**
+               * O Recharts entrega `TValue | undefined` no formatter e `ReactNode` no
+               * labelFormatter. Sem valor NÃO se imprime "R$ 0": zero é um número de
+               * dinheiro e mentiria sobre o dia. Ausência vira travessão.
+               */
+              formatter={(value: number | undefined) =>
+                typeof value === 'number' ? formatCurrency(value) : '—'
+              }
+              labelFormatter={(label: React.ReactNode) =>
+                typeof label === 'string' ? formatarDataBR(label.slice(0, 10)) : '—'
+              }
               contentStyle={{
                 backgroundColor: '#1E293B',
                 border: '1px solid #334155',

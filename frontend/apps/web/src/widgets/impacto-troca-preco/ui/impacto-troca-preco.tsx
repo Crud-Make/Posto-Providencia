@@ -57,18 +57,53 @@ const numeros: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 const corDaBarra = (variacao: number) =>
   variacao > 0 ? '#16A34A' : variacao < 0 ? '#DC2626' : '#64748B';
 
+/** Um ponto do gráfico de variação — o que o tooltip precisa ler de volta. */
+interface DadoDaBarra {
+  readonly sigla: string;
+  readonly nome: string;
+  readonly variacao: number;
+  readonly precoInicio: number;
+  readonly precoFim: number;
+}
+
+/**
+ * `Payload.payload` do recharts é `any`: tratamos como `unknown` e conferimos o
+ * formato antes de ler preço nenhum. Sem os dois preços não há frase de tooltip.
+ */
+/**
+ * Prova só o que checa: os três campos que o tooltip lê. Prometer `DadoDaBarra`
+ * inteiro daria ao compilador uma garantia sobre `sigla` e `variacao` que este
+ * predicado não verifica — e quem amanhã lesse `b.variacao` neste ramo teria o
+ * aval do tipo sem a conferência em runtime.
+ */
+const ehDadoDaBarra = (x: unknown): x is Pick<DadoDaBarra, 'nome' | 'precoInicio' | 'precoFim'> =>
+  typeof x === 'object' &&
+  x !== null &&
+  typeof (x as { nome?: unknown }).nome === 'string' &&
+  typeof (x as { precoInicio?: unknown }).precoInicio === 'number' &&
+  typeof (x as { precoFim?: unknown }).precoFim === 'number';
+
 /** "Foi só o diesel ou mexeu tudo?" — quanto cada preço variou no mês. */
 const GraficoVariacao: React.FC<{ readonly barras: readonly BarraVariacao[] }> = ({ barras }) => {
   if (barras.length === 0) return null;
-  const dados = barras.map((b) => ({
+  const dados: readonly DadoDaBarra[] = barras.map((b) => ({
     sigla: b.codigoCombustivel ?? b.nomeCombustivel,
     nome: b.nomeCombustivel,
     variacao: b.variacao,
     precoInicio: b.precoInicio,
     precoFim: b.precoFim,
   }));
-  const rotulo = (v: number) =>
-    v === 0 ? 'não mexeu' : `${v > 0 ? '+' : '−'}R$ ${precoBR(Math.abs(v))}`;
+  /**
+   * `LabelList` entrega `string | number | boolean | null | undefined`, não um
+   * número garantido. Sem número não se inventa rótulo de dinheiro: devolve
+   * `null` e a barra fica sem etiqueta — melhor nada do que um valor errado.
+   */
+  const rotulo = (v: unknown) =>
+    typeof v === 'number'
+      ? v === 0
+        ? 'não mexeu'
+        : `${v > 0 ? '+' : '−'}R$ ${precoBR(Math.abs(v))}`
+      : null;
   return (
     <div className="mt-4">
       <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
@@ -87,9 +122,13 @@ const GraficoVariacao: React.FC<{ readonly barras: readonly BarraVariacao[] }> =
             <ReferenceLine y={0} stroke="#94A3B8" strokeOpacity={0.4} />
             <Tooltip
               cursor={{ fill: '#94A3B8', fillOpacity: 0.08 }}
-              formatter={(_valor: number | string, _nome: string, item: { payload?: (typeof dados)[number] }) => {
+              formatter={(
+                _valor: number | string | undefined,
+                _nome: string | undefined,
+                item: { readonly payload?: unknown },
+              ) => {
                 const b = item.payload;
-                return b
+                return ehDadoDaBarra(b)
                   ? [`de R$ ${precoBR(b.precoInicio)} para R$ ${precoBR(b.precoFim)}`, b.nome]
                   : ['', ''];
               }}
