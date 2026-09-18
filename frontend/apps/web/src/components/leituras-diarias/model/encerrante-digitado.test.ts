@@ -26,6 +26,13 @@ describe('numeroDoEncerrante', () => {
     it('preserva os litros do dia entre duas leituras reais', () => {
         const inicial = numeroDoEncerrante('1.861.796,633');
         const fechamento = numeroDoEncerrante('1.862.145,120');
+        // Guarda explícita em vez de `!`: se a leitura virar null, o teste
+        // acusa a causa em vez de estourar num NaN silencioso na subtração.
+        if (inicial === null || fechamento === null) {
+            throw new Error(
+                `numeroDoEncerrante devolveu null para leitura válida: inicial=${inicial}, fechamento=${fechamento}`
+            );
+        }
         expect(fechamento - inicial).toBeCloseTo(348.487, 3);
     });
 

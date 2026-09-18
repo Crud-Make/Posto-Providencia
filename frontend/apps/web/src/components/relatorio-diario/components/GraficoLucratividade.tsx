@@ -14,7 +14,12 @@ import { ShiftData } from '../types';
 
 interface GraficoLucratividadeProps {
     shiftsData: ShiftData[];
-    fmtMoney: (val: number) => string;
+    /**
+     * Mesma assinatura de TabelaDetalhamento e ResumoKPIs: `null` é "não apurado",
+     * não zero. Quem passa é useRelatorioDiario, que devolve o rótulo — declarar a
+     * prop mais estreita aqui escondia esse fato de quem lesse só este arquivo.
+     */
+    fmtMoney: (val: number | null) => string;
 }
 
 const GraficoLucratividade: React.FC<GraficoLucratividadeProps> = ({ shiftsData, fmtMoney }) => {
@@ -30,7 +35,18 @@ const GraficoLucratividade: React.FC<GraficoLucratividadeProps> = ({ shiftsData,
                     <XAxis dataKey="turnoName" tickLine={false} axisLine={false} />
                     <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `R$${val}`} />
                     <Tooltip
-                        formatter={(value: number) => fmtMoney(value)}
+                        formatter={(value) => {
+                            // O `Formatter` do recharts declara `value: ValueType`, que não
+                            // inclui null — mas DefaultTooltipContent chama o formatter com o
+                            // valor cru do payload, e aqui ele é `number | null` (ShiftData.lucro
+                            // e ShiftData.diferenca). O tipo da biblioteca está errado sobre o
+                            // próprio comportamento; o estreitamento é local e declarado.
+                            const valor = value as number | null | undefined;
+                            // `null` segue para o fmtMoney, que o rende como "não apurado"
+                            // (dia sem encerrante completo, produto sem compra no mês). Só o
+                            // `undefined` vira travessão — aí não há dado nenhum a nomear.
+                            return valor === undefined ? '—' : fmtMoney(valor);
+                        }}
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                     />
                     <Legend />

@@ -115,7 +115,15 @@ export const useDashboardEstoque = () => {
         try {
           const resHist = await tanqueService.getHistory(t.id, 30);
           const hist = isSuccess(resHist) ? resHist.data : [];
-          histMap[t.id] = hist || [];
+          // `HistoricoTanque` traz `volume_livro`/`volume_fisico` anuláveis;
+          // `TankHistoryEntry` os tem opcionais. "Não medido" vira AUSENTE,
+          // nunca 0 — 0 litros é uma medição real e diferente de não ter medido.
+          histMap[t.id] = (hist ?? []).map((h) => ({
+            id: h.id,
+            data: h.data,
+            volume_livro: h.volume_livro ?? undefined,
+            volume_fisico: h.volume_fisico ?? undefined,
+          }));
         } catch (e) {
           console.error(`Erro ao buscar histórico tanque ${t.id}`, e);
           histMap[t.id] = [];

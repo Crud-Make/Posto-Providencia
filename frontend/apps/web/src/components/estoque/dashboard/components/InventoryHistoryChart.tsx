@@ -91,7 +91,12 @@ export const InventoryHistoryChart: React.FC<InventoryHistoryChartProps> = ({ da
                                 }}
                                 itemStyle={{ color: glowColor }}
                                 labelStyle={{ color: '#9ca3af', marginBottom: '4px', paddingBottom: '4px', borderBottom: '1px solid #374151' }}
-                                formatter={(value: number) => [`${value?.toLocaleString('pt-BR')} L`, 'Volume']}
+                                // O recharts entrega `value` possivelmente undefined; sem
+                                // número o tooltip mostra travessão em vez de "undefined L".
+                                formatter={(value: number | undefined) => [
+                                    typeof value === 'number' ? `${value.toLocaleString('pt-BR')} L` : '—',
+                                    'Volume' as const,
+                                ]}
                                 cursor={{ stroke: mainColor, strokeWidth: 1, strokeDasharray: '4 4' }}
                             />
 

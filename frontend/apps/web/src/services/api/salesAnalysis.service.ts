@@ -128,6 +128,15 @@ export const salesAnalysisService = {
           };
         };
       };
+      /**
+       * Combustível de uma leitura JÁ validado como presente. O `porCombustivel`
+       * abaixo só recebe entrada depois da guarda `if (!l.bico || !l.bico.combustivel) return;`,
+       * então o agregado nunca guarda `undefined` aqui — o `?` do tipo cru da consulta
+       * não vale para o agregado. Sem isso o `strict` apontaria `possibly undefined`
+       * em cada leitura de nome/código/id no mapeamento de produtos.
+       */
+      type CombustivelDaLeitura = NonNullable<NonNullable<LeituraComBico['bico']>['combustivel']>;
+
       const leiturasTyped = (leituras || []) as LeituraComBico[];
 
       // First pass to sum volume
@@ -140,7 +149,7 @@ export const salesAnalysisService = {
       const despesaPorLitro = despesaPorLitroVendido(totalDespesas, totalSalesVolume);
 
       const porCombustivel: Record<string, {
-        combustivel: NonNullable<LeituraComBico['bico']>['combustivel'];
+        combustivel: CombustivelDaLeitura;
         bicoIds: Set<number>;
         litros: number;
         valor: number;

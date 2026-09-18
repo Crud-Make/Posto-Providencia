@@ -84,7 +84,16 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
   // A chave mora em `utils/rascunho-fechamento` porque Configurações também
   // precisa dela para limpar o rascunho ao apagar um mês. Duplicar a string
   // faria um lado parar de limpar em silêncio no dia em que ela mudasse.
-  const CHAVE_AUTOSAVE = useMemo(() => chaveRascunhoFechamento(postoId), [postoId]);
+  //
+  // Sem posto ativo não existe chave: `postoId` nulo produziria o balde compartilhado
+  // `rascunho_fechamento_diario_v1_null`, onde o rascunho de um posto poderia reaparecer
+  // na tela de outro. Enquanto `postoId` for nulo o autosave fica inteiramente parado —
+  // não lê, não escreve, não apaga. Assim que o posto resolve, o efeito de reset abaixo
+  // roda por `postoId` e a restauração acontece com a chave certa.
+  const CHAVE_AUTOSAVE = useMemo(
+    () => (postoId === null ? null : chaveRascunhoFechamento(postoId)),
+    [postoId]
+  );
 
   /**
    * Reseta estado de restauração quando troca de posto
@@ -102,7 +111,9 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
    * Isso corrige o bug onde leituras de ontem sobrescreviam o formulário de hoje
    */
   useEffect(() => {
-    if (!carregando && !restaurado) {
+    // `restaurado` continua falso sem posto: os efeitos de carga em `fechamento-diario`
+    // que dependem dele também exigem posto, então nada fica esperando à toa.
+    if (CHAVE_AUTOSAVE !== null && !carregando && !restaurado) {
       try {
         const rascunhoJson = localStorage.getItem(CHAVE_AUTOSAVE);
 
@@ -137,7 +148,7 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
    * rascunho antes de ser carregado
    */
   useEffect(() => {
-    if (!carregando && !salvando && restaurado) {
+    if (CHAVE_AUTOSAVE !== null && !carregando && !salvando && restaurado) {
       const rascunho: RascunhoFechamento = {
         leituras,
         dataSelecionada,
@@ -174,6 +185,7 @@ export const useAutoSave = (parametros: ParametrosAutoSave): RetornoAutoSave => 
    * Útil após salvar com sucesso ou cancelar edição
    */
   const limparAutoSave = () => {
+    if (CHAVE_AUTOSAVE === null) return;
     try {
       localStorage.removeItem(CHAVE_AUTOSAVE);
       setRascunhoRestaurado(null);

@@ -57,7 +57,13 @@ export const DespesasPorCategoria: React.FC<DespesasPorCategoriaProps> = ({ dado
                 ))}
               </Pie>
               <Tooltip
-                formatter={(val: number) => paraReais(val)}
+                /**
+                 * `TValue | undefined` vem do Recharts. Fatia sem valor não vira
+                 * "R$ 0,00" — um zero inventado passa por despesa real.
+                 */
+                formatter={(val: number | undefined) =>
+                  typeof val === 'number' ? paraReais(val) : '—'
+                }
                 contentStyle={{
                   backgroundColor: '#1E293B',
                   border: '1px solid #334155',

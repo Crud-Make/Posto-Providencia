@@ -8,7 +8,16 @@ interface TabDetalhamentoFrentistaProps {
   frentistaSessions: SessaoFrentista[];
   frentistas: Frentista[];
   loading?: boolean;
-  onUpdateCampo?: (tempId: string, campo: string, valor: number) => void;
+  /**
+   * Edição de um campo da conciliação.
+   *
+   * @remarks
+   * `valor` é `string | number` porque quem dispara é o `onChange` de um `<input>` em
+   * `TabelaConciliacaoFrentistas` — o valor chega como texto cru, ainda não normalizado.
+   * A assinatura antiga dizia `number` e mentia: nenhum número era passado em runtime.
+   * Quem converte é o consumidor (`fechamento-diario/index.tsx`), não esta aba.
+   */
+  onUpdateCampo?: (tempId: string, campo: string, valor: number | string) => void;
   postoId: number | null;
   /** Data selecionada no cabeçalho (ISO `YYYY-MM-DD`); o mês vem dela. */
   dataSelecionada: string | null;

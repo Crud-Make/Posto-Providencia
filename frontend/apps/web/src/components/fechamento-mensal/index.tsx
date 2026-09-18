@@ -361,7 +361,10 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                                             }}
                                             itemStyle={{ fontSize: '13px', fontWeight: 600, padding: '2px 0' }}
                                             labelStyle={{ color: '#94a3b8', marginBottom: '8px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                                            formatter={(value: number) => formatCurrency(value)}
+                                            // Recharts tipa o valor como `number | undefined` (ponto ausente na série).
+                                            // Sem dado, o tooltip mostra travessão — não "R$ 0,00", que leria como
+                                            // faturamento/lucro zerado, nem o "R$ NaN" que saía antes.
+                                            formatter={(value) => (typeof value === 'number' ? formatCurrency(value) : '—')}
                                             cursor={{ stroke: '#475569', strokeDasharray: '4 4' }}
                                         />
                                         <Area type="monotone" dataKey="vendas" stroke="#3b82f6" fillOpacity={1} fill="url(#colorVendas)" name="Faturamento" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0 }} />
@@ -403,7 +406,9 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)'
                                             }}
                                             itemStyle={{ color: '#e2e8f0' }}
-                                            formatter={(value: number) => formatNumber(value) + ' L'}
+                                            // Mesma regra do gráfico acima: litro ausente vira travessão,
+                                            // nunca "0 L".
+                                            formatter={(value) => (typeof value === 'number' ? formatNumber(value) + ' L' : '—')}
                                         />
                                         <Legend
                                             verticalAlign="bottom"
