@@ -128,7 +128,7 @@ const TelaGestaoClientes: React.FC = () => {
                     notas={notaForm.notas}
                     loadingNotas={notaForm.loadingNotas}
                     onNovaNota={notaForm.openModal}
-                    onEditarCliente={() => clienteForm.openModal(selectedCliente)}
+                    onEditarCliente={() => clienteForm.openModal(selectedCliente ?? undefined)}
                     onBloquear={handleBloquear}
                     onApagar={handleApagar}
                     onPagamento={pagamentoForm.openModal}

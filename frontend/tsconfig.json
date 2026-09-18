@@ -1,6 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    // Ligado em 17/09/2026. Sem `strict` o TypeScript roda em modo frouxo: campo que o
+    // banco permite NULL era lido como se nunca fosse nulo, e metade das regras
+    // type-aware do typescript-eslint não funciona sem `strictNullChecks` (o linter
+    // avisa e desliga a regra). `packages/utils` — o módulo canônico do dinheiro, com os
+    // 18 golden masters — já passava limpo; os 43 erros estavam todos em `apps/`.
+    "strict": true,
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",

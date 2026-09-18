@@ -45,8 +45,23 @@ export const useGestaoEstoque = () => {
   }, [products, searchTerm, selectedCategory]);
 
   const stats = useMemo(() => {
-    const lowStockCount = products.filter(p => p.estoque_atual <= p.estoque_minimo).length;
-    const totalValue = products.reduce((acc, p) => acc + (p.estoque_atual * p.preco_custo), 0);
+    // `estoque_minimo` e `preco_custo` são NOT NULL DEFAULT 0 no banco
+    // (banco/init/01-esquema-base.sql). O tipo de dominio `Produto` em
+    // @posto/types os declara anuláveis — a divergência é do tipo, não do dado.
+    // Sem mínimo cadastrado, o comportamento é o do default do banco (0):
+    // só conta como baixo quem está zerado ou negativo.
+    const lowStockCount = products.filter(p => p.estoque_atual <= (p.estoque_minimo ?? 0)).length;
+
+    // Dinheiro: custo ausente não vira 0 em silêncio. Se algum dia chegar null,
+    // o total sai subestimado e o console avisa quais produtos causaram isso.
+    const semCusto = products.filter(p => p.preco_custo === null || p.preco_custo === undefined);
+    if (semCusto.length > 0) {
+      console.warn(
+        `[estoque] ${semCusto.length} produto(s) sem preco_custo — valor total do estoque está SUBESTIMADO`,
+        semCusto.map(p => ({ id: p.id, nome: p.nome }))
+      );
+    }
+    const totalValue = products.reduce((acc, p) => acc + (p.estoque_atual * (p.preco_custo ?? 0)), 0);
     return { lowStockCount, totalValue, totalProducts: products.length };
   }, [products]);
 

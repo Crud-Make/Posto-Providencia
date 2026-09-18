@@ -124,7 +124,7 @@ const EscalaTable: React.FC<EscalaTableProps> = ({
                                                                     ? 'bg-white text-blue-600 ring-red-500'
                                                                     : 'bg-blue-600 text-white ring-white dark:ring-gray-800'
                                                                 }`}
-                                                            title={escala.observacao}
+                                                            title={escala.observacao ?? undefined}
                                                         >
                                                             <FileText size={10} />
                                                         </div>
