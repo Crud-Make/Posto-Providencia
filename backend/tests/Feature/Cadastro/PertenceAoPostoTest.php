@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Cadastro\Domain\Bomba;
-use App\Cadastro\Domain\Posto;
+use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
 
 it('sem posto atual, o escopo não filtra nada', function (): void {

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Cadastro\Domain\Policies\PostoPolicy;
-use App\Cadastro\Domain\Posto;
+use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
+use App\Pessoas\Domain\Policies\PostoPolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;

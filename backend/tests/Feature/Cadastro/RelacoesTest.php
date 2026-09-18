@@ -9,10 +9,10 @@ use App\Cadastro\Domain\FormaPagamento;
 use App\Cadastro\Domain\Fornecedor;
 use App\Cadastro\Domain\Frentista;
 use App\Cadastro\Domain\Maquininha;
-use App\Cadastro\Domain\Posto;
 use App\Cadastro\Domain\Tanque;
 use App\Cadastro\Domain\Turno;
 use App\Compartilhado\Enums\PapelNoPosto;
+use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
 use App\Pessoas\Domain\Usuario;
 use App\Pessoas\Domain\UsuarioPosto;
@@ -37,18 +37,13 @@ it('resolve todas as relações do cadastro contra o esquema real', function ():
     $usuario = Usuario::factory()->create();
     $vinculo = UsuarioPosto::factory()->create(['usuario_id' => $usuario->id, 'posto_id' => $posto->id, 'role' => PapelNoPosto::Gerente]);
 
-    // Posto → filhos
-    expect($posto->combustiveis->pluck('id')->all())->toBe([$combustivel->id])
-        ->and($posto->tanques->pluck('id')->all())->toBe([$tanque->id])
-        ->and($posto->bombas->pluck('id')->all())->toBe([$bomba->id])
-        ->and($posto->bicos->pluck('id')->all())->toBe([$bico->id])
-        ->and($posto->turnos->pluck('id')->all())->toBe([$turno->id])
-        ->and($posto->frentistas->pluck('id')->all())->toBe([$frentista->id])
-        ->and($posto->formasPagamento->pluck('id')->all())->toBe([$forma->id])
-        ->and($posto->maquininhas->pluck('id')->all())->toBe([$maquininha->id])
-        ->and($posto->fornecedores->pluck('id')->all())->toBe([$fornecedor->id])
-        ->and($posto->usuarios->pluck('id')->all())->toBe([$usuario->id])
-        ->and($posto->usuarios()->wherePivot('role', 'gerente')->whereKey($usuario->id)->exists())->toBeTrue();
+    // Posto (Compartilhado) não tem relação de saída: filhos chegam pelo escopo PertenceAoPosto,
+    // e a FK é provada pelo laço "filhos → posto" abaixo.
+
+    // O vínculo usuário↔posto é navegado só pelo lado Pessoas (Cadastro não conhece Pessoas):
+    // Usuario::postos() com o pivô role/ativo, e Usuario::vinculos() para o registro inteiro.
+    expect($usuario->postos()->wherePivot('role', 'gerente')->whereKey($posto->id)->exists())->toBeTrue()
+        ->and($usuario->postos()->wherePivot('ativo', true)->whereKey($posto->id)->exists())->toBeTrue();
 
     // filhos → posto
     foreach ([$combustivel, $tanque, $bomba, $bico, $turno, $frentista, $forma, $maquininha, $fornecedor] as $filho) {

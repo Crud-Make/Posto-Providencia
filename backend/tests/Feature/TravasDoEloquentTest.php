@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Cadastro\Domain\Posto;
+use App\Cadastro\Domain\Bomba;
+use App\Compartilhado\Posto;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Database\Eloquent\MissingAttributeException;
 use Illuminate\Database\LazyLoadingViolationException;
@@ -15,12 +16,14 @@ use Illuminate\Support\Facades\Http;
 | trava, o teste falha — em vez de o erro silencioso voltar sem ninguém notar.
 */
 
+// Sujeito é Bomba→bicos porque Posto (Compartilhado) não tem relação de saída. Sem PostoAtual
+// definido, o escopo não filtra e o creating grava posto_id NULL, que a coluna aceita.
 it('lazy loading em coleção lança (N+1)', function (): void {
-    Posto::factory()->count(2)->create();
+    Bomba::factory()->count(2)->create();
 
-    $postos = Posto::query()->get();
+    $bombas = Bomba::query()->get();
 
-    expect(fn () => $postos->first()?->tanques)->toThrow(LazyLoadingViolationException::class);
+    expect(fn () => $bombas->first()?->bicos)->toThrow(LazyLoadingViolationException::class);
 });
 
 it('ler coluna que ficou fora do select lança em vez de devolver null', function (): void {

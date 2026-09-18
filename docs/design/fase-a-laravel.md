@@ -26,20 +26,31 @@ O que **não** muda: as três telas, `frontend/packages/utils` (fórmulas, 18 go
 
 ```
 backend/app/
-  Cadastro/      Posto, Combustivel, Tanque, Bomba, Bico, Turno, Frentista, FormaPagamento, Maquininha, Fornecedor
+  Cadastro/      Combustivel, Tanque, Bomba, Bico, Turno, Frentista, FormaPagamento, Maquininha, Fornecedor
   Fechamento/    Fechamento, FechamentoFrentista, Recebimento, Leitura, janela de escrita, auditoria
   Financeiro/    Despesa, Receita, CategoriaFinanceira, Compra, custo do mês
   Estoque/       Estoque, HistoricoTanque, Produto, VendaProduto, MovimentacaoEstoque
   Pessoas/       Usuario, UsuarioPosto, Role, Escala, PresencaFrentista, Cliente, NotaFrentista
   Notificacao/   InscricaoPush, job NotificarDonoDoEnvio
   Ocr/           cliente Gemini, rate limit, contrato { leituras: [{bico, numero, confianca}] }
-  Compartilhado/ PertenceAoPosto, Dinheiro (decimal), DTOs base
+  Compartilhado/ Posto (raiz do tenant), PostoAtual, PertenceAoPosto, Enums, Dinheiro (decimal), DTOs base
 ```
 
 **Regra de dependência (Deptrac, escrita antes do primeiro controller):**
 `Http` → `Application` (Commands/Queries) → `Domain` (Models, Services) → `Compartilhado`.
 Módulos só se falam por `Application`; `Fechamento` pode depender de `Cadastro`; ninguém depende de
 `Fechamento` exceto `Notificacao`. Ciclo = PR rejeitado (§3 do CLAUDE.md).
+
+**Sem exceção.** Decisão do dono em 18/09/2026: esta regra não se afrouxa. Hoje não há nenhuma
+dependência entre módulos: `Posto` mora em `App\Compartilhado` (raiz do tenant, ao lado de
+`PostoAtual` e `PertenceAoPosto`), resolvido em `refactor/cadastro-sem-ciclo` (18/09), a mesma
+branch que desfez o ciclo `Cadastro ↔ Pessoas`. `Pessoas\Domain\Usuario`, `UsuarioPosto` e os nove
+models de Cadastro apontam para `App\Compartilhado\Posto`; `Domain → Compartilhado` já era
+permitido, e nenhum módulo depende do `Domain` de outro. O mapa `direcaoPermitidaEntreModulos()`
+está vazio (`[Cadastro => [], Pessoas => []]`); a linha "`Fechamento` pode depender de `Cadastro`"
+acima entra no mapa quando o módulo nascer, restrita a `App\Fechamento → App\Cadastro\Application`.
+O Deptrac não enxerga dependência entre módulos na mesma camada; quem trava é o Pest Arch em
+`backend/tests/Arch/ArquiteturaTest.php`, que também proíbe `App\Compartilhado` de usar módulo.
 
 ### Ordem de entrega (strangler; cada passo deixa o sistema funcionando)
 

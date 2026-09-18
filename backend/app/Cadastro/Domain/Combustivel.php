@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Cadastro\Domain;
 
 use App\Compartilhado\PertenceAoPosto;
+use App\Compartilhado\Posto;
 use Database\Factories\CombustivelFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
