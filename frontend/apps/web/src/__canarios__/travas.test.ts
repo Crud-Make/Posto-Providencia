@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { comparar, parseTsc } from '../../../../scripts/catraca.mjs';
+import { ARGS_ESLINT, comparar, parseTsc } from '../../../../scripts/catraca.mjs';
 
 /**
  * Canários das travas de lint (PROC-5 de `docs/arquitetura/regras.md`).
@@ -72,7 +72,11 @@ describe('canário: FSD, promise solta e booleano estrito (18/09)', () => {
   });
 
   it('import de arquivo interno em vez da Public API', () => {
-    expect(linhasDe('no-restricted-imports')).toEqual([4]);
+    expect(linhasDe('no-restricted-imports')).toContain(4);
+  });
+
+  it('import de arquivo interno pelo alias @/ (o tsconfig tem @/* e @widgets/*)', () => {
+    expect(linhasDe('no-restricted-imports')).toEqual([4, 6]);
   });
 
   it('legado fora das camadas continua livre (strangler)', () => {
@@ -80,11 +84,40 @@ describe('canário: FSD, promise solta e booleano estrito (18/09)', () => {
   });
 
   it('promise solta', () => {
-    expect(linhasDe('@typescript-eslint/no-floating-promises')).toEqual([11]);
+    expect(linhasDe('@typescript-eslint/no-floating-promises')).toEqual([12]);
   });
 
   it('número como condição — o R$ 0,00 falsy', () => {
-    expect(linhasDe('@typescript-eslint/strict-boolean-expressions')).toEqual([14]);
+    expect(linhasDe('@typescript-eslint/strict-boolean-expressions')).toEqual([15]);
+  });
+}, 120_000);
+
+describe('canário: eslint-disable não esconde erro da catraca (18/09)', () => {
+  const fixture = path.join(RAIZ, 'apps/web/src/__canarios__/eslint-disable.fixture.ts');
+  /** Linhas de no-explicit-any que o eslint acusa no fixture com estes argumentos. */
+  function linhasAny(args: string[]): number[] {
+    let saida = '';
+    try {
+      saida = execFileSync('bunx', ['eslint', ...args, '--no-ignore', fixture], {
+        cwd: RAIZ,
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (erro) {
+      saida = String((erro as { stdout?: string }).stdout ?? '');
+    }
+    const resultado = JSON.parse(saida) as Array<{ messages: Array<{ ruleId: string | null; line: number }> }>;
+    return (resultado[0]?.messages ?? [])
+      .filter((m) => m.ruleId === '@typescript-eslint/no-explicit-any')
+      .map((m) => m.line);
+  }
+
+  it('com os argumentos da catraca, os dois any suprimidos aparecem', () => {
+    expect(linhasAny([...ARGS_ESLINT])).toEqual([4, 6]);
+  });
+
+  it('sem --no-inline-config eles somem — prova de que o fixture esconde de verdade', () => {
+    expect(linhasAny(ARGS_ESLINT.filter((a) => a !== '--no-inline-config'))).toEqual([]);
   });
 }, 120_000);
 

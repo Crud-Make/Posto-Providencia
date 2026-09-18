@@ -7,13 +7,55 @@
 # Roda a suíte INTEIRA, não só o que mudou — "o sistema está rodando" é uma afirmação sobre o
 # sistema, não sobre o diff. Push é raro; esperar aqui é barato perto de derrubar o Elias.
 #
+# ── O QUE ESTE HOOK TESTA (corrigido em 18/09/2026) ───────────────────────────
+# Antes, ele testava a ÁRVORE CHECADA OUT, não o que estava subindo. Dava para publicar uma
+# branch quebrada estando com outra sadia no working tree, e ele imprimia "✓ sistema verde".
+# Mesmo falso-verde que já custou caro aqui: gate que roda, fica verde, e não olhou o que devia.
+#
+# O git entrega no STDIN uma linha por ref sendo empurrada:
+#     <ref local> <sha local> <ref remoto> <sha remoto>
+# A versão antiga lia esse stdin só para barrar a `main` e DESCARTAVA o resto.
+#
+# Agora, para cada ref, cria um worktree temporário NAQUELE commit e testa lá — inclusive
+# quando o sha é o HEAD. Testar "aqui mesmo" parece atalho e não é: o working tree carrega o
+# que não foi commitado, e o que sobe é o commit. Canário de 18/09: commit com Pest vermelho
+# e árvore verde saía "push liberado".
+#
+# O worktree ganha dependências INSTALADAS, nunca em symlink (canário 18/09):
+#   • backend/vendor linkado: o autoload do Composer resolve $baseDir pelo caminho real do
+#     vendor, então carrega App\ e Tests\ da árvore de ORIGEM — testa o código errado.
+#   • frontend/node_modules linkado: @posto/utils é link relativo `../../packages/utils`, que
+#     resolve dentro da árvore de ORIGEM — o golden dos apps testaria o utils errado.
+# Custa ~1 min a mais por push. Push é raro.
+#
+# Teste do próprio hook, com os canários: scripts/hooks/testa-pre-push.sh
+#
 # Instalar: scripts/instala-hooks.sh
 #
 # Emergência: `git push --no-verify` passa por cima (é do git, não dá para impedir). Se você
 # usar, o combinado é dizer no PR por que usou.
 
 raiz="$(git rev-parse --show-toplevel)"
+ZERO="0000000000000000000000000000000000000000"
 falhou=0
+
+# O stdin só pode ser lido uma vez. Guarda em arquivo para poder percorrer duas vezes sem
+# subshell — `while ... done < arquivo` preserva as variáveis, `cmd | while` não.
+refs="$(mktemp)"
+worktrees_arq="$(mktemp)"
+temporarios_arq="$(mktemp)"
+cat > "$refs"
+limpar() {
+    cd "$raiz" || true
+    while read -r wt; do
+        [ -n "$wt" ] && git worktree remove --force "$wt" >/dev/null 2>&1
+    done < "$worktrees_arq"
+    while read -r f; do
+        [ -n "$f" ] && rm -f "$f"
+    done < "$temporarios_arq"
+    rm -f "$refs" "$worktrees_arq" "$temporarios_arq"
+}
+trap limpar EXIT INT TERM
 
 # ── 1. main é proibida (CLAUDE.md §0) ──────────────────────────────────────────
 while read -r _ref_local _sha_local ref_remoto _sha_remoto; do
@@ -24,37 +66,123 @@ while read -r _ref_local _sha_local ref_remoto _sha_remoto; do
             exit 1
             ;;
     esac
-done
+done < "$refs"
 
-# ── 2. o lado TS tem de estar verde ────────────────────────────────────────────
-if [ -d "$raiz/frontend" ]; then
-    cd "$raiz/frontend" || exit 1
+# ── 2. os gates, rodados sobre uma raiz qualquer ───────────────────────────────
+# A saída de cada gate vai para um log; se ele reprova, as últimas linhas aparecem — "reprovou"
+# sem dizer por quê fazia o dono caçar o gate caído à mão.
+# $1 = raiz a testar · $2 = rótulo para as mensagens
+gate() {
+    rotulo_gate="$1"
+    shift
+    log="$(mktemp)"
+    echo "$log" >> "$temporarios_arq"
+    if "$@" >"$log" 2>&1; then
+        return 0
+    fi
+    echo "[pre-push] ✗ $rotulo_gate reprovou. Últimas linhas:"
+    tail -n 25 "$log" | sed 's/^/[pre-push]     /'
+    return 1
+}
 
-    echo "[pre-push] oxlint (inclui o gate de complexidade do §6)…"
-    bun run lint >/dev/null 2>&1 || { echo "[pre-push] ✗ oxlint reprovou — rode 'bun run lint'"; falhou=1; }
+rodar_gates() {
+    alvo="$1"
+    rotulo="$2"
+    local_falhou=0
 
-    echo "[pre-push] type-check…"
-    bun run type-check >/dev/null 2>&1 || { echo "[pre-push] ✗ type-check reprovou"; falhou=1; }
+    if [ -d "$alvo/frontend" ]; then
+        cd "$alvo/frontend" || return 1
 
-    echo "[pre-push] testes unitários (vitest)…"
-    bun run test >/dev/null 2>&1 || { echo "[pre-push] ✗ 'bun run test' reprovou"; falhou=1; }
+        echo "[pre-push] $rotulo · oxlint (inclui o gate de complexidade do §6)…"
+        gate "oxlint ('bun run lint')" bun run lint || local_falhou=1
 
-    # O golden é a trava do dinheiro. NUNCA trocar por 'bun test' puro: ele varre o repo
-    # inteiro, tenta executar os arquivos de vitest e falha por motivo que não é bug.
-    echo "[pre-push] golden masters (bun run test:golden)…"
-    bun run test:golden >/dev/null 2>&1 || {
-        echo "[pre-push] ✗ GOLDEN MASTER REPROVOU — alguma fórmula de dinheiro mudou de resultado."
-        echo "[pre-push]   Isto não se resolve ajustando o teste. Rode 'bun run test:golden' e leia."
+        echo "[pre-push] $rotulo · type-check…"
+        gate "type-check" bun run type-check || local_falhou=1
+
+        echo "[pre-push] $rotulo · testes unitários (vitest)…"
+        gate "vitest ('bun run test')" bun run test || local_falhou=1
+
+        # O golden é a trava do dinheiro. NUNCA trocar por 'bun test' puro: ele varre o repo
+        # inteiro, tenta executar os arquivos de vitest e falha por motivo que não é bug.
+        echo "[pre-push] $rotulo · golden masters (bun run test:golden)…"
+        gate "GOLDEN MASTER — alguma fórmula de dinheiro mudou de resultado. Não se resolve ajustando o teste" \
+            bun run test:golden || local_falhou=1
+    fi
+
+    if [ -f "$alvo/backend/composer.json" ]; then
+        cd "$alvo/backend" || return 1
+        echo "[pre-push] $rotulo · composer gates (Pint, PHPStan, PHPMD, Deptrac, Pest)…"
+        gate "'composer gates' (rode em backend/)" composer gates || local_falhou=1
+    fi
+
+    cd "$raiz" || return 1
+    return "$local_falhou"
+}
+
+# Worktree novo não herda `node_modules`, `vendor/`, `docs/data` nem o `.env`. Código de
+# terceiro é INSTALADO (ver cabeçalho: symlink testa a árvore de origem); só o que é dado
+# ou configuração local vem da raiz.
+# O que não é versionado vem desta árvore; se ela é um worktree que não tem, do checkout
+# principal. Imprime o caminho, ou nada.
+principal="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+de_onde() {
+    if [ -e "$raiz/$1" ]; then
+        echo "$raiz/$1"
+    elif [ -e "$principal/$1" ]; then
+        echo "$principal/$1"
+    fi
+}
+
+preparar_worktree() {
+    alvo="$1"
+
+    if [ -f "$alvo/frontend/package.json" ]; then
+        echo "[pre-push]   bun install no worktree…"
+        (cd "$alvo/frontend" && gate "bun install --frozen-lockfile" bun install --frozen-lockfile) || return 1
+    fi
+
+    if [ -f "$alvo/backend/composer.json" ]; then
+        # .env do backend não é versionado e o composer gates precisa dele.
+        env_origem="$(de_onde backend/.env)"
+        [ -n "$env_origem" ] && cp "$env_origem" "$alvo/backend/.env"
+        echo "[pre-push]   composer install no worktree…"
+        (cd "$alvo/backend" && gate "composer install" composer install --no-interaction --prefer-dist) || return 1
+    fi
+
+    # docs/data é dado real do posto (§6, gitignored), não código. Sem ele o golden não roda.
+    # Link é seguro aqui: o worktree é descartado no fim, nunca vira `git status` de ninguém.
+    dados="$(de_onde docs/data)"
+    if [ -n "$dados" ] && [ -d "$alvo/docs" ]; then
+        ln -sfn "$(readlink -f "$dados")" "$alvo/docs/data"
+    fi
+    return 0
+}
+
+# ── 3. testa CADA ref que está subindo, no commit que está subindo ─────────────
+while read -r _ref_local sha_local ref_remoto _sha_remoto; do
+    # Deleção de branch remota não tem árvore para testar.
+    [ "$sha_local" = "$ZERO" ] && continue
+    [ -z "$sha_local" ] && continue
+
+    nome="${ref_remoto#refs/heads/}"
+    echo "[pre-push] $nome ($(git rev-parse --short "$sha_local")) — testando o commit num worktree temporário."
+
+    wt="$(mktemp -d)"
+    rm -rf "$wt"
+    if ! git worktree add --detach --quiet "$wt" "$sha_local" 2>/dev/null; then
+        echo "[pre-push] ✗ não consegui criar worktree para $nome — não dá para afirmar que está verde."
         falhou=1
-    }
-fi
+        continue
+    fi
+    echo "$wt" >> "$worktrees_arq"
 
-# ── 3. o backend tem de passar nos gates ───────────────────────────────────────
-if [ -f "$raiz/backend/composer.json" ]; then
-    cd "$raiz/backend" || exit 1
-    echo "[pre-push] composer gates (Pint, PHPStan, PHPMD, Deptrac, Pest)…"
-    composer gates >/dev/null 2>&1 || { echo "[pre-push] ✗ 'composer gates' reprovou — rode em backend/"; falhou=1; }
-fi
+    if ! preparar_worktree "$wt"; then
+        echo "[pre-push] ✗ não consegui instalar as dependências de $nome — não dá para afirmar que está verde."
+        falhou=1
+        continue
+    fi
+    rodar_gates "$wt" "$nome" || falhou=1
+done < "$refs"
 
 if [ "$falhou" -ne 0 ]; then
     echo ""
@@ -65,5 +193,5 @@ if [ "$falhou" -ne 0 ]; then
     exit 1
 fi
 
-echo "[pre-push] ✓ sistema verde — push liberado."
+echo "[pre-push] ✓ sistema verde nos commits que sobem — push liberado."
 exit 0

@@ -135,6 +135,19 @@
 - Canários em `apps/web/src/__canarios__/travas.test.ts` e `testa-hooks.py`; teste de mutação
   confirmou que desligar as travas reprova 5 canários.
 
+
+- **Três furos da revisão, fechados com canário (18/09):**
+  - FSD: a regex da Public API só olhava `@widgets/x/…`; `@/widgets/x/ui/y` (o tsconfig tem os dois
+    aliases) passava. Nenhum import real furava — medido na varredura inteira.
+  - `eslint-disable` apagava o erro antes de a catraca contar. A catraca agora roda com
+    `--no-inline-config`: as **13** violações que comentários escondiam (9 arquivos, 12 comentários)
+    viraram dívida congelada **visível** — por isso a lista subiu com `--aceitar-divida`, sem erro novo.
+  - `pre-commit` julgava o working tree, não o índice: `git add` do erro + conserto sem `add` gravava o
+    erro. Agora extrai o índice (`git checkout-index`, ~0,2 s) e instala as dependências nele (bun
+    ~0,8 s; composer ~8 s, só com `.php`). `scripts/hooks/testa-pre-commit.sh`: 4 canários (índice
+    sujo × árvore suja, TS e PHP); o hook antigo reprova os dois de TS, o novo passa os quatro.
+  - Mutação: desfazer a regex ou o `--no-inline-config` derruba 1 canário cada.
+
 ### 🐘🐘 `backend/` nasceu: Laravel 13 no docker-compose com os quality gates de saída (#96)
 
 - `composer create-project laravel/laravel backend` (Laravel 13.32, PHP 8.5.10), a pedido do dono.
