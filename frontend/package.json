@@ -27,6 +27,7 @@
     "@supabase/supabase-js": "^2.97.0",
     "dotenv": "^16.4.7",
     "lucide-react": "^0.560.0",
+    "neverthrow": "^8.2.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-router-dom": "^7.12.0",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@babel/plugin-transform-react-jsx": "^7.28.6",
+    "@bufferings/eslint-plugin-neverthrow": "^0.3.0",
     "@eslint/js": "^9.39.1",
     "@types/bun": "^1.4.0",
     "@types/node": "^22.19.2",
