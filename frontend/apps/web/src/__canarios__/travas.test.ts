@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { ARGS_ESLINT, comparar, parseTsc } from '../../../../scripts/catraca.mjs';
 
 /**
  * Canários das travas de lint (PROC-5 de `docs/arquitetura/regras.md`).
@@ -53,3 +55,119 @@ describe('canário: neverthrow/must-use-result (RES-2)', () => {
     expect(acusacoes.length).toBe(1);
   });
 }, 120_000);
+
+describe('canário: FSD, promise solta e booleano estrito (18/09)', () => {
+  // O fixture mora DENTRO de uma camada (widgets/) porque a regra do boundaries só vale
+  // para arquivo classificado como elemento. Em apps/web/src/__canarios__ ele não acusaria.
+  const resultado = lintarFixture('apps/web/src/widgets/__canarios__/fsd.fixture.ts');
+  const mensagens = resultado[0]?.messages ?? [];
+  const linhasDe = (regra: string) => mensagens.filter((m) => m.ruleId === regra).map((m) => m.line);
+
+  it('camada de baixo importando a de cima (widget → page)', () => {
+    expect(linhasDe('boundaries/dependencies')).toContain(3);
+  });
+
+  it('slice vizinho da mesma camada (widget → widget)', () => {
+    expect(linhasDe('boundaries/dependencies')).toContain(4);
+  });
+
+  it('import de arquivo interno em vez da Public API', () => {
+    expect(linhasDe('no-restricted-imports')).toContain(4);
+  });
+
+  it('import de arquivo interno pelo alias @/ (o tsconfig tem @/* e @widgets/*)', () => {
+    expect(linhasDe('no-restricted-imports')).toEqual([4, 6]);
+  });
+
+  it('legado fora das camadas continua livre (strangler)', () => {
+    expect(mensagens.filter((m) => m.line === 5)).toEqual([]);
+  });
+
+  it('promise solta', () => {
+    expect(linhasDe('@typescript-eslint/no-floating-promises')).toEqual([12]);
+  });
+
+  it('número como condição — o R$ 0,00 falsy', () => {
+    expect(linhasDe('@typescript-eslint/strict-boolean-expressions')).toEqual([15]);
+  });
+}, 120_000);
+
+describe('canário: eslint-disable não esconde erro da catraca (18/09)', () => {
+  const fixture = path.join(RAIZ, 'apps/web/src/__canarios__/eslint-disable.fixture.ts');
+  /** Linhas de no-explicit-any que o eslint acusa no fixture com estes argumentos. */
+  function linhasAny(args: string[]): number[] {
+    let saida = '';
+    try {
+      saida = execFileSync('bunx', ['eslint', ...args, '--no-ignore', fixture], {
+        cwd: RAIZ,
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (erro) {
+      saida = String((erro as { stdout?: string }).stdout ?? '');
+    }
+    const resultado = JSON.parse(saida) as Array<{ messages: Array<{ ruleId: string | null; line: number }> }>;
+    return (resultado[0]?.messages ?? [])
+      .filter((m) => m.ruleId === '@typescript-eslint/no-explicit-any')
+      .map((m) => m.line);
+  }
+
+  it('com os argumentos da catraca, os dois any suprimidos aparecem', () => {
+    expect(linhasAny([...ARGS_ESLINT])).toEqual([4, 6]);
+  });
+
+  it('sem --no-inline-config eles somem — prova de que o fixture esconde de verdade', () => {
+    expect(linhasAny(ARGS_ESLINT.filter((a) => a !== '--no-inline-config'))).toEqual([]);
+  });
+}, 120_000);
+
+describe('canário: flags estritas do tsconfig', () => {
+  it('índice de array é T | undefined (noUncheckedIndexedAccess)', () => {
+    // Projeto temporário que HERDA o tsconfig real: se alguém desligar a flag lá, o
+    // erro some daqui e o teste falha.
+    const dir = mkdtempSync(path.join(RAIZ, '.canario-tsc-'));
+    try {
+      writeFileSync(path.join(dir, 'a.ts'), 'export const f = (xs: number[]): number => xs[0] + 1;\n');
+      writeFileSync(
+        path.join(dir, 'tsconfig.json'),
+        JSON.stringify({ extends: '../tsconfig.json', include: ['a.ts'], compilerOptions: { paths: {} } }),
+      );
+      let saida = '';
+      try {
+        execFileSync(path.join(RAIZ, 'node_modules/.bin/tsc'), ['--noEmit', '-p', dir], { encoding: 'utf-8' });
+      } catch (erro) {
+        saida = String((erro as { stdout?: string }).stdout ?? '');
+      }
+      expect(saida).toMatch(/TS2532|TS18048/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}, 120_000);
+
+describe('catraca: só erro novo reprova', () => {
+  const v = (arquivo: string, regra: string, linha = 1) => ({ arquivo, regra, linha, mensagem: '' });
+
+  it('dívida congelada passa', () => {
+    const r = comparar([v('a.ts', 'X'), v('a.ts', 'X', 2)], { 'a.ts|X': 2 });
+    expect(r.novas).toEqual([]);
+  });
+
+  it('um erro a mais da mesma regra no mesmo arquivo reprova', () => {
+    const r = comparar([v('a.ts', 'X'), v('a.ts', 'X', 2), v('a.ts', 'X', 3)], { 'a.ts|X': 2 });
+    expect(r.novas).toEqual([{ chave: 'a.ts|X', antes: 2, agora: 3 }]);
+  });
+
+  it('regra nova num arquivo com dívida reprova', () => {
+    expect(comparar([v('a.ts', 'Y')], { 'a.ts|X': 5 }).novas).toHaveLength(1);
+  });
+
+  it('erro de config do tsc (sem arquivo) não some na leitura', () => {
+    expect(parseTsc("error TS5023: Unknown compiler option 'x'.")).toHaveLength(1);
+  });
+
+  it('lint parcial não acusa baixa de arquivo fora do escopo', () => {
+    const r = comparar([], { 'a.ts|X': 1, 'b.ts|X': 1 }, (a) => a === 'a.ts');
+    expect(r.baixaram.map((b) => b.chave)).toEqual(['a.ts|X']);
+  });
+});

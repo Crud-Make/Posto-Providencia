@@ -7,6 +7,19 @@
     // avisa e desliga a regra). `packages/utils` — o módulo canônico do dinheiro, com os
     // 18 golden masters — já passava limpo; os 43 erros estavam todos em `apps/`.
     "strict": true,
+    // Ligadas em 18/09/2026 sob CATRACA (scripts/catraca.mjs). Abriram ~365 erros no
+    // código que já existia — quase todos de `noUncheckedIndexedAccess`, vários dentro de
+    // fórmula de dinheiro — e corrigir tudo de uma vez tocaria o dinheiro sem golden por
+    // arquivo. Os erros atuais estão congelados em `.catraca/tsc.json`; erro NOVO reprova
+    // o `type-check`, e a lista só pode diminuir.
+    //
+    // `module`/`moduleResolution` ficam em ESNext/bundler de propósito: o Vite resolve o
+    // import, não o Node. `NodeNext` exigiria extensão `.js` em todo import relativo.
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",
