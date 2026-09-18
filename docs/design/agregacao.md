@@ -1,6 +1,6 @@
 # Agregação — Design Doc
 
-Issue: #100 (mãe: #60) · Estado: **rascunho — decisões respondidas pela planilha em 17/09** · Data: 17/09/2026
+Issue: #100 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Revisado: 18/09/2026 (§2 e §3 alinhados à CA-7)
 
 > A issue que tira a fórmula de lucro de dentro do banco. Não é migração mecânica: as RPCs de hoje
 > **não calculam a mesma coisa entre si**, e portar qualquer uma "como está" carimba um número errado.
@@ -29,16 +29,28 @@ desta issue — é a issue parando de mentir. Precisa ser avisado antes, não de
 
 ## 2. Subsistema
 
-`App\Agregacao` — camada de leitura, sem escrita, sem Command. Consome `App\Cadastro\Domain` (#97) e
-as tabelas transacionais (`Leitura`, `Compra`, `Despesa`, `Fechamento`, `Recebimento`). Não conhece
-`App\Http` (Deptrac).
+`App\Agregacao` — modelo **só de leitura**, sem escrita, sem Command. Lê as tabelas (`Leitura`,
+`Compra`, `Despesa`, `Combustivel`, `Fechamento`, `Recebimento`) com o **query builder**
+(`DB::table`, `SUM`/`GROUP BY` no Postgres), sem importar model de nenhum módulo.
+
+Por quê (decisão do dono, 18/09/2026): a regra do `fase-a-laravel.md` §2 — módulos só se falam por
+`Application` — **não ganha exceção** (CA-7). A versão anterior deste parágrafo dizia "consome
+`App\Cadastro\Domain`", o que seria `Agregacao → Cadastro\Domain`. E `Leitura`, `Compra` e
+`Despesa` pertencem a módulos que ainda não existem (Fechamento, Financeiro), então não há
+`Application` deles para chamar. Agregado de leitura sobre tabela é o caminho que cumpre a regra: o
+contrato de dado é o esquema (`banco/init/01-esquema-base.sql`), não a classe de outro módulo.
+
+No mapa do Pest Arch (`direcaoPermitidaEntreModulos()`), `Agregacao => []`.
 
 ## 3. Componentes
 
 - `App\Agregacao\Application\DadosDoPeriodo` — monta o agregado bruto por produto. **Não calcula lucro.**
 - `App\Agregacao\Application\DadosDoMes` — o mesmo, quebrado por dia.
-- `App\Http\Controllers\AgregacaoController` + Resources.
-- Nada em `Domain`: não há entidade nova, só leitura agregada sobre as existentes.
+- `App\Agregacao\Http\Controllers\AgregacaoController` + `App\Agregacao\Http\Resources\*` (layout
+  modular `App\<Modulo>\{Http,Application,Domain}`; não existe `App\Http\Controllers` de módulo).
+- Nada em `Domain`: não há entidade nova, só leitura agregada sobre as tabelas existentes.
+- Quem escreve código que soma ou calcula dinheiro, aqui e no `aggregator.service.ts`, é o **Fable**
+  (decisão do dono, 18/09/2026; hook `so-fable-na-formula.py`).
 
 ## 4. Comportamento
 
