@@ -52,17 +52,17 @@ it('resolve todas as relações do cadastro contra o esquema real', function ():
 
     // filhos → posto
     foreach ([$combustivel, $tanque, $bomba, $bico, $turno, $frentista, $forma, $maquininha, $fornecedor] as $filho) {
-        expect($filho->posto->is($posto))->toBeTrue($filho::class.' não chegou ao posto');
+        expect($filho->posto?->is($posto))->toBeTrue($filho::class.' não chegou ao posto');
     }
 
     // cadeia combustível → tanque → bico → bomba
     expect($combustivel->tanques->pluck('id')->all())->toBe([$tanque->id])
         ->and($combustivel->bicos->pluck('id')->all())->toBe([$bico->id])
-        ->and($tanque->combustivel->is($combustivel))->toBeTrue()
+        ->and($tanque->combustivel?->is($combustivel))->toBeTrue()
         ->and($tanque->bicos->pluck('id')->all())->toBe([$bico->id])
         ->and($bomba->bicos->pluck('id')->all())->toBe([$bico->id])
-        ->and($bico->bomba->is($bomba))->toBeTrue()
-        ->and($bico->combustivel->is($combustivel))->toBeTrue()
+        ->and($bico->bomba?->is($bomba))->toBeTrue()
+        ->and($bico->combustivel?->is($combustivel))->toBeTrue()
         ->and($bico->tanque?->is($tanque))->toBeTrue();
 
     // turno ↔ frentista
@@ -72,8 +72,8 @@ it('resolve todas as relações do cadastro contra o esquema real', function ():
     // usuário ↔ posto
     expect($usuario->postos->pluck('id')->all())->toBe([$posto->id])
         ->and($usuario->vinculos->pluck('id')->all())->toBe([$vinculo->id])
-        ->and($vinculo->usuario->is($usuario))->toBeTrue()
-        ->and($vinculo->posto->is($posto))->toBeTrue()
+        ->and($vinculo->usuario?->is($usuario))->toBeTrue()
+        ->and($vinculo->posto?->is($posto))->toBeTrue()
         ->and($vinculo->role)->toBe(PapelNoPosto::Gerente);
 });
 

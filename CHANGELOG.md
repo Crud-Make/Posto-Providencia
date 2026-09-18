@@ -2,6 +2,22 @@
 
 ## [Não Lançado]
 
+### 🐘 Travas do backend: Pest Arch, PHPStan 9, Eloquent estrito e hook do Claude
+
+- `tests/Arch/ArquiteturaTest.php` (suíte `Arch` no phpunit.xml): strict_types em todo `app/`, sem
+  `dd`/`dump`/`ray`, `env()` só em config, sem função insegura (eval, md5, rand, unserialize…),
+  controller sem model e sem `Request` cru, controller com sufixo, enum string-backed. Namespaces
+  de módulo descobertos no disco. Mutação: toda regra reprova com a violação plantada.
+- Dois gates mortos achados por mutação: `expect([lista de namespaces])` e a forma com closure
+  `arch('…', fn () => …)` passam VERDE com violação. Só a forma encadeada, um namespace por regra.
+- PHPStan 6 → **9**. 8 erros reais corrigidos (7 testes com `->is()` em relação anulável, `/saude`
+  com `mixed`); `tests/Arch` fora da análise, com o motivo no phpstan.neon.
+- `AppServiceProvider`: `preventLazyLoading`, `preventAccessingMissingAttributes`,
+  `preventSilentlyDiscardingAttributes` fora de produção; `Http::preventStrayRequests()` em todo
+  teste. Canários em `tests/Feature/TravasDoEloquentTest.php` (4/4 reprovam com as travas desligadas).
+- `pre-commit` roda Pest Arch com `.php` no índice. Hook do Claude `trava-php.py`: Pint (corrige),
+  PHPStan, PHPMD, Deptrac `--no-cache` e Pest Arch no arquivo editado (~5,5 s), exit 2 se reprovar.
+
 ### 🧱 Módulo Cadastro no backend: models, escopo por posto, policy e catálogo só leitura (#97)
 
 - `App\Cadastro\Domain` (Posto, Combustivel, Tanque, Bomba, Bico, Turno, Frentista,

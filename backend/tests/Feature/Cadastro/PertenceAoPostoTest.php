@@ -36,7 +36,7 @@ it('ao criar sem posto_id, preenche com o posto atual', function (): void {
     $bomba = Bomba::factory()->create(['posto_id' => null]);
 
     expect($bomba->posto_id)->toBe($a->id)
-        ->and($bomba->posto->is($a))->toBeTrue();
+        ->and($bomba->posto?->is($a))->toBeTrue();
 });
 
 it('withoutGlobalScope continua sendo a porta explícita para ver outros postos', function (): void {

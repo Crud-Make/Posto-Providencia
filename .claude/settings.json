@@ -113,6 +113,17 @@
         ]
       },
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/trava-php.py\"",
+            "timeout": 120,
+            "statusMessage": "Gates do backend no arquivo PHP editado"
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit|NotebookEdit|Bash|mcp__supabase__execute_sql|mcp__supabase__apply_migration",
         "hooks": [
           {
