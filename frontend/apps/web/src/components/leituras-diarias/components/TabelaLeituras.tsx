@@ -12,6 +12,45 @@ interface TabelaLeiturasProps {
   leiturasHook: UseLeiturasReturn;
 }
 
+/**
+ * Em que estado está a leitura de um bico. Antes eram três booleanos
+ * (`isInvalid`/`isVeryHigh`/`isValid`) recombinados numa cascata de ternários
+ * repetida em três slots de estilo — sozinha, a repetição levava a função a
+ * CCN 25, acima do teto de 20 do gate. São quatro estados mutuamente
+ * exclusivos, então viram um valor só e uma tabela.
+ */
+type EstadoDaLeitura = 'invalido' | 'alto' | 'valido' | 'neutro';
+
+const estadoDaLeitura = (litros: number, fechamento: string, volumeAlto: boolean): EstadoDaLeitura => {
+  if (litros < 0) return 'invalido';
+  if (volumeAlto) return 'alto';
+  if (fechamento !== '' && fechamento !== '0,000') return 'valido';
+  return 'neutro';
+};
+
+const ESTILO_POR_ESTADO: Record<EstadoDaLeitura, { cartao: string; campo: string; rodape: string }> = {
+  invalido: {
+    cartao: 'border-red-300 ring-1 ring-red-100',
+    campo: 'text-red-600 border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100',
+    rodape: 'border-red-100 text-red-600',
+  },
+  alto: {
+    cartao: 'border-yellow-300 ring-1 ring-yellow-100',
+    campo: 'text-yellow-700 border-yellow-300 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100',
+    rodape: 'border-yellow-100 text-yellow-700',
+  },
+  valido: {
+    cartao: 'border-green-200 ring-1 ring-green-50',
+    campo: 'text-green-700 border-green-300 focus:border-green-500 focus:ring-2 focus:ring-green-100',
+    rodape: 'border-gray-100 text-gray-500',
+  },
+  neutro: {
+    cartao: 'border-gray-200 hover:border-blue-200',
+    campo: 'text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100',
+    rodape: 'border-gray-100 text-gray-500',
+  },
+};
+
 export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({ groups, leiturasHook }) => {
   const { 
     leituras, 
@@ -55,21 +94,18 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({ groups, leituras
               
               // Validações visuais
               const litrosVal = resLitros.value;
-              const isInvalid = litrosVal < 0; // Leitura menor que inicial
-              const isVeryHigh = !isInvalid && isVolumeHigh(litrosVal);
-              const isValid = !isInvalid && !isVeryHigh && fechamento !== '' && fechamento !== '0,000';
+              const estado = estadoDaLeitura(litrosVal, fechamento, isVolumeHigh(litrosVal));
+              const estilo = ESTILO_POR_ESTADO[estado];
+              const isInvalid = estado === 'invalido';
+              const isVeryHigh = estado === 'alto';
+              const isValid = estado === 'valido';
               
               const corProduto = corDoProduto(bico.combustivel.codigo);
 
               return (
                 <div 
                   key={bico.id} 
-                  className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all duration-300 ${
-                    isInvalid ? 'border-red-300 ring-1 ring-red-100' :
-                    isVeryHigh ? 'border-yellow-300 ring-1 ring-yellow-100' :
-                    isValid ? 'border-green-200 ring-1 ring-green-50' :
-                    'border-gray-200 hover:border-blue-200'
-                  }`}
+                  className={`bg-white rounded-xl border shadow-sm overflow-hidden transition-all duration-300 ${estilo.cartao}`}
                 >
                   <div className="flex flex-col sm:flex-row h-full">
                     {/* Fuel Indicator Strip */}
@@ -107,24 +143,15 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({ groups, leituras
                             value={fechamento}
                             onChange={(e) => alterarFechamento(bico.id, e.target.value)}
                             onBlur={() => aoSairFechamento(bico.id)}
-                            className={`w-full text-lg font-mono font-bold bg-white border rounded-lg px-3 py-2 outline-none transition-all ${
-                              isInvalid ? 'text-red-600 border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100' :
-                              isVeryHigh ? 'text-yellow-700 border-yellow-300 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100' :
-                              isValid ? 'text-green-700 border-green-300 focus:border-green-500 focus:ring-2 focus:ring-green-100' :
-                              'text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                            }`}
+                            className={`w-full text-lg font-mono font-bold bg-white border rounded-lg px-3 py-2 outline-none transition-all ${estilo.campo}`}
                             placeholder="0,000"
                           />
                         </div>
                       </div>
 
                       {/* Calculations / Feedback */}
-                      {(isValid || isInvalid || isVeryHigh) && (
-                        <div className={`mt-4 pt-3 border-t flex items-center justify-between text-sm ${
-                          isInvalid ? 'border-red-100 text-red-600' :
-                          isVeryHigh ? 'border-yellow-100 text-yellow-700' :
-                          'border-gray-100 text-gray-500'
-                        }`}>
+                      {estado !== 'neutro' && (
+                        <div className={`mt-4 pt-3 border-t flex items-center justify-between text-sm ${estilo.rodape}`}>
                           <div className="flex items-center gap-4">
                             <div className="flex items-center gap-1.5">
                               <Droplet size={14} className={isValid ? 'text-blue-500' : 'currentColor'} />
