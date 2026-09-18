@@ -70,3 +70,11 @@ branch errada (`fase-a`) porque um comando anterior falhou no meio — restaurad
 **Regra minha:** `git branch --show-current` antes de qualquer reset; nunca encadear checkout+reset num
 comando que pode falhar antes.
 
+**17/09 — fase-a completa e #97 em PR.** Mescladas na `fase-a`: #107 (esquema/regras), #109 (backend →
+entrou na branch da #95), #110 (raiz + backend). A #108 foi FECHADA pelo GitHub quando a base sumiu e
+não reabre — lição: **em pilha de PRs, mesclar de cima para baixo ou nunca apagar a branch-base antes
+de reapontar**. #97 (módulo Cadastro: 12 models gerados do catálogo, `PertenceAoPosto`+`PostoAtual`,
+`PostoPolicy`, catálogo só leitura, 28 testes contra o Postgres real, cobertura 100 %) na PR #111 →
+fase-a. Testes de Feature do backend rodam no Postgres do compose com `DatabaseTransactions`: sem
+isso gravam de verdade (aconteceu: 37 postos sintéticos, banco zerado e ressemeado). Próxima: #98 (OCR).
+
