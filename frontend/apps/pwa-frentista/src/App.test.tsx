@@ -258,3 +258,98 @@ describe('PWA do frentista — data e envios do dia', () => {
         expect(botaoEnviar().textContent).toContain('Toque de novo');
     });
 });
+
+/**
+ * Cinto do payload gravado em `FechamentoFrentista` (19/09/2026, passo 5 da refatoração
+ * FSD do pwa). `valor_conferido` e `diferenca_calculada` são lidos pelo painel
+ * (aggregator, histórico) e pelo Laravel; até aqui os testes só afirmavam
+ * `toHaveBeenCalled`, então uma mudança no objeto passava em silêncio. Estes dois casos
+ * afirmam o objeto EXATO — chave a chave — antes de qualquer linha do envio se mover
+ * de `App.tsx`. Valores esperados calculados à mão pela skill `fechamento-posto-providencia`:
+ * conferido = soma dos 7 meios; diferenca = encerrante − conferido (positivo = FALTA).
+ */
+describe('PWA do frentista — payload exato do envio', () => {
+    /** Os 8 campos "0,00" na ordem da tela: encerrante e os 7 meios. */
+    const CAMPO = { encerrante: 0, pix: 1, dinheiro: 2, moedas: 3, baratao: 4, notaPrazo: 5, debito: 6, credito: 7 } as const;
+
+    const campoValor = (indice: number): HTMLInputElement => {
+        const campos = container.querySelectorAll<HTMLInputElement>('input[placeholder="0,00"]');
+        const campo = campos[indice];
+        if (campos.length !== 8 || campo === undefined) {
+            throw new Error(`esperava 8 campos "0,00" na tela do Registro, achei ${campos.length}`);
+        }
+        return campo;
+    };
+
+    /** O que o App monta sem nenhum meio digitado: só os campos que a tela sempre preenche. */
+    const payloadBase = {
+        fechamento_id: 1,
+        frentista_id: 1,
+        posto_id: 1,
+        valor_pix: 0,
+        valor_dinheiro: 0,
+        valor_moedas: 0,
+        baratao: 0,
+        valor_nota: 0,
+        valor_cartao_debito: 0,
+        valor_cartao_credito: 0,
+        valor_cartao: 0,
+        observacoes: 'Fechamento via PWA Frentista',
+    };
+
+    beforeEach(() => {
+        localStorage.clear();
+        localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
+        mocks.getEnviosDoDia.mockReset().mockResolvedValue([]);
+        mocks.getOrCreateFechamento.mockReset().mockResolvedValue(1);
+        mocks.submitFrentistaClosing.mockReset().mockResolvedValue({});
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+    });
+
+    afterEach(() => {
+        act(() => root.unmount());
+        container.remove();
+        localStorage.clear();
+    });
+
+    it('sem quebra: encerrante 1.000,00 = pix 300,00 + dinheiro 700,00 → conferido 1000, diferença 0', async () => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+        digitar(campoValor(CAMPO.pix), '30000');
+        digitar(campoValor(CAMPO.dinheiro), '70000');
+
+        await clicar(botaoEnviar());
+
+        // Turno canônico único (1) e posto 1: o frentista não escolhe turno.
+        expect(mocks.getOrCreateFechamento).toHaveBeenCalledWith(1, hojeIso(), 1);
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledTimes(1);
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledWith({
+            ...payloadBase,
+            encerrante: 1000,
+            valor_pix: 300,
+            valor_dinheiro: 700,
+            valor_conferido: 1000,
+            diferenca_calculada: 0,
+        });
+    });
+
+    it('quebra: encerrante 1.000,00 e só dinheiro 950,50 → conferido 950.5, diferença +49.5 (falta); campos vazios viram 0', async () => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+        digitar(campoValor(CAMPO.dinheiro), '95050');
+
+        await clicar(botaoEnviar());
+
+        expect(mocks.getOrCreateFechamento).toHaveBeenCalledWith(1, hojeIso(), 1);
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledTimes(1);
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledWith({
+            ...payloadBase,
+            encerrante: 1000,
+            valor_dinheiro: 950.5,
+            valor_conferido: 950.5,
+            diferenca_calculada: 49.5,
+        });
+    });
+});

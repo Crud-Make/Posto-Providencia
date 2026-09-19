@@ -96,6 +96,14 @@ rodar_gates() {
         echo "[pre-push] $rotulo · oxlint (inclui o gate de complexidade do §6)…"
         gate "oxlint ('bun run lint')" bun run lint || local_falhou=1
 
+        # oxlint lê sintaxe, não tipos: `any`, neverthrow, promise solta, FSD, throw em regra de
+        # negócio e toISOString só o ESLint type-aware vê. Até 19/09 o push subia sem ele — o
+        # pre-commit lintava só os arquivos do índice e o CI era a primeira passada completa
+        # (regras.md, "Ordem de implementação", item 2). Pela catraca: dívida congelada passa,
+        # erro novo reprova. Custo medido: ~65 s na base de 19/09.
+        echo "[pre-push] $rotulo · ESLint type-aware, passada completa (catraca)…"
+        gate "ESLint (catraca, 'bun run lint:eslint')" bun run lint:eslint || local_falhou=1
+
         echo "[pre-push] $rotulo · type-check…"
         gate "type-check" bun run type-check || local_falhou=1
 

@@ -9,7 +9,7 @@ import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
 import { abaSecundaria } from './screens/aba-secundaria';
-import ReloadPrompt from './components/ReloadPrompt';
+import { ReloadPrompt } from '@frentista/shared/ui';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
 import { reduzirParaAvatar, iniciais } from './lib/foto';
 import { hojeIso } from '@posto/utils';

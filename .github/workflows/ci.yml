@@ -46,6 +46,13 @@ jobs:
       - name: Build
         run: bun run build
 
+      # O PWA do frentista está em produção com dinheiro real e, até 19/09/2026, nenhum gate o
+      # compilava: o `build` acima é só o apps/web. Um import que resolve por hoisting local
+      # mas não no deploy só aparecia na Vercel.
+      - name: Build (pwa-frentista)
+        run: bun run build
+        working-directory: frontend/apps/pwa-frentista
+
   backend:
     # Quality gates do CLAUDE.md §6 para o Laravel (backend/): Pint, PHPStan, PHPMD, Deptrac, Pest.
     # Cobertura mínima (85 %) entra quando houver código de domínio para cobrir (#97).

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '@frentista/shared/api';
 import { criarAcessoEncerrante } from '@posto/api-core';
 import { hojeIso } from '@posto/utils';
 

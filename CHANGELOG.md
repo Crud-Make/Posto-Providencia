@@ -2,6 +2,27 @@
 
 ## [Não Lançado]
 
+### 🧱 PWA do frentista rumo ao FSD — fatia mínima: travas das regras ligadas com canário, primeiros arquivos em `shared/`
+
+- **As regras de `docs/arquitetura/regras.md` passam a valer no `pwa-frentista`, cada uma com trava e canário**
+  (`apps/pwa-frentista/src/__canarios__/travas.test.ts`, 15 testes). A regra de camada e a de slice vizinho
+  (FSD-1/2) passam a valer no pwa pelo `boundaries`; a Public API (FSD-3) também por `@frentista/` e `./`; ficam proibidos
+  o import de outro app (FSD-5), o import relativo profundo (FSD-6) e o `enum` (TS-8); throw e try/catch fora da borda
+  `shared/api` (RES-1/3) também, em `pages`, `widgets`, `features`, `entities`, `shared/lib` e `shared/ui`. Todas entraram
+  com dívida zero.
+- **Alias próprio `@frentista/*`.** O `@/` significava o PWA no build e o web no type-check e no vitest,
+  então um `@/` escrito no PWA passava no build e era conferido contra o app errado. Agora `@/` é só o web.
+- **Caminhos de entrada fechados:** o pre-push passa a rodar o ESLint, o pre-commit passa a rodar o type-check
+  (~1 min por commit de `.ts`, medido) e o CI passa a compilar o PWA, que nenhum gate compilava. `neverthrow` e
+  `zod` entram no `package.json` do PWA. Os hooks só mudam em `.git/hooks` depois de reinstalados.
+- **Teste do payload do envio:** afirma o objeto exato gravado em `FechamentoFrentista` (sem quebra e com falta
+  de R$ 49,50) antes de qualquer linha de dinheiro mudar de lugar. Nenhuma fórmula mudou, e `packages/utils` e o golden
+  ficaram intocados.
+- **Primeiros `git mv`:** `lib/supabase.ts` foi para `shared/api` e `components/ReloadPrompt.tsx` para `shared/ui/reload-prompt.tsx`,
+  cada um com `index.ts` e a dívida do arquivo zerada; a catraca do ESLint desce de 621 para 616 (no pwa, de 34 para 29).
+- **`regras.md` reescrito com o estado real de 19/09**, com a tabela regra → trava → arquivo → antes/depois do pwa;
+  FSD-4, TS-5, TS-7, TS-10 e o Result com código real ficam como pendentes dos próximos passos, não como exceção.
+
 ### 🧾 Fechamento diário pela API — fatias P4a/P4b da #103 (item 1): catálogo do módulo pelas rotas da #97
 
 - **Frentistas, bicos e formas de pagamento do `fechamento-diario` vêm da API Laravel quando

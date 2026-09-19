@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { RefreshCw } from 'lucide-react'
 
-function ReloadPrompt() {
+export function ReloadPrompt() {
     const {
         needRefresh: [needRefresh],
         updateServiceWorker,
@@ -10,10 +10,11 @@ function ReloadPrompt() {
         onRegisteredSW(swUrl, r) {
             console.log('SW Registered:', swUrl)
             if (r) {
-                // Checa atualizações a cada 15 segundos
+                // Checa atualizações a cada 15 segundos. `void`: a checagem é disparar-e-seguir
+                // de propósito — falha de rede aqui não tem tratamento, a próxima tenta de novo.
                 setInterval(() => {
                     console.log('Verificando atualizações...')
-                    r.update()
+                    void r.update()
                 }, 15 * 1000)
             }
         },
@@ -34,8 +35,9 @@ function ReloadPrompt() {
     useEffect(() => {
         if (!needRefresh) return
         const t = setInterval(() => {
-            if (!window.__encerranteBusy) {
-                updateServiceWorker(true)
+            // A flag é opcional (`boolean | undefined`): ausente conta como "livre".
+            if (window.__encerranteBusy !== true) {
+                void updateServiceWorker(true)
             }
         }, 1500)
         return () => clearInterval(t)
@@ -57,5 +59,3 @@ function ReloadPrompt() {
         </div>
     )
 }
-
-export default ReloadPrompt
