@@ -3,7 +3,7 @@
 > Mapa vivo exigido pelo `CLAUDE.md` §3. Atualizado a cada refatoração pelo subagente
 > `doc-cycle-onboard` (ele propõe, a thread aplica). Levantamento completo e datado em
 > [`.claude/docs/mapa-do-sistema-17-09-2026.md`](../.claude/docs/mapa-do-sistema-17-09-2026.md).
-> **Última atualização:** 18/09/2026 (#103 item 1, fatias P0–P3: nasce `App\Fechamento` só com `Domain` de leitura — 4 models, sem Application, Http nem rota — e `'Fechamento' => []` no Pest Arch com canário; `fechamento-diario` ganha Public API `index.ts` e `leituras-diarias` passa a importar por ela; ver `docs/design/fechamento-diario-api.md`). Anterior: 18/09/2026 (#100 fatia 2: o dashboard do dono passa a ler `GET /api/postos/{posto}/dashboard` quando `VITE_API_URL` está definida — `services/api/dashboard.api.ts` + `insumosDaApi` em `aggregator.service.ts`; tela mista em `localhost`; ver `docs/design/agregacao.md`).
+> **Última atualização:** 19/09/2026 (#103 item 1, fatias P4a/P4b: o catálogo do `fechamento-diario` — frentistas, bicos e formas de pagamento — passa a vir das rotas da #97 quando `VITE_API_URL` está definida, via `services/api/{frentista,bico,formaPagamento}.api.ts` (Zod + `ResultAsync`, filtro `ativo` no cliente), trocado no call site dos hooks e nunca dentro dos services partilhados com o `aggregator`; leituras, sessões, recebimentos e a gravação seguem no Supabase, tela mista só para validação de leitura; ver `docs/design/fechamento-diario-api.md` §Riscos). Anterior: 18/09/2026 (#103 item 1, fatias P0–P3: nasce `App\Fechamento` só com `Domain` de leitura — 4 models, sem Application, Http nem rota — e `'Fechamento' => []` no Pest Arch com canário; `fechamento-diario` ganha Public API `index.ts` e `leituras-diarias` passa a importar por ela). Anterior: 18/09/2026 (#100 fatia 2: o dashboard do dono passa a ler `GET /api/postos/{posto}/dashboard` quando `VITE_API_URL` está definida — `services/api/dashboard.api.ts` + `insumosDaApi` em `aggregator.service.ts`; tela mista em `localhost`; ver `docs/design/agregacao.md`).
 
 ## 1. Contexto geral (nível 1)
 
@@ -49,7 +49,7 @@ flowchart LR
 
 | Componente | Responsabilidade | Depende de | Tamanho (17/09) |
 |---|---|---|---|
-| `frontend/apps/web` | painel do gerente: 17 rotas, fechamento, leituras, compras, despesas, estoque. Módulos de `components/` seguem legado do strangler (fora das camadas do `eslint-plugin-boundaries`); desde 18/09 `fechamento-diario` expõe Public API em `index.ts` (`useLeituras`, `type Leitura` e o `default` da tela) e `leituras-diarias` importa por ela, não mais de `hooks/useLeituras` (#103 P2) | `@posto/utils`, `@posto/types`, `@posto/api-core`, supabase-js | 345 arquivos, 43 k linhas |
+| `frontend/apps/web` | painel do gerente: 17 rotas, fechamento, leituras, compras, despesas, estoque. Módulos de `components/` seguem legado do strangler (fora das camadas do `eslint-plugin-boundaries`); desde 18/09 `fechamento-diario` expõe Public API em `index.ts` (`useLeituras`, `type Leitura` e o `default` da tela) e `leituras-diarias` importa por ela, não mais de `hooks/useLeituras` (#103 P2); desde 19/09, com `VITE_API_URL`, `useCarregamentoDados`, `useSessoesFrentistas` e `usePagamentos` leem frentistas, bicos e formas de pagamento de `services/api/{frentista,bico,formaPagamento}.api.ts` (#103 P4a/P4b) — o resto do dia e a gravação seguem no Supabase | `@posto/utils`, `@posto/types`, `@posto/api-core`, supabase-js | 345 arquivos, 43 k linhas |
 | `frontend/apps/pwa-frentista` | envio do fechamento do turno, tanques, vendas de loja, presença | `@posto/utils`, `@posto/api-core`, supabase-js | 19 arquivos, 2,8 k |
 | `frontend/apps/pwa-dono` | encerrante por foto (OCR), envios do dia, push | `@posto/utils`, `@posto/api-core`, supabase-js | 19 arquivos, 2,5 k |
 | `frontend/packages/utils` | domínio puro: `fechamento`, `lucro`, `leitura`, `planilha-mensal`, `troca-preco`… | `@posto/types` | 16 módulos, 18 golden |
@@ -100,6 +100,20 @@ o caminho de sempre. O cálculo continua no cliente: `custoMedioPorCombustivel()
 (`codigo`), estoque, frentistas, formas de pagamento e fechamentos seguem no Supabase, então em
 `localhost` com `VITE_API_URL` a tela é **mista** (venda/lucro do Postgres local, frentistas e
 fechamentos da produção). Falha da API derruba o dashboard com `FETCH_ERROR`, sem cair na fonte antiga.
+
+**Catálogo do fechamento diário pela API (#103 P4a/P4b, 19/09):** os três hooks do módulo
+`fechamento-diario` que carregam cadastro escolhem a fonte por `urlDaApi()` **no call site** —
+`useCarregamentoDados` (bicos e frentistas), `useSessoesFrentistas` (frentistas, no fallback sem
+`frentistasCadastrados`) e `usePagamentos` (formas de pagamento). Com `VITE_API_URL`, `GET
+/api/postos/{posto}/{bicos,frentistas,formas-pagamento}` via
+`services/api/{bico,frentista,formaPagamento}.api.ts` (`buscarNaApi` + Zod + `ResultAsync`; o
+`match` devolve o `ApiResponse` legado que o hook já consumia); sem ela, `bicoService.getWithDetails`,
+`frentistaService.getAll` e `formaPagamentoService.getAll`, como sempre. Os services não mudam porque
+o `aggregator.service.ts` usa os mesmos métodos e é sítio de fórmula. `CatalogoDoPosto` não filtra
+`ativo`, então o filtro é do cliente (os `*.api.ts`), e `preco_venda`/`taxa` chegam em string decimal e
+viram `number` por `Number()` — o mesmo valor que o PostgREST entregava; nenhuma conta muda. A tela é
+**mista**: leituras, sessões, recebimentos e a **gravação** seguem na fonte atual, então o modo
+`VITE_API_URL` é só para validar leitura até P11 (`fechamento-diario-api.md` §Riscos).
 
 ## 5. Contratos (nível 5)
 

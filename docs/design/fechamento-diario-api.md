@@ -1,6 +1,6 @@
 # Fechamento diário pela API — Design Doc
 
-Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026 (sem commit); P4 em diante esperam as pendências do §7** · Data: 18/09/2026 · Última atualização: 18/09/2026 (ajustes da revisão: `hasMany leituras` não existe; `$fillable` × produção; P2/P3 feitas)
+Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota; P5–P7 criam rotas NOVAS de leitura e, pela DECISÃO A (§6), nascem protegidas: bloqueadas até o guard existir no backend; P8 espera §7 (d); P10 (Command sem rota) espera só as pendências do §7 (b)–(e); P11 (rota PUT de escrita) espera o guard da DECISÃO A E a P10** · Data: 18/09/2026 · Última atualização: 19/09/2026
 
 > Primeiro módulo do painel a migrar do PostgREST para a API Laravel, e o que faz nascer
 > `App\Fechamento` no backend. Contrato comum às fatias: `painel-pela-api.md`. Regra de domínio:
@@ -16,11 +16,13 @@ Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovada
 | P1 | este doc + correção da contradição `autenticacao.md` × `painel-pela-api.md` (§6, DECISÃO A) | não | feita em 18/09 |
 | P2 | Public API de `fechamento-diario` (`index.ts`); `leituras-diarias` deixa de importar arquivo interno | não | feita em 18/09 |
 | P3 | `App\Fechamento\Domain` só de leitura (4 models), `'Fechamento' => []` no mapa do Pest Arch com canário | não (só cast) | feita em 18/09 |
-| P4a–P7 | leituras do catálogo e do dia pela API | P4b–P7 sim (Fable) | esperam §7 (a) implementada na #102 |
+| P4a | frentistas ativos pela API (#97): `frentista.api.ts`, troca no call site de `useCarregamentoDados` e `useSessoesFrentistas` | não | feita em 19/09 — só rotas já existentes do catálogo da #97, nenhuma rota nova |
+| P4b | bicos e formas de pagamento pela API (#97): `bico.api.ts`, `formaPagamento.api.ts`, troca no call site de `useCarregamentoDados` e `usePagamentos`; `preco_venda`/`taxa` string → `number` sem mudar conta | sim (Fable) | feita em 19/09 — idem P4a, nenhuma rota nova |
+| P5–P7 | leituras do dia pela API | sim (Fable) | **bloqueadas pelo guard da DECISÃO A** (§6): criam rotas NOVAS de leitura e, pela decisão do dono, toda rota nasce protegida — o guard (token do login atual → `Usuario.auth_user_id`) precisa existir no backend antes. Diferente da P4, que não criou rota: usou só o catálogo da #97, público desde a #97 (comentário em `routes/api.php:43-46`; grupo `Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)` em `:47-61`, dashboard incluso) — pendência já registrada em `cadastro.md` para a #102. Esperam também §7 (f) |
 | P8 | golden das somas do painel × `totaisDoDia` — **mudança de fórmula, tarefa separada** | sim (Fable) | espera §7 (d) |
 | P9 | `useCustoMensal` sai do Supabase direto | sim (Fable) | espera P8 e decisão CA-7 sobre Compra/Despesa |
-| P10 | Command `GravaFechamentoDoDia`, sem rota | sim (Fable) | espera §7 (b), (c), (d), (e) |
-| P11 | rota PUT autenticada e troca de `handleSave` | sim (Fable) | espera #102 e P10 |
+| P10 | Command `GravaFechamentoDoDia`, sem rota | sim (Fable) | bloqueada só por §7 (b), (c), (d), (e) — não depende do guard, porque não expõe rota (§6) |
+| P11 | rota PUT autenticada e troca de `handleSave` | sim (Fable) | bloqueada pelo guard da DECISÃO A (#102) E por P10, que carrega as pendências do §7 |
 
 Nada desta rodada é commitado sem revisão do dono. Nenhuma fórmula muda em fatia estrutural: quem
 toca `calcLitros`/`calcVenda` (`useLeituras.ts:437-460`), a taxa (`useFechamento.ts:154-160`,
@@ -57,8 +59,9 @@ Postgres local.
 Estado do backend hoje: `routes/api.php:47` agrupa `postos/{posto}` só com `DefinePostoAtual`; não
 há Sanctum no `composer.json`; `base.ts:45-48` faz `fetch` sem `credentials`. A RLS dá `SELECT
 USING (true)` a `anon` em `Fechamento` (`01-esquema-base.sql:1731`), `FechamentoFrentista`
-(`:1750`), `Leitura` (`:1801`) e `Recebimento` (`:1880`): leitura sem login mantém a paridade com
-hoje; escrita sem login é porta aberta — daí a DECISÃO A do §6.
+(`:1750`), `Leitura` (`:1801`) e `Recebimento` (`:1880`): essa é a RLS de **hoje**, do painel falando
+direto ao PostgREST — descreve o estado atual, não o alvo. Pela DECISÃO A (§6) as rotas NOVAS de
+leitura (P5–P7) nascem protegidas; escrita sem login é porta aberta — daí a DECISÃO A.
 
 ## 2. Subsistema — onde entra no monólito modular
 
@@ -234,10 +237,10 @@ logando no Supabase até a última chamada direta sair, então a RLS continua ve
 A decisão tira o 401 do meio do caminho sem criar o estado `X` do diagrama.
 
 **Onde se implementa:** na #102 (guard + resolução por `auth_user_id`), não nesta issue. Aqui só
-se registra. Enquanto a #102 não entregar o guard, **nenhuma rota de escrita do Fechamento nasce**
-(P10 entra sem rota de propósito; P11 espera).
+se registra. Enquanto a #102 não entregar o guard, **nenhuma rota nova do Fechamento nasce, de leitura
+ou de escrita** (P5–P7 e P11 esperam; P10 entra sem rota de propósito).
 
-## 7. Decisões PENDENTES do dono (bloqueiam P8, P10 e P11)
+## 7. Decisões PENDENTES do dono (bloqueiam P5–P7 pela (f), P8 pela (d), e P10/P11 pelas (b)–(e))
 
 Nenhuma destas foi tomada em 18/09. Estão aqui para não serem decididas por omissão dentro de um
 PR estrutural. **Não escolher por conta própria.**
@@ -294,6 +297,15 @@ PR estrutural. **Não escolher por conta própria.**
   teve regressão de fórmula e só o Fable o edita.
 - ⚠️ **Catálogo da API não filtra `ativo`** (`CatalogoDoPosto.php:46-67`): sem filtro no cliente,
   frentista inativo volta semeado e bico inativo entra no total.
+- ⚠️ **Tela mista com gravação (P4, enquanto P5–P11 não entram).** Com `VITE_API_URL`, os ids de
+  bico, frentista e forma de pagamento vêm do Postgres do compose (`useCarregamentoDados.ts`,
+  `useSessoesFrentistas.ts`, `usePagamentos.ts`), mas leituras, sessões, recebimentos **e a
+  GRAVAÇÃO** (`useSubmissaoFechamento.ts`) seguem na fonte atual — a produção. Salvar o fechamento
+  nesse modo grava em produção com ids lidos do banco local. Em 19/09 os ids batiam (conferido por
+  SQL na revisão da P4: 9 frentistas, 6 bicos, 9 formas idênticos nas duas fontes), então o modo
+  `VITE_API_URL` é **só para validação de leitura** — paridade dos números com e sem a variável —
+  e os ids têm de ser reconferidos antes de cada validação. Nenhum ajuste de tela nesta fatia: a
+  proteção real é P11 (a gravação passa pela API) ou o cutover (#105).
 - ⚠️ **Gates que já mentiram verde** (memória `gate-verde-sem-canario-nao-vale`): PHPStan em JSON,
   Pest Arch só na forma encadeada com um namespace por regra, trava nova sem canário não vale.
 - ⚠️ **Worktree sem dependências** (memória `worktree-nao-herda-dependencias`): sem `node_modules`,
