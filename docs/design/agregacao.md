@@ -59,7 +59,9 @@ No mapa do Pest Arch (`direcaoPermitidaEntreModulos()`), `Agregacao => []`.
   modular `App\<Modulo>\{Http,Application,Domain}`; não existe `App\Http\Controllers` de módulo).
 - Nada em `Domain`: não há entidade nova, só leitura agregada sobre as tabelas existentes.
 - Quem escreve código que soma ou calcula dinheiro, aqui e no `aggregator.service.ts`, é o **Fable**
-  (decisão do dono, 18/09/2026; hook `so-fable-na-formula.py`).
+  (decisão do dono, 18/09/2026; hook `so-fable-na-formula.py`). Desde 19/09 isso é trava, não
+  disciplina: o hook está versionado e ligado no `settings.json`, e a lista do que é fórmula é a
+  única de `_comum.FORMULA`, que cobre `App\Agregacao` inteiro (ver `docs/arquitetura/regras.md`, PROC-8).
 - **Lado do painel (fatia 2):** `frontend/apps/web/src/services/api/dashboard.api.ts` — schema Zod do
   §5 (string decimal, sem envelope `data`), `lerDashboardDaApi()` em `ResultAsync<DashboardDaApi, ErroDaApi>`
   e `paraInsumosDeAgregacao()`, que só faz `Number()` e reshape. Em `aggregator.service.ts`,

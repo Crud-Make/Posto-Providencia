@@ -93,7 +93,8 @@ escolhidos por `urlDaApi()` (`base.ts:27-30`).
 (`bicoService.getWithDetails` `:352`, `formaPagamentoService.getAll` `:353`/`:421`,
 `fechamentoFrentistaService.getByDate` `:422`, `leituraService.getByDateRange` `:151`) trocam no
 **call site** do módulo, nunca dentro do service — o aggregator é sítio de fórmula
-(`.claude/hooks/portao-golden.py:30`) e só o Fable o edita. Métodos usados só pelo módulo (e por
+(lista única `_comum.FORMULA`, `.claude/hooks/_comum.py:100`, que desde 19/09/2026 cobre também
+`App\Fechamento\Domain`) e só o Fable o edita. Métodos usados só pelo módulo (e por
 `relatorio-diario`, `useRelatorioDiario.ts:164`) podem trocar dentro do service.
 
 ## 3. Componentes

@@ -14,6 +14,7 @@ ele dispararia o hook da sessão que estiver rodando este arquivo.
 import hashlib
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -41,6 +42,63 @@ CASOS_GIT = [
     (f'git commit -m "docs: git push {FORCE} nunca"', None),
     (f"grep -rn '{FORCE}' CLAUDE.md", None),
     ("ls -la", None),
+    # O furo antigo: opção global entre `git` e o verbo cegava o `^git\s+push`.
+    (f"git -C /tmp push {FORCE} origin x", "deny"),
+    # Desvio de hook de git (incidente de 18/09: core.hooksPath=/dev/null por subagente).
+    (f"git -c {'core.hooks' + 'Path'}=/dev/null commit -m x", "deny"),
+    (f"git -C ../x -c {'core.hooks' + 'Path'}=/tmp push", "deny"),
+    (f"GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0={'core.hooks' + 'Path'} GIT_CONFIG_VALUE_0=/dev/null git commit -m x", "deny"),
+    (f"git --config-env={'core.hooks' + 'Path'}=X commit -m x", "deny"),
+    (f"git config {'core.hooks' + 'Path'} /dev/null", "deny"),
+    (f"git config --local --unset {'core.hooks' + 'Path'}", "deny"),
+    (f"git commit {'--no-' + 'verify'} -m x", "deny"),
+    (f"git commit {'--no-' + 'veri'} -m x", "deny"),
+    ("git commit -nm x", "deny"),
+    ("git commit -an -m x", "deny"),
+    (f"git push {'--no-' + 'verify'}", "deny"),
+    ("git commit-tree HEAD^{tree} -m x", "deny"),
+    # Leitura e descrição continuam livres.
+    (f"git config --get {'core.hooks' + 'Path'}", None),
+    (f"git config {'core.hooks' + 'Path'}", None),
+    ("git config -l", None),
+    ("git push -n origin x", None),
+    ("git commit -c HEAD", None),
+    (f'git commit -m "docs: {"--no-" + "verify"} nunca"', None),
+    (f"git commit -F - <<'EOF'\n{'core.hooks' + 'Path'} proibido\nEOF", None),
+    (f"grep -rn {'no-' + 'verify'} scripts/", None),
+    ("bash scripts/hooks/testa-pre-push.sh", None),
+]
+
+# _comum.comando_git: opção GLOBAL do git (antes do verbo) separada do subcomando.
+# O furo que fecha: `git -C x push` e `git -c k=v commit` não casavam `^git\s+push`.
+# Cada caso: segmento → (dirs_C, configs, subcomando) ou None.
+HOOKS_PATH = "core.hooks" + "Path"
+CASOS_GIT_PARSE = [
+    (f"git -C ../x -c {HOOKS_PATH}=/dev/null commit -m a",
+     (["../x"], {HOOKS_PATH.lower(): "/dev/null"}, "commit")),
+    ("git commit -c HEAD", ([], {}, "commit")),           # -c pós-verbo é reuso de mensagem
+    ("git push origin x", ([], {}, "push")),
+    ("git -C/tmp status", (["/tmp"], {}, "status")),        # -C colado
+    (f"git -c{HOOKS_PATH}=x log", ([], {HOOKS_PATH.lower(): "x"}, "log")),
+    ("git --git-dir=.git --no-pager -p log", ([], {}, "log")),
+    ("git --work-tree /tmp/a status", ([], {}, "status")),  # valor separado consumido
+    ("sudo git -C a -C b push", (["a", "b"], {}, "push")),
+    ("git --version", ([], {}, "")),
+    ("ls", None),
+    ("echo git push", None),
+]
+
+# _comum.diretorio_final: onde o ÚLTIMO segmento roda. None = não dá para saber.
+CASOS_DIRETORIO = [
+    ("cd ../pp-60 && git commit", "/a/b", "/a/pp-60"),
+    ("cd ~/x && ls", "/a/b", str(Path.home() / "x")),
+    ("cd $D && git commit", "/a/b", None),
+    ("cd $(pwd)/x; ls", "/a/b", None),
+    ("cd - && ls", "/a/b", None),
+    ("git commit -m x", "/a/b", "/a/b"),
+    ("cd /tmp && cd sub && ls", "/a/b", "/tmp/sub"),
+    ("cd -- ../c && ls", "/a/b", "/a/c"),
+    ("ls; cd", "/a/b", str(Path.home())),
 ]
 
 CASOS_DADOS = [
@@ -69,6 +127,25 @@ CASOS_SHELL = [
     ('git commit -m "docs: DELETE em docs/data agora barrado"', None),
 ]
 
+
+# protege-dependencias: vendor/node_modules nunca por symlink (18/09: vendor linkado
+# fez o Pest testar o App\ da árvore de origem). docs/data linkado continua livre.
+CASOS_DEPENDENCIA = [
+    ("ln -s ../Posto-Providencia/backend/vendor backend/vendor", "deny"),
+    ("ln -sfn /x/node_modules node_modules", "deny"),
+    ("ln -s ../p/frontend/node_modules/ frontend/node_modules", "deny"),
+    ("ln --symbolic ../p/backend/vendor/ vendor", "deny"),
+    ("cd backend && ln -s ../../p/backend/vendor vendor", "deny"),
+    ("cp -s ../p/backend/vendor vendor", "deny"),
+    ("ln -sfn /home/thygas/Projetos/trabalho/Posto-Providencia/docs/data docs/data", None),
+    ("ln -s ../a.txt b.txt", None),
+    ("ln ../p/backend/vendor vendor", None),                  # hardlink não é o caso
+    ("ls -la backend/vendor", None),
+    ("echo 'ln -s vendor'", None),
+    ('git commit -m "fix: proíbe ln -s vendor"', None),
+    ("rm backend/vendor", None),
+    ("cp -r ../p/backend/vendor vendor", None),               # cópia de verdade, não link
+]
 
 # Roteamento: frase do dono → agentes que devem ser sugeridos. Os negativos importam
 # tanto quanto os positivos: hook que fala demais deixa de ser lido (§14).
@@ -140,6 +217,14 @@ CASOS_GOLDEN = [
     ("packages/utils/src/fechamento.golden.spec.ts", False),
     ("apps/web/src/App.tsx", False),
     ("CHANGELOG.md", False),
+    # Backend (19/09): dinheiro em App\Agregacao e App\Fechamento\Domain avisa; teste,
+    # controller e Cadastro (decisão pendente do dono) não.
+    ("backend/app/Agregacao/Application/DadosDoPeriodo.php", True),
+    ("app/Agregacao/Application/Periodo.php", True),
+    (f"{RAIZ}/backend/app/Fechamento/Domain/Leitura.php", True),
+    ("backend/tests/Feature/Agregacao/DashboardTest.php", False),
+    ("backend/app/Cadastro/Domain/Combustivel.php", False),
+    ("backend/app/Fechamento/Http/Controllers/X.php", False),
 ]
 
 # Checklist de commit: arquivos no commit → quantas pendências. Testa a função pura,
@@ -152,6 +237,9 @@ CASOS_CHECKLIST = [
     (["docs/notas.md"], 0),
     ([".claude/hooks/roteia-consulta.py"], 0),
     ([], 0),
+    (["backend/app/Agregacao/Application/DadosDoPeriodo.php"], 2),          # dinheiro PHP + changelog
+    (["backend/app/Agregacao/Application/DadosDoPeriodo.php", "CHANGELOG.md"], 1),
+    (["backend/tests/Feature/Agregacao/DashboardTest.php", "CHANGELOG.md"], 0),
 ]
 
 
@@ -223,27 +311,122 @@ CASOS_PIPE = [
 ]
 
 
-def roda(script: str, payload: dict) -> str | None:
+def repo_temporario(pasta: Path, branch: str = "main") -> None:
+    """Repo de laboratório com um commit, para hooks que leem branch e índice de verdade."""
+    ident = ["-c", "user.name=canario", "-c", "user.email=canario@local"]
+    subprocess.run(["git", "init", "-q", "-b", branch, str(pasta)], check=True, capture_output=True)
+    (pasta / "CHANGELOG.md").write_text("# Changelog\n")
+    subprocess.run(["git", *ident, "-C", str(pasta), "add", "CHANGELOG.md"], check=True, capture_output=True)
+    subprocess.run(["git", *ident, "-C", str(pasta), "commit", "-q", "-m", "inicio"], check=True, capture_output=True)
+
+
+# Hook que não existe ou que estoura (exceção Python, returncode != 0) NÃO é "passa".
+# Até 19/09/2026 era: `roda()` lia stdout vazio e devolvia None, e um hook apagado ou
+# quebrado passava por hook liberando de propósito. Cada ocorrência vai para QUEBRAS,
+# que conta como falha no resumo, e o valor devolvido é a sentinela AUSENTE, que nunca
+# bate com o esperado de caso nenhum.
+QUEBRAS: list[str] = []
+AUSENTE = "AUSENTE"
+
+
+def _executa(script: str, payload: dict) -> str | None:
+    """stdout do hook, ou None (e registro em QUEBRAS) quando o hook não existe/estoura."""
+    caminho = HOOKS / script
+    if not caminho.is_file():
+        QUEBRAS.append(f"{script}: não existe em {HOOKS}")
+        return None
     r = subprocess.run(
-        ["python3", str(HOOKS / script)],
+        ["python3", str(caminho)],
         input=json.dumps(payload), capture_output=True, text=True,
     )
-    saida = r.stdout.strip()
+    if r.returncode != 0:
+        QUEBRAS.append(f"{script}: saiu com {r.returncode} — {r.stderr.strip()[-200:]}")
+        return None
+    return r.stdout.strip()
+
+
+def roda(script: str, payload: dict) -> str | None:
+    saida = _executa(script, payload)
+    if saida is None:
+        return AUSENTE
     if not saida:
         return None
-    return json.loads(saida)["hookSpecificOutput"]["permissionDecision"]
+    return json.loads(saida)["hookSpecificOutput"].get("permissionDecision")
 
 
 def roda_contexto(script: str, payload: dict) -> str:
     """Para hook que injeta contexto em vez de decidir permissão."""
-    r = subprocess.run(
-        ["python3", str(HOOKS / script)],
-        input=json.dumps(payload), capture_output=True, text=True,
-    )
-    saida = r.stdout.strip()
+    saida = _executa(script, payload)
+    if saida is None:
+        return AUSENTE
     if not saida:
         return ""
-    return json.loads(saida)["hookSpecificOutput"]["additionalContext"]
+    return json.loads(saida)["hookSpecificOutput"].get("additionalContext", "")
+
+
+# Hooks de decisão ou de aviso: cada um tem de estar ligado em pelo menos um evento do
+# settings.json. Hook escrito e não ligado é a trava que parece existir (memória
+# gate-verde-sem-canario-nao-vale). O so-fable ficou exatamente assim de 18 a 19/09/2026.
+HOOKS_QUE_TEM_DE_ESTAR_LIGADOS = [
+    "protege-git", "protege-dados", "checklist-commit", "so-fable-na-formula",
+    "protege-dependencias", "avisa-pkill", "portao-golden", "trava-ts", "trava-php",
+    "forca-delegacao", "diario-de-sessoes", "roteia-consulta", "higiene",
+]
+# `memoria-somente` é hook DE AGENTE (docblock dele, :4-6): vive no frontmatter de cada
+# `.claude/agents/*.md` que declara `memory:`, nunca no settings.json. A exigência é
+# por agente: quem tem `memory:` tem de ter o hook, senão volta a poder editar código.
+HOOK_DE_AGENTE_COM_MEMORIA = "memoria-somente.py"
+HOOK_NO_SETTINGS = re.compile(r"\.claude/hooks/([\w-]+\.py)")
+DECLARA_MEMORIA = re.compile(r"^memory:", re.M)
+
+
+def hooks_citados(settings: dict) -> list[str]:
+    """Nomes de arquivo `.py` citados em qualquer comando de hook do settings.json."""
+    achados: list[str] = []
+
+    def varre(no) -> None:
+        if isinstance(no, dict):
+            for v in no.values():
+                varre(v)
+        elif isinstance(no, list):
+            for v in no:
+                varre(v)
+        elif isinstance(no, str):
+            achados.extend(HOOK_NO_SETTINGS.findall(no))
+
+    varre(settings.get("hooks", {}))
+    return achados
+
+
+def frontmatter_de(agente: Path) -> str:
+    """Bloco entre os dois `---` iniciais do agente (onde ficam `memory:` e `hooks:`)."""
+    texto = agente.read_text()
+    if not texto.startswith("---"):
+        return ""
+    fim = texto.find("\n---", 3)
+    return texto[3:fim] if fim != -1 else ""
+
+
+# avisa-pkill: `pkill -f`/`pgrep -f` cujo padrão casa com a linha do próprio shell →
+# aviso (additionalContext), nunca decisão. Colchete no padrão e `pkill` sem `-f` calam.
+CASOS_PKILL = [
+    ("pkill -f 'bun dev'", True),
+    ("pgrep -f vite", True),
+    ("pkill -9 -f php", True),
+    ("cd x && pkill -f node", True),
+    ("pkill -af 'vite'", True),                      # -f em cluster
+    ("pkill --full 'bun dev'", True),
+    ("pkill -u thygas -f node", True),               # valor de -u pulado, padrão é node
+    ("pkill -f '(unbalanced'", True),                # regex inválida: erra para o aviso
+    ("pkill -f '[b]un dev'", False),                 # colchete não casa consigo mesmo
+    ("pgrep -af '[v]ite'", False),
+    ("pkill bun", False),                            # sem -f compara só o nome do processo
+    ("kill 1234", False),
+    ("pgrep -x bun", False),
+    ("echo pkill -f bun", False),                    # descrição, não execução
+    ("git commit -m 'fix: pkill -f nunca'", False),
+    ("ls -la", False),
+]
 
 
 def main() -> int:
@@ -254,6 +437,49 @@ def main() -> int:
         ok = obtido == esperado
         falhas += not ok
         print(f"  {'✓' if ok else '✗'} {cmd.replace(chr(10), '⏎')[:58]:60} {obtido or 'passa'}")
+
+    # `ask` na main, com repo de verdade: a branch tem de ser lida no diretório em que o
+    # comando termina (cwd do JSON + `cd` + `-C`), não no do processo do hook.
+    print("── protege-git · ask na main (repo de verdade) ──")
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        repo_temporario(repo, "main")
+        casos_main = [
+            ("commit com cwd na main", {"command": "git commit -m x", "cwd": str(repo)}, "ask"),
+            ("cd <repo> && commit, cwd fora", {"command": f"cd {repo} && git commit -m x", "cwd": tmp}, "ask"),
+            ("git -C <repo> commit, cwd fora", {"command": f"git -C {repo} commit -m x", "cwd": tmp}, "ask"),
+            ("merge com cwd na main", {"command": "git merge feat/x", "cwd": str(repo)}, "ask"),
+            ("commit com cwd fora de repo", {"command": "git commit -m x", "cwd": tmp}, None),
+        ]
+
+        def confere_main(rotulo: str, entrada: dict, esperado: str | None) -> int:
+            obtido = roda("protege-git.py", {"tool_input": {"command": entrada["command"]}, "cwd": entrada["cwd"]})
+            ok = obtido == esperado
+            print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido or 'passa'}")
+            return int(not ok)
+
+        for rotulo, entrada, esperado in casos_main:
+            falhas += confere_main(rotulo, entrada, esperado)
+        # Só DEPOIS dos casos da main o repo troca de branch: mesmo repo, outra resposta.
+        subprocess.run(["git", "-C", str(repo), "switch", "-q", "-c", "trabalho"], check=True, capture_output=True)
+        falhas += confere_main("commit em branch de trabalho", {"command": "git commit -m x", "cwd": str(repo)}, None)
+
+    print("── _comum · comando_git ──")
+    comum = carrega("_comum.py")
+    for seg, esperado in CASOS_GIT_PARSE:
+        cg = comum.comando_git(seg)
+        obtido = None if cg is None else (cg.dirs_C, cg.configs, cg.subcomando)
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {seg[:58]:60} {obtido}")
+
+    print("── _comum · diretorio_final ──")
+    for cmd, cwd, esperado in CASOS_DIRETORIO:
+        obtido = comum.diretorio_final(cmd, cwd)
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {cmd[:58]:60} {obtido}")
 
     print("── protege-dados ──")
     for alvo, esperado in CASOS_DADOS:
@@ -268,6 +494,25 @@ def main() -> int:
         ok = obtido == esperado
         falhas += not ok
         print(f"  {'✓' if ok else '✗'} {cmd[:58]:60} {obtido or 'passa'}")
+
+    print("── protege-dependencias ──")
+    for cmd, esperado in CASOS_DEPENDENCIA:
+        obtido = roda("protege-dependencias.py", {"tool_input": {"command": cmd}})
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {cmd[:58]:60} {obtido or 'passa'}")
+
+    print("── avisa-pkill ──")
+    for cmd, esperado in CASOS_PKILL:
+        ctx = roda_contexto("avisa-pkill.py", {"tool_input": {"command": cmd}})
+        ok = ctx != AUSENTE and bool(ctx) == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {cmd[:58]:60} {ctx if ctx == AUSENTE else ('avisa' if ctx else 'silencio')}")
+    # O hook nunca decide: mesmo no caso que avisa, permissionDecision é ausente.
+    decisao = roda("avisa-pkill.py", {"tool_input": {"command": "pkill -f 'bun dev'"}})
+    ok = decisao is None
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'avisa mas nunca decide (sem permissionDecision)':60} {decisao or 'passa'}")
 
     print("── roteia-consulta ──")
     for prompt, esperado in CASOS_ROTA:
@@ -299,6 +544,80 @@ def main() -> int:
         curto = alvo.replace(f"{RAIZ}/", "")
         print(f"  {'✓' if ok else '✗'} {curto:60} {'avisa' if ctx else 'silencio'}")
 
+    print("── so-fable-na-formula ──")
+    with tempfile.TemporaryDirectory() as tmp:
+        def transcript(nome: str, modelo: str) -> str:
+            t = Path(tmp) / nome
+            t.parent.mkdir(parents=True, exist_ok=True)
+            t.write_text(json.dumps({"type": "assistant", "message": {"model": modelo}}) + "\n")
+            return str(t)
+        opus = transcript("opus.jsonl", "claude-opus-5")
+        fable = transcript("fable.jsonl", "claude-fable-5-1")
+        # subagente fable debaixo de sessão opus: vale o modelo do subagente
+        transcript("opus/subagents/agent-abc.jsonl", "claude-fable-5-1")
+        transcript("opus/subagents/agent-son.jsonl", "claude-sonnet-5")
+        # subagente na primeira ação: transcript sem mensagem de assistente ainda
+        for nome, meta in [("novofable", {"model": "fable"}), ("novoson", {"model": "sonnet"}), ("herda", {})]:
+            base = Path(tmp) / "opus/subagents" / f"agent-{nome}"
+            base.with_suffix(".jsonl").write_text(json.dumps({"type": "user"}) + "\n")
+            base.with_suffix(".meta.json").write_text(json.dumps(meta))
+        lucro = "frontend/packages/utils/src/lucro.ts"
+        casos = [
+            ("opus edita lucro.ts", {"transcript_path": opus, "tool_input": {"file_path": lucro}}, "deny"),
+            ("fable edita lucro.ts", {"transcript_path": fable, "tool_input": {"file_path": lucro}}, None),
+            ("opus edita golden", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.golden.spec.ts"}}, "deny"),
+            ("opus edita regressao", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/diferenca.regressao.test.ts"}}, "deny"),
+            ("opus edita teste comum", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.test.ts"}}, None),
+            ("opus edita aggregator", {"transcript_path": opus, "tool_input": {"file_path": "frontend/apps/web/src/services/api/aggregator.service.ts"}}, "deny"),
+            ("opus edita tela", {"transcript_path": opus, "tool_input": {"file_path": "frontend/apps/web/src/App.tsx"}}, None),
+            ("sem transcript → falha fechada", {"tool_input": {"file_path": lucro}}, "deny"),
+            ("subagente fable sob opus", {"transcript_path": opus, "agent_id": "abc", "tool_input": {"file_path": lucro}}, None),
+            ("subagente sonnet sob opus", {"transcript_path": opus, "agent_id": "son", "tool_input": {"file_path": lucro}}, "deny"),
+            ("subagente sem transcript sob fable", {"transcript_path": fable, "agent_id": "zzz", "tool_input": {"file_path": lucro}}, "deny"),
+            ("1ª ação de subagente fable (só meta)", {"transcript_path": opus, "agent_id": "novofable", "tool_input": {"file_path": lucro}}, None),
+            ("1ª ação de subagente sonnet (só meta)", {"transcript_path": opus, "agent_id": "novoson", "tool_input": {"file_path": lucro}}, "deny"),
+            ("1ª ação de subagente que herda opus", {"transcript_path": opus, "agent_id": "herda", "tool_input": {"file_path": lucro}}, "deny"),
+            ("opus: sed -i em lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"sed -i 's/a/b/' {lucro}"}}, "deny"),
+            ("opus: echo > lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"echo x > {lucro}"}}, "deny"),
+            ("opus: git checkout -- lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git checkout -- {lucro}"}}, "deny"),
+            ("opus: cat lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"cat {lucro}"}}, None),
+            ("opus: sed -n lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"sed -n 1,20p {lucro}"}}, None),
+            ("opus: git diff lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git diff {lucro}"}}, None),
+            ("opus: commit citando lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git commit -m 'mv {lucro}'"}}, None),
+            # Backend (19/09): a mesma lista única cobre App\Agregacao e App\Fechamento\Domain.
+            ("opus edita DadosDoPeriodo.php", {"transcript_path": opus, "tool_input": {"file_path": "backend/app/Agregacao/Application/DadosDoPeriodo.php"}}, "deny"),
+            ("opus edita Periodo.php (cwd backend)", {"transcript_path": opus, "tool_input": {"file_path": "app/Agregacao/Application/Periodo.php"}}, "deny"),
+            ("opus edita Resource da Agregacao", {"transcript_path": opus, "tool_input": {"file_path": "backend/app/Agregacao/Http/Resources/AgregadoResource.php"}}, "deny"),
+            ("opus edita Fechamento.php", {"transcript_path": opus, "tool_input": {"file_path": "backend/app/Fechamento/Domain/Fechamento.php"}}, "deny"),
+            ("opus edita Leitura.php (cwd backend)", {"transcript_path": opus, "tool_input": {"file_path": "app/Fechamento/Domain/Leitura.php"}}, "deny"),
+            ("opus: sed -i em DadosDoPeriodo.php", {"transcript_path": opus, "tool_input": {"command": "sed -i s/a/b/ backend/app/Agregacao/Application/DadosDoPeriodo.php"}}, "deny"),
+            ("fable edita DadosDoPeriodo.php", {"transcript_path": fable, "tool_input": {"file_path": "backend/app/Agregacao/Application/DadosDoPeriodo.php"}}, None),
+            ("fable edita Leitura.php", {"transcript_path": fable, "tool_input": {"file_path": "backend/app/Fechamento/Domain/Leitura.php"}}, None),
+            ("opus edita DashboardTest.php", {"transcript_path": opus, "tool_input": {"file_path": "backend/tests/Feature/Agregacao/DashboardTest.php"}}, None),
+            ("opus edita Combustivel.php (Cadastro)", {"transcript_path": opus, "tool_input": {"file_path": "backend/app/Cadastro/Domain/Combustivel.php"}}, None),
+            ("opus edita controller do Fechamento", {"transcript_path": opus, "tool_input": {"file_path": "backend/app/Fechamento/Http/Controllers/X.php"}}, None),
+            ("opus: cat DadosDoPeriodo.php", {"transcript_path": opus, "tool_input": {"command": "cat backend/app/Agregacao/Application/DadosDoPeriodo.php"}}, None),
+        ]
+        for rotulo, payload, esperado in casos:
+            obtido = roda("so-fable-na-formula.py", payload)
+            ok = obtido == esperado
+            falhas += not ok
+            print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido or 'passa'}")
+
+    # A regra "isto é fórmula" mora só em _comum.py. Cópia nova em outro hook é o
+    # problema de 19/09 voltando (três cópias divergentes, nenhuma com o backend).
+    print("── _comum · FORMULA única ──")
+    marcadores = ("packages/utils/src", "aggregator\\.service", "app/Agregacao", "Fechamento/Domain")
+    for hook in sorted(HOOKS.glob("*.py")):
+        if hook.name in ("_comum.py", "testa-hooks.py"):
+            continue
+        texto = hook.read_text()
+        copias = [m for m in marcadores if m in texto]
+        ok = not copias
+        falhas += not ok
+        if copias or hook.name in ("checklist-commit.py", "portao-golden.py", "so-fable-na-formula.py"):
+            print(f"  {'✓' if ok else '✗'} {hook.name:60} {'sem cópia' if ok else 'COPIA: ' + ', '.join(copias)}")
+
     print("── checklist-commit ──")
     pendencias = carrega("checklist-commit.py").pendencias
     for arquivos, esperado in CASOS_CHECKLIST:
@@ -307,6 +626,58 @@ def main() -> int:
         falhas += not ok
         rotulo = ", ".join(arquivos) or "(commit vazio)"
         print(f"  {'✓' if ok else '✗'} {rotulo[:58]:60} {obtido} pendencia(s)")
+
+    # O hook inteiro, contra um repo de verdade: o que o `git add` do MESMO comando vai
+    # pôr no índice tem de ser visto (furo do 0af5e41), e o repo avaliado é o do
+    # diretório em que o comando termina, não o do processo.
+    print("── checklist-commit (repo de verdade) ──")
+    checklist = carrega("checklist-commit.py")
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        repo_temporario(repo)
+        (repo / "x.ts").write_text("export const x = 1;\n")
+        (repo / "docs").mkdir()
+        (repo / "docs/n.md").write_text("nota\n")
+        (repo / "CHANGELOG.md").write_text("# Changelog\n\n- mudou\n")
+        casos = [
+            ("índice vazio, commit simples", "git commit -m x", str(repo), None),
+            ("add x.ts && commit, sem CHANGELOG", "git add x.ts && git commit -m x", str(repo), "ask"),
+            ("add x.ts CHANGELOG.md && commit", "git add x.ts CHANGELOG.md && git commit -m x", str(repo), None),
+            ("add docs/n.md && commit (dispensa)", "git add docs/n.md && git commit -m x", str(repo), None),
+            ("add $F && commit → não apurável", "git add $F && git commit -m x", str(repo), "ask"),
+            ("add -p && commit → não apurável", "git add -p x.ts && git commit -m x", str(repo), "ask"),
+            ("cd $D && commit → não apurável", "cd $D && git commit -m x", str(repo), "ask"),
+            ("commit com cwd fora de repo → não apurável", "git commit -m x", tmp, "ask"),
+        ]
+        for rotulo, cmd, cwd, esperado in casos:
+            obtido = roda("checklist-commit.py", {"tool_input": {"command": cmd}, "cwd": cwd})
+            ok = obtido == esperado
+            falhas += not ok
+            print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido or 'passa'}")
+
+        # Agora com x.ts JÁ no índice e o cwd em outro lugar: `cd` e `-C` apontam o repo.
+        subprocess.run(["git", "-C", str(repo), "add", "x.ts"], check=True, capture_output=True)
+        for rotulo, cmd, cwd, esperado in [
+            ("cd <repo> && commit, x.ts no índice", f"cd {repo} && git commit -m x", tmp, "ask"),
+            ("git -C <repo> commit, x.ts no índice", f"git -C {repo} commit -m x", tmp, "ask"),
+            ("git -C <repo> commit -a x.ts+CHANGELOG", f"git -C {repo} commit -am x", tmp, None),
+        ]:
+            obtido = roda("checklist-commit.py", {"tool_input": {"command": cmd}, "cwd": cwd})
+            ok = obtido == esperado
+            falhas += not ok
+            print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido or 'passa'}")
+
+        # Caminho relativo ao TOPO mesmo com o add rodando de um subdiretório: é a forma
+        # que `pendencias()` conhece (`^frontend/packages/utils/src/…`).
+        fonte = repo / "frontend/packages/utils/src"
+        fonte.mkdir(parents=True)
+        (fonte / "lucro.ts").write_text("export const lucro = 1;\n")
+        obtido = checklist.arquivos_do_commit("git add lucro.ts && git commit -m x", str(fonte))
+        esperado = ["frontend/packages/utils/src/lucro.ts", "x.ts"]
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {'add em subdiretório → caminho relativo ao topo':60} {obtido}")
 
     print("── higiene · plugin fantasma ──")
     higiene = carrega("higiene.py")
@@ -513,8 +884,55 @@ def main() -> int:
         falhas += not ok
         print(f"  {'✓' if ok else '✗'} {caminho.removeprefix(str(RAIZ) + '/'):60} {obtido}")
 
+    # PHPStan só no que o phpstan.neon cobre (issue #122 §2): o leitor do neon é puro e sem
+    # PyYAML; `tests/Arch` é o excludePaths REAL do repo, e um caminho dentro dele tem de ficar
+    # fora, um caminho de app/ dentro.
+    print("── trava-php (escopo do PHPStan pelo neon) ──")
+    for rotulo, neon, esperado in [
+        ("lista simples", "parameters:\n  excludePaths:\n    - tests/Arch\n", ["tests/Arch"]),
+        ("forma analyse:", "parameters:\n  excludePaths:\n    analyse:\n      - tests/Arch\n      - database/x\n", ["tests/Arch", "database/x"]),
+        ("forma analyseAndScan:", "parameters:\n  excludePaths:\n    analyseAndScan:\n      - vendor\n", ["vendor"]),
+        ("sufixo (?) cai", "parameters:\n  excludePaths:\n    - tests/*/Fixtures (?)\n", ["tests/*/Fixtures"]),
+        ("dedent fecha o bloco", "parameters:\n  excludePaths:\n    - tests/Arch\n  ignoreErrors: []\n  paths:\n    - app\n", ["tests/Arch"]),
+        ("sem excludePaths", "parameters:\n  level: 9\n  paths:\n    - app\n", []),
+    ]:
+        obtido = trava_php.excluidos_do_phpstan(neon)
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido}")
+    for relativo, esperado in [
+        ("tests/Arch/ArquiteturaTest.php", False),   # excludePaths real do backend/phpstan.neon
+        ("tests/Arch", False),
+        ("tests/Feature/SaudeTest.php", True),
+        ("tests/Architecture/X.php", True),          # prefixo parecido não é diretório excluído
+        ("app/Cadastro/Domain/Posto.php", True),
+    ]:
+        obtido = trava_php.phpstan_se_aplica(back, relativo)
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {'phpstan_se_aplica ' + relativo:60} {obtido}")
+    for saida, esperado in [
+        ("[ERROR] No files found to analyse.", True),
+        ('{"tool":"phpstan","raw":["Note: …","[ERROR] No files found to analyse."]}', True),
+        ("Found 1 error", False),
+        ("", False),
+    ]:
+        obtido = trava_php.nao_se_aplica(saida)
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {'nao_se_aplica ' + saida[:45]:60} {obtido}")
+    nomes = [nome for nome, _ in trava_php.passos("tests/Arch/ArquiteturaTest.php", back)]
+    ok = "PHPStan" not in nomes and "Pest Arch" in nomes
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'passos(tests/Arch) sem PHPStan, com Pest Arch':60} {nomes}")
+    nomes = [nome for nome, _ in trava_php.passos("app/Cadastro/Domain/Posto.php", back)]
+    ok = nomes[:2] == ["PHPStan", "PHPMD"]
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'passos(app/…) começa em PHPStan, PHPMD':60} {nomes}")
+
     # Canário de verdade, os dois lados: classe com dd() TEM de voltar exit 2 (e prova que o
-    # Pest Arch está vivo), arquivo existente TEM de passar.
+    # Pest Arch está vivo), arquivo existente TEM de passar. E o tests/Arch, que o neon exclui,
+    # TEM de passar sem o PHPStan reclamar "No files found" (antes: exit 2, issue #122 §2).
     print("── trava-php (canário, roda os gates de verdade) ──")
     if not (back / "vendor/bin/phpstan").exists():
         falhas += 1
@@ -531,6 +949,7 @@ def main() -> int:
             for rotulo, arquivo, codigo in [
                 ("classe com dd() → exit 2", sujo, 2),
                 ("arquivo existente limpo → exit 0", back / "app/Compartilhado/PostoAtual.php", 0),
+                ("tests/Arch (fora do neon) → exit 0, sem PHPStan", back / "tests/Arch/ArquiteturaTest.php", 0),
             ]:
                 if codigo == 0:
                     sujo.unlink(missing_ok=True)
@@ -540,12 +959,68 @@ def main() -> int:
                     capture_output=True, text=True, timeout=180,
                 )
                 ok = r.returncode == codigo and (codigo == 0 or "Pest Arch" in r.stderr)
+                ok = ok and ("PHPStan" not in r.stderr if "fora do neon" in rotulo else True)
                 falhas += not ok
                 print(f"  {'✓' if ok else '✗'} {rotulo:60} exit {r.returncode}")
                 if not ok:
                     print(f"      stderr: {r.stderr.strip()[:300]}")
         finally:
             sujo.unlink(missing_ok=True)
+
+    # Meta-canário de fiação: todo hook citado no settings.json existe no disco, e todo hook
+    # de decisão/aviso do disco está ligado em algum evento. Hook escrito e não ligado
+    # (so-fable, 18→19/09) e hook ligado e apagado (viraria "passa" silencioso) são os dois
+    # modos de falha que este bloco fecha.
+    print("── settings.json liga o que existe ──")
+    settings_path = RAIZ / ".claude/settings.json"
+    try:
+        settings = json.loads(settings_path.read_text())
+        ok = True
+    except (OSError, json.JSONDecodeError) as erro:
+        settings, ok = {}, False
+        print(f"  ✗ settings.json ilegível: {erro}")
+    falhas += not ok
+    citados = hooks_citados(settings)
+    ok = bool(citados)
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'settings.json cita hooks em .claude/hooks/':60} {len(citados)}")
+    for nome in sorted(set(citados)):
+        existe = (HOOKS / nome).is_file()
+        falhas += not existe
+        print(f"  {'✓' if existe else '✗'} {'citado existe: ' + nome:60} {'ok' if existe else 'NÃO EXISTE'}")
+    for nome in HOOKS_QUE_TEM_DE_ESTAR_LIGADOS:
+        ligado = f"{nome}.py" in citados
+        falhas += not ligado
+        print(f"  {'✓' if ligado else '✗'} {'ligado: ' + nome:60} {'ok' if ligado else 'NÃO LIGADO'}")
+    # Hook de agente: todo agente com `memory:` carrega o memoria-somente no frontmatter, e
+    # todo hook que um frontmatter cita existe no disco.
+    agentes = sorted((RAIZ / ".claude/agents").glob("*.md"))
+    ok = bool(agentes)
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'.claude/agents/*.md encontrados':60} {len(agentes)}")
+    com_memoria = 0
+    for agente in agentes:
+        fm = frontmatter_de(agente)
+        citados_no_agente = HOOK_NO_SETTINGS.findall(fm)
+        for nome in sorted(set(citados_no_agente)):
+            existe = (HOOKS / nome).is_file()
+            falhas += not existe
+            if not existe:
+                print(f"  ✗ {'agente ' + agente.stem + ' cita ' + nome:60} NÃO EXISTE")
+        if DECLARA_MEMORIA.search(fm):
+            com_memoria += 1
+            ligado = HOOK_DE_AGENTE_COM_MEMORIA in citados_no_agente
+            falhas += not ligado
+            print(f"  {'✓' if ligado else '✗'} {'memory: → memoria-somente no agente ' + agente.stem:60} {'ok' if ligado else 'NÃO LIGADO'}")
+    ok = com_memoria > 0
+    falhas += not ok
+    print(f"  {'✓' if ok else '✗'} {'algum agente declara memory: (senão o bloco acima é vazio)':60} {com_memoria}")
+
+    if QUEBRAS:
+        print("── hooks que não existiam ou estouraram durante a bateria ──")
+        for q in dict.fromkeys(QUEBRAS):
+            print(f"  ✗ {q[:110]}")
+        falhas += len(QUEBRAS)
 
     print(f"\n{'TODOS OS CASOS PASSARAM' if not falhas else f'{falhas} FALHA(S)'}")
     return 1 if falhas else 0

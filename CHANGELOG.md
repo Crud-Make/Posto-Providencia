@@ -2,6 +2,82 @@
 
 ## [Não Lançado]
 
+### 🪝 Seis hooks para regras que estavam quebradas (18-19/09) — `.claude/hooks/`, branch `chore/hooks-regras-quebradas`
+
+Cinco incidentes em dois dias, cada um passando por uma trava que existia e não via: um
+subagente desligou os hooks de git com `git -c core.hooksPath=/dev/null commit` (o `protege-git`
+ancorava em `^git\s+commit`, e qualquer opção global entre o `git` e o verbo o cegava); o
+`0af5e41` subiu sem `CHANGELOG.md` porque `git add x && git commit` era avaliado com o índice ainda
+vazio; uma worktree com `backend/vendor` em symlink fez o Pest carregar o `App\` da árvore de
+ORIGEM e o gate deu verde testando o código errado (PR #115); `pkill -f 'bun dev'` matou o shell da
+sessão duas vezes; e o `trava-php` reprovava com exit 2 qualquer edição em `tests/Arch`, que o
+`phpstan.neon` exclui (issue #122 §2). O sexto hook, `so-fable-na-formula.py`, foi escrito em 18/09
+em outra sessão e ficou **não rastreado** no checkout principal — hook escrito e não ligado é a
+trava que parece existir (issue #122 §1). Nenhuma fórmula, nenhum `.ts` nem `.php` mudou:
+o módulo é 100 % Python e nenhum gate da Fase 4 se aplica.
+
+- **Workflow `refatora-modulo` passa a ser versionado** (`.claude/workflows/refatora-modulo.js`,
+  `!.claude/workflows/` no `.gitignore`). Até aqui só existia no checkout principal, sem commit. Agente
+  principal (plano e execução) em Fable, os demais em Opus. Ganha o **modo curto** (`curto: true`,
+  aprovado pelo dono em 19/09 pelo prazo): 1 mapeador sem cético no plano e 1 revisor adversarial no
+  executar; gates, canário, hooks e regras idênticos. O script recusa modo curto em plano que toca
+  dinheiro; fórmula, gravação no banco e arquitetura nova (guard do login) seguem no modo completo.
+- **`_comum.py` ganha a FORMULA única e o parser de git.** A regra "isto é fórmula de dinheiro"
+  estava em TRÊS cópias divergentes (`checklist-commit`, `portao-golden`, `so-fable`); agora é uma
+  só, com `e_formula()`, e passa a cobrir o backend: `App\Agregacao/**` (soma dinheiro em SQL,
+  janela do custeio, DTOs/Resources com o decimal) e `App\Fechamento\Domain/**` (casts
+  `decimal:2/3` fixam a precisão; Value Object de dinheiro novo nasce ali). Canário de unicidade:
+  cópia nova em outro hook reprova a bateria. `comando_git()` desmonta opção global (`-C`, `-c`,
+  `--config-env`, `--git-dir`…) do subcomando — e não confunde com `git commit -c HEAD`;
+  `diretorio_final()` aplica cada `cd` do comando (com `~`; `$VAR`, `$(…)` e `cd -` → "não sei").
+- **`protege-git.py` fecha `-C`/`-c` e nega desvio de hook de git.** `git -C /tmp push --force`
+  (o furo antigo) é negado. `deny` para `core.hooksPath` por `-c`, `--config-env` ou
+  `GIT_CONFIG_*`; `git config` ESCREVENDO essa chave (leitura livre); `--no-verify` (e as
+  abreviações que o git aceita) em qualquer subcomando; `-n` em cluster SÓ no `commit` (`-n` no
+  `push` é `--dry-run`); e `commit-tree`. O `ask` na `main` agora lê a branch no diretório em que
+  o comando TERMINA (`cwd` do JSON + `cd` + `-C`) — canário com repo real em tempfile. O canário
+  do pre-push (`bash scripts/hooks/testa-pre-push.sh`) continua liberado: o hook só lê o texto.
+- **`checklist-commit.py` enxerga o `git add` do mesmo comando.** Simula com `git add --dry-run`
+  (man: não escreve) e une ao índice, tudo no diretório final. Quando não dá para apurar (`cd $D`,
+  `git add $F`, xargs, `-p`, git que falha) **pergunta** com o motivo, em vez de liberar em
+  silêncio como fazia (era `return []`). Continua nunca negando. Fórmula PHP no commit ganha
+  texto próprio: não há golden PHP, é `composer gates` mais o golden do TS que consome o número.
+- **`protege-dependencias.py` (novo): `vendor` e `node_modules` nunca por symlink.** `deny` para
+  `ln -s`/`cp -s` cujo alvo OU nome termine nesses dois; `ln -sfn <principal>/docs/data docs/data`
+  (padrão das worktrees, `scripts/hooks/pre-push:156`) continua livre. **Revoga a receita da
+  memória `worktree-nao-herda-dependencias` de "ligar os 7 node_modules"**: a saída é
+  `composer install` / `bun install --frozen-lockfile` na própria worktree (foi o que a `pp-hooks`
+  recebeu antes de qualquer edição, para os canários reais de `trava-ts`/`trava-php` rodarem).
+- **`so-fable-na-formula.py` entra na branch**, byte a byte igual à cópia da scratchpad (sha256
+  `807b61f7…`, a mesma do arquivo não rastreado do principal), com a origem no docblock, e depois
+  passa a consumir a FORMULA de `_comum` — os 21 casos originais mais 12 de backend. Falha fechada
+  preservada: sem transcript legível, nega. Ligado no `settings.json` como primeiro `PreToolUse`
+  (`Write|Edit|NotebookEdit|Bash`). `vendor/bin/pint` fica FORA da lista de escrita (formatação
+  não é cálculo) — decisão registrada.
+- **`trava-php.py` respeita o `excludePaths` do `phpstan.neon`.** Leitor mínimo sem PyYAML (lista,
+  `analyse:`/`analyseAndScan:`, sufixo `(?)`), e segunda camada: "No files found to analyse" com
+  código 1 não é reprovação. Medido na worktree: `tests/Arch/ArquiteturaTest.php` passava de exit 2
+  para exit 0, sem PHPStan no stderr; `dd()` plantado segue exit 2 com "Pest Arch". Nada afrouxa:
+  PHPStan continua em `app/`, `routes/`, `tests/Feature`.
+- **`avisa-pkill.py` (novo): aviso, não trava.** `pkill -f`/`pgrep -f` cujo padrão casa com o texto
+  do próprio comando (o harness roda `bash -c '… eval <cmd>'`, então a linha do shell contém o
+  comando) recebe `additionalContext` sugerindo `pgrep -af` + `kill <pid>` ou padrão com colchete
+  (`[b]un dev`). Nunca emite `permissionDecision` — canário prova. Regex inválida avisa também.
+- **`testa-hooks.py`: hook ausente ou quebrado deixa de ser "passa".** `roda()`/`roda_contexto()`
+  devolvem a sentinela `AUSENTE` e contam falha quando o script não existe ou estoura (antes, stdout
+  vazio virava `None` = liberado). Meta-canário de fiação: todo hook citado no `settings.json`
+  existe; todo hook de decisão/aviso está ligado; e, como `memoria-somente` é hook DE AGENTE, todo
+  `.claude/agents/*.md` com `memory:` tem de carregá-lo no frontmatter (os seis têm). Mutação
+  feita: renomear `avisa-pkill.py` → 35 falhas em duas seções; `trava-php` antigo → bateria
+  vermelha. 342 casos verdes com `vendor` e `node_modules` instalados.
+- **Pendências para o dono (não decididas aqui):** `App\Cadastro\Domain` tem preço e taxa
+  (`Combustivel`, `Maquininha`, `FormaPagamento`) e ficou FORA da FORMULA por escopo; testes PHP com
+  literais decimais (`DashboardTest.php`) não têm equivalente de golden; a memória
+  `worktree-nao-herda-dependencias.md` precisa ser atualizada fora deste repo; ao levar a branch
+  para o checkout principal há conflito de working tree em `testa-hooks.py`, `settings.json` e
+  `so-fable-na-formula.py` (as cópias locais já estão contidas nesta branch). A issue #122 cobre os
+  itens 1 e 5 e só fecha após o merge; o item 4 não está nela.
+
 ### 🧾 Fechamento diário pela API — fatias P0–P3 da #103 (item 1): Design Doc, Public API e `App\Fechamento` só leitura
 
 - **Design Doc `docs/design/fechamento-diario-api.md` aprovado (P0–P3) pelo dono em 18/09.** Registra a

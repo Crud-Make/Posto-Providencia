@@ -16,14 +16,89 @@ no pre-push, onde já estava.
 Não roda a suíte Feature: ela usa o Postgres do docker-compose e passaria a depender de
 container de pé a cada edição. PostToolUse não desfaz a escrita — é feedback, não bloqueio.
 Ferramenta ausente (worktree sem `composer install`) avisa em vez de ficar calada.
+
+PHPStan só entra quando o arquivo está no escopo do `phpstan.neon`. Até 19/09/2026 o hook
+mandava o PHPStan analisar QUALQUER .php editado, e o `phpstan.neon` exclui `tests/Arch`
+(`excludePaths`): o PHPStan devolvia código 1 com "[ERROR] No files found to analyse." e o
+hook lia isso como reprovação — exit 2 em cima de arquivo que o gate de verdade nem olha
+(issue #122 §2). Duas camadas: o `excludePaths` do neon é lido (sem PyYAML, que não existe
+na máquina) e, se ainda assim o PHPStan disser que não achou arquivo, isso não é erro.
+Nada afrouxa: PHPStan segue em app/, routes/, tests/Feature; erro real continua exit 2.
 """
 import json
+import re
 import subprocess
 import sys
+from fnmatch import fnmatch
 from pathlib import Path
 
 PASTAS = ("app/", "routes/", "tests/", "database/")
 TIMEOUT = 60
+
+# Texto do phar 2.2.x quando a lista de arquivos a analisar fica vazia (`handleReturn(1, …)`).
+SEM_ARQUIVOS = "No files found to analyse"
+# Item de lista do neon: `- caminho`, com sufixo opcional `(?)` (= "pode não existir").
+ITEM_DE_LISTA = re.compile(r"^\s*-\s*(.+?)\s*(\(\?\))?\s*$")
+# Subchaves aceitas dentro de `excludePaths:` (forma nova do PHPStan).
+SUBCHAVES = ("analyse:", "analyseAndScan:")
+
+
+def _recuo(linha: str) -> int:
+    return len(linha) - len(linha.lstrip(" \t"))
+
+
+def excluidos_do_phpstan(neon: str) -> list[str]:
+    """Caminhos de `parameters.excludePaths` do phpstan.neon, sem PyYAML.
+
+    Cobre a forma de lista (`excludePaths:` + `- x`), as subchaves `analyse:` /
+    `analyseAndScan:` e o sufixo `(?)`. Sintaxe fora disso devolve o que conseguiu ler
+    (ou nada): aí o PHPStan roda como sempre rodou, e a segunda camada segura o caso.
+    """
+    achados: list[str] = []
+    linhas = neon.splitlines()
+    i = 0
+    while i < len(linhas):
+        linha = linhas[i]
+        if linha.strip().startswith("excludePaths:"):
+            base = _recuo(linha)
+            i += 1
+            while i < len(linhas):
+                atual = linhas[i]
+                texto = atual.strip()
+                if texto and not texto.startswith("#") and _recuo(atual) <= base:
+                    break  # dedentou: acabou o bloco
+                if texto in SUBCHAVES or not texto or texto.startswith("#"):
+                    i += 1
+                    continue
+                m = ITEM_DE_LISTA.match(atual)
+                if m:
+                    achados.append(m.group(1).strip("'\""))
+                i += 1
+            continue
+        i += 1
+    return achados
+
+
+def phpstan_se_aplica(raiz: Path, relativo: str) -> bool:
+    """False quando `relativo` (ao backend) cai num excludePaths do phpstan.neon."""
+    neon = raiz / "phpstan.neon"
+    if not neon.is_file():
+        return True
+    for excluido in excluidos_do_phpstan(neon.read_text()):
+        excluido = excluido.rstrip("/")
+        if not excluido:
+            continue
+        if "*" in excluido:
+            if fnmatch(relativo, excluido):
+                return False
+        elif relativo == excluido or relativo.startswith(excluido + "/"):
+            return False
+    return True
+
+
+def nao_se_aplica(saida: str) -> bool:
+    """Saída do PHPStan que diz 'não tinha arquivo para analisar' — não é reprovação."""
+    return SEM_ARQUIVOS in saida
 
 
 def alvo(caminho: str) -> tuple[Path, str] | None:
@@ -38,16 +113,17 @@ def alvo(caminho: str) -> tuple[Path, str] | None:
     return None
 
 
-def passos(relativo: str) -> list[tuple[str, list[str]]]:
+def passos(relativo: str, raiz: Path) -> list[tuple[str, list[str]]]:
     bin_ = "vendor/bin/"
-    lista = [
-        ("PHPStan", [bin_ + "phpstan", "analyse", "--no-progress", "--memory-limit=1G", "--error-format=raw", relativo]),
+    lista: list[tuple[str, list[str]]] = [
         # --no-cache: o .deptrac.cache é versionado e cada rodada o sujaria no git status.
         ("Deptrac", [bin_ + "deptrac", "analyse", "--no-progress", "--no-cache"]),
         ("Pest Arch", [bin_ + "pest", "--compact", "tests/Arch"]),
     ]
     if relativo.startswith(("app/", "routes/")):
-        lista.insert(1, ("PHPMD", [bin_ + "phpmd", relativo, "text", "phpmd.xml"]))
+        lista.insert(0, ("PHPMD", [bin_ + "phpmd", relativo, "text", "phpmd.xml"]))
+    if phpstan_se_aplica(raiz, relativo):
+        lista.insert(0, ("PHPStan", [bin_ + "phpstan", "analyse", "--no-progress", "--memory-limit=1G", "--error-format=raw", relativo]))
     return lista
 
 
@@ -67,10 +143,12 @@ def main() -> int:
     reprovados: list[str] = []
     try:
         subprocess.run(["vendor/bin/pint", relativo], cwd=raiz, capture_output=True, timeout=TIMEOUT)
-        for nome, comando in passos(relativo):
+        for nome, comando in passos(relativo, raiz):
             feito = subprocess.run(comando, cwd=raiz, capture_output=True, text=True, timeout=TIMEOUT)
             if feito.returncode != 0:
                 saida = (feito.stdout + feito.stderr).strip()
+                if nome == "PHPStan" and nao_se_aplica(saida):
+                    continue  # zero arquivos no escopo do neon não é reprovação
                 reprovados.append(f"── {nome} ──\n{saida[-2500:]}")
     except (OSError, subprocess.TimeoutExpired) as erro:
         print(f"[hook trava-php] {relativo} NÃO foi checado: {erro}", file=sys.stderr)

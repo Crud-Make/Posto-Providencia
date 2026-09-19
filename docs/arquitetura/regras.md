@@ -165,11 +165,14 @@ exige tipo está inoperante hoje**, não por desligada, mas por falta do parser.
 
 | ID | Regra | Trava | Onde | Estado |
 |---|---|---|---|---|
-| PROC-1 | Nunca commitar na `main`; branch por issue | `.claude/hooks/` | `.claude/hooks/` | ⚠️ PARCIAL — só dentro do Claude Code |
-| PROC-2 | Nenhum merge ou push sem "ok" explícito do dono | `.claude/hooks/` | `.claude/hooks/` | ⚠️ PARCIAL — só dentro do Claude Code |
+| PROC-1 | Nunca commitar na `main`; branch por issue | `protege-git.py` (`ask` na `main`, lido no diretório em que o comando termina) + `checklist-commit.py` (pergunta se falta CHANGELOG/golden, enxerga o `git add` do mesmo comando) | `.claude/hooks/protege-git.py`, `.claude/hooks/checklist-commit.py` | ⚠️ PARCIAL — só dentro do Claude Code; desde 19/09 `git -C`/`cd` não cegam mais |
+| PROC-2 | Nenhum merge ou push sem "ok" explícito do dono | `protege-git.py` (`deny` em `push --force`, também com opção global antes do verbo) | `.claude/hooks/protege-git.py` | ⚠️ PARCIAL — só dentro do Claude Code; o "ok" em si é disciplina |
 | PROC-3 | `docs/data/` nunca é versionado | `.gitignore` + `.vercelignore` | `.gitignore:35,73` | ⚠️ PARCIAL — o padrão é `docs/data/` **com barra final**, que não casa com symlink |
 | PROC-4 | Módulo não começa sem Design Doc em `docs/design/` | — | — | ❌ SEM TRAVA |
-| PROC-5 | Toda trava tem canário que prova que ela reprova | `testa-hooks.py` (só para hooks) | `.claude/hooks/testa-hooks.py` | ⚠️ PARCIAL — **os Quality Gates não têm canário** |
+| PROC-5 | Toda trava tem canário que prova que ela reprova | `testa-hooks.py` (só para hooks; desde 19/09 hook ausente/quebrado conta falha e há meta-canário de fiação: hook citado existe, hook de decisão está ligado, agente com `memory:` carrega `memoria-somente`) | `.claude/hooks/testa-hooks.py` | ⚠️ PARCIAL — **os Quality Gates não têm canário** |
+| PROC-6 | Hooks de git (pre-commit, pre-push) não se desviam: sem `core.hooksPath`, sem `--no-verify`/`-n` no commit, sem `commit-tree` | `protege-git.py` (`deny`; leitura de `core.hooksPath` e `bash scripts/hooks/testa-pre-push.sh` continuam livres) | `.claude/hooks/protege-git.py` | ⚠️ PARCIAL — só dentro do Claude Code; no terminal `--no-verify` segue sendo do git (quem usar, diz no PR por quê) |
+| PROC-7 | Dependência nunca entra por symlink: `vendor` e `node_modules` se instalam na worktree | `protege-dependencias.py` (`deny` em `ln -s`/`cp -s` com alvo ou nome `vendor`/`node_modules`; `docs/data` linkado continua livre) | `.claude/hooks/protege-dependencias.py` | ⚠️ PARCIAL — só dentro do Claude Code; incidente de 18/09: Pest testou o `App\` da árvore de origem |
+| PROC-8 | Só o Fable mexe em fórmula de dinheiro (lista única `_comum.FORMULA`: `packages/utils`, `aggregator.service.ts`, `App\Agregacao`, `App\Fechamento\Domain`, golden e regressão) | `so-fable-na-formula.py` (`deny` para outro modelo; falha fechada sem transcript) | `.claude/hooks/so-fable-na-formula.py`, `.claude/hooks/_comum.py` | ⚠️ PARCIAL — só dentro do Claude Code; `App\Cadastro\Domain` (preço/taxa) fora por decisão pendente do dono |
 
 ---
 

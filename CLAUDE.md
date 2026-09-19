@@ -39,7 +39,8 @@ O que existe hoje e onde cada regra abaixo se encaixa:
   `type-check`, `test`, **`test:golden`** ou `composer gates` reprovarem. Roda a suíte inteira, não o
   diff: "o sistema está rodando" é afirmação sobre o sistema. Custo medido: **~1m30s**. `--no-verify`
   passa por cima porque é do git — quem usar, diz no PR por quê.
-* **Travas automáticas** em `.claude/hooks/` (dados, git, golden, delegação, memória) continuam
+* **Travas automáticas** em `.claude/hooks/` (dados, git e desvio de hook de git, golden, delegação,
+  memória, modelo na fórmula, dependência por symlink, aviso de `pkill -f`) continuam
   ativas e independem deste arquivo. `python3 .claude/hooks/testa-hooks.py` confere.
 * **Grafo:** `graphify-out/` é hipótese; grep confirma. Agente `grafo` é a porta de entrada.
 

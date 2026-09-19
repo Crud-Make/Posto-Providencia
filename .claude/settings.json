@@ -46,6 +46,17 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Write|Edit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/so-fable-na-formula.py\"",
+            "timeout": 10,
+            "statusMessage": "Conferindo se o modelo pode mexer em fórmula"
+          }
+        ]
+      },
+      {
         "matcher": "Read|Grep|Glob|Bash",
         "hooks": [
           {
@@ -87,6 +98,18 @@
             "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/checklist-commit.py\"",
             "timeout": 10,
             "statusMessage": "Conferindo checklist de commit"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/protege-dependencias.py\"",
+            "timeout": 10,
+            "statusMessage": "Conferindo symlink de dependência"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/avisa-pkill.py\"",
+            "timeout": 10,
+            "statusMessage": "Conferindo pkill -f"
           }
         ]
       },
