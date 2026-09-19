@@ -1,7 +1,7 @@
 import React from 'react';
 import { corDoProduto } from '@posto/utils';
 import { Droplet, DollarSign, BarChart3 } from 'lucide-react';
-import type { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
+import type { useLeituras } from '../../fechamento-diario';
 
 type UseLeiturasReturn = ReturnType<typeof useLeituras>;
 

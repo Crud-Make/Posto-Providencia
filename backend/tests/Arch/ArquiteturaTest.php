@@ -73,6 +73,12 @@ function direcaoPermitidaEntreModulos(): array
         // DadosDoPeriodo deixou só a regra de Agregacao vermelha.
         'Agregacao' => [],
         'Cadastro' => [],
+        // Fechamento nasceu em 18/09/2026 (docs/design/fechamento-diario-api.md §2) SEM a
+        // abertura para Cadastro que o comentário acima previa: o catálogo chega ao cliente
+        // pelas rotas da #97 e coluna de tabela alheia se lê com query builder (CA-7, sem
+        // exceção). Canário 18/09/2026: `use App\Cadastro\Domain\Bico` com uso real em
+        // Fechamento\Domain\Leitura deixou só a regra de Fechamento vermelha; removido, verde.
+        'Fechamento' => [],
         'Pessoas' => [],
     ];
 }

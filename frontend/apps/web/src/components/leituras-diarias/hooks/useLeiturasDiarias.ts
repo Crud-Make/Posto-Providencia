@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { bicoService, leituraService } from '../../../services/api';
 import { reconsolidarDia } from '../../../services/api/consolidacao.service';
 import { isFalta } from '@posto/utils';
-import { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
+import { useLeituras } from '../../fechamento-diario';
 import { numeroDoEncerrante } from '../model/encerrante-digitado';
 import { USUARIO_SISTEMA_ID } from '@shared/constants/usuario-sistema';
 import { isSuccess } from '../../../types/ui/response-types';

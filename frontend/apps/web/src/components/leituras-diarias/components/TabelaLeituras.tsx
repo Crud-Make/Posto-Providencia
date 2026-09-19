@@ -2,7 +2,7 @@ import React from 'react';
 import { corDoProduto } from '@posto/utils';
 import { Droplet, AlertTriangle, TrendingUp } from 'lucide-react';
 import type { PumpGroup } from '../types';
-import type { useLeituras } from '../../fechamento-diario/hooks/useLeituras';
+import type { useLeituras } from '../../fechamento-diario';
 
 // Tipo de retorno do hook
 type UseLeiturasReturn = ReturnType<typeof useLeituras>;
