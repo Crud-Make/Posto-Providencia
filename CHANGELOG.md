@@ -2,6 +2,48 @@
 
 ## [Não Lançado]
 
+### 🧾 Fechamento diário pela API — fatias P4a/P4b da #103 (item 1): catálogo do módulo pelas rotas da #97
+
+- **Frentistas, bicos e formas de pagamento do `fechamento-diario` vêm da API Laravel quando
+  `VITE_API_URL` está definida; sem ela, nada muda.** Três adaptadores novos ao lado dos services,
+  no padrão `fornecedor.api.ts`: `services/api/frentista.api.ts`, `bico.api.ts` e
+  `formaPagamento.api.ts` (`buscarNaApi` + schema Zod do Resource + `ResultAsync<T, ErroDaApi>`),
+  cada um com vitest do schema e do reshape. A troca é **no call site** dos hooks
+  (`useCarregamentoDados`, `useSessoesFrentistas` no fallback sem `frentistasCadastrados`,
+  `usePagamentos`) e nunca dentro de `bicoService`/`frentistaService`/`formaPagamentoService`, porque
+  o `aggregator.service.ts` usa os mesmos métodos e é sítio de fórmula que só o Fable edita.
+- **Paridade com o Supabase, provada por teste e por mutação.** `CatalogoDoPosto` não filtra `ativo`
+  e os services filtravam, então o filtro `ativo === true` é do cliente: tirar o `.filter` de cada
+  adaptador (um por vez, 19/09) derrubou 4 testes cada — o do adaptador e o do hook que o consome —
+  e os três arquivos voltaram ao hash original. `preco_venda` e `taxa` chegam em string decimal e
+  viram `number` por `Number()`, o mesmo valor que o PostgREST entregava; número cru na resposta é
+  contrato violado, não dado a converter. Nenhuma conta mudou: golden 3296/0 antes e depois.
+- **Erro da API nunca vira exceção, e cada hook reage do seu jeito** (conferido no código em 19/09):
+  o `match` do `ResultAsync` converte a falha em `ApiResponse` de erro com a mensagem de
+  `descreverErroDaApi`; daí em diante vale o tratamento que o hook já tinha. `useCarregamentoDados`
+  põe a mensagem em `erro` (na tela) e no `console.error`, com bicos/frentistas vazios
+  (`useCarregamentoDados.ts:176-194`); `usePagamentos` zera a lista e loga no `console.error`
+  (`usePagamentos.ts:97-101`); `useSessoesFrentistas`, no fallback sem `frentistasCadastrados`, só
+  deixa a lista sem os frentistas extras — `if (isSuccess(frentistasRes))` sem `else`, nenhuma
+  mensagem (`useSessoesFrentistas.ts:176-178`). Nenhum dos três cai na fonte antiga nem inventa lista.
+- **Ajustes da revisão (19/09) — histórico do erro de orientação, registrado só aqui:** o Design Doc
+  dizia que P4a–P7 esperavam a "§7 (a) implementada na #102", item que nem existe na tabela do §7. A
+  instrução errada da manhã, do orquestrador, dizia que as "leituras P4–P7 mantêm a paridade de
+  exposição" (pública, como a RLS de hoje). Para a P4 isso continua certo: ela só usa as rotas públicas
+  do catálogo da #97 (`routes/api.php:43-46`; pendência já registrada em `cadastro.md` para a #102). O
+  erro era estender isso a P5–P7: elas criam rotas NOVAS de leitura e, pela DECISÃO A do dono ("toda rota
+  fica protegida desde já, inclusive escrita"), nascem protegidas — ficam bloqueadas até o guard existir
+  no backend. Desfeito à tarde; o doc guarda só o estado atual. Na mesma passada: P10 (Command sem rota)
+  espera só as pendências do §7 (b)–(e) e não o guard; P11 (rota PUT) espera o guard E a P10. Registrado
+  em §Riscos que a tela
+  com `VITE_API_URL` é **mista com gravação** — ids do Postgres local, salvar grava na produção — e
+  serve só para validar leitura, com os ids reconferidos antes de cada validação (em 19/09 batiam:
+  9 frentistas, 6 bicos, 9 formas). Cobertura nova em `usePagamentos.test.ts` (6 casos) e
+  `useSessoesFrentistas.test.ts` (5 casos do fallback). `bun run catraca:atualizar` rodou sem
+  mudança: o `as any` de `useCarregamentoDados.test.ts:9` continua contando 1 porque a catraca roda
+  o ESLint com `--no-inline-config` (`frontend/scripts/catraca.mjs:97-103`), então o `eslint-disable` não o esconde —
+  a premissa "contagem hoje é 0" da revisão estava errada. `docs/architecture.md` ganhou a P4.
+
 ### 🧾 Fechamento diário pela API — fatias P0–P3 da #103 (item 1): Design Doc, Public API e `App\Fechamento` só leitura
 
 - **Design Doc `docs/design/fechamento-diario-api.md` aprovado (P0–P3) pelo dono em 18/09.** Registra a
