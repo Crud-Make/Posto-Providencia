@@ -1,6 +1,6 @@
 # Painel web pela API — Design Doc
 
-Issue: #103 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026
+Issue: #103 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Atualizado: 18/09/2026 (DECISÃO 2: o `AuthContext` não é pré-requisito das fatias — o guard aceita o token atual; ver correção no §3)
 
 > A maior fatia da Fase A. Cada módulo abre sub-issue própria quando chega a vez; este doc é o
 > contrato comum às oito.
@@ -59,6 +59,17 @@ do "reset do painel apaga em silêncio".
 
 Então: `frontend/apps/web/src/contexts/AuthContext.tsx` e `contexts/useAuth.ts` trocam **nesta
 issue**, junto com a última chamada direta ao Postgres. Nunca antes.
+
+> **Correção de 18/09/2026 (decisão do dono, registrada em `fechamento-diario-api.md` §6, DECISÃO A).**
+> O parágrafo acima continua valendo para a **troca de emissor** (Supabase → Laravel): ela fica
+> acoplada ao fim das chamadas diretas. O que ele deixava implícito — e a `autenticacao.md:118`
+> contradizia — era que, com a API exigindo sessão Sanctum desde a #102, nenhuma fatia migrada
+> conseguiria autenticar antes dessa troca: 401 em tudo, inclusive no piloto de fornecedor (§3b).
+> **O que passa a valer:** o guard da #102 aceita o token do login atual e resolve o `Usuario` por
+> `Usuario.auth_user_id` (`01-esquema-base.sql:510`). O `AuthContext` **não precisa trocar** para
+> as fatias migrarem — o token que ele já tem é o que a API aceita; `base.ts` passa a enviá-lo. A
+> troca de emissor deixa de ser pré-requisito de qualquer fatia e continua sendo a última, junto
+> com a última chamada direta.
 
 Nota de grep herdada do levantamento: procurar só por `AuthContext` **perde 3 dos 4 consumidores** —
 eles importam `useAuth`. Buscar pelos dois símbolos.

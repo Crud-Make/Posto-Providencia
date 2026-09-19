@@ -2,6 +2,37 @@
 
 ## [Não Lançado]
 
+### 🧾 Fechamento diário pela API — fatias P0–P3 da #103 (item 1): Design Doc, Public API e `App\Fechamento` só leitura
+
+- **Design Doc `docs/design/fechamento-diario-api.md` aprovado (P0–P3) pelo dono em 18/09.** Registra a
+  DECISÃO A: durante a transição o Laravel **aceita o token do login atual** (JWT do Supabase Auth) e
+  resolve o `Usuario` por `auth_user_id`; Sanctum entra como segundo emissor. Ela desfaz a contradição
+  entre `autenticacao.md` ("toda rota exigindo sessão Sanctum na #102") e `painel-pela-api.md` ("o
+  `AuthContext` só troca no fim da #103"), que deixaria toda fatia migrada em 401 — os dois docs ganharam
+  a correção datada. Ficam **três decisões de gravação pendentes do dono** (§7: Estoque no ressalvamento,
+  DELETE+INSERT × UPSERT de `FechamentoFrentista`, qual `total_vendas` vale), mais a janela de escrita
+  real e a forma dos contratos; P8, P10 e P11 esperam por elas. Nada de fórmula mudou.
+- **Public API do módulo `fechamento-diario`** (`frontend/apps/web/src/components/fechamento-diario/index.ts`):
+  exporta `useLeituras`, `type Leitura` e o `default` da tela (porque `App.tsx:15` faz `import()` da
+  pasta e o Vite resolve `index.ts` antes de `index.tsx`). `leituras-diarias` deixa de importar o arquivo
+  interno `hooks/useLeituras` nos três pontos (`useLeiturasDiarias.ts`, `TabelaLeituras.tsx`,
+  `ResumoLeituras.tsx`). O módulo segue legado do strangler, fora das camadas do FSD.
+- **Nasce `App\Fechamento`, só com `Domain` de leitura:** `Fechamento`, `FechamentoFrentista`, `Leitura`
+  e `Recebimento`, sem Application, Http nem rota. Dinheiro em `decimal:2`, litros em `decimal:3`,
+  `status` no enum; `total_vendas`/`diferenca` continuam NULL até apurar (I8). `Leitura` **não** tem
+  relação com `Fechamento` — o dia liga os dois por `posto_id` + dia UTC, porque não há FK.
+  `'Fechamento' => []` no mapa do Pest Arch **com canário visto vermelho** (`use App\Cadastro\Domain\Bico`
+  em `Leitura` reprovou só a regra de Fechamento; removido, verde), sem a abertura para `Cadastro` que
+  o comentário do mapa previa (CA-7, sem exceção). Feature test contra o Postgres real exercita a
+  trava de N+1 do `AppServiceProvider`, o escopo por posto e o preenchimento de `posto_id` ao criar
+  sem ele (mutação: sem o trait, o teste cai).
+- **Ajustes da revisão (18/09):** o teste "ao criar sem posto_id…" criava só um `Recebimento` (que não
+  tem `posto_id`) e conferia um `Fechamento` criado **com** `posto_id` — reescrito para criar os três
+  models sem `posto_id` e provar o preenchimento; o Design Doc dizia `hasMany leituras` num model que
+  não tem (e está certo em não ter); o docblock de `Fechamento` prometia que passar coluna carimbada
+  "lança" — só fora de produção, em produção a coluna some do INSERT. `docs/architecture.md` ganhou o
+  4º módulo e a Public API.
+
 ### 🧮 #116: o refactor de CCN estourava o limite de linhas — corrigido sem afrouxar regra
 
 - **O `build` do #116 quebrou ao atualizar com a `fase-a`.** O refactor quebrou as funções acima de CCN

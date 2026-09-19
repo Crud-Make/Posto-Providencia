@@ -1,6 +1,6 @@
 # Autenticação do painel — Design Doc
 
-Issue: #102 (mãe: #60) · Estado: **rascunho — pendências do dono: instalar Sanctum e escolher o SMTP** · Data: 17/09/2026
+Issue: #102 (mãe: #60) · Estado: **rascunho — pendências do dono: instalar Sanctum e escolher o SMTP** · Data: 17/09/2026 · Atualizado: 18/09/2026 (DECISÃO 1: a #102 exige identidade, aceitando o token do login atual — ver correção no §3)
 
 > Chave de abóbada da Fase A: destrava #101, #103 e #104. É também a issue onde `UsuarioPosto`,
 > `Usuario.role` e a `PostoPolicy` da #97 finalmente passam a valer.
@@ -115,11 +115,23 @@ Supabase, então não dá para logar nos dois com a mesma credencial.
 
 | Issue | Entrega |
 |---|---|
-| **#102** | Sanctum, migração dos 16 usuários, Policies com dente, **toda rota da API exigindo sessão**. O painel continua logando no Supabase. |
-| **#103** | O painel para de falar com o Postgres **e** troca o login na mesma entrega. Nunca há um momento `anon`. |
+| **#102** | Sanctum, migração dos 16 usuários, Policies com dente, **toda rota da API exigindo identidade** — ver a correção de 18/09 abaixo. O painel continua logando no Supabase. |
+| **#103** | O painel para de falar com o Postgres **e** troca o emissor do token na mesma entrega. Nunca há um momento `anon`. |
 
 Custo: a #102 deixa de ter efeito visível no painel. Ganho: não existe janela de perda silenciosa.
 Isso precisa ser corrigido no texto das duas issues.
+
+> **Correção de 18/09/2026 (decisão do dono, registrada em `fechamento-diario-api.md` §6, DECISÃO A).**
+> A linha da #102 acima dizia "toda rota da API exigindo **sessão**" (Sanctum). Combinada com a
+> DECISÃO 2 da `painel-pela-api.md` — o `AuthContext` só troca no fim da #103 —, isso fazia toda
+> fatia migrada do painel receber 401 entre a #102 e o fim da #103, inclusive o piloto de
+> fornecedor (#121). **O que passa a valer:** o guard da #102 **aceita o token do login atual**
+> (o JWT que o Supabase Auth já emite para o painel) e resolve o `Usuario` por
+> `Usuario.auth_user_id` (`01-esquema-base.sql:510`); toda rota fica protegida desde já, inclusive
+> escrita; a `PostoPolicy` ganha dente com esse usuário. Sanctum e `POST /api/login` (§5) entram
+> como **segundo emissor**, sem exigir que o painel troque de login. Trocar o login depois é só
+> trocar quem emite o token. A janela `anon` do §3 continua proibida: o painel segue logando no
+> Supabase até a última chamada direta ao Postgres sair.
 
 ## 4. Comportamento
 
