@@ -8,17 +8,14 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
-import HistoricoScreen from './screens/HistoricoScreen';
-import VendasScreen from './screens/VendasScreen';
-import TanquesScreen from './screens/TanquesScreen';
+import { abaSecundaria } from './screens/aba-secundaria';
 import ReloadPrompt from './components/ReloadPrompt';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
 import { reduzirParaAvatar, iniciais } from './lib/foto';
 import { hojeIso } from '@posto/utils';
+import type { TabType, FrentistaSelecionavel } from './lib/tipos';
 
 const POSTO_ID = 1;
-
-type TabType = 'registro' | 'vendas' | 'historico' | 'tanques' | 'perfil';
 
 /**
  * Abas que este app ainda tem.
@@ -120,13 +117,6 @@ const formatCurrency = (value: string) => {
   const amount = parseInt(numericValue, 10) / 100;
   return amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
-
-interface FrentistaSelecionavel {
-  id: number;
-  nome: string;
-  /** Data URL JPEG vinda da coluna `Frentista.foto`. Nulo = mostra as iniciais. */
-  foto?: string | null;
-}
 
 /**
  * Foto do frentista, com as iniciais do nome como reserva.
@@ -267,78 +257,6 @@ const ModalDeFrentistas = ({ frentistas, selecionado, aoEscolher, aoFechar }: {
     </div>
   </div>
 );
-
-/** Ícone do lucide-react, tipado pelo que estas telas usam. */
-type IconeDeTela = React.ComponentType<{ size?: number; className?: string }>;
-
-/** Barreira das abas que só fazem sentido com um frentista escolhido. */
-const SelecioneOFrentista = ({ Icone, aoVoltar, nav }: {
-  Icone: IconeDeTela;
-  aoVoltar: () => void;
-  nav: React.ReactNode;
-}) => (
-  <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
-    <ReloadPrompt />
-    <Icone size={48} className="text-slate-600 mb-4" />
-    <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
-    <button onClick={aoVoltar} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
-    {nav}
-  </div>
-);
-
-/**
- * As abas que não são o Registro. Devolve `null` quando a aba pedida cai na tela
- * principal (`registro` e `perfil`), que continua em `AppComponent`.
- *
- * @remarks Estas três telas eram três blocos `if (activeTab === …)` dentro de
- *          `AppComponent`, cada um com sua própria guarda de frentista — juntos
- *          respondiam por boa parte do CCN 26 da função, acima do teto de 20 do
- *          gate. A guarda também estava duplicada palavra por palavra entre
- *          Histórico e Vendas, mudando só o ícone.
- *
- *          Tanques não exige frentista de propósito (#74): medição é do TANQUE.
- *          Como a `Leitura`, `HistoricoTanque` não tem coluna de frentista.
- */
-const abaSecundaria = ({ aba, frentista, aoVoltar, nav }: {
-  aba: TabType;
-  frentista: FrentistaSelecionavel | null;
-  aoVoltar: () => void;
-  nav: React.ReactNode;
-}): React.ReactNode | null => {
-  if (aba === 'tanques') {
-    return (
-      <>
-        <ReloadPrompt />
-        <TanquesScreen onVoltar={aoVoltar} />
-        {nav}
-      </>
-    );
-  }
-
-  if (aba === 'historico') {
-    if (!frentista) return <SelecioneOFrentista Icone={History} aoVoltar={aoVoltar} nav={nav} />;
-    return (
-      <>
-        <ReloadPrompt />
-        <HistoricoScreen frentistaId={frentista.id} frentistaNome={frentista.nome} onVoltar={aoVoltar} />
-        {nav}
-      </>
-    );
-  }
-
-  if (aba === 'vendas') {
-    if (!frentista) return <SelecioneOFrentista Icone={ShoppingBag} aoVoltar={aoVoltar} nav={nav} />;
-    return (
-      <>
-        <ReloadPrompt />
-        <VendasScreen frentistaId={frentista.id} frentistaNome={frentista.nome} onVoltar={aoVoltar} />
-        {nav}
-      </>
-    );
-  }
-
-  return null;
-};
 
 const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateAction<DialogState>> }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);

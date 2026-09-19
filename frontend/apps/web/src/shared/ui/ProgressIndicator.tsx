@@ -24,6 +24,9 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 }) => {
     const percentage = total > 0 ? (current / total) * 100 : 0;
     const isComplete = current === total;
+    // `label` ausente ou vazio cai no contador — o mesmo que o `||` fazia, dito por extenso
+    // para a `strict-boolean-expressions` (string nullable em condição) não ter o que apontar.
+    const rotulo = label !== undefined && label !== '' ? label : `${current}/${total}`;
 
     return (
         <div className={`flex items-center gap-3 ${className}`}>
@@ -35,7 +38,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                 />
             </div>
             <span className={`text-xs font-bold ${isComplete ? 'text-green-600' : 'text-gray-500'}`}>
-                {label || `${current}/${total}`}
+                {rotulo}
             </span>
         </div>
     );

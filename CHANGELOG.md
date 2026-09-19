@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### 🧮 #116: o refactor de CCN estourava o limite de linhas — corrigido sem afrouxar regra
+
+- **O `build` do #116 quebrou ao atualizar com a `fase-a`.** O refactor quebrou as funções acima de CCN
+  20 em funções menores no mesmo arquivo, e o `apps/pwa-frentista/src/App.tsx` foi a 914 linhas contra
+  o `max-lines` 900 do `.oxlintrc.json`. O `.oxlintrc.json` não foi tocado: subir o limite ou isentar
+  o arquivo seria afrouxar regra.
+- **Saída:** tipos para `src/lib/tipos.ts`, a barreira "Selecione um frentista primeiro" para
+  `src/components/selecione-o-frentista.tsx` e a escolha da aba para `src/screens/aba-secundaria.tsx`,
+  com o corpo copiado sem alteração. `App.tsx` ficou com 832 linhas; nenhuma função voltou acima de 20.
+  Antes de mover, 5 testes novos prenderam as abas (barreira sem frentista, tanques sem frentista, #74,
+  histórico e vendas com frentista, "Voltar ao Registro").
+- **Erro novo do próprio #116 na catraca:** `ProgressIndicator.tsx:38` usava `label ||` com `label`
+  opcional (`strict-boolean-expressions`). Virou tratamento explícito, com teste dos três casos do
+  rótulo antes da troca. A dívida do ESLint desceu 2 pontos (catraca regravada: 621).
+
 ### 🖥️ Dashboard do dono lê `GET /api/postos/{posto}/dashboard` — fatia 2 da #100
 
 - **Segundo consumidor real do `backend/`.** `fetchDashboardData` passa a buscar venda por produto,
