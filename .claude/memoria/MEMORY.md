@@ -1,4 +1,5 @@
 # Memória — Posto Providência
+- [🔴 Multi-tenant IMPOSSÍVEL sem migration](multi-tenant-impossivel-sem-migration.md) — 20/09: 5 uniques sem posto_id; Fechamento (data,turno_id) impede dois postos de fechar o mesmo dia; travado por teste; vale mais que a P10
 - [🔁 UPSERT + DELETE do conjunto declarado](upsert-com-delete-do-conjunto-declarado.md) — 20/09: dono decidiu a §7 (c); conserta o envio tardio apagado sem tirar do gerente a correção; contrato leva sessoes[] + frentistas_conhecidos[]
 - [📦 Estoque: desconta e não devolve, por EVENTO](estoque-desconta-e-nao-devolve-por-evento.md) — 20/09: dono decidiu a §7 (b); mantém o duplo desconto ao regravar; forma por evento p/ Fechamento não depender de Estoque (CA-7)
 - [🔴 Salvar o dia APAGA a leitura-base](salvar-o-dia-apaga-leitura-base.md) — 20/09: +3 defeitos do handleSave (leitura-base some, parseValue é analisarValor com comentário mentindo, passo 5 grava 0 e não null); a janela de escrita EXISTE no banco: hoje+2 dias
