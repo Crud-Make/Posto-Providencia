@@ -90,6 +90,7 @@ plans/
 !.claude/agents/
 !.claude/docs/
 !.claude/hooks/
+!.claude/workflows/
 !.claude/settings.json
 # A memória dos agentes é versionada de propósito (`memory: project` nos
 # .claude/agents/*.md). Sem esta exceção ela cairia no `.claude/*` acima e

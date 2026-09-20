@@ -7,4 +7,5 @@
 - [Golden master: conferir, nunca lembrar](golden-master-como-conferir.md) — o "está caído" do meu prompt já está desatualizado; rodar o comando
 - [Dívida já aceita pelo dono](divida-aceita.md) — pasta por tipo técnico, kebab-case, import relativo, `as any` de teste
 - [Como medir CCN aqui](medir-complexidade-ccn.md) — `oxlint --rules` é vazio mas `eslint/complexity` FUNCIONA; DESDE 17/09 há `.oxlintrc.json` com teto 20 (não o ≤10 do §6)
-- [Quais regras do frontend têm trava](travas-do-frontend-quais-existem.md) — CLAUDE.md 4.0 não traz mais FSD/any/enum/kebab (só o 3.3 arquivado); oxlint≠eslint; dinheiro é float quantizado
+- [Saúde de código: onde medir](saude-de-codigo-onde-medir.md) — CCN por oxlint teto 0; override 35 apodrece; widgets FSD falam c/ Supabase; NÃO symlinkar docs/data em worktree
+- [Quais regras do frontend têm trava](travas-do-frontend-quais-existem.md) — 19/09: eslint roda no pre-commit, não no pre-push; regras.md atrás do código (CA-2 já em Pest Arch)

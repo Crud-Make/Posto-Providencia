@@ -14,3 +14,7 @@
 - [Superfície Supabase por app](superficie-supabase-por-app.md) — script from/rpc/invoke/realtime/auth; `rg -g *.ts` sem aspas quebra tudo; onde vive cada acoplamento
 - [api-core não lê Compra nem HistoricoTanque](api-core-nao-le-compra-nem-tanque.md) — leitura mensal dessas tabelas vive em widgets do web; api-core só tem Leitura/Bico/Fechamento
 - [Mover frontend/apps/+frontend/packages/ para frontend/ (#95)](mover-apps-packages-para-frontend.md) — goldens acham docs/data por `../`; checklist-commit ancora `^frontend/packages/`, portao-golden não; Root Directory Vercel só no painel; types.ts raiz órfão
+- [Carga local pelos scripts --sql](carga-local-postgres-pelos-scripts-sql.md) — Postgres do compose só tem cadastro; carga-historico-*.py --sql lê docs/data e só imprime SQL; despesa emite DELETE
+- [Hooks do Claude: pontos cegos](hooks-do-claude-pontos-cegos.md) — `git -C`/`git -c` escapam de protege-git e checklist; nenhum hook lê `cwd`; `pkill -f` casa com o `bash -c eval` do harness
+- [Catálogo Laravel × leituras do painel](catalogo-api-laravel-vs-painel.md) — API não filtra ativo; foto fora por teste; /configuracoes passa pelo aggregator protegido
+- [Backend: arestas que os gates não veem](backend-arestas-invisiveis-aos-gates.md) — rota, Provider, factory, tabela por string, App\Models; deptrac roda em extração, Pest não

@@ -8,6 +8,8 @@ metadata:
 O estado do golden master **decide se um achado de fórmula é acionável ou
 bloqueado**, e é o fato que mais apodrece nas instruções deste agente.
 
+**19/09/2026:** verde de novo em `origin/fase-a` (duas passadas, zero falha, 18 arquivos).
+
 **Fato:** reconferido em **17/09/2026** — o golden master segue **verde** (18 arquivos `*.golden.spec.ts`, 5 deles em `frontend/apps/web`; o número de testes não vai aqui). `docs/data/`
 está no disco (`fixture_lucro_custo_mes01.json`, `janeiro_referencia.sqlite`,
 `posto_jorro_2026.sqlite`) e a suíte passa em 11 arquivos `*.golden.spec.ts`, zero

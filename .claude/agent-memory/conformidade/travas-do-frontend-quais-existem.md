@@ -68,3 +68,19 @@ Minhas próprias instruções de prompt ainda trazem a redação velha.
 
 Ver [[divida-aceita]], [[formula-duplicada-fora-utils]], [[medir-complexidade-ccn]],
 [[golden-master-como-conferir]].
+
+## Atualização 19/09/2026 (lido em origin/fase-a 40abfee)
+
+Parte do acima envelheceu: o ESLint type-aware **roda no pre-commit** pela catraca
+(`scripts/hooks/pre-commit:76-79`, só arquivos do índice, com `--no-inline-config`), e
+`boundaries` + `no-restricted-imports` (Public API) já estão no `eslint.config.mjs`.
+O **pre-push continua sem ESLint** (só oxlint + catraca tsc). E o registro
+`docs/arquitetura/regras.md` está atrás do código: FSD-1..3 "plugin não instalado",
+TS-2..4 "DECIDIDA" e CA-2 "SEM TRAVA", quando o Pest Arch já barra controller→Domain
+(`tests/Arch/ArquiteturaTest.php:149-151`) — o buraco do CA-2 é só o Resource via
+`deptrac.yaml:50`. Reconferir:
+```bash
+grep -n 'catraca\|eslint' scripts/hooks/pre-commit scripts/hooks/pre-push
+grep -nE 'FSD-[1-3]|TS-[2-4]|CA-2' docs/arquitetura/regras.md
+sed -n 145,155p backend/tests/Arch/ArquiteturaTest.php
+```

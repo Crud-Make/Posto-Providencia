@@ -299,6 +299,54 @@ def main() -> int:
         curto = alvo.replace(f"{RAIZ}/", "")
         print(f"  {'✓' if ok else '✗'} {curto:60} {'avisa' if ctx else 'silencio'}")
 
+    print("── so-fable-na-formula ──")
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        def transcript(nome: str, modelo: str) -> str:
+            t = Path(tmp) / nome
+            t.parent.mkdir(parents=True, exist_ok=True)
+            t.write_text(json.dumps({"type": "assistant", "message": {"model": modelo}}) + "\n")
+            return str(t)
+        opus = transcript("opus.jsonl", "claude-opus-5")
+        fable = transcript("fable.jsonl", "claude-fable-5-1")
+        # subagente fable debaixo de sessão opus: vale o modelo do subagente
+        transcript("opus/subagents/agent-abc.jsonl", "claude-fable-5-1")
+        transcript("opus/subagents/agent-son.jsonl", "claude-sonnet-5")
+        # subagente na primeira ação: transcript sem mensagem de assistente ainda
+        for nome, meta in [("novofable", {"model": "fable"}), ("novoson", {"model": "sonnet"}), ("herda", {})]:
+            base = Path(tmp) / "opus/subagents" / f"agent-{nome}"
+            base.with_suffix(".jsonl").write_text(json.dumps({"type": "user"}) + "\n")
+            base.with_suffix(".meta.json").write_text(json.dumps(meta))
+        lucro = "frontend/packages/utils/src/lucro.ts"
+        casos = [
+            ("opus edita lucro.ts", {"transcript_path": opus, "tool_input": {"file_path": lucro}}, "deny"),
+            ("fable edita lucro.ts", {"transcript_path": fable, "tool_input": {"file_path": lucro}}, None),
+            ("opus edita golden", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.golden.spec.ts"}}, "deny"),
+            ("opus edita regressao", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/diferenca.regressao.test.ts"}}, "deny"),
+            ("opus edita teste comum", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.test.ts"}}, None),
+            ("opus edita aggregator", {"transcript_path": opus, "tool_input": {"file_path": "frontend/apps/web/src/services/api/aggregator.service.ts"}}, "deny"),
+            ("opus edita tela", {"transcript_path": opus, "tool_input": {"file_path": "frontend/apps/web/src/App.tsx"}}, None),
+            ("sem transcript → falha fechada", {"tool_input": {"file_path": lucro}}, "deny"),
+            ("subagente fable sob opus", {"transcript_path": opus, "agent_id": "abc", "tool_input": {"file_path": lucro}}, None),
+            ("subagente sonnet sob opus", {"transcript_path": opus, "agent_id": "son", "tool_input": {"file_path": lucro}}, "deny"),
+            ("subagente sem transcript sob fable", {"transcript_path": fable, "agent_id": "zzz", "tool_input": {"file_path": lucro}}, "deny"),
+            ("1ª ação de subagente fable (só meta)", {"transcript_path": opus, "agent_id": "novofable", "tool_input": {"file_path": lucro}}, None),
+            ("1ª ação de subagente sonnet (só meta)", {"transcript_path": opus, "agent_id": "novoson", "tool_input": {"file_path": lucro}}, "deny"),
+            ("1ª ação de subagente que herda opus", {"transcript_path": opus, "agent_id": "herda", "tool_input": {"file_path": lucro}}, "deny"),
+            ("opus: sed -i em lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"sed -i 's/a/b/' {lucro}"}}, "deny"),
+            ("opus: echo > lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"echo x > {lucro}"}}, "deny"),
+            ("opus: git checkout -- lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git checkout -- {lucro}"}}, "deny"),
+            ("opus: cat lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"cat {lucro}"}}, None),
+            ("opus: sed -n lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"sed -n 1,20p {lucro}"}}, None),
+            ("opus: git diff lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git diff {lucro}"}}, None),
+            ("opus: commit citando lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git commit -m 'mv {lucro}'"}}, None),
+        ]
+        for rotulo, payload, esperado in casos:
+            obtido = roda("so-fable-na-formula.py", payload)
+            ok = obtido == esperado
+            falhas += not ok
+            print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido or 'passa'}")
+
     print("── checklist-commit ──")
     pendencias = carrega("checklist-commit.py").pendencias
     for arquivos, esperado in CASOS_CHECKLIST:

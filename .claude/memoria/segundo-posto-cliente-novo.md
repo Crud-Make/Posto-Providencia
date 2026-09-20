@@ -20,8 +20,12 @@ o `POSTO_ID = 1` cravado nos PWAs não precisa mudar agora.
 dois clientes no mesmo projeto vazariam dado um pro outro. Backup/wipe/ETL/golden assumem um posto.
 
 **How to apply:**
-- Bloqueio nº 1: o DDL do núcleo (Bico, Tanque, Frentista, Leitura, Fechamento…) **não está no repo** —
-  foi criado no painel. Etapa 1 é `supabase db dump` do projeto atual virar migration base.
+- ~~Bloqueio nº 1: o DDL do núcleo não está no repo~~ **RESOLVIDO em 17/09/2026** (commit `b8fb465`):
+  `banco/init/01-esquema-base.sql` tem as 45 tabelas, 141 constraints e 103 policies, conferido
+  45/45 contra o catálogo de produção com diff vazio. Gerado por `scripts/extrai-esquema-do-catalogo.py`,
+  é estado final e não sequência de migration. Não precisa mais de `supabase db dump`.
+  Atenção: `banco/dados/` é gitignored e não há seeder de negócio — `docker compose up` entrega
+  esquema completo e **zero linha**.
 - Não existe CRUD de bico/tanque/combustível funcional na UI (botões sem onClick em `GestaoBicos.tsx`);
   cadastro do posto novo é seed SQL.
 - Nome "Posto Providência" hardcoded em ~10 arquivos (manifest, vite.config dos PWAs, login, PDF de
