@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
+use App\Pessoas\Application\VerificaTokenDoSupabase;
 use App\Pessoas\Domain\Policies\PostoPolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -20,6 +21,22 @@ class AppServiceProvider extends ServiceProvider
     {
         // um PostoAtual por requisição/job: definido pela rota, lido pelo trait PertenceAoPosto
         $this->app->scoped(PostoAtual::class);
+
+        // O verificador recebe config, que não é autowirable. Sem SUPABASE_JWT_SECRET no .env ele
+        // nasce com segredo vazio e recusa todo token — falha fechada, nunca aberta.
+        $this->app->singleton(VerificaTokenDoSupabase::class, function (): VerificaTokenDoSupabase {
+            $segredo = config('supabase.jwt_secret');
+            $audiencia = config('supabase.jwt_audiencia');
+            $folga = config('supabase.jwt_folga_segundos');
+
+            // Estreitar, não castar: `config()` devolve mixed, e `(string) mixed` esconderia um
+            // array mal configurado virando "Array". Tipo errado cai no padrão seguro.
+            return new VerificaTokenDoSupabase(
+                segredo: is_string($segredo) ? $segredo : '',
+                audiencia: is_string($audiencia) ? $audiencia : 'authenticated',
+                folgaSegundos: is_int($folga) ? $folga : 10,
+            );
+        });
     }
 
     /**
