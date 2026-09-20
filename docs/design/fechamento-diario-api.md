@@ -1,6 +1,6 @@
 # Fechamento diário pela API — Design Doc
 
-Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota; P5–P7 criam rotas NOVAS de leitura e, pela DECISÃO A (§6), nascem protegidas: bloqueadas até o guard existir no backend; P8 espera §7 (d); P10 (Command sem rota) espera só as pendências do §7 (b)–(e); P11 (rota PUT de escrita) espera o guard da DECISÃO A E a P10** · Data: 18/09/2026 · Última atualização: 19/09/2026
+Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota. Em 20/09/2026 o guard da DECISÃO A entrou no backend (commit `465efd5`, `autenticacao.md` §3b), então **P5–P7 e P11 deixam de estar bloqueadas pelo guard**: P5–P7 passam a depender só de §7 (f) e de o `base.ts` enviar o Bearer; P8 tinha (d) como bloqueio e (d) foi DECIDIDA pelo dono em 20/09 (§7) — segue como tarefa de fórmula, do Fable, com golden antes; P10 espera §7 (b)–(e); P11 espera P10 e o §7** · Data: 18/09/2026 · Última atualização: 20/09/2026
 
 > Primeiro módulo do painel a migrar do PostgREST para a API Laravel, e o que faz nascer
 > `App\Fechamento` no backend. Contrato comum às fatias: `painel-pela-api.md`. Regra de domínio:
@@ -18,11 +18,11 @@ Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovada
 | P3 | `App\Fechamento\Domain` só de leitura (4 models), `'Fechamento' => []` no mapa do Pest Arch com canário | não (só cast) | feita em 18/09 |
 | P4a | frentistas ativos pela API (#97): `frentista.api.ts`, troca no call site de `useCarregamentoDados` e `useSessoesFrentistas` | não | feita em 19/09 — só rotas já existentes do catálogo da #97, nenhuma rota nova |
 | P4b | bicos e formas de pagamento pela API (#97): `bico.api.ts`, `formaPagamento.api.ts`, troca no call site de `useCarregamentoDados` e `usePagamentos`; `preco_venda`/`taxa` string → `number` sem mudar conta | sim (Fable) | feita em 19/09 — idem P4a, nenhuma rota nova |
-| P5–P7 | leituras do dia pela API | sim (Fable) | **bloqueadas pelo guard da DECISÃO A** (§6): criam rotas NOVAS de leitura e, pela decisão do dono, toda rota nasce protegida — o guard (token do login atual → `Usuario.auth_user_id`) precisa existir no backend antes. Diferente da P4, que não criou rota: usou só o catálogo da #97, público desde a #97 (comentário em `routes/api.php:43-46`; grupo `Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)` em `:47-61`, dashboard incluso) — pendência já registrada em `cadastro.md` para a #102. Esperam também §7 (f) |
-| P8 | golden das somas do painel × `totaisDoDia` — **mudança de fórmula, tarefa separada** | sim (Fable) | espera §7 (d) |
+| P5–P7 | leituras do dia pela API | sim (Fable) | **desbloqueadas quanto ao guard em 20/09 (`465efd5`)**: `token.atual` e `posto.acesso` existem e têm alias em `bootstrap/app.php`, então a rota nova já nasce protegida como a DECISÃO A (§6) exige. Restam **duas** dependências: §7 (f) (aprovar os contratos do §5) e o **lado do cliente** — `frontend/apps/web/src/services/api/base.ts:46` ainda manda só `Accept`, sem `Authorization`; a primeira rota protegida que o painel consumir leva 401 até o `base.ts` passar o Bearer da sessão do Supabase. Nota herdada: diferente da P4, que não criou rota: usou só o catálogo da #97, público desde a #97 (comentário em `routes/api.php:43-46`; grupo `Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)` em `:47-61`, dashboard incluso), e **continua público** — a pendência registrada em `cadastro.md` para a #102 segue aberta |
+| P8 | golden das somas do painel × `totaisDoDia` — **mudança de fórmula, tarefa separada** | sim (Fable) | §7 (d) **DECIDIDA em 20/09** (vale o `total_vendas` do encerrante), então deixa de esperar por ela; segue como tarefa de fórmula do Fable, com golden antes |
 | P9 | `useCustoMensal` sai do Supabase direto | sim (Fable) | espera P8 e decisão CA-7 sobre Compra/Despesa |
 | P10 | Command `GravaFechamentoDoDia`, sem rota | sim (Fable) | bloqueada só por §7 (b), (c), (d), (e) — não depende do guard, porque não expõe rota (§6) |
-| P11 | rota PUT autenticada e troca de `handleSave` | sim (Fable) | bloqueada pelo guard da DECISÃO A (#102) E por P10, que carrega as pendências do §7 |
+| P11 | rota PUT autenticada e troca de `handleSave` | sim (Fable) | o guard **deixou de ser bloqueio** em 20/09 (`465efd5`). Continua bloqueada por **P10** (que carrega §7 (b)–(e)) e pelo `base.ts`, que ainda não manda `Authorization`. Falta ainda uma peça: a rota exige `gerir` e hoje só existe middleware para `ver` (`ExigeAcessoAoPosto`) — a P11 precisa de um `posto.gerir` ou de `$this->authorize('gerir', ...)` no controller; a `PostoPolicy::gerir` já existe e está testada |
 
 Nada desta rodada é commitado sem revisão do dono. Nenhuma fórmula muda em fatia estrutural: quem
 toca `calcLitros`/`calcVenda` (`useLeituras.ts:437-460`), a taxa (`useFechamento.ts:154-160`,
@@ -236,22 +236,58 @@ Supabase e a API só aceitaria sessão Sanctum.
 logando no Supabase até a última chamada direta sair, então a RLS continua vendo `authenticated`.
 A decisão tira o 401 do meio do caminho sem criar o estado `X` do diagrama.
 
-**Onde se implementa:** na #102 (guard + resolução por `auth_user_id`), não nesta issue. Aqui só
-se registra. Enquanto a #102 não entregar o guard, **nenhuma rota nova do Fechamento nasce, de leitura
-ou de escrita** (P5–P7 e P11 esperam; P10 entra sem rota de propósito).
+**Onde se implementou:** na #102, em 20/09/2026 (commit `465efd5`) — as três peças
+(`VerificaTokenDoSupabase`, `AutenticaPeloTokenAtual`, `ExigeAcessoAoPosto`), com os aliases
+`token.atual` e `posto.acesso`. Descrição completa e condição de saída em `autenticacao.md` §3b.
 
-## 7. Decisões PENDENTES do dono (bloqueiam P5–P7 pela (f), P8 pela (d), e P10/P11 pelas (b)–(e))
+A trava "nenhuma rota nova do Fechamento nasce sem guard" está **satisfeita**: rota nova de P5–P7 e de
+P11 nasce no grupo
+
+```
+->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso'])
+```
+
+nessa ordem. Duas consequências que a decisão não previa e a implementação expôs:
+
+- **O guard não desbloqueia sozinho.** Ele resolve o lado servidor, mas o painel ainda não manda
+  `Authorization` (`base.ts:46`). P5–P7 precisam do Bearer no cliente **na mesma fatia** em que a rota
+  nasce protegida, senão a fatia estreia em 401.
+- **`gerir` não tem middleware, só `ver`.** A P11 (PUT) precisa da peça que falta — um `posto.gerir` ou
+  `$this->authorize('gerir', ...)` no controller. A policy já está pronta e testada.
+
+## 7. Decisões do dono (pendentes: (b), (c), (e) e (f) — (d) foi DECIDIDA em 20/09/2026)
 
 Nenhuma destas foi tomada em 18/09. Estão aqui para não serem decididas por omissão dentro de um
-PR estrutural. **Não escolher por conta própria.**
+PR estrutural. **Não escolher por conta própria.** Em 20/09/2026 o dono decidiu a **(d)** — ver abaixo
+da tabela; **(b)**, **(c)**, **(e)** e **(f)** continuam pendentes.
 
 | # | Decisão | O que o código faz hoje | Opções (sem recomendação) | Bloqueia |
 |---|---|---|---|---|
 | (b) | **Estoque no ressalvamento** | `leituraService.bulkCreate` desconta `Estoque.quantidade_atual` por combustível a cada gravação (`leitura.service.ts:340-381`), e `deleteByDate` (`:413-429`) **não devolve** — salvar o mesmo dia duas vezes desconta duas vezes. O `api-core` (`encerrante.ts:511`) não toca `Estoque` | portar igual (cristaliza o bug); devolver no DELETE e descontar no INSERT dentro da transação; não tocar `Estoque` no Fechamento (como o api-core) e deixar o estoque para o módulo Estoque | P10, P11 |
 | (c) | **DELETE+INSERT × UPSERT de `FechamentoFrentista`** | `deleteByFechamento` faz `UPDATE Notificacao`/`UPDATE NotaFrentista SET fechamento_frentista_id = NULL` (`fechamentoFrentista.service.ts:218-221`) e apaga as linhas; o reINSERT troca ids e perde `data_hora_envio` do PWA (DEFAULT now(), `:254`). O `UPDATE` em `NotaFrentista` dispara `trigger_atualizar_saldo_cliente` (`:1611`), que recalcula `Cliente.saldo_devedor` — efeito de dinheiro **fora do módulo** (Pessoas), o que a CA-7 proíbe ao Command de Fechamento | UPSERT pela unique `(fechamento_id, frentista_id)` (`:761`), preservando id e `data_hora_envio`; ou migration `ON DELETE SET NULL` nas FKs `:708` (Notificacao) e `:734` (VendaProduto) e na de NotaFrentista; ou manter DELETE+INSERT e aceitar o efeito | P10, P11 |
-| (d) | **Qual `total_vendas` vale** | o painel soma em float (`useFechamento.ts:107-110` `reduce`; `calculators.ts:244-267` `calcularTotais`); o `api-core` grava `totaisDoDia` em centavos (`fechamento.ts:118-138`; `encerrante.ts:621-643`). `POST /consolidar` revalida em centavos (`fase-a-laravel.md:91-93`) e pode recusar o painel por 1 centavo. Nenhum golden hoje exercita `useFechamento` nem `calculators.ts`; o comentário de `useFechamento.ts:137` diz o contrário | é o P8: golden novo das duas implementações sobre janeiro; onde divergirem, o dono escolhe. Tarefa de fórmula, só do Fable | P8 → P10, P11 |
+| (d) ✅ | **Qual `total_vendas` vale** — **DECIDIDA em 20/09/2026** (abaixo) | o painel soma em float (`useFechamento.ts:107-110` `reduce`; `calculators.ts:244-267` `calcularTotais`); o `api-core` grava `totaisDoDia` em centavos (`fechamento.ts:118-138`; `encerrante.ts:621-643`). `POST /consolidar` revalida em centavos (`fase-a-laravel.md:91-93`) e pode recusar o painel por 1 centavo. Nenhum golden hoje exercita `useFechamento` nem `calculators.ts`; o comentário de `useFechamento.ts:137` diz o contrário | decidido: vale o `total_vendas` do **encerrante**. O P8 segue sendo o golden das duas implementações sobre janeiro, agora com o vencedor já escolhido. Tarefa de fórmula, só do Fable | nada mais — P8 deixa de esperar por (d); P10 e P11 seguem pelas (b), (c), (e) |
 | (e) | **Janela de escrita real** | esquema local: `>= 2025-12-31` e `< hoje + 2 dias` (`:1119-1128`); memórias falam em 7 dias e em 1,5 mês | medir em produção (`SELECT prosrc FROM pg_proc WHERE proname = 'dentro_da_janela_de_escrita'`) e portar o que está lá; encurtar é issue separada (`fechamento-frentista-api.md` §5) | P10 |
 | (f) | **Contratos do §5** | — | aprovar a forma final antes de P5 | P5–P7 |
+
+### DECISÃO (dono, 20/09/2026): o `total_vendas` que vale é o do ENCERRANTE
+
+Motivo, como ele colocou: *"quem manda é o encerrante"*. O encerrante é o medidor **físico e acumulado**
+do bico — um número só, independente de quantas pessoas passaram por ele. O fechamento recebe **vários
+envios diferentes, de frentistas diferentes**, alimentando o mesmo encerrante; somar os envios seria
+somar relatos parciais sobre o mesmo bico, e o total sobra ou falta conforme quem deixou de enviar. O
+encerrante não tem esse modo de falha.
+
+Consequências a registrar:
+
+- A fatia **P8** (golden das somas do painel × `totaisDoDia`) esperava exatamente a (d) e **deixa de
+  estar bloqueada por ela**.
+- P8 continua sendo **mudança de fórmula**: entra com golden antes, em tarefa própria, e é trabalho do
+  Fable (regra DOM-1 / hook `so-fable-na-formula`).
+- Alinha com o que já estava registrado: `Leitura` é por dia e por bico, **não por turno** — filtrar
+  encerrante por `turno_id` já produziu bug. O encerrante ser a autoridade reforça que ele não se divide
+  por turno nem por frentista.
+- **(b)**, **(c)**, **(e)** e **(f)** **não** foram decididas: continuam pendentes.
+
 
 ## Testes
 

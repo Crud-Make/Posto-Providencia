@@ -96,11 +96,11 @@ Origem: *domain-driven-hexagon* (Sairyss), *Clean architecture with TypeScript: 
 |---|---|---|---|---|
 | CA-1 | Backend: `Http → Application → Domain → Compartilhado`. Camada interna nunca conhece a externa | `deptrac` via `composer gates` | `backend/deptrac.yaml` | ✅ ATIVA — roda no CI em todo PR |
 | CA-2 | Controller não fala com `Domain`; escrita passa por `Application` | — | — | ❌ SEM TRAVA — **a regra está num comentário do `deptrac.yaml`**. O PR #111 abriu `Http → Domain` para Resources tiparem model, e o Deptrac não distingue Resource de Controller |
-| CA-3 | Tipagem sem escape: PHPStan nível 6, sem baseline, `ignoreErrors: []` | `phpstan` via `composer gates` | `backend/phpstan.neon` | ✅ ATIVA |
+| CA-3 | Tipagem sem escape: PHPStan **nível 9**, sem baseline, `ignoreErrors: []` | `phpstan` via `composer gates` | `backend/phpstan.neon:8` | ✅ ATIVA — o nível subiu de 6 para 9 entre 17/09 e 20/09 (o cabeçalho do `phpstan.neon` registra: 0 erros no 6, 8 e 9; o 10 dá 1) |
 | CA-4 | Complexidade ciclomática no backend ≤ 10 | `phpmd` via `composer gates` | `backend/phpmd.xml` | ✅ ATIVA |
 | CA-5 | Complexidade ciclomática no frontend ≤ 20 | `oxlint` | `frontend/.oxlintrc.json` | ⚠️ PARCIAL — **13 arquivos isentos em 35**. O teto do `CLAUDE.md` §6 é 10; no teto 10 há 70 funções fora |
 | CA-6 | Domínio TS isolado, sem dependência externa | `dependency-cruiser` | — | 🔜 DECIDIDA — não há camada de domínio TS formal hoje; a canônica é `packages/utils` |
-| CA-7 | Backend: módulos só se falam por `Application`; o `Domain` de um módulo nunca importa o `Domain` de outro, e ciclo entre módulos reprova o PR. **Sem exceção** (dono, 18/09/2026) | Pest Arch, uma regra encadeada por módulo | `backend/tests/Arch/ArquiteturaTest.php` | 🔜 DECIDIDA — a trava nasce na branch `refactor/cadastro-sem-ciclo`, que desfaz o ciclo `Cadastro ↔ Pessoas`. Violação conhecida: `Pessoas\Domain\Usuario` e `UsuarioPosto` importam `Cadastro\Domain\Posto`; sai quando `Posto` for para `App\Compartilhado` |
+| CA-7 | Backend: módulos só se falam por `Application`; o `Domain` de um módulo nunca importa o `Domain` de outro, e ciclo entre módulos reprova o PR. **Sem exceção** (dono, 18/09/2026) | Pest Arch, uma regra encadeada por módulo | `backend/tests/Arch/ArquiteturaTest.php` | ✅ ATIVA desde 18/09 — a branch `refactor/cadastro-sem-ciclo` foi mergeada (`879bf3b`), `Posto` está em `App\Compartilhado\Posto` e a trava vive em `backend/tests/Arch/ArquiteturaTest.php` na forma encadeada, uma regra por módulo. A violação `Pessoas\Domain → Cadastro\Domain` deixou de existir |
 
 > **CA-2 é a regra que este registro existe para não deixar morrer.** A correção é quebrar
 > `Http` em dois no Deptrac: `HttpControllers` (sem acesso a `Domain`) e `HttpBorda`
@@ -111,7 +111,38 @@ Origem: *domain-driven-hexagon* (Sairyss), *Clean architecture with TypeScript: 
 > violações. Foi assim que o ciclo de 18/09 entrou sem nenhum gate reprovar. A trava é o Pest
 > Arch, na forma encadeada (`arch()->expect('App\Cadastro')->not->toUse(...)`), com um
 > namespace por regra. A forma com lista ou com closure passa verde com a violação presente.
-> Canário: a própria violação `Pessoas → Cadastro`, enquanto existir.
+> Canário (18/09, quando a violação ainda existia): `Pessoas → Cadastro` deixava a regra vermelha
+> apontando os dois arquivos. Desfeito o ciclo, verde. O canário vivo hoje é a mutação descrita no
+> cabeçalho de `backend/tests/Arch/ArquiteturaTest.php`, não a violação — que não existe mais.
+
+## TEN — Escopo de tenant (multi-tenant)
+
+Origem: decisão do dono de 20/09/2026 (`docs/architecture.md` §2) e `docs/design/fase-a-laravel.md`
+DECISÃO 5, onde a regra já estava **em prosa, sem ID e sem executor**, desde 17/09.
+
+O gate roda dentro do `composer gates` (Pest), que o `pre-push` e o CI executam. O CI carrega
+`banco/init/01-esquema-base.sql` antes de rodar, então o `information_schema` que o teste consulta é o
+**esquema real**, não uma lista escrita à mão.
+
+| ID | Regra | Trava | Onde | Estado |
+|---|---|---|---|---|
+| TEN-1 | Model em tabela com coluna `posto_id` usa o trait `PertenceAoPosto`; a lista de tabelas vem do `information_schema`, nunca de lista escrita à mão | Pest, `it('todo model em tabela com posto_id usa PertenceAoPosto')` | `backend/tests/Feature/Arquitetura/EscopoDeTenantTest.php` | ✅ ATIVA — canário conferido em 20/09: tirar o trait de `Cadastro\Domain\Bico` deixa o gate vermelho apontando o model |
+| TEN-2 | Exceção a TEN-1 só com motivo escrito (mais de 40 caracteres), apontando model real em tabela escopada | mesmo arquivo | idem | ✅ ATIVA — canário: exceção sem motivo reprova. Exceção registrada: **1**, `UsuarioPosto` (é a tabela que decide o acesso; escopá-la pelo posto atual seria circular) |
+| TEN-3 | Model em tabela **sem** `posto_id` declara COMO é escopado: tenant-raiz, filho de escopado, ou atravessa tenants | mesmo arquivo | idem | ✅ ATIVA — 4 declarados: `Posto`, `Usuario`, `Recebimento`, `App\Models\User` |
+| TEN-4 | Toda tabela de domínio tem `posto_id NOT NULL` com FK | — | — | ❌ SEM TRAVA — medido em 17/09: 31 de 45 têm a coluna, só 4 como `NOT NULL`, 4 sem FK; `AuditoriaDados` e `InscricaoPush` não têm a coluna. TEN-1 cobre o lado PHP; o lado do **esquema** segue sem gate |
+| TEN-5 | Unique de tabela escopada inclui `posto_id` | — | — | ❌ SEM TRAVA — violação conhecida: `UNIQUE (data, turno_id)` de `Fechamento` não tem `posto_id` (`banco/init/01-esquema-base.sql:757`). Com dois postos no mesmo banco, o segundo colide na mesma data |
+
+> **Por que TEN é família própria:** Deptrac, PHPStan 9, PHPMD e Pest Arch passam **verdes** num model
+> que esqueça o trait — nenhum deles tem o conceito de tenant. Com um posto só isso é invisível; em
+> multi-tenant é o dado de um cliente na tela de outro.
+
+> **TEN-4 e TEN-5 são a metade que falta.** TEN-1..3 protegem o **código**; o **esquema** segue aberto.
+> Enquanto forem ❌, ligar dois postos no mesmo banco quebra por unique antes de quebrar por escopo. São
+> as duas primeiras tarefas do Design Doc de multi-tenant (`docs/design/multi-tenant.md`).
+
+> **Dívida declarada por TEN-3:** `App\Models\User` é sobra do instalador — sem `$table`, sem uso, e a
+> tabela `users` não existe no catálogo de produção. Passava invisível por **todos** os gates até 20/09.
+> Apagar é tarefa aberta.
 
 ## RES — Result Pattern
 
