@@ -1,6 +1,6 @@
 # Painel web pela API — Design Doc
 
-Issue: #103 (mãe: #60) · Estado: **rascunho — sem pendência com o dono** · Data: 17/09/2026
+Issue: #103 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Atualizado: 18/09/2026 (DECISÃO 2: o `AuthContext` não é pré-requisito das fatias — o guard aceita o token atual; ver correção no §3)
 
 > A maior fatia da Fase A. Cada módulo abre sub-issue própria quando chega a vez; este doc é o
 > contrato comum às oito.
@@ -60,8 +60,35 @@ do "reset do painel apaga em silêncio".
 Então: `frontend/apps/web/src/contexts/AuthContext.tsx` e `contexts/useAuth.ts` trocam **nesta
 issue**, junto com a última chamada direta ao Postgres. Nunca antes.
 
+> **Correção de 18/09/2026 (decisão do dono, registrada em `fechamento-diario-api.md` §6, DECISÃO A).**
+> O parágrafo acima continua valendo para a **troca de emissor** (Supabase → Laravel): ela fica
+> acoplada ao fim das chamadas diretas. O que ele deixava implícito — e a `autenticacao.md:118`
+> contradizia — era que, com a API exigindo sessão Sanctum desde a #102, nenhuma fatia migrada
+> conseguiria autenticar antes dessa troca: 401 em tudo, inclusive no piloto de fornecedor (§3b).
+> **O que passa a valer:** o guard da #102 aceita o token do login atual e resolve o `Usuario` por
+> `Usuario.auth_user_id` (`01-esquema-base.sql:510`). O `AuthContext` **não precisa trocar** para
+> as fatias migrarem — o token que ele já tem é o que a API aceita; `base.ts` passa a enviá-lo. A
+> troca de emissor deixa de ser pré-requisito de qualquer fatia e continua sendo a última, junto
+> com a última chamada direta.
+
 Nota de grep herdada do levantamento: procurar só por `AuthContext` **perde 3 dos 4 consumidores** —
 eles importam `useAuth`. Buscar pelos dois símbolos.
+
+## 3b. Fatia 0 — piloto do adaptador (aprovada pelo dono em 18/09/2026)
+
+Antes do item 1 da ordem, entra uma fatia que existe só para provar o adaptador de ponta a ponta:
+`fornecedorService.getAll` → `GET /api/postos/{posto}/fornecedores` (PR #121). Ela **não conta como
+migração do módulo** registro-compras (item 3), que continua na sua vez.
+
+Por que fornecedores: das 9 leituras de catálogo, é a única lida por uma tela (`/compras`) sem conta
+de dinheiro e sem mudar o backend. O que ela deixou pronto para as próximas fatias, em `base.ts`:
+- `urlDaApi()`: a chave do strangler. Sem `VITE_API_URL` o painel segue no Supabase, e a Vercel não
+  define a variável, então a produção não muda até o cutover (#105);
+- `buscarNaApi(caminho, schema)`: GET validado com **Zod**, devolvendo `ResultAsync` com erro
+  discriminado (`sem_api | rede | http | formato`).
+
+Regra que a fatia 0 expôs e que vale para todas: quando a tela **lê** da API e **grava** no Supabase, os
+ids das duas fontes precisam bater. Conferir antes de migrar a leitura.
 
 ## 4. Regras da fatia
 

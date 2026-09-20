@@ -17,12 +17,19 @@
 import * as React from 'react';
 import { useState, useCallback, useMemo, useRef } from 'react';
 import type { EntradaPagamento } from '../../../types/fechamento';
-import type { Recebimento } from '../../../types/database/aliases';
+import type { FormaPagamento, Recebimento } from '../../../types/database/aliases';
 import { formaPagamentoService } from '../../../services/api';
+import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
 import { fechamentoService } from '../../../services/api/fechamento.service';
+import { lerFormasDePagamentoDaApi } from '../../../services/api/formaPagamento.api';
 import { analisarValor, paraReais } from '../../../utils/formatters';
 import { baldeDaForma, totaisPorBalde } from '../../../utils/fechamentoMeios';
-import { isSuccess } from '../../../types/ui/response-types';
+import {
+  type ApiResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  isSuccess
+} from '../../../types/ui/response-types';
 
 /**
  * Retorno do hook usePagamentos
@@ -72,8 +79,21 @@ export const usePagamentos = (postoId: number | null): RetornoPagamentos => {
 
     setCarregando(true);
     try {
-      // 1. Carrega definições de formas de pagamento
-      const dadosRes = await formaPagamentoService.getAll(postoId);
+      // 1. Carrega definições de formas de pagamento.
+      // [19/09] Pela API Laravel (#97) quando VITE_API_URL existe; sem ela, nada muda. A
+      // troca é AQUI, no call site, e não dentro de `formaPagamentoService.getAll`: o
+      // `aggregator.service.ts` (:353, :421) chama o mesmo método, e o aggregator é sítio de
+      // fórmula que só o Fable edita (Design Doc fechamento-diario-api.md §2). O filtro de
+      // `ativo` é do cliente (`CatalogoDoPosto::formasPagamento` não filtra;
+      // `formaPagamento.service.ts:25` filtrava). `taxa` chega como string decimal e já vem
+      // em número de `formaPagamento.api.ts`; a conta da taxa (abaixo) não muda.
+      const dadosRes: ApiResponse<FormaPagamento[]> =
+        urlDaApi() !== null
+          ? await lerFormasDePagamentoDaApi(postoId).match(
+              (formas) => createSuccessResponse(formas),
+              (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+            )
+          : await formaPagamentoService.getAll(postoId);
       if (!isSuccess(dadosRes)) {
         console.error('❌ Erro ao carregar formas de pagamento:', dadosRes.error);
         setPagamentos([]);

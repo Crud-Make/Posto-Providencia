@@ -2,6 +2,173 @@
 
 ## [Não Lançado]
 
+### 🧾 Fechamento diário pela API — fatias P4a/P4b da #103 (item 1): catálogo do módulo pelas rotas da #97
+
+- **Frentistas, bicos e formas de pagamento do `fechamento-diario` vêm da API Laravel quando
+  `VITE_API_URL` está definida; sem ela, nada muda.** Três adaptadores novos ao lado dos services,
+  no padrão `fornecedor.api.ts`: `services/api/frentista.api.ts`, `bico.api.ts` e
+  `formaPagamento.api.ts` (`buscarNaApi` + schema Zod do Resource + `ResultAsync<T, ErroDaApi>`),
+  cada um com vitest do schema e do reshape. A troca é **no call site** dos hooks
+  (`useCarregamentoDados`, `useSessoesFrentistas` no fallback sem `frentistasCadastrados`,
+  `usePagamentos`) e nunca dentro de `bicoService`/`frentistaService`/`formaPagamentoService`, porque
+  o `aggregator.service.ts` usa os mesmos métodos e é sítio de fórmula que só o Fable edita.
+- **Paridade com o Supabase, provada por teste e por mutação.** `CatalogoDoPosto` não filtra `ativo`
+  e os services filtravam, então o filtro `ativo === true` é do cliente: tirar o `.filter` de cada
+  adaptador (um por vez, 19/09) derrubou 4 testes cada — o do adaptador e o do hook que o consome —
+  e os três arquivos voltaram ao hash original. `preco_venda` e `taxa` chegam em string decimal e
+  viram `number` por `Number()`, o mesmo valor que o PostgREST entregava; número cru na resposta é
+  contrato violado, não dado a converter. Nenhuma conta mudou: golden 3296/0 antes e depois.
+- **Erro da API nunca vira exceção, e cada hook reage do seu jeito** (conferido no código em 19/09):
+  o `match` do `ResultAsync` converte a falha em `ApiResponse` de erro com a mensagem de
+  `descreverErroDaApi`; daí em diante vale o tratamento que o hook já tinha. `useCarregamentoDados`
+  põe a mensagem em `erro` (na tela) e no `console.error`, com bicos/frentistas vazios
+  (`useCarregamentoDados.ts:176-194`); `usePagamentos` zera a lista e loga no `console.error`
+  (`usePagamentos.ts:97-101`); `useSessoesFrentistas`, no fallback sem `frentistasCadastrados`, só
+  deixa a lista sem os frentistas extras — `if (isSuccess(frentistasRes))` sem `else`, nenhuma
+  mensagem (`useSessoesFrentistas.ts:176-178`). Nenhum dos três cai na fonte antiga nem inventa lista.
+- **Ajustes da revisão (19/09) — histórico do erro de orientação, registrado só aqui:** o Design Doc
+  dizia que P4a–P7 esperavam a "§7 (a) implementada na #102", item que nem existe na tabela do §7. A
+  instrução errada da manhã, do orquestrador, dizia que as "leituras P4–P7 mantêm a paridade de
+  exposição" (pública, como a RLS de hoje). Para a P4 isso continua certo: ela só usa as rotas públicas
+  do catálogo da #97 (`routes/api.php:43-46`; pendência já registrada em `cadastro.md` para a #102). O
+  erro era estender isso a P5–P7: elas criam rotas NOVAS de leitura e, pela DECISÃO A do dono ("toda rota
+  fica protegida desde já, inclusive escrita"), nascem protegidas — ficam bloqueadas até o guard existir
+  no backend. Desfeito à tarde; o doc guarda só o estado atual. Na mesma passada: P10 (Command sem rota)
+  espera só as pendências do §7 (b)–(e) e não o guard; P11 (rota PUT) espera o guard E a P10. Registrado
+  em §Riscos que a tela
+  com `VITE_API_URL` é **mista com gravação** — ids do Postgres local, salvar grava na produção — e
+  serve só para validar leitura, com os ids reconferidos antes de cada validação (em 19/09 batiam:
+  9 frentistas, 6 bicos, 9 formas). Cobertura nova em `usePagamentos.test.ts` (6 casos) e
+  `useSessoesFrentistas.test.ts` (5 casos do fallback). `bun run catraca:atualizar` rodou sem
+  mudança: o `as any` de `useCarregamentoDados.test.ts:9` continua contando 1 porque a catraca roda
+  o ESLint com `--no-inline-config` (`frontend/scripts/catraca.mjs:97-103`), então o `eslint-disable` não o esconde —
+  a premissa "contagem hoje é 0" da revisão estava errada. `docs/architecture.md` ganhou a P4.
+
+### 🧾 Fechamento diário pela API — fatias P0–P3 da #103 (item 1): Design Doc, Public API e `App\Fechamento` só leitura
+
+- **Design Doc `docs/design/fechamento-diario-api.md` aprovado (P0–P3) pelo dono em 18/09.** Registra a
+  DECISÃO A: durante a transição o Laravel **aceita o token do login atual** (JWT do Supabase Auth) e
+  resolve o `Usuario` por `auth_user_id`; Sanctum entra como segundo emissor. Ela desfaz a contradição
+  entre `autenticacao.md` ("toda rota exigindo sessão Sanctum na #102") e `painel-pela-api.md` ("o
+  `AuthContext` só troca no fim da #103"), que deixaria toda fatia migrada em 401 — os dois docs ganharam
+  a correção datada. Ficam **três decisões de gravação pendentes do dono** (§7: Estoque no ressalvamento,
+  DELETE+INSERT × UPSERT de `FechamentoFrentista`, qual `total_vendas` vale), mais a janela de escrita
+  real e a forma dos contratos; P8, P10 e P11 esperam por elas. Nada de fórmula mudou.
+- **Public API do módulo `fechamento-diario`** (`frontend/apps/web/src/components/fechamento-diario/index.ts`):
+  exporta `useLeituras`, `type Leitura` e o `default` da tela (porque `App.tsx:15` faz `import()` da
+  pasta e o Vite resolve `index.ts` antes de `index.tsx`). `leituras-diarias` deixa de importar o arquivo
+  interno `hooks/useLeituras` nos três pontos (`useLeiturasDiarias.ts`, `TabelaLeituras.tsx`,
+  `ResumoLeituras.tsx`). O módulo segue legado do strangler, fora das camadas do FSD.
+- **Nasce `App\Fechamento`, só com `Domain` de leitura:** `Fechamento`, `FechamentoFrentista`, `Leitura`
+  e `Recebimento`, sem Application, Http nem rota. Dinheiro em `decimal:2`, litros em `decimal:3`,
+  `status` no enum; `total_vendas`/`diferenca` continuam NULL até apurar (I8). `Leitura` **não** tem
+  relação com `Fechamento` — o dia liga os dois por `posto_id` + dia UTC, porque não há FK.
+  `'Fechamento' => []` no mapa do Pest Arch **com canário visto vermelho** (`use App\Cadastro\Domain\Bico`
+  em `Leitura` reprovou só a regra de Fechamento; removido, verde), sem a abertura para `Cadastro` que
+  o comentário do mapa previa (CA-7, sem exceção). Feature test contra o Postgres real exercita a
+  trava de N+1 do `AppServiceProvider`, o escopo por posto e o preenchimento de `posto_id` ao criar
+  sem ele (mutação: sem o trait, o teste cai).
+- **Ajustes da revisão (18/09):** o teste "ao criar sem posto_id…" criava só um `Recebimento` (que não
+  tem `posto_id`) e conferia um `Fechamento` criado **com** `posto_id` — reescrito para criar os três
+  models sem `posto_id` e provar o preenchimento; o Design Doc dizia `hasMany leituras` num model que
+  não tem (e está certo em não ter); o docblock de `Fechamento` prometia que passar coluna carimbada
+  "lança" — só fora de produção, em produção a coluna some do INSERT. `docs/architecture.md` ganhou o
+  4º módulo e a Public API.
+
+### 🧮 #116: o refactor de CCN estourava o limite de linhas — corrigido sem afrouxar regra
+
+- **O `build` do #116 quebrou ao atualizar com a `fase-a`.** O refactor quebrou as funções acima de CCN
+  20 em funções menores no mesmo arquivo, e o `apps/pwa-frentista/src/App.tsx` foi a 914 linhas contra
+  o `max-lines` 900 do `.oxlintrc.json`. O `.oxlintrc.json` não foi tocado: subir o limite ou isentar
+  o arquivo seria afrouxar regra.
+- **Saída:** tipos para `src/lib/tipos.ts`, a barreira "Selecione um frentista primeiro" para
+  `src/components/selecione-o-frentista.tsx` e a escolha da aba para `src/screens/aba-secundaria.tsx`,
+  com o corpo copiado sem alteração. `App.tsx` ficou com 832 linhas; nenhuma função voltou acima de 20.
+  Antes de mover, 5 testes novos prenderam as abas (barreira sem frentista, tanques sem frentista, #74,
+  histórico e vendas com frentista, "Voltar ao Registro").
+- **Erro novo do próprio #116 na catraca:** `ProgressIndicator.tsx:38` usava `label ||` com `label`
+  opcional (`strict-boolean-expressions`). Virou tratamento explícito, com teste dos três casos do
+  rótulo antes da troca. A dívida do ESLint desceu 2 pontos (catraca regravada: 621).
+
+### 🖥️ Dashboard do dono lê `GET /api/postos/{posto}/dashboard` — fatia 2 da #100
+
+- **Segundo consumidor real do `backend/`.** `fetchDashboardData` passa a buscar venda por produto,
+  compra e rateio na API Laravel quando `VITE_API_URL` está definida e há posto ativo. Sem a variável
+  (a Vercel não a define) o caminho é o de sempre, no Supabase: as mesmas 7 consultas, numa leva só —
+  provado em `aggregator.dashboard.test.ts` ("uma leva só de consultas"), que prende cada service numa
+  promessa adiada e confere que as 7 já foram chamadas antes de qualquer uma resolver (com a API ligada,
+  a leitura da API e o cadastro correm em paralelo com estoque, frentistas, formas e fechamentos). Uma
+  primeira versão desta fatia esperava os insumos para só então pedir o resto; a 2ª revisão pegou. A
+  falha do Supabase nesse caminho vira `Err` tipado (`tipo: 'fonte_antiga'`) em vez de exceção pega
+  pelo `catch`: o texto para a tela é o mesmo de antes (o `error` cru do service), só o `code` passa de
+  `ERROR` para o `FETCH_ERROR` dos demais erros de insumo — ninguém em `components/dashboard` lê o
+  `code`. Os asserts antigos do teste não mudaram; só o setup foi mexido: saiu o mock morto de
+  `configuracaoService` (o fallback de 0,45 já não existia no código) e o builder inline da query de
+  `Leitura` virou o helper `leiturasDoMesNoSupabase`, reaproveitado pelos testes de paridade.
+- **`services/api/dashboard.api.ts`**, no molde do `fornecedor.api.ts`: schema Zod espelhando o §5 do
+  Design Doc (`agregacao.md`; string decimal, sem envelope `data`), `lerDashboardDaApi(posto, inicio, fim)`
+  em `ResultAsync` e `paraInsumosDeAgregacao`, que só faz `Number()` e reshape. Nenhuma conta de
+  dinheiro nasceu: custo médio, despesa por litro e lucro continuam nas funções de `packages/utils` e em
+  `services/custo-do-mes.ts`, e a prova é o teste de paridade Supabase × API em
+  `aggregator.dashboard.test.ts` — a mesma venda/compra/despesa pelas duas fontes dá os mesmos KPIs. O
+  golden master (`bun run test:golden`) seguiu 3296/0, mas ele cobre análise de custos e vendas, não o
+  dashboard: aqui é guarda de `packages/utils`, não prova desta fatia. `JanelaDoRateio` tem uma
+  declaração só, em `dashboard.api.ts` (o contrato); `rotulos.ts` e `useDashboard.ts` importam de lá.
+- **Em período que atravessa meses o número muda com `VITE_API_URL` — decisão do dono, teste nomeado em
+  `aggregator.dashboard.test.ts`.** A API soma compra e rateio de todos os meses civis do período
+  (`Periodo::mesCivil()`); o Supabase usa só o mês de `dataInicio`. Os dois comportamentos estão presos
+  em testes nomeados, e o card "Lucro Estimado" passa a dizer `Custo e despesa de jan–fev/2026` (ou
+  `sem compra de X em jan–fev/2026`) quando a janela tem mais de um mês — `kpis.janelaDoRateio` é novo.
+- **Paridade provada dentro de um mês:** a mesma venda/compra/despesa sintética pelas duas fontes dá os
+  mesmos KPIs e o mesmo gráfico; o lucro esperado (R$ 900,00) é calculado à mão no teste e conferido com
+  `lucroCombustivel`. Produto vendido sem compra → `totalProfit` `null` e nome em `produtosSemCompra`
+  nas duas fontes.
+- **Troca parcial deliberada:** a cor do combustível precisa do `codigo`, que a API não devolve, e vem
+  do cadastro (`combustivelService.getAll`, Supabase). Estoque, frentistas, formas de pagamento e
+  fechamentos também continuam no Supabase — em `localhost` a tela fica mista (venda/lucro do Postgres
+  local, frentistas da produção). `GET /api/combustiveis` é fatia futura.
+- Sessão executora com o modelo Fable, por regra do dono (18/09): o hook `so-fable-na-formula.py` não
+  existe nesta worktree, então a regra "só o Fable edita `aggregator.service.ts`" foi disciplina, não gate.
+- Catraca do ESLint baixou 1 ponto (`components/dashboard/index.tsx`) e o `.catraca/eslint.json` foi
+  regravado; `.catraca/tsc.json` inalterado.
+
+### 📊 `GET /api/postos/{posto}/dashboard` — fatia 1 da #100, rateio no mês civil
+
+- **Nasce `App\Agregacao`**, só leitura, com query builder sobre `Leitura`, `Compra`, `Despesa` e
+  `Combustivel` — nenhum model de módulo (CA-7, `Agregacao => []` no Pest Arch, canário visto
+  vermelho em 18/09). O endpoint devolve **insumo bruto** em string decimal: nenhum lucro, custo médio
+  ou divisão em PHP (DECISÃO 1 do Design Doc `agregacao.md`); quem calcula segue sendo `lucro.ts`.
+- **Duas decisões do dono (18/09/2026) viraram código:** compra por produto **e** rateio (despesa +
+  litros) saem do **mês civil** que contém o período — despesa do mês ÷ litros do mês, como a planilha
+  (`H22 = H19/F11`) e como a tela de hoje. Só a venda por produto fica no período exato.
+- **`despesas_total` saiu da raiz** e entrou o bloco `rateio { mes_civil, despesas_total,
+  litros_vendidos }`: janela, despesa e litros colados no mesmo lugar, para nenhum cliente dividir
+  despesa de um mês por litros de um período. O campo antigo ainda não tinha consumidor.
+- **Divergência decidida, não regressão:** em período que atravessa meses o aggregator de hoje usa só
+  o mês de `dataInicio`; o endpoint usa todos os meses civis do período. Na troca do call site
+  (fatia futura) o número na tela vai mudar nesse caso, e o dono precisa ser avisado antes.
+- Produto vendido sem compra sai com `compras` zerado, nunca `preco_custo` (DECISÃO 2); sem
+  `custo_taxas` (DECISÃO 3); dia da leitura tomado em UTC, porque `Leitura.data` é `timestamptz`
+  gravado em 00:00 UTC e o Postgres do compose está em `America/Sao_Paulo`.
+- 25 testes Pest contra o Postgres real, com paridade nomeada contra `get_dashboard_proprietario`
+  (receita e volume batem ao centavo; a despesa só bate em mês cheio, e o teste diz por quê).
+
+### 🔌 Painel lê a primeira coisa da API Laravel: fornecedores da tela de compras (#103)
+
+- **Primeiro consumidor real do `backend/`.** `fornecedorService.getAll` passa a ler
+  `GET /api/postos/{posto}/fornecedores` quando `VITE_API_URL` está definida. Sem ela, segue no
+  Supabase, e a Vercel não define a variável: **a produção não muda** até o cutover (#105).
+- **Adaptador no `base.ts`**, como manda a DECISÃO 1 do `painel-pela-api.md`: `urlDaApi()` é a chave do
+  strangler e `buscarNaApi(caminho, schema)` faz o GET, valida a resposta com **Zod** (dependência
+  nova, autorizada pelo dono) e devolve `ResultAsync` do neverthrow com erro discriminado
+  (`sem_api | rede | http | formato`). As próximas fatias da #103 entram pelo mesmo ponto.
+- **Paridade com a query antiga:** a API não filtra `ativo`, então o mapper filtra; a ordem por `nome`
+  é a mesma; `posto_id` vem do posto da rota. Conferido: a API local e o Supabase de produção têm o
+  mesmo fornecedor (id 3), então o id lido na API e gravado em `Compra` no Supabase é o mesmo.
+- Por que fornecedores e não outro recurso do catálogo: é o único lido por uma tela (`/compras`) sem
+  conta de dinheiro e sem mudança de backend. Maquininha, bomba e turno não têm tela; combustível,
+  tanque, bico e forma de pagamento entram em conta de dinheiro; frentista exigiria mandar `foto`.
+
 ### 🧱 Nenhum módulo do backend depende de outro — `Posto` vai para `Compartilhado` (#120)
 
 - **O ciclo `Cadastro ↔ Pessoas` passava pelo Deptrac com 0 violações.** O Deptrac junta o `Domain`
@@ -134,6 +301,19 @@
 - Hook do Claude `trava-ts.py` (PostToolUse): lint do arquivo editado, erro novo volta com exit 2.
 - Canários em `apps/web/src/__canarios__/travas.test.ts` e `testa-hooks.py`; teste de mutação
   confirmou que desligar as travas reprova 5 canários.
+
+
+- **Três furos da revisão, fechados com canário (18/09):**
+  - FSD: a regex da Public API só olhava `@widgets/x/…`; `@/widgets/x/ui/y` (o tsconfig tem os dois
+    aliases) passava. Nenhum import real furava — medido na varredura inteira.
+  - `eslint-disable` apagava o erro antes de a catraca contar. A catraca agora roda com
+    `--no-inline-config`: as **13** violações que comentários escondiam (9 arquivos, 12 comentários)
+    viraram dívida congelada **visível** — por isso a lista subiu com `--aceitar-divida`, sem erro novo.
+  - `pre-commit` julgava o working tree, não o índice: `git add` do erro + conserto sem `add` gravava o
+    erro. Agora extrai o índice (`git checkout-index`, ~0,2 s) e instala as dependências nele (bun
+    ~0,8 s; composer ~8 s, só com `.php`). `scripts/hooks/testa-pre-commit.sh`: 4 canários (índice
+    sujo × árvore suja, TS e PHP); o hook antigo reprova os dois de TS, o novo passa os quatro.
+  - Mutação: desfazer a regex ou o `--no-inline-config` derruba 1 canário cada.
 
 ### 🐘🐘 `backend/` nasceu: Laravel 13 no docker-compose com os quality gates de saída (#96)
 

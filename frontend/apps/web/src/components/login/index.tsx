@@ -68,6 +68,92 @@ interface Aviso {
   readonly texto: string;
 }
 
+/**
+ * Mensagem do formulário: o erro do submit ou o aviso da recuperação de senha.
+ * Só uma aparece por vez, e o erro do submit tem precedência.
+ *
+ * @remarks Vive fora de `TelaLogin` porque `erro || aviso?.tom === 'erro'` era
+ *          avaliado em três lugares (role, cor e ícone) e sozinho respondia por
+ *          boa parte do CCN 24 da tela, acima do teto de 20 do gate.
+ */
+const MensagemDoLogin: React.FC<{ erro: string | null; aviso: Aviso | null }> = ({ erro, aviso }) => {
+  if (erro === null && aviso === null) return null;
+
+  const ehErro = erro !== null || aviso?.tom === 'erro';
+
+  return (
+    <div
+      role={ehErro ? 'alert' : 'status'}
+      className={
+        ehErro
+          ? 'flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-[14px] text-red-300'
+          : 'flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-[14px] text-emerald-300'
+      }
+    >
+      {ehErro ? (
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      ) : (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      )}
+      <span>{erro ?? aviso?.texto}</span>
+    </div>
+  );
+};
+
+/** Olho que alterna a visibilidade da senha. O rótulo serve a aria-label e title. */
+const BotaoVerSenha: React.FC<{ visivel: boolean; aoAlternar: () => void }> = ({ visivel, aoAlternar }) => {
+  const rotulo = visivel ? 'Ocultar senha' : 'Mostrar senha';
+
+  return (
+    <button
+      type="button"
+      onClick={aoAlternar}
+      aria-label={rotulo}
+      aria-pressed={visivel}
+      title={rotulo}
+      className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-400 transition-colors duration-150 hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-marca-vermelho/30"
+    >
+      {visivel ? (
+        <EyeOff className="h-[18px] w-[18px]" aria-hidden="true" />
+      ) : (
+        <Eye className="h-[18px] w-[18px]" aria-hidden="true" />
+      )}
+    </button>
+  );
+};
+
+/**
+ * Miolo do botão de entrar: bomba + rótulo, ou spinner enquanto envia.
+ *
+ * @remarks Bomba + rótulo "Entrar" (26/08/2026): o botão só-bomba de 19/08 ficou
+ *          sem nome visível. O glifo branco veio de ~/Downloads/bomba.webp, com o
+ *          fundo vermelho removido.
+ */
+const ConteudoDoBotaoEntrar: React.FC<{ pendente: boolean }> = ({ pendente }) => {
+  if (pendente) {
+    return (
+      <>
+        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+        <span>Entrando...</span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <img
+        src="/bomba-login.png"
+        alt=""
+        width={78}
+        height={96}
+        className="h-[22px] w-auto select-none transition-transform duration-150 group-hover:scale-110"
+        draggable={false}
+      />
+      <span>Entrar</span>
+    </>
+  );
+};
+
 const TelaLogin: React.FC = () => {
   const { entrar, pedirRecuperacaoSenha } = useAuth();
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -215,20 +301,7 @@ const TelaLogin: React.FC = () => {
                   className={`${CLASSE_CAMPO} pr-11`}
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setMostrarSenha((v) => !v)}
-                  aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                  aria-pressed={mostrarSenha}
-                  title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-400 transition-colors duration-150 hover:text-white focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-marca-vermelho/30"
-                >
-                  {mostrarSenha ? (
-                    <EyeOff className="h-[18px] w-[18px]" aria-hidden="true" />
-                  ) : (
-                    <Eye className="h-[18px] w-[18px]" aria-hidden="true" />
-                  )}
-                </button>
+                <BotaoVerSenha visivel={mostrarSenha} aoAlternar={() => setMostrarSenha((v) => !v)} />
               </div>
             </div>
 
@@ -246,46 +319,15 @@ const TelaLogin: React.FC = () => {
               Salvar meu acesso neste computador
             </label>
 
-            {(erro || aviso) && (
-              <div
-                role={erro || aviso?.tom === 'erro' ? 'alert' : 'status'}
-                className={
-                  erro || aviso?.tom === 'erro'
-                    ? 'flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-[14px] text-red-300'
-                    : 'flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-[14px] text-emerald-300'
-                }
-              >
-                {erro || aviso?.tom === 'erro' ? (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                ) : (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                )}
-                <span>{erro ?? aviso?.texto}</span>
-              </div>
-            )}
+            <MensagemDoLogin erro={erro} aviso={aviso} />
 
-            {/* Bomba + rótulo "Entrar" (26/08/2026): o botão só-bomba de 19/08
-                ficou sem nome visível. O glifo branco veio de
-                ~/Downloads/bomba.webp, com o fundo vermelho removido. */}
             <button
               type="submit"
               disabled={pendente}
               title="Entrar no sistema"
               className="group mt-1 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-lg bg-marca-vermelho px-4 text-[15px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_1px_2px_rgba(0,0,0,0.4)] transition-[background-color,transform] duration-150 ease-out hover:bg-marca-vermelho-escuro focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-marca-vermelho/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 active:scale-[0.99] disabled:cursor-progress disabled:opacity-60 disabled:active:scale-100"
             >
-              {pendente ? (
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-              ) : (
-                <img
-                  src="/bomba-login.png"
-                  alt=""
-                  width={78}
-                  height={96}
-                  className="h-[22px] w-auto select-none transition-transform duration-150 group-hover:scale-110"
-                  draggable={false}
-                />
-              )}
-              <span>{pendente ? 'Entrando...' : 'Entrar'}</span>
+              <ConteudoDoBotaoEntrar pendente={pendente} />
             </button>
           </form>
         </div>

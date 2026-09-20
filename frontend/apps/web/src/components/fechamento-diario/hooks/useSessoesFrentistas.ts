@@ -16,8 +16,15 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
+import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
+import { lerFrentistasDaApi } from '../../../services/api/frentista.api';
 import { paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
-import { isSuccess } from '../../../types/ui/response-types';
+import {
+  type ApiResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  isSuccess
+} from '../../../types/ui/response-types';
 import { cartao, conferido } from '@posto/utils';
 import { meiosDaSessao } from '../../../utils/fechamentoMeios';
 
@@ -155,7 +162,17 @@ export const useSessoesFrentistas = (
       if (frentistasCadastradosAtuais.length > 0) {
         frentistasAtivos = frentistasCadastradosAtuais.filter(f => f.ativo);
       } else {
-        const frentistasRes = await frentistaService.getAll(postoId);
+        // [19/09] Mesma troca de transporte de `useCarregamentoDados`: API (#97) com
+        // VITE_API_URL, Supabase sem ela — no call site, nunca dentro do service, porque o
+        // aggregator também o usa. `lerFrentistasDaApi` já devolve só os ativos; o
+        // `.filter(ativo)` abaixo continua por paridade com o caminho antigo.
+        const frentistasRes: ApiResponse<Frentista[]> =
+          urlDaApi() !== null
+            ? await lerFrentistasDaApi(postoId).match(
+                (frentistas) => createSuccessResponse(frentistas),
+                (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+              )
+            : await frentistaService.getAll(postoId);
         if (isSuccess(frentistasRes)) {
           frentistasAtivos = frentistasRes.data.filter((f: Frentista) => f.ativo);
         }

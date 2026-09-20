@@ -1,5 +1,6 @@
 <?php
 
+use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
 use Illuminate\Support\Facades\DB;
@@ -53,4 +54,8 @@ Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(func
     Route::get('formas-pagamento', [CatalogoController::class, 'formasPagamento']);
     Route::get('maquininhas', [CatalogoController::class, 'maquininhas']);
     Route::get('fornecedores', [CatalogoController::class, 'fornecedores']);
+
+    // Agregação — dado bruto do período para o dashboard do proprietário (#100,
+    // docs/design/agregacao.md §5). Sem lucro no servidor: quem calcula é packages/utils.
+    Route::get('dashboard', [AgregacaoController::class, 'dashboard']);
 });

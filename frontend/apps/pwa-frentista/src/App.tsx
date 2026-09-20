@@ -8,17 +8,14 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
-import HistoricoScreen from './screens/HistoricoScreen';
-import VendasScreen from './screens/VendasScreen';
-import TanquesScreen from './screens/TanquesScreen';
+import { abaSecundaria } from './screens/aba-secundaria';
 import ReloadPrompt from './components/ReloadPrompt';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
 import { reduzirParaAvatar, iniciais } from './lib/foto';
 import { hojeIso } from '@posto/utils';
+import type { TabType, FrentistaSelecionavel } from './lib/tipos';
 
 const POSTO_ID = 1;
-
-type TabType = 'registro' | 'vendas' | 'historico' | 'tanques' | 'perfil';
 
 /**
  * Abas que este app ainda tem.
@@ -121,13 +118,6 @@ const formatCurrency = (value: string) => {
   return amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-interface FrentistaSelecionavel {
-  id: number;
-  nome: string;
-  /** Data URL JPEG vinda da coluna `Frentista.foto`. Nulo = mostra as iniciais. */
-  foto?: string | null;
-}
-
 /**
  * Foto do frentista, com as iniciais do nome como reserva.
  *
@@ -156,6 +146,117 @@ const AvatarFrentista = ({ frentista, tamanho }: { frentista: FrentistaSeleciona
     </div>
   );
 };
+
+/**
+ * "Quem já mandou hoje" — evita envio em dobro e mostra em que dia o registro caiu.
+ * Três estados: falha ao carregar, dia vazio, ou a lista.
+ */
+const ListaDeEnviosDoDia = ({ erro, envios, aoTentarDeNovo }: {
+  erro: string | null;
+  envios: EnvioDoDia[];
+  aoTentarDeNovo: () => void;
+}) => {
+  if (erro) {
+    return (
+      <button
+        type="button"
+        onClick={aoTentarDeNovo}
+        className="text-xs text-red-300 text-left underline underline-offset-2"
+      >
+        Não deu para carregar os envios do dia — toque para tentar de novo
+      </button>
+    );
+  }
+
+  if (envios.length === 0) {
+    return <p className="text-xs text-slate-500">Nenhum envio neste dia ainda.</p>;
+  }
+
+  return (
+    <ul className="divide-y divide-slate-800/80">
+      {envios.map((e) => (
+        <li key={e.id} className="py-2 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-100 truncate">{e.frentista?.nome ?? 'Frentista'}</p>
+            <p className="text-[11px] text-slate-500 font-mono">
+              {new Date(e.data_hora_envio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+          <p className="text-sm font-bold text-emerald-400 font-mono whitespace-nowrap">
+            R$ {Number(e.valor_conferido ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+/**
+ * Folha de rosto para escolher quem está no turno.
+ *
+ * @remarks Saiu de dentro de `AppComponent` (CCN 26 → acima do teto de 20 do
+ *          gate) porque não conversa com o resto da tela: recebe a lista, devolve
+ *          a escolha.
+ *
+ *          O "8 frentistas ativos" do cabeçalho é literal no código desde antes
+ *          desta extração — não veio de `frentistas.length`. Mantido como estava
+ *          para esta mudança não misturar refatoração com correção de conteúdo.
+ */
+const ModalDeFrentistas = ({ frentistas, selecionado, aoEscolher, aoFechar }: {
+  frentistas: FrentistaSelecionavel[];
+  selecionado: FrentistaSelecionavel | null;
+  aoEscolher: (frentista: FrentistaSelecionavel) => void;
+  aoFechar: () => void;
+}) => (
+  <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+    <div
+      className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+      onClick={aoFechar}
+    />
+
+    <div className="bg-[#0A0D14] w-full rounded-t-[2rem] pt-6 flex flex-col h-[85vh] relative z-10 transform transition-transform shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+      {/* Header Vermelho */}
+      {/* z-30 > z-20 da lista: a lista tem pt-28 e cobria o cabeçalho inteiro, e o toque no X
+          caía nela — o botão de fechar ficava morto. */}
+      <div className="bg-[#D32F2F] absolute top-0 left-0 right-0 h-28 rounded-t-[2rem] flex items-start justify-between p-6 overflow-hidden z-30">
+        <div className="z-10">
+          <h2 className="text-2xl font-bold text-white mb-0.5">Quem está trabalhando?</h2>
+          <p className="text-red-100/80 text-sm">8 frentistas ativos</p>
+        </div>
+        <button
+          onClick={aoFechar}
+          className="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center z-10 border border-white/10"
+        >
+          <X size={20} className="text-white" />
+        </button>
+        {/* Elemento Decorativo no fundo vermelho */}
+        <div className="absolute right-[-20%] bottom-[-50%] w-64 h-64 bg-red-600 rounded-full blur-3xl opacity-50" />
+      </div>
+
+      {/* Lista de Frentistas que rola por cima da parte vermelha */}
+      <div className="flex-1 overflow-y-auto px-5 pt-28 pb-10 z-20">
+        <div className="text-xl font-bold mb-6 text-slate-100 px-2 opacity-90">Quem é você?</div>
+        <div className="space-y-3 overflow-y-auto max-h-[60vh] pb-8 px-2 scrollbar-none">
+          {frentistas.map((frentista) => (
+            <div
+              key={frentista.id}
+              onClick={() => aoEscolher(frentista)}
+              className={`w-full text-left px-5 py-4 rounded-xl font-bold tracking-wide transition-all border flex items-center gap-4
+            ${selecionado?.id === frentista.id
+                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/30'
+                  : 'bg-[#131722] text-slate-300 border-slate-800/80 hover:bg-slate-800/60 active:bg-slate-800'
+                }`}
+            >
+              <AvatarFrentista frentista={frentista} tamanho={40} />
+              <span className="truncate">{frentista.nome}</span>
+            </div>
+          ))}
+          {frentistas.length === 0 && <p className="text-slate-400 text-sm italic py-4">Carregando conta dos funcionários...</p>}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateAction<DialogState>> }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -437,72 +538,15 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     </div>
   );
 
-  // Tela de Histórico
-  if (activeTab === 'historico') {
-    if (!selectedFrentista) {
-      return (
-        <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
-          <ReloadPrompt />
-          <History size={48} className="text-slate-600 mb-4" />
-          <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
-          <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
-          {renderBottomNav()}
-        </div>
-      );
-    }
-    return (
-      <>
-        <ReloadPrompt />
-        <HistoricoScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
-        {renderBottomNav()}
-      </>
-    );
-  }
-
-  // Tela de Tanques (régua física, #74): medição é do TANQUE, não do
-  // frentista — como a Leitura, `HistoricoTanque` não tem coluna de frentista,
-  // então a tela não exige seleção.
-  if (activeTab === 'tanques') {
-    return (
-      <>
-        <ReloadPrompt />
-        <TanquesScreen onVoltar={() => setActiveTab('registro')} />
-        {renderBottomNav()}
-      </>
-    );
-  }
-
-  // A tela de Encerrante saiu daqui para o `apps/pwa-dono`. Ela nunca foi do
-  // frentista: `Leitura` é a leitura da BOMBA e não tem coluna de frentista —
-  // foi o que o commit 635a6f2 já tinha constatado ao remover a exigência de
-  // seleção, e o que o plano original do OCR dizia desde o começo
-  // (`.claude/docs/ocr-encerrante-plano-original.md`: "apps/web (dono) +
-  // apps/pwa-frentista (frentista)").
-  //
-  // O campo `encerrante` do FechamentoFrentista CONTINUA aqui, e não é o mesmo
-  // assunto: aquele é o total em R$ que o frentista declara do concentrador.
-
-  // Tela de Vendas
-  if (activeTab === 'vendas') {
-    if (!selectedFrentista) {
-      return (
-        <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans items-center justify-center p-8">
-          <ReloadPrompt />
-          <ShoppingBag size={48} className="text-slate-600 mb-4" />
-          <p className="text-slate-400 font-semibold text-center">Selecione um frentista primeiro</p>
-          <button onClick={() => setActiveTab('registro')} className="mt-4 bg-indigo-600 px-6 py-3 rounded-xl text-white font-bold">Voltar ao Registro</button>
-          {renderBottomNav()}
-        </div>
-      );
-    }
-    return (
-      <>
-        <ReloadPrompt />
-        <VendasScreen frentistaId={selectedFrentista.id} frentistaNome={selectedFrentista.nome} onVoltar={() => setActiveTab('registro')} />
-        {renderBottomNav()}
-      </>
-    );
-  }
+  // Histórico, Tanques e Vendas moram em `abaSecundaria`; `registro` e `perfil`
+  // caem na tela principal abaixo.
+  const secundaria = abaSecundaria({
+    aba: activeTab,
+    frentista: selectedFrentista,
+    aoVoltar: () => setActiveTab('registro'),
+    nav: renderBottomNav(),
+  });
+  if (secundaria !== null) return <>{secundaria}</>;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans pb-24">
@@ -711,33 +755,11 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
               {enviosDoDia.length}
             </span>
           </div>
-          {erroEnvios ? (
-            <button
-              type="button"
-              onClick={() => setEnviosVersao((v) => v + 1)}
-              className="text-xs text-red-300 text-left underline underline-offset-2"
-            >
-              Não deu para carregar os envios do dia — toque para tentar de novo
-            </button>
-          ) : enviosDoDia.length === 0 ? (
-            <p className="text-xs text-slate-500">Nenhum envio neste dia ainda.</p>
-          ) : (
-            <ul className="divide-y divide-slate-800/80">
-              {enviosDoDia.map((e) => (
-                <li key={e.id} className="py-2 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-100 truncate">{e.frentista?.nome ?? 'Frentista'}</p>
-                    <p className="text-[11px] text-slate-500 font-mono">
-                      {new Date(e.data_hora_envio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold text-emerald-400 font-mono whitespace-nowrap">
-                    R$ {Number(e.valor_conferido ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ListaDeEnviosDoDia
+            erro={erroEnvios}
+            envios={enviosDoDia}
+            aoTentarDeNovo={() => setEnviosVersao((v) => v + 1)}
+          />
         </div>
 
         {/* Botão Enviar Registro */}
@@ -765,57 +787,15 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
 
       {/* Modal Frentistas Overscreen */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsModalOpen(false)}
-          />
-
-          <div className="bg-[#0A0D14] w-full rounded-t-[2rem] pt-6 flex flex-col h-[85vh] relative z-10 transform transition-transform shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-            {/* Header Vermelho */}
-            {/* z-30 > z-20 da lista: a lista tem pt-28 e cobria o cabeçalho inteiro, e o toque no X
-                caía nela — o botão de fechar ficava morto. */}
-            <div className="bg-[#D32F2F] absolute top-0 left-0 right-0 h-28 rounded-t-[2rem] flex items-start justify-between p-6 overflow-hidden z-30">
-              <div className="z-10">
-                <h2 className="text-2xl font-bold text-white mb-0.5">Quem está trabalhando?</h2>
-                <p className="text-red-100/80 text-sm">8 frentistas ativos</p>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center z-10 border border-white/10"
-              >
-                <X size={20} className="text-white" />
-              </button>
-              {/* Elemento Decorativo no fundo vermelho */}
-              <div className="absolute right-[-20%] bottom-[-50%] w-64 h-64 bg-red-600 rounded-full blur-3xl opacity-50" />
-            </div>
-
-            {/* Lista de Frentistas que rola por cima da parte vermelha */}
-            <div className="flex-1 overflow-y-auto px-5 pt-28 pb-10 z-20">
-              <div className="text-xl font-bold mb-6 text-slate-100 px-2 opacity-90">Quem é você?</div>
-              <div className="space-y-3 overflow-y-auto max-h-[60vh] pb-8 px-2 scrollbar-none">
-                {frentistas.map((frentista) => (
-                  <div
-                    key={frentista.id}
-                    onClick={() => {
-                      setSelectedFrentista(frentista);
-                      setIsModalOpen(false);
-                    }}
-                    className={`w-full text-left px-5 py-4 rounded-xl font-bold tracking-wide transition-all border flex items-center gap-4
-                  ${selectedFrentista?.id === frentista.id
-                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/30'
-                        : 'bg-[#131722] text-slate-300 border-slate-800/80 hover:bg-slate-800/60 active:bg-slate-800'
-                      }`}
-                  >
-                    <AvatarFrentista frentista={frentista} tamanho={40} />
-                    <span className="truncate">{frentista.nome}</span>
-                  </div>
-                ))}
-                {frentistas.length === 0 && <p className="text-slate-400 text-sm italic py-4">Carregando conta dos funcionários...</p>}
-              </div>
-            </div>
-          </div>
-        </div>
+        <ModalDeFrentistas
+          frentistas={frentistas}
+          selecionado={selectedFrentista}
+          aoEscolher={(frentista) => {
+            setSelectedFrentista(frentista);
+            setIsModalOpen(false);
+          }}
+          aoFechar={() => setIsModalOpen(false)}
+        />
       )}
 
       {renderBottomNav()}

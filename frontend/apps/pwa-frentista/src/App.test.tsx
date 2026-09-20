@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
     getEnviosDoDia: vi.fn(async (): Promise<unknown[]> => []),
     getOrCreateFechamento: vi.fn(async () => 1),
     submitFrentistaClosing: vi.fn(async () => ({})),
+    // Chamadas que as telas secundárias fazem ao montar (Histórico e Vendas).
+    getHistoricoFrentista: vi.fn(async (): Promise<unknown[]> => []),
+    getProdutos: vi.fn(async (): Promise<unknown[]> => []),
 }));
 
 vi.mock('./services/api', () => ({
@@ -20,6 +23,13 @@ vi.mock('./services/api', () => ({
         getOrCreateFechamento: mocks.getOrCreateFechamento,
         submitFrentistaClosing: mocks.submitFrentistaClosing,
         marcarPresenca: async () => undefined,
+        // Telas secundárias: sem estes mocks, montar Tanques/Histórico/Vendas
+        // dá TypeError dentro do useEffect (função inexistente no objeto).
+        getTanques: async () => [],
+        getMedicoesDoDia: async () => [],
+        getHistoricoFrentista: mocks.getHistoricoFrentista,
+        getProdutos: mocks.getProdutos,
+        getVendasProdutoHoje: async () => [],
     },
 }));
 
@@ -58,6 +68,8 @@ describe('PWA do frentista — abas', () => {
         mocks.getEnviosDoDia.mockReset().mockResolvedValue([]);
         mocks.getOrCreateFechamento.mockReset().mockResolvedValue(1);
         mocks.submitFrentistaClosing.mockReset().mockResolvedValue({});
+        mocks.getHistoricoFrentista.mockReset().mockResolvedValue([]);
+        mocks.getProdutos.mockReset().mockResolvedValue([]);
         container = document.createElement('div');
         document.body.appendChild(container);
         root = createRoot(container);
@@ -103,6 +115,63 @@ describe('PWA do frentista — abas', () => {
         await montar();
 
         expect(container.textContent).not.toContain('Encerrante');
+    });
+
+    // Os cinco casos abaixo prendem o comportamento de `abaSecundaria` e da
+    // barreira `SelecioneOFrentista` antes de saírem do App.tsx.
+
+    it('historico sem frentista mostra a barreira com o botão de voltar', async () => {
+        localStorage.setItem('pwa.activeTab', 'historico');
+
+        await montar();
+
+        expect(container.textContent).toContain('Selecione um frentista primeiro');
+        const voltar = Array.from(container.querySelectorAll('button')).find((b) => /Voltar ao Registro/.test(b.textContent ?? ''));
+        expect(voltar).toBeDefined();
+        expect(mocks.getHistoricoFrentista).not.toHaveBeenCalled();
+    });
+
+    /** Medição é do TANQUE, não do frentista (#74): a aba abre sem escolher ninguém. */
+    it('tanques sem frentista NÃO exige frentista', async () => {
+        localStorage.setItem('pwa.activeTab', 'tanques');
+
+        await montar();
+
+        expect(container.textContent).not.toContain('Selecione um frentista primeiro');
+    });
+
+    it('historico com frentista abre a tela e busca o histórico dele', async () => {
+        localStorage.setItem('pwa.activeTab', 'historico');
+        localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
+
+        await montar();
+
+        expect(container.textContent).not.toContain('Selecione um frentista primeiro');
+        expect(mocks.getHistoricoFrentista).toHaveBeenCalledWith(1);
+    });
+
+    it('vendas com frentista abre a tela e busca os produtos', async () => {
+        localStorage.setItem('pwa.activeTab', 'vendas');
+        localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
+
+        await montar();
+
+        expect(container.textContent).not.toContain('Selecione um frentista primeiro');
+        expect(mocks.getProdutos).toHaveBeenCalled();
+    });
+
+    it('"Voltar ao Registro" na barreira leva ao Registro e grava a aba', async () => {
+        localStorage.setItem('pwa.activeTab', 'historico');
+
+        await montar();
+        expect(container.textContent).not.toContain('Enviar Registro');
+
+        const voltar = Array.from(container.querySelectorAll('button')).find((b) => /Voltar ao Registro/.test(b.textContent ?? ''))!;
+        await clicar(voltar);
+
+        expect(container.textContent).toContain('Enviar Registro');
+        expect(container.textContent).not.toContain('Selecione um frentista primeiro');
+        expect(localStorage.getItem('pwa.activeTab')).toBe('registro');
     });
 });
 
