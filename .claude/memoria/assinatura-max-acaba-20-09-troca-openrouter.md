@@ -11,6 +11,18 @@ metadata:
 **A assinatura Max expira quarta-feira, 23/09/2026.** A cota semanal renova quinta 24/09 — ou seja,
 **a renovação nunca chega**: os 30 % que sobraram em 17/09 são tudo.
 
+**FECHADO em 20/09:** o dono confirmou que a Max expira quarta e **decidiu ficar no harness do
+Claude Code com DeepSeek V4.1 Flash** — que já é o que o `claude-provedor` aponta, nada a mudar no
+script. Avaliou e descartou no mesmo dia: GPT-6 Astra, Trae SOLO e Cursor+Grok. O argumento que
+pesou: trocar de FERRAMENTA (Trae, Cursor) mataria os 8 hooks do Claude Code, enquanto trocar só o
+MOTOR preserva hooks, skills, catraca e memória de agente. Medido: das travas, **8 são de git/CI e
+sobrevivem a qualquer ferramenta**; 6 das 8 que morrem têm equivalente tardio no commit ou push.
+**Só `so-fable-na-formula.py` não tem substituto** — git não sabe qual modelo escreveu o arquivo.
+
+Consequência a partir de quarta: o hook **barra o DeepSeek** de editar `packages/utils`, golden e
+aggregator. Isso está CERTO e fica como está — falha fechada é a proteção que se quer quando o
+modelo atrás fica mais fraco.
+
 Configurado e testado em 17/09:
 
 - Chave da OpenRouter em `~/.config/openrouter/chave` (0600). Saldo real: **US$ 5,85**

@@ -1,11 +1,12 @@
 # Memória — Posto Providência
+- [🎯 POR QUE a refatoração existe](porque-multitenant-e-o-destino.md) — 20/09 do dono: multi-tenant p/ vender a outros postos + sair do dado preso + portfólio; as travas SÃO o produto; contradiz a #93
 - [🔢 DECISÃO 2 da #101: PIN por frentista](decisao-2-pin-por-frentista.md) — 19/09: dono escolheu PIN (não token); próximo após FSD do pwa é o PWA pela API Laravel, pelo workflow
 - [📏 Tetos de qualidade 19/09](tetos-de-qualidade-19-09.md) — CCN 10 no front já (catraca), 300 linhas/arquivo, 60/função, front e back; taxa de cartão = despesa do mês
 - [🧷 Regras têm de ser implementadas](regras-tem-de-ser-implementadas.md) — 19/09: toda refatoração liga a trava que falta (pre-commit, pre-push e CI) + canário e atualiza regras.md; não basta respeitar
 - [🔑 Login na transição: aceita o token atual](login-transicao-aceita-token-atual.md) — 18/09: Laravel casa Usuario.auth_user_id; resolve contradição dos docs; falta escrever nos docs; bloqueios do fechamento diário listados
 - [⏳ Prazo: domingo 20/09](prazo-domingo-20-09.md) — dono só tem até domingo; mergear #115/#120/#121/#123, fatia 2 da #100; fechamento diário só o plano
 - [🔁 Sempre pelo workflow refatora-modulo](sempre-pelo-workflow-refatora-modulo.md) — 18/09: dono exige 100% das fatias pelo workflow (plano → ok → executar); 19/09: modo curto (args.curto) aprovado p/ PR mecânico, nunca p/ dinheiro/guard/escrita
-- [📊 Progresso da Fase A em 18/09: ~17%](progresso-fase-a-18-09.md) — saída do Supabase 0%, esforço em travas; 1º consumidor de /api/ feito (PR #121, fornecedores); próximo: #100; #115/#120/#121/#123 MERGEADOS na fase-a 18/09; #124 e #116 também mergeados; #125 mergeado; P4 mergeada (#126); P5–P7 dependem do guard da DECISÃO A
+- [📊 Progresso medido em 20/09](progresso-fase-a-20-09.md) — esquema 100%, escrita 0%, leitura <5%, produção 100% Supabase; CCN, dívidas de dinheiro e o gargalo real (3 decisões do dono)
 - [📍 COMECE AQUI 18/09 — revisão dos 7 PRs e hook do Fable](onde-parei-18-09-revisao-prs.md) — #113 #114 #117 #118 #119 mergeados na fase-a; próximo #116 (3 ajustes) → #115; hook do Fable SEM COMMIT no checkout da branch de outra sessão
 - [🔒 Só o Fable 5 mexe em fórmula](so-fable-mexe-em-formula.md) — 18/09: hook so-fable-na-formula.py barra outro modelo em packages/utils, golden e aggregator; subagente usa model: fable
 - [🚫 Regra de arquitetura não ganha exceção](regra-de-arquitetura-nao-ganha-excecao.md) — 18/09: dono recusou exceção no Design Doc; código se adapta à regra, nunca o contrário; Posto vai para Compartilhado (opção C)
