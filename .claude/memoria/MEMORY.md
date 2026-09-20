@@ -1,4 +1,5 @@
 # Memória — Posto Providência
+- [📦 Estoque: desconta e não devolve, por EVENTO](estoque-desconta-e-nao-devolve-por-evento.md) — 20/09: dono decidiu a §7 (b); mantém o duplo desconto ao regravar; forma por evento p/ Fechamento não depender de Estoque (CA-7)
 - [🔴 Salvar o dia APAGA a leitura-base](salvar-o-dia-apaga-leitura-base.md) — 20/09: +3 defeitos do handleSave (leitura-base some, parseValue é analisarValor com comentário mentindo, passo 5 grava 0 e não null); a janela de escrita EXISTE no banco: hoje+2 dias
 - [🕐 Fuso local não batia com produção](fuso-local-nao-batia-com-producao.md) — 20/09: prod é UTC, compose era Sao_Paulo; mesmo SQL perdia o dia 01 (R$ 9.430); fixado em config/database.php; cast do Eloquent grava sem offset
 - [🔴 Dois bugs do Salvar do painel](dois-bugs-do-salvar-do-painel.md) — 20/09: o painel APAGA envio de frentista que chegou depois da tela carregar; e regravar o dia desconta Estoque 2×; os dois somem quando a escrita for só pela API
