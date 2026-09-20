@@ -134,8 +134,16 @@ export const useFechamento = (
    *          Agora chama o módulo, em vez de repetir a conta: era a quarta
    *          reimplementação da mesma aritmética no painel.
    *
-   *          Coberto por `totais-do-dia.golden.spec.ts`, contra os 31 dias reais
-   *          de janeiro. Não altere sem rodar `bun run test:golden`.
+   *          O que está coberto, e por quem (corrigido em 20/09/2026 — a linha
+   *          anterior afirmava cobertura que não existia para o caminho inteiro):
+   *          - a SUBTRAÇÃO (`diferencaCanonica`, sinal) → `totais-do-dia.golden.spec.ts`;
+   *          - a ENTRADA `totaisLeituras.valor` (`calcularTotais`) → `utils/calculators.golden.spec.ts`,
+   *            que mede o que ela vale contra o encerrante: recalcula `litros × preco_venda`
+   *            de HOJE, e reabrir janeiro/2026 soma R$ 23.784,61 A MAIS no mês. Pelo §7 (d)
+   *            do Design Doc `fechamento-diario-api.md`, vale o encerrante
+   *            (`totalVendasDoEncerrante`, em `@posto/utils`); a troca é a fatia seguinte,
+   *            com esse golden verde antes e depois.
+   *          Não altere sem rodar `bun run test:golden`.
    */
   const diferenca = useMemo(() => {
     return diferencaCanonica(totaisLeituras.valor, totalFrentistas);
