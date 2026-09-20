@@ -3,6 +3,7 @@
 use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
+use App\Fechamento\Http\Controllers\FechamentoController;
 use App\Fechamento\Http\Controllers\FechamentoFrentistaController;
 use App\Fechamento\Http\Controllers\LeituraController;
 use Illuminate\Support\Facades\DB;
@@ -82,4 +83,7 @@ Route::prefix('postos/{posto}')
 
         // Envios dos frentistas do dia (#103 P6). Balde não informado sai null, nunca '0.00'.
         Route::get('sessoes', [FechamentoFrentistaController::class, 'index']);
+
+        // O fechamento do dia, com recebimentos (#103 P7). Dia sem fechamento é 200 com data null.
+        Route::get('fechamento', [FechamentoController::class, 'show']);
     });
