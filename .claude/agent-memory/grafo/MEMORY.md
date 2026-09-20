@@ -22,3 +22,4 @@
 - [Dois escritores de total_vendas](dois-escritores-de-total-vendas.md) — painel do fechamento-diário grava a própria conta (0 quando sem encerrante); api-core relê Leitura e grava NULL; os dois são encerrante, mas divergem
 - [FechamentoFrentista é DELETE+INSERT](fechamento-frentista-delete-insert.md) — painel apaga por fechamento e reinsere; PWA é INSERT puro; unique (fechamento_id, frentista_id) JÁ está no esquema base:761; tabela não tem bico_id
 - [Estoque no salvamento do fechamento](estoque-no-salvamento-do-fechamento.md) — leitura.service desconta no bulkCreate e deleteByDate não devolve (duplo desconto); api-core e MovimentacaoEstoque ficam fora
+- [Sequência do salvamento do fechamento diário](salvamento-do-fechamento-diario-sequencia.md) — 6 passos sem transação; `parseValue` É `analisarValor`; passo 0 apaga a leitura-base que a tela mostra em branco
