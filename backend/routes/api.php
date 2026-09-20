@@ -3,6 +3,7 @@
 use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
+use App\Fechamento\Http\Controllers\FechamentoFrentistaController;
 use App\Fechamento\Http\Controllers\LeituraController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -78,4 +79,7 @@ Route::prefix('postos/{posto}')
     ->group(function (): void {
         // Encerrantes do dia (#103 P5). Dinheiro e litros saem como string decimal.
         Route::get('leituras', [LeituraController::class, 'index']);
+
+        // Envios dos frentistas do dia (#103 P6). Balde não informado sai null, nunca '0.00'.
+        Route::get('sessoes', [FechamentoFrentistaController::class, 'index']);
     });

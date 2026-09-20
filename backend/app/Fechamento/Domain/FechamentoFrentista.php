@@ -6,6 +6,8 @@ namespace App\Fechamento\Domain;
 
 use App\Compartilhado\PertenceAoPosto;
 use App\Compartilhado\Posto;
+use Database\Factories\FechamentoFrentistaFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -43,6 +45,9 @@ use Illuminate\Support\Carbon;
  */
 final class FechamentoFrentista extends Model
 {
+    /** @use HasFactory<FechamentoFrentistaFactory> */
+    use HasFactory;
+
     use PertenceAoPosto;
 
     protected $table = 'FechamentoFrentista';
@@ -87,5 +92,10 @@ final class FechamentoFrentista extends Model
     public function posto(): BelongsTo
     {
         return $this->belongsTo(Posto::class);
+    }
+
+    protected static function newFactory(): FechamentoFrentistaFactory
+    {
+        return FechamentoFrentistaFactory::new();
     }
 }

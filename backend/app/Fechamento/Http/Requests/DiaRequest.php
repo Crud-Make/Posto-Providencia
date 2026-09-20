@@ -8,10 +8,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * `?data=AAAA-MM-DD`. Data inválida vira 422 do framework, nunca 500 nem dia errado em silêncio.
+ * `?data=AAAA-MM-DD` — a validação de dia, compartilhada por P5–P7 (Design Doc §3).
+ * Data inválida vira 422 do framework, nunca 500 nem dia errado em silêncio.
  * A autorização é dos middlewares `token.atual` e `posto.acesso`, não daqui.
  */
-final class LeiturasDoDiaRequest extends FormRequest
+final class DiaRequest extends FormRequest
 {
     public function authorize(): bool
     {

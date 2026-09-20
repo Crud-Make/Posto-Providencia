@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Fechamento\Http\Controllers;
 
 use App\Fechamento\Application\LeiturasDoDia;
-use App\Fechamento\Http\Requests\LeiturasDoDiaRequest;
+use App\Fechamento\Http\Requests\DiaRequest;
 use App\Fechamento\Http\Resources\LeituraResource;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -20,7 +20,7 @@ final class LeituraController
 {
     public function __construct(private readonly LeiturasDoDia $leiturasDoDia) {}
 
-    public function index(LeiturasDoDiaRequest $request): AnonymousResourceCollection
+    public function index(DiaRequest $request): AnonymousResourceCollection
     {
         return LeituraResource::collection(($this->leiturasDoDia)($request->dia()));
     }

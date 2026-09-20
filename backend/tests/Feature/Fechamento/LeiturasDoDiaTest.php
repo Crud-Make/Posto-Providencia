@@ -44,6 +44,19 @@ function usuarioP5(string $sub, int $postoId, Role $role = Role::Operador): Usua
     return $usuario->refresh();
 }
 
+/**
+ * Fixa `data` como INSTANTE, sem passar pelo cast do Eloquent.
+ *
+ * O cast `datetime` formata sem offset (`Y-m-d H:i:s`) e o Postgres, cuja sessão aqui está em
+ * America/Sao_Paulo, lê essa string como horário de Brasília — o instante escorrega três horas.
+ * Para testar recorte de dia isso é fatal: a linha cai no dia errado e o teste mede outra coisa.
+ * Medido em 20/09/2026.
+ */
+function fixaInstanteL(string $tabela, int $id, string $instanteComOffset): void
+{
+    DB::table($tabela)->where('id', $id)->update(['data' => $instanteComOffset]);
+}
+
 beforeEach(function (): void {
     config(['supabase.jwt_secret' => SEGREDO_P5]);
     app()->forgetInstance(VerificaTokenDoSupabase::class);
@@ -81,9 +94,12 @@ it('devolve só as leituras do dia pedido, e o dia é UTC', function (): void {
 
     // 23:30 UTC de 20/09 é 20:30 do dia 20 no horário de Brasília: continua sendo dia 20.
     // Se alguém trocar a janela por whereDate com fuso local, este caso cai para o dia 19.
-    $doDia = Leitura::factory()->create(['posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-20 23:30:00']);
-    $daVespera = Leitura::factory()->create(['posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-19 23:30:00']);
-    $doDiaSeguinte = Leitura::factory()->create(['posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-21 00:30:00']);
+    $doDia = Leitura::factory()->create(['posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-20 23:30:00+00']);
+    fixaInstanteL('Leitura', $doDia->id, '2026-09-20 23:30:00+00');
+    $daVespera = Leitura::factory()->create(['posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-19 23:30:00+00']);
+    fixaInstanteL('Leitura', $daVespera->id, '2026-09-19 23:30:00+00');
+    $doDiaSeguinte = Leitura::factory()->create(['posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-21 00:30:00+00']);
+    fixaInstanteL('Leitura', $doDiaSeguinte->id, '2026-09-21 00:30:00+00');
 
     $ids = withToken(tokenP5('33330000-0000-4000-8000-000000000001'))
         ->getJson("/api/postos/{$posto->id}/leituras?data=2026-09-20")
@@ -100,7 +116,7 @@ it('não devolve leitura de outro posto, mesmo com o id na rota', function (): v
     $meu = Posto::factory()->create();
     $alheio = Posto::factory()->create();
     $bicoAlheio = Bico::factory()->create(['posto_id' => $alheio->id]);
-    Leitura::factory()->create(['posto_id' => $alheio->id, 'bico_id' => $bicoAlheio->id, 'data' => '2026-09-20 12:00:00']);
+    Leitura::factory()->create(['posto_id' => $alheio->id, 'bico_id' => $bicoAlheio->id, 'data' => '2026-09-20 12:00:00+00']);
     usuarioP5('44440000-0000-4000-8000-000000000001', $meu->id);
 
     withToken(tokenP5('44440000-0000-4000-8000-000000000001'))
@@ -114,7 +130,7 @@ it('devolve dinheiro e litros como string decimal, nunca float', function (): vo
     $bico = Bico::factory()->create(['posto_id' => $posto->id]);
     usuarioP5('55550000-0000-4000-8000-000000000001', $posto->id);
     Leitura::factory()->create([
-        'posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-20 12:00:00',
+        'posto_id' => $posto->id, 'bico_id' => $bico->id, 'data' => '2026-09-20 12:00:00+00',
         'litros_vendidos' => '123.456', 'preco_litro' => '6.38', 'valor_total' => '787.65',
     ]);
 
