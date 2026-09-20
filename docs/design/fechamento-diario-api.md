@@ -18,7 +18,9 @@ Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovada
 | P3 | `App\Fechamento\Domain` só de leitura (4 models), `'Fechamento' => []` no mapa do Pest Arch com canário | não (só cast) | feita em 18/09 |
 | P4a | frentistas ativos pela API (#97): `frentista.api.ts`, troca no call site de `useCarregamentoDados` e `useSessoesFrentistas` | não | feita em 19/09 — só rotas já existentes do catálogo da #97, nenhuma rota nova |
 | P4b | bicos e formas de pagamento pela API (#97): `bico.api.ts`, `formaPagamento.api.ts`, troca no call site de `useCarregamentoDados` e `usePagamentos`; `preco_venda`/`taxa` string → `number` sem mudar conta | sim (Fable) | feita em 19/09 — idem P4a, nenhuma rota nova |
-| P5–P7 | leituras do dia pela API | sim (Fable) | **desbloqueadas quanto ao guard em 20/09 (`465efd5`)**: `token.atual` e `posto.acesso` existem e têm alias em `bootstrap/app.php`, então a rota nova já nasce protegida como a DECISÃO A (§6) exige. Restam **duas** dependências: §7 (f) (aprovar os contratos do §5) e o **lado do cliente** — `frontend/apps/web/src/services/api/base.ts:46` ainda manda só `Accept`, sem `Authorization`; a primeira rota protegida que o painel consumir leva 401 até o `base.ts` passar o Bearer da sessão do Supabase. Nota herdada: diferente da P4, que não criou rota: usou só o catálogo da #97, público desde a #97 (comentário em `routes/api.php:43-46`; grupo `Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)` em `:47-61`, dashboard incluso), e **continua público** — a pendência registrada em `cadastro.md` para a #102 segue aberta |
+| P5 | leituras do dia pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/leituras?data=`, a **primeira nascida protegida** (`token.atual` → `DefinePostoAtual` → `posto.acesso`). Backend `e1f67b2`, `base.ts` mandando o Bearer `5897f1c`, adaptador e call site `c6ef3b2`. Paridade preservada em três pontos: recorte do dia por igualdade de meia-noite (o Supabase usa `.eq`), string decimal → `Number()` (senão `formatarParaBR` devolve o número cru), e ordem por `id`. Canários: 4 mutações, 3 a 6 vermelhos cada |
+| P6 | sessões dos frentistas do dia pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/sessoes?data=`, `SessoesDoDia` (acha os `Fechamento` do dia, depois os filhos: um dia pode ter mais de um, o unique é `(data, turno_id)`). Backend `c581e94`, adaptador e call site `6093119`. **I8 é dado vivo:** 682 de 1206 sessões em produção têm `encerrante`/`diferenca_calculada` null, e `Number(null)` é 0 — `numeroOuNulo` só converte string |
+| P7 | o `Fechamento` do dia e seus recebimentos pela API | sim (Fable) | **desbloqueada** — o guard existe, o `base.ts` manda o Bearer, e `DiaRequest` já está consolidado. Resta §7 (f) |
 | P8 | golden das somas do painel × `totaisDoDia` — **mudança de fórmula, tarefa separada** | sim (Fable) | §7 (d) **DECIDIDA em 20/09** (vale o `total_vendas` do encerrante), então deixa de esperar por ela; segue como tarefa de fórmula do Fable, com golden antes |
 | P9 | `useCustoMensal` sai do Supabase direto | sim (Fable) | espera P8 e decisão CA-7 sobre Compra/Despesa |
 | P10 | Command `GravaFechamentoDoDia`, sem rota | sim (Fable) | bloqueada só por §7 (b), (c), (d), (e) — não depende do guard, porque não expõe rota (§6) |
@@ -305,7 +307,13 @@ Consequências a registrar:
   ao criar `Fechamento`, `FechamentoFrentista` e `Leitura` **sem** `posto_id`, os três saem com o
   posto atual (mutação 18/09: sem o trait em `Leitura`, o `posto_id` volta `1`, o DEFAULT da
   coluna, e o teste fica vermelho).
-- **P5–P7:** Pest Feature por Query com fronteira UTC (leitura às 23:59Z do dia anterior fica fora)
+- **P5–P7:** Pest Feature por Query com fronteira UTC. ⚠️ **Atenção, medido em 20/09:** a conexão
+  da aplicação foi fixada em UTC (`config/database.php`, `cebfad3`) porque o compose herdava
+  America/Sao_Paulo e produção é UTC — o mesmo SQL perdia o dia 01 de janeiro inteiro (6 leituras,
+  R$ 9.430,34). E o cast `datetime` do Eloquent formata **sem offset na escrita**, então factory
+  NÃO serve para fixar instante: use `DB::table()->update(['data' => '...+00'])`. Um teste de
+  fronteira escrito sem isso mede outra coisa e passa verde mentindo — aconteceu três vezes antes
+  de um canário morder
   e trava de N+1 exercitada; `tests/Arch` (controller sem `Request` cru, sem `Domain` para
   escrever); `bun run test:golden` antes e depois; paridade em `localhost:3015` com e sem
   `VITE_API_URL`.
