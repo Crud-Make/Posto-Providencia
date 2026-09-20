@@ -2,6 +2,46 @@
 
 ## [Não Lançado]
 
+### 🔐 Guard da transição e gate de escopo de tenant — a #102 destrava a #103, e o multi-tenant ganha trava
+
+- **O Laravel passa a saber quem está chamando, sem o painel trocar de login.** Implementada a
+  DECISÃO A (`docs/design/fechamento-diario-api.md` §6) em três peças, separadas para que o que é
+  ponte não contamine o que fica: `App\Pessoas\Application\VerificaTokenDoSupabase` confere o JWT
+  (HS256, conferido no header do token em 20/09) **sem biblioteca** — `hash_hmac` nativo —, recusa
+  `alg` diferente de HS256 **antes** de olhar a assinatura (confusão de algoritmo, a falha clássica
+  de quem valida JWT à mão), compara com `hash_equals` e **falha fechada**: sem
+  `SUPABASE_JWT_SECRET`, recusa tudo. `AutenticaPeloTokenAtual` resolve `sub` →
+  `Usuario.auth_user_id`, só se `ativo`. `ExigeAcessoAoPosto` finalmente dá dente à `PostoPolicy`,
+  escrita na #97 com o comentário "aplicada às rotas na #102" e que **nenhuma rota consultava**.
+  **P5, P6, P7 e P11 da #103 deixam de estar bloqueadas.** Nenhuma rota de produção mudou: o
+  catálogo segue público até as fatias novas nascerem já protegidas.
+- **Condição de saída escrita desde o primeiro dia:** só o `VerificaTokenDoSupabase` é ponte, e ele
+  morre quando o `AuthContext` parar de chamar `supabase.auth`. O middleware de identidade e o de
+  autorização valem igual com o Sanctum — muda o emissor, não o guard. Ponte sem data de validade
+  escrita vira arquitetura, e era esse o risco.
+- **Nenhum gate sabia o que é tenant.** Deptrac, PHPStan 9, PHPMD e o Pest passavam **verdes** num
+  model de negócio que esquecesse o `PertenceAoPosto` — e um model sem escopo responde consulta sem
+  filtro de posto, ou seja, dado de um cliente na tela de outro. `EscopoDeTenantTest` fecha isso com
+  três regras, e **a regra vem do banco, não de lista escrita à mão**: tabela com coluna `posto_id`
+  (lida do `information_schema`) exige o trait, então model novo em tabela escopada nasce coberto
+  sem ninguém lembrar de registrar. Exceção só com motivo escrito de mais de 40 caracteres, e há uma
+  real: `UsuarioPosto`, que é a tabela que **decide** o acesso — escopá-la pelo posto atual seria
+  circular. Terceira regra: model em tabela **sem** `posto_id` declara COMO é escopado, para que
+  silêncio deixe de ser opção.
+- **O gate achou duas coisas na primeira execução.** `App\Models\User`, sobra do instalador do
+  Laravel sem `$table` e sem uso em `app/`, passava invisível por todos os gates — agora está
+  declarado como dívida até a #102 decidir o dono da autenticação. E `Recebimento` não tem
+  `posto_id` porque é escopado pelo pai (`fechamento_id` → `Fechamento`): estava certo, mas era
+  conhecimento tácito na cabeça de quem escreveu; agora está escrito e testado.
+- **Canário conferido em 20/09**, porque trava que não prova que reprova é trava verde mentindo:
+  tirar `PertenceAoPosto` de `Cadastro\Domain\Bico` deixou o gate vermelho apontando o model, e
+  exceção sem motivo também reprova. Os dois restaurados, árvore de volta ao hash original.
+- **Descoberto ao escrever o teste, e a migração dos 16 usuários da #102 vai esbarrar nisso:** existe
+  trigger `handle_new_user()` em `auth.users` que insere o `Usuario` **sozinho**, com role
+  `FRENTISTA`. Inserir em `auth.users` sem `email` quebra o trigger, porque `Usuario.email` é
+  `NOT NULL`. O trigger não é opcional: qualquer criação de identidade passa por ele.
+- Gates: Pint, PHPStan nível 9 (0 erros), PHPMD, Deptrac e Pest **117/117 (526 asserções)**.
+
 ### 🧾 Fechamento diário pela API — fatias P4a/P4b da #103 (item 1): catálogo do módulo pelas rotas da #97
 
 - **Frentistas, bicos e formas de pagamento do `fechamento-diario` vêm da API Laravel quando
