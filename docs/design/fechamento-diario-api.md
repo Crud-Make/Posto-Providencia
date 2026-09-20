@@ -1,6 +1,6 @@
 # Fechamento diário pela API — Design Doc
 
-Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota. Em 20/09/2026 o guard da DECISÃO A entrou no backend (commit `465efd5`, `autenticacao.md` §3b), então **P5–P7 e P11 deixam de estar bloqueadas pelo guard**: P5–P7 passam a depender só de §7 (f) e de o `base.ts` enviar o Bearer; P8 tinha (d) como bloqueio e (d) foi DECIDIDA pelo dono em 20/09 (§7) — segue como tarefa de fórmula, do Fable, com golden antes; P10 espera §7 (b)–(e); P11 espera P10 e o §7** · Data: 18/09/2026 · Última atualização: 20/09/2026
+Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota. Em 20/09/2026 o guard da DECISÃO A entrou no backend (commit `465efd5`, `autenticacao.md` §3b), então **P5–P7 e P11 deixaram de estar bloqueadas pelo guard**. **P5, P6 e P7 estão FEITAS — a LEITURA do fechamento diário fechou inteira** — e a §7 (f) foi resolvida por transcrição em 20/09 (a §5 agora descreve o que subiu, não o que se propôs); P8 tinha (d) como bloqueio e (d) foi DECIDIDA pelo dono em 20/09 (§7) — segue como tarefa de fórmula, do Fable, com golden antes; P10 espera §7 (b)–(e); P11 espera P10 e o §7** · Data: 18/09/2026 · Última atualização: 20/09/2026
 
 > Primeiro módulo do painel a migrar do PostgREST para a API Laravel, e o que faz nascer
 > `App\Fechamento` no backend. Contrato comum às fatias: `painel-pela-api.md`. Regra de domínio:
@@ -20,7 +20,7 @@ Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovada
 | P4b | bicos e formas de pagamento pela API (#97): `bico.api.ts`, `formaPagamento.api.ts`, troca no call site de `useCarregamentoDados` e `usePagamentos`; `preco_venda`/`taxa` string → `number` sem mudar conta | sim (Fable) | feita em 19/09 — idem P4a, nenhuma rota nova |
 | P5 | leituras do dia pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/leituras?data=`, a **primeira nascida protegida** (`token.atual` → `DefinePostoAtual` → `posto.acesso`). Backend `e1f67b2`, `base.ts` mandando o Bearer `5897f1c`, adaptador e call site `c6ef3b2`. Paridade preservada em três pontos: recorte do dia por igualdade de meia-noite (o Supabase usa `.eq`), string decimal → `Number()` (senão `formatarParaBR` devolve o número cru), e ordem por `id`. Canários: 4 mutações, 3 a 6 vermelhos cada |
 | P6 | sessões dos frentistas do dia pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/sessoes?data=`, `SessoesDoDia` (acha os `Fechamento` do dia, depois os filhos: um dia pode ter mais de um, o unique é `(data, turno_id)`). Backend `c581e94`, adaptador e call site `6093119`. **I8 é dado vivo:** 682 de 1206 sessões em produção têm `encerrante`/`diferenca_calculada` null, e `Number(null)` é 0 — `numeroOuNulo` só converte string |
-| P7 | o `Fechamento` do dia e seus recebimentos pela API | sim (Fable) | **desbloqueada** — o guard existe, o `base.ts` manda o Bearer, e `DiaRequest` já está consolidado. Resta §7 (f) |
+| P7 | o `Fechamento` do dia e seus recebimentos pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/fechamento?data=`, `FechamentoDoDia` devolve **UM** fechamento (o mais recente do dia, `orderByDesc('id')->first()`) com `recebimentos` por eager load. Backend `adf2232`, adaptador e call site `54413da`. **Dia sem fechamento é 200 com `data: null`, não 404** — 404 obrigaria o cliente a distinguir "rota errada" de "dia em branco", e dia em branco é estado normal do sistema. Com isso a LEITURA do fechamento diário fecha inteira |
 | P8 | golden das somas do painel × `totaisDoDia` — **mudança de fórmula, tarefa separada** | sim (Fable) | §7 (d) **DECIDIDA em 20/09** (vale o `total_vendas` do encerrante), então deixa de esperar por ela; segue como tarefa de fórmula do Fable, com golden antes |
 | P9 | `useCustoMensal` sai do Supabase direto | sim (Fable) | espera P8 e decisão CA-7 sobre Compra/Despesa |
 | P10 | Command `GravaFechamentoDoDia`, sem rota | sim (Fable) | bloqueada só por §7 (b), (c), (d), (e) — não depende do guard, porque não expõe rota (§6) |
@@ -174,39 +174,76 @@ Janela de escrita no esquema local: `>= 2025-12-31` e `< CURRENT_DATE + 2 dias`
 Critério de paridade de toda fatia: os números em `localhost:3015/fechamento-diario` e em
 `leituras-diarias` são idênticos antes e depois, com e sem `VITE_API_URL`.
 
-## 5. Contratos (propostos — forma final é aprovação do dono, §7 f)
+## 5. Contratos
+
+### 5.1 No ar (P5, P6, P7) — descrição, não proposta
+
+Todas sob `prefix('postos/{posto}')` com `['token.atual', DefinePostoAtual::class, 'posto.acesso']`,
+nessa ordem (`routes/api.php:78-89`). Dinheiro e litros saem **string decimal**; balde não informado
+sai `null`, nunca `'0.00'` (I8). Timestamp sai ISO-8601 Zulu.
 
 ```
-GET /api/postos/{posto}/leituras?data=AAAA-MM-DD
-  → { data: [{ id, bico_id, combustivel_id, data, leitura_inicial: "string",
-               leitura_final: "string", litros_vendidos: "string", preco_litro: "string",
-               valor_total: "string" }] }
+GET /api/postos/{posto}/leituras?data=AAAA-MM-DD            → LeituraController@index
+  → { data: [{ id, data, bico_id, combustivel_id, turno_id,
+               leitura_inicial, leitura_final, litros_vendidos, preco_litro, valor_total }] }
 
+GET /api/postos/{posto}/sessoes?data=AAAA-MM-DD             → FechamentoFrentistaController@index
+  → { data: [{ id, fechamento_id, frentista_id,
+               valor_dinheiro, valor_cartao, valor_cartao_debito, valor_cartao_credito,
+               valor_pix, valor_nota, valor_moedas, baratao, baratencia,
+               valor_conferido, encerrante, diferenca_calculada,
+               observacoes, data_hora_envio }] }
+
+GET /api/postos/{posto}/fechamento?data=AAAA-MM-DD          → FechamentoController@show
+  → { data: null }            quando o dia não tem fechamento — 200, não 404
+  → { data: { id, data, total_vendas, total_recebido, diferenca, status,
+              observacoes, usuario_id, turno_id,
+              recebimentos: [{ id, fechamento_id, forma_pagamento_id,
+                               maquininha_id, valor, observacoes }] } }
+```
+
+**Onde o que subiu diverge da proposta original** — e por quê:
+
+| proposta de 18/09 | o que subiu | razão |
+|---|---|---|
+| `/fechamentos/dia/{data}` | `/fechamento?data=` | o dia é **filtro**, não identidade de recurso: as três rotas passaram a ter a mesma forma, e o `DiaRequest` valida uma coisa só |
+| `/fechamentos-frentista?data=` | `/sessoes?data=` | "sessão do frentista no dia" é o nome que o domínio usa; o nome da tabela não é contrato |
+| dia sem fechamento → (não dito) | **200 com `data: null`** | 404 faria o cliente distinguir rota errada de dia em branco, e dia em branco é estado normal |
+| campos de dinheiro | mais `id`, `turno_id`, `status`, `usuario_id`, `observacoes`, `baratencia`, `data_hora_envio` | a P11 precisa deles para reescrever a linha; omiti-los agora custaria uma segunda ida ao banco |
+
+### 5.2 Ainda proposta (não existe rota)
+
+```
 GET /api/postos/{posto}/leituras/ultimas?antes_de=AAAA-MM-DD
   → uma linha por bico (hoje o cliente dedupa de um limit 200, leitura.service.ts:186-214)
 
-GET /api/postos/{posto}/fechamentos-frentista?data=AAAA-MM-DD | ?inicio=&fim=
-  → linhas com frentista_id e fechamento { id, data, turno_id, posto_id }
-    (reaproveita o contrato da #101, fechamento-frentista-api.md §6)
-
-GET /api/postos/{posto}/fechamentos/dia/{data}
-  → Fechamento | null, com recebimentos: [{ forma_pagamento_id, maquininha_id, valor: "string" }]
-
-PUT /api/postos/{posto}/fechamentos/dia/{data}          (P11 — só depois da #102, policy 'gerir')
-  { leituras: [...], sessoes: [...7 baldes, encerrante, valor_conferido, diferenca_calculada],
-    recebimentos: [...], totais: { total_vendas, total_recebido, diferenca }, observacoes }
+PUT /api/postos/{posto}/fechamento?data=AAAA-MM-DD       (P11 — policy 'gerir', que não tem middleware)
+  { leituras: [...],
+    sessoes: [...7 baldes, encerrante, valor_conferido, diferenca_calculada],
+    frentistas_conhecidos: [id],        ← §7 (c): apaga só dentro do conjunto declarado
+    recebimentos: [...],
+    totais: { total_vendas, total_recebido, diferenca },
+    observacoes }
   → revalida SÓ diferenca = total_vendas − total_recebido em centavos; tudo em DB::transaction;
     resposta é o Fechamento gravado. Erro: { erro: { codigo, mensagem, campos? } }.
 ```
+
 
 Frontend: cada `*.api.ts` exporta função com tipo de entrada explícito e `ResultAsync<T, ErroDaApi>`
 de saída, `T = z.infer` do schema; dinheiro vem string e só vira número em centavos via
 `@posto/utils` (a conversão é do Fable). Filtro `ativo === true` aplicado no cliente para bicos,
 frentistas e formas de pagamento.
 
-Dívida de esquema registrada, fora deste item: `UNIQUE (data, turno_id)` de `Fechamento` não tem
-`posto_id` (`:757`) e `Recebimento` não tem `posto_id` (`:437-444`) — um segundo posto na mesma data
-colide no unique; o escopo por posto no servidor passa pelo `Fechamento`.
+**Dívida de esquema, agora MEDIDA (20/09) e maior do que esta linha dizia.** Não são dois casos, são
+**cinco uniques em tabela de tenant sem `posto_id`** — varridos do catálogo, não de lista escrita à mão:
+`Fechamento (data, turno_id)`, `Estoque (combustivel_id)`, `Configuracao (chave)`,
+`Fornecedor (cnpj)`, `Frentista (cpf)`. Como `turno_id` é sempre `1`, **dois postos não conseguem
+fechar o mesmo dia**: o banco recusa o segundo cliente. `Recebimento` sem `posto_id` é caso à parte e
+está OK — é escopado pelo pai (`fechamento_id`), e o gate de tenant exige essa declaração
+(`tests/Feature/Arquitetura/EscopoDeTenantTest.php`). Quatro outros uniques passam pela mesma razão:
+`Bico`, `Escala`, `FechamentoFrentista`, `Leitura`. A migration que conserta os cinco é **DDL contra
+produção** e espera o "vai" do dono; enquanto não entrar, tudo que se construir sobre multi-tenant
+está sobre um banco que só atende um posto.
 
 ## 6. DECISÃO A — autorização durante a transição (dono, 18/09/2026)
 
@@ -269,7 +306,7 @@ da tabela. Em 20/09 o dono decidiu a **(b)**, a **(c)** e a **(d)**, e a **(e)**
 | (c) ✅ | **`DELETE+INSERT` × `UPSERT` em `FechamentoFrentista`** — **DECIDIDA em 20/09/2026** | hoje é `DELETE ... WHERE fechamento_id` + `INSERT` em lote, e o INSERT vem do **estado da tela** capturado no clique (`useSubmissaoFechamento.ts:116,199`; o estado é montado em `useSessoesFrentistas.ts:137-240` e só mescla com o banco NO CARREGAMENTO). Envio que chega pelo PWA depois disso é apagado e não volta; o `data_hora_envio` original é perdido; `NotaFrentista`/`VendaProduto` desvinculados não voltam | **decidido: vira UPSERT por `(fechamento_id, frentista_id)`** — o unique existe e está aplicado (`01-esquema-base.sql:761`) — **mais DELETE só dos `frentista_id` que o cliente declarou conhecer e não mandou de volta**. O contrato leva `sessoes[]` e `frentistas_conhecidos[]`: o Command atualiza o que veio, apaga só dentro do conjunto declarado (remoção deliberada do gerente) e **não toca** em quem a tela nunca viu. `UPSERT` puro foi descartado porque tiraria do gerente a única forma de apagar envio errado | P10 deixa de esperar por (c). Conserta o defeito de apagar envio tardio e preserva `data_hora_envio` no UPDATE |
 | (d) ✅ | **Qual `total_vendas` vale** — **DECIDIDA em 20/09/2026** (abaixo) | o painel soma em float (`useFechamento.ts:107-110` `reduce`; `calculators.ts:244-267` `calcularTotais`); o `api-core` grava `totaisDoDia` em centavos (`fechamento.ts:118-138`; `encerrante.ts:621-643`). `POST /consolidar` revalida em centavos (`fase-a-laravel.md:91-93`) e pode recusar o painel por 1 centavo. Nenhum golden hoje exercita `useFechamento` nem `calculators.ts`; o comentário de `useFechamento.ts:137` diz o contrário | decidido: vale o `total_vendas` do **encerrante**. O P8 segue sendo o golden das duas implementações sobre janeiro, agora com o vencedor já escolhido. Tarefa de fórmula, só do Fable | nada mais — P8 deixa de esperar por (d); P10 e P11 seguem pelas (b), (c), (e) |
 | (e) ✅ | **Janela de escrita real** — **MEDIDA em 20/09/2026, não precisa de decisão** | **Produção e esquema local são IDÊNTICOS**, conferido no `pg_proc` do Supabase: `SELECT quando >= DATE '2025-12-31' AND quando < (CURRENT_DATE + INTERVAL '2 days')`. As memórias que falavam em **7 dias** e em **1,5 mês** estavam as duas erradas | o Command copia literalmente: `>= 2025-12-31` e `< CURRENT_DATE + 2 dias`. ⚠️ `CURRENT_DATE` depende do fuso da sessão — em produção é UTC, e a conexão do Laravel foi fixada em UTC (`cebfad3`), então batem. Encurtar a janela é issue separada (`fechamento-frentista-api.md` §5) | P10 deixa de esperar por (e) |
-| (f) | **Contratos do §5** | — | aprovar a forma final antes de P5 | P5–P7 |
+| (f) ✅ | **Contratos do §5** — **RESOLVIDA em 20/09/2026, por transcrição** | a §5 foi escrita como *proposta*, antes de existir rota. Enquanto ela esperava aprovação, P5, P6 e P7 subiram e passaram a servir o painel: a forma final deixou de ser uma escolha em aberto e virou **fato observável em código e em teste** | não há o que aprovar: a §5 foi **reescrita para descrever o que subiu**, e as divergências contra a proposta estão listadas lá. Decidir de novo seria decidir contra 150 testes verdes. O que a §5 ainda propõe — `/leituras/ultimas` e o `PUT` da P11 — segue proposta, e está marcado como tal | nada: P5–P7 já entregues; a P11 carrega o resto |
 
 ### DECISÃO (dono, 20/09/2026): o `total_vendas` que vale é o do ENCERRANTE
 
