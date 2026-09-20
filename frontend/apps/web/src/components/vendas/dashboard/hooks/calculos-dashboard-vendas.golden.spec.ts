@@ -17,7 +17,7 @@
  */
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { despesaOperacionalPorLitro, lucroCombustivel, somarDespesas } from '@posto/utils';
+import { despesaOperacionalPorLitro, emCentavos, lucroCombustivel, somarDespesas } from '@posto/utils';
 import { lucroEstimadoDashboard } from './calculos-dashboard-vendas';
 
 const SQLITE = `${import.meta.dir}/../../../../../../../../docs/data/posto_jorro_2026.sqlite`;
@@ -115,7 +115,11 @@ for (const mes of MESES) {
         );
 
         expect(doCard.produtosSemCompra).toEqual([]);
-        expect(doCard.profit as number).toBeCloseTo(canonico, 2);
+        // Exatidão, não folga: `toBeCloseTo(_, 1)` tolera CINCO CENTAVOS, e medido
+        // por mutação em 20/09 isso deixava passar tanto a soma em float quanto um
+        // centavo deslocado. A saída é dinheiro e nasce quantizada — então iguala-se
+        // ao canônico quantizado, sem arredondar o lado do módulo.
+        expect(doCard.profit as number).toBe(emCentavos(canonico));
 
         // 2. O modelo APOSENTADO (vendas − Σ litros × custo, sem despesa),
         // reproduzido aqui só para documentar o antes/depois em reais.
