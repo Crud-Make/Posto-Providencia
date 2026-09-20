@@ -1,6 +1,6 @@
 ---
 name: taxa-cartao-deduzida-duas-vezes
-description: A taxa de cartão é despesa do mês (dono confirmou 26/08), mas 3 sites do fechamento diário a deduzem por transação — o modelo do painel contradiz o de frontend/packages/utils
+description: A taxa de cartão é despesa do mês (dono confirmou 26/08), mas 3 sites do fechamento diário a deduzem por transação — o modelo do painel contradiz o de frontend/packages/utils; em 20/09 os 3 sites são código morto (nenhum consumidor)
 metadata:
   type: project
 ---
@@ -16,6 +16,28 @@ Reconferir (conferido 28/08/2026 — 3 hits, 2 arquivos):
 ```bash
 grep -rn 'taxa / 100\|p.taxa) / 100\|taxa / 100)' frontend/apps/web/src/components/fechamento-diario/hooks/
 grep -n 'A "taxa de cartão"' frontend/packages/utils/src/lucro.ts
+```
+
+**20/09/2026 — os 3 sites são CÓDIGO MORTO, e isso reordena o achado.** Nenhuma das
+quatro saídas dessa conta chega à tela. `index.tsx:94` desestrutura de `usePagamentos`
+só `pagamentos`, `carregando`, `carregarPagamentos` e `sincronizarComSessoes` —
+`totalTaxas` e `totalLiquido` ficam no `RetornoPagamentos` sem consumidor.
+`index.tsx:149` desestrutura de `useFechamento` só
+`{ totalVendas, totalFrentistas, diferenca, podeFechar }` — `totalTaxas`,
+`valorLiquido` e o `exibicao` que os formata ficam órfãos. O único consumidor vivo é
+`usePagamentos.test.ts:109-110`. A aba "Fechamento Financeiro" que editava isso saiu
+em 30/08/2026 (comentário em `index.tsx:91-92`); a conta ficou.
+
+**Consequência para o ranking:** o *deletion test* passa — apagar as 4 saídas não muda
+pixel nenhum. Então "dinheiro em float" aqui **não custa dinheiro hoje**, custa o risco
+de alguém religar a saída e propagar um modelo que `frontend/packages/utils/src/lucro.ts:11`
+declara errado. Promover isso a helper em `frontend/packages/utils` **codifica em canônico
+uma convenção que o canônico nega** — é o caminho caro. Reconferir antes de repetir:
+```bash
+cd frontend
+grep -n 'usePagamentos(postoAtivoId)' -B8 apps/web/src/components/fechamento-diario/index.tsx
+grep -n 'useFechamento(bicos' apps/web/src/components/fechamento-diario/index.tsx
+grep -rn 'totalTaxas\|totalLiquido\|valorLiquido' apps/web/src --include='*.ts' --include='*.tsx'
 ```
 
 **Por que isto não é um bug para consertar direto:** é uma **divergência de modelo

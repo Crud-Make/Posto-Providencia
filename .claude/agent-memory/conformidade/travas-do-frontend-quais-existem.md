@@ -84,3 +84,15 @@ grep -n 'catraca\|eslint' scripts/hooks/pre-commit scripts/hooks/pre-push
 grep -nE 'FSD-[1-3]|TS-[2-4]|CA-2' docs/arquitetura/regras.md
 sed -n 145,155p backend/tests/Arch/ArquiteturaTest.php
 ```
+
+**O escopo do `so-fable-na-formula.py` é estreito, e isso decide o que é "passo Fable"**
+(lido em 20/09/2026). O regex `FORMULA` cobre só
+`packages/utils/src/**.ts` e `apps/web/src/services/api/aggregator.service.ts`; o
+`TESTE_DE_REGRA` cobre `*.golden.spec.ts` e `*.regressao.test.ts` (o `*.test.ts`/`*.spec.ts`
+comum é livre). Tudo em `apps/web/src/components/**/hooks/` está **fora** — inclusive
+fórmula de dinheiro escrita lá. Consequência prática: a trava de harness (modelo) e a
+trava de git (pre-push + golden) **não cobrem o mesmo conjunto**, e só o que estiver
+dentro de `packages/utils` sobrevive à saída do Fable como regra vigiada. Reconferir:
+```bash
+sed -n 28,40p .claude/hooks/so-fable-na-formula.py
+```

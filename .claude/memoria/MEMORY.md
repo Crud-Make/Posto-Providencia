@@ -1,5 +1,7 @@
 # Memória — Posto Providência
+- [🔴 Dois bugs do Salvar do painel](dois-bugs-do-salvar-do-painel.md) — 20/09: o painel APAGA envio de frentista que chegou depois da tela carregar; e regravar o dia desconta Estoque 2×; os dois somem quando a escrita for só pela API
 - [🎯 POR QUE a refatoração existe](porque-multitenant-e-o-destino.md) — 20/09 do dono: multi-tenant p/ vender a outros postos + sair do dado preso + portfólio; as travas SÃO o produto; contradiz a #93
+- [🎯 total_vendas = o do ENCERRANTE](total-vendas-vale-o-encerrante.md) — 20/09: dono decidiu a §7 (d); vários envios de frentistas alimentam o mesmo encerrante, somar envios sobra/falta; destrava P8 (que segue sendo Fable + golden)
 - [🔢 DECISÃO 2 da #101: PIN por frentista](decisao-2-pin-por-frentista.md) — 19/09: dono escolheu PIN (não token); próximo após FSD do pwa é o PWA pela API Laravel, pelo workflow
 - [📏 Tetos de qualidade 19/09](tetos-de-qualidade-19-09.md) — CCN 10 no front já (catraca), 300 linhas/arquivo, 60/função, front e back; taxa de cartão = despesa do mês
 - [🧷 Regras têm de ser implementadas](regras-tem-de-ser-implementadas.md) — 19/09: toda refatoração liga a trava que falta (pre-commit, pre-push e CI) + canário e atualiza regras.md; não basta respeitar

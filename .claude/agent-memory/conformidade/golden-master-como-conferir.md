@@ -8,6 +8,17 @@ metadata:
 O estado do golden master **decide se um achado de fórmula é acionável ou
 bloqueado**, e é o fato que mais apodrece nas instruções deste agente.
 
+**20/09/2026:** verde em `origin/fase-a` = `91593a8` (duas passadas, 0 falha, 18 arquivos).
+
+**O comando mudou de lugar em 20/09/2026.** O `test:golden` NÃO existe mais no
+`package.json` da raiz — migrou para `frontend/package.json:20`. Rodar da raiz devolve
+`error: Script not found "test:golden"`, que é fácil de ler como "o golden sumiu"
+quando é só o `cd` faltando. Confirmar onde o script mora antes de concluir qualquer
+coisa sobre o §0.6:
+```bash
+grep -rn '"test:golden"' package.json frontend/package.json
+```
+
 **19/09/2026:** verde de novo em `origin/fase-a` (duas passadas, zero falha, 18 arquivos).
 
 **Fato:** reconferido em **17/09/2026** — o golden master segue **verde** (18 arquivos `*.golden.spec.ts`, 5 deles em `frontend/apps/web`; o número de testes não vai aqui). `docs/data/`
@@ -32,7 +43,8 @@ gitignored.
 **How to apply:** rodar isto antes de classificar qualquer achado como Bloqueado —
 o `bun` precisa do PATH explícito quando a shell não é de login:
 ```bash
-ls docs/data/ && export PATH="$HOME/.bun/bin:$PATH" && bun run test:golden
+ls docs/data/ && export PATH="$HOME/.bun/bin:$PATH" \
+  && cd frontend && bun run test:golden
 ```
 Nunca `bun test` puro (§7). A contagem de testes do golden **muda sozinha quando o
 ETL roda** — divergiu, reconte antes de chamar de regressão; por isso o número não

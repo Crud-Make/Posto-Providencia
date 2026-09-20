@@ -17,4 +17,8 @@
 - [Carga local pelos scripts --sql](carga-local-postgres-pelos-scripts-sql.md) — Postgres do compose só tem cadastro; carga-historico-*.py --sql lê docs/data e só imprime SQL; despesa emite DELETE
 - [Hooks do Claude: pontos cegos](hooks-do-claude-pontos-cegos.md) — `git -C`/`git -c` escapam de protege-git e checklist; nenhum hook lê `cwd`; `pkill -f` casa com o `bash -c eval` do harness
 - [Catálogo Laravel × leituras do painel](catalogo-api-laravel-vs-painel.md) — API não filtra ativo; foto fora por teste; /configuracoes passa pelo aggregator protegido
+- [Taxa de pagamento: onde é calculada](taxa-de-pagamento-onde-e-calculada.md) — 3 contas em fechamento-diario que ninguém consome; docs/data não tem taxa, então golden é impossível e a trava tem de ser regressão
 - [Backend: arestas que os gates não veem](backend-arestas-invisiveis-aos-gates.md) — rota, Provider, factory, tabela por string, App\Models; deptrac roda em extração, Pest não
+- [Dois escritores de total_vendas](dois-escritores-de-total-vendas.md) — painel do fechamento-diário grava a própria conta (0 quando sem encerrante); api-core relê Leitura e grava NULL; os dois são encerrante, mas divergem
+- [FechamentoFrentista é DELETE+INSERT](fechamento-frentista-delete-insert.md) — painel apaga por fechamento e reinsere; PWA é INSERT puro; unique (fechamento_id, frentista_id) JÁ está no esquema base:761; tabela não tem bico_id
+- [Estoque no salvamento do fechamento](estoque-no-salvamento-do-fechamento.md) — leitura.service desconta no bulkCreate e deleteByDate não devolve (duplo desconto); api-core e MovimentacaoEstoque ficam fora
