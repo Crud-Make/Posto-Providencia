@@ -1,4 +1,5 @@
 # Memória — Posto Providência
+- [🕐 Fuso local não batia com produção](fuso-local-nao-batia-com-producao.md) — 20/09: prod é UTC, compose era Sao_Paulo; mesmo SQL perdia o dia 01 (R$ 9.430); fixado em config/database.php; cast do Eloquent grava sem offset
 - [🔴 Dois bugs do Salvar do painel](dois-bugs-do-salvar-do-painel.md) — 20/09: o painel APAGA envio de frentista que chegou depois da tela carregar; e regravar o dia desconta Estoque 2×; os dois somem quando a escrita for só pela API
 - [🎯 POR QUE a refatoração existe](porque-multitenant-e-o-destino.md) — 20/09 do dono: multi-tenant p/ vender a outros postos + sair do dado preso + portfólio; as travas SÃO o produto; contradiz a #93
 - [🎯 total_vendas = o do ENCERRANTE](total-vendas-vale-o-encerrante.md) — 20/09: dono decidiu a §7 (d); vários envios de frentistas alimentam o mesmo encerrante, somar envios sobra/falta; destrava P8 (que segue sendo Fable + golden)
