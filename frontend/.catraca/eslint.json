@@ -90,7 +90,7 @@
   "apps/web/src/components/fechamento-diario/hooks/useFechamento.test.ts|@typescript-eslint/no-explicit-any": 3,
   "apps/web/src/components/fechamento-diario/hooks/useFechamento.test.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/fechamento-diario/hooks/useLeituras.ts|@typescript-eslint/strict-boolean-expressions": 6,
-  "apps/web/src/components/fechamento-diario/hooks/usePagamentos.ts|@typescript-eslint/strict-boolean-expressions": 6,
+  "apps/web/src/components/fechamento-diario/hooks/usePagamentos.ts|@typescript-eslint/strict-boolean-expressions": 5,
   "apps/web/src/components/fechamento-diario/hooks/useResumoMensalFrentistas.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/fechamento-diario/hooks/useResumoMensalFrentistas.ts|@typescript-eslint/strict-boolean-expressions": 6,
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.test.ts|@typescript-eslint/no-explicit-any": 1,
