@@ -26,7 +26,8 @@
  */
 import { Database } from 'bun:sqlite';
 import { test, expect } from 'bun:test';
-import { totaisDoDia, isFalta, isSobra, type MeiosPagamento } from './fechamento';
+import { totaisDoDia, isFalta, isSobra, type MeiosPagamento, conferido } from './fechamento';
+import { emCentavos } from './lucro';
 
 const DB_PATH = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(DB_PATH, { readonly: true });
@@ -142,6 +143,9 @@ for (const d of dias) {
     test(`total recebido bate com a referência — dia ${d.dia}`, () => {
         const totais = totaisDoDia(d.caixa_venda_concentrador, sessoesDoDia(d.dia));
         expect(centavos(totais.totalRecebido)).toBe(centavos(d.caixa_venda_frentista));
+        // Sem `centavos()` no lado do módulo: `totaisDoDia` acumulando em float
+        // passava verde pela linha acima (auditoria de 21/09).
+        expect(totais.totalRecebido).toBe(emCentavos(d.caixa_venda_frentista));
     });
 
     test(`diferença é FALTA positiva e bate com a referência — dia ${d.dia}`, () => {
@@ -159,6 +163,21 @@ for (const d of dias) {
         expect(centavos(totais.diferenca)).toBe(centavos(faltaDaReferencia.falta));
     });
 }
+
+/**
+ * Canário: somar as sessões do dia em float cru derrapa do centavo em 15 dos 31
+ * dias reais de janeiro. Medido em 21/09/2026. É o que a asserção exata acima
+ * pega — se esta lista esvaziar, ela deixou de provar alguma coisa.
+ */
+test('somar as sessões em float derrapa em 15 dias reais; totaisDoDia em nenhum', () => {
+    const derrapam = dias
+        .filter((d) => {
+            const cru = sessoesDoDia(d.dia).reduce((acc, m) => acc + conferido(m), 0);
+            return cru !== emCentavos(cru);
+        })
+        .map((d) => d.dia);
+    expect(derrapam).toEqual([2, 4, 6, 10, 13, 14, 15, 16, 18, 21, 22, 23, 24, 25, 27]);
+});
 
 test('o mês inteiro fecha: concentrador − conferido = falta', () => {
     const concentrador = dias.reduce((a, d) => a + d.caixa_venda_concentrador, 0);

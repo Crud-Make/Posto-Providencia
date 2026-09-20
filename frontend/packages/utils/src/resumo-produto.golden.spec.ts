@@ -30,15 +30,18 @@
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { resumoPorProduto, type EntradaBicoMes } from './resumo-produto';
-import { despesaOperacionalPorLitro } from './lucro';
+import { despesaOperacionalPorLitro, emCentavos } from './lucro';
 
 const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
 /** Bate ao centavo; a tolerância só cobre o arredondamento da fonte. */
 const TOL_REAIS = 0.01;
-/** O total acumula 6 arredondamentos de bico. */
-const TOL_TOTAL = 0.02;
+/**
+ * O total acumula 6 arredondamentos de bico. Era 0,02 até 21/09/2026; o resíduo
+ * real medido nos 7 meses é no máximo 0,0073 — um centavo basta.
+ */
+const TOL_TOTAL = 0.01;
 
 /**
  * Bico → produto, como a planilha agrupa.
@@ -136,12 +139,20 @@ for (const { mes } of meses) {
         test(`mês ${mes} · ${linha.bico}: lucro bate com a planilha`, () => {
             expect(calculado).toBeDefined();
             expect(calculado!.lucro).toBeCloseTo(linha.lucro_bico ?? 0, 2);
+            // `lucroLitro` não tem célula na planilha, mas tem identidade com o
+            // lucro do bico — sem isto, o sinal dele invertido passava verde (21/09).
+            expect(calculado!.lucroLitro).not.toBeNull();
+            expect(Math.abs(linha.litros * (calculado!.lucroLitro as number) - calculado!.lucro))
+                .toBeLessThan(0.01);
         });
     }
 
     test(`mês ${mes}: lucro total bate com a soma da planilha`, () => {
         const somaPlanilha = linhas.reduce((acc, l) => acc + (l.lucro_bico ?? 0), 0);
         expect(Math.abs(resumo.totais.lucro - somaPlanilha)).toBeLessThanOrEqual(TOL_TOTAL);
+        // Totais saem quantizados: somados em float cru, passavam pela folga (21/09).
+        expect(resumo.totais.lucro).toBe(emCentavos(resumo.totais.lucro));
+        expect(resumo.totais.venda).toBe(emCentavos(resumo.totais.venda));
     });
 
     test(`mês ${mes}: litros do produto somam os litros do mês`, () => {
