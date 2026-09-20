@@ -30,11 +30,53 @@ export function urlDaApi(): string | null {
 }
 
 /**
+ * Token da sessão atual do Supabase, ou `null` quando não há sessão.
+ *
+ * @remarks
+ * É o crachá que o guard da transição aceita (DECISÃO A, `docs/design/autenticacao.md` §3b): o
+ * Laravel confere a assinatura e acha o `Usuario` por `auth_user_id`. O painel não troca de login
+ * para as fatias migrarem — o token que ele já tem é o que a API aceita.
+ *
+ * **Nunca falha.** Sem sessão, ou com erro ao ler a sessão, devolve `null` e a requisição sai sem
+ * `Authorization`. É deliberado: o catálogo da #97 ainda é público e a P4a/P4b o consome sem
+ * token; fazer a falta de sessão virar erro quebraria o que já funciona. Rota protegida sem token
+ * responde 401, que é o comportamento certo.
+ *
+ * Quando o Sanctum virar o emissor, só esta função muda.
+ */
+function tokenDaSessao(): ResultAsync<string | null, never> {
+    return ResultAsync.fromSafePromise(
+        (async (): Promise<string | null> => {
+            try {
+                const { data } = await supabase.auth.getSession();
+                return data.session?.access_token ?? null;
+            } catch {
+                // Engolir aqui é a decisão, e ela é estreita: vale só para LER a sessão. Se o
+                // client do Supabase não estiver de pé, `supabase.auth` é `undefined` e o acesso
+                // lança de forma SÍNCRONA — fora de qualquer ResultAsync, escapando como exceção
+                // e violando o contrato deste módulo ("regra de negócio acima disto não lança").
+                // O `async` aqui transforma esse throw em rejeição, e o catch em `null`.
+                // Resultado: a requisição sai sem `Authorization` e a rota protegida responde 401,
+                // que é a falha certa. Nunca uma exceção no meio de um service.
+                return null;
+            }
+        })(),
+    );
+}
+
+/** Cabeçalhos da requisição: o `Bearer` entra só quando há sessão. */
+function cabecalhos(token: string | null): Record<string, string> {
+    return token === null ? { Accept: 'application/json' } : { Accept: 'application/json', Authorization: `Bearer ${token}` };
+}
+
+/**
  * GET na API Laravel com a resposta validada por schema.
  *
  * @remarks
  * O `try/catch` do `fetch` vira `ResultAsync.fromPromise` aqui, na borda — regra de negócio acima
  * disto não lança. A resposta entra como `unknown` e só sai tipada depois do `safeParse`.
+ *
+ * Desde a #103 P5 a requisição leva o `Authorization` da sessão do Supabase, quando existe.
  */
 export function buscarNaApi<T>(caminho: string, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
     const base = urlDaApi();
@@ -42,10 +84,13 @@ export function buscarNaApi<T>(caminho: string, schema: z.ZodType<T>): ResultAsy
         return errAsync({ tipo: 'sem_api' });
     }
 
-    return ResultAsync.fromPromise(
-        fetch(`${base}${caminho}`, { headers: { Accept: 'application/json' } }),
-        (erro): ErroDaApi => ({ tipo: 'rede', detalhe: erro instanceof Error ? erro.message : String(erro) }),
-    )
+    return tokenDaSessao()
+        .andThen((token) =>
+            ResultAsync.fromPromise(
+                fetch(`${base}${caminho}`, { headers: cabecalhos(token) }),
+                (erro): ErroDaApi => ({ tipo: 'rede', detalhe: erro instanceof Error ? erro.message : String(erro) }),
+            ),
+        )
         .andThen((resposta) =>
             resposta.ok
                 ? ResultAsync.fromPromise(
