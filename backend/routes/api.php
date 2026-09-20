@@ -3,6 +3,7 @@
 use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
+use App\Fechamento\Http\Controllers\LeituraController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -59,3 +60,22 @@ Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(func
     // docs/design/agregacao.md §5). Sem lucro no servidor: quem calcula é packages/utils.
     Route::get('dashboard', [AgregacaoController::class, 'dashboard']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Rotas PROTEGIDAS (DECISÃO A — docs/design/autenticacao.md §3b)
+|--------------------------------------------------------------------------
+| A partir da #102 toda rota nova nasce aqui, não no grupo público acima. A ordem é
+| obrigatória: `token.atual` diz QUEM é, `DefinePostoAtual` resolve o `{posto}` e define o
+| `PostoAtual` que escopa os models, e `posto.acesso` pergunta à PostoPolicy se esse usuário
+| alcança ESTE posto. A policy precisa do posto já resolvido, por isso vem depois.
+|
+| O grupo público acima continua público de propósito: a P4a/P4b já o consome sem token, e
+| fechá-lo é fatia própria (pendência em docs/design/cadastro.md).
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso'])
+    ->group(function (): void {
+        // Encerrantes do dia (#103 P5). Dinheiro e litros saem como string decimal.
+        Route::get('leituras', [LeituraController::class, 'index']);
+    });

@@ -6,6 +6,8 @@ namespace App\Fechamento\Domain;
 
 use App\Compartilhado\PertenceAoPosto;
 use App\Compartilhado\Posto;
+use Database\Factories\LeituraFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -38,6 +40,9 @@ use Illuminate\Support\Carbon;
  */
 final class Leitura extends Model
 {
+    /** @use HasFactory<LeituraFactory> */
+    use HasFactory;
+
     use PertenceAoPosto;
 
     protected $table = 'Leitura';
@@ -68,5 +73,10 @@ final class Leitura extends Model
     public function posto(): BelongsTo
     {
         return $this->belongsTo(Posto::class);
+    }
+
+    protected static function newFactory(): LeituraFactory
+    {
+        return LeituraFactory::new();
     }
 }
