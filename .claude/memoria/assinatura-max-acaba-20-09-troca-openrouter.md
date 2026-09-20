@@ -36,8 +36,20 @@ Configurado e testado em 17/09:
 - Testado de verdade: o slug resolve, responde em pt-BR. **78 % dos tokens de saída foram
   `reasoning`**, e saída custa 4x a entrada — é aí que o saldo vai embora.
 
-**PENDENTE — a chave expira em 2026-09-24T23:24Z**, menos de um dia depois de a troca disparar.
-Precisa gerar outra na OpenRouter **sem data de expiração** e substituir o arquivo.
+**✅ RESOLVIDO em 20/09:** chave nova gerada e instalada em `~/.config/openrouter/chave` (0600),
+conferida pela API: `expires_at` nulo, **sem validade**, limite de US$ 10, uso zero. A antiga
+(`sk-or-v1-857...0df`, que expirava 2026-09-24T23:24Z) precisa ser apagada no painel da OpenRouter —
+segue válida até lá.
+
+Conferir o estado da chave e o saldo a qualquer momento, sem imprimir a chave:
+```bash
+curl -s -H "Authorization: Bearer $(cat ~/.config/openrouter/chave)" https://openrouter.ai/api/v1/key
+curl -s -H "Authorization: Bearer $(cat ~/.config/openrouter/chave)" https://openrouter.ai/api/v1/credits
+```
+
+**Saldo medido em 20/09: US$ 5,85** (36,00 comprados − 30,15 usados). O limite de US$ 10 da chave é
+teto dela, não saldo da conta — quem manda é o saldo. Timer conferido: dispara
+**quarta 23/09 às 23:59**.
 
 Modelos avaliados e descartados em 17/09, com motivo: Muse Code/Spark (decisão do dono — reviews de
 código ruim; batem com o 1.2, que faz 55 % no DeepSWE; só o 1.3 subiu para 75,4 %), Antigravity CLI
