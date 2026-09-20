@@ -257,18 +257,18 @@ nessa ordem. Duas consequências que a decisão não previa e a implementação 
 - **`gerir` não tem middleware, só `ver`.** A P11 (PUT) precisa da peça que falta — um `posto.gerir` ou
   `$this->authorize('gerir', ...)` no controller. A policy já está pronta e testada.
 
-## 7. Decisões do dono (pendentes: (b), (c), (e) e (f) — (d) foi DECIDIDA em 20/09/2026)
+## 7. Decisões do dono (pendentes: **(b)**, **(c)** e **(f)** — (d) DECIDIDA e (e) MEDIDA em 20/09/2026)
 
 Nenhuma destas foi tomada em 18/09. Estão aqui para não serem decididas por omissão dentro de um
 PR estrutural. **Não escolher por conta própria.** Em 20/09/2026 o dono decidiu a **(d)** — ver abaixo
-da tabela; **(b)**, **(c)**, **(e)** e **(f)** continuam pendentes.
+da tabela. Em 20/09 a **(d)** foi decidida pelo dono e a **(e)** deixou de ser decisão: foi MEDIDA em produção e bate com o esquema local. **(b)**, **(c)** e **(f)** continuam pendentes.
 
 | # | Decisão | O que o código faz hoje | Opções (sem recomendação) | Bloqueia |
 |---|---|---|---|---|
 | (b) | **Estoque no ressalvamento** | `leituraService.bulkCreate` desconta `Estoque.quantidade_atual` por combustível a cada gravação (`leitura.service.ts:340-381`), e `deleteByDate` (`:413-429`) **não devolve** — salvar o mesmo dia duas vezes desconta duas vezes. O `api-core` (`encerrante.ts:511`) não toca `Estoque` | portar igual (cristaliza o bug); devolver no DELETE e descontar no INSERT dentro da transação; não tocar `Estoque` no Fechamento (como o api-core) e deixar o estoque para o módulo Estoque | P10, P11 |
 | (c) | **DELETE+INSERT × UPSERT de `FechamentoFrentista`** | `deleteByFechamento` faz `UPDATE Notificacao`/`UPDATE NotaFrentista SET fechamento_frentista_id = NULL` (`fechamentoFrentista.service.ts:218-221`) e apaga as linhas; o reINSERT troca ids e perde `data_hora_envio` do PWA (DEFAULT now(), `:254`). O `UPDATE` em `NotaFrentista` dispara `trigger_atualizar_saldo_cliente` (`:1611`), que recalcula `Cliente.saldo_devedor` — efeito de dinheiro **fora do módulo** (Pessoas), o que a CA-7 proíbe ao Command de Fechamento | UPSERT pela unique `(fechamento_id, frentista_id)` (`:761`), preservando id e `data_hora_envio`; ou migration `ON DELETE SET NULL` nas FKs `:708` (Notificacao) e `:734` (VendaProduto) e na de NotaFrentista; ou manter DELETE+INSERT e aceitar o efeito | P10, P11 |
 | (d) ✅ | **Qual `total_vendas` vale** — **DECIDIDA em 20/09/2026** (abaixo) | o painel soma em float (`useFechamento.ts:107-110` `reduce`; `calculators.ts:244-267` `calcularTotais`); o `api-core` grava `totaisDoDia` em centavos (`fechamento.ts:118-138`; `encerrante.ts:621-643`). `POST /consolidar` revalida em centavos (`fase-a-laravel.md:91-93`) e pode recusar o painel por 1 centavo. Nenhum golden hoje exercita `useFechamento` nem `calculators.ts`; o comentário de `useFechamento.ts:137` diz o contrário | decidido: vale o `total_vendas` do **encerrante**. O P8 segue sendo o golden das duas implementações sobre janeiro, agora com o vencedor já escolhido. Tarefa de fórmula, só do Fable | nada mais — P8 deixa de esperar por (d); P10 e P11 seguem pelas (b), (c), (e) |
-| (e) | **Janela de escrita real** | esquema local: `>= 2025-12-31` e `< hoje + 2 dias` (`:1119-1128`); memórias falam em 7 dias e em 1,5 mês | medir em produção (`SELECT prosrc FROM pg_proc WHERE proname = 'dentro_da_janela_de_escrita'`) e portar o que está lá; encurtar é issue separada (`fechamento-frentista-api.md` §5) | P10 |
+| (e) ✅ | **Janela de escrita real** — **MEDIDA em 20/09/2026, não precisa de decisão** | **Produção e esquema local são IDÊNTICOS**, conferido no `pg_proc` do Supabase: `SELECT quando >= DATE '2025-12-31' AND quando < (CURRENT_DATE + INTERVAL '2 days')`. As memórias que falavam em **7 dias** e em **1,5 mês** estavam as duas erradas | o Command copia literalmente: `>= 2025-12-31` e `< CURRENT_DATE + 2 dias`. ⚠️ `CURRENT_DATE` depende do fuso da sessão — em produção é UTC, e a conexão do Laravel foi fixada em UTC (`cebfad3`), então batem. Encurtar a janela é issue separada (`fechamento-frentista-api.md` §5) | P10 deixa de esperar por (e) |
 | (f) | **Contratos do §5** | — | aprovar a forma final antes de P5 | P5–P7 |
 
 ### DECISÃO (dono, 20/09/2026): o `total_vendas` que vale é o do ENCERRANTE
@@ -328,6 +328,25 @@ Consequências a registrar:
 - Sempre: `bun run test:golden`, **nunca** `bun test` puro.
 
 ## Riscos
+
+- 🔴 **Salvar o dia APAGA a leitura-base de bico sem fechamento** (achado em 20/09, **não
+  corrigido**). O passo 0 apaga TODAS as `Leitura` do dia; o passo 2 só reinsere bico cujo campo
+  de fechamento está preenchido (`useSubmissaoFechamento.ts:143`). Bico com a primeira foto do dia
+  e ainda sem fechamento mostra `''` (`useLeituras.ts:294-297`), que é falsy — a linha não volta,
+  e o `Estoque` que ela descontou nunca é devolvido. Consertar muda o que é gravado: tarefa
+  própria, com golden.
+- 🪤 **`parseValue` É `analisarValor`** (`formatters.ts:83`, alias puro), e havia um comentário em
+  `fechamentoMeios.ts:17-19` afirmando o contrário — **corrigido em 20/09**. A mesma função
+  parseia dinheiro e encerrante de bomba, e tem um ramo que divide por mil; só não estoura porque
+  o formatador sempre devolve string com vírgula. **Consequência para a P10: o Command recebe
+  NÚMERO, não string** — replicar o parser em PHP replicaria a ambiguidade.
+- 🔴 **O passo 5 grava `0` em `total_vendas`, nunca `null`** (`useSubmissaoFechamento.ts:235`),
+  violando a I8 e a migration `20260904_fechamento_nao_apurado_e_nulo.sql`. O `fechamento.service`
+  e o `api-core` gravam `null`. É a divergência caminho A × B localizada na linha, e qual dos dois
+  vale é decisão do dono.
+- ⚠️ **Nada da gravação é transacional hoje.** São 6 chamadas soltas ao PostgREST; falha no meio
+  deixa o dia meio-gravado, e o pior caso (falha no passo 3) apaga o caixa dos frentistas inteiro
+  sem reinserir. A transação do Command é ganho real da migração, sem mudar conta nenhuma.
 
 - ⚠️ **Escrita sem identidade é porta aberta**: o PUT apaga e regrava o dia inteiro. P10 entra sem
   rota de propósito; P11 só depois da #102. Nenhuma "rota temporária".

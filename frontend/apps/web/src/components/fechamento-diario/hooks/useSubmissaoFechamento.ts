@@ -139,6 +139,15 @@ export function useSubmissaoFechamento() {
          }
 
          // 2. Salvar Leituras
+         //
+         // 🔴 DEFEITO CONHECIDO (achado em 20/09/2026, não corrigido aqui): este filtro
+         // deixa de fora o bico cujo campo de fechamento está VAZIO — e o passo 0 já apagou
+         // TODAS as `Leitura` do dia. Bico com a primeira foto do dia lançada e ainda sem
+         // fechamento mostra `fechamento: ''` (`useLeituras.ts:294-297`), string vazia é
+         // falsy, e a linha **não volta**. Salvar o dia destrói em silêncio a leitura-base
+         // desse bico, e o `Estoque` que ela descontou nunca é devolvido.
+         // Consertar muda o que é gravado: é tarefa própria, com golden. Ver a memória
+         // `salvar-o-dia-apaga-leitura-base`.
          const leiturasToCreate = bicos
             .filter(b => leituras[b.id] && leituras[b.id].fechamento)
             .map(bico => ({
@@ -223,6 +232,13 @@ export function useSubmissaoFechamento() {
          // 5. Atualizar Status do Fechamento
          const updateRes = await fechamentoService.update(fechamento.id, {
             status: 'FECHADO',
+            // 🔴 DEFEITO CONHECIDO (20/09/2026, não corrigido aqui): grava SEMPRE um número.
+            // Sem encerrante, `calcularTotais` devolve 0, e o dia não apurado fica com a cara
+            // do dia que bateu certo. O resto do sistema grava NULL nesse caso —
+            // `fechamento.service.ts:163-167` e `api-core/encerrante.ts:620,644-645` —, que é
+            // a invariante I8 da migration `20260904_fechamento_nao_apurado_e_nulo.sql`.
+            // `null` é "ninguém apurou"; `0` é "apurou e deu zero", afirmação que ninguém fez.
+            // É a divergência caminho A x B, e consertar é decisão do dono (§7 do Design Doc).
             total_vendas: totalVendas,
             total_recebido: totalFrentistas,
             diferenca: diferenca,
