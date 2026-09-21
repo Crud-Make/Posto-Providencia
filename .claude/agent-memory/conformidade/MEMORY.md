@@ -9,3 +9,5 @@
 - [Como medir CCN aqui](medir-complexidade-ccn.md) — `oxlint --rules` é vazio mas `eslint/complexity` FUNCIONA; DESDE 17/09 há `.oxlintrc.json` com teto 20 (não o ≤10 do §6)
 - [Saúde de código: onde medir](saude-de-codigo-onde-medir.md) — CCN por oxlint teto 0; override 35 apodrece; widgets FSD falam c/ Supabase; NÃO symlinkar docs/data em worktree
 - [Quais regras do frontend têm trava](travas-do-frontend-quais-existem.md) — 19/09: eslint roda no pre-commit, não no pre-push; regras.md atrás do código (CA-2 já em Pest Arch)
+- [Dois parsers de encerrante divergem](dois-parsers-de-encerrante-divergem.md) — 8ª forma do resíduo: a tela lê `1718359`, a gravação lê `1718.359`; latente só porque o `onBlur` normaliza
+- [O buraco do gate no fechamento-diario](buraco-do-gate-no-fechamento-diario.md) — verde por três isenções nomeadas (override 35, `components/` fora do boundaries, catraca), não por conformidade

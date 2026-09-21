@@ -13,7 +13,8 @@
 - [🔑 Login na transição: aceita o token atual](login-transicao-aceita-token-atual.md) — 18/09: Laravel casa Usuario.auth_user_id; resolve contradição dos docs; falta escrever nos docs; bloqueios do fechamento diário listados
 - [⏳ Prazo: domingo 20/09](prazo-domingo-20-09.md) — dono só tem até domingo; mergear #115/#120/#121/#123, fatia 2 da #100; fechamento diário só o plano
 - [🔁 Sempre pelo workflow refatora-modulo](sempre-pelo-workflow-refatora-modulo.md) — 18/09: dono exige 100% das fatias pelo workflow (plano → ok → executar); 19/09: modo curto (args.curto) aprovado p/ PR mecânico, nunca p/ dinheiro/guard/escrita
-- [📊 Progresso medido em 20/09](progresso-fase-a-20-09.md) — esquema 100%, escrita 0%, leitura <5%, produção 100% Supabase; CCN, dívidas de dinheiro e o gargalo real (3 decisões do dono)
+- [🔴 Guard 401 em todo login real — falta `auth_user_id`](guard-sem-auth-user-id-401.md) — 20/09 medido: API responde 200 com paridade nos 6 bicos, mas nenhum Usuario tem auth_user_id (prod tem 1 linha, e-mail diferente do login usado); P6/P7 só deram vazio porque o compose não tem Fechamento
+- [📊 Progresso medido em 20/09 (fim do dia)](progresso-fase-a-20-09.md) — 14 rotas GET; **17 telas: 0 na API, 4 mistas, 13 só Supabase**; Visão Proprietário é 100% Supabase e presa na RPC get_dashboard_proprietario; 246 acessos; escrita 0%
 - [📍 COMECE AQUI 18/09 — revisão dos 7 PRs e hook do Fable](onde-parei-18-09-revisao-prs.md) — #113 #114 #117 #118 #119 mergeados na fase-a; próximo #116 (3 ajustes) → #115; hook do Fable SEM COMMIT no checkout da branch de outra sessão
 - [🔒 Só o Fable 5 mexe em fórmula](so-fable-mexe-em-formula.md) — 18/09: hook so-fable-na-formula.py barra outro modelo em packages/utils, golden e aggregator; subagente usa model: fable
 - [🚫 Regra de arquitetura não ganha exceção](regra-de-arquitetura-nao-ganha-excecao.md) — 18/09: dono recusou exceção no Design Doc; código se adapta à regra, nunca o contrário; Posto vai para Compartilhado (opção C)
@@ -76,3 +77,4 @@
 - [Taxa de cartão é despesa do mês](taxa-cartao-e-despesa-do-mes.md) — dono confirmou 26/08; modelo da planilha (lucro.ts) é o certo; o card Receitas/Despesas desconta a taxa duas vezes via `taxas_pagamento`
 - [Saneamento roda em worktrees paralelas](saneamento-em-tres-worktrees.md) — partilha por arquivo (não por tarefa); worktree nova não herda docs/data, node_modules nem .env, e as três falham em silêncio
 - [Backend modular é o padrão](backend-modular-e-o-padrao.md) — 18/09 confirmado: App\<Modulo>\{Http,Application,Domain}; App\Actions do template colado não vale
+- [🔬 Golden que arredonda não morde](golden-que-arredonda-nao-morde.md) — 20/09: 83 mutações provaram que a maioria dos goldens passava verde sobre erro de dinheiro; emCentavos podia sumir e 11 de 13 seguiam verdes; 3 formas da armadilha + a forma que morde

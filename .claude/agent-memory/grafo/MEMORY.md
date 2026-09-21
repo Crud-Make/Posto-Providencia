@@ -23,3 +23,6 @@
 - [FechamentoFrentista é DELETE+INSERT](fechamento-frentista-delete-insert.md) — painel apaga por fechamento e reinsere; PWA é INSERT puro; unique (fechamento_id, frentista_id) JÁ está no esquema base:761; tabela não tem bico_id
 - [Estoque no salvamento do fechamento](estoque-no-salvamento-do-fechamento.md) — leitura.service desconta no bulkCreate e deleteByDate não devolve (duplo desconto); api-core e MovimentacaoEstoque ficam fora
 - [Sequência do salvamento do fechamento diário](salvamento-do-fechamento-diario-sequencia.md) — 6 passos sem transação; `parseValue` É `analisarValor`; passo 0 apaga a leitura-base que a tela mostra em branco
+- [Onde mora a escrita do fechamento](gravacao-fechamento-onde-mora.md) — três escritores concorrentes das mesmas tabelas; backend/app/Fechamento é só leitura
+- [Janela de escrita e Estoque: onde medir](janela-de-escrita-e-estoque-onde-medir.md) — janela é função SQL, não código; estoque desconta no leitura.service e no evento do backend
+- [Onde o graphify erra](grafo-mentiu-affected-parcial.md) — `affected` não acha nó PHP e conta comentário como uso; o grep que fecha cada caso
