@@ -1,4 +1,7 @@
 # Memória — Posto Providência
+- [📍 COMECE AQUI 21/09 — P8 executando ao dormir](onde-parei-21-09-p8-executando.md) — árvore suja e SEM commit; 3 hooks novos (CA-2, DOM-3, FORMULA estendida); regras.md defasado (FSD/TS já ativas); DOM-6 violada e DOM-1 sem CI; fila até o realtime; CA-2 plano voltou (trava já existia, 4 buracos); dono quer testar multi-tenant — bloqueado por ESQUEMA
+- [📡 Realtime fica no Laravel](realtime-fica-no-laravel.md) — 21/09: dono decidiu, nada de polling nem canal do Supabase; canal privado por posto (Reverb), e só DEPOIS que a escrita do PWA migrar — quem escreve é quem dispara
+- [🔧 Travas substituem modelo caro](travas-substituem-modelo-caro.md) — 21/09: quem termina a refatoração é o DeepSeek V4 (Max vence 23/09); qualidade tem de morar na ferramenta, não no modelo; ligar trava faltante (CA-2, CA-5) passa na frente de feature
 - [🔴 Multi-tenant IMPOSSÍVEL sem migration](multi-tenant-impossivel-sem-migration.md) — 20/09: 5 uniques sem posto_id; Fechamento (data,turno_id) impede dois postos de fechar o mesmo dia; travado por teste; vale mais que a P10
 - [🔁 UPSERT + DELETE do conjunto declarado](upsert-com-delete-do-conjunto-declarado.md) — 20/09: dono decidiu a §7 (c); conserta o envio tardio apagado sem tirar do gerente a correção; contrato leva sessoes[] + frentistas_conhecidos[]
 - [📦 Estoque: desconta e não devolve, por EVENTO](estoque-desconta-e-nao-devolve-por-evento.md) — 20/09: dono decidiu a §7 (b); mantém o duplo desconto ao regravar; forma por evento p/ Fechamento não depender de Estoque (CA-7)

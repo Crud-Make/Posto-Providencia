@@ -10,3 +10,5 @@
 - [Hooks de 19/09: colisões e origem](hooks-regras-quebradas-colisoes.md) — testa-pre-push.sh:40 usa hooksPath=/dev/null legítimo; memória manda symlinkar node_modules
 - [Tetos de tamanho já existiam](tetos-de-tamanho-ja-existiam.md) — max-lines 900 (04fe282) e PHPMD Method/ClassLength (cc51ffb) desde 17/09; pacote de 19/09 aperta, não cria
 - [A #60 já decidiu sair do Supabase](issue-60-ja-decidiu-sair-do-supabase.md) — #60 (28/08) nunca foi ao CHANGELOG; #93 (07/09) diz "um Supabase por cliente"; as duas abertas (conferido 17/09/2026)
+- [CA-2 já tem trava desde 9146a8c](ca-2-ja-tem-trava-desde-9146a8c.md) — 18/09: o "❌ SEM TRAVA" de regras.md:98 é texto obsoleto; a trava vive em ArquiteturaTest.php:151-157
+- [Quem abriu Http → Domain (PR #111)](quem-abriu-http-para-domain-pr-111.md) — 2517d2c, 17/09; PR #111 = issue #97; o corpo do PR explica por que a aresta não pode fechar

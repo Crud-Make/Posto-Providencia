@@ -25,4 +25,7 @@
 - [Sequência do salvamento do fechamento diário](salvamento-do-fechamento-diario-sequencia.md) — 6 passos sem transação; `parseValue` É `analisarValor`; passo 0 apaga a leitura-base que a tela mostra em branco
 - [Onde mora a escrita do fechamento](gravacao-fechamento-onde-mora.md) — três escritores concorrentes das mesmas tabelas; backend/app/Fechamento é só leitura
 - [Janela de escrita e Estoque: onde medir](janela-de-escrita-e-estoque-onde-medir.md) — janela é função SQL, não código; estoque desconta no leitura.service e no evento do backend
+- [P8: o golden já existe, falta consolidar](p8-golden-feito-falta-consolidar.md) — commit ef42ea0 fez os dois goldens; `totalVendasDoEncerrante` não tem consumidor de produção; divergência de janeiro é de PREÇO, não de float
+- [Raio de impacto do total_vendas do painel](raio-de-impacto-do-total-vendas-do-painel.md) — nasce em calcularTotais e sai por 3 portas (tela, Supabase legado, PUT); servidor não recalcula e `/consolidar` não existe
+- [CA-2: a trava já existia](ca-2-onde-a-trava-ja-existe.md) — Pest Arch trava controller×Domain desde 18/09 (regras.md é de 17/09 e mente "SEM TRAVA"); lista morde dentro de `toUse`, não de `expect`; buracos: Posto, Http fora de Controllers/, e a escrita
 - [Onde o graphify erra](grafo-mentiu-affected-parcial.md) — `affected` não acha nó PHP e conta comentário como uso; o grep que fecha cada caso

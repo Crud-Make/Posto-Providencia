@@ -10,9 +10,13 @@ módulo passa `bun run lint`, `type-check`, `test` e `test:golden`. Isso **não*
 dizer que ele está em conformidade: quer dizer que três isenções nomeadas cobrem
 exatamente as violações que ele tem.
 
-**1. `useSubmissaoFechamento.ts` está na lista de escape do oxlint.** É o único arquivo
-do módulo acima do teto global de 20, e está listado no `overrides` de 35. Tirar a
-linha deixa o gate vermelho — esse é o canário:
+**1. Um arquivo do módulo está na lista de escape do oxlint** — o único acima do teto
+global de 20, listado no `overrides` de 35. **O NOME MUDOU em 21/09/2026:** era
+`useSubmissaoFechamento.ts`; o commit `a03714c` (#103 P11) extraiu o caminho legado
+para `hooks/gravacaoLegadaSupabase.ts` e a linha do override foi junto. Hoje
+`useSubmissaoFechamento.ts` mede **abaixo de 10** e `gravarPeloSupabase` mede **23**.
+Não citar o nome de memória — ler o arquivo. Tirar a linha deixa o gate vermelho,
+esse é o canário:
 ```bash
 cd frontend && grep -n 'fechamento-diario' .oxlintrc.json
 echo '{"categories":{"correctness":"off"},"rules":{"eslint/complexity":["error",20]}}' > /tmp/c20.json
