@@ -109,6 +109,24 @@
             "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/diario-de-sessoes.py\""
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/controller-nao-fala-com-domain.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/dinheiro-quantiza-por-emcentavos.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [

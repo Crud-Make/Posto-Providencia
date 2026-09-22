@@ -29,6 +29,12 @@ from _comum import segmentos
 FORMULA = re.compile(
     r"(^|/)packages/utils/src/[\w./-]+\.ts$"
     r"|(^|/)apps/web/src/services/api/aggregator\.service\.ts$"
+    # [21/09] Buraco achado pelo plano da #103 P8: o painel tem a SUA somadora de
+    # dinheiro (`calcularTotais`) e o encerrante do dono tem a TERCEIRA, e nenhuma
+    # das duas estava coberta — qualquer modelo podia reescrever a fórmula por ali.
+    # `venda-do-dia` entra junto porque nasce nesta fatia como a somadora nova.
+    r"|(^|/)apps/web/src/utils/(calculators|venda-do-dia)[\w.-]*\.tsx?$"
+    r"|(^|/)packages/api-core/src/encerrante[\w.-]*\.ts$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.ts$")
