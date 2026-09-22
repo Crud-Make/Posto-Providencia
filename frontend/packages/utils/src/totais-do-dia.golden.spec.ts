@@ -161,6 +161,16 @@ for (const d of dias) {
             .get(ANO, MES, d.dia) as unknown as { falta: number };
 
         expect(centavos(totais.diferenca)).toBe(centavos(faltaDaReferencia.falta));
+        // Sem `centavos()` no lado do módulo, como em totalRecebido acima: é a
+        // `diferenca` que o servidor (P10) revalida EXATA em centavos contra
+        // `total_vendas − total_recebido`. Arredondar os dois lados deixava um
+        // float sujo passar verde (memória golden-que-arredonda-nao-morde).
+        // Normaliza SÓ o esperado: no dia 27 (falta zero) a SUM da referência
+        // devolve ruído negativo e `emCentavos` dá `-0`, que `toBe` distingue
+        // de `0` — o mesmo motivo do `centavos()` acima.
+        const faltaQuantizada = emCentavos(faltaDaReferencia.falta);
+        const faltaEsperada = faltaQuantizada === 0 ? 0 : faltaQuantizada;
+        expect(totais.diferenca).toBe(faltaEsperada);
     });
 }
 
