@@ -86,4 +86,9 @@ Route::prefix('postos/{posto}')
 
         // O fechamento do dia, com recebimentos (#103 P7). Dia sem fechamento é 200 com data null.
         Route::get('fechamento', [FechamentoController::class, 'show']);
+
+        // Grava o dia (#103 P11). Só quem GERE o posto: `posto.acesso:gerir` sobe a habilidade
+        // nesta rota (o `posto.acesso` do grupo, que é `ver`, continua rodando antes). Corpo em
+        // string decimal; recusa de forma ou de domínio é 422 { erro: { codigo, mensagem, campos? } }.
+        Route::put('fechamento', [FechamentoController::class, 'update'])->middleware('posto.acesso:gerir');
     });

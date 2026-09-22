@@ -68,6 +68,9 @@ beforeEach(function (): void {
     Route::middleware('token.atual')->get('/teste/quem-sou', fn (Request $r) => ['id' => $r->user()?->id]);
     Route::middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso'])
         ->get('/teste/postos/{posto}/coisa', fn () => ['ok' => true]);
+    // A habilidade por parâmetro (#103 P11): é o que a rota PUT do fechamento usa.
+    Route::middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+        ->get('/teste/postos/{posto}/gerir', fn () => ['ok' => true]);
 });
 
 it('recusa requisição sem token', function (): void {
@@ -128,4 +131,47 @@ it('ADMIN entra em posto sem vínculo nenhum', function (): void {
 
     withToken(tokenGuard((string) $admin->auth_user_id))
         ->getJson("/teste/postos/{$posto->id}/coisa")->assertOk();
+});
+
+/*
+|--------------------------------------------------------------------------
+| posto.acesso:gerir — a habilidade por parâmetro (#103 P11)
+|--------------------------------------------------------------------------
+| O padrão continua `ver`: os testes acima são o canário de que nada mudou nas rotas GET.
+| Canário do gate, medido em 21/09/2026: trocar o padrão do middleware para 'gerir' deixa
+| FechamentoDoDiaTest (usuarioP7 é Operador) vermelho.
+*/
+
+it('posto.acesso:gerir — operador com vínculo ativo VÊ o posto, mas não GERE: 403', function (): void {
+    $posto = Posto::factory()->create();
+    $operador = usuarioDoGuard('01000000-0000-4000-8000-000000000001', ['role' => Role::Operador, 'ativo' => true]);
+    UsuarioPosto::factory()->create(['usuario_id' => $operador->id, 'posto_id' => $posto->id, 'role' => PapelNoPosto::Operador, 'ativo' => true]);
+
+    withToken(tokenGuard((string) $operador->auth_user_id))
+        ->getJson("/teste/postos/{$posto->id}/coisa")->assertOk();       // ver: passa
+    withToken(tokenGuard((string) $operador->auth_user_id))
+        ->getJson("/teste/postos/{$posto->id}/gerir")->assertForbidden(); // gerir: não
+});
+
+it('posto.acesso:gerir — gerente com vínculo ativo: 200', function (): void {
+    $posto = Posto::factory()->create();
+    $gerente = usuarioDoGuard('02000000-0000-4000-8000-000000000001', ['role' => Role::Gerente, 'ativo' => true]);
+    UsuarioPosto::factory()->create(['usuario_id' => $gerente->id, 'posto_id' => $posto->id, 'role' => PapelNoPosto::Gerente, 'ativo' => true]);
+
+    withToken(tokenGuard((string) $gerente->auth_user_id))
+        ->getJson("/teste/postos/{$posto->id}/gerir")->assertOk();
+});
+
+it('posto.acesso:gerir — ADMIN sem vínculo: 200', function (): void {
+    $posto = Posto::factory()->create();
+    $admin = usuarioDoGuard('03000000-0000-4000-8000-0000000000ad', ['role' => Role::Admin, 'ativo' => true]);
+
+    withToken(tokenGuard((string) $admin->auth_user_id))
+        ->getJson("/teste/postos/{$posto->id}/gerir")->assertOk();
+});
+
+it('posto.acesso:gerir — sem token: 401, antes de qualquer policy', function (): void {
+    $posto = Posto::factory()->create();
+
+    getJson("/teste/postos/{$posto->id}/gerir")->assertUnauthorized();
 });

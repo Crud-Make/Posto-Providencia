@@ -20,10 +20,15 @@ use Symfony\Component\HttpFoundation\Response;
  * requisição) e DEPOIS do {@see AutenticaPeloTokenAtual} (que põe o usuário). Lê o posto pelo
  * atributo, e não pelo container, para não depender do módulo Cadastro — nenhum módulo depende de
  * outro (Pest Arch, `direcaoPermitidaEntreModulos`).
+ *
+ * A habilidade vai por parâmetro do alias (#103 P11): `posto.acesso` continua sendo `ver` (as
+ * rotas GET não mudam), e `posto.acesso:gerir` é o que a escrita exige — dá dente à
+ * `PostoPolicy::gerir` (Admin, ou vínculo ativo com papel que gerencia). Sem lista branca: a policy
+ * só tem `ver` e `gerir`, e habilidade inexistente cai em `allows === false` → 403.
  */
 final readonly class ExigeAcessoAoPosto
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string $habilidade = 'ver'): Response
     {
         $usuario = $request->attributes->get('usuario');
         $posto = $request->attributes->get('posto');
@@ -33,7 +38,7 @@ final readonly class ExigeAcessoAoPosto
         abort_unless($usuario instanceof Usuario, 500, 'Guard fora de ordem: sem usuário.');
         abort_unless($posto instanceof Posto, 500, 'Guard fora de ordem: sem posto.');
 
-        abort_unless(Gate::forUser($usuario)->allows('ver', $posto), 403, 'Sem acesso a este posto.');
+        abort_unless(Gate::forUser($usuario)->allows($habilidade, $posto), 403, 'Sem acesso a este posto.');
 
         return $next($request);
     }
