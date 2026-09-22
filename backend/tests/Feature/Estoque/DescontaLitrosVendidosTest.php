@@ -51,7 +51,9 @@ it('DEFEITO ACEITO: regravar o dia desconta DE NOVO, pelo total inteiro', functi
     // Decisão do dono em 20/09/2026 (§7 (b)): mantém o comportamento do painel, que desconta no
     // INSERT e nunca devolve no DELETE. Este teste existe para o defeito parar de ser folclore:
     // ele AFIRMA o comportamento atual. No dia em que for consertado, é ele que fica vermelho e
-    // aponta para a decisão.
+    // aponta para a decisão. O outro lado — o Command REEMITE o evento ao regravar — está em
+    // GravaFechamentoDoDiaTest ('DEFEITO ACEITO: regravar o dia emite o evento DE NOVO'); aqui
+    // é o efeito, lá é o dispatch, porque o ouvinte é after-commit e o Pest nunca comita.
     $posto = Posto::factory()->create();
     $combustivel = Combustivel::factory()->create(['posto_id' => $posto->id]);
     $estoque = Estoque::factory()->create(['posto_id' => $posto->id, 'combustivel_id' => $combustivel->id, 'quantidade_atual' => '1000.000']);
