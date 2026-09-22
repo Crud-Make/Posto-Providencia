@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import * as React from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
+import { montarDiaDeclarado } from './montarDiaDeclarado';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock('../../../contexts/usePosto', () => ({
     usePosto: () => ({
@@ -40,8 +40,8 @@ vi.mock('../../../services/api', () => ({
     },
 }));
 
-import { useSubmissaoFechamento } from './useSubmissaoFechamento';
-import { fechamentoService, fechamentoFrentistaService, leituraService } from '../../../services/api';
+import { useSubmissaoFechamento, type SubmissaoParams } from './useSubmissaoFechamento';
+import { fechamentoService, fechamentoFrentistaService, leituraService, recebimentoService } from '../../../services/api';
 
 /** Harness mínimo para exercitar um hook fora do @testing-library (não instalado neste projeto). */
 function renderHook<T>(useHookFn: () => T) {
@@ -87,8 +87,38 @@ function sessao(overrides: Partial<SessaoFrentista> = {}): SessaoFrentista {
     };
 }
 
-describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravação de histórico', () => {
+function params(overrides: Partial<SubmissaoParams> = {}): SubmissaoParams {
+    return {
+        selectedDate: '2026-07-26',
+        bicos: [],
+        leituras: {},
+        sessoesFrentistas: [sessao()],
+        payments: [],
+        totalVendas: 0,
+        totalFrentistas: 0,
+        diferenca: 0,
+        podeFechar: true,
+        observacoes: '',
+        limparAutoSave: vi.fn(),
+        ...overrides,
+    };
+}
+
+/** O primeiro argumento da primeira chamada de um mock, ou `undefined` se não foi chamado. */
+function primeiroArgumento(mock: { mock: { calls: unknown[][] } }): unknown {
+    return mock.mock.calls[0]?.[0];
+}
+
+afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+});
+
+describe('useSubmissaoFechamento — caminho legado (sem VITE_API_URL): regressão do bug de moedas fora da gravação de histórico', () => {
     beforeEach(() => {
+        // Sem VITE_API_URL o hook grava pelo Supabase — é o caminho da produção até o cutover.
+        vi.stubEnv('VITE_API_URL', '');
+
         // Zera só o histórico de chamadas entre os testes — sem isto o `toHaveBeenCalledTimes(1)`
         // do segundo caso conta as chamadas do primeiro. As implementações não são afetadas
         // (isso seria `resetAllMocks`), então os `mockResolvedValue` abaixo seguem valendo.
@@ -133,27 +163,15 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         const sessaoComMoedas = sessao({ valor_moedas: '200,00' });
 
         await act(async () => {
-            await result.current.handleSave({
-                selectedDate: '2026-07-26',
-                bicos: [],
-                leituras: {},
-                sessoesFrentistas: [sessaoComMoedas],
-                payments: [],
-                totalVendas: 0,
-                totalFrentistas: 200,
-                diferenca: 0,
-                podeFechar: true,
-                observacoes: '',
-                limparAutoSave: vi.fn(),
-            });
+            await result.current.handleSave(params({ sessoesFrentistas: [sessaoComMoedas], totalFrentistas: 200 }));
         });
 
         expect(fechamentoFrentistaService.bulkCreate).toHaveBeenCalledTimes(1);
-        const [payloadEnviado] = vi.mocked(fechamentoFrentistaService.bulkCreate).mock.calls[0];
-        const registroFrentista = payloadEnviado[0] as Record<string, unknown>;
+        const payloadEnviado = primeiroArgumento(vi.mocked(fechamentoFrentistaService.bulkCreate));
+        const registroFrentista = Array.isArray(payloadEnviado) ? (payloadEnviado[0] as Record<string, unknown>) : undefined;
 
-        expect(registroFrentista.valor_moedas).toBe(200);
-        expect(registroFrentista.valor_conferido).toBe(200);
+        expect(registroFrentista?.valor_moedas).toBe(200);
+        expect(registroFrentista?.valor_conferido).toBe(200);
     });
 
     // Trava o valor literal 1, de propósito: `Usuario` tem uma única linha no banco (id=1) e
@@ -164,24 +182,12 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         const { result } = renderHook(() => useSubmissaoFechamento());
 
         await act(async () => {
-            await result.current.handleSave({
-                selectedDate: '2026-07-26',
-                bicos: [],
-                leituras: {},
-                sessoesFrentistas: [sessao()],
-                payments: [],
-                totalVendas: 0,
-                totalFrentistas: 0,
-                diferenca: 0,
-                podeFechar: true,
-                observacoes: '',
-                limparAutoSave: vi.fn(),
-            });
+            await result.current.handleSave(params());
         });
 
         expect(fechamentoService.create).toHaveBeenCalledTimes(1);
-        const [payloadFechamento] = vi.mocked(fechamentoService.create).mock.calls[0];
-        expect(payloadFechamento.usuario_id).toBe(1);
+        const payloadFechamento = primeiroArgumento(vi.mocked(fechamentoService.create)) as { usuario_id?: number } | undefined;
+        expect(payloadFechamento?.usuario_id).toBe(1);
     });
 
     // Regressão do bug que dobrava os litros de um dia histórico (31/07/2026).
@@ -192,19 +198,7 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         const { result } = renderHook(() => useSubmissaoFechamento());
 
         await act(async () => {
-            await result.current.handleSave({
-                selectedDate: '2026-07-10',
-                bicos: [],
-                leituras: {},
-                sessoesFrentistas: [sessao()],
-                payments: [],
-                totalVendas: 0,
-                totalFrentistas: 0,
-                diferenca: 0,
-                podeFechar: true,
-                observacoes: '',
-                limparAutoSave: vi.fn(),
-            });
+            await result.current.handleSave(params({ selectedDate: '2026-07-10' }));
         });
 
         expect(leituraService.deleteByDate).toHaveBeenCalledTimes(1);
@@ -228,24 +222,93 @@ describe('useSubmissaoFechamento — regressão do bug de moedas fora da gravaç
         const { result } = renderHook(() => useSubmissaoFechamento());
 
         await act(async () => {
-            await result.current.handleSave({
-                selectedDate: '2026-07-10',
-                bicos: [],
-                leituras: {},
-                sessoesFrentistas: [sessao()],
-                payments: [],
-                totalVendas: 0,
-                totalFrentistas: 0,
-                diferenca: 0,
-                podeFechar: true,
-                observacoes: '',
-                limparAutoSave: vi.fn(),
-            });
+            await result.current.handleSave(params({ selectedDate: '2026-07-10' }));
         });
 
         // Nada pode ter sido criado nem gravado — nem o fechamento, nem as sessões.
         expect(fechamentoService.create).not.toHaveBeenCalled();
         expect(fechamentoFrentistaService.bulkCreate).not.toHaveBeenCalled();
         expect(result.current.error).toContain('7 dias');
+    });
+});
+
+describe('useSubmissaoFechamento — caminho da API (com VITE_API_URL, #103 P11)', () => {
+    /** Forma real da resposta 200 do PUT (`FechamentoResource.php`), o mesmo shape do GET. */
+    const fechamentoGravado = {
+        id: 501,
+        data: '2026-07-26T00:00:00Z',
+        total_vendas: null,
+        total_recebido: '200.00',
+        diferenca: null,
+        status: 'FECHADO',
+        observacoes: null,
+        usuario_id: 7,
+        turno_id: 1,
+        recebimentos: [],
+    };
+
+    function respondeCom(corpo: unknown, status = 200): void {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(corpo), { status })));
+    }
+
+    beforeEach(() => {
+        vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+        vi.clearAllMocks();
+    });
+
+    it('nenhum service do Supabase é chamado, e o PUT sai UMA vez com o corpo de montarDiaDeclarado', async () => {
+        respondeCom({ data: fechamentoGravado });
+        const { result } = renderHook(() => useSubmissaoFechamento());
+        const entrada = params({ sessoesFrentistas: [sessao({ valor_moedas: '200,00' })], totalFrentistas: 200 });
+
+        await act(async () => {
+            await result.current.handleSave(entrada);
+        });
+
+        expect(leituraService.deleteByDate).toHaveBeenCalledTimes(0);
+        expect(fechamentoService.getDoDia).toHaveBeenCalledTimes(0);
+        expect(fechamentoService.create).toHaveBeenCalledTimes(0);
+        expect(fechamentoService.update).toHaveBeenCalledTimes(0);
+        expect(fechamentoFrentistaService.bulkCreate).toHaveBeenCalledTimes(0);
+        expect(fechamentoFrentistaService.deleteByFechamento).toHaveBeenCalledTimes(0);
+        expect(recebimentoService.bulkCreate).toHaveBeenCalledTimes(0);
+        expect(recebimentoService.deleteByFechamento).toHaveBeenCalledTimes(0);
+
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/postos/42/fechamento?data=2026-07-26', expect.anything());
+        const init: unknown = vi.mocked(fetch).mock.calls[0]?.[1];
+        const requisicao = typeof init === 'object' && init !== null ? (init as RequestInit) : {};
+        expect(requisicao.method).toBe('PUT');
+        expect(requisicao.body).toBe(JSON.stringify(montarDiaDeclarado(entrada)));
+
+        expect(result.current.error).toBeNull();
+        expect(result.current.success).toBe('Fechamento realizado com sucesso!');
+        expect(entrada.limparAutoSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('recusa 422 do servidor vira a mensagem de erro na tela, sem sucesso e sem limpar o auto-save', async () => {
+        respondeCom({ erro: { codigo: 'totais_inconsistentes', mensagem: 'diferenca tem de ser total_vendas − total_recebido.' } }, 422);
+        const { result } = renderHook(() => useSubmissaoFechamento());
+        const entrada = params();
+
+        await act(async () => {
+            await result.current.handleSave(entrada);
+        });
+
+        expect(result.current.error).toBe('Gravação recusada (totais_inconsistentes): diferenca tem de ser total_vendas − total_recebido.');
+        expect(result.current.success).toBeNull();
+        expect(result.current.saving).toBe(false);
+        expect(entrada.limparAutoSave).not.toHaveBeenCalled();
+    });
+
+    it('403 (sem gerir) vira erro http na tela', async () => {
+        respondeCom({ message: 'Sem acesso a este posto.' }, 403);
+        const { result } = renderHook(() => useSubmissaoFechamento());
+
+        await act(async () => {
+            await result.current.handleSave(params());
+        });
+
+        expect(result.current.error).toBe('API Laravel respondeu 403');
     });
 });

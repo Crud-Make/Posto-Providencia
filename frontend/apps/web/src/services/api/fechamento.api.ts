@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import { z } from 'zod';
 import type { Fechamento, Recebimento } from '../../types/database/index';
-import { buscarNaApi, type ErroDaApi } from './base';
+import { buscarNaApi, enviarParaApi, type ErroDaApi } from './base';
 
 /**
  * Decimal em string, como o cast `decimal:2` do Eloquent entrega — o backend nunca manda float
@@ -159,4 +159,97 @@ export function lerFechamentoDoDiaDaApi(postoId: number, dia: string): ResultAsy
     const consulta = new URLSearchParams({ data: dia }).toString();
     return buscarNaApi(`/api/postos/${postoId}/fechamento?${consulta}`, respostaDeFechamento)
         .map((resposta) => (resposta.data === null ? null : paraFechamentoDoDia(resposta.data, postoId)));
+}
+
+/*
+|--------------------------------------------------------------------------
+| PUT /api/postos/{posto}/fechamento?data=AAAA-MM-DD — a escrita do dia (#103 P11)
+|--------------------------------------------------------------------------
+| O corpo é o espelho TS das rules de `GravaFechamentoDoDiaRequest.php`: dinheiro em string
+| decimal com DUAS casas, litros com TRÊS, ids inteiros, listas sempre presentes (podem ser
+| vazias), e o par `total_vendas`/`diferenca` ambos null (dia não apurado, I8) ou ambos presentes.
+| Número JSON em campo de dinheiro é recusado aqui ANTES de sair — o servidor também recusaria
+| (422 corpo_invalido); dois lados do mesmo contrato. A conversão do formato BR da tela para
+| esta string acontece no montador (`montarDiaDeclarado`), uma vez, e nunca no PHP.
+*/
+
+/** Dinheiro no contrato de escrita: exatamente duas casas. `'1.718,35'` e `600` não passam. */
+const dinheiroDeclarado = z.string().regex(/^-?\d+\.\d{2}$/, 'dinheiro fora de string decimal com duas casas');
+
+/** Litros no contrato de escrita: exatamente três casas (`decimal:3` da `Leitura`). */
+const litrosDeclarados = z.string().regex(/^-?\d+\.\d{3}$/, 'litros fora de string decimal com três casas');
+
+const leituraDeclarada = z.object({
+    bico_id: z.number().int(),
+    combustivel_id: z.number().int(),
+    leitura_inicial: litrosDeclarados,
+    leitura_final: litrosDeclarados,
+    litros_vendidos: litrosDeclarados,
+    preco_litro: dinheiroDeclarado,
+    valor_total: dinheiroDeclarado,
+});
+
+/** Os 7 baldes (I2) mais encerrante, conferido e diferença, todos já calculados no cliente. */
+const sessaoDeclarada = z.object({
+    frentista_id: z.number().int(),
+    valor_cartao: dinheiroDeclarado,
+    valor_cartao_debito: dinheiroDeclarado,
+    valor_cartao_credito: dinheiroDeclarado,
+    valor_dinheiro: dinheiroDeclarado,
+    valor_moedas: dinheiroDeclarado,
+    valor_pix: dinheiroDeclarado,
+    valor_nota: dinheiroDeclarado,
+    baratao: dinheiroDeclarado,
+    encerrante: dinheiroDeclarado,
+    valor_conferido: dinheiroDeclarado,
+    diferenca_calculada: dinheiroDeclarado,
+    observacoes: z.string(),
+});
+
+const recebimentoDeclarado = z.object({
+    forma_pagamento_id: z.number().int(),
+    valor: dinheiroDeclarado,
+});
+
+/**
+ * `total_vendas` e `diferenca` andam juntos: os dois `null` (não apurado) ou os dois presentes.
+ * A CONTA (`diferenca = total_vendas − total_recebido`, exata em centavos) é revalidada no
+ * servidor pelo VO `TotaisDeclarados`; aqui só a forma do par.
+ */
+const totaisDeclarados = z
+    .object({
+        total_vendas: dinheiroDeclarado.nullable(),
+        total_recebido: dinheiroDeclarado,
+        diferenca: dinheiroDeclarado.nullable(),
+    })
+    .refine((t) => (t.total_vendas === null) === (t.diferenca === null), {
+        message: 'total_vendas e diferenca andam juntos: os dois null ou os dois presentes',
+    });
+
+/** O corpo do PUT. Exportado para o montador provar, por `safeParse`, que produz o contrato. */
+export const diaDeclarado = z.object({
+    leituras: z.array(leituraDeclarada),
+    sessoes: z.array(sessaoDeclarada),
+    frentistas_conhecidos: z.array(z.number().int()),
+    recebimentos: z.array(recebimentoDeclarado),
+    totais: totaisDeclarados,
+    observacoes: z.string(),
+});
+
+export type DiaDeclarado = z.infer<typeof diaDeclarado>;
+
+/** O PUT sempre devolve o dia gravado: `data` null aqui é resposta fora do contrato. */
+const respostaDeFechamentoGravado = z.object({ data: fechamentoDaApi });
+
+/**
+ * Grava o dia (`AAAA-MM-DD`) do posto pela API Laravel e devolve o fechamento gravado, no MESMO
+ * objeto que `lerFechamentoDoDiaDaApi` entrega — o servidor responde com o shape do GET, então o
+ * mapeador é o mesmo. Rota protegida por `posto.acesso:gerir`: leva o Bearer da sessão; sem
+ * `gerir` o servidor responde 403, que chega como `{ tipo: 'http', status: 403 }`. Recusa de
+ * forma ou de domínio chega como `{ tipo: 'recusado', codigo, mensagem, campos? }`.
+ */
+export function gravarFechamentoDoDiaNaApi(postoId: number, dia: string, corpo: DiaDeclarado): ResultAsync<FechamentoDoDia, ErroDaApi> {
+    const consulta = new URLSearchParams({ data: dia }).toString();
+    return enviarParaApi(`/api/postos/${postoId}/fechamento?${consulta}`, 'PUT', corpo, respostaDeFechamentoGravado)
+        .map((resposta) => paraFechamentoDoDia(resposta.data, postoId));
 }

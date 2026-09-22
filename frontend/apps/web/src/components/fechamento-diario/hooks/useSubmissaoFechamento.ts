@@ -1,54 +1,51 @@
 import { useState } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
-import { USUARIO_SISTEMA_ID } from '@shared/constants/usuario-sistema';
-import {
-   fechamentoService,
-   leituraService,
-   fechamentoFrentistaService,
-   recebimentoService
-} from '../../../services/api';
-import { parseValue } from '../../../utils/formatters';
-import { isSuccess } from '../../../types/ui/response-types';
-import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../../../types/fechamento';
-import { conferido, diferenca as calcularDiferenca } from '@posto/utils';
-import { meiosDaSessao, sessaoSemMovimento } from '../../../utils/fechamentoMeios';
+import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
+import { gravarFechamentoDoDiaNaApi } from '../../../services/api/fechamento.api';
+import { gravarPeloSupabase, type ParametrosDaGravacao } from './gravacaoLegadaSupabase';
+import { montarDiaDeclarado } from './montarDiaDeclarado';
 
-/**
- * Valor gravado em `Fechamento.turno_id` enquanto a coluna existir.
- *
- * @remarks [16/08] NÃO é o turno de trabalho — o posto não trabalha por turno, e o conceito
- *          saiu do sistema. É um tampão para não perder a única garantia que a coluna ainda
- *          sustenta: o índice de produção é `UNIQUE (data, turno_id)`, e em Postgres dois
- *          `NULL` não colidem entre si. Gravar `null` aqui não daria erro — apenas deixaria
- *          o mesmo dia aceitar vários `Fechamento`, cada um afirmando um `total_vendas`
- *          diferente, sem nada reclamar.
- *
- *          Sai junto com a migração que trocar o índice para `UNIQUE (data)` e dropar a
- *          coluna. Até lá, esta constante é o que mantém um fechamento por dia.
- */
-const TURNO_TAMPAO_ATE_A_MIGRACAO = 1;
+export interface SubmissaoParams extends ParametrosDaGravacao {
+   readonly limparAutoSave: () => void;
+   readonly onSuccess?: () => void;
+}
 
-interface SubmissaoParams {
-   selectedDate: string;
-   bicos: BicoComDetalhes[];
-   leituras: Record<number, { inicial: string; fechamento: string }>;
-   sessoesFrentistas: SessaoFrentista[];
-   payments: EntradaPagamento[];
-   totalVendas: number;
-   totalFrentistas: number;
-   diferenca: number;
-   podeFechar: boolean;
-   observacoes: string;
-   limparAutoSave: () => void;
-   onSuccess?: () => void;
+export interface SubmissaoFechamento {
+   readonly saving: boolean;
+   readonly error: string | null;
+   readonly success: string | null;
+   readonly handleSave: (params: SubmissaoParams) => Promise<void>;
+   readonly setError: (erro: string | null) => void;
+   readonly setSuccess: (mensagem: string | null) => void;
 }
 
 /**
- * Hook para gerenciar a lógica complexa de submissão do fechamento diário.
- * 
+ * Grava o dia pelo transporte que a instalação tem (#103 P11).
+ *
+ * @returns A mensagem de erro para a tela, ou `null` quando gravou.
+ *
+ * @remarks
+ * Mesma troca de transporte de P4–P7, no call site e nunca dentro do service: com `VITE_API_URL`
+ * o dia vai inteiro num `PUT /api/postos/{posto}/fechamento` (uma transação no servidor, corpo
+ * montado por `montarDiaDeclarado`); sem ela, o caminho legado do Supabase — que é o da
+ * produção até o cutover (#105) e lança na primeira falha, como sempre fez.
+ */
+async function gravarDia(params: SubmissaoParams, postoAtivoId: number): Promise<string | null> {
+   if (urlDaApi() === null) {
+      await gravarPeloSupabase(params, postoAtivoId);
+      return null;
+   }
+
+   return gravarFechamentoDoDiaNaApi(postoAtivoId, params.selectedDate, montarDiaDeclarado(params))
+      .match(() => null, (erro) => descreverErroDaApi(erro));
+}
+
+/**
+ * Hook para gerenciar a lógica de submissão do fechamento diário.
+ *
  * @returns { saving, error, success, handleSave }
  */
-export function useSubmissaoFechamento() {
+export function useSubmissaoFechamento(): SubmissaoFechamento {
    const { postoAtivoId } = usePosto();
    const [saving, setSaving] = useState(false);
    const [error, setError] = useState<string | null>(null);
@@ -57,27 +54,13 @@ export function useSubmissaoFechamento() {
    /**
     * Executa a persistência de todos os dados do fechamento.
     */
-   const handleSave = async (params: SubmissaoParams) => {
-      const {
-         selectedDate,
-         bicos,
-         leituras,
-         sessoesFrentistas,
-         payments,
-         totalVendas,
-         totalFrentistas,
-         diferenca,
-         podeFechar,
-         observacoes,
-         limparAutoSave
-      } = params;
-
-      if (!postoAtivoId) {
+   const handleSave = async (params: SubmissaoParams): Promise<void> => {
+      if (postoAtivoId === 0) {
          setError('Posto não selecionado.');
          return;
       }
 
-      if (!podeFechar) {
+      if (!params.podeFechar) {
          setError('Verifique os dados antes de salvar (Leituras inválidas ou Frentistas vazios).');
          return;
       }
@@ -87,184 +70,23 @@ export function useSubmissaoFechamento() {
          setError(null);
          setSuccess(null);
 
-         // 0. Limpar as leituras do dia ANTES de qualquer outra coisa.
-         //
-         // Roda sempre, exista ou não `Fechamento` para a data — e é justamente o caso "não
-         // existe" que importa: dia histórico não tem fechamento, então antes isto era pulado,
-         // o código inseria por cima das leituras já gravadas e o dia ficava com o dobro dos
-         // litros (a agregação não separa por turno). Só há uma leitura por bico por dia.
-         //
-         // Vem antes de criar o `Fechamento` para não deixar fechamento órfão quando a exclusão
-         // é recusada, e antes das outras duas exclusões porque é a única barrada pela janela de
-         // 7 dias da RLS — `FechamentoFrentista` e `Recebimento` apagam sempre, e perdê-los para
-         // depois descobrir que as leituras não saíram deixaria o dia pela metade.
-         // Um DELETE barrado pela RLS não vira erro do Supabase: quem confere é o serviço,
-         // contando o que sobrou.
-         const leiturasAntigasRes = await leituraService.deleteByDate(selectedDate, postoAtivoId);
-         if (!isSuccess(leiturasAntigasRes)) {
-            throw new Error(leiturasAntigasRes.error || 'Erro ao limpar as leituras anteriores');
-         }
-
-         // 1. Obter ou Criar Fechamento
-         const fechamentoRes = await fechamentoService.getDoDia(selectedDate, postoAtivoId);
-
-         let fechamento;
-         if (isSuccess(fechamentoRes) && fechamentoRes.data) {
-            fechamento = fechamentoRes.data;
-
-            const [frentistasRes, recebimentosRes] = await Promise.all([
-               fechamentoFrentistaService.deleteByFechamento(fechamento.id),
-               recebimentoService.deleteByFechamento(fechamento.id)
-            ]);
-
-            if (!isSuccess(frentistasRes)) {
-               throw new Error(frentistasRes.error || 'Erro ao limpar os frentistas anteriores');
-            }
-            if (!isSuccess(recebimentosRes)) {
-               throw new Error(recebimentosRes.error || 'Erro ao limpar os recebimentos anteriores');
-            }
-         } else {
-            const createRes = await fechamentoService.create({
-               data: selectedDate,
-               usuario_id: USUARIO_SISTEMA_ID,
-               turno_id: TURNO_TAMPAO_ATE_A_MIGRACAO,
-               status: 'RASCUNHO',
-               posto_id: postoAtivoId
-            });
-
-            if (!isSuccess(createRes)) {
-               throw new Error(createRes.error || 'Erro ao criar fechamento');
-            }
-            fechamento = createRes.data;
-         }
-
-         // 2. Salvar Leituras
-         //
-         // 🔴 DEFEITO CONHECIDO (achado em 20/09/2026, não corrigido aqui): este filtro
-         // deixa de fora o bico cujo campo de fechamento está VAZIO — e o passo 0 já apagou
-         // TODAS as `Leitura` do dia. Bico com a primeira foto do dia lançada e ainda sem
-         // fechamento mostra `fechamento: ''` (`useLeituras.ts:294-297`), string vazia é
-         // falsy, e a linha **não volta**. Salvar o dia destrói em silêncio a leitura-base
-         // desse bico, e o `Estoque` que ela descontou nunca é devolvido.
-         // Consertar muda o que é gravado: é tarefa própria, com golden. Ver a memória
-         // `salvar-o-dia-apaga-leitura-base`.
-         const leiturasToCreate = bicos
-            .filter(b => leituras[b.id] && leituras[b.id].fechamento)
-            .map(bico => ({
-               bico_id: bico.id,
-               data: selectedDate,
-               leitura_inicial: parseValue(leituras[bico.id]?.inicial || ''),
-               leitura_final: parseValue(leituras[bico.id]?.fechamento || ''),
-               combustivel_id: bico.combustivel.id,
-               preco_litro: bico.combustivel.preco_venda,
-               usuario_id: USUARIO_SISTEMA_ID,
-               posto_id: postoAtivoId
-            }));
-
-         if (leiturasToCreate.length > 0) {
-            const leiturasRes = await leituraService.bulkCreate(leiturasToCreate);
-            if (!isSuccess(leiturasRes)) {
-               throw new Error(leiturasRes.error || 'Erro ao salvar leituras');
-            }
-         }
-
-         // 3. Salvar Sessões de Frentistas
-         if (sessoesFrentistas.length > 0) {
-            const frentistasToCreate = sessoesFrentistas
-               // Linha semeada sem nenhum lançamento é "não trabalhou hoje": não vira
-               // registro — sessão de R$ 0,00 no banco seria indistinguível de um
-               // frentista que fechou sem vender (ver sessaoSemMovimento).
-               .filter(fs => fs.frentistaId !== null && !sessaoSemMovimento(fs))
-               .map(fs => {
-                  // Aritmética canônica via @posto/utils (soma dos 7 buckets).
-                  const meios = meiosDaSessao(fs);
-                  const conf = conferido(meios);
-                  const encerrante = parseValue(fs.valor_encerrante);
-                  // diferenca = encerrante − conferido (positivo = FALTA). Só faz
-                  // sentido quando há encerrante lançado.
-                  const dif = encerrante > 0 ? calcularDiferenca(encerrante, conf) : 0;
-
-                  return {
-                     fechamento_id: fechamento.id,
-                     frentista_id: fs.frentistaId!,
-                     // Campos brutos preservados (não recomputa/zera o lump valor_cartao):
-                     valor_cartao: parseValue(fs.valor_cartao),
-                     valor_cartao_debito: meios.cartaoDebito,
-                     valor_cartao_credito: meios.cartaoCredito,
-                     valor_dinheiro: meios.dinheiro,
-                     valor_moedas: meios.moedas,
-                     valor_pix: meios.pix,
-                     valor_nota: meios.nota,
-                     baratao: meios.baratao,
-                     encerrante,
-                     diferenca_calculada: dif,
-                     valor_conferido: conf, // soma dos declarados (não mais = encerrante)
-                     observacoes: fs.observacoes || '',
-                     posto_id: postoAtivoId
-                  };
-               });
-
-            if (frentistasToCreate.length > 0) {
-               const sessoesRes = await fechamentoFrentistaService.bulkCreate(frentistasToCreate);
-               if (!isSuccess(sessoesRes)) {
-                  throw new Error(sessoesRes.error || 'Erro ao salvar sessões de frentistas');
-               }
-            }
-         }
-
-         // 4. Salvar Pagamentos (Recebimentos)
-         const recebimentosToCreate = payments
-            .filter(p => parseValue(p.valor) > 0)
-            .map(p => ({
-               fechamento_id: fechamento.id,
-               forma_pagamento_id: p.id,
-               valor: parseValue(p.valor),
-               observacoes: 'Fechamento Geral'
-            }));
-
-         if (recebimentosToCreate.length > 0) {
-            const recebimentosRes = await recebimentoService.bulkCreate(recebimentosToCreate);
-            if (!isSuccess(recebimentosRes)) {
-               throw new Error(recebimentosRes.error || 'Erro ao salvar pagamentos');
-            }
-         }
-
-         // 5. Atualizar Status do Fechamento
-         const updateRes = await fechamentoService.update(fechamento.id, {
-            status: 'FECHADO',
-            // 🔴 DEFEITO CONHECIDO (20/09/2026, não corrigido aqui): grava SEMPRE um número.
-            // Sem encerrante, `calcularTotais` devolve 0, e o dia não apurado fica com a cara
-            // do dia que bateu certo. O resto do sistema grava NULL nesse caso —
-            // `fechamento.service.ts:163-167` e `api-core/encerrante.ts:620,644-645` —, que é
-            // a invariante I8 da migration `20260904_fechamento_nao_apurado_e_nulo.sql`.
-            // `null` é "ninguém apurou"; `0` é "apurou e deu zero", afirmação que ninguém fez.
-            // É a divergência caminho A x B, e consertar é decisão do dono (§7 do Design Doc).
-            total_vendas: totalVendas,
-            total_recebido: totalFrentistas,
-            diferenca: diferenca,
-            observacoes: observacoes
-         });
-
-         if (!isSuccess(updateRes)) {
-            throw new Error(updateRes.error || 'Erro ao finalizar fechamento');
+         const falha = await gravarDia(params, postoAtivoId);
+         if (falha !== null) {
+            setError(falha);
+            return;
          }
 
          setSuccess('Fechamento realizado com sucesso!');
-         console.log('[29/01 13:40] Fechamento salvo com sucesso, aguardando persistência no banco...');
 
-         // [29/01 13:40] Aguarda 500ms para garantir persistência no banco antes de limpar
+         // Aguarda 500ms para garantir persistência no banco antes de limpar
          await new Promise(resolve => setTimeout(resolve, 500));
 
-         limparAutoSave();
-         console.log('[29/01 13:40] AutoSave limpo, atualizando visualização...');
+         params.limparAutoSave();
 
-         // [29/01 14:10] Em vez de recarregar a página, chama callback para atualizar dados em tela
+         // Em vez de recarregar a página, chama callback para atualizar dados em tela
          setTimeout(() => {
-            if (params.onSuccess) {
-               params.onSuccess();
-            }
+            params.onSuccess?.();
          }, 1500);
-
       } catch (err: unknown) {
          console.error('❌ Erro na submissão:', err);
          setError(err instanceof Error ? err.message : 'Erro desconhecido ao salvar fechamento');

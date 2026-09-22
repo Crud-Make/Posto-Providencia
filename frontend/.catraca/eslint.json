@@ -96,8 +96,6 @@
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.test.ts|@typescript-eslint/no-explicit-any": 1,
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|@typescript-eslint/no-floating-promises": 3,
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|@typescript-eslint/strict-boolean-expressions": 7,
-  "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.test.ts|@typescript-eslint/no-explicit-any": 1,
-  "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/components/fechamento-diario/index.tsx|@typescript-eslint/no-floating-promises": 16,
   "apps/web/src/components/fechamento-diario/index.tsx|@typescript-eslint/strict-boolean-expressions": 8,
   "apps/web/src/components/fechamento-mensal/index.tsx|@typescript-eslint/no-floating-promises": 1,

@@ -35,8 +35,6 @@
   "apps/web/src/components/fechamento-diario/hooks/usePagamentos.ts|TS2345": 1,
   "apps/web/src/components/fechamento-diario/hooks/useResumoMensalFrentistas.ts|TS2345": 1,
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|TS2322": 1,
-  "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.test.ts|TS2488": 2,
-  "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts|TS2532": 1,
   "apps/web/src/components/fechamento-diario/index.tsx|TS2375": 1,
   "apps/web/src/components/fechamento-mensal/index.tsx|TS2345": 3,
   "apps/web/src/components/fechamento-mensal/index.tsx|TS2375": 1,

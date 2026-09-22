@@ -3,18 +3,38 @@
  */
 
 import { errAsync, ResultAsync } from 'neverthrow';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { supabase } from '../supabase';
 
 /**
- * Por que uma leitura na API Laravel falhou. União discriminada: quem consome decide pela `tipo`,
+ * Por que uma chamada à API Laravel falhou. União discriminada: quem consome decide pela `tipo`,
  * nunca pela mensagem.
+ *
+ * `recusado` é a recusa que o servidor explica (#103 P11): 422 com `{ erro: { codigo, mensagem,
+ * campos? } }`, seja de forma (`corpo_invalido`, do FormRequest) ou de domínio (`fora_da_janela`,
+ * `totais_inconsistentes`, do Command). Um 422 sem esse envelope continua `http`.
  */
 export type ErroDaApi =
     | { readonly tipo: 'sem_api' }
     | { readonly tipo: 'rede'; readonly detalhe: string }
     | { readonly tipo: 'http'; readonly status: number }
-    | { readonly tipo: 'formato'; readonly detalhe: string };
+    | { readonly tipo: 'formato'; readonly detalhe: string }
+    | {
+          readonly tipo: 'recusado';
+          readonly status: number;
+          readonly codigo: string;
+          readonly mensagem: string;
+          readonly campos?: Readonly<Record<string, readonly string[]>>;
+      };
+
+/** O envelope de recusa do backend (`RespostaDaGravacao.php`, `GravaFechamentoDoDiaRequest.php`). */
+const envelopeDeRecusa = z.object({
+    erro: z.object({
+        codigo: z.string(),
+        mensagem: z.string(),
+        campos: z.record(z.string(), z.array(z.string())).optional(),
+    }),
+});
 
 /**
  * Base da API Laravel, ou `null` quando o painel ainda lê do Supabase.
@@ -69,16 +89,41 @@ function cabecalhos(token: string | null): Record<string, string> {
     return token === null ? { Accept: 'application/json' } : { Accept: 'application/json', Authorization: `Bearer ${token}` };
 }
 
+const descreverFalha = (erro: unknown): string => (erro instanceof Error ? erro.message : String(erro));
+
 /**
- * GET na API Laravel com a resposta validada por schema.
+ * O corpo de uma resposta que não é `ok`: 422 (e 409) com o envelope `{ erro }` vira `recusado`;
+ * qualquer outro status, ou 422 sem envelope, vira `http`. Corpo ilegível também é `http` — o
+ * status é o que se sabe com certeza.
+ */
+function recusaOuHttp(resposta: Response): ResultAsync<never, ErroDaApi> {
+    const http: ErroDaApi = { tipo: 'http', status: resposta.status };
+    if (resposta.status !== 422 && resposta.status !== 409) {
+        return errAsync(http);
+    }
+
+    return ResultAsync.fromPromise(resposta.json() as Promise<unknown>, (): ErroDaApi => http).andThen((corpo) => {
+        const lido = envelopeDeRecusa.safeParse(corpo);
+        if (!lido.success) {
+            return errAsync<never, ErroDaApi>(http);
+        }
+        const { codigo, mensagem, campos } = lido.data.erro;
+        return errAsync<never, ErroDaApi>(
+            campos === undefined
+                ? { tipo: 'recusado', status: resposta.status, codigo, mensagem }
+                : { tipo: 'recusado', status: resposta.status, codigo, mensagem, campos },
+        );
+    });
+}
+
+/**
+ * O miolo comum de toda chamada: token → fetch → ok? → json → safeParse.
  *
  * @remarks
  * O `try/catch` do `fetch` vira `ResultAsync.fromPromise` aqui, na borda — regra de negócio acima
  * disto não lança. A resposta entra como `unknown` e só sai tipada depois do `safeParse`.
- *
- * Desde a #103 P5 a requisição leva o `Authorization` da sessão do Supabase, quando existe.
  */
-export function buscarNaApi<T>(caminho: string, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
+function chamarApi<T>(caminho: string, requisicao: (token: string | null) => RequestInit, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
     const base = urlDaApi();
     if (base === null) {
         return errAsync({ tipo: 'sem_api' });
@@ -86,18 +131,12 @@ export function buscarNaApi<T>(caminho: string, schema: z.ZodType<T>): ResultAsy
 
     return tokenDaSessao()
         .andThen((token) =>
-            ResultAsync.fromPromise(
-                fetch(`${base}${caminho}`, { headers: cabecalhos(token) }),
-                (erro): ErroDaApi => ({ tipo: 'rede', detalhe: erro instanceof Error ? erro.message : String(erro) }),
-            ),
+            ResultAsync.fromPromise(fetch(`${base}${caminho}`, requisicao(token)), (erro): ErroDaApi => ({ tipo: 'rede', detalhe: descreverFalha(erro) })),
         )
         .andThen((resposta) =>
             resposta.ok
-                ? ResultAsync.fromPromise(
-                      resposta.json() as Promise<unknown>,
-                      (erro): ErroDaApi => ({ tipo: 'formato', detalhe: erro instanceof Error ? erro.message : String(erro) }),
-                  )
-                : errAsync<unknown, ErroDaApi>({ tipo: 'http', status: resposta.status }),
+                ? ResultAsync.fromPromise(resposta.json() as Promise<unknown>, (erro): ErroDaApi => ({ tipo: 'formato', detalhe: descreverFalha(erro) }))
+                : recusaOuHttp(resposta),
         )
         .andThen((corpo) => {
             const lido = schema.safeParse(corpo);
@@ -105,6 +144,35 @@ export function buscarNaApi<T>(caminho: string, schema: z.ZodType<T>): ResultAsy
                 ? ResultAsync.fromSafePromise(Promise.resolve(lido.data))
                 : errAsync<T, ErroDaApi>({ tipo: 'formato', detalhe: lido.error.message });
         });
+}
+
+/**
+ * GET na API Laravel com a resposta validada por schema.
+ *
+ * Desde a #103 P5 a requisição leva o `Authorization` da sessão do Supabase, quando existe.
+ */
+export function buscarNaApi<T>(caminho: string, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
+    return chamarApi(caminho, (token) => ({ headers: cabecalhos(token) }), schema);
+}
+
+/**
+ * Escrita na API Laravel (#103 P11): corpo em JSON, resposta validada por schema.
+ *
+ * @remarks
+ * O `corpo` é `unknown` de propósito: quem chama já o montou pelo schema do contrato (ex.:
+ * `diaDeclarado` em `fechamento.api.ts`), e aqui só se serializa. Dinheiro e litros vão em string
+ * decimal — `JSON.stringify` não toca em string, então nada vira float no caminho.
+ */
+export function enviarParaApi<T>(caminho: string, metodo: 'PUT', corpo: unknown, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
+    return chamarApi(
+        caminho,
+        (token) => ({
+            method: metodo,
+            headers: { ...cabecalhos(token), 'Content-Type': 'application/json' },
+            body: JSON.stringify(corpo),
+        }),
+        schema,
+    );
 }
 
 /** Mensagem para o `ApiResponse` legado, que só conhece texto. */
@@ -118,6 +186,8 @@ export function descreverErroDaApi(erro: ErroDaApi): string {
             return `API Laravel respondeu ${erro.status}`;
         case 'formato':
             return `Resposta da API Laravel fora do contrato: ${erro.detalhe}`;
+        case 'recusado':
+            return `Gravação recusada (${erro.codigo}): ${erro.mensagem}`;
     }
 }
 
