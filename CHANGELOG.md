@@ -2,6 +2,51 @@
 
 ## [Não Lançado]
 
+### ✍️ A escrita existe — o fechamento diário grava pela API, e é a primeira tela completa (#103 P10/P11)
+
+- **O painel deixa de conversar com o banco em 8 idas soltas e passa a mandar UM pedido.** A
+  gravação do dia era 7 a 8 chamadas sem transação a partir do navegador: apagava as leituras,
+  buscava o pai, apagava os filhos, criava, inseria em lote três vezes e atualizava. Qualquer
+  falha no meio deixava o dia partido. Agora é `PUT /api/postos/{posto}/fechamento?data=`, um
+  `GravaFechamentoDoDia` dentro de `DB::transaction`: ou o dia inteiro entra, ou nada entra.
+- **Dois defeitos de dinheiro morrem com a mudança de forma, não com remendo.** *Salvar o dia
+  apagava a leitura-base*: as leituras viravam DELETE do dia inteiro antes de reinserir, e bico
+  não declarado sumia. Agora é UPSERT por `(bico_id, data)`, sem DELETE — a invariante I5 mudou
+  DE PROPÓSITO e está registrada assim no Design Doc. *O painel apagava o envio do frentista que
+  chegasse depois de a tela carregar*: o DELETE varria todos os filhos do dia, inclusive o que a
+  tela nunca viu. Agora o contrato leva `frentistas_conhecidos[]` e o servidor só apaga o que foi
+  declarado — quem chegou depois sobrevive.
+- **O que o Command deliberadamente NÃO faz:** não recalcula `conferido`, `total_vendas`,
+  `total_recebido` nem `valor_cartao`. Refazer a conta no servidor criaria uma segunda fórmula de
+  dinheiro, e o projeto já paga caro por ter duas. Ele revalida SÓ
+  `diferenca = total_vendas − total_recebido`, exata em centavos: se o cliente mandar um par que
+  não fecha, a gravação é recusada.
+- **O Estoque continua descontando duas vezes ao regravar o dia, e isso é decisão, não esquecimento**
+  (§7 b, dono em 20/09). O contato é por EVENTO (`LeiturasDoDiaGravadas`, em `Compartilhado`, só
+  primitivos), para `Fechamento` não importar `Estoque` (CA-7). O comportamento está preso por dois
+  testes em lados diferentes: o *dispatch* no Command e o *efeito* no ouvinte — separados porque o
+  ouvinte é `ShouldHandleEventsAfterCommit` e o Pest roda em transação, então um teste ingênuo de
+  "estoque descontado" passaria **verde mentindo**.
+- **`usuario_id` deixa de ser `1` cravado** e passa a ser o usuário autenticado, cumprindo a I6, que
+  desde sempre dizia "até a #102".
+- **A autorização ganhou uma peça, não uma classe.** O Design Doc previa um middleware novo
+  `posto.gerir`; em vez disso o `ExigeAcessoAoPosto` passou a receber a habilidade por parâmetro
+  (`posto.acesso:gerir`). Uma classe, um teste, e a `PostoPolicy::gerir` — escrita na #97 e nunca
+  consultada — finalmente decide alguma coisa.
+- **A trava apertou junto com a entrega.** A isenção de complexidade do `.oxlintrc.json` **saiu** do
+  `useSubmissaoFechamento.ts` e foi para o `gravacaoLegadaSupabase.ts`: o caminho novo nasce sem
+  exceção, e quem carrega a dívida é o legado, que morre no cutover. As duas catracas perderam duas
+  entradas cada — dívida só desce.
+- **O golden de `totais-do-dia` ganhou a asserção que morde:** igualdade exata contra o canônico
+  quantizado, sem arredondar o lado do módulo. A auditoria por mutação de 20/09 mostrou que
+  arredondar os dois lados deixa float sujo passar verde.
+- **Nasce desligada em produção, de propósito.** Nenhum `Usuario` tem `auth_user_id`, então o PUT
+  responde 401 a todo login real; e a Vercel não tem `VITE_API_URL`, então o painel em produção
+  continua gravando pelo Supabase. O caminho legado sobrevive intacto até o cutover (#105).
+- Gates: Pint, PHPStan **nível 9** (0 erros), Deptrac (0 violações), Pest **196/196** com cobertura
+  **96,8 %**; no front, oxlint, catraca do `tsc` ("nenhum erro novo"), vitest **956/956** e golden
+  masters **3436 pass, 0 fail**.
+
 ### 🔐 Guard da transição e gate de escopo de tenant — a #102 destrava a #103, e o multi-tenant ganha trava
 
 - **O Laravel passa a saber quem está chamando, sem o painel trocar de login.** Implementada a
