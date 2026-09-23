@@ -9,7 +9,7 @@
  * `totalVendasDoEncerrante` (`@posto/utils/leitura`), em centavos a cada parcela, que devolve
  * `null` quando há menos bicos lidos que bicos no cadastro (I8: "não apurado" ≠ "zero").
  *
- * Substitui `calcularTotais` (`calculators.ts`) como fonte do `total_vendas` do painel, pela
+ * Substituiu o antigo `calcularTotais` (apagado em `0d0c9f3`) como fonte do `total_vendas` do painel, pela
  * decisão do dono de 20/09/2026 (Design Doc `fechamento-diario-api.md` §7 d): quem manda é o
  * encerrante. Diferenças de propósito em relação ao legado:
  *   - soma quantizada a cada parcela, não em float com quantização tardia;

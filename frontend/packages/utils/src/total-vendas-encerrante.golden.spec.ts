@@ -6,7 +6,8 @@
  * Há duas implementações vivas de `total_vendas`, e elas divergem em TRÊS eixos:
  *
  *   1. FONTE — o api-core (`encerrante.ts`) soma a coluna `Leitura.valor_total`
- *      JÁ GRAVADA (`numeric(15,2)`), o painel (`calculators.ts::calcularTotais`)
+ *      JÁ GRAVADA (`numeric(15,2)`), o painel (até 22/09/2026 `calcularTotais`,
+ *      hoje `apps/web/src/utils/venda-do-dia.ts`)
  *      RECALCULA `litros × preço` a partir do formulário.
  *   2. PREÇO — a coluna gravada carrega o preço do DIA DO FATO; o painel usa
  *      `bico.combustivel.preco_venda`, que é o preço de HOJE. O preço mudou no

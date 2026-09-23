@@ -1,6 +1,6 @@
 # Fechamento diário pela API — Design Doc
 
-Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota. Em 20/09/2026 o guard da DECISÃO A entrou no backend (commit `465efd5`, `autenticacao.md` §3b), então **P5–P7 e P11 deixaram de estar bloqueadas pelo guard**. **P5, P6 e P7 estão FEITAS — a LEITURA do fechamento diário fechou inteira** — e a §7 (f) foi resolvida por transcrição em 20/09 (a §5 agora descreve o que subiu, não o que se propôs); P8 tinha (d) como bloqueio e (d) foi DECIDIDA pelo dono em 20/09 (§7) — segue como tarefa de fórmula, do Fable, com golden antes; P10 espera §7 (b)–(e); P11 espera P10 e o §7** **Em 21/09/2026 a P10 e a P11 subiram: a ESCRITA do fechamento do dia passa a existir pela API — Command transacional, rota PUT autenticada e o `handleSave` do painel desviado por `VITE_API_URL`. Com isso o fechamento diário fecha leitura E escrita, e é a PRIMEIRA tela do painel completa pela API. Ela nasce DESLIGADA em produção de propósito: nenhum `Usuario` tem `auth_user_id` (401 em todo login real) e a Vercel não tem `VITE_API_URL`. Resta a P9.** · Data: 18/09/2026 · Última atualização: 21/09/2026
+Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota. Em 20/09/2026 o guard da DECISÃO A entrou no backend (commit `465efd5`, `autenticacao.md` §3b), então **P5–P7 e P11 deixaram de estar bloqueadas pelo guard**. **P5, P6 e P7 estão FEITAS — a LEITURA do fechamento diário fechou inteira** — e a §7 (f) foi resolvida por transcrição em 20/09 (a §5 agora descreve o que subiu, não o que se propôs); P8 tinha (d) como bloqueio e (d) foi DECIDIDA pelo dono em 20/09 (§7); P10 espera §7 (b)–(e); P11 espera P10 e o §7** **Em 21/09/2026 a P10 e a P11 subiram: a ESCRITA do fechamento do dia passa a existir pela API — Command transacional, rota PUT autenticada e o `handleSave` do painel desviado por `VITE_API_URL`. Com isso o fechamento diário fecha leitura E escrita, e é a PRIMEIRA tela do painel completa pela API. Ela nasce DESLIGADA em produção de propósito: nenhum `Usuario` tem `auth_user_id` (401 em todo login real) e a Vercel não tem `VITE_API_URL`. Resta a P9.** **Em 22/09/2026 a P8 subiu: o `total_vendas` do painel passa a vir do encerrante (`vendaDoDiaPeloEncerrante`, `5436b4c` + `c2368cd`), dia não apurado é `null` nos dois caminhos de gravação, e `calcularTotais` foi apagado com o golden que o media (`0d0c9f3`).** · Data: 18/09/2026 · Última atualização: 22/09/2026
 
 > Primeiro módulo do painel a migrar do PostgREST para a API Laravel, e o que faz nascer
 > `App\Fechamento` no backend. Contrato comum às fatias: `painel-pela-api.md`. Regra de domínio:
@@ -21,13 +21,13 @@ Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovada
 | P5 | leituras do dia pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/leituras?data=`, a **primeira nascida protegida** (`token.atual` → `DefinePostoAtual` → `posto.acesso`). Backend `e1f67b2`, `base.ts` mandando o Bearer `5897f1c`, adaptador e call site `c6ef3b2`. Paridade preservada em três pontos: recorte do dia por igualdade de meia-noite (o Supabase usa `.eq`), string decimal → `Number()` (senão `formatarParaBR` devolve o número cru), e ordem por `id`. Canários: 4 mutações, 3 a 6 vermelhos cada |
 | P6 | sessões dos frentistas do dia pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/sessoes?data=`, `SessoesDoDia` (acha os `Fechamento` do dia, depois os filhos: um dia pode ter mais de um, o unique é `(data, turno_id)`). Backend `c581e94`, adaptador e call site `6093119`. **I8 é dado vivo:** 682 de 1206 sessões em produção têm `encerrante`/`diferenca_calculada` null, e `Number(null)` é 0 — `numeroOuNulo` só converte string |
 | P7 | o `Fechamento` do dia e seus recebimentos pela API | sim (Fable) | **FEITA em 20/09/2026** — rota `GET /api/postos/{posto}/fechamento?data=`, `FechamentoDoDia` devolve **UM** fechamento (o mais recente do dia, `orderByDesc('id')->first()`) com `recebimentos` por eager load. Backend `adf2232`, adaptador e call site `54413da`. **Dia sem fechamento é 200 com `data: null`, não 404** — 404 obrigaria o cliente a distinguir "rota errada" de "dia em branco", e dia em branco é estado normal do sistema. Com isso a LEITURA do fechamento diário fecha inteira |
-| P8 | golden das somas do painel × `totaisDoDia` — **mudança de fórmula, tarefa separada** | sim (Fable) | §7 (d) **DECIDIDA em 20/09** (vale o `total_vendas` do encerrante), então deixa de esperar por ela; segue como tarefa de fórmula do Fable, com golden antes |
-| P9 | `useCustoMensal` sai do Supabase direto | sim (Fable) | espera P8 e decisão CA-7 sobre Compra/Despesa |
+| P8 | o `total_vendas` do painel pelo encerrante — **mudança de fórmula, tarefa separada** | sim (Fable/Opus 5.5) | **FEITA em 22/09/2026**, em três commits. `5436b4c`: nasce `apps/web/src/utils/venda-do-dia.ts` (`vendaDoDiaPeloEncerrante`: `valorDaLeitura` por bico lido, soma por `totalVendasDoEncerrante` de `@posto/utils`, `null` com menos bicos lidos que ativos) com `venda-do-dia.golden.spec.ts` sobre os 31 dias de janeiro, ainda sem call site. `c2368cd`: `useFechamento.ts:104` troca a fonte; `totalVendas` vira `number \| null`; `FooterAcoes` decide "sem encerrante" por `=== null` e mostra `—`; `montarDiaDeclarado` manda o par `total_vendas`/`diferenca` nulo pela fonte; `gravacaoLegadaSupabase.ts:232` grava `null` (decisão do dono, 21/09). `0d0c9f3`: `calcularTotais` e `calculators.golden.spec.ts` apagados (test:golden 3564 → 3499). **Não mudou:** a entrada segue sendo `preco_venda` de HOJE — a divergência de PREÇO de janeiro (R$ 23.784,56) continua, medida na asserção (e) do golden novo. **Canário rodado em 22/09/2026:** soma em float → 95 vermelhos; contar só os bicos lidos (sem `null`) → 31 vermelhos; restaurado → 128/128 |
+| P9 | `useCustoMensal` sai do Supabase direto | sim (Fable) | P8 feita em 22/09; espera a decisão CA-7 sobre Compra/Despesa |
 | P10 | Command `GravaFechamentoDoDia`, sem rota | sim (Fable) | **FEITA em 21/09/2026.** `App\Fechamento\Domain\{JanelaDeEscrita, TotaisDeclarados, RecusaDaGravacao}` e `App\Fechamento\Application\{DiaDeclarado, GravaFechamentoDoDia, GravaFilhosDoDia}`. Transacional (`DB::transaction`), nenhum arquivo acima de 146 linhas. O VO chama-se **`TotaisDeclarados`**, e não `TotaisDoDia` como a §3 previa: `totaisDoDia` já é a função canônica de `packages/utils/src/fechamento.ts:118` e faz outra coisa (calcula; o VO só confere). O Command **não recalcula** `conferido`, `total_vendas`, `total_recebido` nem `valor_cartao` — revalida SÓ `diferenca = total_vendas − total_recebido`, exata em centavos |
 | P11 | rota PUT autenticada e troca de `handleSave` | sim (Fable) | **FEITA em 21/09/2026.** `PUT /api/postos/{posto}/fechamento`, `GravaFechamentoDoDiaRequest`, `FechamentoController::update`, `RespostaDaGravacao`. **A peça que faltava não virou classe nova:** em vez do alias `posto.gerir` que esta linha previa, o `ExigeAcessoAoPosto` passou a receber a habilidade **por parâmetro** (`posto.acesso:gerir`), decisão do dono em 21/09 — uma classe e um teste, em vez de dois. No painel: `enviarParaApi` (`base.ts`), `gravarFechamentoDoDiaNaApi` (`fechamento.api.ts`), o montador puro `montarDiaDeclarado.ts` e o legado extraído para `gravacaoLegadaSupabase.ts`. **Não pode ser ligada em produção:** nenhum `Usuario` tem `auth_user_id`, então o PUT responde 401 a todo login real, e a Vercel não tem `VITE_API_URL` |
 
 Nada desta rodada é commitado sem revisão do dono. Nenhuma fórmula muda em fatia estrutural: quem
-toca `calcLitros`/`calcVenda` (`useLeituras.ts:437-460`), a taxa (`useFechamento.ts:154-160`,
+toca `calcLitros`/`calcVenda` (`useLeituras.ts:437-460`), a taxa (`useFechamento.ts:175-181`,
 `usePagamentos.ts:161-176`), o `reduce` de `useCustoMensal.ts:96` ou `totaisPorBalde`
 (`fechamentoMeios.ts:245-257`) é o Fable, em tarefa própria, com golden antes.
 
@@ -119,7 +119,7 @@ escolhidos por `urlDaApi()` (`base.ts:27-30`).
 | Fechamento\Http | `Resources\*` | dinheiro em **string decimal**, timestamptz em UTC (padrão `cadastro.md`/`agregacao.md`); `null` continua `null`, nunca `'0.00'` (I8) | P5–P7 |
 | frontend `services/api` | `leitura.api.ts`, `fechamento.api.ts`, `fechamentoFrentista.api.ts`, `recebimento.api.ts`, `frentista.api.ts`, `bico.api.ts`, `formaPagamento.api.ts` | padrão `fornecedor.api.ts` (`buscarNaApi` + Zod + `ResultAsync`); filtro `ativo === true` no cliente, porque `CatalogoDoPosto.php:46-67` não filtra e os services do Supabase filtram | P4–P7 |
 | frontend `components/fechamento-diario` | `index.ts` | Public API: `useLeituras` e `type Leitura`, mais o `default` da tela (para `App.tsx:15` continuar resolvendo) | P2 |
-| tests | `Feature/Fechamento/*`, canário Arch, vitest dos schemas, golden novo (P8) | ver Testes | — |
+| tests | `Feature/Fechamento/*`, canário Arch, vitest dos schemas, `apps/web/src/utils/venda-do-dia.golden.spec.ts` (P8) | ver Testes | — |
 
 ## 4. Comportamento
 
@@ -304,7 +304,7 @@ da tabela. Em 20/09 o dono decidiu a **(b)**, a **(c)** e a **(d)**, e a **(e)**
 |---|---|---|---|---|
 | (b) ✅ | **Estoque no salvamento** — **DECIDIDA em 20/09/2026** | hoje o INSERT das `Leitura` desconta `Estoque.quantidade_atual` por combustível (`leitura.service.ts:340-392`, falha em `console.warn`) e o `deleteByDate` **não devolve** (`:413-430`) — regravar o dia desconta de novo, pelo total inteiro | **decidido: mantém o comportamento — desconta no INSERT, não devolve.** O duplo desconto ao regravar é aceito como está; consertar é issue própria. **Forma decidida: por EVENTO.** O Command grava as leituras e emite o fato (litros por combustível, posto, dia); quem escuta e desconta é o módulo `App\Estoque`. `Fechamento` **não** conhece `Estoque` — a CA-7 (nenhum módulo depende de outro) fica de pé sem exceção, e o comportamento sobrevive à P11, quando a escrita sair do cliente. A alternativa descartada era o Command não tocar estoque: fiel hoje, mas o desconto **pararia** de acontecer na P11, mudando dinheiro por omissão | P10 deixa de esperar por (b). Nasce `App\Estoque` com model e listener |
 | (c) ✅ | **`DELETE+INSERT` × `UPSERT` em `FechamentoFrentista`** — **DECIDIDA em 20/09/2026** | hoje é `DELETE ... WHERE fechamento_id` + `INSERT` em lote, e o INSERT vem do **estado da tela** capturado no clique (`useSubmissaoFechamento.ts:116,199`; o estado é montado em `useSessoesFrentistas.ts:137-240` e só mescla com o banco NO CARREGAMENTO). Envio que chega pelo PWA depois disso é apagado e não volta; o `data_hora_envio` original é perdido; `NotaFrentista`/`VendaProduto` desvinculados não voltam | **decidido: vira UPSERT por `(fechamento_id, frentista_id)`** — o unique existe e está aplicado (`01-esquema-base.sql:761`) — **mais DELETE só dos `frentista_id` que o cliente declarou conhecer e não mandou de volta**. O contrato leva `sessoes[]` e `frentistas_conhecidos[]`: o Command atualiza o que veio, apaga só dentro do conjunto declarado (remoção deliberada do gerente) e **não toca** em quem a tela nunca viu. `UPSERT` puro foi descartado porque tiraria do gerente a única forma de apagar envio errado | P10 deixa de esperar por (c). Conserta o defeito de apagar envio tardio e preserva `data_hora_envio` no UPDATE |
-| (d) ✅ | **Qual `total_vendas` vale** — **DECIDIDA em 20/09/2026** (abaixo) | o painel soma em float (`useFechamento.ts:107-110` `reduce`; `calculators.ts:244-267` `calcularTotais`); o `api-core` grava `totaisDoDia` em centavos (`fechamento.ts:118-138`; `encerrante.ts:621-643`). `POST /consolidar` revalida em centavos (`fase-a-laravel.md:91-93`) e pode recusar o painel por 1 centavo. Nenhum golden hoje exercita `useFechamento` nem `calculators.ts`; o comentário de `useFechamento.ts:137` diz o contrário | decidido: vale o `total_vendas` do **encerrante**. O P8 segue sendo o golden das duas implementações sobre janeiro, agora com o vencedor já escolhido. Tarefa de fórmula, só do Fable | nada mais — P8 deixa de esperar por (d); P10 e P11 seguem pelas (b), (c), (e) |
+| (d) ✅ | **Qual `total_vendas` vale** — **DECIDIDA em 20/09/2026** (abaixo) | **desde 22/09/2026 (P8)** o painel tira a venda do encerrante: `useFechamento.ts:103-105` chama `vendaDoDiaPeloEncerrante` (`apps/web/src/utils/venda-do-dia.ts:63-79`), que soma por `totalVendasDoEncerrante` (`packages/utils/src/leitura.ts:77-83`), em centavos a cada parcela, e devolve `null` com menos bicos lidos que ativos. O `api-core` segue gravando por `totaisDoDia` (`fechamento.ts:118-138`; `encerrante.ts:621-650`). O servidor não tem `POST /consolidar` (a rota de `fase-a-laravel.md:91` não existe em `backend/routes/api.php`); quem confere é o `PUT /fechamento` (`routes/api.php:93`), que revalida só `diferenca = total_vendas − total_recebido` em centavos — e `montarDiaDeclarado.ts:134-152` manda os dois já quantizados. Coberto por `venda-do-dia.golden.spec.ts` (31 dias de janeiro, entrada = saída do pacote) e `useFechamento.test.ts:126-141` (I8). Até 22/09 era `calcularTotais` (float, apagado em `0d0c9f3`) | decidido: vale o `total_vendas` do **encerrante**. **Aplicado na P8 (22/09/2026)** | nada |
 | (e) ✅ | **Janela de escrita real** — **MEDIDA em 20/09/2026, não precisa de decisão** | **Produção e esquema local são IDÊNTICOS**, conferido no `pg_proc` do Supabase: `SELECT quando >= DATE '2025-12-31' AND quando < (CURRENT_DATE + INTERVAL '2 days')`. As memórias que falavam em **7 dias** e em **1,5 mês** estavam as duas erradas | o Command copia literalmente: `>= 2025-12-31` e `< CURRENT_DATE + 2 dias`. ⚠️ `CURRENT_DATE` depende do fuso da sessão — em produção é UTC, e a conexão do Laravel foi fixada em UTC (`cebfad3`), então batem. Encurtar a janela é issue separada (`fechamento-frentista-api.md` §5) | P10 deixa de esperar por (e) |
 | (f) ✅ | **Contratos do §5** — **RESOLVIDA em 20/09/2026, por transcrição** | a §5 foi escrita como *proposta*, antes de existir rota. Enquanto ela esperava aprovação, P5, P6 e P7 subiram e passaram a servir o painel: a forma final deixou de ser uma escolha em aberto e virou **fato observável em código e em teste** | não há o que aprovar: a §5 foi **reescrita para descrever o que subiu**, e as divergências contra a proposta estão listadas lá. Decidir de novo seria decidir contra 150 testes verdes. O que a §5 ainda propõe — `/leituras/ultimas` e o `PUT` da P11 — segue proposta, e está marcado como tal | nada: P5–P7 já entregues; a P11 carrega o resto |
 
@@ -318,10 +318,12 @@ encerrante não tem esse modo de falha.
 
 Consequências a registrar:
 
-- A fatia **P8** (golden das somas do painel × `totaisDoDia`) esperava exatamente a (d) e **deixa de
-  estar bloqueada por ela**.
-- P8 continua sendo **mudança de fórmula**: entra com golden antes, em tarefa própria, e é trabalho do
-  Fable (regra DOM-1 / hook `so-fable-na-formula`).
+- A fatia **P8** esperava exatamente a (d) e **foi feita em 22/09/2026** (`5436b4c`, `c2368cd`,
+  `0d0c9f3`): golden antes (o helper nasceu provado e sem call site), troca depois, e a somadora
+  antiga apagada para não sobrar uma segunda fonte de venda no painel.
+- O que a P8 **não** fez: a entrada da venda continua sendo `bico.combustivel.preco_venda`, o preço
+  de HOJE. Reabrir janeiro/2026 no painel ainda mostra R$ 23.784,56 a mais que a planilha — é
+  divergência de **preço**, não de soma, e trocá-la é outra decisão de dinheiro.
 - Alinha com o que já estava registrado: `Leitura` é por dia e por bico, **não por turno** — filtrar
   encerrante por `turno_id` já produziu bug. O encerrante ser a autoridade reforça que ele não se divide
   por turno nem por frentista.
@@ -354,8 +356,10 @@ Consequências a registrar:
   e trava de N+1 exercitada; `tests/Arch` (controller sem `Request` cru, sem `Domain` para
   escrever); `bun run test:golden` antes e depois; paridade em `localhost:3015` com e sem
   `VITE_API_URL`.
-- **P8:** golden novo verde ANTES de qualquer troca e depois de CADA troca de call site;
-  `useFechamento.test.ts:87-117` (sinal) continua verde.
+- **P8 (feita em 22/09):** `apps/web/src/utils/venda-do-dia.golden.spec.ts` verde antes da troca
+  (`5436b4c`) e depois dela (`c2368cd`, test:golden 3564/0; após `0d0c9f3`, 3499/0);
+  `useFechamento.test.ts:87-124` (sinal) e `:126-141` (I8) verdes. Canário rodado em 22/09: soma
+  em float → 95 vermelhos, sem `null` → 31 vermelhos, restaurado → verde.
 - **P10:** falha simulada no meio deixa o banco como antes (rollback); salvar duas vezes não
   duplica nem muda o `Estoque` além do decidido; `diferenca` fora de 1 centavo recusada;
   fora da janela recusada; auditoria (`audita_*`, `:1608-1610`) grava DELETE/UPDATE.
@@ -377,19 +381,23 @@ Consequências a registrar:
   parseia dinheiro e encerrante de bomba, e tem um ramo que divide por mil; só não estoura porque
   o formatador sempre devolve string com vírgula. **Consequência para a P10: o Command recebe
   NÚMERO, não string** — replicar o parser em PHP replicaria a ambiguidade.
-- 🔴 **O passo 5 grava `0` em `total_vendas`, nunca `null`** (`useSubmissaoFechamento.ts:235`),
-  violando a I8 e a migration `20260904_fechamento_nao_apurado_e_nulo.sql`. O `fechamento.service`
-  e o `api-core` gravam `null`. É a divergência caminho A × B localizada na linha, e qual dos dois
-  vale é decisão do dono.
+- ✅ ~~**O passo 5 grava `0` em `total_vendas`, nunca `null`**~~ — **corrigido em 22/09/2026 (P8,
+  `c2368cd`)**, por decisão do dono de 21/09: a fonte passou a devolver `null` no dia não apurado e
+  o caminho legado grava esse `null` (`gravacaoLegadaSupabase.ts:232`), como o `fechamento.service`
+  e o `api-core`. ⚠️ **Resta:** nesse caminho a `diferenca` do dia não apurado continua gravada
+  `0`, não `null` (`gravacaoLegadaSupabase.ts:230,234`); só o caminho da API manda o par nulo.
 - ⚠️ **Nada da gravação é transacional hoje.** São 6 chamadas soltas ao PostgREST; falha no meio
   deixa o dia meio-gravado, e o pior caso (falha no passo 3) apaga o caixa dos frentistas inteiro
   sem reinserir. A transação do Command é ganho real da migração, sem mudar conta nenhuma.
 
 - ⚠️ **Escrita sem identidade é porta aberta**: o PUT apaga e regrava o dia inteiro. P10 entra sem
   rota de propósito; P11 só depois da #102. Nenhuma "rota temporária".
-- ⚠️ **Duas fórmulas de `total_vendas`/`diferenca` para a mesma coluna** (painel × api-core). Sem
-  P8 antes de P10/P11, o servidor recusa o painel por 1 centavo ou grava número diferente do que a
-  tela mostra.
+- ⚠️ **Duas fórmulas de `total_vendas`/`diferenca` para a mesma coluna** (painel × api-core) —
+  **a SOMA convergiu na P8 (22/09/2026)**: o painel soma por `totalVendasDoEncerrante`, em
+  centavos a cada parcela, e o golden novo prova que dá o mesmo número do pacote nos 31 dias de
+  janeiro (asserção c). **O que continua divergindo é a ENTRADA:** o painel multiplica pelo
+  `preco_venda` de hoje, o `api-core` soma o `valor_total` já gravado em cada `Leitura`. Reabrir
+  dia passado no painel ainda regrava venda a preço de hoje.
 - ⚠️ **Efeito colateral de dinheiro fora do módulo** via `trigger_atualizar_saldo_cliente` (§7 c).
 - ⚠️ **Envio do PWA entre o DELETE e o reINSERT** se perde ou é sobrescrito; o UPSERT resolve,
   DELETE+INSERT não (§7 c).
