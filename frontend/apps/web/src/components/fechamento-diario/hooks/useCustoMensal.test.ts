@@ -159,12 +159,14 @@ describe('useCustoMensal — caracterização (#103 P9 passo 1)', () => {
       desmontar();
     });
 
-    it('mês corrente: a janela das TRÊS consultas vai do dia 1 até HOJE (intervaloDoMes), não até o fim do mês', async () => {
+    it('mês corrente: Leitura vai do dia 1 até HOJE; Compra e Despesa vão ao MÊS CIVIL inteiro (D1/D2, decisão do dono 22/09/2026)', async () => {
       const { desmontar } = await montar(7, '2026-09-15');
 
-      for (const c of estado.consultas) {
-        expect(c.filtros).toContainEqual(['gte', 'data', '2026-09-01']);
-        expect(c.filtros).toContainEqual(['lte', 'data', '2026-09-22']);
+      expect(consultaDe('Leitura').filtros).toContainEqual(['gte', 'data', '2026-09-01']);
+      expect(consultaDe('Leitura').filtros).toContainEqual(['lte', 'data', '2026-09-22']);
+      for (const tabela of ['Compra', 'Despesa']) {
+        expect(consultaDe(tabela).filtros).toContainEqual(['gte', 'data', '2026-09-01']);
+        expect(consultaDe(tabela).filtros).toContainEqual(['lte', 'data', '2026-09-30']);
       }
       desmontar();
     });
@@ -177,6 +179,16 @@ describe('useCustoMensal — caracterização (#103 P9 passo 1)', () => {
         expect(c.filtros).toContainEqual(['lte', 'data', '2026-08-31']);
       }
       desmontar();
+    });
+
+    it('provisorio: true só no mês corrente (Q4, decisão do dono 22/09/2026); mês passado é definitivo', async () => {
+      const corrente = await montar(7, '2026-09-15');
+      const passado = await montar(7, '2026-08-10');
+
+      expect(corrente.result.current.provisorio).toBe(true);
+      expect(passado.result.current.provisorio).toBe(false);
+      corrente.desmontar();
+      passado.desmontar();
     });
 
     it('não consulta nada sem posto, sem data ou sem bicos', async () => {
@@ -192,6 +204,8 @@ describe('useCustoMensal — caracterização (#103 P9 passo 1)', () => {
         carregando: false,
         // campo novo do passo 4a: no caminho Supabase é sempre null
         erro: null,
+        // campo novo do passo 4b (Q4): 15/09/2026 é mês corrente
+        provisorio: true,
       });
       a.desmontar();
       b.desmontar();
@@ -371,6 +385,8 @@ describe('useCustoMensal — caracterização (#103 P9 passo 1)', () => {
         carregando: false,
         // campo novo do passo 4a: no caminho Supabase é sempre null
         erro: null,
+        // campo novo do passo 4b (Q4): 15/09/2026 é mês corrente
+        provisorio: true,
       });
       desmontar();
     });
@@ -441,6 +457,7 @@ describe('useCustoMensal — pela API Laravel (#103 P9 passo 4a)', () => {
       temDespesa: true,
       carregando: false,
       erro: null,
+      provisorio: true,
     });
     desmontar();
   });

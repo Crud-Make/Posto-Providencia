@@ -19,7 +19,7 @@ import { supabase } from '../../../services/supabase';
 import { urlDaApi, type ErroDaApi } from '../../../services/api/base';
 import { lerDashboardDaApi } from '../../../services/api/dashboard.api';
 import { calculaCustoMensal, custoMensalDaApi, type BicoDoCusto, type CustoMensal } from './custo-mensal';
-import { intervaloDoMes, hojeIso, mesCivil } from '../../../utils/periodo';
+import { intervaloDoMes, hojeIso, mesCivil, ehMesCorrente } from '../../../utils/periodo';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 
 interface RetornoCustoMensal {
@@ -34,6 +34,11 @@ interface RetornoCustoMensal {
    * todo produto vem `null` em `custoMedioPorProduto`: o lucro não é apurável.
    */
   erro: ErroDaApi | null;
+  /**
+   * `true` no mês corrente: compra e despesa são do mês civil INTEIRO (D1/D2, decisão do dono
+   * 22/09/2026, Q4) e os litros ainda são parciais, então o rateio é provisório até o mês virar.
+   */
+  provisorio: boolean;
 }
 
 /**
@@ -59,13 +64,20 @@ function custoIndisponivel(bicos: readonly BicoDoCusto[]): CustoMensal {
   return { custoMedioPorProduto, despesaOperacionalLitro: 0, temDespesa: false };
 }
 
-/** Caminho Supabase, sem API configurada — o mesmo de antes do passo 4a. */
+/**
+ * Caminho Supabase, sem API configurada.
+ *
+ * #103 P9 passo 4b (D1/D2, decisão do dono 22/09/2026): Compra e Despesa vêm do MÊS CIVIL inteiro,
+ * também no mês corrente — igual à API. A Leitura segue em `intervaloDoMes` (corte em hoje), com a
+ * D5 e a soma da despesa em float: esses dois ficam para uma fatia própria, com golden.
+ */
 async function lerDoSupabase(
   postoId: number,
   dataSelecionada: string,
   bicos: readonly BicoComDetalhes[]
 ): Promise<CustoMensal> {
   const periodo = intervaloDoMes(dataSelecionada.slice(0, 7), hojeIso());
+  const janelaDoCusto = mesCivil(dataSelecionada);
 
   const [leiturasRes, comprasRes, despesasRes] = await Promise.all([
     supabase
@@ -78,14 +90,14 @@ async function lerDoSupabase(
       .from('Compra')
       .select('combustivel_id, quantidade_litros, valor_total')
       .eq('posto_id', postoId)
-      .gte('data', periodo.inicio)
-      .lte('data', periodo.fim),
+      .gte('data', janelaDoCusto.inicio)
+      .lte('data', janelaDoCusto.fim),
     supabase
       .from('Despesa')
       .select('valor')
       .eq('posto_id', postoId)
-      .gte('data', periodo.inicio)
-      .lte('data', periodo.fim),
+      .gte('data', janelaDoCusto.inicio)
+      .lte('data', janelaDoCusto.fim),
   ]);
 
   // O cálculo mora em `calculaCustoMensal` (puro). O `.error` de cada consulta
@@ -147,5 +159,7 @@ export const useCustoMensal = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postoId, mes, bicos.length]);
 
-  return { custoMedioPorProduto, despesaOperacionalLitro, temDespesa, carregando, erro };
+  const provisorio = mes !== '' && ehMesCorrente(mes, hojeIso());
+
+  return { custoMedioPorProduto, despesaOperacionalLitro, temDespesa, carregando, erro, provisorio };
 };
