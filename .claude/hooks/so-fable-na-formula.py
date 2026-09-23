@@ -39,9 +39,17 @@ FORMULA = re.compile(
     # `venda-do-dia` entra junto porque nasce nesta fatia como a somadora nova.
     r"|(^|/)apps/web/src/utils/(calculators|venda-do-dia)[\w.-]*\.tsx?$"
     r"|(^|/)packages/api-core/src/encerrante[\w.-]*\.ts$"
+    # [22/09] Buraco achado pelo plano do FSD do pwa-frentista: o payload do envio
+    # (valor_conferido, diferenca_calculada, os 7 valor_* em centavos) é montado no
+    # App.tsx e vai para features/enviar-fechamento/model; o Histórico decide o sinal
+    # da diferença e o Vendas soma valor_total. Nada disso estava na trava.
+    r"|(^|/)apps/pwa-frentista/src/App\.tsx$"
+    r"|(^|/)apps/pwa-frentista/src/features/enviar-fechamento/model/[\w./-]+\.tsx?$"
+    r"|(^|/)apps/pwa-frentista/src/screens/(Historico|Vendas)Screen\.tsx$"
+    r"|(^|/)apps/pwa-frentista/src/pages/(historico|vendas)/[\w./-]+\.tsx?$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
-TESTE_LIVRE = re.compile(r"\.(test|spec)\.ts$")
+TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")
 TESTE_DE_REGRA = re.compile(r"\.(golden\.spec|regressao\.test)\.ts$")
 
 # Id completo no transcript; alias no meta de subagente. `claude-opus-5-5` casa o

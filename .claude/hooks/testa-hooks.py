@@ -299,6 +299,17 @@ CASOS_FORMULA_COBERTURA = [
     # fora da formula: hook de tela e helper de meios de pagamento
     ("frontend/apps/web/src/utils/fechamentoMeios.ts", False),
     ("frontend/apps/web/src/components/fechamento-diario/hooks/useFechamento.ts", False),
+    # [22/09] pwa-frentista: payload do envio, sinal da diferença e soma das vendas
+    ("frontend/apps/pwa-frentista/src/App.tsx", True),
+    ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/model/montar-payload.ts", True),
+    ("frontend/apps/pwa-frentista/src/screens/HistoricoScreen.tsx", True),
+    ("frontend/apps/pwa-frentista/src/screens/VendasScreen.tsx", True),
+    ("frontend/apps/pwa-frentista/src/pages/historico/ui/historico-page.tsx", True),
+    ("frontend/apps/pwa-frentista/src/pages/vendas/ui/vendas-page.tsx", True),
+    ("frontend/apps/pwa-frentista/src/App.test.tsx", False),
+    ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/model/montar-payload.test.ts", False),
+    ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/ui/botao-enviar.tsx", False),
+    ("frontend/apps/pwa-frentista/src/screens/TanquesScreen.tsx", False),
 ]
 
 
