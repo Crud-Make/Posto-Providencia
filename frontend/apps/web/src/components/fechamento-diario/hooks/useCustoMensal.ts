@@ -8,13 +8,8 @@
  * hoje) e nunca margem fixa por tipo de combustível. Ver `useLucroPorBico`.
  */
 import { useState, useEffect, useCallback } from 'react';
-import {
-  encerranteMensal,
-  custoMedioCompra,
-  despesaOperacionalPorLitro,
-  type LeituraDiariaBico,
-} from '@posto/utils';
 import { supabase } from '../../../services/supabase';
+import { calculaCustoMensal } from './custo-mensal';
 import { intervaloDoMes, hojeIso } from '../../../utils/periodo';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 
@@ -22,7 +17,7 @@ interface RetornoCustoMensal {
   /** Custo médio de compra por litro, por nome de produto. `null` sem compra no mês. */
   custoMedioPorProduto: Record<string, number | null>;
   despesaOperacionalLitro: number;
-  /** `false` quando o mês não tem nenhuma despesa lançada — ver {@link despesaOperacionalPorLitro}. */
+  /** `false` quando o mês não tem nenhuma despesa lançada — ver `despesaOperacionalPorLitro` (`@posto/utils`). */
   temDespesa: boolean;
   carregando: boolean;
 }
@@ -65,39 +60,18 @@ export const useCustoMensal = (
           .lte('data', periodo.fim),
       ]);
 
-      const nomeProdutoPorCombustivelId = new Map(bicos.map(b => [b.combustivel.id, b.combustivel.nome]));
+      // O cálculo mora em `calculaCustoMensal` (puro). O `.error` de cada consulta
+      // segue ignorado — defeito conhecido, fixado no teste de caracterização.
+      const custo = calculaCustoMensal(
+        leiturasRes.data ?? [],
+        comprasRes.data ?? [],
+        despesasRes.data ?? [],
+        bicos
+      );
 
-      // Total de litros do mês — mesma agregação do Resumo Mensal (dia parcial de
-      // fora), pra esse número nunca divergir do que a outra tela já mostra.
-      const diarias: LeituraDiariaBico[] = (leiturasRes.data ?? []).map(l => ({
-        dia: 1, // irrelevante aqui: só o total do mês importa, não a série por dia.
-        bico: String(l.bico_id),
-        inicial: l.leitura_inicial === null ? null : Number(l.leitura_inicial),
-        fechamento: l.leitura_final === null ? null : Number(l.leitura_final),
-        valorDia: l.valor_total === null ? null : Number(l.valor_total),
-      }));
-      const litrosDoMes = encerranteMensal(diarias).litros;
-
-      const comprasPorProduto = new Map<string, { litros: number; valorTotal: number }[]>();
-      for (const c of comprasRes.data ?? []) {
-        const produto = c.combustivel_id !== null ? nomeProdutoPorCombustivelId.get(c.combustivel_id) : undefined;
-        if (!produto) continue;
-        const lista = comprasPorProduto.get(produto) ?? [];
-        lista.push({ litros: Number(c.quantidade_litros), valorTotal: Number(c.valor_total) });
-        comprasPorProduto.set(produto, lista);
-      }
-
-      const custoPorProduto: Record<string, number | null> = {};
-      for (const produto of new Set(nomeProdutoPorCombustivelId.values())) {
-        custoPorProduto[produto] = custoMedioCompra(comprasPorProduto.get(produto) ?? []);
-      }
-
-      const valoresDespesa = (despesasRes.data ?? []).map(d => Number(d.valor));
-      const despesaDoMes = valoresDespesa.reduce((acc, v) => acc + v, 0);
-
-      setCustoMedioPorProduto(custoPorProduto);
-      setDespesaOperacionalLitro(despesaOperacionalPorLitro(despesaDoMes, litrosDoMes));
-      setTemDespesa(valoresDespesa.length > 0);
+      setCustoMedioPorProduto(custo.custoMedioPorProduto);
+      setDespesaOperacionalLitro(custo.despesaOperacionalLitro);
+      setTemDespesa(custo.temDespesa);
     } finally {
       setCarregando(false);
     }
