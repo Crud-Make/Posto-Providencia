@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Só o Fable 5 edita regra de cálculo de dinheiro.
+"""Só o Opus 5.5 (ou o Fable 5) edita regra de cálculo de dinheiro.
 
 Roda como hook PreToolUse em Write|Edit|NotebookEdit|Bash. Decisão do dono em
 18/09/2026: "quando formos mexer na regra de cálculos, só iremos usar o Fable 5".
+Em 22/09/2026 o dono trocou o titular: "iremos usar esse novo opus ao invés do
+fable, gasta menos e é melhor". O Opus 5.5 entra; o Opus 5 e anteriores seguem
+barrados. O Fable continua aceito — a decisão troca quem faz, não rebaixa a trava.
+O nome do arquivo fica, para não quebrar o settings.json nem os canários.
 
 Os arquivos cobertos são os mesmos que o `portao-golden` já considera fórmula
 (fonte de `packages/utils/src` e o `aggregator.service.ts`), mais os golden
@@ -40,8 +44,10 @@ FORMULA = re.compile(
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.ts$")
 TESTE_DE_REGRA = re.compile(r"\.(golden\.spec|regressao\.test)\.ts$")
 
-# Id completo no transcript; alias `fable` no meta de subagente.
-MODELO_PERMITIDO = re.compile(r"^(claude-fable-5|fable$)")
+# Id completo no transcript; alias no meta de subagente. `claude-opus-5-5` casa o
+# 5.5 e NÃO o `claude-opus-5` puro. O alias `opus` resolve para o Opus mais novo
+# (5.5 desde 22/09); se um dia apontar para outro, revisar aqui.
+MODELO_PERMITIDO = re.compile(r"^(claude-opus-5-5|claude-fable-5|opus$|fable$)")
 
 # Comandos de shell que escrevem no arquivo que recebem como argumento.
 ESCREVE = re.compile(
@@ -52,10 +58,10 @@ REDIRECAO = re.compile(r">>?\s*(\S+)")
 
 MOTIVO = (
     "Bloqueado pelo hook so-fable-na-formula: `{caminho}` é regra de cálculo de "
-    "dinheiro, e desde 18/09/2026 o dono decidiu que só o Fable 5 mexe nela.\n"
+    "dinheiro, e só o Opus 5.5 (ou o Fable 5) mexe nela — decisão do dono, 22/09/2026.\n"
     "Modelo que tentou: {modelo}.\n"
-    "  → na sessão principal: `/model fable` e repita.\n"
-    "  → em subagente/workflow: passe `model: 'fable'` no Agent/agent().\n"
+    "  → na sessão principal: `/model` → Opus 5.5 e repita.\n"
+    "  → em subagente/workflow: passe `model: 'opus'` no Agent/agent().\n"
     "  → continua valendo: golden master rodando (`bun run test:golden`) e skill "
     "`fechamento-posto-providencia`."
 )

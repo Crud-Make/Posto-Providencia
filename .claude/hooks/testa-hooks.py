@@ -388,11 +388,13 @@ def main() -> int:
             return str(t)
         opus = transcript("opus.jsonl", "claude-opus-5")
         fable = transcript("fable.jsonl", "claude-fable-5-1")
+        opus55 = transcript("opus55.jsonl", "claude-opus-5-5")
         # subagente fable debaixo de sessão opus: vale o modelo do subagente
         transcript("opus/subagents/agent-abc.jsonl", "claude-fable-5-1")
         transcript("opus/subagents/agent-son.jsonl", "claude-sonnet-5")
         # subagente na primeira ação: transcript sem mensagem de assistente ainda
-        for nome, meta in [("novofable", {"model": "fable"}), ("novoson", {"model": "sonnet"}), ("herda", {})]:
+        for nome, meta in [("novofable", {"model": "fable"}), ("novoson", {"model": "sonnet"}), ("herda", {}),
+                           ("novoopus", {"model": "opus"})]:
             base = Path(tmp) / "opus/subagents" / f"agent-{nome}"
             base.with_suffix(".jsonl").write_text(json.dumps({"type": "user"}) + "\n")
             base.with_suffix(".meta.json").write_text(json.dumps(meta))
@@ -400,6 +402,11 @@ def main() -> int:
         casos = [
             ("opus edita lucro.ts", {"transcript_path": opus, "tool_input": {"file_path": lucro}}, "deny"),
             ("fable edita lucro.ts", {"transcript_path": fable, "tool_input": {"file_path": lucro}}, None),
+            # [22/09] o dono trocou o titular para o Opus 5.5; o Opus 5 segue barrado (caso acima)
+            ("opus 5.5 edita lucro.ts", {"transcript_path": opus55, "tool_input": {"file_path": lucro}}, None),
+            ("opus 5.5 edita golden", {"transcript_path": opus55, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.golden.spec.ts"}}, None),
+            ("1ª ação de subagente opus (só meta)", {"transcript_path": opus, "agent_id": "novoopus", "tool_input": {"file_path": lucro}}, None),
+            ("sessão opus 5.5: subagente sonnet segue barrado", {"transcript_path": opus55, "agent_id": "son", "tool_input": {"file_path": lucro}}, "deny"),
             ("opus edita golden", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.golden.spec.ts"}}, "deny"),
             ("opus edita regressao", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/diferenca.regressao.test.ts"}}, "deny"),
             ("opus edita teste comum", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.test.ts"}}, None),
