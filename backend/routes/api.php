@@ -44,8 +44,8 @@ Route::get('/saude', function () {
 });
 
 /*
-| Catálogo do posto — só leitura (#97, docs/design/cadastro.md). `{posto}` vira o PostoAtual;
-| autorização por PostoPolicy entra nas rotas na #102, quando houver usuário autenticado.
+| Catálogo do posto — só leitura (#97, docs/design/cadastro.md). `{posto}` vira o PostoAtual.
+| Ainda SEM token: fechar o catálogo é fatia própria (pendência em docs/design/cadastro.md).
 */
 Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(function (): void {
     Route::get('combustiveis', [CatalogoController::class, 'combustiveis']);
@@ -57,10 +57,6 @@ Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(func
     Route::get('formas-pagamento', [CatalogoController::class, 'formasPagamento']);
     Route::get('maquininhas', [CatalogoController::class, 'maquininhas']);
     Route::get('fornecedores', [CatalogoController::class, 'fornecedores']);
-
-    // Agregação — dado bruto do período para o dashboard do proprietário (#100,
-    // docs/design/agregacao.md §5). Sem lucro no servidor: quem calcula é packages/utils.
-    Route::get('dashboard', [AgregacaoController::class, 'dashboard']);
 });
 
 /*
@@ -72,8 +68,11 @@ Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(func
 | `PostoAtual` que escopa os models, e `posto.acesso` pergunta à PostoPolicy se esse usuário
 | alcança ESTE posto. A policy precisa do posto já resolvido, por isso vem depois.
 |
-| O grupo público acima continua público de propósito: a P4a/P4b já o consome sem token, e
-| fechá-lo é fatia própria (pendência em docs/design/cadastro.md).
+| O catálogo acima continua público de propósito: a P4a/P4b já o consome sem token, e
+| fechá-lo é fatia própria (pendência em docs/design/cadastro.md). Ele ainda expõe dado que não
+| devia ser público: preco_custo/preco_venda (combustiveis, e tanques e bicos, que trazem o
+| combustível), taxa (formas-pagamento, maquininhas), cnpj/contato (fornecedores) e
+| telefone/data_admissao (frentistas). O dashboard saiu de lá e mora aqui (#103).
 */
 Route::prefix('postos/{posto}')
     ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso'])
@@ -91,4 +90,10 @@ Route::prefix('postos/{posto}')
         // nesta rota (o `posto.acesso` do grupo, que é `ver`, continua rodando antes). Corpo em
         // string decimal; recusa de forma ou de domínio é 422 { erro: { codigo, mensagem, campos? } }.
         Route::put('fechamento', [FechamentoController::class, 'update'])->middleware('posto.acesso:gerir');
+
+        // Agregação — dado bruto do período para o dashboard do proprietário (#100,
+        // docs/design/agregacao.md §5). Sem lucro no servidor: quem calcula é packages/utils.
+        // Custo e despesa são dado de proprietário (decisão do dono, 22/09/2026): só quem GERE o
+        // posto, como o PUT acima. Operador vinculado vê o dia, não o dashboard (403).
+        Route::get('dashboard', [AgregacaoController::class, 'dashboard'])->middleware('posto.acesso:gerir');
     });

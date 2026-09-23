@@ -178,17 +178,18 @@ Ele não busca o model do posto no container. Ler `Posto` exigiria conhecer `App
 módulo depende de outro** (CA-7, sem exceção, decisão do dono de 18/09). Então o middleware trabalha com
 o que `DefinePostoAtual` já deixou na requisição.
 
-### Nenhuma rota de produção mudou
+### Quais rotas já usam o guard (atualizado em 22/09)
 
-O catálogo segue **público** no grupo de `routes/api.php:47-61`; as rotas protegidas existem só dentro
-de `tests/Feature/Pessoas/GuardDoTokenAtualTest.php`. A pendência registrada em `cadastro.md` — pendurar
-a `PostoPolicy` nas rotas do catálogo — **continua aberta**.
+No grupo protegido de `routes/api.php:77-99`: `leituras`, `sessoes` e `GET fechamento` (P5–P7, habilidade
+`ver`), e `PUT fechamento` (P11) e `GET dashboard` (#103, 22/09) com `posto.acesso:gerir`. O catálogo segue
+**público** no grupo de `routes/api.php:50-60`. A pendência registrada em `cadastro.md` — pendurar a
+`PostoPolicy` nas rotas do catálogo — **continua aberta**, e é fatia própria.
 
-### Lado do cliente: ainda não existe
+### Lado do cliente: existe desde a P5
 
-`frontend/apps/web/src/services/api/base.ts:46` envia só `Accept`; nenhuma chamada do painel manda
-`Authorization`. Isso é **pré-requisito** das fatias P5–P7 de `fechamento-diario-api.md`: a primeira rota
-protegida que o painel consumir leva 401 até o `base.ts` passar o Bearer da sessão do Supabase.
+Desde `5897f1c` (#103 P5), `frontend/apps/web/src/services/api/base.ts:87-89` manda
+`Authorization: Bearer <access_token>` quando há sessão do Supabase, e só `Accept` quando não há — a
+requisição sem sessão leva 401 na rota protegida, sem fallback.
 
 > **Condição de saída da ponte.**
 > **Morre:** `VerificaTokenDoSupabase`, `config/supabase.php`, `SUPABASE_JWT_SECRET` e
@@ -204,8 +205,9 @@ protegida que o painel consumir leva 401 até o `base.ts` passar o Bearer da ses
 | Item | Estado |
 |---|---|
 | Guard de identidade + policy com dente | ✅ feito (20/09, `465efd5`) |
-| Pendurar o guard no catálogo (`routes/api.php:47-61`) | ❌ |
-| `base.ts` enviar `Authorization` | ❌ — pré-requisito de P5–P7 |
+| Pendurar o guard no catálogo (`routes/api.php:50-60`) | ❌ — fatia própria (ver `cadastro.md`) |
+| Pendurar o guard no dashboard | ✅ feito (22/09, #103, `posto.acesso:gerir`) |
+| `base.ts` enviar `Authorization` | ✅ feito (`5897f1c`, #103 P5) |
 | Sanctum como segundo emissor | ❌ — depende do "ok" do dono para o `composer.json` |
 | Migração dos 16 usuários | ❌ — depende do SMTP |
 | ADMIN inativo → 403 na policy | ❌ **NÃO CORRIGIDO** — ver §4 |
@@ -351,10 +353,9 @@ Com Bearer em `localStorage`, o mesmo XSS levaria a credencial inteira embora.
 
 Toda rota da API passa a exigir identidade — **exceto** as do PWA do frentista, que são issue própria
 
-> ⚠️ **Estado em 20/09:** isto descreve o ALVO, não o que roda. O guard existe (§3b), mas **nenhuma
-> rota de produção foi pendurada nele**: o catálogo da #97 segue público (`backend/routes/api.php`),
-> e o painel ainda não envia `Authorization` (`frontend/apps/web/src/services/api/base.ts`). As duas
-> pontas entram junto, na primeira fatia que consumir rota protegida.
+> ⚠️ **Estado em 22/09:** isto descreve o ALVO, não o que roda. Leituras, sessões, fechamento e
+> dashboard já estão atrás do guard (§3b), e o painel manda `Authorization` desde a P5 (`base.ts`);
+> o catálogo da #97 segue público (`backend/routes/api.php:50-60`), fatia própria.
 (#101). Até lá elas seguem públicas, como já estão.
 
 ## Testes
