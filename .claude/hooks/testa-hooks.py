@@ -310,6 +310,21 @@ CASOS_FORMULA_COBERTURA = [
     ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/model/montar-payload.test.ts", False),
     ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/ui/botao-enviar.tsx", False),
     ("frontend/apps/pwa-frentista/src/screens/TanquesScreen.tsx", False),
+    # [22/09] #103 P9: custo do mês, despesa do mês, cliente do /dashboard e App\Agregacao
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/custo-mensal.ts", True),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/useCustoMensal.ts", True),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/custo-mensal.golden.spec.ts", True),
+    ("frontend/apps/web/src/components/registro-compras/hooks/useDespesaDoMes.ts", True),
+    ("frontend/apps/web/src/services/api/dashboard.api.ts", True),
+    ("backend/app/Agregacao/Application/DadosDoPeriodo.php", True),
+    ("backend/app/Agregacao/Http/Resources/DashboardResource.php", True),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/custo-mensal.test.ts", False),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/useCustoMensal.test.ts", False),
+    ("frontend/apps/web/src/components/registro-compras/hooks/useDespesaDoMes.test.ts", False),
+    ("frontend/apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts", False),
+    ("frontend/apps/web/src/services/api/fornecedor.api.ts", False),
+    ("backend/app/Fechamento/Application/LeiturasDoDia.php", False),
+    ("backend/tests/Feature/Agregacao/DashboardTest.php", False),
 ]
 
 

@@ -47,6 +47,15 @@ FORMULA = re.compile(
     r"|(^|/)apps/pwa-frentista/src/features/enviar-fechamento/model/[\w./-]+\.tsx?$"
     r"|(^|/)apps/pwa-frentista/src/screens/(Historico|Vendas)Screen\.tsx$"
     r"|(^|/)apps/pwa-frentista/src/pages/(historico|vendas)/[\w./-]+\.tsx?$"
+    # [22/09] Buraco achado pelo plano da #103 P9 (passos 3–6): o custo do mês e o
+    # rateio da despesa por litro são calculados em `custo-mensal.ts` e lidos por
+    # `useCustoMensal`/`useDespesaDoMes`, o `/dashboard` chega por `dashboard.api.ts`,
+    # e o servidor soma compra, despesa e litros em `App\Agregacao`. Nada disso estava
+    # na trava. Só esses arquivos: o resto de `fechamento-diario/hooks` é tela.
+    r"|(^|/)apps/web/src/components/fechamento-diario/hooks/(custo-mensal|useCustoMensal)[\w.-]*\.tsx?$"
+    r"|(^|/)apps/web/src/components/registro-compras/hooks/useDespesaDoMes[\w.-]*\.tsx?$"
+    r"|(^|/)apps/web/src/services/api/dashboard\.api\.ts$"
+    r"|(^|/)backend/app/Agregacao/[\w./-]+\.php$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")
