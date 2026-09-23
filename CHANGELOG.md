@@ -14,6 +14,9 @@
   (decisão do dono em 21/09), igual ao que `fechamento.service.ts` e o `api-core` já gravavam. A
   `diferenca` desse caminho segue 0; o par inteiro só vai nulo pela API (`montarDiaDeclarado`).
 - Canários novos: dois bicos ativos com uma leitura só dá `null` no hook e no payload da API.
+- **`calcularTotais` e o `calculators.golden.spec.ts` foram apagados** (decisão do dono em 21/09):
+  sem call site depois da troca, a função só mantinha viva uma segunda somadora de venda. O
+  golden cai de 3564 para 3499 casos, que eram os dessa spec.
 
 ### ✍️ A escrita existe — o fechamento diário grava pela API, e é a primeira tela completa (#103 P10/P11)
 

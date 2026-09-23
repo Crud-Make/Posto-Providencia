@@ -118,11 +118,13 @@ function pelosEncerrantes(mes: number, dia: number): number | null {
 }
 
 /**
- * RÉPLICA das regras de `calcularTotais` (apps/web/src/utils/calculators.ts):
+ * RÉPLICA das regras do antigo `calcularTotais` (apps/web/src/utils/calculators.ts):
  * recalcula litros × preço INFORMADO, acumula em float e pula a linha de
  * litros zero. O float aqui é deliberado — é o que está sendo medido, não um
- * padrão a seguir. `calculators.golden.spec.ts`, ao lado da função real, prova
- * que ela devolve exatamente estes centavos nos 31 dias.
+ * padrão a seguir. `calcularTotais` e o `calculators.golden.spec.ts`, que provava
+ * esta réplica contra a função real, foram apagados em 22/09/2026 (#103 P8): o
+ * painel passou a usar `vendaDoDiaPeloEncerrante`. A réplica fica como registro
+ * da medida do legado.
  */
 function comoOPainel(dia: number, preco: (l: LinhaDeBico) => number): number {
     let total = 0;
