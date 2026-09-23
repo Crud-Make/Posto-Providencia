@@ -24,7 +24,7 @@ import type { ResultAsync } from 'neverthrow';
 import { supabase } from '../../../services/supabase';
 import { urlDaApi, type ErroDaApi } from '../../../services/api/base';
 import { lerDashboardDaApi } from '../../../services/api/dashboard.api';
-import { intervaloDoMes, hojeIso, mesCivil } from '../../../utils/periodo';
+import { mesCivil } from '../../../utils/periodo';
 
 /** Despesa do mês civil pela API: `rateio.despesas_total`, um `Number` só, em centavos. */
 export function lerDespesaDoMes(postoId: number, mesIso: string): ResultAsync<number, ErroDaApi> {
@@ -71,7 +71,9 @@ export const useDespesaDoMesComErro = (postoId: number | null, mesIso: string): 
             };
         }
 
-        const periodo = intervaloDoMes(mesIso, hojeIso());
+        // #103 P9 passo 5b (D1/D2, decisão do dono 22/09/2026): o mês civil inteiro, também no mês
+        // corrente — igual à API. A soma em float segue (fatia própria, com golden).
+        const periodo = mesCivil(mesIso);
 
         void supabase
             .from('Despesa')

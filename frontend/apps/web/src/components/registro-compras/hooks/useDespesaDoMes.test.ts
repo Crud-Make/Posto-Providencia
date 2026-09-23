@@ -121,11 +121,11 @@ describe('useDespesaDoMes — caracterização (#103 P9 passo 1)', () => {
     desmontar();
   });
 
-  it('mês corrente: a janela vai do dia 1 até HOJE (intervaloDoMes), não até o fim do mês', async () => {
+  it('mês corrente: a janela é o MÊS CIVIL inteiro, até 30/09 e não até hoje (D1/D2, decisão do dono 22/09/2026)', async () => {
     const { desmontar } = await montar(7, '2026-09');
 
     expect(estado.consultas[0]?.filtros).toContainEqual(['gte', 'data', '2026-09-01']);
-    expect(estado.consultas[0]?.filtros).toContainEqual(['lte', 'data', '2026-09-22']);
+    expect(estado.consultas[0]?.filtros).toContainEqual(['lte', 'data', '2026-09-30']);
     desmontar();
   });
 
