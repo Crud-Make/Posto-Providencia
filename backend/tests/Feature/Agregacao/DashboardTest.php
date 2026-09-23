@@ -4,11 +4,49 @@ declare(strict_types=1);
 
 use App\Agregacao\Application\DadosDoPeriodo;
 use App\Agregacao\Application\Periodo;
+use App\Compartilhado\Enums\Role;
 use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
+use App\Pessoas\Application\VerificaTokenDoSupabase;
+use App\Pessoas\Domain\Usuario;
 use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
 use function Pest\Laravel\getJson;
+
+/*
+| A rota exige token e `posto.acesso:gerir` (#103; quem alcança o quê está em
+| AcessoAoDashboardTest). Aqui só se prova O QUE o dashboard devolve: toda chamada vai como um
+| Admin, que gere qualquer posto — inclusive o inexistente do 404 e o do 422, que só chegam ao
+| DefinePostoAtual e ao DashboardRequest depois de passar pela porta.
+*/
+
+const SEGREDO_DASHBOARD = 'segredo-de-teste-do-conteudo-do-dashboard';
+
+function b64urlDashboard(string $cru): string
+{
+    return rtrim(strtr(base64_encode($cru), '+/', '-_'), '=');
+}
+
+function tokenDoAdminDoDashboard(): string
+{
+    $sub = 'd0d00000-0000-4000-8000-000000000001';
+    DB::table('auth.users')->insert(['id' => $sub, 'email' => $sub.'@teste.local']);
+    Usuario::query()->where('auth_user_id', $sub)->sole()->forceFill(['role' => Role::Admin, 'ativo' => true])->save();
+
+    $cabecalho = b64urlDashboard((string) json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+    $corpo = b64urlDashboard((string) json_encode(['sub' => $sub, 'aud' => 'authenticated', 'exp' => time() + 3600]));
+
+    return $cabecalho.'.'.$corpo.'.'.b64urlDashboard(hash_hmac('sha256', $cabecalho.'.'.$corpo, SEGREDO_DASHBOARD, binary: true));
+}
+
+beforeEach(function (): void {
+    config(['supabase.jwt_secret' => SEGREDO_DASHBOARD]);
+    app()->forgetInstance(VerificaTokenDoSupabase::class);
+
+    /** @var TestCase $this */
+    $this->withToken(tokenDoAdminDoDashboard());
+});
 
 /**
  * `GET /api/postos/{posto}/dashboard?inicio&fim` contra o Postgres real do compose, em transação

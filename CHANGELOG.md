@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 🔒 O dashboard do proprietário deixa de ser público (#103)
+
+- **`GET /api/postos/{posto}/dashboard` exige token e quem gere o posto.** Saiu do grupo público
+  de `backend/routes/api.php`, onde qualquer um que soubesse o id do posto lia venda, compra,
+  custo e despesa, e entrou no grupo protegido com `posto.acesso:gerir` — como o PUT do fechamento.
+  Decisão do dono em 22/09: custo e despesa são dado de proprietário. Sem token 401; operador
+  vinculado, gerente de outro posto ou vínculo desligado 403; Admin e gerente do posto 200.
+- **O corpo da resposta não mudou.** O `DashboardTest` só ganhou o token (de Admin): nenhum
+  `expect` foi tocado. O `AcessoAoDashboardTest` novo prende os códigos, com canário: devolver a
+  rota ao grupo público deixa 5 casos vermelhos, e trocar `gerir` por `ver` deixa vermelho o do
+  operador.
+- **Produção não muda hoje:** a Vercel não define `VITE_API_URL`, então o painel publicado nem
+  chama esta rota. Para ligá-la em ambiente real, falta vincular `Usuario.auth_user_id` (no
+  compose, o admin já tem).
+- **Fica registrado como fatia própria:** o catálogo (`combustiveis`, `tanques`, `bicos`,
+  `formas-pagamento`, `maquininhas`, `fornecedores`, `frentistas`) continua sem token e expõe
+  `preco_custo`, taxa, CNPJ e telefone. Ver `docs/design/cadastro.md` §Riscos.
+
 ### ⛽ A venda do dia do painel passa a vir do encerrante (#103 P8)
 
 - **`useFechamento` troca a fonte do `total_vendas`:** sai `calcularTotais` (float, quantizado
