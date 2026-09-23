@@ -16,9 +16,15 @@ import {
   encerranteMensal,
   custoMedioCompra,
   despesaOperacionalPorLitro,
+  emCentavos,
   type LeituraDiariaBico,
 } from '@posto/utils';
-import type { BicoComDetalhes } from '../../../types/fechamento';
+import type { DashboardDaApi } from '../../../services/api/dashboard.api';
+
+/** O que o custo precisa de um bico: o combustível dele (id e nome). `BicoComDetalhes` satisfaz. */
+export interface BicoDoCusto {
+  readonly combustivel: { readonly id: number; readonly nome: string };
+}
 
 /** Linha de `Leitura` como o hook a seleciona. Numeric do Postgres pode chegar como string. */
 export interface LinhaLeituraDoMes {
@@ -64,7 +70,7 @@ function litrosDoMes(leituras: readonly LinhaLeituraDoMes[]): number {
 /** Custo médio por produto; todo produto dos bicos aparece, `null` quando não teve compra. */
 function custoPorProduto(
   compras: readonly LinhaCompraDoMes[],
-  bicos: readonly BicoComDetalhes[]
+  bicos: readonly BicoDoCusto[]
 ): Record<string, number | null> {
   const nomeProdutoPorCombustivelId = new Map(bicos.map(b => [b.combustivel.id, b.combustivel.nome]));
 
@@ -96,7 +102,7 @@ export function calculaCustoMensal(
   leituras: readonly LinhaLeituraDoMes[],
   compras: readonly LinhaCompraDoMes[],
   despesas: readonly LinhaDespesaDoMes[],
-  bicos: readonly BicoComDetalhes[]
+  bicos: readonly BicoDoCusto[]
 ): CustoMensal {
   const valoresDespesa = despesas.map(d => Number(d.valor));
   const despesaDoMes = valoresDespesa.reduce((acc, v) => acc + v, 0);
@@ -105,5 +111,45 @@ export function calculaCustoMensal(
     custoMedioPorProduto: custoPorProduto(compras, bicos),
     despesaOperacionalLitro: despesaOperacionalPorLitro(despesaDoMes, litrosDoMes(leituras)),
     temDespesa: valoresDespesa.length > 0,
+  };
+}
+
+/**
+ * O mesmo {@link CustoMensal}, a partir do `GET /api/postos/{posto}/dashboard` do mês civil
+ * (#103 P9 passo 3b, decisões do dono de 22/09/2026).
+ *
+ * Nenhuma fórmula nova: o custo por produto é `custoMedioCompra` sobre a compra somada de cada
+ * produto (`produtos[].compras`), e o rateio é `despesaOperacionalPorLitro` com os litros do
+ * `encerranteMensal` rodado sobre `leituras` — os mesmos litros do caminho Supabase, sem a D5,
+ * porque aqui cada leitura entra com o dia real. `rateio.litros_vendidos` (Σ diário) NÃO é lido: a
+ * D3 decide que os litros do rateio são os do encerrante (memória p9-custo-decisoes-22-09).
+ *
+ * A despesa é UM `Number` do decimal da API, quantizado por `emCentavos` — nunca soma em float.
+ *
+ * @param dash - Resposta da API pedida para o mês civil inteiro (`mesCivil`): o `dia` de cada
+ *               leitura é o dia do mês, então o período não pode atravessar meses.
+ * @param bicos - Bicos do posto; dão o nome do produto de cada `combustivel_id`.
+ */
+export function custoMensalDaApi(dash: DashboardDaApi, bicos: readonly BicoDoCusto[]): CustoMensal {
+  const compras: LinhaCompraDoMes[] = dash.produtos.map(p => ({
+    combustivel_id: p.combustivel_id,
+    quantidade_litros: p.compras.litros,
+    valor_total: p.compras.valor_total,
+  }));
+
+  const diarias: LeituraDiariaBico[] = dash.leituras.map(l => ({
+    dia: Number(l.data.slice(8, 10)),
+    bico: String(l.bico_id),
+    inicial: Number(l.leitura_inicial),
+    fechamento: Number(l.leitura_final),
+    valorDia: null,
+  }));
+
+  const despesaDoMes = emCentavos(Number(dash.rateio.despesas_total));
+
+  return {
+    custoMedioPorProduto: custoPorProduto(compras, bicos),
+    despesaOperacionalLitro: despesaOperacionalPorLitro(despesaDoMes, encerranteMensal(diarias).litros),
+    temDespesa: despesaDoMes !== 0,
   };
 }

@@ -4,8 +4,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { BicoComDetalhes } from '../../../types/fechamento';
+import type { DashboardDaApi } from '../../../services/api/dashboard.api';
 import {
   calculaCustoMensal,
+  custoMensalDaApi,
   type LinhaCompraDoMes,
   type LinhaDespesaDoMes,
   type LinhaLeituraDoMes,
@@ -157,5 +159,62 @@ describe('calculaCustoMensal (#103 P9 passo 2)', () => {
         temDespesa: false,
       });
     });
+  });
+});
+
+describe('custoMensalDaApi (#103 P9 passo 3b)', () => {
+  const DASH_VAZIO: DashboardDaApi = {
+    periodo: { inicio: '2026-01-01', fim: '2026-01-31' },
+    produtos: [],
+    rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-01-31' }, despesas_total: '0.00', litros_vendidos: '0.000' },
+    leituras: [],
+  };
+
+  it('mês sem leitura, sem compra e sem despesa: rateio 0, temDespesa false, todo produto dos bicos em null', () => {
+    const r = custoMensalDaApi(DASH_VAZIO, BICOS);
+
+    expect(r.despesaOperacionalLitro).toBe(0);
+    expect(r.temDespesa).toBe(false);
+    expect(r.custoMedioPorProduto).toEqual({ 'Gasolina Comum': null, 'Diesel S10': null, Etanol: null });
+  });
+
+  it('despesa sem litros no encerrante dá rateio 0, mas temDespesa true', () => {
+    const r = custoMensalDaApi({ ...DASH_VAZIO, rateio: { ...DASH_VAZIO.rateio, despesas_total: '900.00' } }, BICOS);
+
+    expect(r.despesaOperacionalLitro).toBe(0);
+    expect(r.temDespesa).toBe(true);
+  });
+
+  it('usa o salto do encerrante por bico e ignora rateio.litros_vendidos (D3)', () => {
+    const r = custoMensalDaApi(
+      {
+        ...DASH_VAZIO,
+        rateio: { ...DASH_VAZIO.rateio, despesas_total: '900.00', litros_vendidos: '1.000' },
+        leituras: [
+          { bico_id: 1, data: '2026-01-01', leitura_inicial: '1000.000', leitura_final: '1500.000' },
+          // dia 02 faltando: o salto cobre a lacuna (1000 → 2000 = 1000 L), a Σ daria 800 L
+          { bico_id: 1, data: '2026-01-03', leitura_inicial: '1700.000', leitura_final: '2000.000' },
+          { bico_id: 2, data: '2026-01-01', leitura_inicial: '0.000', leitura_final: '800.000' },
+        ],
+      },
+      BICOS
+    );
+
+    expect(r.despesaOperacionalLitro).toBe(900 / 1800);
+  });
+
+  it('compra 0/0 da API (produto sem compra no mês) dá null, nunca 0', () => {
+    const r = custoMensalDaApi(
+      {
+        ...DASH_VAZIO,
+        produtos: [
+          { combustivel_id: 10, produto: 'Gasolina Comum', litros_vendidos: '0.000', receita: '0.00', compras: { litros: '4000.000', valor_total: '23000.00' } },
+          { combustivel_id: 20, produto: 'Diesel S10', litros_vendidos: '0.000', receita: '0.00', compras: { litros: '0.000', valor_total: '0.00' } },
+        ],
+      },
+      BICOS
+    );
+
+    expect(r.custoMedioPorProduto).toEqual({ 'Gasolina Comum': 23000 / 4000, 'Diesel S10': null, Etanol: null });
   });
 });
