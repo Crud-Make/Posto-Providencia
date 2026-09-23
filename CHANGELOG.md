@@ -2,6 +2,30 @@
 
 ## [Não Lançado]
 
+### 💰 O custo do mês do fechamento diário passa a poder vir da API (#103 P9, passos 3–6)
+
+- **`GET /api/postos/{posto}/dashboard` ganha o campo `leituras`** (bico, dia em UTC e os dois
+  encerrantes, em string decimal, em ordem de bico e dia). É aditivo: nenhum campo que já existia
+  mudou de significado. Decisão do dono em 22/09: o salto do encerrante não é reescrito em PHP; o
+  cliente roda o `encerranteMensal` de `@posto/utils` sobre essas linhas.
+- **`useCustoMensal` e `useDespesaDoMes` leem pela API quando `VITE_API_URL` existe**, sempre o
+  mês civil inteiro. Os litros do rateio do custo são os do encerrante (D3): em fevereiro/2026 o
+  rateio cai de R$ 0,6152 para R$ 0,4693 por litro, como na planilha. Nos outros seis meses o
+  número não muda.
+- **Erro não vira zero.** Se a API recusa (inclusive o 403 de quem só pode ver o posto), o custo
+  fica indisponível e a aba Gestão de Bicos mostra "—" no lucro e na margem; a despesa da tela de
+  compras segura o último valor bom e registra o erro.
+- **Sem a API (produção hoje), compra e despesa passam ao mês civil inteiro**, também no mês
+  corrente (D1/D2). O hook marca o rateio do mês corrente como `provisorio`; a tela ainda não mostra
+  essa marca.
+- **Golden novo:** `custo-mensal.golden.spec.ts` prova, de janeiro a julho, que o caminho da API,
+  o caminho Supabase e a planilha dão o mesmo custo e o mesmo rateio, com igualdade exata e
+  canários. `test:golden` passa de 3499 para 3536, 0 fail; nenhum golden existente foi tocado.
+- **Fica para fatias próprias:** a D5 e a soma da despesa em float no caminho Supabase; o
+  `useCombustiveisHibridos.ts:141`, que ainda corta o mês em hoje; as consultas de `Despesa`
+  copiadas em outras telas; e alinhar a Visão do Proprietário, que continua rateando pela Σ dos
+  dias.
+
 ### 🔒 O dashboard do proprietário deixa de ser público (#103)
 
 - **`GET /api/postos/{posto}/dashboard` exige token e quem gere o posto.** Saiu do grupo público

@@ -195,9 +195,24 @@ Bearer desde a P5, e 401/403 da API viram `FETCH_ERROR` sem cair no Supabase
     "mes_civil": { "inicio": "2026-01-01", "fim": "2026-01-31" },
     "despesas_total": "22158.46",
     "litros_vendidos": "45678.901"
-  }
+  },
+  "leituras": [
+    { "bico_id": 1, "data": "2026-01-01", "leitura_inicial": "1716778.963", "leitura_final": "1717451.532" }
+  ]
 }
 ```
+
+**`leituras` — campo aditivo da #103 P9 (decisão do dono, 22/09/2026, Q1 opção a).** As linhas cruas
+de `Leitura` do PERÍODO EXATO (`bico_id`, dia em UTC, os dois encerrantes em string de escala 3), em
+ordem de bico, dia e id (`DadosDoPeriodo::leituras()`). Existe para o cliente rodar `encerranteMensal`
+(`packages/utils/src/encerrante-mensal.ts`) sobre os litros do rateio do custo do mês do fechamento
+diário (`custoMensalDaApi`, D3: litros pelo salto do encerrante). O servidor **não** calcula o salto:
+seria uma segunda cópia da regra (DECISÃO 1). **Nenhum campo existente mudou de significado:**
+`rateio.litros_vendidos` e `produtos[].litros_vendidos` continuam sendo Σ `Leitura.litros_vendidos`,
+e a Visão do Proprietário continua usando essa Σ (em fevereiro/2026 ela rateia a 0,6152 R$/L e o
+fechamento diário, pelo encerrante, a 0,4693 — divergência registrada, alinhar é fatia própria). Presos
+em `DashboardTest` (bloco `leituras`: forma, isolamento por posto, ordem com linhas gravadas fora de
+ordem, período vazio), com canários.
 
 Não existe `despesas_total` na raiz: o bloco `rateio` cola a janela, a despesa e os litros no mesmo
 lugar, para que nenhum cliente divida despesa de um mês por litros de um período (o campo solto
@@ -246,6 +261,7 @@ convidava a isso; `DashboardTest` afirma a ausência).
 | `rateio.litros_vendidos` | `Leitura` do mês inteiro, sem filtro de combustível → `totalLitros` | `Number()` → `rateio.litros` | `despesaOperacionalPorLitro`, 2º argumento |
 | `rateio.mes_civil` | `mesCivil(dataInicio)` — só o mês de `inicio` | `janelaDoRateio` → `kpis.janelaDoRateio` → legenda do card "Lucro Estimado" | — (`Periodo::mesCivil()`, `Periodo.php`) |
 | `produtos[].produto` | `bico.combustivel.nome` | `fuelData[].name` | — |
+| `leituras[]` (#103 P9) | não lê — o dashboard do proprietário rateia por `rateio.litros_vendidos` | não lê; quem lê é `custoMensalDaApi` (`fechamento-diario/hooks/custo-mensal.ts`), via `lerCustoDoMes` | `encerranteMensal` → `despesaOperacionalPorLitro`, 2º argumento (D3) |
 
 **Fatia 2 — decisões registradas (18/09/2026):**
 
