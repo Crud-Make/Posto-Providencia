@@ -55,7 +55,7 @@ vi.mock('../../../services/supabase', () => {
   return { supabase: { from } };
 });
 
-import { useDespesaDoMes } from './useDespesaDoMes';
+import { useDespesaDoMes, useDespesaDoMesComErro } from './useDespesaDoMes';
 
 /** Harness mínimo para exercitar um hook fora do @testing-library (não instalado neste projeto). */
 function renderHook<T>(useHookFn: () => T) {
@@ -76,6 +76,7 @@ function renderHook<T>(useHookFn: () => T) {
   });
   return {
     result: resultRef,
+    rerender: () => root.render(React.createElement(TestComponent)),
     desmontar: () => act(() => root.unmount()),
   };
 }
@@ -99,11 +100,15 @@ describe('useDespesaDoMes — caracterização (#103 P9 passo 1)', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     // Hoje = 22/09/2026, meio-dia local.
     vi.setSystemTime(new Date(2026, 8, 22, 12, 0, 0));
+    // #103 P9 passo 5a: sem API configurada o hook segue no Supabase. O `apps/web/.env` local
+    // define VITE_API_URL, então a caracterização do caminho Supabase precisa desligá-la.
+    vi.stubEnv('VITE_API_URL', '');
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it('lê só a coluna valor da Despesa, com posto_id filtrado', async () => {
@@ -177,5 +182,102 @@ describe('useDespesaDoMes — caracterização (#103 P9 passo 1)', () => {
       expect(erroNoConsole).toHaveBeenCalledWith('[Compras] Falha ao ler a despesa do mês:', 'permission denied');
       desmontar();
     });
+  });
+});
+
+/**
+ * #103 P9 passo 5a: com VITE_API_URL a despesa é `rateio.despesas_total` do `/dashboard` do MÊS
+ * CIVIL, um `Number` só, em centavos. Erro segura o último valor bom e fica exposto (decisão do
+ * dono, 22/09/2026).
+ */
+describe('useDespesaDoMes — pela API Laravel (#103 P9 passo 5a)', () => {
+  function dashboard(despesasTotal: string, mes = '09', fim = '30') {
+    return {
+      periodo: { inicio: `2026-${mes}-01`, fim: `2026-${mes}-${fim}` },
+      produtos: [],
+      rateio: { mes_civil: { inicio: `2026-${mes}-01`, fim: `2026-${mes}-${fim}` }, despesas_total: despesasTotal, litros_vendidos: '1234.000' },
+      leituras: [],
+    };
+  }
+
+  function responderApi(...respostas: { corpo: unknown; status: number }[]): void {
+    const fila = [...respostas];
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      const r = fila.length > 1 ? fila.shift() : fila[0];
+      return new Response(JSON.stringify(r?.corpo), { status: r?.status ?? 500 });
+    }));
+  }
+
+  beforeEach(() => {
+    estado.consultas.length = 0;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 22, 12, 0, 0));
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('lê o /dashboard do posto no MÊS CIVIL inteiro e não consulta o Supabase', async () => {
+    responderApi({ corpo: dashboard('22158.46'), status: 200 });
+
+    const { result, desmontar } = await montar(7, '2026-09');
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:8000/api/postos/7/dashboard?inicio=2026-09-01&fim=2026-09-30',
+      expect.anything()
+    );
+    expect(estado.consultas).toHaveLength(0);
+    expect(result.current).toBe(22158.46);
+    desmontar();
+  });
+
+  it('é rateio.despesas_total quantizado por emCentavos — não os litros, e sem resíduo de float', async () => {
+    responderApi({ corpo: dashboard('0.30000000000000004'), status: 200 });
+
+    const { result, desmontar } = await montar(7, '2026-09');
+
+    expect(result.current).toBe(0.3);
+    desmontar();
+  });
+
+  it('erro na primeira leitura: devolve 0 (nada lido ainda), mas o erro fica exposto e vai ao console', async () => {
+    const erroNoConsole = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    responderApi({ corpo: { message: 'Forbidden' }, status: 403 });
+
+    const hook = renderHook(() => useDespesaDoMesComErro(7, '2026-09'));
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(hook.result.current).toEqual({ despesa: 0, erro: { tipo: 'http', status: 403 } });
+    expect(erroNoConsole).toHaveBeenCalled();
+    hook.desmontar();
+  });
+
+  it('erro depois de um valor bom: segura o último valor bom, NUNCA vira 0, e expõe o erro', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    responderApi({ corpo: dashboard('900.00'), status: 200 }, { corpo: { message: 'Forbidden' }, status: 403 });
+
+    let mes = '2026-09';
+    const hook = renderHook(() => useDespesaDoMesComErro(7, mes));
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(hook.result.current).toEqual({ despesa: 900, erro: null });
+
+    mes = '2026-08';
+    await act(async () => {
+      hook.rerender();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    expect(hook.result.current.despesa).toBe(900);
+    expect(hook.result.current.erro).toEqual({ tipo: 'http', status: 403 });
+    hook.desmontar();
   });
 });

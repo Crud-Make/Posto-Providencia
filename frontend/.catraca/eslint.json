@@ -123,7 +123,6 @@
   "apps/web/src/components/registro-compras/HeaderRegistroCompras.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts|@typescript-eslint/strict-boolean-expressions": 2,
-  "apps/web/src/components/registro-compras/hooks/useDespesaDoMes.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/registro-compras/hooks/usePersistenciaFormulario.ts|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts|@typescript-eslint/strict-boolean-expressions": 5,
   "apps/web/src/components/registro-compras/index.tsx|@typescript-eslint/no-floating-promises": 1,
