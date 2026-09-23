@@ -2,13 +2,16 @@ import React from 'react';
 import { Save as SaveIcon, Loader2 } from 'lucide-react';
 
 interface FooterAcoesProps {
-    totalVendas: number;
+    /** Venda do dia pelo encerrante — `null` = dia NÃO apurado (menos bicos lidos que ativos). */
+    totalVendas: number | null;
     totalFrentistas: number;
     diferenca: number;
     saving: boolean;
     podeFechar: boolean;
     handleSave: () => void;
 }
+
+const reais = (valor: number): string => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export const FooterAcoes: React.FC<FooterAcoesProps> = ({
     totalVendas,
@@ -33,7 +36,8 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                     <div className="bg-slate-800/50 px-3 py-1 rounded-lg border border-slate-700/50">
                         <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Vendas (Bomba)</p>
                         <p className="text-base font-bold text-blue-400 font-mono">
-                            {totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {/* Dia não apurado não tem número: '—', não "R$ 0,00" (22/09/2026, #103 P8). */}
+                            {totalVendas === null ? '—' : reais(totalVendas)}
                         </p>
                     </div>
                     <div className="bg-slate-800/50 px-3 py-1 rounded-lg border border-slate-700/50">
@@ -44,7 +48,7 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                             em 16/08/2026, a cor tinha de virar junto — senão
                             falta apareceria em verde. */}
                         <p className={`text-base font-bold font-mono ${diferenca > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                            {totalFrentistas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {reais(totalFrentistas)}
                         </p>
                     </div>
                     {/* Três estados, não dois — e o terceiro custou um susto real.
@@ -54,6 +58,11 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                         "✓ Bateu" num dia que ninguém tinha conferido. Zero de venda com
                         caixa recebido não é dia fechado — é dia sem encerrante, e tem de
                         dizer isso.
+
+                        Desde 22/09/2026 (#103 P8) "sem encerrante" é um valor próprio,
+                        `totalVendas === null`, e não mais `< 0,005`: `null < 0.005` é
+                        `true` por coerção, e a guarda antiga passaria calada. Com isso um
+                        `0` real (apurou e deu zero) deixa de virar "sem encerrante".
 
                         Meio centavo de tolerância no "bateu": a diferença chega como
                         float, e um -0,000001 de arredondamento viraria "-R$ 0,00". */}
@@ -68,7 +77,7 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                         // "✓ Bateu" (0 − 0 = 0). Os dois casos foram vistos ao vivo em
                         // 19/08/2026, com o dono olhando a tela. A condição é só uma: sem
                         // `totalVendas`, não existe conferência.
-                        const semEncerrante = totalVendas < 0.005;
+                        const semEncerrante = totalVendas === null;
                         const diaVazio = semEncerrante && totalFrentistas < 0.005;
                         const bateu = !semEncerrante && Math.abs(diferenca) < 0.005;
 
@@ -84,7 +93,7 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                                 ? 'sem encerrante'
                                 : bateu
                                     ? '✓ Bateu'
-                                    : diferenca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                    : reais(diferenca);
                         const rodape = diaVazio
                             ? 'nem leitura de bomba nem caixa de frentista neste dia'
                             : semEncerrante

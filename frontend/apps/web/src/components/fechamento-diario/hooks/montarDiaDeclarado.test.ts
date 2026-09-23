@@ -205,6 +205,17 @@ describe('totais (I1 e I8)', () => {
         expect(montado.totais).toEqual({ total_vendas: null, total_recebido: '600.00', diferenca: null });
     });
 
+    it('I8: a FONTE diz não apurado (totalVendas null) → o par vai null, mesmo com podeFechar true e leitura declarada', () => {
+        // Desde 22/09/2026 (#103 P8) `totalVendas` vem de `vendaDoDiaPeloEncerrante`, que devolve
+        // `null` quando há menos bicos lidos que ativos. Aqui há um bico lido (3) e outro sem
+        // leitura (4): a leitura declarada existe, `podeFechar` é true, e mesmo assim não há
+        // apuração — a guarda por `leiturasDeclaradasNoDia === 0` sozinha deixaria passar `0`.
+        const montado = montarDiaDeclarado(dia({ bicos: [bico(3, 2, 6), bico(4, 2, 6)], totalVendas: null }));
+
+        expect(montado.leituras.map((l) => l.bico_id)).toEqual([3]);
+        expect(montado.totais).toEqual({ total_vendas: null, total_recebido: '600.00', diferenca: null });
+    });
+
     it('I8: só leitura-base (nenhuma leitura declarada) é dia não apurado — o par vai null mesmo com podeFechar true', () => {
         // O painel hoje grava 0 aqui (defeito 3 da memória salvar-o-dia-apaga-leitura-base); o
         // api-core grava null (encerrante.ts:632,646). null é "ninguém apurou"; 0 é "apurou e deu zero".

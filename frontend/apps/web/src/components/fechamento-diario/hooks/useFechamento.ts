@@ -13,12 +13,12 @@ import { useMemo } from 'react';
 import type { BicoComDetalhes, SessaoFrentista, EntradaPagamento } from '../../../types/fechamento';
 import {
   agruparPorCombustivel,
-  calcularTotais,
   calcularPercentual,
   validarLeitura,
   type SumarioCombustivel
 } from '../../../utils/calculators';
-import { analisarValor } from '../../../utils/formatters';
+import { analisarValor, formatarParaBR } from '../../../utils/formatters';
+import { vendaDoDiaPeloEncerrante } from '../../../utils/venda-do-dia';
 import { conferido, diferenca as diferencaCanonica } from '@posto/utils';
 import {
   meiosDaSessao,
@@ -35,7 +35,8 @@ interface RetornoFechamento {
 
   // Totais
   totalLitros: number;
-  totalVendas: number;
+  /** Venda do dia pelo ENCERRANTE, quantizada — ou `null` = dia não apurado (I8, #103 P8). */
+  totalVendas: number | null;
   totalFrentistas: number;
   totalPagamentos: number;
 
@@ -95,10 +96,12 @@ export const useFechamento = (
   }, [bicos, leituras]);
 
   /**
-   * Totais calculados de leituras (litros e vendas)
+   * Totais das leituras (litros e venda) PELO ENCERRANTE — a única fonte do
+   * `total_vendas` do painel desde 22/09/2026 (#103 P8, Design Doc §7 d).
+   * `totalVendas` é `null` quando há menos bicos lidos que bicos ativos.
    */
   const totaisLeituras = useMemo(() => {
-    return calcularTotais(bicos, leituras);
+    return vendaDoDiaPeloEncerrante(bicos, leituras);
   }, [bicos, leituras]);
 
   /**
@@ -134,27 +137,37 @@ export const useFechamento = (
    *          Agora chama o módulo, em vez de repetir a conta: era a quarta
    *          reimplementação da mesma aritmética no painel.
    *
-   *          O que está coberto, e por quem (corrigido em 20/09/2026 — a linha
-   *          anterior afirmava cobertura que não existia para o caminho inteiro):
-   *          - a SUBTRAÇÃO (`diferencaCanonica`, sinal) → `totais-do-dia.golden.spec.ts`;
-   *          - a ENTRADA `totaisLeituras.valor` (`calcularTotais`) → `utils/calculators.golden.spec.ts`,
-   *            que mede o que ela vale contra o encerrante: recalcula `litros × preco_venda`
-   *            de HOJE, e reabrir janeiro/2026 soma R$ 23.784,61 A MAIS no mês. Pelo §7 (d)
-   *            do Design Doc `fechamento-diario-api.md`, vale o encerrante
-   *            (`totalVendasDoEncerrante`, em `@posto/utils`); a troca é a fatia seguinte,
-   *            com esse golden verde antes e depois.
+   *          O que está coberto, e por quem (atualizado em 22/09/2026, quando a
+   *          fonte do `total_vendas` trocou — #103 P8):
+   *          - a SUBTRAÇÃO (`diferencaCanonica`, sinal) → `totais-do-dia.golden.spec.ts`
+   *            e os 4 casos de sinal de `useFechamento.test.ts`;
+   *          - a ENTRADA `totaisLeituras.totalVendas` (`vendaDoDiaPeloEncerrante`) →
+   *            `utils/venda-do-dia.golden.spec.ts`, 31 dias reais de janeiro/2026: ao preço
+   *            do dia reproduz a planilha a 1 centavo, já sai quantizada, e é o MESMO número
+   *            de `totalVendasDoEncerrante` (`@posto/utils`). Até 22/09 a entrada era
+   *            `calcularTotais` (float, quantizado tarde); pelo §7 (d) do Design Doc
+   *            `fechamento-diario-api.md` vale o encerrante, e a troca foi feita aqui.
+   *          O que NÃO mudou: a entrada continua sendo `bico.combustivel.preco_venda`.
+   *          A divergência de R$ 23.784,61 de janeiro é de PREÇO, e está medida no
+   *          golden novo (asserção e) e no Design Doc — esta troca não a apaga.
+   *
+   *          Sem venda apurada (`totalVendas === null`) não há termo de comparação: a
+   *          diferença fica 0, que é o valor que a tela já trata como "sem conferência"
+   *          (`FooterAcoes.tsx`, que decide o estado por `=== null`, não por `0`).
    *          Não altere sem rodar `bun run test:golden`.
    */
   const diferenca = useMemo(() => {
-    return diferencaCanonica(totaisLeituras.valor, totalFrentistas);
-  }, [totalFrentistas, totaisLeituras.valor]);
+    const { totalVendas } = totaisLeituras;
+    return totalVendas === null ? 0 : diferencaCanonica(totalVendas, totalFrentistas);
+  }, [totalFrentistas, totaisLeituras]);
 
   /**
    * Diferença em percentual em relação ao total de vendas
    */
   const diferencaPercentual = useMemo(() => {
-    return calcularPercentual(Math.abs(diferenca), totaisLeituras.valor);
-  }, [diferenca, totaisLeituras.valor]);
+    const { totalVendas } = totaisLeituras;
+    return totalVendas === null ? 0 : calcularPercentual(Math.abs(diferenca), totalVendas);
+  }, [diferenca, totaisLeituras]);
 
   /**
    * Total de taxas de pagamento
@@ -230,8 +243,9 @@ export const useFechamento = (
       });
 
     return {
-      totalLitros: totaisLeituras.litrosExibicao,
-      totalVendas: formatarReais(totaisLeituras.valor),
+      totalLitros: formatarParaBR(totaisLeituras.totalLitros, 3),
+      // Dia não apurado não tem número para mostrar: '—', não "R$ 0,00".
+      totalVendas: totaisLeituras.totalVendas === null ? '—' : formatarReais(totaisLeituras.totalVendas),
       totalFrentistas: formatarReais(totalFrentistas),
       diferenca: formatarReais(diferenca),
       totalTaxas: formatarReais(totalTaxas),
@@ -244,8 +258,8 @@ export const useFechamento = (
     sumarioPorCombustivel,
 
     // Totais
-    totalLitros: totaisLeituras.litros,
-    totalVendas: totaisLeituras.valor,
+    totalLitros: totaisLeituras.totalLitros,
+    totalVendas: totaisLeituras.totalVendas,
     totalFrentistas,
     totalPagamentos,
 

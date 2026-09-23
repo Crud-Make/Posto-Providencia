@@ -38,8 +38,12 @@ export interface DiaNaTela {
     readonly leituras: Readonly<Record<number, { inicial: string; fechamento: string }>>;
     readonly sessoesFrentistas: readonly SessaoFrentista[];
     readonly payments: readonly EntradaPagamento[];
-    /** Venda do dia como a tela a calcula hoje (até a P8 trocar a fonte para o encerrante). */
-    readonly totalVendas: number;
+    /**
+     * Venda do dia pelo ENCERRANTE (`vendaDoDiaPeloEncerrante`, #103 P8, 22/09/2026) — `null`
+     * = dia não apurado: menos bicos lidos que bicos ativos. Aqui, `null` manda o par
+     * `total_vendas`/`diferenca` nulo pela FONTE, não só pela guarda de `podeFechar` (I8).
+     */
+    readonly totalVendas: number | null;
     /** Soma do `conferido` das sessões, como a tela a calcula. */
     readonly totalFrentistas: number;
     readonly podeFechar: boolean;
@@ -131,7 +135,9 @@ function totaisDeclarados(dia: DiaNaTela, leiturasDeclaradasNoDia: number): DiaD
     const totalRecebido = emCentavos(dia.totalFrentistas);
 
     // I8: sem encerrante declarado não há apuração — o par vai null, nunca 0 (`encerrante.ts:646`).
-    if (!dia.podeFechar || leiturasDeclaradasNoDia === 0) {
+    // Desde 22/09/2026 a própria FONTE diz "não apurado" (`dia.totalVendas === null`, quando
+    // há menos bicos lidos que ativos); as duas guardas anteriores continuam por cima.
+    if (!dia.podeFechar || leiturasDeclaradasNoDia === 0 || dia.totalVendas === null) {
         return { total_vendas: null, total_recebido: totalRecebido.toFixed(2), diferenca: null };
     }
 

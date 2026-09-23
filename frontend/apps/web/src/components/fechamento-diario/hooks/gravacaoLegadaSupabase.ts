@@ -9,9 +9,10 @@
  * #105 desligar este caminho, este arquivo some inteiro — junto com o override de complexidade
  * que ele carrega em `.oxlintrc.json`.
  *
- * Os defeitos conhecidos deste caminho (apagar a leitura-base, apagar envio tardio, gravar 0 em
- * vez de null, descontar o Estoque sem devolver) estão anotados inline e continuam aqui de
- * propósito: quem os conserta é o `PUT /fechamento` da API, não este arquivo.
+ * Os defeitos conhecidos deste caminho (apagar a leitura-base, apagar envio tardio, descontar o
+ * Estoque sem devolver) estão anotados inline e continuam aqui de propósito: quem os conserta é
+ * o `PUT /fechamento` da API, não este arquivo. O "gravar 0 em vez de null" em `total_vendas`
+ * morreu em 22/09/2026 (#103 P8) por consequência do tipo da fonte — ver o passo 5.
  *
  * Única mudança em relação ao original: três expressões booleanas ficaram explícitas (`:152`,
  * `:156`, `:157`) para o arquivo novo não nascer com dívida de `strict-boolean-expressions`.
@@ -218,13 +219,16 @@ export async function gravarPeloSupabase(params: ParametrosDaGravacao, postoAtiv
    // 5. Atualizar Status do Fechamento
    const updateRes = await fechamentoService.update(fechamento.id, {
       status: 'FECHADO',
-      // 🔴 DEFEITO CONHECIDO (20/09/2026, não corrigido aqui): grava SEMPRE um número.
-      // Sem encerrante, `calcularTotais` devolve 0, e o dia não apurado fica com a cara
-      // do dia que bateu certo. O resto do sistema grava NULL nesse caso —
-      // `fechamento.service.ts:163-167` e `api-core/encerrante.ts:620,644-645` —, que é
-      // a invariante I8 da migration `20260904_fechamento_nao_apurado_e_nulo.sql`.
-      // `null` é "ninguém apurou"; `0` é "apurou e deu zero", afirmação que ninguém fez.
-      // Consertado no caminho da API (`montarDiaDeclarado` manda null), não aqui.
+      // Até 22/09/2026 gravava SEMPRE um número: sem encerrante, `calcularTotais` devolvia
+      // 0, e o dia não apurado ficava com a cara do dia que bateu certo. CORRIGIDO em
+      // 22/09/2026 (#103 P8) por consequência do tipo, não por remendo: a fonte passou a ser
+      // `vendaDoDiaPeloEncerrante`, que devolve `null` quando há menos bicos lidos que ativos,
+      // e `null` chega aqui e vai para a coluna (que aceita NULL pela migration
+      // `20260904_fechamento_nao_apurado_e_nulo.sql`) — o mesmo que `fechamento.service.ts:166`
+      // e `api-core/encerrante.ts` já gravavam. `null` é "ninguém apurou"; `0` é "apurou e deu
+      // zero". Decisão do dono em 21/09/2026: aceitar o `null` aqui, sem `?? 0`.
+      // O que este caminho ainda NÃO faz: `diferenca` abaixo continua 0 no dia não apurado
+      // (o par inteiro só vai nulo no caminho da API, `montarDiaDeclarado.ts`).
       total_vendas: totalVendas,
       total_recebido: totalFrentistas,
       diferenca: diferenca,

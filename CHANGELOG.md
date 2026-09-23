@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### ⛽ A venda do dia do painel passa a vir do encerrante (#103 P8)
+
+- **`useFechamento` troca a fonte do `total_vendas`:** sai `calcularTotais` (float, quantizado
+  tarde) e entra `vendaDoDiaPeloEncerrante`, a mesma conta de `totalVendasDoEncerrante` e provada
+  pelo `venda-do-dia.golden.spec.ts` contra janeiro/2026 (Design Doc §7 d).
+- **Dia não apurado vira `null`, não `0`.** Com menos bicos lidos que ativos, a tela mostra `—`, o
+  rodapé decide "sem encerrante" por `totalVendas === null` (antes `< 0,005`, que com `null`
+  passaria calado por coerção) e um `0` real deixa de parecer "sem encerrante".
+- **A gravação legada pelo Supabase passa a gravar `null` em `total_vendas` no dia não apurado**
+  (decisão do dono em 21/09), igual ao que `fechamento.service.ts` e o `api-core` já gravavam. A
+  `diferenca` desse caminho segue 0; o par inteiro só vai nulo pela API (`montarDiaDeclarado`).
+- Canários novos: dois bicos ativos com uma leitura só dá `null` no hook e no payload da API.
+
 ### ✍️ A escrita existe — o fechamento diário grava pela API, e é a primeira tela completa (#103 P10/P11)
 
 - **O painel deixa de conversar com o banco em 8 idas soltas e passa a mandar UM pedido.** A
