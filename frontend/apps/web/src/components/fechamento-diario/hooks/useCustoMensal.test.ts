@@ -135,10 +135,14 @@ describe('useCustoMensal — caracterização (#103 P9 passo 1)', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     // Hoje = 22/09/2026, meio-dia local.
     vi.setSystemTime(new Date(2026, 8, 22, 12, 0, 0));
+    // #103 P9 passo 4a: sem API configurada o hook segue no Supabase. O `apps/web/.env` local
+    // define VITE_API_URL, então a caracterização do caminho Supabase precisa desligá-la.
+    vi.stubEnv('VITE_API_URL', '');
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   describe('consultas ao Supabase', () => {
@@ -186,6 +190,8 @@ describe('useCustoMensal — caracterização (#103 P9 passo 1)', () => {
         despesaOperacionalLitro: 0,
         temDespesa: false,
         carregando: false,
+        // campo novo do passo 4a: no caminho Supabase é sempre null
+        erro: null,
       });
       a.desmontar();
       b.desmontar();
@@ -363,8 +369,118 @@ describe('useCustoMensal — caracterização (#103 P9 passo 1)', () => {
         despesaOperacionalLitro: 0,
         temDespesa: false,
         carregando: false,
+        // campo novo do passo 4a: no caminho Supabase é sempre null
+        erro: null,
       });
       desmontar();
     });
+  });
+});
+
+/**
+ * #103 P9 passo 4a: com VITE_API_URL o custo vem do `/dashboard` do MÊS CIVIL. Erro vira custo
+ * indisponível (todo produto null, nunca 0), sem cair para o Supabase — decisão do dono 22/09 (Q3).
+ */
+describe('useCustoMensal — pela API Laravel (#103 P9 passo 4a)', () => {
+  const RESPOSTA = {
+    periodo: { inicio: '2026-09-01', fim: '2026-09-30' },
+    produtos: [
+      { combustivel_id: 10, produto: 'Gasolina Comum', litros_vendidos: '0.000', receita: '0.00', compras: { litros: '4000.000', valor_total: '23000.00' } },
+      { combustivel_id: 20, produto: 'Diesel S10', litros_vendidos: '0.000', receita: '0.00', compras: { litros: '0.000', valor_total: '0.00' } },
+    ],
+    rateio: { mes_civil: { inicio: '2026-09-01', fim: '2026-09-30' }, despesas_total: '900.00', litros_vendidos: '1.000' },
+    leituras: [
+      { bico_id: 1, data: '2026-09-01', leitura_inicial: '1000.000', leitura_final: '1500.000' },
+      { bico_id: 1, data: '2026-09-03', leitura_inicial: '1700.000', leitura_final: '2000.000' },
+      { bico_id: 3, data: '2026-09-01', leitura_inicial: '0.000', leitura_final: '800.000' },
+    ],
+  };
+
+  function responderApi(corpo: unknown, status = 200): void {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(corpo), { status })));
+  }
+
+  beforeEach(() => {
+    estado.consultas.length = 0;
+    estado.respostas = {};
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 22, 12, 0, 0));
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('lê o /dashboard do posto no MÊS CIVIL inteiro (mesmo no mês corrente) e não consulta o Supabase', async () => {
+    responderApi(RESPOSTA);
+
+    const { desmontar } = await montar(7, '2026-09-15');
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:8000/api/postos/7/dashboard?inicio=2026-09-01&fim=2026-09-30',
+      expect.anything()
+    );
+    expect(estado.consultas).toHaveLength(0);
+    desmontar();
+  });
+
+  it('sucesso: custo por produto e rateio pelo encerrante das leituras (não pela Σ), sem erro', async () => {
+    responderApi(RESPOSTA);
+
+    const { result, desmontar } = await montar(7, '2026-09-15');
+
+    expect(result.current).toEqual({
+      custoMedioPorProduto: { 'Gasolina Comum': 23000 / 4000, 'Diesel S10': null, Etanol: null },
+      // salto: bico 1 = 2000 − 1000, bico 3 = 800 → 1800 L; rateio.litros_vendidos (1 L) não é lido
+      despesaOperacionalLitro: 900 / 1800,
+      temDespesa: true,
+      carregando: false,
+      erro: null,
+    });
+    desmontar();
+  });
+
+  it('403 (quem só tem ver): custo indisponível — todo produto null, NUNCA 0 — com o erro exposto e sem Supabase', async () => {
+    responderApi({ message: 'Forbidden' }, 403);
+
+    const { result, desmontar } = await montar(7, '2026-09-15');
+
+    expect(result.current.custoMedioPorProduto).toEqual({ 'Gasolina Comum': null, 'Diesel S10': null, Etanol: null });
+    expect(Object.values(result.current.custoMedioPorProduto)).not.toContain(0);
+    expect(result.current.erro).toEqual({ tipo: 'http', status: 403 });
+    expect(result.current.carregando).toBe(false);
+    expect(estado.consultas).toHaveLength(0);
+    expect(console.error).toHaveBeenCalled();
+    desmontar();
+  });
+
+  it('resposta fora do contrato também vira custo indisponível, não número', async () => {
+    responderApi({ ...RESPOSTA, rateio: { ...RESPOSTA.rateio, despesas_total: 900 } });
+
+    const { result, desmontar } = await montar(7, '2026-09-15');
+
+    expect(result.current.erro?.tipo).toBe('formato');
+    expect(result.current.custoMedioPorProduto).toEqual({ 'Gasolina Comum': null, 'Diesel S10': null, Etanol: null });
+    desmontar();
+  });
+
+  it('resposta que chega depois de desmontar não é aplicada (flag ativo)', async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(r => { soltar = r; })));
+
+    const { result, desmontar } = await montar(7, '2026-09-15');
+    expect(result.current.carregando).toBe(true);
+    desmontar();
+
+    await act(async () => {
+      soltar(new Response(JSON.stringify(RESPOSTA), { status: 200 }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(result.current.custoMedioPorProduto).toEqual({});
   });
 });

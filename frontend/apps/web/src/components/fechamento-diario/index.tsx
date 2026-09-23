@@ -74,7 +74,7 @@ const TelaFechamentoDiario: React.FC = () => {
    // --- Hooks de Dados e Lógica (Refatorados) ---
    const { bicos, frentistas, carregando: loadingDados, carregarDados, updateBicoPrice } = useCarregamentoDados(postoAtivoId, selectedDate);
 
-   const { custoMedioPorProduto, despesaOperacionalLitro } = useCustoMensal(postoAtivoId, selectedDate, bicos);
+   const { custoMedioPorProduto, despesaOperacionalLitro, erro: erroDoCusto } = useCustoMensal(postoAtivoId, selectedDate, bicos);
 
    const {
       leituras, carregando: loadingLeituras, carregarLeituras,
@@ -298,6 +298,7 @@ const TelaFechamentoDiario: React.FC = () => {
                      leituras={leituras}
                      custoMedioPorProduto={custoMedioPorProduto}
                      despesaOperacionalLitro={despesaOperacionalLitro}
+                     custoIndisponivel={erroDoCusto !== null}
                      loading={loading}
                   />
                )}
