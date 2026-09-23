@@ -150,6 +150,8 @@ describe('aggregatorService.fetchDashboardData — paridade Supabase × API dent
             { combustivel_id: 1, produto: 'Gasolina Comum', litros_vendidos: '1500.000', receita: '9000.00', compras: { litros: '2000.000', valor_total: '10000.00' } },
         ],
         rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-01-31' }, despesas_total: '900.00', litros_vendidos: '1800.000' },
+        // Aditivo da #103 P9: o dashboard do proprietário não lê as leituras cruas.
+        leituras: [],
     };
 
     const LUCRO_ESPERADO = 900;
@@ -431,6 +433,7 @@ describe('aggregatorService.fetchDashboardData — uma leva só de consultas', (
             periodo: { inicio: '2026-01-15', fim: '2026-01-15' },
             produtos: [],
             rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-01-31' }, despesas_total: '0.00', litros_vendidos: '0.000' },
+            leituras: [],
         }), { status: 200 }));
         cadastro.resolver(ok([GASOLINA_COMUM, ETANOL]));
         estoque.resolver(ok(ESTOQUE));
