@@ -9,7 +9,6 @@ use App\Compartilhado\PostoAtual;
 use App\Estoque\Application\DescontaLitrosVendidos;
 use App\Estoque\Domain\Estoque;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Event;
 
 function descontar(LeiturasDoDiaGravadas $evento): void
@@ -70,8 +69,6 @@ it('DEFEITO ACEITO: regravar o dia desconta DE NOVO, pelo total inteiro', functi
 it('só desconta do posto atual — o estoque do vizinho não se mexe', function (): void {
     $meu = Posto::factory()->create();
     $alheio = Posto::factory()->create();
-    // Combustíveis DIFERENTES por posto: `Estoque` tem UNIQUE (combustivel_id) sem posto_id, e
-    // o mesmo combustível nos dois postos é recusado pelo banco. Ver o teste seguinte.
     $meuComb = Combustivel::factory()->create(['posto_id' => $meu->id]);
     $combAlheio = Combustivel::factory()->create(['posto_id' => $alheio->id]);
     $meuEstoque = Estoque::factory()->create(['posto_id' => $meu->id, 'combustivel_id' => $meuComb->id, 'quantidade_atual' => '1000.000']);
@@ -85,24 +82,22 @@ it('só desconta do posto atual — o estoque do vizinho não se mexe', function
         ->and($doVizinho->refresh()->quantidade_atual)->toBe('1000.000');
 });
 
-it('🔴 BLOQUEIO DE MULTI-TENANT: dois postos não podem ter estoque do mesmo combustível', function (): void {
-    // Achado em 20/09/2026 ao escrever o teste acima. `Estoque` tem UNIQUE (combustivel_id) SEM
-    // posto_id (`Estoque_combustivel_id_key`), então o banco recusa o segundo posto. É a regra
-    // TEN-5 de `docs/arquitetura/regras.md`, que estava marcada ❌ SEM TRAVA — agora tem.
-    //
-    // Este teste AFIRMA a limitação. No dia em que a migration incluir posto_id no unique, ele
-    // fica vermelho e aponta para a decisão — que é o que se quer de um bloqueio conhecido.
-    //
-    // Não está sozinho: `Fechamento (data, turno_id)` é pior — dois postos não podem fechar o
-    // MESMO DIA. Mais `Configuracao (chave)`, `Fornecedor (cnpj)` e `Frentista (cpf)`.
+it('TEN-5 fechada: dois postos PODEM ter estoque do mesmo combustível', function (): void {
+    // Até 22/09/2026 este teste AFIRMAVA o bloqueio contrário: `Estoque` tinha UNIQUE
+    // (combustivel_id) SEM posto_id (`Estoque_combustivel_id_key`), e o banco recusava o
+    // segundo posto. banco/init/02-multi-tenant-uniques-por-posto.sql trocou a chave para
+    // (combustivel_id, posto_id) — é a regra TEN-5 de `docs/arquitetura/regras.md`, que sai de
+    // ❌ VIOLADA. Combustíveis diferentes por posto no teste acima seguem sendo o cenário
+    // normal; este aqui prova que o MESMO combustível, em dois postos, também funciona agora.
     $a = Posto::factory()->create();
     $b = Posto::factory()->create();
     $combustivel = Combustivel::factory()->create(['posto_id' => $a->id]);
 
-    Estoque::factory()->create(['posto_id' => $a->id, 'combustivel_id' => $combustivel->id]);
+    $doA = Estoque::factory()->create(['posto_id' => $a->id, 'combustivel_id' => $combustivel->id, 'quantidade_atual' => '1000.000']);
+    $doB = Estoque::factory()->create(['posto_id' => $b->id, 'combustivel_id' => $combustivel->id, 'quantidade_atual' => '2000.000']);
 
-    expect(fn () => Estoque::factory()->create(['posto_id' => $b->id, 'combustivel_id' => $combustivel->id]))
-        ->toThrow(QueryException::class);
+    expect($doA->fresh())->not->toBeNull()
+        ->and($doB->fresh())->not->toBeNull();
 });
 
 it('o ouvinte só roda DEPOIS do commit', function (): void {
