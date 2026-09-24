@@ -2,7 +2,7 @@
 
 **Módulo:** `frontend/apps/pwa-frentista` · **Branch:** `refactor/pwa-frentista-fsd`
 **Trabalho-pai:** #101 (o PWA pela API Laravel) — esta refatoração é a preparação de terreno.
-**Estado:** aprovado · P7–P8 implementados, P9–P12 pendentes · **Data:** 19/09/2026 (plano), 24/09/2026 (transcrição)
+**Estado:** aprovado · P7–P8 implementados; **metade da fatia curta do lote 2 entregue** (`977840b`) · P9–P12 pendentes · **Data:** 19/09/2026 (plano), 24/09/2026 (transcrição, revisada contra medição)
 **Idioma:** pt-BR
 
 > Este documento existe porque até 24/09 o plano do lote 2 só vivia no transcript da sessão de 19/09.
@@ -51,9 +51,12 @@ Conferido no filesystem da worktree `pp-pwa-fsd`, não suposto:
    listava como a criar. Consequência prática: adicionar um membro novo à união `ErroDeApi`
    **reprova o `tsc`** no `default` de `paraExcecao`, porque o `assertUnreachable(erro)` exige
    `never`. É a RES-4 funcionando sozinha — não é preciso canário para isso.
-2. **O P8 não moveu o `lib/foto.ts`**, apesar de a mensagem do commit `eedb410` prometer "os 3
-   TS2532 zerados no mesmo commit". O arquivo continua em `src/lib/foto.ts` com 95 linhas e os
-   3 `TS2532` vivos. É a pendência 1 da §6.
+2. **O P8 (`eedb410`) não moveu o `lib/foto.ts`** — naquele commit o arquivo continuou em
+   `src/lib/foto.ts` com os 3 `TS2532` vivos, apesar de a mensagem prometer o contrário.
+   **Resolvido no `977840b`**: a implementação foi para `entities/frentista/lib/foto.ts` (170
+   linhas, `ResultAsync`) e `src/lib/foto.ts` virou ponte legada de 42 linhas; a chave
+   `lib/foto.ts|TS2532: 3` saiu do `.catraca/tsc.json`. O que resta da pendência 1 da §6 é
+   **trocar o import do `App.tsx`**, não mover o arquivo.
 3. **O `test:golden` não cobre o PWA.** Não existe nenhum `*.golden.spec.ts` sob
    `apps/pwa-frentista` — os 3296 testes do golden vivem em `packages/utils` e no `apps/web`.
    A rede de segurança real deste módulo é o `App.test.tsx` + `services/api.test.ts`. Isso não
@@ -67,9 +70,9 @@ Conferido no filesystem da worktree `pp-pwa-fsd`, não suposto:
 Nada disto muda em nenhum passo. É o que os testes prendem.
 
 - **(a) O payload do envio, byte a byte.** `valor_conferido = conferido(meiosFromPwaPayments(payments))`
-  (`App.tsx:398`, `:482`); `diferenca_calculada = diferenca(encerrante, conferido)` (`:483`); os 7
-  `valor_*` via `parseInt(x.replace(/\D/g,''),10)/100 || 0` (`:474-480`); o encerrante via
-  `(parseInt(...)||0)/100` (`:399`). **Copiado literalmente**, sem trocar pelo `centavosParaReais`
+  (`App.tsx:434`); `diferenca_calculada = diferenca(encerrante, conferido)` (`:435`); os 7
+  `valor_*` via `parseInt(x.replace(/\D/g,''),10)/100 || 0` (`:426-432`); o encerrante via
+  `(parseInt(...)||0)/100` (`:351`). **Copiado literalmente**, sem trocar pelo `centavosParaReais`
   (`packages/utils/src/fechamento.ts:272`, que não é exportado).
 - **(b)** `getOrCreateFechamento(1, data, 1)` — posto 1, turno canônico.
 - **(c)** O `Fechamento` nasce com `total_vendas null`, `total_recebido 0`, `diferenca null`, e é
@@ -85,7 +88,7 @@ Nada disto muda em nenhum passo. É o que os testes prendem.
   carrinho limitado ao estoque. **Dívida conhecida e continua literal.**
 - **(h)** `HistoricoScreen`: `diff = diferenca_calculada || 0`, `isFalta = diff > 0` (`:77-79`).
   Também literal.
-- **(i)** Conferência anti-RLS da régua (`api.ts:297-306`), presença sem `visto_em`, recorte de
+- **(i)** Conferência anti-RLS da régua (`entities/tanque/api/tanque-api.ts`, no upsert seguido de releitura por `tanque_id`+`data` e `MEDICAO_BARRADA`), presença sem `visto_em`, recorte de
   meia-noite local das vendas.
 - **(j)** **Visual idêntico.**
 
@@ -100,8 +103,9 @@ São as duas amarras que impedem P9 e P11 de andar. Nenhuma das duas é técnica
 
 ### Decisão A — as linhas de dinheiro contra a catraca
 
-Medido com `eslint -f json` na worktree: dos **14 `strict-boolean-expressions`** do `App.tsx`,
-**8 estão no parse de centavos do payload** (`:399` e `:474-480`, no formato `parseInt(...)/100 || 0`),
+Medido com `eslint -f json` na worktree em 24/09: dos **12 `strict-boolean-expressions`** do
+`App.tsx` (a catraca registra 12 em `.catraca/eslint.json`; eram 14 antes do lote 1),
+**8 estão no parse de centavos do payload** (`:351` e `:426-432`, no formato `parseInt(...)/100 || 0`),
 e `HistoricoScreen.tsx:77` é `diferenca_calculada || 0`.
 
 A catraca guarda a dívida **pelo caminho do arquivo** (`catraca.mjs:86`). Mover essas linhas para um
@@ -140,7 +144,7 @@ interceptar** e o teste bate no Supabase real. Duas saídas:
 Arquivos: `model/montar-payload.ts`, `model/validar-envio.ts`, `ui/{payment-card,resumo-do-turno,botao-enviar}.tsx`,
 `index.ts`, mais o `App.tsx`.
 
-- `montarPayload` é **cópia literal** de `App.tsx:469-485`.
+- `montarPayload` é **cópia literal** de `App.tsx:421-437` (o `App.tsx` perdeu 48 linhas no lote 1: `eedb410` desceu de 832 para 784).
 - `validarEnvio` devolve `Result` com a união
   `{tipo:'sem_frentista'} | {tipo:'encerrante_zero'} | {tipo:'data_nao_confirmada'} | {tipo:'ja_enviado'}`.
 - A gravação **não é importada pela feature** (ver Decisão B).
@@ -157,7 +161,7 @@ Arquivos: `widgets/{seletor-de-frentista,seletor-de-data,envios-do-dia,barra-inf
 Tira do `AppComponent` o `ModalDeFrentistas`, a `ListaDeEnviosDoDia`, o seletor de data (com o
 rearme), a barra inferior e a troca de foto (com o refresh). **JSX e classes Tailwind copiados sem
 mudança.** Os `try` do `App.tsx` que saem viram `Result` consumido. Leva zerada, no mesmo commit, a
-dívida de `App.tsx:130`, `:159`, `:267` e `:286` — condições **não monetárias**, reescrevíveis com
+dívida de `App.tsx:82`, `:111`, `:219` e `:238` — condições **não monetárias**, reescrevíveis com
 comparação explícita conferida pelo tipo. Em `:267` o `JSON.parse` do localStorage passa pelo schema
 Zod e o que falha volta `null`, como hoje.
 
@@ -192,7 +196,7 @@ Ligar, **cada uma com fixture de canário que reprova**:
 - **TS-5** (`require-await`, **medido antes** de ligar)
 - Tetos de **300 linhas por arquivo**, **60 por função** e **CCN 10** escopados no `pwa-frentista`,
   depois de medir que o `src` está dentro.
-- O `App.test.tsx` (355 linhas) precisa de **exceção de teste decidida pelo dono** ou fica fora do
+- O `App.test.tsx` (**589 linhas**, medido em 24/09 — este doc dizia 355, número de antes do lote 1) precisa de **exceção de teste decidida pelo dono** ou fica fora do
   escopo da regra.
 - Atualizar a coluna "quem faz cumprir" do `docs/arquitetura/regras.md`.
 
@@ -299,9 +303,21 @@ A coluna é `numeric(10,2)` (`:290`). Consequências para o schema:
    no `Agent`. A ponte de `src/lib/foto.ts` existe exatamente por isso (§6).
 4. **O hook `dinheiro-quantiza-por-emcentavos.py`** casa `frontend/apps/*/src` e pode disparar se o
    `VendasScreen` (float em `:82/:94`) for movido. A regra é **parar e registrar, não contornar**.
-5. **Colisão possível com o PR #128** (`feat/#102-guard-token-atual`): ele edita
-   `docs/architecture.md:6`, `regras.md` e `.catraca/eslint.json`. Quem entrar depois na `fase-a`
-   rebaseia de novo, e as duas metades do `regras.md` têm de sobreviver.
+5. **Colisão com o PR #128** (`feat/#102-guard-token-atual`, tip `3d4553f`) — agora **medida**: o
+   fork dos dois branches é `91593a8` (são irmãos, não empilhados), e o #128 reescreve **a mesma
+   linha 6** de `docs/architecture.md` (troca a entrada "19/09 #103 P4a/P4b" do topo por "21/09
+   #103 P10/P11" + "20/09 #102"). No `regras.md` os *hunks* dele são `@@ -96,11` (CA-3 e CA-7) e
+   `@@ -111,7 +111,38` (insere a família **TEN** antes de `## RES`), e os deste trabalho ficam de
+   `@@ -118,48` para baixo — o merge deve sair limpo, mas se for resolvido à mão **as duas metades
+   têm de sobreviver** (TEN do #128, RES/TS/PROC daqui). Em `.catraca/*.json` não há colisão: as
+   edições do #128 são na região do `apps/web` (eslint `~:92`, tsc `~:35`) e as nossas na do
+   `pwa-frentista` (eslint `:12-15`, tsc `:9`).
+
+   **Estado do patch de documentação:** o `doc-cycle-onboard` foi rodado sobre os dois lotes em
+   24/09 e devolveu patch para `architecture.md`, `regras.md` e este doc. **Só as correções deste
+   doc foram aplicadas** (medidas uma a uma). As de `architecture.md` e `regras.md` seguem
+   **não aplicadas**: a linha 6 colide com o #128, e as células de `regras.md` afirmam contagens
+   que ninguém reconferiu célula por célula. Aplicar depois do rebase, conferindo cada número.
 6. **O golden só roda na worktree** porque `docs/data` é symlink para o checkout principal.
    `docs/data` **não pode entrar no índice do git**.
 7. **Não há teste visual.** A prova de "visual idêntico" é screenshot antes e depois, por passo.
