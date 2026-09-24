@@ -271,6 +271,24 @@ describe('aggregatorService.fetchDashboardData — paridade Supabase × API dent
         expect(result.data.kpis.totalProfit).toBe(LUCRO_ESPERADO);
     });
 
+    it('ensaio de 27/09: com VITE_API_URL e VITE_API_DASHBOARD=0, o Dashboard lê do Supabase e não chama a API', async () => {
+        vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+        vi.stubEnv('VITE_API_DASHBOARD', '0');
+        vi.stubGlobal('fetch', vi.fn());
+        leiturasDoMesNoSupabase(LEITURAS);
+        vi.mocked(leituraService.getByDateRange).mockResolvedValue(ok(LEITURAS) as never);
+        vi.mocked(compraService.getByDateRange).mockResolvedValue(ok(COMPRAS_SUPABASE) as never);
+        vi.mocked(despesaService.getByMonth).mockResolvedValue(ok(DESPESAS_SUPABASE) as never);
+
+        const result = await aggregatorService.fetchDashboardData(JANEIRO[0], JANEIRO[1], null, POSTO);
+
+        expect(fetch).not.toHaveBeenCalled();
+        expect(compraService.getByDateRange).toHaveBeenCalled();
+        expect(result.success).toBe(true);
+        if (!result.success) throw new Error(result.error);
+        expect(result.data.kpis.totalProfit).toBe(LUCRO_ESPERADO);
+    });
+
     it('erro da API vira ApiResponse de erro com a mensagem do adaptador, sem cair no Supabase', async () => {
         vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
         vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500 })));

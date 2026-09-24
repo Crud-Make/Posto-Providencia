@@ -18,13 +18,13 @@
 - **`config/cors.php` nasce porque não existia.** O Laravel 13 não traz esse arquivo, e o padrão
   embutido é `allowed_origins: ['*']`: qualquer site chamava a API. Em produção a lista sai de
   `CORS_ORIGINS`.
-- **O ensaio de 27/09 acende uma tela só — parcialmente.** `VITE_API_URL` liga o strangler inteiro,
+- **O ensaio de 27/09 acende uma tela só.** `VITE_API_URL` liga o strangler inteiro,
   e a flag nova `corteDaTelaLigado` permite segurar uma tela no Supabase com `VITE_API_<TELA>=0`.
   Sem ela, ligar o global trocaria o motor das três telas mistas no mesmo minuto, e o fechamento do
   dia é dinheiro do posto.
-  ⚠️ **O Registro de Compras já obedece; o Dashboard ainda não.** O corte do Dashboard mora em
-  `aggregator.service.ts:409`, que está sob a trava de fórmula e barra a edição por modelo. Enquanto
-  essa linha não mudar, `VITE_API_DASHBOARD=0` não tem efeito.
+  O Registro de Compras e o Dashboard obedecem: o corte do Dashboard (`aggregator.service.ts`)
+  passou de `urlDaApi() !== null` para `corteDaTelaLigado(VITE_API_DASHBOARD)`. Canário em
+  `aggregator.dashboard.test.ts`: com o corte antigo, o caso do ensaio fica vermelho.
 - Canário: 5 casos novos em `base.test.ts`. Mutar `corteDaTelaLigado` para obedecer só ao global
   deixa **3 vermelhos**, incluindo o caso do ensaio.
 - **Provado localmente em 24/09/2026:** a imagem constrói, sobe contra o Postgres real e responde

@@ -1,7 +1,7 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import { conferido, corDoProduto, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel, deIsoLocal } from '@posto/utils';
 import { supabase } from '../supabase';
-import { descreverErroDaApi, urlDaApi, type ErroDaApi } from './base';
+import { corteDaTelaLigado, descreverErroDaApi, type ErroDaApi } from './base';
 import { lerDashboardDaApi, paraInsumosDeAgregacao, type JanelaDoRateio, type VendaPorCombustivel } from './dashboard.api';
 import { combustivelService } from './combustivel.service';
 import { bicoService } from './bico.service';
@@ -402,11 +402,12 @@ export const aggregatorService = {
     postoId?: number
   ): Promise<ApiResponse<DashboardAggregatedData>> {
     try {
-      // Strangler (#100, fatia 2): venda, compra e rateio vêm da API Laravel quando
-      // `VITE_API_URL` existe e há posto (a rota é por posto); sem isso, o caminho de sempre.
-      // A Vercel não define a variável, então a produção segue no Supabase até o cutover.
+      // Strangler (#100, fatia 2): venda, compra e rateio vêm da API Laravel quando o corte da
+      // tela está ligado e há posto (a rota é por posto); sem isso, o caminho de sempre. O corte
+      // segue `VITE_API_URL`, salvo `VITE_API_DASHBOARD=0` — o ensaio de 27/09 acende só o
+      // Fechamento de Caixa e deixa o Dashboard no Supabase.
       const fonte: ResultAsync<InsumosDeAgregacao, ErroDosInsumos> =
-        urlDaApi() !== null && postoId !== undefined
+        corteDaTelaLigado(import.meta.env.VITE_API_DASHBOARD) && postoId !== undefined
           ? insumosDaApi(postoId, dataInicio, dataFim)
           : insumosDoSupabase(dataInicio, dataFim, postoId);
 
