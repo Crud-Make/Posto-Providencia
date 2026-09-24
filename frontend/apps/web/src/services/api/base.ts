@@ -50,6 +50,29 @@ export function urlDaApi(): string | null {
 }
 
 /**
+ * O corte do strangler ligado para UMA tela, com o global como padrão.
+ *
+ * @remarks
+ * `VITE_API_URL` liga o corte inteiro de uma vez — é o cutover. Quando se quer acender uma tela
+ * só (o ensaio de 27/09/2026 acendeu o Fechamento de Caixa e deixou o resto no Supabase), a tela
+ * que fica de fora ganha flag própria com `0` e passa a ler do Supabase mesmo com a URL definida.
+ *
+ * Flag ausente ou vazia segue o global: é o que mantém o dev como sempre foi — basta
+ * `VITE_API_URL` no `.env.local` para tudo usar a API.
+ *
+ * A URL em si continua saindo de `urlDaApi()`: quem chama decide só QUAL caminho tomar, e o
+ * `chamarApi` resolve o endereço. Uma flag por tela que devolvesse a URL teria de ser repetida em
+ * todo `*.api.ts`, que é justamente onde o endereço não se escolhe.
+ */
+export function corteDaTelaLigado(flag: string | undefined): boolean {
+    if (typeof flag !== 'string' || flag.trim() === '') {
+        return urlDaApi() !== null;
+    }
+    const valor = flag.trim().toLowerCase();
+    return valor === '1' || valor === 'true';
+}
+
+/**
  * Token da sessão atual do Supabase, ou `null` quando não há sessão.
  *
  * @remarks

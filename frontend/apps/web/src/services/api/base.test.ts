@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { buscarNaApi, descreverErroDaApi, enviarParaApi } from './base';
+import { buscarNaApi, corteDaTelaLigado, descreverErroDaApi, enviarParaApi, urlDaApi } from './base';
 
 /**
  * O transporte da API Laravel: `buscarNaApi` (GET, desde a P5) e `enviarParaApi` (PUT, #103 P11).
@@ -149,5 +149,57 @@ describe('descreverErroDaApi', () => {
         expect(descreverErroDaApi({ tipo: 'recusado', status: 422, codigo: 'totais_inconsistentes', mensagem: 'diferenca errada' })).toBe(
             'Gravação recusada (totais_inconsistentes): diferenca errada',
         );
+    });
+});
+
+/**
+ * O corte por tela: `VITE_API_URL` acende o strangler inteiro, e a flag da tela apaga só ela.
+ * É o que permite o ensaio de 27/09/2026 — Fechamento de Caixa pela API, Dashboard e Registro de
+ * Compras no Supabase, no MESMO deploy. Sem esta função, ligar o global trocaria o motor das três
+ * telas mistas no mesmo minuto, e o fechamento do dia é dinheiro do posto.
+ */
+describe('corteDaTelaLigado', () => {
+    it('sem URL e sem flag, o corte está desligado', () => {
+        vi.stubEnv('VITE_API_URL', '');
+
+        expect(corteDaTelaLigado(undefined)).toBe(false);
+    });
+
+    it('flag ausente ou vazia segue o global: com VITE_API_URL, o corte liga', () => {
+        vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+
+        expect(corteDaTelaLigado(undefined)).toBe(true);
+        expect(corteDaTelaLigado('')).toBe(true);
+        expect(corteDaTelaLigado('   ')).toBe(true);
+    });
+
+    it('flag 0 desliga a tela mesmo com VITE_API_URL ligado', () => {
+        vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+
+        expect(corteDaTelaLigado('0')).toBe(false);
+        expect(corteDaTelaLigado('false')).toBe(false);
+        expect(corteDaTelaLigado('FALSE')).toBe(false);
+        expect(corteDaTelaLigado(' nao ')).toBe(false);
+    });
+
+    it('flag 1 liga a tela sem depender do global', () => {
+        vi.stubEnv('VITE_API_URL', '');
+
+        expect(corteDaTelaLigado('1')).toBe(true);
+        expect(corteDaTelaLigado('true')).toBe(true);
+        expect(corteDaTelaLigado(' True ')).toBe(true);
+    });
+
+    it('o ensaio de 27/09: o Fechamento segue o global e as outras duas telas ficam no Supabase', () => {
+        vi.stubEnv('VITE_API_URL', 'https://api.posto.exemplo');
+        vi.stubEnv('VITE_API_DASHBOARD', '0');
+        vi.stubEnv('VITE_API_FORNECEDOR', '0');
+
+        // O Fechamento de Caixa chama `urlDaApi()` direto nos cinco hooks: ele acende com o global.
+        expect(urlDaApi()).toBe('https://api.posto.exemplo');
+
+        // As duas que ficam de fora perguntam pela flag da tela, e ela diz não.
+        expect(corteDaTelaLigado(import.meta.env.VITE_API_DASHBOARD)).toBe(false);
+        expect(corteDaTelaLigado(import.meta.env.VITE_API_FORNECEDOR)).toBe(false);
     });
 });

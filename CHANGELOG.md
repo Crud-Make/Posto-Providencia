@@ -2,6 +2,36 @@
 
 ## [Não Lançado]
 
+### 🚀 O backend ganha imagem de produção — e a trava que recusa subir errado (#105)
+
+- **Nasce a imagem que vai para a VPS** (`backend/Dockerfile.prod`): FrankenPHP 1 sobre PHP 8.5,
+  `composer install --no-dev`, autoload autoritativo, OPcache com `validate_timestamps=0` e o
+  processo rodando como `www-data`. O `Dockerfile` da raiz **não mudou** — segue sendo o de
+  desenvolvimento (`php -S`, código montado por volume).
+- **FrankenPHP no lugar de php-fpm + nginx**, que era o plano registrado no Dockerfile de dev: um
+  processo em vez de três containers, sem socket, sem pool e sem `nginx.conf`. A decisão e o preço
+  estão em `docs/design/producao.md`.
+- **O container recusa subir errado.** O `entrypoint.sh` para com saída 1 quando falta `APP_KEY`,
+  `DB_HOST`, `SUPABASE_JWT_SECRET` ou `CORS_ORIGINS`, e também quando `CORS_ORIGINS=*`. A trava
+  mora no entrypoint, não no runbook, porque runbook se pula: um container que sobe com o CORS
+  aberto não está parado, está atendendo — e atendendo errado, em silêncio.
+- **`config/cors.php` nasce porque não existia.** O Laravel 13 não traz esse arquivo, e o padrão
+  embutido é `allowed_origins: ['*']`: qualquer site chamava a API. Em produção a lista sai de
+  `CORS_ORIGINS`.
+- **O ensaio de 27/09 acende uma tela só — parcialmente.** `VITE_API_URL` liga o strangler inteiro,
+  e a flag nova `corteDaTelaLigado` permite segurar uma tela no Supabase com `VITE_API_<TELA>=0`.
+  Sem ela, ligar o global trocaria o motor das três telas mistas no mesmo minuto, e o fechamento do
+  dia é dinheiro do posto.
+  ⚠️ **O Registro de Compras já obedece; o Dashboard ainda não.** O corte do Dashboard mora em
+  `aggregator.service.ts:409`, que está sob a trava de fórmula e barra a edição por modelo. Enquanto
+  essa linha não mudar, `VITE_API_DASHBOARD=0` não tem efeito.
+- Canário: 5 casos novos em `base.test.ts`. Mutar `corteDaTelaLigado` para obedecer só ao global
+  deixa **3 vermelhos**, incluindo o caso do ensaio.
+- **Provado localmente em 24/09/2026:** a imagem constrói, sobe contra o Postgres real e responde
+  `200` no `/api/saude`, `200` no catálogo, `401` na rota protegida sem token, e barra origem
+  estranha no CORS (preflight incluído). A imagem não leva `.env` nem `tests`, e o `vendor/bin` só
+  traz ferramenta de runtime. Gates: 969 vitest, 3499 golden, Pest 196/196 com 96,8%.
+
 ### ⛽ A venda do dia do painel passa a vir do encerrante (#103 P8)
 
 - **`useFechamento` troca a fonte do `total_vendas`:** sai `calcularTotais` (float, quantizado

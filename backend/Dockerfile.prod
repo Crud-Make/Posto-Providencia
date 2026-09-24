@@ -1,0 +1,80 @@
+# Imagem de PRODUÇÃO do backend Laravel do Posto Providência (#105).
+#
+# Por que separada do `Dockerfile`: aquele é de DESENVOLVIMENTO (`php -S`, código montado por
+# volume, recarrega sem rebuild). Este é o que sobe na VPS — código DENTRO da imagem, sem
+# dev-dependencies, sem `.env` e sem servidor embutido.
+#
+# **FrankenPHP no lugar de php-fpm + nginx.** O plano registrado no `Dockerfile` de dev era
+# php-fpm + nginx, e a troca foi deliberada: com FrankenPHP é UM processo em vez de três
+# containers (fpm + nginx + caddy), sem socket, sem pool para dimensionar e sem `nginx.conf` para
+# manter. O edge — TLS e domínio público — fica na `caddy` do `docker-compose.prod.yml`, que fala
+# com este container em `api:8080`; aqui dentro o Caddy do FrankenPHP serve HTTP puro.
+#
+# O que a imagem NÃO faz de propósito: `config:cache`. Esse cache congela o `env()` do momento em
+# que roda — feito no build, gravaria os valores do build e ignoraria os da VPS. Ele vive no
+# `docker/entrypoint.sh`, que roda a cada partida, quando o ambiente já é o de produção.
+FROM dunglas/frankenphp:1-php8.5-alpine
+
+# As bibliotecas de execução ficam; as de compilação saem no mesmo RUN, para não viajarem na
+# imagem. `libpq`, `icu-libs` e `libzip` são declaradas explicitamente porque o `apk del` da
+# virtual `.compilar` levaria junto o que veio só como dependência dela.
+# `opcache` NÃO entra nesta lista: a imagem do FrankenPHP já o traz compilado (o `php -m` mostra
+# `Zend OPcache`). Passá-lo aqui faz o build morrer com `cp: can't stat 'modules/*'`, porque não
+# há nada para compilar e o `make install-modules` não acha arquivo — erro que parece de
+# dependência faltando e não é. As configurações dele vivem no `.ini` logo abaixo.
+RUN apk add --no-cache libpq icu-libs libzip libstdc++ \
+    && apk add --no-cache --virtual .compilar postgresql-dev icu-dev libzip-dev linux-headers \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql intl zip pcntl \
+    && apk del .compilar \
+    && rm -rf /tmp/pear /var/cache/apk/*
+
+# Produção é imutável: o código não muda debaixo do processo, então o OPcache não precisa conferir
+# o carimbo de tempo de cada arquivo a cada requisição — que é exatamente o custo que ele cobra.
+RUN printf '%s\n' \
+    'opcache.enable=1' \
+    'opcache.validate_timestamps=0' \
+    'opcache.memory_consumption=192' \
+    'opcache.max_accelerated_files=20000' \
+    'expose_php=0' \
+    'memory_limit=256M' \
+    'upload_max_filesize=12M' \
+    'post_max_size=12M' \
+    > /usr/local/etc/php/conf.d/zz-producao.ini
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+
+# As dependências vêm ANTES do código: mudar uma linha de PHP não invalida esta camada, que é a
+# mais cara do build.
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist --no-progress \
+    && rm -rf /root/.composer/cache
+
+COPY . .
+
+# O Caddy embutido escreve em `/data` e `/config`, que na imagem pertencem ao root: como o processo
+# roda como `www-data`, ele falha em três avisos a cada partida ("unable to autosave config",
+# "unable to get instance ID"...). Nada disso derruba o servidor — e é justamente esse o problema:
+# vira ruído fixo no log de produção, e ruído fixo é onde o erro de verdade se esconde. Apontar os
+# dois para dentro de `storage/`, que já é do `www-data`, é o conserto.
+ENV XDG_DATA_HOME=/app/storage/caddy/dados \
+    XDG_CONFIG_HOME=/app/storage/caddy/config
+
+# `dump-autoload` roda os scripts do Composer (o `package:discover` do Laravel) — por isso não é
+# `--no-scripts` aqui, e por isso ele vem DEPOIS do código.
+RUN composer dump-autoload --no-dev --classmap-authoritative --no-interaction \
+    && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+       storage/caddy/dados storage/caddy/config \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+COPY docker/entrypoint.sh /usr/local/bin/entrada
+RUN chmod +x /usr/local/bin/entrada
+
+# Não roda como root: o processo de rede é o que está mais exposto, e ele não precisa de privilégio
+# nenhum para servir HTTP em :8080.
+USER www-data
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/entrada"]
+CMD ["frankenphp", "run", "--config", "/app/docker/Caddyfile"]

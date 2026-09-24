@@ -135,3 +135,6 @@ __pycache__/
 
 # estado local do CLI do Supabase — nunca versionar
 supabase/.temp/
+
+# Segredo da produção (#105): o exemplo é versionado, o arquivo real não.
+deploy/.env.producao
