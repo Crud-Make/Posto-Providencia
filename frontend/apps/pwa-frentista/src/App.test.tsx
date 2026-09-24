@@ -353,3 +353,237 @@ describe('PWA do frentista — payload exato do envio', () => {
         });
     });
 });
+
+/**
+ * Caracterização antes de mover (P7a da refatoração FSD do pwa, 22/09/2026). Prende o que
+ * `App.tsx` faz hoje e ainda não tinha teste: limpeza depois do sucesso, aviso ao dono só com
+ * id e sem `await`, rótulos do resumo, rearme da confirmação ao trocar a data e a montagem do
+ * payload nas entradas-limite. Nenhuma asserção dos blocos acima muda; o `vi.mock` do topo
+ * também não — o `avisarDono` entra no objeto mockado só dentro deste bloco.
+ */
+describe('PWA do frentista — caracterização do envio (P7a)', () => {
+    const CAMPO = { encerrante: 0, pix: 1, dinheiro: 2, moedas: 3, baratao: 4, notaPrazo: 5, debito: 6, credito: 7 } as const;
+    const avisarDono = vi.fn(async (): Promise<void> => undefined);
+
+    const campos = (): HTMLInputElement[] =>
+        Array.from(container.querySelectorAll<HTMLInputElement>('input[placeholder="0,00"]'));
+
+    const campoValor = (indice: number): HTMLInputElement => {
+        const lista = campos();
+        const campo = lista[indice];
+        if (lista.length !== 8 || campo === undefined) {
+            throw new Error(`esperava 8 campos "0,00" na tela do Registro, achei ${lista.length}`);
+        }
+        return campo;
+    };
+
+    const payloadBase = {
+        fechamento_id: 1,
+        frentista_id: 1,
+        posto_id: 1,
+        valor_pix: 0,
+        valor_dinheiro: 0,
+        valor_moedas: 0,
+        baratao: 0,
+        valor_nota: 0,
+        valor_cartao_debito: 0,
+        valor_cartao_credito: 0,
+        valor_cartao: 0,
+        observacoes: 'Fechamento via PWA Frentista',
+    };
+
+    beforeEach(async () => {
+        localStorage.clear();
+        localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
+        mocks.getEnviosDoDia.mockReset().mockResolvedValue([]);
+        mocks.getOrCreateFechamento.mockReset().mockResolvedValue(1);
+        mocks.submitFrentistaClosing.mockReset().mockResolvedValue({});
+        avisarDono.mockReset().mockResolvedValue(undefined);
+        const { api: apiMockado } = await import('./services/api');
+        Object.assign(apiMockado, { avisarDono });
+        container = document.createElement('div');
+        document.body.appendChild(container);
+        root = createRoot(container);
+    });
+
+    afterEach(() => {
+        act(() => root.unmount());
+        container.remove();
+        localStorage.clear();
+    });
+
+    it('limpa o formulário e o frentista depois do envio com sucesso', async () => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+        digitar(campoValor(CAMPO.pix), '30000');
+        digitar(campoValor(CAMPO.credito), '70000');
+        expect(campoValor(CAMPO.pix).value).toBe('300,00');
+
+        await clicar(botaoEnviar());
+
+        expect(container.textContent).toContain('Registro de Turno enviado com sucesso!');
+        expect(campos().map((c) => c.value)).toEqual(['', '', '', '', '', '', '', '']);
+        expect(container.textContent).toContain('Selecionar Frentista');
+        expect(localStorage.getItem('pwa.frentista')).toBeNull();
+    });
+
+    it('avisa o dono só quando o envio devolve id, e com o id', async () => {
+        mocks.submitFrentistaClosing.mockResolvedValue({ id: 77 });
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+
+        await clicar(botaoEnviar());
+
+        expect(avisarDono).toHaveBeenCalledTimes(1);
+        expect(avisarDono).toHaveBeenCalledWith(77);
+    });
+
+    it.each([
+        ['objeto sem id', {}],
+        ['null', null],
+    ])('não avisa o dono quando o envio devolve %s', async (_rotulo, devolvido) => {
+        mocks.submitFrentistaClosing.mockResolvedValue(devolvido as never);
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+
+        await clicar(botaoEnviar());
+
+        expect(container.textContent).toContain('Registro de Turno enviado com sucesso!');
+        expect(avisarDono).not.toHaveBeenCalled();
+    });
+
+    it('não espera o aviso ao dono: o sucesso aparece com o aviso ainda pendente', async () => {
+        mocks.submitFrentistaClosing.mockResolvedValue({ id: 5 });
+        avisarDono.mockReturnValue(new Promise<void>(() => { /* nunca resolve */ }));
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+
+        await clicar(botaoEnviar());
+
+        expect(avisarDono).toHaveBeenCalledWith(5);
+        expect(container.textContent).toContain('Registro de Turno enviado com sucesso!');
+        expect(botaoEnviar().textContent).toContain('Enviar Registro');
+    });
+
+    it.each([
+        ['sem encerrante', '', '', 'Informe o encerrante para ver o status'],
+        ['conferido igual ao encerrante', '100000', '100000', 'Tudo certo!'],
+        ['conferido acima do encerrante', '100000', '110000', 'Sobra de Caixa (R$ 100,00)'],
+        ['conferido abaixo do encerrante', '100000', '90000', 'Quebra de Caixa (R$ 100,00)'],
+    ])('rótulo do resumo — %s', async (_rotulo, encerrante, pix, esperado) => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), encerrante);
+        digitar(campoValor(CAMPO.pix), pix);
+        await act(async () => { /* deixa o React renderizar */ });
+
+        expect(container.textContent).toContain(esperado);
+        for (const outro of ['Informe o encerrante para ver o status', 'Tudo certo!', 'Sobra de Caixa', 'Quebra de Caixa']) {
+            if (!esperado.startsWith(outro)) expect(container.textContent).not.toContain(outro);
+        }
+    });
+
+    it('trocar a data desarma a confirmação de data diferente de hoje', async () => {
+        localStorage.setItem('pwa.dataFechamento', JSON.stringify({ data: ontemIso(), gravadoEm: hojeIso() }));
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+
+        await clicar(botaoEnviar()); // 1º toque: arma
+        expect(botaoEnviar().textContent).toContain('Toque de novo');
+
+        const ano = container.querySelector<HTMLSelectElement>('select[aria-label="Ano"]');
+        if (ano === null) throw new Error('select de Ano não encontrado');
+        await act(async () => {
+            const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+            setter?.call(ano, '2025');
+            ano.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        expect(container.textContent).toContain('Este caixa NÃO é de hoje');
+        expect(botaoEnviar().textContent).toContain('Enviar Registro');
+        expect(mocks.submitFrentistaClosing).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Tabela de montagem do payload nas entradas-limite (rede de segurança do P9, quando a
+     * montagem sair do App.tsx). Cada linha digita no PIX com encerrante 1.000,00. Os valores
+     * esperados são contas à mão: valor = dígitos/100 (vazio vira 0), conferido = soma dos 7
+     * meios, diferenca = encerrante − conferido (positivo = FALTA).
+     */
+    it.each([
+        ['vazio', '', 0, 0, 1000],
+        ['"0,00"', '0,00', 0, 0, 1000],
+        ['só separadores', ',.', 0, 0, 1000],
+        ['letras', 'abc', 0, 0, 1000],
+        ['um centavo', '1', 0.01, 0.01, 999.99],
+        ['valor alto (11 dígitos)', '99999999999', 999999999.99, 999999999.99, -999998999.99],
+    ])('payload com PIX %s', async (_rotulo, digitado, pix, conferidoEsperado, diferencaEsperada) => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+        digitar(campoValor(CAMPO.pix), digitado);
+
+        await clicar(botaoEnviar());
+
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledTimes(1);
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledWith({
+            ...payloadBase,
+            encerrante: 1000,
+            valor_pix: pix,
+            valor_conferido: conferidoEsperado,
+            diferenca_calculada: diferencaEsperada,
+        });
+    });
+
+    it('payload com os 7 meios preenchidos soma todos no conferido', async () => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '100000');
+        for (const indice of [CAMPO.pix, CAMPO.dinheiro, CAMPO.moedas, CAMPO.baratao, CAMPO.notaPrazo, CAMPO.debito, CAMPO.credito]) {
+            digitar(campoValor(indice), '12345');
+        }
+
+        await clicar(botaoEnviar());
+
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledWith({
+            ...payloadBase,
+            encerrante: 1000,
+            valor_pix: 123.45,
+            valor_dinheiro: 123.45,
+            valor_moedas: 123.45,
+            baratao: 123.45,
+            valor_nota: 123.45,
+            valor_cartao_debito: 123.45,
+            valor_cartao_credito: 123.45,
+            valor_conferido: 864.15,
+            diferenca_calculada: 135.85,
+        });
+    });
+
+    it('encerrante alto (11 dígitos) entra inteiro no payload', async () => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), '99999999999');
+
+        await clicar(botaoEnviar());
+
+        expect(mocks.submitFrentistaClosing).toHaveBeenCalledWith({
+            ...payloadBase,
+            encerrante: 999999999.99,
+            valor_conferido: 0,
+            diferenca_calculada: 999999999.99,
+        });
+    });
+
+    it.each([
+        ['vazio', ''],
+        ['"0,00"', '0,00'],
+        ['só separadores', ',.'],
+    ])('encerrante %s não envia e avisa', async (_rotulo, digitado) => {
+        await montar();
+        digitar(campoValor(CAMPO.encerrante), digitado);
+        digitar(campoValor(CAMPO.pix), '10000');
+
+        await clicar(botaoEnviar());
+
+        expect(container.textContent).toContain('O encerrante não pode ser R$ 0,00.');
+        expect(mocks.getOrCreateFechamento).not.toHaveBeenCalled();
+        expect(mocks.submitFrentistaClosing).not.toHaveBeenCalled();
+    });
+});

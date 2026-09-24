@@ -106,6 +106,10 @@ export default [
         { type: "features", pattern: "apps/pwa-frentista/src/features/*" },
         { type: "entities", pattern: "apps/pwa-frentista/src/entities/*" },
         { type: "shared", pattern: "apps/pwa-frentista/src/shared" },
+        // Pasta legada `src/lib` do pwa, fora das camadas (revisão do lote 1, 22/09/2026):
+        // declarada só para a policy de `shared` poder proibir `shared → legado`. O resto do
+        // legado (screens/, services/, components/) segue fora, como antes.
+        { type: "legado", pattern: "apps/pwa-frentista/src/lib" },
       ],
       "import/resolver": { typescript: { project: import.meta.dirname + "/tsconfig.json" } },
     },
@@ -173,7 +177,7 @@ export default [
         {
           default: "allow",
           policies: [
-            { from: { element: { type: "shared" } }, disallow: { to: { element: { types: { anyOf: ["entities", "features", "widgets", "pages", "app"] } } } } },
+            { from: { element: { type: "shared" } }, disallow: { to: { element: { types: { anyOf: ["entities", "features", "widgets", "pages", "app", "legado"] } } } } },
             { from: { element: { type: "entities" } }, disallow: { to: { element: { types: { anyOf: ["entities", "features", "widgets", "pages", "app"] } } } } },
             { from: { element: { type: "features" } }, disallow: { to: { element: { types: { anyOf: ["features", "widgets", "pages", "app"] } } } } },
             { from: { element: { type: "widgets" } }, disallow: { to: { element: { types: { anyOf: ["widgets", "pages", "app"] } } } } },

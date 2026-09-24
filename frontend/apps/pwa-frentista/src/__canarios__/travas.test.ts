@@ -95,6 +95,19 @@ describe('canário: FSD-1/2/3/5/6 e TS-8 no pwa-frentista (19/09)', () => {
   });
 }, 120_000);
 
+describe('canário: shared não importa a pasta legada src/lib (revisão do lote 1, 22/09)', () => {
+  const mensagens = lintarFixture('apps/pwa-frentista/src/shared/lib/__canarios__/legado.fixture.ts');
+  const boundaries = linhasDe(mensagens, 'boundaries/dependencies');
+
+  it('shared → @frentista/lib reprova', () => {
+    expect(boundaries).toEqual([3]);
+  });
+
+  it('import dentro do próprio shared continua livre', () => {
+    expect(mensagens.filter((m) => m.line === 4)).toEqual([]);
+  });
+}, 120_000);
+
 describe('canário: FSD-3 pela raiz do src (`./pages/x/y`, de onde App.tsx importa)', () => {
   const mensagens = lintarFixture('apps/pwa-frentista/src/raiz.fixture.ts');
 
