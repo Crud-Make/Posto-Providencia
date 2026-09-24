@@ -110,8 +110,13 @@ subir() {
   # Sem este ajuste o Pest bate no banco COMPARTILHADO mesmo com o .env certo.
   phpunit="$raiz/backend/phpunit.xml"
   if [[ -f "$phpunit" ]]; then
-    sed -i "s|<env name=\"DB_PORT\" value=\"[0-9]*\"/>|<env name=\"DB_PORT\" value=\"$porta\"/>|" "$phpunit"
-    echo "backend/phpunit.xml aponta DB_PORT para $porta"
+    if grep -q '<env name="DB_PORT"' "$phpunit"; then
+      # phpunit.xml antigo (até 23/09/2026): fixava DB_PORT e vencia o .env. Troca o valor.
+      sed -i "s|<env name=\"DB_PORT\" value=\"[0-9]*\"/>|<env name=\"DB_PORT\" value=\"$porta\"/>|" "$phpunit"
+      echo "backend/phpunit.xml (antigo) aponta DB_PORT para $porta"
+    else
+      echo "backend/phpunit.xml já não fixa DB_PORT — vale o backend/.env"
+    fi
   else
     echo "AVISO: $phpunit não existe — o Pest pode estar batendo no banco errado." >&2
   fi
