@@ -2,6 +2,38 @@
 
 ## [Não Lançado]
 
+### 🧱 PWA do frentista no FSD — fatia curta do lote 2: foto em `ResultAsync`, `POSTO_ID` de `shared/config` e o `CHECK` dos tanques dentro do schema
+
+- **A foto do frentista virou entity e parou de lançar.** `src/lib/foto.ts` (95 linhas, 2 `throw`) virou
+  `entities/frentista/lib/foto.ts`, devolvendo `ResultAsync<string, ErroDeFoto>` (RES-1), com a união
+  `arquivo_ilegivel | nao_e_imagem | sem_canvas | foto_grande_demais` e um `Record<ErroDeFoto['tipo'], string>`
+  que faz o `tsc` reprovar variante sem frase — a exaustividade do `assertUnreachable`, sem `throw`, que a RES-1
+  proíbe neste caminho. As frases que o frentista lê são as mesmas, e o teste as cobra uma a uma. Os 3 `TS2532`
+  de `iniciais()` (`noUncheckedIndexedAccess`) morreram junto: a catraca do `tsc` baixa uma chave.
+- **O `App.tsx` não pôde ser editado nesta sessão, então a ponte ficou explícita e com data para morrer.** Ele é
+  arquivo coberto pela trava `so-fable-na-formula` (só Opus 5.5 ou Fable), e o provedor desta sessão é o DeepSeek:
+  o `model: 'opus'` de subagente **não** destrava — a trava lê o modelo do transcript, e o provedor reescreve o
+  alias. Enquanto a fatia não for fechada em Opus/Fable, `src/lib/foto.ts` fica como **ponte legada**: delega para
+  a entity e relança `Error` com a MESMA frase, para o `catch` da tela continuar valendo. Morre no commit que
+  trocar o import do `App.tsx` por `@frentista/entities/frentista`.
+- **`POSTO_ID` deixou de ser literal em `TanquesScreen.tsx`:** o `const POSTO_ID = 1;` local saiu e o valor vem de
+  `@frentista/shared/config`. O `VendasScreen.tsx` (as duas chamadas `api.getProdutos(1)`) **não** entrou nesta
+  fatia — o arquivo está sob a mesma trava de fórmula, junto com o `HistoricoScreen`. Fica para a sessão Opus.
+- **O `CHECK` dos tanques passou a existir no TypeScript.** `medicaoParaGravarSchema` espelha o `CHECK` do INSERT
+  (`banco/init/01-esquema-base.sql:1789`): `tanque_id` inteiro positivo, `data` em `AAAA-MM-DD` e `volume_fisico`
+  não nulo, `>= 0` e no teto de `numeric(10,2)`. `salvarMedicao` valida **antes** de tocar a rede e devolve
+  `Err({tipo:'dado_invalido'})` com frase para o frentista, em vez de erro de constraint em inglês — ou, pior, do
+  silêncio da RLS. A leitura ganhou `.nonnegative()` mantendo `.nullable()`. Casas decimais e a janela de escrita
+  **não** entram no schema, e o porquê está no docblock: `multipleOf(0.01)` é armadilha de ponto flutuante, e a
+  janela depende de "hoje". Onze testes cobrem cada borda, inclusive o negativo que o banco recusaria.
+- **Nenhuma fórmula de dinheiro mudou.** O payload do envio, o parse de centavos e o `diferenca_calculada` ficaram
+  intocados; `packages/utils` e o golden, idem. O que depende de decisão do dono segue parado: os 8 `n || 0` contra
+  a catraca (Decisão A, P9) e o destino de `services/api.ts` (Decisão B, P11).
+- **`docs/design/pwa-frentista-fsd.md`** passa a ser a fonte do plano P7–P12, transcrito do transcript de 19/09, com
+  as três correções medidas em 24/09. A principal: o risco 3 estava errado — a trava de fórmula **cobre** o
+  `App.tsx`, os `screens/(Historico|Vendas)`, `features/enviar-fechamento/model` e `pages/(historico|vendas)` desde
+  22/09, e o comentário do próprio hook diz que foi este plano que achou o buraco.
+
 ### 🧱 PWA do frentista rumo ao FSD — fatia mínima: travas das regras ligadas com canário, primeiros arquivos em `shared/`
 
 - **As regras de `docs/arquitetura/regras.md` passam a valer no `pwa-frentista`, cada uma com trava e canário**

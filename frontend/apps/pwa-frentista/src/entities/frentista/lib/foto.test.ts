@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { reduzirParaAvatar, iniciais, TETO_DATA_URL } from './foto';
+import { reduzirParaAvatar, iniciais, mensagemDeFoto, TETO_DATA_URL } from './foto';
 
 /**
  * O jsdom não decodifica imagem nem desenha: `Image` nunca dispara `onload` a
@@ -50,19 +50,30 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
+/**
+ * O contrato deixou de ser "resolve ou lança" e virou `Result`, então cada
+ * teste precisa consumi-lo — a `neverthrow/must-use-result` (RES-2) não deixa
+ * passar um `Result` solto, e passar o resultado para um helper próprio também
+ * não conta como consumo. Por isso o `match` e o `unwrapOr` aparecem em cada
+ * teste: é o consumo **no ponto**, exigido pelo lint.
+ */
 describe('reduzirParaAvatar', () => {
     it('devolve a data URL JPEG que o canvas produziu', async () => {
         dublarNavegador(800, 800);
 
-        await expect(reduzirParaAvatar(arquivoFake())).resolves.toBe('data:image/jpeg;base64,QVZBVEFS');
+        const resultado = await reduzirParaAvatar(arquivoFake());
+
+        // `unwrapOr` devolve o fallback se for `Err` — logo isto cobre os dois canais.
+        expect(resultado.unwrapOr('ERRO')).toBe('data:image/jpeg;base64,QVZBVEFS');
     });
 
     it('recorta o quadrado no centro de uma foto em pé, sem achatar o rosto', async () => {
         // Retrato 600x900: o corte é 600, e sobra 150 de margem em cima e embaixo.
         dublarNavegador(600, 900);
 
-        await reduzirParaAvatar(arquivoFake(), 192);
+        const resultado = await reduzirParaAvatar(arquivoFake(), 192);
 
+        expect(resultado.match(() => null, (erro) => erro.tipo)).toBeNull();
         // drawImage(img, esquerda, topo, corte, corte, 0, 0, lado, lado)
         expect(desenhos[0]).toEqual([0, 150, 600, 600, 0, 0, 192, 192]);
     });
@@ -70,8 +81,9 @@ describe('reduzirParaAvatar', () => {
     it('recorta pela largura numa foto deitada', async () => {
         dublarNavegador(1000, 400);
 
-        await reduzirParaAvatar(arquivoFake(), 192);
+        const resultado = await reduzirParaAvatar(arquivoFake(), 192);
 
+        expect(resultado.match(() => null, (erro) => erro.tipo)).toBeNull();
         expect(desenhos[0]).toEqual([300, 0, 400, 400, 0, 0, 192, 192]);
     });
 
@@ -79,14 +91,23 @@ describe('reduzirParaAvatar', () => {
         dublarNavegador(800, 800);
         saidaDoCanvas = 'data:image/jpeg;base64,' + 'A'.repeat(TETO_DATA_URL);
 
-        await expect(reduzirParaAvatar(arquivoFake())).rejects.toThrow(/grande demais/);
+        const resultado = await reduzirParaAvatar(arquivoFake());
+
+        expect(resultado.unwrapOr('PASSOU')).toBe('PASSOU');
+        expect(resultado.match(() => null, (erro) => erro.tipo)).toBe('foto_grande_demais');
+        // A frase é o que o frentista lê na tela: não pode sumir na refatoração.
+        expect(resultado.match(() => '', mensagemDeFoto)).toMatch(/grande demais/);
     });
 
     it('avisa quando o navegador não tem canvas', async () => {
         dublarNavegador(800, 800);
         HTMLCanvasElement.prototype.getContext = (() => null) as unknown as HTMLCanvasElement['getContext'];
 
-        await expect(reduzirParaAvatar(arquivoFake())).rejects.toThrow(/não consegue preparar/);
+        const resultado = await reduzirParaAvatar(arquivoFake());
+
+        expect(resultado.unwrapOr('PASSOU')).toBe('PASSOU');
+        expect(resultado.match(() => null, (erro) => erro.tipo)).toBe('sem_canvas');
+        expect(resultado.match(() => '', mensagemDeFoto)).toMatch(/não consegue preparar/);
     });
 });
 
@@ -101,5 +122,9 @@ describe('iniciais', () => {
 
     it('não quebra com nome vazio', () => {
         expect(iniciais('   ')).toBe('?');
+    });
+
+    it('não quebra com nome de um caractere só', () => {
+        expect(iniciais('A')).toBe('A');
     });
 });
