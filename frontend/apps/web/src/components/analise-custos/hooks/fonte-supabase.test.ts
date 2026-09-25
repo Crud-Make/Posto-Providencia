@@ -1,32 +1,32 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }));
+/*
+ * Movido de `services/api/aggregator.service.test.ts` com as contas (25/09/2026): a Análise de
+ * Custos saiu do aggregator para `carregar-analise.ts`. Os cenários e os números são os mesmos;
+ * aqui roda o caminho Supabase (sem `VITE_API_URL` nem `VITE_API_CUSTOS`).
+ */
+const { fromMock, servicos } = vi.hoisted(() => ({
+    fromMock: vi.fn(),
+    servicos: {
+        estoqueService: { getAll: vi.fn() },
+        despesaService: { getByMonth: vi.fn() },
+        compraService: { getByDateRange: vi.fn() },
+        configuracaoService: { getValorNumerico: vi.fn() },
+    },
+}));
 
-vi.mock('../supabase', () => ({
+vi.mock('../../../services/supabase', () => ({
     supabase: { from: fromMock },
 }));
+vi.mock('../../../services/api', () => servicos);
 
-vi.mock('./estoque.service', () => ({
-    estoqueService: { getAll: vi.fn() },
-}));
+import { carregarAnalise } from './carregar-analise';
 
-vi.mock('./despesa.service', () => ({
-    despesaService: { getByMonth: vi.fn() },
-}));
+const { estoqueService, despesaService, compraService, configuracaoService } = servicos;
 
-vi.mock('./configuracao.service', () => ({
-    configuracaoService: { getValorNumerico: vi.fn() },
-}));
-
-vi.mock('./compra.service', () => ({
-    compraService: { getByDateRange: vi.fn() },
-}));
-
-import { aggregatorService } from './aggregator.service';
-import { estoqueService } from './estoque.service';
-import { despesaService } from './despesa.service';
-import { configuracaoService } from './configuracao.service';
-import { compraService } from './compra.service';
+afterEach(() => {
+    vi.unstubAllEnvs();
+});
 
 interface LeituraFake {
     data: string;
@@ -55,9 +55,11 @@ function buildLeituraQuery(rows: LeituraFake[]) {
     return builder;
 }
 
-describe('aggregatorService.fetchProfitabilityData — regressão do bug de limite superior de mês', () => {
+describe('Análise de Custos pelo Supabase — regressão do bug de limite superior de mês', () => {
     beforeEach(() => {
-        vi.mocked(estoqueService.getAll).mockResolvedValue({
+        vi.stubEnv('VITE_API_URL', '');
+        vi.stubEnv('VITE_API_CUSTOS', '');
+        estoqueService.getAll.mockResolvedValue({
             success: true,
             data: [{
                 id: 1,
@@ -68,7 +70,7 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
             timestamp: new Date().toISOString(),
         } as never);
 
-        vi.mocked(despesaService.getByMonth).mockResolvedValue({
+        despesaService.getByMonth.mockResolvedValue({
             success: true,
             data: [{ valor: 50 }],
             timestamp: new Date().toISOString(),
@@ -77,13 +79,13 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
         // [03/09] O custo vem da compra do mês (R$ 3,00/L), não mais do carimbo
         // `custo_medio` do estoque — que fica no fixture acima só para provar que
         // é ignorado.
-        vi.mocked(compraService.getByDateRange).mockResolvedValue({
+        compraService.getByDateRange.mockResolvedValue({
             success: true,
             data: [{ combustivel_id: 10, quantidade_litros: 1000, valor_total: 3000 }],
             timestamp: new Date().toISOString(),
         } as never);
 
-        vi.mocked(configuracaoService.getValorNumerico).mockResolvedValue({
+        configuracaoService.getValorNumerico.mockResolvedValue({
             success: true,
             data: 0.45,
             timestamp: new Date().toISOString(),
@@ -102,18 +104,18 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
         // antigo trocava esse 0 pela config `despesa_operacional_litro` (semeada
         // com 0,45) e todo dashboard mostrava lucro calculado com número
         // inventado — com o banco em replay, era o estado normal, não a exceção.
-        vi.mocked(despesaService.getByMonth).mockResolvedValue({
+        despesaService.getByMonth.mockResolvedValue({
             success: true,
             data: [],
             timestamp: new Date().toISOString(),
         } as never);
 
-        const result = await aggregatorService.fetchProfitabilityData(2026, 1);
+        const result = await carregarAnalise(2026, 1, 1);
 
-        expect(result.success).toBe(true);
-        if (!result.success) return;
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) return;
 
-        const item = result.data.itens.find(i => i.combustivelId === 10);
+        const item = result.value.itens.find(i => i.combustivelId === 10);
         expect(item?.despOperacional).toBe(0);
         // custoTotalL = custo do produto, sem parcela operacional inventada
         expect(item?.custoTotalL).toBe(3);
@@ -124,30 +126,30 @@ describe('aggregatorService.fetchProfitabilityData — regressão do bug de limi
     });
 
     it('não inclui leituras do mês seguinte ao consultar rentabilidade de um mês fechado', async () => {
-        const result = await aggregatorService.fetchProfitabilityData(2026, 1);
+        const result = await carregarAnalise(2026, 1, 1);
 
-        expect(result.success).toBe(true);
-        if (!result.success) return;
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) return;
 
-        const item = result.data.itens.find(i => i.combustivelId === 10);
+        const item = result.value.itens.find(i => i.combustivelId === 10);
         expect(item?.volumeVendido).toBe(100);
         expect(item?.receitaBruta).toBe(550);
     });
 
     it('produto vendido sem compra no mês fica fora dos itens e é nomeado em produtosSemCompra', async () => {
-        vi.mocked(compraService.getByDateRange).mockResolvedValue({
+        compraService.getByDateRange.mockResolvedValue({
             success: true,
             data: [],
             timestamp: new Date().toISOString(),
         } as never);
 
-        const result = await aggregatorService.fetchProfitabilityData(2026, 1);
+        const result = await carregarAnalise(2026, 1, 1);
 
-        expect(result.success).toBe(true);
-        if (!result.success) return;
+        expect(result.isOk()).toBe(true);
+        if (result.isErr()) return;
 
         // Antes: custo 0 → lucro = receita inteira (550), o produto "mais lucrativo" da tela.
-        expect(result.data.itens).toEqual([]);
-        expect(result.data.produtosSemCompra).toEqual(['Gasolina']);
+        expect(result.value.itens).toEqual([]);
+        expect(result.value.produtosSemCompra).toEqual(['Gasolina']);
     });
 });

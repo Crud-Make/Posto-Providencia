@@ -330,6 +330,11 @@ CASOS_FORMULA_COBERTURA = [
     ("frontend/apps/web/src/components/relatorio-diario/hooks/montar-relatorio.test.ts", False),
     ("frontend/apps/web/src/components/relatorio-diario/hooks/fonte-da-api.ts", False),
     ("frontend/apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts", False),
+    # [25/09] #103 Análise de Custos: as contas do mês, não as fontes nem o hook de tela
+    ("frontend/apps/web/src/components/analise-custos/hooks/montar-analise.ts", True),
+    ("frontend/apps/web/src/components/analise-custos/hooks/fonte-da-api.ts", False),
+    ("frontend/apps/web/src/components/analise-custos/hooks/carregar-analise.ts", False),
+    ("frontend/apps/web/src/components/analise-custos/hooks/useAnaliseCustos.ts", False),
 ]
 
 

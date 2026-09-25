@@ -40,4 +40,9 @@ interface ImportMetaEnv {
      * `/leituras` e `/dashboard` —, `0` a deixa no Supabase. Ausente, vale o `VITE_API_URL`.
      */
     readonly VITE_API_RELATORIO?: string;
+    /**
+     * Corte da Análise de Custos (#103): `1` lê o mês da API — `/dashboard` do mês inteiro e o
+     * catálogo `/combustiveis` —, `0` a deixa no Supabase. Ausente, vale o `VITE_API_URL`.
+     */
+    readonly VITE_API_CUSTOS?: string;
 }

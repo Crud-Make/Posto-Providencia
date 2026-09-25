@@ -138,7 +138,7 @@
   "apps/web/src/contexts/PostoContext.tsx|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/web/src/contexts/usePosto.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/aiService.ts|@typescript-eslint/strict-boolean-expressions": 8,
-  "apps/web/src/services/api/aggregator.service.ts|@typescript-eslint/strict-boolean-expressions": 18,
+  "apps/web/src/services/api/aggregator.service.ts|@typescript-eslint/strict-boolean-expressions": 11,
   "apps/web/src/services/api/base.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/bico.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/bomba.service.ts|@typescript-eslint/strict-boolean-expressions": 1,

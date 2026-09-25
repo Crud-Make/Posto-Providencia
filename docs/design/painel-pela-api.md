@@ -186,7 +186,40 @@ o teste do operador vermelho; forçar o Supabase no modo API → 4 vermelhos; ti
 dos fechamentos → 1 vermelho; ignorar a compra do mês na fonte da API → a PARIDADE vermelha; tirar
 `montar-relatorio` da regex do `so-fable-na-formula.py` → `testa-hooks.py` vermelho.
 
-## 8. Registro de Compras pela API (#103, 25/09/2026)
+## 8. Análise de Custos pela API (#103, 25/09/2026)
+
+Tela `components/analise-custos`, flag **`VITE_API_CUSTOS`** (`corteDaTelaLigado`: ausente segue
+`VITE_API_URL`, `0` deixa no Supabase). No modo API a tela **não chama o Supabase** — prova em
+`hooks/carregar-analise.test.ts`, com o client do Supabase e os três services mockados para reprovar se tocados.
+**Nenhuma rota nova:** tudo o que a tela lê já existia.
+
+| Antes (Supabase, `aggregatorService.fetchProfitabilityData`) | Agora (API) |
+|---|---|
+| `estoqueService.getAll` — `Estoque` + `combustivel(*)` (lista de produtos, nome, código, preço) | `GET /combustiveis` (catálogo; `Estoque` é 1:1 com `Combustivel` e não tem rota), em ordem de `id` |
+| `Leitura` do mês + `bico:Bico(combustivel_id)`, somada no cliente por produto | `GET /dashboard?inicio=aaaa-mm-01&fim=aaaa-mm-último` → `produtos[].litros_vendidos`/`receita` |
+| `despesaService.getByMonth` (competência) somada no cliente | `/dashboard` → `rateio.despesas_total` |
+| Σ `litros_vendidos` de todas as leituras do mês (divisor do rateio) | `/dashboard` → `rateio.litros_vendidos` |
+| `compraService.getByDateRange(mês)` → `custoMedioPorCombustivel` | `/dashboard` → `produtos[].compras` (Σ do mês civil) |
+
+`/dashboard` é `posto.acesso:gerir`: sem token 401, operador 403, gerente de outro posto 403 — já provado
+em `AcessoAoDashboardTest`. O catálogo segue público (pendência antiga de `cadastro.md`).
+
+**Contas:** saíram de `aggregator.service.ts` (−135 linhas) para `hooks/montar-analise.ts` **sem mudar
+fórmula** (custo da compra do mês, despesa do mês ÷ litros do mês, `lucroCombustivel` em centavos,
+produto vendido sem compra fora e nomeado). As fontes `hooks/fonte-supabase.ts` e `hooks/fonte-da-api.ts`
+entregam o mesmo `InsumosDaAnalise`; `hooks/carregar-analise.ts` escolhe a fonte e monta. O teste de
+PARIDADE compara o resultado inteiro (`toEqual`) sobre o mesmo mês. `montar-analise` entrou na trava
+`so-fable-na-formula.py`. O teste de regressão do limite de mês foi junto (`hooks/fonte-supabase.test.ts`).
+
+**Diferenças de forma, não de número:** `item.id` passa a ser o `combustivel_id` nas duas fontes (era o
+`Estoque.id`; só serve de `key` do React, e no banco de hoje os dois coincidem); a venda por produto é
+agrupada pelo `Leitura.combustivel_id` no servidor e pelo combustível do bico no Supabase (coincidem em
+todas as leituras do banco); as somas vêm do Postgres em `numeric` em vez de float no cliente.
+
+**Canários:** forçar o Supabase no modo API → 4 vermelhos; somar R$ 0,01 à despesa na fonte da API → a
+PARIDADE vermelha; tirar `montar-analise` da regex do `so-fable-na-formula.py` → `testa-hooks.py` vermelho.
+
+## 9. Registro de Compras pela API (#103, 25/09/2026)
 
 Tela `components/registro-compras`, flag **`VITE_API_FORNECEDOR`** — já era o corte desta tela (o
 fornecedor foi a primeira leitura dela a migrar) e `producao.md` a usa com `0` para deixá-la no Supabase.
