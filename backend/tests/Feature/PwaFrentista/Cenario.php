@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 use App\Cadastro\Domain\Bico;
 use App\Cadastro\Domain\Frentista;
+use App\Compartilhado\Enums\PapelNoPosto;
+use App\Compartilhado\Enums\Role;
 use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
 use App\Pessoas\Application\DefinePinDoFrentista;
+use App\Pessoas\Domain\Usuario;
+use App\Pessoas\Domain\UsuarioPosto;
 use Illuminate\Support\Facades\DB;
 
+use function Pest\Laravel\json;
 use function Pest\Laravel\postJson;
+use function Pest\Laravel\withToken;
 
 /*
 | Cenário comum dos testes do PWA do frentista pela API (#101). Postos NOVOS (fábrica), e não o
@@ -106,4 +112,36 @@ function corpoDoEnvio(array $troca = []): array
 function idDaResposta(mixed $valor): int
 {
     return is_int($valor) ? $valor : throw new RuntimeException('resposta sem id inteiro');
+}
+
+/**
+ * Token de GERENTE (login do painel) com vínculo de gerente ao `$posto` — para provar que ele não abre
+ * rota de frentista. E-mail único por chamada.
+ */
+function tokenDoGerente(Posto $posto): string
+{
+    $email = 'gerente.'.$posto->id.'.'.bin2hex(random_bytes(3)).'@teste.com';
+    $gerente = Usuario::factory()->create(['email' => $email, 'role' => Role::Gerente, 'senha' => 'senha-do-gerente-1']);
+    UsuarioPosto::factory()->create(['usuario_id' => $gerente->id, 'posto_id' => $posto->id, 'role' => PapelNoPosto::Gerente]);
+    $token = postJson('/api/login', ['email' => $email, 'senha' => 'senha-do-gerente-1'])->assertOk()->json('token');
+
+    return is_string($token) ? $token : throw new RuntimeException('login do gerente sem token');
+}
+
+/**
+ * As três travas de acesso de uma rota do frentista: sem token → 401; token de gerente → 401;
+ * frentista de OUTRO posto → 403.
+ *
+ * @param  array<string, mixed>  $corpo
+ */
+function exigeFrentistaDoPosto(string $metodo, string $caminho, array $corpo = []): void
+{
+    ['posto' => $posto] = postoDoPwa();
+    ['posto' => $outro, 'frentista' => $deFora] = postoDoPwa();
+    $url = "/api/postos/{$posto->id}/{$caminho}";
+
+    json($metodo, $url, $corpo)->assertUnauthorized();
+    withToken(tokenDoGerente($posto))->json($metodo, $url, $corpo)->assertUnauthorized();
+    app('auth')->forgetGuards();
+    withToken(tokenDoFrentista($outro, $deFora))->json($metodo, $url, $corpo)->assertForbidden();
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Compartilhado\PertenceAoPosto;
 use App\Compartilhado\Posto;
+use App\Estoque\Domain\MedicaoDeTanque;
+use App\Estoque\Domain\VendaProduto;
 use App\Fechamento\Domain\Recebimento;
 use App\Models\User;
 use App\Pessoas\Domain\AcessoFrentista;
@@ -158,6 +160,11 @@ it('model em tabela SEM posto_id declara como é escopado', function (): void {
         Recebimento::class => 'Escopado pelo pai: fechamento_id aponta para Fechamento, que é escopado.',
         AcessoFrentista::class => 'Escopado pelo frentista: a chave É o frentista_id, e o posto vem de '
             .'Frentista.posto_id, lido no login e a cada requisição pelo guard frentista.do.posto (#101).',
+        VendaProduto::class => 'Escopado pelo produto: a tabela não tem posto_id, e toda leitura pela API '
+            .'filtra produto_id pelos produtos do PostoAtual (VendasDoFrentista); a escrita só aceita produto '
+            .'do posto (RegistraVendaDoFrentista) e o frentista do token (#101, fatia 2).',
+        MedicaoDeTanque::class => 'Escopado pelo tanque: HistoricoTanque não tem posto_id, e toda leitura e '
+            .'escrita pela API passa pelos tanques do PostoAtual (ReguaDoPosto, GravaMedicaoDeTanque — #101, fatia 2).',
         User::class => 'Sobra do instalador do Laravel: sem $table, sem uso em app/, e a '
             .'tabela users nem existe no catálogo de produção. Não é model de negócio. Some quando a '
             .'#102 decidir o dono da autenticação; até lá fica declarado para não passar calado.',
