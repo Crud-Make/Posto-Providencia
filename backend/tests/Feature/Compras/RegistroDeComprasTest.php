@@ -297,7 +297,9 @@ it('compra sem fornecedor: 422 fornecedor_invalido (o alert do painel, agora no 
 it('só régua, sem compra e sem fornecedor: 201, grava a régua e não toca o estoque', function (): void {
     $c = cenarioCp();
     $gerente = usuarioCp('cc000000-0000-4000-8000-000000000013', $c['posto']->id, Role::Gerente, PapelNoPosto::Gerente);
-    $corpo = corpoCp($c, ['fornecedor_id' => null, 'itens.0.compra' => null, 'itens.1.compra' => null]);
+    // O float do painel como o JSON.stringify o entrega: o numeric(10,2) arredonda, NaN (null) grava null.
+    $corpo = corpoCp($c, ['fornecedor_id' => null, 'itens.0.compra' => null, 'itens.1.compra' => null,
+        'itens.0.volume_livro' => '13654.125000000002', 'itens.1.volume_livro' => null]);
 
     withToken(tokenCp((string) $gerente->auth_user_id))
         ->postJson(urlCp($c['posto']->id), $corpo)
@@ -305,7 +307,9 @@ it('só régua, sem compra e sem fornecedor: 201, grava a régua e não toca o e
 
     expect(DB::table('Compra')->count())->toBe(0)
         ->and(saldosCp($c['gc'], $c['tanqueGc']))->toBe(['estoque' => '10000.50', 'tanque' => '8000.25'])
-        ->and(DB::table('HistoricoTanque')->count())->toBe(2);
+        ->and(DB::table('HistoricoTanque')->count())->toBe(2)
+        ->and(reguaCp($c['tanqueGc']))->toBe(['livro' => '13654.13', 'fisico' => '13600.00'])
+        ->and(reguaCp($c['tanqueEt']))->toBe(['livro' => 'null', 'fisico' => 'null']);
 });
 
 it('régua fora da janela de escrita: 422 fora_da_janela e NENHUMA compra (o Supabase deixava a primeira)', function (): void {
@@ -341,7 +345,7 @@ it('custo que não cabe em numeric(10,4): 422 custo_fora_do_limite', function ()
         ->assertStatus(422)->assertJsonPath('erro.codigo', 'custo_fora_do_limite');
 });
 
-it('forma: número JSON, BR, litros zero, combustível repetido e tanque sem volume_livro são 422 corpo_invalido', function (string $caminho, mixed $valor): void {
+it('forma: número JSON, BR, litros zero, combustível repetido e volume em expoente são 422 corpo_invalido', function (string $caminho, mixed $valor): void {
     $c = cenarioCp();
     $gerente = usuarioCp('cc000000-0000-4000-8000-000000000017', $c['posto']->id, Role::Gerente, PapelNoPosto::Gerente);
 
@@ -357,7 +361,7 @@ it('forma: número JSON, BR, litros zero, combustível repetido e tanque sem vol
     'valor em BR' => ['itens.0.compra.valor_total', '29.175,50'],
     'litros zero' => ['itens.0.compra.quantidade_litros', '0.00'],
     'combustível repetido' => ['itens.1.combustivel_id', 'GC'],
-    'tanque sem volume_livro' => ['itens.0.volume_livro', null],
+    'volume em expoente' => ['itens.0.volume_livro', '1.5e3'],
     'chave que não é uuid' => ['chave', 'abc'],
 ]);
 it('o modelo Compra é escopado pelo posto atual', function (): void {

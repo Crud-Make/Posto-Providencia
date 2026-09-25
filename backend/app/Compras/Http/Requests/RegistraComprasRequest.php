@@ -20,9 +20,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Litros, dinheiro e volume em STRING decimal — número JSON é 422, como no `PUT /fechamento`.
  * `valor_total` até 2 casas (centavos); `quantidade_litros` até 3 e maior que zero (a coluna é
  * `numeric(15,2)` e o Postgres arredonda, como arredondava o float do painel). `volume_livro` é o
- * estoque escritural que a tela calcula: pode ser negativo e vem com as casas que tiver — o
- * `numeric(10,2)` arredonda. Um combustível por item (repetido é 422): o unique é por
- * `(chave, combustível)`. Com `tanque_id`, `volume_livro` é obrigatório (o painel sempre o grava).
+ * estoque escritural que a tela calcula: pode ser negativo e vem com as casas do float do painel
+ * (até 20) — o `numeric(10,2)` arredonda, como arredondava o número que o PostgREST recebia; `null`
+ * grava `null`, como o `NaN` que o `JSON.stringify` do painel virava. Um combustível por item
+ * (repetido é 422): o unique é por `(chave, combustível)`.
  */
 final class RegistraComprasRequest extends FormRequest
 {
@@ -30,7 +31,7 @@ final class RegistraComprasRequest extends FormRequest
 
     public const int MAX_ITENS = 30;
 
-    private const string VOLUME = '/^-?\d{1,8}(\.\d{1,15})?$/';
+    private const string VOLUME = '/^-?\d{1,8}(\.\d{1,20})?$/';
 
     /** @return array<string, list<string>> */
     public function rules(): array
@@ -45,7 +46,7 @@ final class RegistraComprasRequest extends FormRequest
             'itens.*.compra' => ['present', 'nullable', 'array:quantidade_litros,valor_total', 'required_array_keys:quantidade_litros,valor_total'],
             'itens.*.compra.quantidade_litros' => ['string', 'regex:/^\d{1,13}(\.\d{1,3})?$/', 'not_regex:/^0+(\.0+)?$/'],
             'itens.*.compra.valor_total' => ['string', 'regex:/^\d{1,13}(\.\d{1,2})?$/'],
-            'itens.*.volume_livro' => ['nullable', 'required_with:itens.*.tanque_id', 'string', 'regex:'.self::VOLUME],
+            'itens.*.volume_livro' => ['present', 'nullable', 'string', 'regex:'.self::VOLUME],
             'itens.*.volume_fisico' => ['nullable', 'string', 'regex:'.self::VOLUME, 'not_regex:/^-/'],
         ];
     }
