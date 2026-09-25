@@ -19,6 +19,11 @@
 - O guard (`token.atual`) aceita os dois emissores durante a transição: o token da API e o JWT do
   Supabase. O do Supabase sai junto com o Supabase.
 - Esquema: `banco/init/03-autenticacao.sql` (`personal_access_tokens`), também no CI.
+- **Painel, atrás de `VITE_API_LOGIN=1`:** a tela de login fala com a API, o token vai em toda chamada,
+  e depois do login vem a tela **"Em qual posto você quer entrar?"** (Jorro, BR…), com a lista que a
+  API devolve. Com mais de um posto, o painel nunca abre num posto padrão. A flag fica desligada até a
+  última tela sair do Supabase: essas telas precisam da sessão do Supabase para passar na RLS.
+  Canário: abrir no primeiro posto ou mandar o token com a flag desligada deixa 3 testes vermelhos.
 - Canário: tirar as checagens de vencimento e de usuário ativo deixa 2 testes vermelhos. Pest 227/227, 96,9%.
 
 ### 🔓 O `pre-push` passa a rodar só o golden (decisão do dono, 24/09)

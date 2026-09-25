@@ -1,5 +1,7 @@
 import React, { createContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
+import { loginPelaApiLigado } from '../services/api/base';
+import { usePostosDaApi } from './usePostosDaApi';
 import type { Posto } from '../types/database/index';
 
 // ============================================
@@ -46,7 +48,19 @@ interface PostoProviderProps {
     children: ReactNode;
 }
 
-export const PostoProvider: React.FC<PostoProviderProps> = ({ children }) => {
+/**
+ * No login pela API (#102) a lista de postos é a do perfil do usuário; no login pelo Supabase,
+ * continua a do banco. A flag é fixa durante a vida da página.
+ */
+export const PostoProvider: React.FC<PostoProviderProps> = ({ children }) =>
+    loginPelaApiLigado() ? <ProvedorDePostoDaApi>{children}</ProvedorDePostoDaApi> : <ProvedorDePostoSupabase>{children}</ProvedorDePostoSupabase>;
+
+const ProvedorDePostoDaApi: React.FC<PostoProviderProps> = ({ children }) => {
+    const value = usePostosDaApi();
+    return <PostoContext.Provider value={value}>{children}</PostoContext.Provider>;
+};
+
+const ProvedorDePostoSupabase: React.FC<PostoProviderProps> = ({ children }) => {
     const [postos, setPostos] = useState<Posto[]>([]);
     const [postoAtivo, setPostoAtivoState] = useState<Posto | null>(null);
     const [postoAtivoId, setPostoAtivoId] = useState<number>(1);

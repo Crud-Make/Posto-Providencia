@@ -17,5 +17,10 @@ interface ImportMetaEnv {
      * três telas mistas no mesmo minuto — e o fechamento do dia é dinheiro do posto.
      */
     readonly VITE_API_DASHBOARD?: string;
+    /**
+     * `1` faz o painel logar pela API Laravel (#102) em vez do Supabase, e escolher o posto pela
+     * lista que a API devolve. Exige `VITE_API_URL`. Ausente, o login continua no Supabase.
+     */
+    readonly VITE_API_LOGIN?: string;
     readonly VITE_API_FORNECEDOR?: string;
 }
