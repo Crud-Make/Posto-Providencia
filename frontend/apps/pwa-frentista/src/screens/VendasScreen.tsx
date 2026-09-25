@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingBag, ChevronLeft, Package, Minus, Plus, Check } from 'lucide-react';
 import { api } from '../services/api';
-import { POSTO_ID } from '@frentista/shared/config';
+import { POSTO_ID, pwaPelaApiLigado } from '@frentista/shared/config';
+import { useChaveDoEnvio } from '@frentista/features/envio-pela-api';
 
 interface VendasProps {
     frentistaId: number;
@@ -41,6 +42,9 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
     const [vendasHoje, setVendasHoje] = useState<VendaHoje[]>([]);
     const [loading, setLoading] = useState(true);
     const [enviando, setEnviando] = useState(false);
+    // Pela API (#101, fatia 2): uma chave por carrinho — repetir o MESMO carrinho depois de uma
+    // falha de rede não vende em dobro.
+    const { chavePara, esquecer: esquecerChave } = useChaveDoEnvio();
 
     useEffect(() => {
         Promise.all([
@@ -86,14 +90,21 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
         if (carrinho.length === 0) return;
         setEnviando(true);
         try {
-            for (const item of carrinho) {
-                await api.registrarVendaProduto({
-                    frentista_id: frentistaId,
-                    produto_id: item.produto.id,
-                    quantidade: item.quantidade,
-                    valor_unitario: item.produto.preco_venda,
-                    valor_total: item.produto.preco_venda * item.quantidade
-                });
+            if (pwaPelaApiLigado()) {
+                // O carrinho inteiro numa chamada, sem preço: preço e total são do servidor.
+                const itens = carrinho.map((c) => ({ produto_id: c.produto.id, quantidade: c.quantidade }));
+                await api.registrarCarrinhoPelaApi(frentistaId, chavePara(JSON.stringify([frentistaId, itens])), itens);
+                esquecerChave();
+            } else {
+                for (const item of carrinho) {
+                    await api.registrarVendaProduto({
+                        frentista_id: frentistaId,
+                        produto_id: item.produto.id,
+                        quantidade: item.quantidade,
+                        valor_unitario: item.produto.preco_venda,
+                        valor_total: item.produto.preco_venda * item.quantidade
+                    });
+                }
             }
             alert('Vendas registradas com sucesso! ✅');
             setCarrinho([]);

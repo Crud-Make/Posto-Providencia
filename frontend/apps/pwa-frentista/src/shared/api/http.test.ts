@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { postarNaApi } from './http';
+import { gravarNaApi, lerDaApi, postarNaApi } from './http';
 
 // O Result é lido com `.match` no próprio ponto da chamada: o `neverthrow/must-use-result` não
 // aceita passá-lo a um ajudante nem `_unsafeUnwrap*` (ver executar.test.ts).
@@ -95,5 +95,29 @@ describe('postarNaApi', () => {
 
     expect(r).toMatchObject({ erro: { tipo: 'api', status: 0, codigo: 'sem_api' } });
     expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  it('GET vai sem corpo, com a query montada e o Bearer (fatia 2)', async () => {
+    fetchFalso.mockResolvedValue(resposta(200, { data: [] }));
+
+    const r = await lerDaApi('/api/x', { data: '2026-09-25', b: 'a&b' }, 'tok', z.object({ data: z.array(z.never()) }))
+      .match((ok) => ({ ok }), (erro) => ({ erro }));
+
+    expect(r).toEqual({ ok: { data: [] } });
+    const [url, init] = fetchFalso.mock.calls[0] ?? [];
+    expect(url).toBe('http://api.teste/api/x?data=2026-09-25&b=a%26b');
+    expect(init?.method).toBe('GET');
+    expect(init?.body).toBeUndefined();
+    expect(init?.headers).toMatchObject({ Authorization: 'Bearer tok' });
+  });
+
+  it('GET sem query não põe "?" e PUT leva o corpo em JSON (fatia 2)', async () => {
+    fetchFalso.mockResolvedValue(resposta(200, { ok: true }));
+
+    await lerDaApi('/api/y', null, null, z.object({ ok: z.boolean() })).match(() => null, () => null);
+    await gravarNaApi('/api/z', { foto: null }, 'tok', z.object({ ok: z.boolean() })).match(() => null, () => null);
+
+    expect(fetchFalso.mock.calls[0]?.[0]).toBe('http://api.teste/api/y');
+    expect(fetchFalso.mock.calls[1]?.[1]).toMatchObject({ method: 'PUT', body: '{"foto":null}' });
   });
 });

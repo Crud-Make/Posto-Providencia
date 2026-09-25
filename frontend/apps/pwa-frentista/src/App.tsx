@@ -137,9 +137,14 @@ const ListaDeEnviosDoDia = ({ erro, envios, aoTentarDeNovo }: {
               {new Date(e.data_hora_envio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
-          <p className="text-sm font-bold text-emerald-400 font-mono whitespace-nowrap">
-            R$ {Number(e.valor_conferido ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
+          {/* Pela API (#101) o valor do COLEGA não vem (dado de caixa dele): mostra só que enviou. */}
+          {e.valor_conferido === null && pwaPelaApiLigado() ? (
+            <p className="text-xs font-semibold text-emerald-400 whitespace-nowrap">enviado</p>
+          ) : (
+            <p className="text-sm font-bold text-emerald-400 font-mono whitespace-nowrap">
+              R$ {Number(e.valor_conferido ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          )}
         </li>
       ))}
     </ul>
@@ -225,6 +230,9 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   const [isSubmitting, setIsSubmitting] = useState(false);
   // API ligada (#101): o frentista escolhido na lista só vira o selecionado depois do PIN.
   const [pinPara, setPinPara] = useState<FrentistaSelecionavel | null>(null);
+  // Sobe a cada PIN aceito: com a API ligada, a lista (e a foto de quem entrou) e os envios do dia
+  // só se leem COM sessão, então são relidos depois do login (#101, fatia 2).
+  const [versaoDaSessao, setVersaoDaSessao] = useState(0);
   const { chavePara, esquecer: esquecerChave } = useChaveDoEnvio();
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const [salvandoFoto, setSalvandoFoto] = useState(false);
@@ -253,7 +261,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         return fresco ? { ...atual, foto: fresco.foto } : atual;
       });
     }).catch(err => console.error(err));
-  }, []);
+  }, [versaoDaSessao]);
 
   useEffect(() => {
     try {
@@ -353,7 +361,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         setErroEnvios(err instanceof Error ? err.message : 'Falha ao carregar os envios.');
       });
     return () => { ativo = false; };
-  }, [dataFechamento, enviosVersao]);
+  }, [dataFechamento, enviosVersao, versaoDaSessao]);
   /** Pedido de confirmação pendente por a data não ser hoje. Ver `handleSubmit`. */
   const [confirmarDataDiferente, setConfirmarDataDiferente] = useState(false);
 
@@ -789,7 +797,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         <PedirPin
           postoId={POSTO_ID}
           frentista={pinPara}
-          aoEntrar={() => { setSelectedFrentista(pinPara); setPinPara(null); }}
+          aoEntrar={() => { setSelectedFrentista(pinPara); setPinPara(null); setVersaoDaSessao((v) => v + 1); }}
           aoCancelar={() => setPinPara(null)}
         />
       )}

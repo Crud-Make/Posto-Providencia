@@ -1,6 +1,6 @@
 import type { ResultAsync } from 'neverthrow';
 import { paraExcecao, RecusaDaApi, type ErroDeApi } from '@frentista/shared/api';
-import { pwaPelaApiLigado } from '@frentista/shared/config';
+import { POSTO_ID, pwaPelaApiLigado } from '@frentista/shared/config';
 import { esquecerSessao, sessaoGuardada } from '@frentista/entities/sessao-do-frentista';
 import {
   buscarFrentistasAtivos,
@@ -28,6 +28,7 @@ import {
   buscarProdutosAtivos,
   buscarVendasDeHoje,
   registrarVenda,
+  type ItemDoCarrinho,
   type NovaVenda,
   type Produto,
   type VendaCriada,
@@ -35,6 +36,7 @@ import {
 } from '@frentista/entities/produto';
 import { buscarMedicoesDoDia, buscarTanques, salvarMedicao, type MedicaoDoDia, type Tanque } from '@frentista/entities/tanque';
 import type { ConsolidacaoDoDia } from '@posto/api-core';
+import { apiPelaApi } from './api-pela-api';
 
 /**
  * Fachada do strangler (P8 da refatoração FSD do pwa, 22/09/2026).
@@ -49,6 +51,11 @@ import type { ConsolidacaoDoDia } from '@posto/api-core';
  *          Os cinco delegados do encerrante (`getBicos`, `aquecerEncerrante`, `lerEncerrante`,
  *          `getUltimasLeiturasPorBico`, `salvarLeituras`) saíram: a aba Encerrante foi para o
  *          `apps/pwa-dono` e nenhum arquivo deste app os chamava (grep em 22/09, ok do dono).
+ *
+ *          Com a API ligada (`VITE_API_PWA=1`, #101 fatia 2), toda leitura e escrita desta fachada
+ *          delega para `./api-pela-api` — o PWA não chama o Supabase para nada. Sem a flag, o
+ *          caminho do Supabase é o de sempre, linha por linha. O `postoId` que falta em alguns
+ *          métodos antigos entra como último parâmetro com `POSTO_ID` de padrão (as telas não mudam).
  */
 
 /**
@@ -69,11 +76,13 @@ const esquecerSe401 = (erro: ErroDeApi): void => {
 export const api = {
   /** Busca Frentistas ativos do Posto */
   getFrentistas(postoId: number): Promise<Frentista[] | null> {
+    if (pwaPelaApiLigado()) return apiPelaApi.getFrentistas(postoId);
     return desembrulhar(buscarFrentistasAtivos(postoId));
   },
 
   /** Grava o avatar do frentista. O porquê de a garantia ser só de tela está na entity. */
-  salvarFotoFrentista(frentistaId: number, foto: string | null): Promise<void> {
+  salvarFotoFrentista(frentistaId: number, foto: string | null, postoId: number = POSTO_ID): Promise<void> {
+    if (pwaPelaApiLigado()) return apiPelaApi.salvarFotoFrentista(postoId, frentistaId, foto);
     return desembrulhar(salvarFotoDoFrentista(frentistaId, foto));
   },
 
@@ -111,23 +120,35 @@ export const api = {
   },
 
   /** Busca histórico de fechamentos de um frentista */
-  getHistoricoFrentista(frentistaId: number): Promise<ItemDoHistorico[]> {
+  getHistoricoFrentista(frentistaId: number, postoId: number = POSTO_ID): Promise<ItemDoHistorico[]> {
+    if (pwaPelaApiLigado()) return apiPelaApi.getHistoricoFrentista(postoId, frentistaId);
     return desembrulhar(buscarHistoricoDoFrentista(frentistaId));
   },
 
   /** Envios já feitos no dia, de todos os frentistas (filtra pela data do pai). */
   getEnviosDoDia(postoId: number, dataStr: string): Promise<EnvioDoDia[]> {
+    if (pwaPelaApiLigado()) return apiPelaApi.getEnviosDoDia(postoId, dataStr);
     return desembrulhar(buscarEnviosDoDia(postoId, dataStr));
   },
 
   /** Busca produtos ativos do posto */
   getProdutos(postoId: number): Promise<Produto[]> {
+    if (pwaPelaApiLigado()) return apiPelaApi.getProdutos(postoId);
     return desembrulhar(buscarProdutosAtivos(postoId));
   },
 
   /** Registra uma venda de produto pelo frentista */
   registrarVendaProduto(payload: NovaVenda): Promise<VendaCriada | null> {
     return desembrulhar(registrarVenda(payload));
+  },
+
+  /**
+   * Registra o carrinho inteiro pela API (#101, fatia 2): uma chamada, tudo ou nada, idempotente pela
+   * `chave`; preço e total são do servidor. Só existe com a API ligada — sem ela a tela grava item a
+   * item por `registrarVendaProduto`, como sempre.
+   */
+  registrarCarrinhoPelaApi(frentistaId: number, chave: string, itens: readonly ItemDoCarrinho[], postoId: number = POSTO_ID): Promise<void> {
+    return apiPelaApi.registrarCarrinho(postoId, frentistaId, chave, itens);
   },
 
   /** `true` quando este aparelho tem sessão (PIN digitado neste turno) do frentista. Só vale com a API ligada. */
@@ -187,21 +208,25 @@ export const api = {
 
   /** Tanques do posto com o combustível — a lista da tela de régua (#74). */
   getTanques(postoId: number): Promise<Tanque[]> {
+    if (pwaPelaApiLigado()) return apiPelaApi.getTanques(postoId);
     return desembrulhar(buscarTanques(postoId));
   },
 
   /** Medições de régua já gravadas no dia — para avisar que reenvio substitui. */
-  getMedicoesDoDia(dataStr: string): Promise<MedicaoDoDia[]> {
+  getMedicoesDoDia(dataStr: string, postoId: number = POSTO_ID): Promise<MedicaoDoDia[]> {
+    if (pwaPelaApiLigado()) return apiPelaApi.getMedicoesDoDia(postoId, dataStr);
     return desembrulhar(buscarMedicoesDoDia(dataStr));
   },
 
   /** Grava a medição de régua (upsert por tanque+dia) e confere a gravação (anti-RLS). */
-  salvarMedicaoTanque(tanqueId: number, dataStr: string, volumeFisico: number): Promise<void> {
+  salvarMedicaoTanque(tanqueId: number, dataStr: string, volumeFisico: number, postoId: number = POSTO_ID): Promise<void> {
+    if (pwaPelaApiLigado()) return apiPelaApi.salvarMedicaoTanque(postoId, tanqueId, dataStr, volumeFisico);
     return desembrulhar(salvarMedicao(tanqueId, dataStr, volumeFisico));
   },
 
   /** Busca vendas de produtos do dia por frentista (recorte de meia-noite local, na entity). */
-  getVendasProdutoHoje(frentistaId: number): Promise<VendaDeHoje[]> {
+  getVendasProdutoHoje(frentistaId: number, postoId: number = POSTO_ID): Promise<VendaDeHoje[]> {
+    if (pwaPelaApiLigado()) return apiPelaApi.getVendasProdutoHoje(postoId, frentistaId);
     return desembrulhar(buscarVendasDeHoje(frentistaId));
   },
 };
