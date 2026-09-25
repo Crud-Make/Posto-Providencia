@@ -15,12 +15,14 @@
 import { Database } from 'bun:sqlite';
 import { test, expect } from 'bun:test';
 import {
+    cartao,
     conferido,
     conferidoImplicito,
     diferenca,
     semLancamento,
     meiosFromFechamentoRow,
 } from './fechamento';
+import { emCentavos } from './lucro';
 
 const DB_PATH = `${import.meta.dir}/../../../../docs/data/janeiro_referencia.sqlite`;
 const db = new Database(DB_PATH, { readonly: true });
@@ -62,8 +64,38 @@ for (const l of linhas) {
             valor_baratao: l.baratao,
         });
         expect(centavos(conferido(meios))).toBe(centavos(l.total));
+        // Sem `centavos()` no lado do módulo, de propósito: a linha acima arredonda
+        // o artefato da mutação antes de comparar, e `conferido()` sem `emCentavos`
+        // passava verde (auditoria de 21/09 — mesma forma do canário B da P8).
+        expect(conferido(meios)).toBe(emCentavos(l.total));
     });
 }
+
+/**
+ * Canário: a soma crua dos 7 baldes derrapa do centavo em 38 das 212 linhas
+ * reais de janeiro. Medido em 21/09/2026. Se este teste passar a listar zero
+ * linhas, a asserção exata acima virou vazia — e é isso que ela não pode ser.
+ */
+test('a soma crua dos 7 baldes derrapa em 38 linhas reais; conferido() em nenhuma', () => {
+    const derrapam = linhas
+        .filter((l) => {
+            // Mesma ordem de `conferido()`, só sem a quantização no fim.
+            const cru = l.dinheiro + l.moeda + l.pix + cartao({
+                dinheiro: 0, moedas: 0, pix: 0, nota: 0, baratao: 0,
+                cartaoLegado: 0, cartaoDebito: l.debito, cartaoCredito: l.credito,
+            }) + l.notas + l.baratao;
+            return cru !== emCentavos(cru);
+        })
+        .map((l) => `${l.dia}/${l.frentista}`);
+    expect(derrapam).toEqual([
+        '1/Barbra', '1/Sinho', '2/Sinho', '3/Filip', '4/Filip', '5/Barbra', '6/Barbra',
+        '6/Nayla', '6/Elyon', '7/Elyon', '8/Paulo', '8/Rosimeire', '8/Elyon', '9/Filip',
+        '10/Filip', '10/Paulo', '11/Filip', '11/Sinho', '13/Filip', '13/Barbra', '13/Sinho',
+        '16/Filip', '16/Barbra', '17/Barbra', '19/Rosimeire', '20/Filip', '20/Barbra',
+        '20/Rosimeire', '21/Barbra', '23/Sinho', '24/Elyon', '27/Filip', '27/Barbra',
+        '28/Sinho', '28/Nayla', '29/Barbra', '30/Sinho', '30/Barbra',
+    ]);
+});
 
 /**
  * Golden do estado "sem lançamento", contra os mesmos dias reais de janeiro.

@@ -14,3 +14,18 @@
 - [Superfície Supabase por app](superficie-supabase-por-app.md) — script from/rpc/invoke/realtime/auth; `rg -g *.ts` sem aspas quebra tudo; onde vive cada acoplamento
 - [api-core não lê Compra nem HistoricoTanque](api-core-nao-le-compra-nem-tanque.md) — leitura mensal dessas tabelas vive em widgets do web; api-core só tem Leitura/Bico/Fechamento
 - [Mover frontend/apps/+frontend/packages/ para frontend/ (#95)](mover-apps-packages-para-frontend.md) — goldens acham docs/data por `../`; checklist-commit ancora `^frontend/packages/`, portao-golden não; Root Directory Vercel só no painel; types.ts raiz órfão
+- [Carga local pelos scripts --sql](carga-local-postgres-pelos-scripts-sql.md) — Postgres do compose só tem cadastro; carga-historico-*.py --sql lê docs/data e só imprime SQL; despesa emite DELETE
+- [Hooks do Claude: pontos cegos](hooks-do-claude-pontos-cegos.md) — `git -C`/`git -c` escapam de protege-git e checklist; nenhum hook lê `cwd`; `pkill -f` casa com o `bash -c eval` do harness
+- [Catálogo Laravel × leituras do painel](catalogo-api-laravel-vs-painel.md) — API não filtra ativo; foto fora por teste; /configuracoes passa pelo aggregator protegido
+- [Taxa de pagamento: onde é calculada](taxa-de-pagamento-onde-e-calculada.md) — 3 contas em fechamento-diario que ninguém consome; docs/data não tem taxa, então golden é impossível e a trava tem de ser regressão
+- [Backend: arestas que os gates não veem](backend-arestas-invisiveis-aos-gates.md) — rota, Provider, factory, tabela por string, App\Models; deptrac roda em extração, Pest não
+- [Dois escritores de total_vendas](dois-escritores-de-total-vendas.md) — painel do fechamento-diário grava a própria conta (0 quando sem encerrante); api-core relê Leitura e grava NULL; os dois são encerrante, mas divergem
+- [FechamentoFrentista é DELETE+INSERT](fechamento-frentista-delete-insert.md) — painel apaga por fechamento e reinsere; PWA é INSERT puro; unique (fechamento_id, frentista_id) JÁ está no esquema base:761; tabela não tem bico_id
+- [Estoque no salvamento do fechamento](estoque-no-salvamento-do-fechamento.md) — leitura.service desconta no bulkCreate e deleteByDate não devolve (duplo desconto); api-core e MovimentacaoEstoque ficam fora
+- [Sequência do salvamento do fechamento diário](salvamento-do-fechamento-diario-sequencia.md) — 6 passos sem transação; `parseValue` É `analisarValor`; passo 0 apaga a leitura-base que a tela mostra em branco
+- [Onde mora a escrita do fechamento](gravacao-fechamento-onde-mora.md) — três escritores concorrentes das mesmas tabelas; backend/app/Fechamento é só leitura
+- [Janela de escrita e Estoque: onde medir](janela-de-escrita-e-estoque-onde-medir.md) — janela é função SQL, não código; estoque desconta no leitura.service e no evento do backend
+- [P8: o golden já existe, falta consolidar](p8-golden-feito-falta-consolidar.md) — commit ef42ea0 fez os dois goldens; `totalVendasDoEncerrante` não tem consumidor de produção; divergência de janeiro é de PREÇO, não de float
+- [Raio de impacto do total_vendas do painel](raio-de-impacto-do-total-vendas-do-painel.md) — nasce em calcularTotais e sai por 3 portas (tela, Supabase legado, PUT); servidor não recalcula e `/consolidar` não existe
+- [CA-2: a trava já existia](ca-2-onde-a-trava-ja-existe.md) — Pest Arch trava controller×Domain desde 18/09 (regras.md é de 17/09 e mente "SEM TRAVA"); lista morde dentro de `toUse`, não de `expect`; buracos: Posto, Http fora de Controllers/, e a escrita
+- [Onde o graphify erra](grafo-mentiu-affected-parcial.md) — `affected` não acha nó PHP e conta comentário como uso; o grep que fecha cada caso

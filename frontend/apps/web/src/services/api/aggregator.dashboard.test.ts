@@ -150,6 +150,8 @@ describe('aggregatorService.fetchDashboardData — paridade Supabase × API dent
             { combustivel_id: 1, produto: 'Gasolina Comum', litros_vendidos: '1500.000', receita: '9000.00', compras: { litros: '2000.000', valor_total: '10000.00' } },
         ],
         rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-01-31' }, despesas_total: '900.00', litros_vendidos: '1800.000' },
+        // Aditivo da #103 P9: o dashboard do proprietário não lê as leituras cruas.
+        leituras: [],
     };
 
     const LUCRO_ESPERADO = 900;
@@ -268,6 +270,24 @@ describe('aggregatorService.fetchDashboardData — paridade Supabase × API dent
         expect(result.data.kpis.janelaDoRateio).toEqual({ inicio: '2026-01-01', fim: '2026-02-28' });
         // Rateio dos dois meses (R$ 1.800 ÷ 3.600 L = 0,50/L) sobre a mesma venda: mesmo lucro do
         // cenário de um mês — o que muda aqui é a JANELA, e é ela que a tela precisa mostrar.
+        expect(result.data.kpis.totalProfit).toBe(LUCRO_ESPERADO);
+    });
+
+    it('ensaio de 27/09: com VITE_API_URL e VITE_API_DASHBOARD=0, o Dashboard lê do Supabase e não chama a API', async () => {
+        vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+        vi.stubEnv('VITE_API_DASHBOARD', '0');
+        vi.stubGlobal('fetch', vi.fn());
+        leiturasDoMesNoSupabase(LEITURAS);
+        vi.mocked(leituraService.getByDateRange).mockResolvedValue(ok(LEITURAS) as never);
+        vi.mocked(compraService.getByDateRange).mockResolvedValue(ok(COMPRAS_SUPABASE) as never);
+        vi.mocked(despesaService.getByMonth).mockResolvedValue(ok(DESPESAS_SUPABASE) as never);
+
+        const result = await aggregatorService.fetchDashboardData(JANEIRO[0], JANEIRO[1], null, POSTO);
+
+        expect(fetch).not.toHaveBeenCalled();
+        expect(compraService.getByDateRange).toHaveBeenCalled();
+        expect(result.success).toBe(true);
+        if (!result.success) throw new Error(result.error);
         expect(result.data.kpis.totalProfit).toBe(LUCRO_ESPERADO);
     });
 
@@ -431,6 +451,7 @@ describe('aggregatorService.fetchDashboardData — uma leva só de consultas', (
             periodo: { inicio: '2026-01-15', fim: '2026-01-15' },
             produtos: [],
             rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-01-31' }, despesas_total: '0.00', litros_vendidos: '0.000' },
+            leituras: [],
         }), { status: 200 }));
         cadastro.resolver(ok([GASOLINA_COMUM, ETANOL]));
         estoque.resolver(ok(ESTOQUE));

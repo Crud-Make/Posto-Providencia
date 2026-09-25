@@ -18,10 +18,21 @@ import * as React from 'react';
 import { useState, useCallback, useRef } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import { leituraService } from '../../../services/api';
+import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
+import { lerLeiturasDoDiaDaApi, type LeituraDoDia } from '../../../services/api/leitura.api';
 import { formatarParaBR } from '../../../utils/formatters';
-import { isSuccess } from '../../../types/ui/response-types';
+import {
+  type ApiResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  isSuccess
+} from '../../../types/ui/response-types';
 
-type LeituraPorDataResponse = Awaited<ReturnType<typeof leituraService.getByDate>>;
+/**
+ * As duas fontes cabem aqui: o Supabase devolve a linha com `bico` aninhado, a API só a linha
+ * (`LeituraDoDia`). O hook lê `bico_id`, `leitura_inicial`, `leitura_final` e `preco_litro`.
+ */
+type LeituraPorDataResponse = ApiResponse<LeituraDoDia[]>;
 type UltimaLeituraResponse = Awaited<ReturnType<typeof leituraService.getLastReading>>;
 
 /**
@@ -249,10 +260,18 @@ export const useLeituras = (
     try {
       // [18/01 00:00] Checar success e extrair data do ApiResponse
       // Motivo: leituraService agora retorna ApiResponse
-      const dadosRes: LeituraPorDataResponse = await leituraService.getByDate(
-        dataSelecionada,
-        postoId
-      );
+      // [20/09] Leituras do dia pela API Laravel (#103 P5) quando VITE_API_URL existe; sem
+      // ela, nada muda. A troca é AQUI, no call site, e não dentro de
+      // `leituraService.getByDate`: `getSalesSummaryByDate` e o `aggregator.service.ts`
+      // chamam o mesmo service, e o aggregator é sítio de fórmula que só o Fable edita.
+      // A paridade (números, ordem por id, recorte de meia-noite UTC) fica em
+      // `leitura.api.ts`; `getLastReading` segue no Supabase até a fatia dela.
+      const dadosRes: LeituraPorDataResponse = urlDaApi() !== null
+        ? await lerLeiturasDoDiaDaApi(postoId, dataSelecionada).match(
+            (lidas) => createSuccessResponse(lidas),
+            (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+          )
+        : await leituraService.getByDate(dataSelecionada, postoId);
 
       if (!isSuccess(dadosRes)) {
         // [18/01 00:00] Tratar erro de ApiResponse sem quebrar UI

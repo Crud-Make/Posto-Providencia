@@ -1,0 +1,19 @@
+# O servidor de HTTP DENTRO do container da API (#105).
+#
+# Sem TLS, de propósito: quem termina o HTTPS é o Caddy do `docker-compose.prod.yml`, que é o
+# único com porta publicada e o único que fala com o Let's Encrypt. Aqui é HTTP puro em :8080 —
+# porta não privilegiada, porque este processo roda como `www-data` e não deve poder tomar a 80.
+#
+# Sem log de acesso, também de propósito: quem registra requisição é o edge, e registrar duas
+# vezes a mesma requisição só faz o disco encher mais rápido. O log de ERRO continua saindo.
+{
+	frankenphp
+	admin off
+	auto_https off
+}
+
+:8080 {
+	root * /app/public
+	encode zstd gzip
+	php_server
+}

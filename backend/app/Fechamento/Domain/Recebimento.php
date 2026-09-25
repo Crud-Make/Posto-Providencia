@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Fechamento\Domain;
 
+use Database\Factories\RecebimentoFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,6 +28,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class Recebimento extends Model
 {
+    /** @use HasFactory<RecebimentoFactory> */
+    use HasFactory;
+
     protected $table = 'Recebimento';
 
     public $timestamps = false;
@@ -57,5 +62,10 @@ final class Recebimento extends Model
     public function scopeDoPostoAtual(Builder $consulta): Builder
     {
         return $consulta->whereHas('fechamento');
+    }
+
+    protected static function newFactory(): RecebimentoFactory
+    {
+        return RecebimentoFactory::new();
     }
 }

@@ -2,6 +2,192 @@
 
 ## [Não Lançado]
 
+### 🔓 O `pre-push` passa a rodar só o golden (decisão do dono, 24/09)
+
+- **O hook deixa de repetir o CI.** De 18 a 24/09 ele criava um worktree, reinstalava `bun` e
+  `composer` e rodava lint, type-check, vitest, golden e `composer gates`: ~4 min por push para
+  provar o que o CI (`build` + `backend`, obrigatórios na `main` e na `fase-a`) prova de novo no
+  PR. Agora faz duas coisas: recusa push para a `main` e roda `bun run test:golden` (~0,5 s), a
+  única suíte que o CI não consegue rodar porque depende de `docs/data`.
+- **Limite dito no próprio hook:** o golden roda sobre a árvore do checkout, não sobre o commit;
+  quando o commit que sobe não é o HEAD, ou `frontend/` tem mudança não commitada, ele avisa.
+- **Canários novos** em `scripts/hooks/testa-pre-push.sh`: sadio libera, `main` barra, e
+  `diferenca` com o sinal trocado barra pelo golden. Os três conferidos em 24/09.
+- CLAUDE.md §0 e §7, `docs/arquitetura/regras.md` (DOM-1, TEN, assimetria oxlint × eslint) e
+  `docs/design/cutover.md` descrevem o hook como ele é agora.
+### 💰 O custo do mês do fechamento diário passa a poder vir da API (#103 P9, passos 3–6)
+
+- **`GET /api/postos/{posto}/dashboard` ganha o campo `leituras`** (bico, dia em UTC e os dois
+  encerrantes, em string decimal, em ordem de bico e dia). É aditivo: nenhum campo que já existia
+  mudou de significado. Decisão do dono em 22/09: o salto do encerrante não é reescrito em PHP; o
+  cliente roda o `encerranteMensal` de `@posto/utils` sobre essas linhas.
+- **`useCustoMensal` e `useDespesaDoMes` leem pela API quando `VITE_API_URL` existe**, sempre o
+  mês civil inteiro. Os litros do rateio do custo são os do encerrante (D3): em fevereiro/2026 o
+  rateio cai de R$ 0,6152 para R$ 0,4693 por litro, como na planilha. Nos outros seis meses o
+  número não muda.
+- **Erro não vira zero.** Se a API recusa (inclusive o 403 de quem só pode ver o posto), o custo
+  fica indisponível e a aba Gestão de Bicos mostra "—" no lucro e na margem; a despesa da tela de
+  compras segura o último valor bom e registra o erro.
+- **Sem a API (produção hoje), compra e despesa passam ao mês civil inteiro**, também no mês
+  corrente (D1/D2). O hook marca o rateio do mês corrente como `provisorio`; a tela ainda não mostra
+  essa marca.
+- **Golden novo:** `custo-mensal.golden.spec.ts` prova, de janeiro a julho, que o caminho da API,
+  o caminho Supabase e a planilha dão o mesmo custo e o mesmo rateio, com igualdade exata e
+  canários. `test:golden` passa de 3499 para 3536, 0 fail; nenhum golden existente foi tocado.
+- **Fica para fatias próprias:** a D5 e a soma da despesa em float no caminho Supabase; o
+  `useCombustiveisHibridos.ts:141`, que ainda corta o mês em hoje; as consultas de `Despesa`
+  copiadas em outras telas; e alinhar a Visão do Proprietário, que continua rateando pela Σ dos
+  dias.
+
+### 🔒 O dashboard do proprietário deixa de ser público (#103)
+
+- **`GET /api/postos/{posto}/dashboard` exige token e quem gere o posto.** Saiu do grupo público
+  de `backend/routes/api.php`, onde qualquer um que soubesse o id do posto lia venda, compra,
+  custo e despesa, e entrou no grupo protegido com `posto.acesso:gerir` — como o PUT do fechamento.
+  Decisão do dono em 22/09: custo e despesa são dado de proprietário. Sem token 401; operador
+  vinculado, gerente de outro posto ou vínculo desligado 403; Admin e gerente do posto 200.
+- **O corpo da resposta não mudou.** O `DashboardTest` só ganhou o token (de Admin): nenhum
+  `expect` foi tocado. O `AcessoAoDashboardTest` novo prende os códigos, com canário: devolver a
+  rota ao grupo público deixa 5 casos vermelhos, e trocar `gerir` por `ver` deixa vermelho o do
+  operador.
+- **Produção não muda hoje:** a Vercel não define `VITE_API_URL`, então o painel publicado nem
+  chama esta rota. Para ligá-la em ambiente real, falta vincular `Usuario.auth_user_id` (no
+  compose, o admin já tem).
+- **Fica registrado como fatia própria:** o catálogo (`combustiveis`, `tanques`, `bicos`,
+  `formas-pagamento`, `maquininhas`, `fornecedores`, `frentistas`) continua sem token e expõe
+  `preco_custo`, taxa, CNPJ e telefone. Ver `docs/design/cadastro.md` §Riscos.
+
+### 🚀 O backend ganha imagem de produção — e a trava que recusa subir errado (#105)
+
+- **Nasce a imagem que vai para a VPS** (`backend/Dockerfile.prod`): FrankenPHP 1 sobre PHP 8.5,
+  `composer install --no-dev`, autoload autoritativo, OPcache com `validate_timestamps=0` e o
+  processo rodando como `www-data`. O `Dockerfile` da raiz **não mudou** — segue sendo o de
+  desenvolvimento (`php -S`, código montado por volume).
+- **FrankenPHP no lugar de php-fpm + nginx**, que era o plano registrado no Dockerfile de dev: um
+  processo em vez de três containers, sem socket, sem pool e sem `nginx.conf`. A decisão e o preço
+  estão em `docs/design/producao.md`.
+- **O container recusa subir errado.** O `entrypoint.sh` para com saída 1 quando falta `APP_KEY`,
+  `DB_HOST`, `SUPABASE_JWT_SECRET` ou `CORS_ORIGINS`, e também quando `CORS_ORIGINS=*`. A trava
+  mora no entrypoint, não no runbook, porque runbook se pula: um container que sobe com o CORS
+  aberto não está parado, está atendendo — e atendendo errado, em silêncio.
+- **`config/cors.php` nasce porque não existia.** O Laravel 13 não traz esse arquivo, e o padrão
+  embutido é `allowed_origins: ['*']`: qualquer site chamava a API. Em produção a lista sai de
+  `CORS_ORIGINS`.
+- **O ensaio de 27/09 acende uma tela só.** `VITE_API_URL` liga o strangler inteiro,
+  e a flag nova `corteDaTelaLigado` permite segurar uma tela no Supabase com `VITE_API_<TELA>=0`.
+  Sem ela, ligar o global trocaria o motor das três telas mistas no mesmo minuto, e o fechamento do
+  dia é dinheiro do posto.
+  O Registro de Compras e o Dashboard obedecem: o corte do Dashboard (`aggregator.service.ts`)
+  passou de `urlDaApi() !== null` para `corteDaTelaLigado(VITE_API_DASHBOARD)`. Canário em
+  `aggregator.dashboard.test.ts`: com o corte antigo, o caso do ensaio fica vermelho.
+- Canário: 5 casos novos em `base.test.ts`. Mutar `corteDaTelaLigado` para obedecer só ao global
+  deixa **3 vermelhos**, incluindo o caso do ensaio.
+- **Provado localmente em 24/09/2026:** a imagem constrói, sobe contra o Postgres real e responde
+  `200` no `/api/saude`, `200` no catálogo, `401` na rota protegida sem token, e barra origem
+  estranha no CORS (preflight incluído). A imagem não leva `.env` nem `tests`, e o `vendor/bin` só
+  traz ferramenta de runtime. Gates: 969 vitest, 3499 golden, Pest 196/196 com 96,8%.
+
+### ⛽ A venda do dia do painel passa a vir do encerrante (#103 P8)
+
+- **`useFechamento` troca a fonte do `total_vendas`:** sai `calcularTotais` (float, quantizado
+  tarde) e entra `vendaDoDiaPeloEncerrante`, a mesma conta de `totalVendasDoEncerrante` e provada
+  pelo `venda-do-dia.golden.spec.ts` contra janeiro/2026 (Design Doc §7 d).
+- **Dia não apurado vira `null`, não `0`.** Com menos bicos lidos que ativos, a tela mostra `—`, o
+  rodapé decide "sem encerrante" por `totalVendas === null` (antes `< 0,005`, que com `null`
+  passaria calado por coerção) e um `0` real deixa de parecer "sem encerrante".
+- **A gravação legada pelo Supabase passa a gravar `null` em `total_vendas` no dia não apurado**
+  (decisão do dono em 21/09), igual ao que `fechamento.service.ts` e o `api-core` já gravavam. A
+  `diferenca` desse caminho segue 0; o par inteiro só vai nulo pela API (`montarDiaDeclarado`).
+- Canários novos: dois bicos ativos com uma leitura só dá `null` no hook e no payload da API.
+- **`calcularTotais` e o `calculators.golden.spec.ts` foram apagados** (decisão do dono em 21/09):
+  sem call site depois da troca, a função só mantinha viva uma segunda somadora de venda. O
+  golden cai de 3564 para 3499 casos, que eram os dessa spec.
+
+### ✍️ A escrita existe — o fechamento diário grava pela API, e é a primeira tela completa (#103 P10/P11)
+
+- **O painel deixa de conversar com o banco em 8 idas soltas e passa a mandar UM pedido.** A
+  gravação do dia era 7 a 8 chamadas sem transação a partir do navegador: apagava as leituras,
+  buscava o pai, apagava os filhos, criava, inseria em lote três vezes e atualizava. Qualquer
+  falha no meio deixava o dia partido. Agora é `PUT /api/postos/{posto}/fechamento?data=`, um
+  `GravaFechamentoDoDia` dentro de `DB::transaction`: ou o dia inteiro entra, ou nada entra.
+- **Dois defeitos de dinheiro morrem com a mudança de forma, não com remendo.** *Salvar o dia
+  apagava a leitura-base*: as leituras viravam DELETE do dia inteiro antes de reinserir, e bico
+  não declarado sumia. Agora é UPSERT por `(bico_id, data)`, sem DELETE — a invariante I5 mudou
+  DE PROPÓSITO e está registrada assim no Design Doc. *O painel apagava o envio do frentista que
+  chegasse depois de a tela carregar*: o DELETE varria todos os filhos do dia, inclusive o que a
+  tela nunca viu. Agora o contrato leva `frentistas_conhecidos[]` e o servidor só apaga o que foi
+  declarado — quem chegou depois sobrevive.
+- **O que o Command deliberadamente NÃO faz:** não recalcula `conferido`, `total_vendas`,
+  `total_recebido` nem `valor_cartao`. Refazer a conta no servidor criaria uma segunda fórmula de
+  dinheiro, e o projeto já paga caro por ter duas. Ele revalida SÓ
+  `diferenca = total_vendas − total_recebido`, exata em centavos: se o cliente mandar um par que
+  não fecha, a gravação é recusada.
+- **O Estoque continua descontando duas vezes ao regravar o dia, e isso é decisão, não esquecimento**
+  (§7 b, dono em 20/09). O contato é por EVENTO (`LeiturasDoDiaGravadas`, em `Compartilhado`, só
+  primitivos), para `Fechamento` não importar `Estoque` (CA-7). O comportamento está preso por dois
+  testes em lados diferentes: o *dispatch* no Command e o *efeito* no ouvinte — separados porque o
+  ouvinte é `ShouldHandleEventsAfterCommit` e o Pest roda em transação, então um teste ingênuo de
+  "estoque descontado" passaria **verde mentindo**.
+- **`usuario_id` deixa de ser `1` cravado** e passa a ser o usuário autenticado, cumprindo a I6, que
+  desde sempre dizia "até a #102".
+- **A autorização ganhou uma peça, não uma classe.** O Design Doc previa um middleware novo
+  `posto.gerir`; em vez disso o `ExigeAcessoAoPosto` passou a receber a habilidade por parâmetro
+  (`posto.acesso:gerir`). Uma classe, um teste, e a `PostoPolicy::gerir` — escrita na #97 e nunca
+  consultada — finalmente decide alguma coisa.
+- **A trava apertou junto com a entrega.** A isenção de complexidade do `.oxlintrc.json` **saiu** do
+  `useSubmissaoFechamento.ts` e foi para o `gravacaoLegadaSupabase.ts`: o caminho novo nasce sem
+  exceção, e quem carrega a dívida é o legado, que morre no cutover. As duas catracas perderam duas
+  entradas cada — dívida só desce.
+- **O golden de `totais-do-dia` ganhou a asserção que morde:** igualdade exata contra o canônico
+  quantizado, sem arredondar o lado do módulo. A auditoria por mutação de 20/09 mostrou que
+  arredondar os dois lados deixa float sujo passar verde.
+- **Nasce desligada em produção, de propósito.** Nenhum `Usuario` tem `auth_user_id`, então o PUT
+  responde 401 a todo login real; e a Vercel não tem `VITE_API_URL`, então o painel em produção
+  continua gravando pelo Supabase. O caminho legado sobrevive intacto até o cutover (#105).
+- Gates: Pint, PHPStan **nível 9** (0 erros), Deptrac (0 violações), Pest **196/196** com cobertura
+  **96,8 %**; no front, oxlint, catraca do `tsc` ("nenhum erro novo"), vitest **956/956** e golden
+  masters **3436 pass, 0 fail**.
+
+### 🔐 Guard da transição e gate de escopo de tenant — a #102 destrava a #103, e o multi-tenant ganha trava
+
+- **O Laravel passa a saber quem está chamando, sem o painel trocar de login.** Implementada a
+  DECISÃO A (`docs/design/fechamento-diario-api.md` §6) em três peças, separadas para que o que é
+  ponte não contamine o que fica: `App\Pessoas\Application\VerificaTokenDoSupabase` confere o JWT
+  (HS256, conferido no header do token em 20/09) **sem biblioteca** — `hash_hmac` nativo —, recusa
+  `alg` diferente de HS256 **antes** de olhar a assinatura (confusão de algoritmo, a falha clássica
+  de quem valida JWT à mão), compara com `hash_equals` e **falha fechada**: sem
+  `SUPABASE_JWT_SECRET`, recusa tudo. `AutenticaPeloTokenAtual` resolve `sub` →
+  `Usuario.auth_user_id`, só se `ativo`. `ExigeAcessoAoPosto` finalmente dá dente à `PostoPolicy`,
+  escrita na #97 com o comentário "aplicada às rotas na #102" e que **nenhuma rota consultava**.
+  **P5, P6, P7 e P11 da #103 deixam de estar bloqueadas.** Nenhuma rota de produção mudou: o
+  catálogo segue público até as fatias novas nascerem já protegidas.
+- **Condição de saída escrita desde o primeiro dia:** só o `VerificaTokenDoSupabase` é ponte, e ele
+  morre quando o `AuthContext` parar de chamar `supabase.auth`. O middleware de identidade e o de
+  autorização valem igual com o Sanctum — muda o emissor, não o guard. Ponte sem data de validade
+  escrita vira arquitetura, e era esse o risco.
+- **Nenhum gate sabia o que é tenant.** Deptrac, PHPStan 9, PHPMD e o Pest passavam **verdes** num
+  model de negócio que esquecesse o `PertenceAoPosto` — e um model sem escopo responde consulta sem
+  filtro de posto, ou seja, dado de um cliente na tela de outro. `EscopoDeTenantTest` fecha isso com
+  três regras, e **a regra vem do banco, não de lista escrita à mão**: tabela com coluna `posto_id`
+  (lida do `information_schema`) exige o trait, então model novo em tabela escopada nasce coberto
+  sem ninguém lembrar de registrar. Exceção só com motivo escrito de mais de 40 caracteres, e há uma
+  real: `UsuarioPosto`, que é a tabela que **decide** o acesso — escopá-la pelo posto atual seria
+  circular. Terceira regra: model em tabela **sem** `posto_id` declara COMO é escopado, para que
+  silêncio deixe de ser opção.
+- **O gate achou duas coisas na primeira execução.** `App\Models\User`, sobra do instalador do
+  Laravel sem `$table` e sem uso em `app/`, passava invisível por todos os gates — agora está
+  declarado como dívida até a #102 decidir o dono da autenticação. E `Recebimento` não tem
+  `posto_id` porque é escopado pelo pai (`fechamento_id` → `Fechamento`): estava certo, mas era
+  conhecimento tácito na cabeça de quem escreveu; agora está escrito e testado.
+- **Canário conferido em 20/09**, porque trava que não prova que reprova é trava verde mentindo:
+  tirar `PertenceAoPosto` de `Cadastro\Domain\Bico` deixou o gate vermelho apontando o model, e
+  exceção sem motivo também reprova. Os dois restaurados, árvore de volta ao hash original.
+- **Descoberto ao escrever o teste, e a migração dos 16 usuários da #102 vai esbarrar nisso:** existe
+  trigger `handle_new_user()` em `auth.users` que insere o `Usuario` **sozinho**, com role
+  `FRENTISTA`. Inserir em `auth.users` sem `email` quebra o trigger, porque `Usuario.email` é
+  `NOT NULL`. O trigger não é opcional: qualquer criação de identidade passa por ele.
+- Gates: Pint, PHPStan nível 9 (0 erros), PHPMD, Deptrac e Pest **117/117 (526 asserções)**.
+
 ### 🧾 Fechamento diário pela API — fatias P4a/P4b da #103 (item 1): catálogo do módulo pelas rotas da #97
 
 - **Frentistas, bicos e formas de pagamento do `fechamento-diario` vêm da API Laravel quando

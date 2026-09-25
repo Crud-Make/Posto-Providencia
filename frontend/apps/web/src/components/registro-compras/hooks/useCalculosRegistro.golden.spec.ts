@@ -28,9 +28,12 @@ import {
 } from '@posto/utils';
 import {
     calcDespesaPorLitroPura,
+    calcLitrosVendidosPura,
     calcLucroBicoPura,
     calcLucroLtPura,
     calcMediaLtRsPura,
+    calcValorParaVendaPura,
+    calcValorPorBicoPura,
 } from './useCalculosRegistro';
 import type { CombustivelHibrido } from './useCombustiveisHibridos';
 import { parseBRFloat } from '../../../utils/formatters';
@@ -129,6 +132,27 @@ for (const mes of MESES) {
 
         // O rateio por litro é idêntico enquanto há venda no mês.
         expect(calcDespesaPorLitroPura(combs, despesa)).toBeCloseTo(despOp, 9);
+
+        // A despesa entra SOMANDO no valor para venda. Subtrair passava VERDE
+        // (medido por mutação em 20/09) porque o único teste que exercitava
+        // `calcLucroLtPura` usava um mês de despesa ZERO, onde somar e subtrair
+        // dão o mesmo número. E `calcValorPorBicoPura` não era chamado por
+        // golden nenhum: +1 centavo por bico também passava.
+        const despLtHook = calcDespesaPorLitroPura(combs, despesa);
+        for (const c of combs) {
+            expect(calcValorPorBicoPura(c)).toBe(
+                c.venda_mes_rs > 0
+                    ? c.venda_mes_rs
+                    : calcLitrosVendidosPura(c) * parseBRFloat(c.preco_venda_atual)
+            );
+
+            const custoMedio = calcMediaLtRsPura(c);
+            if (custoMedio === 0) continue;
+            expect(calcValorParaVendaPura(c, combs, despesa)).toBe(custoMedio + despLtHook);
+            expect(calcLucroLtPura(c, combs, despesa)).toBe(
+                parseBRFloat(c.preco_venda_atual) - (custoMedio + despLtHook)
+            );
+        }
 
         const doHook = combs.reduce((s, c) => s + calcLucroBicoPura(c, combs, despesa), 0);
         const canonico = combs.reduce((s, c) => {

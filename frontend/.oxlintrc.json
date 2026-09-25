@@ -16,7 +16,7 @@
         "apps/pwa-dono/src/screens/EncerranteScreen.tsx",
         "apps/pwa-frentista/src/App.tsx",
         "apps/web/src/components/BarraLateral.tsx",
-        "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts",
+        "apps/web/src/components/fechamento-diario/hooks/gravacaoLegadaSupabase.ts",
         "apps/web/src/components/leituras-diarias/components/TabelaLeituras.tsx",
         "apps/web/src/components/login/index.tsx",
         "apps/web/src/components/registro-compras/SecaoVendas.tsx",

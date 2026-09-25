@@ -31,6 +31,9 @@ use stdClass;
  *                       o filtro de `despesaService.getByMonth`) e Σ `Leitura.litros_vendidos` de
  *                       TODOS os combustíveis, ambos do MESMO mês civil (aggregator.service.ts:43-61;
  *                       lucro.ts:36-41 `despesaOperacionalPorLitro` divide no cliente, não aqui)
+ *  - `leituras`       ← as linhas de `Leitura` do período exato (bico, dia UTC, encerrantes), cruas,
+ *                       para o cliente rodar `encerranteMensal` (#103 P9, decisão do dono 22/09/2026).
+ *                       Aditivo: `rateio.litros_vendidos` continua sendo Σ `litros_vendidos`.
  */
 final class DadosDoPeriodo
 {
@@ -55,7 +58,39 @@ final class DadosDoPeriodo
             periodo: $periodo,
             produtos: $this->produtos($posto, $periodo),
             rateio: $this->rateio($posto, $periodo->mesCivil()),
+            leituras: $this->leituras($posto, $periodo),
         );
+    }
+
+    /**
+     * Leituras cruas do período exato, para o cliente rodar `encerranteMensal` sobre os litros do
+     * rateio (decisão do dono, 22/09/2026, #103 P9 Q1 opção a). Nenhuma conta aqui: o salto do
+     * encerrante mora em `encerrante-mensal.ts` e não ganha cópia em PHP (DECISÃO 1).
+     *
+     * Ordem determinística por bico, dia e id — o unique `leitura_unica_bico_data` já torna
+     * (bico, data) único, e o `id` desempata se um dia o índice sumir.
+     *
+     * @return list<LeituraDoPeriodo>
+     */
+    private function leituras(int $posto, Periodo $periodo): array
+    {
+        $linhas = DB::table('Leitura')
+            ->selectRaw('id, bico_id, '.self::DIA_UTC.'::text AS dia, leitura_inicial::numeric(15,3) AS leitura_inicial, leitura_final::numeric(15,3) AS leitura_final')
+            ->where('posto_id', $posto)
+            ->whereRaw(self::DIA_UTC.' BETWEEN ? AND ?', [$periodo->inicio, $periodo->fim])
+            ->orderBy('bico_id')
+            ->orderByRaw(self::DIA_UTC)
+            ->orderBy('id')
+            ->get();
+
+        return array_values($linhas
+            ->map(static fn (stdClass $linha): LeituraDoPeriodo => new LeituraDoPeriodo(
+                bicoId: self::inteiro($linha, 'bico_id'),
+                data: self::texto($linha, 'dia'),
+                leituraInicial: self::decimal($linha, 'leitura_inicial'),
+                leituraFinal: self::decimal($linha, 'leitura_final'),
+            ))
+            ->all());
     }
 
     /**

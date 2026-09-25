@@ -96,6 +96,12 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // Produção (Supabase) responde em UTC — medido em 20/09/2026. O Postgres do compose
+            // herda o fuso do host (America/Sao_Paulo aqui), e então o MESMO SQL devolve número
+            // diferente nos dois: um recorte de janeiro perdia o dia 01 inteiro, 6 leituras e
+            // R$ 9.430,34 de receita. Validação local mentiria contra a planilha.
+            // Fixar aqui torna a conexão da aplicação determinística, independente da máquina.
+            'timezone' => env('DB_TIMEZONE', 'UTC'),
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 

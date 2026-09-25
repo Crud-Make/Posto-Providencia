@@ -55,7 +55,7 @@ Estas regras existem para proteger essa igualdade.
 
 | ID | Regra | Trava | Onde | Estado |
 |---|---|---|---|---|
-| DOM-1 | Nenhuma fórmula de dinheiro muda sem golden master rodando | `bun run test:golden` | `scripts/hooks/pre-push` | ⚠️ PARCIAL — **o CI não roda o golden** (depende de `docs/data/`, gitignored). A trava existe só na máquina do dono |
+| DOM-1 | Nenhuma fórmula de dinheiro muda sem golden master rodando | `bun run test:golden` | `scripts/hooks/pre-push` | ⚠️ PARCIAL — **o CI não roda o golden** (depende de `docs/data/`, gitignored). A trava existe só na máquina do dono. Desde 24/09 o golden é a ÚNICA suíte que o `pre-push` roda (o resto é do CI), com canário em `testa-pre-push.sh` que prova que sinal trocado em `diferenca` barra o push |
 | DOM-2 | Cálculo de domínio mora em `frontend/packages/utils` | — | — | ❌ SEM TRAVA — 8 módulos de fórmula vivem fora hoje, 3 sem golden |
 | DOM-3 | Saída de fórmula é quantizada por `emCentavos` | — | — | ❌ SEM TRAVA — `Math.round(x*100)/100` reescrito à mão em 5 lugares |
 | DOM-4 | `diferenca = concentrador − conferido` | golden | `packages/utils/*.golden.spec.ts` | ✅ ATIVA |
@@ -96,11 +96,11 @@ Origem: *domain-driven-hexagon* (Sairyss), *Clean architecture with TypeScript: 
 |---|---|---|---|---|
 | CA-1 | Backend: `Http → Application → Domain → Compartilhado`. Camada interna nunca conhece a externa | `deptrac` via `composer gates` | `backend/deptrac.yaml` | ✅ ATIVA — roda no CI em todo PR |
 | CA-2 | Controller não fala com `Domain`; escrita passa por `Application` | — | — | ❌ SEM TRAVA — **a regra está num comentário do `deptrac.yaml`**. O PR #111 abriu `Http → Domain` para Resources tiparem model, e o Deptrac não distingue Resource de Controller |
-| CA-3 | Tipagem sem escape: PHPStan nível 6, sem baseline, `ignoreErrors: []` | `phpstan` via `composer gates` | `backend/phpstan.neon` | ✅ ATIVA |
+| CA-3 | Tipagem sem escape: PHPStan **nível 9**, sem baseline, `ignoreErrors: []` | `phpstan` via `composer gates` | `backend/phpstan.neon:8` | ✅ ATIVA — o nível subiu de 6 para 9 entre 17/09 e 20/09 (o cabeçalho do `phpstan.neon` registra: 0 erros no 6, 8 e 9; o 10 dá 1) |
 | CA-4 | Complexidade ciclomática no backend ≤ 10 | `phpmd` via `composer gates` | `backend/phpmd.xml` | ✅ ATIVA |
 | CA-5 | Complexidade ciclomática no frontend ≤ 20 | `oxlint` | `frontend/.oxlintrc.json` | ⚠️ PARCIAL — **13 arquivos isentos em 35**. O teto do `CLAUDE.md` §6 é 10; no teto 10 há 70 funções fora |
 | CA-6 | Domínio TS isolado, sem dependência externa | `dependency-cruiser` | — | 🔜 DECIDIDA — não há camada de domínio TS formal hoje; a canônica é `packages/utils` |
-| CA-7 | Backend: módulos só se falam por `Application`; o `Domain` de um módulo nunca importa o `Domain` de outro, e ciclo entre módulos reprova o PR. **Sem exceção** (dono, 18/09/2026) | Pest Arch, uma regra encadeada por módulo | `backend/tests/Arch/ArquiteturaTest.php` | 🔜 DECIDIDA — a trava nasce na branch `refactor/cadastro-sem-ciclo`, que desfaz o ciclo `Cadastro ↔ Pessoas`. Violação conhecida: `Pessoas\Domain\Usuario` e `UsuarioPosto` importam `Cadastro\Domain\Posto`; sai quando `Posto` for para `App\Compartilhado` |
+| CA-7 | Backend: módulos só se falam por `Application`; o `Domain` de um módulo nunca importa o `Domain` de outro, e ciclo entre módulos reprova o PR. **Sem exceção** (dono, 18/09/2026) | Pest Arch, uma regra encadeada por módulo | `backend/tests/Arch/ArquiteturaTest.php` | ✅ ATIVA desde 18/09 — a branch `refactor/cadastro-sem-ciclo` foi mergeada (`879bf3b`), `Posto` está em `App\Compartilhado\Posto` e a trava vive em `backend/tests/Arch/ArquiteturaTest.php` na forma encadeada, uma regra por módulo. A violação `Pessoas\Domain → Cadastro\Domain` deixou de existir |
 
 > **CA-2 é a regra que este registro existe para não deixar morrer.** A correção é quebrar
 > `Http` em dois no Deptrac: `HttpControllers` (sem acesso a `Domain`) e `HttpBorda`
@@ -111,7 +111,39 @@ Origem: *domain-driven-hexagon* (Sairyss), *Clean architecture with TypeScript: 
 > violações. Foi assim que o ciclo de 18/09 entrou sem nenhum gate reprovar. A trava é o Pest
 > Arch, na forma encadeada (`arch()->expect('App\Cadastro')->not->toUse(...)`), com um
 > namespace por regra. A forma com lista ou com closure passa verde com a violação presente.
-> Canário: a própria violação `Pessoas → Cadastro`, enquanto existir.
+> Canário (18/09, quando a violação ainda existia): `Pessoas → Cadastro` deixava a regra vermelha
+> apontando os dois arquivos. Desfeito o ciclo, verde. O canário vivo hoje é a mutação descrita no
+> cabeçalho de `backend/tests/Arch/ArquiteturaTest.php`, não a violação — que não existe mais.
+
+## TEN — Escopo de tenant (multi-tenant)
+
+Origem: decisão do dono de 20/09/2026 (`docs/architecture.md` §2) e `docs/design/fase-a-laravel.md`
+DECISÃO 5, onde a regra já estava **em prosa, sem ID e sem executor**, desde 17/09.
+
+O gate roda dentro do `composer gates` (Pest), que o CI executa em todo PR (o `pre-push` deixou de
+rodá-lo em 24/09 — ver §7 do CLAUDE.md). O CI carrega
+`banco/init/01-esquema-base.sql` antes de rodar, então o `information_schema` que o teste consulta é o
+**esquema real**, não uma lista escrita à mão.
+
+| ID | Regra | Trava | Onde | Estado |
+|---|---|---|---|---|
+| TEN-1 | Model em tabela com coluna `posto_id` usa o trait `PertenceAoPosto`; a lista de tabelas vem do `information_schema`, nunca de lista escrita à mão | Pest, `it('todo model em tabela com posto_id usa PertenceAoPosto')` | `backend/tests/Feature/Arquitetura/EscopoDeTenantTest.php` | ✅ ATIVA — canário conferido em 20/09: tirar o trait de `Cadastro\Domain\Bico` deixa o gate vermelho apontando o model |
+| TEN-2 | Exceção a TEN-1 só com motivo escrito (mais de 40 caracteres), apontando model real em tabela escopada | mesmo arquivo | idem | ✅ ATIVA — canário: exceção sem motivo reprova. Exceção registrada: **1**, `UsuarioPosto` (é a tabela que decide o acesso; escopá-la pelo posto atual seria circular) |
+| TEN-3 | Model em tabela **sem** `posto_id` declara COMO é escopado: tenant-raiz, filho de escopado, ou atravessa tenants | mesmo arquivo | idem | ✅ ATIVA — 4 declarados: `Posto`, `Usuario`, `Recebimento`, `App\Models\User` |
+| TEN-4 | Toda tabela de domínio tem `posto_id NOT NULL` com FK | — | — | ❌ SEM TRAVA — medido em 17/09: 31 de 45 têm a coluna, só 4 como `NOT NULL`, 4 sem FK; `AuditoriaDados` e `InscricaoPush` não têm a coluna. TEN-1 cobre o lado PHP; o lado do **esquema** segue sem gate |
+| TEN-5 | Unique de tabela escopada inclui `posto_id` | Pest, `it('🔴 BLOQUEIO DE MULTI-TENANT: dois postos não podem ter estoque do mesmo combustível')` | `backend/tests/Feature/Estoque/DescontaLitrosVendidosTest.php` | ⚠️ **VIOLADA, e agora PROVADA** — medido no catálogo em 20/09. Cinco uniques de tabela escopada **não** incluem `posto_id`, e cada um impede dois postos de coexistir: **`Fechamento (data, turno_id)`** — o pior, dois postos não podem fechar o MESMO DIA, e `turno_id` é sempre 1 —, `Estoque (combustivel_id)`, `Configuracao (chave)`, `Fornecedor (cnpj)` e `Frentista (cpf)`. Os outros quatro uniques de tabela escopada estão OK, porque o pai já é escopado: `Bico (bomba_id, numero)`, `Escala (frentista_id, data)`, `FechamentoFrentista (fechamento_id, frentista_id)`, `Leitura (bico_id, data)`. **Multi-tenant é impossível hoje sem migration** — não é melhoria, é bloqueio. O teste AFIRMA a limitação e fica vermelho quando ela cair |
+
+> **Por que TEN é família própria:** Deptrac, PHPStan 9, PHPMD e Pest Arch passam **verdes** num model
+> que esqueça o trait — nenhum deles tem o conceito de tenant. Com um posto só isso é invisível; em
+> multi-tenant é o dado de um cliente na tela de outro.
+
+> **TEN-4 e TEN-5 são a metade que falta.** TEN-1..3 protegem o **código**; o **esquema** segue aberto.
+> Enquanto forem ❌, ligar dois postos no mesmo banco quebra por unique antes de quebrar por escopo. São
+> as duas primeiras tarefas do Design Doc de multi-tenant (`docs/design/multi-tenant.md`).
+
+> **Dívida declarada por TEN-3:** `App\Models\User` é sobra do instalador — sem `$table`, sem uso, e a
+> tabela `users` não existe no catálogo de produção. Passava invisível por **todos** os gates até 20/09.
+> Apagar é tarefa aberta.
 
 ## RES — Result Pattern
 
@@ -155,7 +187,7 @@ exige tipo está inoperante hoje**, não por desligada, mas por falta do parser.
 | TS-9 | Data de calendário nunca por `toISOString().split()` | `no-restricted-syntax` | `frontend/eslint.config.mjs:68-80` | ⚠️ PARCIAL — só no CI |
 | TS-10 | kebab-case em arquivo e pasta | — | — | ❌ SEM TRAVA — 187 de 435 fora do padrão. Dívida aceita; `git mv` em massa colide com o strangler |
 
-> **A assimetria que anula metade das travas:** `pre-commit` e `pre-push` rodam **oxlint**;
+> **A assimetria que anula metade das travas:** o `pre-commit` roda **oxlint** (o `pre-push`, desde 24/09, só o golden);
 > o CI roda **oxlint + eslint**. As regras de *forma* (complexidade) estão no oxlint; as de
 > *conteúdo* (`any`, `toISOString`, e todas as type-aware) estão no eslint. **Quem commita
 > e dá push localmente não é barrado por nenhuma regra de conteúdo.** Fechar essa assimetria
@@ -181,7 +213,7 @@ por último o que acrescenta regra nova.
 1. **DOM-1 no CI.** O golden é a única coisa que separa este sistema de um que erra dinheiro
    em silêncio, e hoje ele só roda na máquina do dono.
 2. **Fechar a assimetria oxlint × eslint** (TS-6, TS-9 e futuras type-aware passam a valer
-   no `pre-push`). Não custa regra nova — só faz valer as que já existem.
+   no `pre-commit`; o `pre-push` já não roda lint desde 24/09). Não custa regra nova — só faz valer as que já existem.
 3. **CA-2:** quebrar `Http` em dois no `deptrac.yaml`. Devolve o dente que o #111 tirou.
 4. **PROC-5:** canário para cada Quality Gate. Sem isso nenhum ✅ desta tabela é confiável.
 5. **FSD-1..4** via `eslint-plugin-boundaries`, escopado **só às pastas FSD**.

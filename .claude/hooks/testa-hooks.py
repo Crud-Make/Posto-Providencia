@@ -223,6 +223,111 @@ CASOS_PIPE = [
 ]
 
 
+# CA-2: controller não fala com Domain. Canário da trava que nasceu em 21/09/2026 —
+# a regra existia desde 17/09 num COMENTÁRIO do deptrac.yaml, que nada lê.
+# Os três primeiros PRECISAM negar; os quatro últimos precisam passar, porque tipar
+# model num Resource é o uso legítimo que abriu a aresta Http → Domain no PR #111.
+CASOS_CONTROLLER = [
+    ("backend/app/Fechamento/Http/Controllers/FechamentoController.php",
+     "<?php\nuse App\\Fechamento\\Domain\\Fechamento;", "content", "deny"),
+    ("backend/app/Cadastro/Http/Controllers/CatalogoController.php",
+     "return \\App\\Cadastro\\Domain\\Bico::all();", "new_string", "deny"),
+    # zona cinzenta, negada de propósito: regra de arquitetura não ganha exceção (dono, 18/09).
+    ("backend/app/Fechamento/Http/Controllers/X.php",
+     "use App\\Fechamento\\Domain\\Enums\\StatusFechamento;", "new_string", "deny"),
+    ("backend/app/Fechamento/Http/Resources/FechamentoResource.php",
+     "use App\\Fechamento\\Domain\\Fechamento;", "content", None),
+    ("backend/app/Fechamento/Http/Requests/DiaRequest.php",
+     "use App\\Fechamento\\Domain\\Fechamento;", "content", None),
+    ("backend/app/Fechamento/Http/Controllers/FechamentoController.php",
+     "use App\\Fechamento\\Application\\FechamentoDoDia;", "content", None),
+    ("frontend/apps/web/src/App.tsx", "App\\Fechamento\\Domain\\X", "content", None),
+    # buracos B1/B4, fechados em 21/09 depois do plano da CA-2:
+    # controller do LEGADO (sem segmento de modulo no caminho)
+    ("backend/app/Http/Controllers/Controller.php",
+     "use App\\Fechamento\\Domain\\Fechamento;", "content", "deny"),
+    # App\Models do template
+    ("backend/app/Cadastro/Http/Controllers/CatalogoController.php",
+     "use App\\Models\\User;", "new_string", "deny"),
+    # Posto e `final class Posto extends Model`, mas mora em Compartilhado e escapava
+    ("backend/app/Fechamento/Http/Controllers/FechamentoController.php",
+     "use App\\Compartilhado\\Posto;", "new_string", "deny"),
+    # middleware continua podendo: DefinePostoAtual.php:7 importa Posto de proposito
+    ("backend/app/Cadastro/Http/Middleware/DefinePostoAtual.php",
+     "use App\\Compartilhado\\Posto;", "content", None),
+]
+
+
+# DOM-3: dinheiro quantizado por `emCentavos`. Canário da trava de 21/09/2026.
+# Os 5 sítios à mão medidos em 17/09 continuam no código; a trava barra a SEXTA cópia.
+CASOS_CENTAVOS = [
+    ("frontend/apps/web/src/utils/fechamentoMeios.ts",
+     "totais[balde] = Math.round(totais[balde] * 100) / 100;", "new_string", "deny"),
+    # quebrado em duas linhas: a forma real de use-planilha-do-banco.ts:817
+    ("frontend/packages/utils/src/despesa-fixa.ts",
+     "const d = Math.round(\n  (alvo - itemizado) * 100\n) / 100;", "content", "deny"),
+    # o arquivo que DEFINE emCentavos pode escrever a expressao: e a copia legitima
+    ("frontend/packages/utils/src/lucro.ts",
+     "export const emCentavos = (reais: number): number => Math.round(reais * 100) / 100;", "content", None),
+    # golden monta o numero esperado a mao de proposito
+    ("frontend/packages/utils/src/lucro.golden.spec.ts",
+     "expect(x).toBe(Math.round(y * 100) / 100);", "content", None),
+    ("frontend/apps/web/src/utils/fechamentoMeios.ts",
+     "const valor = emCentavos(bruto);", "new_string", None),
+    # nao e dinheiro nem e o par *100 / 100
+    ("frontend/apps/web/src/utils/fechamentoMeios.ts",
+     "const pct = Math.round(taxa * 100);", "new_string", None),
+    ("backend/app/Fechamento/Http/Controllers/X.php",
+     "Math.round(x * 100) / 100", "content", None),
+]
+
+
+# Cobertura da FORMULA do so-fable-na-formula: quais caminhos contam como regra de
+# dinheiro. Estendida em 21/09/2026, depois que o plano da #103 P8 mediu que o
+# painel (`calculators.ts`) e o encerrante do dono (`api-core/encerrante.ts`)
+# estavam FORA da trava de modelo — qualquer modelo podia reescrever a fórmula ali.
+CASOS_FORMULA_COBERTURA = [
+    ("frontend/apps/web/src/utils/calculators.ts", True),
+    ("frontend/apps/web/src/utils/venda-do-dia.ts", True),
+    ("frontend/apps/web/src/utils/calculators.golden.spec.ts", True),
+    ("frontend/apps/web/src/utils/venda-do-dia.golden.spec.ts", True),
+    ("frontend/packages/api-core/src/encerrante.ts", True),
+    ("frontend/packages/utils/src/leitura.ts", True),
+    # teste comum pode mudar a vontade; golden e que nao
+    ("frontend/apps/web/src/utils/calculators.test.ts", False),
+    ("frontend/apps/web/src/utils/venda-do-dia.test.ts", False),
+    # fora da formula: hook de tela e helper de meios de pagamento
+    ("frontend/apps/web/src/utils/fechamentoMeios.ts", False),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/useFechamento.ts", False),
+    # [22/09] pwa-frentista: payload do envio, sinal da diferença e soma das vendas
+    ("frontend/apps/pwa-frentista/src/App.tsx", True),
+    ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/model/montar-payload.ts", True),
+    ("frontend/apps/pwa-frentista/src/screens/HistoricoScreen.tsx", True),
+    ("frontend/apps/pwa-frentista/src/screens/VendasScreen.tsx", True),
+    ("frontend/apps/pwa-frentista/src/pages/historico/ui/historico-page.tsx", True),
+    ("frontend/apps/pwa-frentista/src/pages/vendas/ui/vendas-page.tsx", True),
+    ("frontend/apps/pwa-frentista/src/App.test.tsx", False),
+    ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/model/montar-payload.test.ts", False),
+    ("frontend/apps/pwa-frentista/src/features/enviar-fechamento/ui/botao-enviar.tsx", False),
+    ("frontend/apps/pwa-frentista/src/screens/TanquesScreen.tsx", False),
+    # [22/09] #103 P9: custo do mês, despesa do mês, cliente do /dashboard e App\Agregacao
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/custo-mensal.ts", True),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/useCustoMensal.ts", True),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/custo-mensal.golden.spec.ts", True),
+    ("frontend/apps/web/src/components/registro-compras/hooks/useDespesaDoMes.ts", True),
+    ("frontend/apps/web/src/services/api/dashboard.api.ts", True),
+    ("backend/app/Agregacao/Application/DadosDoPeriodo.php", True),
+    ("backend/app/Agregacao/Http/Resources/DashboardResource.php", True),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/custo-mensal.test.ts", False),
+    ("frontend/apps/web/src/components/fechamento-diario/hooks/useCustoMensal.test.ts", False),
+    ("frontend/apps/web/src/components/registro-compras/hooks/useDespesaDoMes.test.ts", False),
+    ("frontend/apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts", False),
+    ("frontend/apps/web/src/services/api/fornecedor.api.ts", False),
+    ("backend/app/Fechamento/Application/LeiturasDoDia.php", False),
+    ("backend/tests/Feature/Agregacao/DashboardTest.php", False),
+]
+
+
 def roda(script: str, payload: dict) -> str | None:
     r = subprocess.run(
         ["python3", str(HOOKS / script)],
@@ -298,6 +403,86 @@ def main() -> int:
         falhas += not ok
         curto = alvo.replace(f"{RAIZ}/", "")
         print(f"  {'✓' if ok else '✗'} {curto:60} {'avisa' if ctx else 'silencio'}")
+
+    print("── so-fable-na-formula ──")
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        def transcript(nome: str, modelo: str) -> str:
+            t = Path(tmp) / nome
+            t.parent.mkdir(parents=True, exist_ok=True)
+            t.write_text(json.dumps({"type": "assistant", "message": {"model": modelo}}) + "\n")
+            return str(t)
+        opus = transcript("opus.jsonl", "claude-opus-5")
+        fable = transcript("fable.jsonl", "claude-fable-5-1")
+        opus55 = transcript("opus55.jsonl", "claude-opus-5-5")
+        # subagente fable debaixo de sessão opus: vale o modelo do subagente
+        transcript("opus/subagents/agent-abc.jsonl", "claude-fable-5-1")
+        transcript("opus/subagents/agent-son.jsonl", "claude-sonnet-5")
+        # subagente na primeira ação: transcript sem mensagem de assistente ainda
+        for nome, meta in [("novofable", {"model": "fable"}), ("novoson", {"model": "sonnet"}), ("herda", {}),
+                           ("novoopus", {"model": "opus"})]:
+            base = Path(tmp) / "opus/subagents" / f"agent-{nome}"
+            base.with_suffix(".jsonl").write_text(json.dumps({"type": "user"}) + "\n")
+            base.with_suffix(".meta.json").write_text(json.dumps(meta))
+        lucro = "frontend/packages/utils/src/lucro.ts"
+        casos = [
+            ("opus edita lucro.ts", {"transcript_path": opus, "tool_input": {"file_path": lucro}}, "deny"),
+            ("fable edita lucro.ts", {"transcript_path": fable, "tool_input": {"file_path": lucro}}, None),
+            # [22/09] o dono trocou o titular para o Opus 5.5; o Opus 5 segue barrado (caso acima)
+            ("opus 5.5 edita lucro.ts", {"transcript_path": opus55, "tool_input": {"file_path": lucro}}, None),
+            ("opus 5.5 edita golden", {"transcript_path": opus55, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.golden.spec.ts"}}, None),
+            ("1ª ação de subagente opus (só meta)", {"transcript_path": opus, "agent_id": "novoopus", "tool_input": {"file_path": lucro}}, None),
+            ("sessão opus 5.5: subagente sonnet segue barrado", {"transcript_path": opus55, "agent_id": "son", "tool_input": {"file_path": lucro}}, "deny"),
+            ("opus edita golden", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.golden.spec.ts"}}, "deny"),
+            ("opus edita regressao", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/diferenca.regressao.test.ts"}}, "deny"),
+            ("opus edita teste comum", {"transcript_path": opus, "tool_input": {"file_path": "frontend/packages/utils/src/lucro.test.ts"}}, None),
+            ("opus edita aggregator", {"transcript_path": opus, "tool_input": {"file_path": "frontend/apps/web/src/services/api/aggregator.service.ts"}}, "deny"),
+            ("opus edita tela", {"transcript_path": opus, "tool_input": {"file_path": "frontend/apps/web/src/App.tsx"}}, None),
+            ("sem transcript → falha fechada", {"tool_input": {"file_path": lucro}}, "deny"),
+            ("subagente fable sob opus", {"transcript_path": opus, "agent_id": "abc", "tool_input": {"file_path": lucro}}, None),
+            ("subagente sonnet sob opus", {"transcript_path": opus, "agent_id": "son", "tool_input": {"file_path": lucro}}, "deny"),
+            ("subagente sem transcript sob fable", {"transcript_path": fable, "agent_id": "zzz", "tool_input": {"file_path": lucro}}, "deny"),
+            ("1ª ação de subagente fable (só meta)", {"transcript_path": opus, "agent_id": "novofable", "tool_input": {"file_path": lucro}}, None),
+            ("1ª ação de subagente sonnet (só meta)", {"transcript_path": opus, "agent_id": "novoson", "tool_input": {"file_path": lucro}}, "deny"),
+            ("1ª ação de subagente que herda opus", {"transcript_path": opus, "agent_id": "herda", "tool_input": {"file_path": lucro}}, "deny"),
+            ("opus: sed -i em lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"sed -i 's/a/b/' {lucro}"}}, "deny"),
+            ("opus: echo > lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"echo x > {lucro}"}}, "deny"),
+            ("opus: git checkout -- lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git checkout -- {lucro}"}}, "deny"),
+            ("opus: cat lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"cat {lucro}"}}, None),
+            ("opus: sed -n lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"sed -n 1,20p {lucro}"}}, None),
+            ("opus: git diff lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git diff {lucro}"}}, None),
+            ("opus: commit citando lucro.ts", {"transcript_path": opus, "tool_input": {"command": f"git commit -m 'mv {lucro}'"}}, None),
+        ]
+        for rotulo, payload, esperado in casos:
+            obtido = roda("so-fable-na-formula.py", payload)
+            ok = obtido == esperado
+            falhas += not ok
+            print(f"  {'✓' if ok else '✗'} {rotulo:60} {obtido or 'passa'}")
+
+    print("── controller-nao-fala-com-domain (CA-2) ──")
+    for caminho, texto, chave, esperado in CASOS_CONTROLLER:
+        obtido = roda("controller-nao-fala-com-domain.py",
+                      {"tool_input": {"file_path": f"{RAIZ}/{caminho}", chave: texto}})
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {caminho.split('/Http/')[-1][:58]:60} {obtido or 'passa'}")
+
+    print("── dinheiro-quantiza-por-emcentavos (DOM-3) ──")
+    for caminho, texto, chave, esperado in CASOS_CENTAVOS:
+        obtido = roda("dinheiro-quantiza-por-emcentavos.py",
+                      {"tool_input": {"file_path": f"{RAIZ}/{caminho}", chave: texto}})
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {caminho.split('/src/')[-1][:58]:60} {obtido or 'passa'}")
+
+    print("── so-fable-na-formula · cobertura da FORMULA ──")
+    _fable = carrega("so-fable-na-formula.py")
+    for caminho, esperado in CASOS_FORMULA_COBERTURA:
+        obtido = _fable.e_regra_de_calculo(caminho)
+        ok = obtido == esperado
+        falhas += not ok
+        print(f"  {'✓' if ok else '✗'} {caminho.split('/src/')[-1][:58]:60} "
+              f"{'protegido' if obtido else 'livre'}")
 
     print("── checklist-commit ──")
     pendencias = carrega("checklist-commit.py").pendencias

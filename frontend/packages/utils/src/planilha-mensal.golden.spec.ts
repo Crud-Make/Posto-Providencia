@@ -25,14 +25,22 @@
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { planilhaMensal, type EntradaBicoPlanilha, type EntradaProdutoPlanilha } from './planilha-mensal';
+import { emCentavos } from './lucro';
 
 const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
-/** Litros são exatos ao mililitro; a tolerância cobre só ruído de float da fonte. */
-const TOL_LITROS = 0.002;
-/** Dinheiro: o módulo quantiza em centavos, a planilha não. */
-const TOL_REAIS = 0.02;
+/**
+ * Litros são exatos ao mililitro; a tolerância cobre só ruído de float da fonte.
+ * Era 0,002 até 21/09/2026: ruído real medido é 1,3e-10 L, e a folga deixava +1 mL passar.
+ */
+const TOL_LITROS = 0.0005;
+/**
+ * Dinheiro: o módulo quantiza em centavos, a planilha não. Era 0,02 até
+ * 21/09/2026, e um deslocamento de +R$ 0,01 na venda passava verde. Resíduo real
+ * medido nos 7 meses: 0,0050 (venda) e 0,0050 (lucro) — meio centavo, como esperado.
+ */
+const TOL_REAIS = 0.01;
 /** R$/L da planilha tem precisão total. */
 const TOL_PRECO = 1e-6;
 
@@ -155,6 +163,8 @@ for (const { ano, mes } of meses) {
 
         test(`${rotulo} · ${esperado.bico} · venda`, () => {
             expect(Math.abs(obtido.venda - esperado.venda)).toBeLessThan(TOL_REAIS);
+            // Venda sem `emCentavos` passava pela folga (auditoria de 21/09).
+            expect(obtido?.venda).toBe(emCentavos(obtido?.venda ?? Number.NaN));
         });
 
         // Só passa se preço, custo médio de compra e rateio da despesa
@@ -216,5 +226,7 @@ for (const { ano, mes } of meses) {
     // ── Margem bruta menos despesa é o lucro líquido, pela distributiva ─────
     test(`${rotulo} · margem bruta − despesa do mês = lucro líquido`, () => {
         expect(Math.abs(apurado.margemBruta - despesa - apurado.lucroLiquido)).toBeLessThan(0.5);
+        expect(apurado.margemBruta).toBe(emCentavos(apurado.margemBruta));
+        expect(apurado.lucroLiquido).toBe(emCentavos(apurado.lucroLiquido));
     });
 }

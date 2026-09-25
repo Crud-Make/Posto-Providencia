@@ -13,7 +13,7 @@
  */
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { despesaOperacionalPorLitro, lucroCombustivel, somarDespesas } from '@posto/utils';
+import { despesaOperacionalPorLitro, emCentavos, lucroCombustivel, somarDespesas } from '@posto/utils';
 import { lucroOperacionalDoMes } from './calculos-saude-financeira';
 
 const SQLITE = `${import.meta.dir}/../../../../../docs/data/posto_jorro_2026.sqlite`;
@@ -77,7 +77,11 @@ test('julho: lucroOperacionalDoMes(bruto, despesas) = lucro real — antes a con
             }),
         0
     );
-    expect(doInsight).toBeCloseTo(canonico, 1);
+    // Exatidão, não folga: `toBeCloseTo(_, 1)` tolera CINCO CENTAVOS, e medido
+    // por mutação em 20/09 isso deixava passar tanto a soma em float quanto um
+    // centavo deslocado. A saída é dinheiro e nasce quantizada — então iguala-se
+    // ao canônico quantizado, sem arredondar o lado do módulo.
+    expect(doInsight).toBe(emCentavos(canonico));
 
     // O ANTES, em números: vendas − despesas (o modelo aposentado) mostrava
     // R$ 189.312,05 — o custo de produto inteiro (R$ 171.039,74) virava "lucro".

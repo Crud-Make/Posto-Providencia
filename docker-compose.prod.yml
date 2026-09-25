@@ -1,0 +1,66 @@
+# Produção do backend Laravel (#105) — o que sobe na VPS.
+#
+# Três diferenças em relação ao `docker-compose.yml` da raiz, que é de DESENVOLVIMENTO:
+#
+#   1. A imagem vem de `backend/Dockerfile.prod`: código DENTRO dela, sem dev-dependencies e sem
+#      `php -S`. Aqui não há volume de código — editar arquivo no host não muda o que atende.
+#   2. Não há Postgres. Em produção o banco é o do Supabase (17), apontado por `DB_HOST`.
+#   3. Só a `caddy` publica porta (80/443). A API fica em `expose`, alcançável apenas pela rede
+#      do compose: o resto da internet não fala com o PHP direto.
+#
+#   deploy/sobe.sh                       # o caminho normal (ele exporta o DOMINIO_API antes)
+#   docker compose -f docker-compose.prod.yml up -d --build
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    image: posto-api:producao
+    restart: unless-stopped
+    env_file:
+      - ./deploy/.env.producao
+    expose:
+      - "8080"
+    # Sem `ports:` de propósito — ver o item 3 do cabeçalho.
+    healthcheck:
+      # A mesma sonda do compose de dev: o `/api/saude` responde `ok` com banco, `degradado` sem.
+      # O `condition: service_healthy` da caddy depende daqui.
+      test: ["CMD-SHELL", "php -r 'exit(str_contains(file_get_contents(\"http://127.0.0.1:8080/api/saude\"), \"ok\") ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # `:?` faz o compose RECUSAR subir sem estas duas, em vez de servir o domínio errado.
+      DOMINIO_API: ${DOMINIO_API:?defina DOMINIO_API (ex.: api.posto.exemplo.com.br)}
+      ACME_EMAIL: ${ACME_EMAIL:?defina ACME_EMAIL (o e-mail do certificado Let's Encrypt)}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # O `/data` guarda o certificado emitido: em volume, para o `up` seguinte não pedir de novo
+      # (o Let's Encrypt tem limite de emissão por domínio por semana).
+      - caddy-dados:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  caddy-dados:
+  caddy-config:

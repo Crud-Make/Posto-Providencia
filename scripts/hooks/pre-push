@@ -1,63 +1,37 @@
 #!/bin/sh
-# pre-push do Posto Providência (CLAUDE.md §7 e a trava geral da refatoração Laravel).
+# pre-push do Posto Providência — ENXUGADO em 24/09/2026 por decisão do dono.
 #
-# REGRA: não se dá push antes de o sistema estar rodando. O painel e os dois PWAs estão em
-# produção com dinheiro real do posto; push de árvore quebrada quebra o posto, não o repo.
+# Faz DUAS coisas, e só:
+#   1. recusa push para a `main` (CLAUDE.md §0: branch por issue e PR, sempre);
+#   2. roda o golden master (`bun run test:golden`) — a trava do dinheiro (DOM-1).
 #
-# Roda a suíte INTEIRA, não só o que mudou — "o sistema está rodando" é uma afirmação sobre o
-# sistema, não sobre o diff. Push é raro; esperar aqui é barato perto de derrubar o Elias.
+# Por que só isso: o CI (`.github/workflows/ci.yml`) roda oxlint, eslint completo, type-check,
+# vitest, build e `composer gates` em TODO pull request, e a proteção da `main` e da `fase-a`
+# exige os jobs `build` e `backend` verdes antes do merge. A versão anterior deste hook
+# (18/09 → 24/09) repetia tudo isso num worktree temporário, com `bun install` e
+# `composer install` do zero: ~4 min por push para provar o que o CI ia provar de novo.
 #
-# ── O QUE ESTE HOOK TESTA (corrigido em 18/09/2026) ───────────────────────────
-# Antes, ele testava a ÁRVORE CHECADA OUT, não o que estava subindo. Dava para publicar uma
-# branch quebrada estando com outra sadia no working tree, e ele imprimia "✓ sistema verde".
-# Mesmo falso-verde que já custou caro aqui: gate que roda, fica verde, e não olhou o que devia.
+# O golden fica aqui porque é a ÚNICA peça que o CI não consegue rodar: depende de
+# `docs/data/*.sqlite`, dado financeiro real do posto, gitignored desde 2026-07-29. Custa
+# ~0,5 s (medido em 24/09).
 #
-# O git entrega no STDIN uma linha por ref sendo empurrada:
-#     <ref local> <sha local> <ref remoto> <sha remoto>
-# A versão antiga lia esse stdin só para barrar a `main` e DESCARTAVA o resto.
+# LIMITE, dito com todas as letras: o golden roda sobre a ÁRVORE deste checkout, não sobre o
+# commit que sobe. Quando o commit não é o HEAD, ou há mudança não commitada em frontend/, o
+# hook avisa — e ainda assim roda, porque o custo de um falso vermelho aqui é maior do que o
+# de um aviso lido. Quem quiser a prova sobre o commit exato, faz `git stash` antes do push.
 #
-# Agora, para cada ref, cria um worktree temporário NAQUELE commit e testa lá — inclusive
-# quando o sha é o HEAD. Testar "aqui mesmo" parece atalho e não é: o working tree carrega o
-# que não foi commitado, e o que sobe é o commit. Canário de 18/09: commit com Pest vermelho
-# e árvore verde saía "push liberado".
-#
-# O worktree ganha dependências INSTALADAS, nunca em symlink (canário 18/09):
-#   • backend/vendor linkado: o autoload do Composer resolve $baseDir pelo caminho real do
-#     vendor, então carrega App\ e Tests\ da árvore de ORIGEM — testa o código errado.
-#   • frontend/node_modules linkado: @posto/utils é link relativo `../../packages/utils`, que
-#     resolve dentro da árvore de ORIGEM — o golden dos apps testaria o utils errado.
-# Custa ~1 min a mais por push. Push é raro.
-#
-# Teste do próprio hook, com os canários: scripts/hooks/testa-pre-push.sh
-#
-# Instalar: scripts/instala-hooks.sh
-#
-# Emergência: `git push --no-verify` passa por cima (é do git, não dá para impedir). Se você
-# usar, o combinado é dizer no PR por que usou.
+# Canários: scripts/hooks/testa-pre-push.sh   ·   Instalar: scripts/instala-hooks.sh
+# Emergência: `git push --no-verify` passa por cima (é do git). Quem usar, diz no PR por quê.
 
 raiz="$(git rev-parse --show-toplevel)"
 ZERO="0000000000000000000000000000000000000000"
-falhou=0
+head_sha="$(git rev-parse HEAD)"
 
-# O stdin só pode ser lido uma vez. Guarda em arquivo para poder percorrer duas vezes sem
-# subshell — `while ... done < arquivo` preserva as variáveis, `cmd | while` não.
 refs="$(mktemp)"
-worktrees_arq="$(mktemp)"
-temporarios_arq="$(mktemp)"
 cat > "$refs"
-limpar() {
-    cd "$raiz" || true
-    while read -r wt; do
-        [ -n "$wt" ] && git worktree remove --force "$wt" >/dev/null 2>&1
-    done < "$worktrees_arq"
-    while read -r f; do
-        [ -n "$f" ] && rm -f "$f"
-    done < "$temporarios_arq"
-    rm -f "$refs" "$worktrees_arq" "$temporarios_arq"
-}
-trap limpar EXIT INT TERM
+trap 'rm -f "$refs"' EXIT INT TERM
 
-# ── 1. main é proibida (CLAUDE.md §0) ──────────────────────────────────────────
+# ── 1. main é proibida ─────────────────────────────────────────────────────────
 while read -r _ref_local _sha_local ref_remoto _sha_remoto; do
     case "$ref_remoto" in
         refs/heads/main|refs/heads/master)
@@ -68,130 +42,42 @@ while read -r _ref_local _sha_local ref_remoto _sha_remoto; do
     esac
 done < "$refs"
 
-# ── 2. os gates, rodados sobre uma raiz qualquer ───────────────────────────────
-# A saída de cada gate vai para um log; se ele reprova, as últimas linhas aparecem — "reprovou"
-# sem dizer por quê fazia o dono caçar o gate caído à mão.
-# $1 = raiz a testar · $2 = rótulo para as mensagens
-gate() {
-    rotulo_gate="$1"
-    shift
-    log="$(mktemp)"
-    echo "$log" >> "$temporarios_arq"
-    if "$@" >"$log" 2>&1; then
-        return 0
+# ── 2. há árvore para testar? ──────────────────────────────────────────────────
+# Só deleção de branch remota (sha zero) não tem o que testar.
+tem_commit=0
+while read -r _ref_local sha_local _ref_remoto _sha_remoto; do
+    [ -n "$sha_local" ] && [ "$sha_local" != "$ZERO" ] && tem_commit=1
+    if [ -n "$sha_local" ] && [ "$sha_local" != "$ZERO" ] && [ "$sha_local" != "$head_sha" ]; then
+        echo "[pre-push] AVISO: o commit que sobe ($(git rev-parse --short "$sha_local")) não é o HEAD deste checkout — o golden abaixo é sobre a árvore atual."
     fi
-    echo "[pre-push] ✗ $rotulo_gate reprovou. Últimas linhas:"
-    tail -n 25 "$log" | sed 's/^/[pre-push]     /'
-    return 1
-}
-
-rodar_gates() {
-    alvo="$1"
-    rotulo="$2"
-    local_falhou=0
-
-    if [ -d "$alvo/frontend" ]; then
-        cd "$alvo/frontend" || return 1
-
-        echo "[pre-push] $rotulo · oxlint (inclui o gate de complexidade do §6)…"
-        gate "oxlint ('bun run lint')" bun run lint || local_falhou=1
-
-        echo "[pre-push] $rotulo · type-check…"
-        gate "type-check" bun run type-check || local_falhou=1
-
-        echo "[pre-push] $rotulo · testes unitários (vitest)…"
-        gate "vitest ('bun run test')" bun run test || local_falhou=1
-
-        # O golden é a trava do dinheiro. NUNCA trocar por 'bun test' puro: ele varre o repo
-        # inteiro, tenta executar os arquivos de vitest e falha por motivo que não é bug.
-        echo "[pre-push] $rotulo · golden masters (bun run test:golden)…"
-        gate "GOLDEN MASTER — alguma fórmula de dinheiro mudou de resultado. Não se resolve ajustando o teste" \
-            bun run test:golden || local_falhou=1
-    fi
-
-    if [ -f "$alvo/backend/composer.json" ]; then
-        cd "$alvo/backend" || return 1
-        echo "[pre-push] $rotulo · composer gates (Pint, PHPStan, PHPMD, Deptrac, Pest)…"
-        gate "'composer gates' (rode em backend/)" composer gates || local_falhou=1
-    fi
-
-    cd "$raiz" || return 1
-    return "$local_falhou"
-}
-
-# Worktree novo não herda `node_modules`, `vendor/`, `docs/data` nem o `.env`. Código de
-# terceiro é INSTALADO (ver cabeçalho: symlink testa a árvore de origem); só o que é dado
-# ou configuração local vem da raiz.
-# O que não é versionado vem desta árvore; se ela é um worktree que não tem, do checkout
-# principal. Imprime o caminho, ou nada.
-principal="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-de_onde() {
-    if [ -e "$raiz/$1" ]; then
-        echo "$raiz/$1"
-    elif [ -e "$principal/$1" ]; then
-        echo "$principal/$1"
-    fi
-}
-
-preparar_worktree() {
-    alvo="$1"
-
-    if [ -f "$alvo/frontend/package.json" ]; then
-        echo "[pre-push]   bun install no worktree…"
-        (cd "$alvo/frontend" && gate "bun install --frozen-lockfile" bun install --frozen-lockfile) || return 1
-    fi
-
-    if [ -f "$alvo/backend/composer.json" ]; then
-        # .env do backend não é versionado e o composer gates precisa dele.
-        env_origem="$(de_onde backend/.env)"
-        [ -n "$env_origem" ] && cp "$env_origem" "$alvo/backend/.env"
-        echo "[pre-push]   composer install no worktree…"
-        (cd "$alvo/backend" && gate "composer install" composer install --no-interaction --prefer-dist) || return 1
-    fi
-
-    # docs/data é dado real do posto (§6, gitignored), não código. Sem ele o golden não roda.
-    # Link é seguro aqui: o worktree é descartado no fim, nunca vira `git status` de ninguém.
-    dados="$(de_onde docs/data)"
-    if [ -n "$dados" ] && [ -d "$alvo/docs" ]; then
-        ln -sfn "$(readlink -f "$dados")" "$alvo/docs/data"
-    fi
-    return 0
-}
-
-# ── 3. testa CADA ref que está subindo, no commit que está subindo ─────────────
-while read -r _ref_local sha_local ref_remoto _sha_remoto; do
-    # Deleção de branch remota não tem árvore para testar.
-    [ "$sha_local" = "$ZERO" ] && continue
-    [ -z "$sha_local" ] && continue
-
-    nome="${ref_remoto#refs/heads/}"
-    echo "[pre-push] $nome ($(git rev-parse --short "$sha_local")) — testando o commit num worktree temporário."
-
-    wt="$(mktemp -d)"
-    rm -rf "$wt"
-    if ! git worktree add --detach --quiet "$wt" "$sha_local" 2>/dev/null; then
-        echo "[pre-push] ✗ não consegui criar worktree para $nome — não dá para afirmar que está verde."
-        falhou=1
-        continue
-    fi
-    echo "$wt" >> "$worktrees_arq"
-
-    if ! preparar_worktree "$wt"; then
-        echo "[pre-push] ✗ não consegui instalar as dependências de $nome — não dá para afirmar que está verde."
-        falhou=1
-        continue
-    fi
-    rodar_gates "$wt" "$nome" || falhou=1
 done < "$refs"
+[ "$tem_commit" -eq 0 ] && exit 0
 
-if [ "$falhou" -ne 0 ]; then
-    echo ""
-    echo "[pre-push] ══════════════════════════════════════════════════════════════"
-    echo "[pre-push] PUSH BLOQUEADO: o sistema não está rodando."
-    echo "[pre-push] Conserte antes de subir — tem posto em produção do outro lado."
-    echo "[pre-push] ══════════════════════════════════════════════════════════════"
+if [ -n "$(git status --porcelain --untracked-files=no -- frontend 2>/dev/null)" ]; then
+    echo "[pre-push] AVISO: frontend/ tem mudança não commitada — o golden abaixo é sobre a árvore, não sobre o commit."
+fi
+
+# ── 3. golden master ───────────────────────────────────────────────────────────
+if [ ! -d "$raiz/docs/data" ]; then
+    echo "[pre-push] ✗ $raiz/docs/data não existe — sem o dado real o golden não roda, e sem golden não dá para afirmar que o dinheiro está certo."
+    echo "[pre-push]   Em worktree: aponte docs/data para o do checkout principal (ver memória 'worktree não herda dependências')."
     exit 1
 fi
 
-echo "[pre-push] ✓ sistema verde nos commits que sobem — push liberado."
-exit 0
+cd "$raiz/frontend" || exit 1
+log="$(mktemp)"
+echo "[pre-push] golden masters (bun run test:golden)…"
+if bun run test:golden >"$log" 2>&1; then
+    rm -f "$log"
+    echo "[pre-push] ✓ golden verde — push liberado. Lint, type-check, vitest e gates PHP ficam com o CI do PR."
+    exit 0
+fi
+
+echo "[pre-push] ✗ GOLDEN MASTER reprovou — alguma fórmula de dinheiro mudou de resultado. Não se resolve ajustando o teste. Últimas linhas:"
+tail -n 25 "$log" | sed 's/^/[pre-push]     /'
+rm -f "$log"
+echo ""
+echo "[pre-push] ══════════════════════════════════════════════════════════════"
+echo "[pre-push] PUSH BLOQUEADO: o dinheiro não fecha. Tem posto em produção do outro lado."
+echo "[pre-push] ══════════════════════════════════════════════════════════════"
+exit 1

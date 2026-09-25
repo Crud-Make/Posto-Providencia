@@ -29,8 +29,15 @@ import { despesaOperacionalPorLitro } from './lucro';
 const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
 
-/** Litros são exatos ao mililitro; a tolerância cobre só ruído da fonte. */
-const TOL_LITROS = 0.002;
+/**
+ * Litros são exatos ao mililitro; a tolerância cobre só ruído da fonte. Era 0,002
+ * até 21/09/2026 — e deixava passar +1 mL e a subtração em float cru
+ * (`38392 − 29007.79 = 9384.210000000001`). Ruído real medido nos 7 meses:
+ * 1,3e-10 L. Meio mililitro já é 4 milhões de vezes isso.
+ */
+const TOL_LITROS = 0.0005;
+/** Litro em mililitro inteiro — o que o módulo promete devolver. */
+const aoMl = (litros: number): number => Math.round(litros * 1000) / 1000;
 /** R$/L da planilha tem precisão total — casa em 6 decimais. */
 const TOL_PRECO = 1e-6;
 
@@ -149,12 +156,14 @@ for (const mes of meses) {
             expect(Math.abs(calculado.compraEEstoque - linha.compra_e_estoque)).toBeLessThanOrEqual(
                 TOL_LITROS
             );
+            expect(calculado.compraEEstoque).toBe(aoMl(calculado.compraEEstoque));
         });
 
         test(`mês ${mes} · ${linha.produto}: estoque teórico bate`, () => {
             expect(Math.abs(calculado.estoqueTeorico - linha.estoque_hoje)).toBeLessThanOrEqual(
                 TOL_LITROS
             );
+            expect(calculado.estoqueTeorico).toBe(aoMl(calculado.estoqueTeorico));
         });
 
         test(`mês ${mes} · ${linha.produto}: perca/sobra bate`, () => {
@@ -162,6 +171,7 @@ for (const mes of meses) {
             expect(Math.abs(calculado.percaOuSobra! - linha.perca_sobra)).toBeLessThanOrEqual(
                 TOL_LITROS
             );
+            expect(calculado.percaOuSobra).toBe(aoMl(calculado.percaOuSobra!));
         });
     }
 }

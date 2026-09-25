@@ -80,6 +80,8 @@ function direcaoPermitidaEntreModulos(): array
         // Fechamento\Domain\Leitura deixou só a regra de Fechamento vermelha; removido, verde.
         'Fechamento' => [],
         'Pessoas' => [],
+        // Estoque ouve LeiturasDoDiaGravadas, que mora em Compartilhado: não conhece Fechamento.
+        'Estoque' => [],
     ];
 }
 

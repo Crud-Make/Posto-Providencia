@@ -18,6 +18,7 @@ import type { Frentista } from '../../../types/database/index';
 import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
 import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
 import { lerFrentistasDaApi } from '../../../services/api/frentista.api';
+import { lerSessoesDoDiaDaApi, type SessaoDoDia } from '../../../services/api/fechamentoFrentista.api';
 import { paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
 import {
   type ApiResponse,
@@ -27,6 +28,13 @@ import {
 } from '../../../types/ui/response-types';
 import { cartao, conferido } from '@posto/utils';
 import { meiosDaSessao } from '../../../utils/fechamentoMeios';
+
+/**
+ * As duas fontes cabem aqui: o Supabase devolve a linha com `frentista` e `fechamento`
+ * aninhados, a API só a linha (`SessaoDoDia`). O hook lê `id`, `frentista_id`, os baldes,
+ * `encerrante`, `valor_conferido`, `observacoes` e `data_hora_envio` — nenhuma relação.
+ */
+type SessoesPorDataResponse = ApiResponse<SessaoDoDia[]>;
 
 /**
  * Interface para totais detalhados dos frentistas
@@ -143,10 +151,18 @@ export const useSessoesFrentistas = (
       // O envio do frentista é por dia: `getByDate` carrega todos os envios da data.
       // [16/08] O parâmetro `turno` saiu — ele já não chegava à consulta, servia só ao
       // guard de cache acima, e mantê-lo dava a impressão de que a busca filtrava por turno.
-      const dadosRes = await fechamentoFrentistaService.getByDate(
-        data,
-        postoId
-      );
+      // [20/09] Sessões do dia pela API Laravel (#103 P6) quando VITE_API_URL existe; sem
+      // ela, nada muda. A troca é AQUI, no call site, e não dentro de
+      // `fechamentoFrentistaService.getByDate`: o `aggregator.service.ts` chama o mesmo
+      // service (e lê o `frentista` aninhado, que a API não traz), e é sítio de fórmula que só
+      // o Fable edita. A paridade (números, null continua null — I8 —, ordem por id, recorte
+      // UTC do dia) fica em `fechamentoFrentista.api.ts`.
+      const dadosRes: SessoesPorDataResponse = urlDaApi() !== null
+        ? await lerSessoesDoDiaDaApi(postoId, data).match(
+            (lidas) => createSuccessResponse(lidas),
+            (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+          )
+        : await fechamentoFrentistaService.getByDate(data, postoId);
 
       if (!isSuccess(dadosRes)) {
         console.error('❌ Erro ao carregar sessões:', dadosRes.error);

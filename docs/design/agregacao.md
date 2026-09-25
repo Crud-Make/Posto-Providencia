@@ -141,8 +141,10 @@ só mensal.**
 ### Fluxo
 
 ```
-GET /api/postos/{posto}/dashboard?inicio&fim
+GET /api/postos/{posto}/dashboard?inicio&fim   (Authorization: Bearer <access_token do Supabase>)
+  → token.atual (401 sem token, token inválido ou sub sem Usuario ativo)
   → DefinePostoAtual (404 se posto não existe)
+  → posto.acesso + posto.acesso:gerir (403 se o usuário não GERE o posto)
   → DadosDoPeriodo: agrega a VENDA (Leitura) por combustivel_id no período exato; Compra do MÊS
     CIVIL que contém o período, por combustivel_id (§5); rateio = Despesa (competência) E litros de
     todos os combustíveis, os dois somados no MESMO mês civil — nenhuma divisão no PHP
@@ -157,6 +159,30 @@ GET /api/postos/{posto}/dashboard?inicio&fim
 
 `GET /api/postos/{posto}/dashboard?inicio=YYYY-MM-DD&fim=YYYY-MM-DD`
 
+### Autorização (#103, 22/09/2026)
+
+A rota mora no grupo protegido de `backend/routes/api.php` (`token.atual` → `DefinePostoAtual` →
+`posto.acesso`) e sobe a habilidade para **`posto.acesso:gerir`**, no mesmo padrão do
+`PUT /fechamento` da P11. **Decisão do dono em 22/09/2026: custo e despesa do posto são dado de
+proprietário.** Por isso não basta `ver`: operador vinculado vê o dia (`GET /leituras`) e leva 403
+no dashboard. Quem gere é `PostoPolicy::gerir`: Admin (em qualquer posto, sem vínculo) ou vínculo
+ativo em `UsuarioPosto` com papel `admin` ou `gerente` (`PapelNoPosto::gerencia()`).
+
+| Situação | Código |
+|---|---|
+| Sem token, token inválido/expirado, `sub` sem `Usuario` ativo | 401 (antes de olhar posto ou período) |
+| Token válido, posto inexistente ou id não numérico | 404 |
+| Operador vinculado; gerente de outro posto; vínculo desligado | 403 |
+| Token válido e período inválido | 422 (só depois de passar pela porta) |
+| Admin, ou gerente/admin vinculado ao posto | 200 com o corpo abaixo |
+
+Presos em `backend/tests/Feature/Agregacao/AcessoAoDashboardTest.php`, com canário: rota de volta ao
+grupo público deixa 5 casos vermelhos; `gerir` trocado por `ver` deixa vermelho o do operador. O
+`DashboardTest` autentica como Admin e prova só o conteúdo. O painel não mudou: `base.ts` já manda o
+Bearer desde a P5, e 401/403 da API viram `FETCH_ERROR` sem cair no Supabase
+(`aggregator.dashboard.test.ts`). **Pré-requisito para ligar `VITE_API_URL` em ambiente real:**
+`Usuario.auth_user_id` vinculado (em produção, nenhum Usuario tem; no compose, o admin tem).
+
 ```json
 {
   "periodo": { "inicio": "2026-01-01", "fim": "2026-01-31" },
@@ -169,9 +195,24 @@ GET /api/postos/{posto}/dashboard?inicio&fim
     "mes_civil": { "inicio": "2026-01-01", "fim": "2026-01-31" },
     "despesas_total": "22158.46",
     "litros_vendidos": "45678.901"
-  }
+  },
+  "leituras": [
+    { "bico_id": 1, "data": "2026-01-01", "leitura_inicial": "1716778.963", "leitura_final": "1717451.532" }
+  ]
 }
 ```
+
+**`leituras` — campo aditivo da #103 P9 (decisão do dono, 22/09/2026, Q1 opção a).** As linhas cruas
+de `Leitura` do PERÍODO EXATO (`bico_id`, dia em UTC, os dois encerrantes em string de escala 3), em
+ordem de bico, dia e id (`DadosDoPeriodo::leituras()`). Existe para o cliente rodar `encerranteMensal`
+(`packages/utils/src/encerrante-mensal.ts`) sobre os litros do rateio do custo do mês do fechamento
+diário (`custoMensalDaApi`, D3: litros pelo salto do encerrante). O servidor **não** calcula o salto:
+seria uma segunda cópia da regra (DECISÃO 1). **Nenhum campo existente mudou de significado:**
+`rateio.litros_vendidos` e `produtos[].litros_vendidos` continuam sendo Σ `Leitura.litros_vendidos`,
+e a Visão do Proprietário continua usando essa Σ (em fevereiro/2026 ela rateia a 0,6152 R$/L e o
+fechamento diário, pelo encerrante, a 0,4693 — divergência registrada, alinhar é fatia própria). Presos
+em `DashboardTest` (bloco `leituras`: forma, isolamento por posto, ordem com linhas gravadas fora de
+ordem, período vazio), com canários.
 
 Não existe `despesas_total` na raiz: o bloco `rateio` cola a janela, a despesa e os litros no mesmo
 lugar, para que nenhum cliente divida despesa de um mês por litros de um período (o campo solto
@@ -220,6 +261,7 @@ convidava a isso; `DashboardTest` afirma a ausência).
 | `rateio.litros_vendidos` | `Leitura` do mês inteiro, sem filtro de combustível → `totalLitros` | `Number()` → `rateio.litros` | `despesaOperacionalPorLitro`, 2º argumento |
 | `rateio.mes_civil` | `mesCivil(dataInicio)` — só o mês de `inicio` | `janelaDoRateio` → `kpis.janelaDoRateio` → legenda do card "Lucro Estimado" | — (`Periodo::mesCivil()`, `Periodo.php`) |
 | `produtos[].produto` | `bico.combustivel.nome` | `fuelData[].name` | — |
+| `leituras[]` (#103 P9) | não lê — o dashboard do proprietário rateia por `rateio.litros_vendidos` | não lê; quem lê é `custoMensalDaApi` (`fechamento-diario/hooks/custo-mensal.ts`), via `lerCustoDoMes` | `encerranteMensal` → `despesaOperacionalPorLitro`, 2º argumento (D3) |
 
 **Fatia 2 — decisões registradas (18/09/2026):**
 
@@ -284,6 +326,11 @@ entrega. Fica registrado aqui para não virar endpoint órfão.
 
 ## Riscos e decisões em aberto
 
+- 📌 **Fatia própria registrada em 22/09: fechar o catálogo público.** O dashboard fechou, mas as
+  rotas do catálogo (`routes/api.php:50-60`) seguem sem token e expõem `preco_custo`/`preco_venda`
+  (em `combustiveis`, e em `tanques`/`bicos`, que trazem o combustível), `taxa` de formas de
+  pagamento e maquininhas, `cnpj`/`contato` de fornecedores e `telefone`/`data_admissao` de
+  frentistas. Detalhe e consumidores em `cadastro.md` §Riscos.
 - ⚠️ **A issue #100 pede um aceite que congela um bug.** "Mesma saída da RPC" vale para o dashboard,
   não para o fechamento mensal. O texto da issue precisa ser corrigido junto com esta aprovação.
 - ⚠️ **`get_encerrantes_mensal` é uma 4ª RPC e não achei chamador nela** no frontend, enquanto

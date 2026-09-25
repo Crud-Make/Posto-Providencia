@@ -78,3 +78,13 @@ de reapontar**. #97 (módulo Cadastro: 12 models gerados do catálogo, `Pertence
 fase-a. Testes de Feature do backend rodam no Postgres do compose com `DatabaseTransactions`: sem
 isso gravam de verdade (aconteceu: 37 postos sintéticos, banco zerado e ressemeado). Próxima: #98 (OCR).
 
+**20/09 — a sobrescrita do CLAUDE.md por template genérico ACONTECEU DE NOVO**, e desta vez estava
+na árvore sem commit, prestes a apagar a 4.0. Sintomas para reconhecer: português quebrado ("Este
+arquivo lodge os padrões", "1. 1. Visão Geral"), e fatos falsos sobre o próprio sistema — porta
+5432 (é 5433), "22 tabelas de negócio" (são 45), Inertia + Fortify + Wayfinder (é SPA separado),
+Redis no Compose (não existe), `.ai/guidelines/*` (não existe). Restaurado com `git restore
+CLAUDE.md`; a versão ruim foi guardada no scratchpad da sessão.
+
+**Isso já contaminou raciocínio:** o "22 tabelas" que eu repeti ao dono veio dessa versão
+corrompida, carregada como instrução do projeto. Ao ver esses números, desconfiar do CLAUDE.md
+antes de desconfiar do código.

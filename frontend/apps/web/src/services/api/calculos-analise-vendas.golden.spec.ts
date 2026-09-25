@@ -109,6 +109,17 @@ for (const mes of MESES) {
             });
             // margem da tela = lucro ÷ receita, a mesma definição canônica
             expect(linha.margin).toBeCloseTo(margemPercentual(linha.lucroTotal, v.valor), 6);
+
+            // `suggestedPrice`, `profitPerLiter` e `cmv` NÃO tinham asserção
+            // nenhuma. Medido em 20/09 por mutação: inverter o sinal do lucro
+            // por litro passava VERDE, e +1 centavo no CMV também. Identidade
+            // exata, sem folga — é a definição da tela, não uma aproximação.
+            // `?? NaN` de propósito: produto sem custo tem de REPROVAR alto, não
+            // virar zero e passar — é a mesma regra da I8 aplicada ao teste.
+            const custoDoProduto = custos[v.produto] ?? Number.NaN;
+            expect(linha.suggestedPrice).toBe(custoDoProduto + despLt);
+            expect(linha.profitPerLiter).toBe(v.valor / v.litros - (custoDoProduto + despLt));
+            expect(linha.cmv).toBe(v.litros * custoDoProduto);
         }
         // Diferença admissível: só a quantização por produto (4 × meio centavo).
         expect(Math.abs(daTela - canonico)).toBeLessThan(0.05);
