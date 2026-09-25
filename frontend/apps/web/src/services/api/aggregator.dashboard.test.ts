@@ -46,6 +46,25 @@ const LEITURAS = [
     { id: 3, litros_vendidos: 300, valor_total: 1200, bico: { id: 3, combustivel: ETANOL } },
 ];
 
+/**
+ * A API Laravel falsa do Dashboard (#100 fatia 3): cada rota responde o seu. O agregado vem de
+ * `dashboard`; combustíveis, frentistas, formas e sessões são o cadastro que antes vinha do Supabase
+ * e, com o corte ligado, também vem da API. `falhas` troca a resposta de uma rota por um status.
+ */
+function apiDoDashboard(dashboard: unknown, falhas: Readonly<Record<string, number>> = {}): void {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        const endereco = String(url);
+        const rotaQueFalha = Object.keys(falhas).find((rota) => endereco.includes(rota));
+        if (rotaQueFalha !== undefined) return new Response('{}', { status: falhas[rotaQueFalha] ?? 500 });
+        const corpo = endereco.includes('/dashboard')
+            ? dashboard
+            : endereco.includes('/combustiveis')
+                ? { data: [GASOLINA_COMUM, ETANOL].map(({ id, codigo }) => ({ id, codigo })) }
+                : { data: [] };
+        return new Response(JSON.stringify(corpo), { status: 200 });
+    }));
+}
+
 const ok = <T>(data: T) => ({ success: true as const, data, timestamp: '2026-01-15T00:00:00.000Z' });
 
 /** Builder fake da query crua de `Leitura` dentro de `despesaOperacionalMensal` (não passa por service). */
@@ -183,7 +202,7 @@ describe('aggregatorService.fetchDashboardData — paridade Supabase × API dent
 
     async function pelaApi(resposta: typeof RESPOSTA_API) {
         vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
-        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(resposta), { status: 200 })));
+        apiDoDashboard(resposta);
         vi.mocked(leituraService.getByDateRange).mockRejectedValue(new Error('não pode ler leitura no Supabase com API ligada'));
         vi.mocked(compraService.getByDateRange).mockRejectedValue(new Error('não pode ler compra no Supabase com API ligada'));
         vi.mocked(despesaService.getByMonth).mockRejectedValue(new Error('não pode ler despesa no Supabase com API ligada'));
@@ -252,11 +271,11 @@ describe('aggregatorService.fetchDashboardData — paridade Supabase × API dent
         // de janeiro (mês de dataInicio). Aqui a API devolve o mês civil que CONTÉM o período —
         // 01/01 a 28/02 (Periodo::mesCivil no PHP) — e a tela recebe a janela para avisar.
         vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
-        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+        apiDoDashboard({
             ...RESPOSTA_API,
             periodo: { inicio: '2026-01-20', fim: '2026-02-10' },
             rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-02-28' }, despesas_total: '1800.00', litros_vendidos: '3600.000' },
-        }), { status: 200 })));
+        });
         vi.mocked(compraService.getByDateRange).mockRejectedValue(new Error('compra do Supabase não entra com API ligada'));
         vi.mocked(despesaService.getByMonth).mockRejectedValue(new Error('despesa do Supabase não entra com API ligada'));
 
@@ -302,24 +321,18 @@ describe('aggregatorService.fetchDashboardData — paridade Supabase × API dent
         expect(!result.success && result.code).toBe('FETCH_ERROR');
     });
 
-    it('erro do cadastro de combustíveis (Supabase) com a API ligada vira Err tipado e ApiResponse de erro — não exceção engolida pelo catch', async () => {
-        // A API respondeu bem; quem falhou foi o `combustivelService.getAll` (mapa id → codigo para a
-        // cor). Antes o `extractData` lançava dentro do `.map` do ResultAsync e o `catch` externo
-        // devolvia `code: 'ERROR'` com a mensagem crua — Result Pattern furado. Agora é Err tipado
+    it('erro do cadastro de combustíveis (catálogo da API) com a API ligada vira Err tipado e ApiResponse de erro — não exceção engolida pelo catch', async () => {
+        // O agregado respondeu bem; quem falhou foi o catálogo de combustíveis (mapa id → codigo para
+        // a cor), que desde a fatia 3 da #100 vem da API e não do Supabase. É Err tipado
         // (`tipo: 'cadastro'`) e a mensagem passa pelo adaptador, com o mesmo `FETCH_ERROR` da API.
         vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
-        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(RESPOSTA_API), { status: 200 })));
-        vi.mocked(combustivelService.getAll).mockResolvedValue({
-            success: false as const,
-            error: 'RLS negou Combustivel',
-            code: 'FETCH_ERROR',
-            timestamp: '2026-01-15T00:00:00.000Z',
-        });
+        apiDoDashboard(RESPOSTA_API, { '/combustiveis': 500 });
 
         const result = await aggregatorService.fetchDashboardData(JANEIRO[0], JANEIRO[1], null, POSTO);
 
+        expect(combustivelService.getAll).not.toHaveBeenCalled();
         expect(result.success).toBe(false);
-        expect(!result.success && result.error).toBe('Cadastro de combustíveis indisponível: RLS negou Combustivel');
+        expect(!result.success && result.error).toBe('Cadastro de combustíveis indisponível: API Laravel respondeu 500');
         expect(!result.success && result.code).toBe('FETCH_ERROR');
     });
 
@@ -373,7 +386,7 @@ describe('aggregatorService.fetchDashboardData — uma leva só de consultas', (
         vi.clearAllMocks();
     });
 
-    it('sem VITE_API_URL: as 7 consultas do Supabase começam antes de qualquer uma terminar', async () => {
+    it('sem VITE_API_URL: as 6 consultas do Supabase começam antes de qualquer uma terminar (estoque saiu na fatia 3: só servia ao maxCapacity, que ninguém lia)', async () => {
         vi.stubEnv('VITE_API_URL', '');
         vi.stubGlobal('fetch', vi.fn());
         leiturasDoMesNoSupabase([]);
@@ -381,14 +394,12 @@ describe('aggregatorService.fetchDashboardData — uma leva só de consultas', (
         const leituras = adiada<unknown>();
         const compras = adiada<unknown>();
         const despesas = adiada<unknown>();
-        const estoque = adiada<unknown>();
         const frentistas = adiada<unknown>();
         const formas = adiada<unknown>();
         const fechamentos = adiada<unknown>();
         vi.mocked(leituraService.getByDateRange).mockReturnValue(leituras.promessa as never);
         vi.mocked(compraService.getByDateRange).mockReturnValue(compras.promessa as never);
         vi.mocked(despesaService.getByMonth).mockReturnValue(despesas.promessa as never);
-        vi.mocked(estoqueService.getAll).mockReturnValue(estoque.promessa as never);
         vi.mocked(frentistaService.getAll).mockReturnValue(frentistas.promessa as never);
         vi.mocked(formaPagamentoService.getAll).mockReturnValue(formas.promessa as never);
         vi.mocked(fechamentoFrentistaService.getByDate).mockReturnValue(fechamentos.promessa as never);
@@ -396,11 +407,10 @@ describe('aggregatorService.fetchDashboardData — uma leva só de consultas', (
         const pendente = aggregatorService.fetchDashboardData('2026-01-15', '2026-01-15', null, POSTO);
         await esperarMicrotarefas();
 
-        // Nada resolveu ainda — e as sete já foram pedidas.
+        // Nada resolveu ainda — e as seis já foram pedidas.
         expect(leituraService.getByDateRange).toHaveBeenCalledTimes(1);
         expect(compraService.getByDateRange).toHaveBeenCalledTimes(1);
         expect(despesaService.getByMonth).toHaveBeenCalledTimes(1);
-        expect(estoqueService.getAll).toHaveBeenCalledTimes(1);
         expect(frentistaService.getAll).toHaveBeenCalledTimes(1);
         expect(formaPagamentoService.getAll).toHaveBeenCalledTimes(1);
         expect(fechamentoFrentistaService.getByDate).toHaveBeenCalledTimes(1);
@@ -409,7 +419,6 @@ describe('aggregatorService.fetchDashboardData — uma leva só de consultas', (
         leituras.resolver(ok(LEITURAS));
         compras.resolver(ok([]));
         despesas.resolver(ok([]));
-        estoque.resolver(ok(ESTOQUE));
         frentistas.resolver(ok([]));
         formas.resolver(ok([]));
         fechamentos.resolver(ok([]));
@@ -417,47 +426,36 @@ describe('aggregatorService.fetchDashboardData — uma leva só de consultas', (
         expect(result.success).toBe(true);
     });
 
-    it('com VITE_API_URL: a API e o cadastro correm em paralelo com estoque, frentistas, formas e fechamentos', async () => {
+    it('com VITE_API_URL: agregado, catálogo, frentistas, formas e sessões saem juntos pela API — e o Supabase não é consultado', async () => {
+        // Fatia 3 da #100: com o corte ligado, TODO o Dashboard vem da API (o login pela API não cria
+        // sessão do Supabase, e sem ela a tela ficava presa carregando). As cinco rotas são pedidas
+        // antes de qualquer uma responder — a onda única continua valendo.
         vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
-        const api = adiada<Response>();
-        vi.stubGlobal('fetch', vi.fn(() => api.promessa));
-
-        const cadastro = adiada<unknown>();
-        const estoque = adiada<unknown>();
-        const frentistas = adiada<unknown>();
-        const formas = adiada<unknown>();
-        const fechamentos = adiada<unknown>();
-        vi.mocked(combustivelService.getAll).mockReturnValue(cadastro.promessa as never);
-        vi.mocked(estoqueService.getAll).mockReturnValue(estoque.promessa as never);
-        vi.mocked(frentistaService.getAll).mockReturnValue(frentistas.promessa as never);
-        vi.mocked(formaPagamentoService.getAll).mockReturnValue(formas.promessa as never);
-        vi.mocked(fechamentoFrentistaService.getByDate).mockReturnValue(fechamentos.promessa as never);
+        const respostas = [adiada<Response>(), adiada<Response>(), adiada<Response>(), adiada<Response>(), adiada<Response>()];
+        const pedidos: string[] = [];
+        vi.stubGlobal('fetch', vi.fn((url: string) => {
+            pedidos.push(String(url).replace('http://localhost:8000/api/postos/1/', '').split('?')[0] ?? '');
+            return respostas[pedidos.length - 1]?.promessa;
+        }));
 
         const pendente = aggregatorService.fetchDashboardData('2026-01-15', '2026-01-15', null, POSTO);
         await esperarMicrotarefas();
 
-        expect(fetch).toHaveBeenCalledTimes(1);
-        expect(combustivelService.getAll).toHaveBeenCalledTimes(1);
-        expect(estoqueService.getAll).toHaveBeenCalledTimes(1);
-        expect(frentistaService.getAll).toHaveBeenCalledTimes(1);
-        expect(formaPagamentoService.getAll).toHaveBeenCalledTimes(1);
-        expect(fechamentoFrentistaService.getByDate).toHaveBeenCalledTimes(1);
-        // Venda, compra e despesa vêm da API: o Supabase não é consultado para elas.
-        expect(leituraService.getByDateRange).not.toHaveBeenCalled();
-        expect(compraService.getByDateRange).not.toHaveBeenCalled();
-        expect(despesaService.getByMonth).not.toHaveBeenCalled();
+        expect([...pedidos].sort()).toEqual(['combustiveis', 'dashboard', 'formas-pagamento', 'frentistas', 'sessoes']);
+        for (const servico of [combustivelService.getAll, estoqueService.getAll, frentistaService.getAll, formaPagamentoService.getAll,
+            fechamentoFrentistaService.getByDate, leituraService.getByDateRange, compraService.getByDateRange, despesaService.getByMonth]) {
+            expect(servico).not.toHaveBeenCalled();
+        }
 
-        api.resolver(new Response(JSON.stringify({
-            periodo: { inicio: '2026-01-15', fim: '2026-01-15' },
-            produtos: [],
-            rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-01-31' }, despesas_total: '0.00', litros_vendidos: '0.000' },
-            leituras: [],
-        }), { status: 200 }));
-        cadastro.resolver(ok([GASOLINA_COMUM, ETANOL]));
-        estoque.resolver(ok(ESTOQUE));
-        frentistas.resolver(ok([]));
-        formas.resolver(ok([]));
-        fechamentos.resolver(ok([]));
+        const corpoDe = (rota: string): unknown => rota === 'dashboard'
+            ? {
+                periodo: { inicio: '2026-01-15', fim: '2026-01-15' },
+                produtos: [],
+                rateio: { mes_civil: { inicio: '2026-01-01', fim: '2026-01-31' }, despesas_total: '0.00', litros_vendidos: '0.000' },
+                leituras: [],
+            }
+            : { data: [] };
+        pedidos.forEach((rota, i) => respostas[i]?.resolver(new Response(JSON.stringify(corpoDe(rota)), { status: 200 })));
         const result = await pendente;
         expect(result.success).toBe(true);
     });

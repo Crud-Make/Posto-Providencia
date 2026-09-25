@@ -85,6 +85,7 @@ it('senha errada, e-mail inexistente, usuário inativo e usuário sem senha rece
     gerenteDoJorro();
     gerenteDoJorro(['email' => 'inativo@teste.com', 'ativo' => false]);
     Usuario::factory()->create(['email' => 'semsenha@teste.com', 'senha' => null]);
+    $tokensAntes = PersonalAccessToken::query()->count();
 
     $tentativas = [
         ['gerente.login@teste.com', 'senha-errada'],
@@ -98,7 +99,7 @@ it('senha errada, e-mail inexistente, usuário inativo e usuário sem senha rece
             ->assertUnauthorized()
             ->assertExactJson(['message' => 'E-mail ou senha incorretos.']);
     }
-    expect(PersonalAccessToken::query()->count())->toBe(0);
+    expect(PersonalAccessToken::query()->count())->toBe($tokensAntes);
 });
 
 it('o token do login abre as rotas do posto dele', function (): void {
@@ -134,8 +135,13 @@ it('ADMIN lista todos os postos ativos, e posto desativado some da lista', funct
     $postoBr = Posto::factory()->create(['nome' => 'Posto BR', 'ativo' => true]);
     Posto::factory()->create(['nome' => 'Posto Fechado', 'ativo' => false]);
 
-    withToken(tokenDoLogin('admin.login@teste.com'))->getJson('/api/eu')
-        ->assertJsonPath('usuario.postos.*.id', [1, $postoBr->id]);
+    $fechado = Posto::query()->where('nome', 'Posto Fechado')->sole();
+    $ativos = Posto::query()->where('ativo', true)->orderBy('id')->pluck('id')->all();
+
+    $ids = withToken(tokenDoLogin('admin.login@teste.com'))->getJson('/api/eu')->json('usuario.postos.*.id');
+
+    expect($ids)->toBe($ativos)->toContain(1, $postoBr->id)
+        ->and(in_array($fechado->id, $ativos, true))->toBeFalse();
 });
 
 it('sair apaga só o token desta sessão', function (): void {

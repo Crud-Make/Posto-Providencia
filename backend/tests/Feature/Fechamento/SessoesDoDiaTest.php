@@ -191,3 +191,37 @@ it('a janela do dia é um INSTANTE, e não o dia do fuso da conexão', function 
 
     expect($ids)->toBe([$sessao->id]);
 });
+
+it('com `ate`, devolve os envios do período inteiro — e nada antes nem depois', function (): void {
+    $posto = Posto::factory()->create();
+    usuarioP6('a3330000-0000-4000-8000-000000000009', $posto->id);
+    $sessaoEm = function (string $instante) use ($posto): int {
+        $pai = Fechamento::factory()->create(['posto_id' => $posto->id, 'data' => $instante]);
+        fixaInstante('Fechamento', $pai->id, $instante);
+
+        return FechamentoFrentista::factory()->create([
+            'posto_id' => $posto->id, 'fechamento_id' => $pai->id,
+            'frentista_id' => Frentista::factory()->create(['posto_id' => $posto->id])->id,
+        ])->id;
+    };
+    $sessaoEm('2026-09-19 23:59:00+00');
+    $primeiro = $sessaoEm('2026-09-20 00:00:00+00');
+    $ultimo = $sessaoEm('2026-09-22 23:59:00+00');
+    $sessaoEm('2026-09-23 00:00:00+00');
+
+    $ids = withToken(tokenP6('a3330000-0000-4000-8000-000000000009'))
+        ->getJson("/api/postos/{$posto->id}/sessoes?data=2026-09-20&ate=2026-09-22")
+        ->assertOk()->json('data.*.id');
+
+    expect($ids)->toEqualCanonicalizing([$primeiro, $ultimo]);
+});
+
+it('`ate` antes de `data` ou período acima de 62 dias é recusado', function (): void {
+    $posto = Posto::factory()->create();
+    $tok = tokenP6('a3330000-0000-4000-8000-000000000010');
+    usuarioP6('a3330000-0000-4000-8000-000000000010', $posto->id);
+
+    withToken($tok)->getJson("/api/postos/{$posto->id}/sessoes?data=2026-09-20&ate=2026-09-19")->assertStatus(422);
+    withToken($tok)->getJson("/api/postos/{$posto->id}/sessoes?data=2026-01-01&ate=2026-03-04")->assertStatus(422);
+    withToken($tok)->getJson("/api/postos/{$posto->id}/sessoes?data=2026-01-01&ate=2026-03-03")->assertOk();
+});

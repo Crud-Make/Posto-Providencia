@@ -1,0 +1,19 @@
+import type { ResultAsync } from 'neverthrow';
+import { z } from 'zod';
+import { buscarNaApi, type ErroDaApi } from './base';
+
+/**
+ * `Combustivel.id → codigo` pelo catálogo da API (`GET /api/postos/{posto}/combustiveis`, #97).
+ *
+ * @remarks Só o que o Dashboard precisa: o `codigo` dá a cor do produto (`corDoProduto`). Antes da
+ *          fatia 3 da #100 vinha do Supabase, e sem a sessão dele (login pela API) o gráfico ficava
+ *          sem cor. Inativo entra também: venda antiga de combustível desativado mantém a cor.
+ */
+const combustivelDaApi = z.object({ id: z.number().int(), codigo: z.string() });
+const respostaDeCombustiveis = z.object({ data: z.array(combustivelDaApi) });
+
+export function lerCodigosDeCombustivelDaApi(postoId: number): ResultAsync<ReadonlyMap<number, string>, ErroDaApi> {
+    return buscarNaApi(`/api/postos/${postoId}/combustiveis`, respostaDeCombustiveis).map(
+        (resposta): ReadonlyMap<number, string> => new Map(resposta.data.map((c) => [c.id, c.codigo] as const)),
+    );
+}

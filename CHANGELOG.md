@@ -2,6 +2,29 @@
 
 ## [Não Lançado]
 
+### 📊 O Dashboard abre inteiro pela API — nenhuma consulta ao Supabase (#100, fatia 3)
+
+- Com o corte ligado (`VITE_API_DASHBOARD`, que segue o `VITE_API_URL`), **tudo** o que a tela lê vem
+  da API: o agregado (já vinha), e agora o catálogo de combustíveis (cor do gráfico), frentistas,
+  formas de pagamento, sessões do dia, o filtro de frentistas e o card "Trabalhando agora". Antes,
+  com o login pela API (#102), a tela ficava presa carregando: cinco consultas ainda iam ao Supabase.
+- **Rota nova `GET /api/postos/{posto}/presencas`** (protegida): quem deu sinal no posto, com nome e
+  **foto** — a foto que o catálogo público continua escondendo. Cada posto vê só os seus frentistas.
+- **Estoque saiu do Dashboard**: só alimentava `fuelData.maxCapacity`, campo que nenhum componente lia.
+  Uma consulta a menos por carregamento, nos dois caminhos.
+- Frentistas pela API vêm ordenados por nome, como o Supabase entregava.
+- **A tabela de fechamentos cobre o período inteiro.** Ela lia só o primeiro dia, enquanto os cards
+  somavam o período todo. `GET /sessoes` aceita `ate` (até 62 dias), e cada frentista soma os envios
+  do período em centavos; dentro do mesmo dia continua valendo o último envio, então um envio em
+  dobro não conta duas vezes. "Conferido" só com todos os envios marcados pelo painel.
+- **A tendência dos cards passa a ser calculada.** "+12% vs. ontem", "+5%" e "0%" estavam escritos à
+  mão no código: a tela afirmava uma alta que ninguém mediu. Agora o período é comparado com o
+  anterior de mesmo tamanho (um dia → o dia anterior), em vendas, litros e lucro; sem base, "—".
+  O rótulo diz o que foi comparado ("vs. ontem", "vs. dia anterior", "vs. período anterior").
+- Nenhuma fórmula mudou: golden 3536/0. O teste de paridade Supabase × API continua com as mesmas
+  contas; a API falsa passou a responder por rota. Canário: o modo API voltar a buscar o cadastro no
+  Supabase deixa o teste de concorrência vermelho. Pest 230/230 (97,0 %), vitest 1033/1033.
+
 ### 🔑 A API ganha login próprio — e o Supabase deixa de ser quem diz quem é você (#102)
 
 - **`POST /api/login`** confere e-mail e senha no `Usuario` e devolve um token do **Laravel Sanctum**
