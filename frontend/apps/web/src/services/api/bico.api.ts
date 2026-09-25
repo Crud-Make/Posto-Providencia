@@ -94,3 +94,12 @@ export function lerBicosComDetalhesDaApi(postoId: number): ResultAsync<BicoComDe
     return buscarNaApi(`/api/postos/${postoId}/bicos`, respostaDeBicos)
         .map((resposta) => paraBicosComDetalhes(resposta.data, postoId));
 }
+
+/**
+ * O catálogo de bicos do posto como a API o entrega, ATIVOS E INATIVOS — para dar número e
+ * combustível às leituras do mês (aba Fechamento Mensal), como o join `bico:Bico(...)` do Supabase
+ * dava: leitura antiga de bico desativado continua com nome.
+ */
+export function lerCatalogoDeBicosDaApi(postoId: number): ResultAsync<readonly BicoDaApi[], ErroDaApi> {
+    return buscarNaApi(`/api/postos/${postoId}/bicos`, respostaDeBicos).map((resposta) => resposta.data);
+}

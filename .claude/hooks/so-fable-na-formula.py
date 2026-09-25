@@ -56,6 +56,10 @@ FORMULA = re.compile(
     r"|(^|/)apps/web/src/components/registro-compras/hooks/useDespesaDoMes[\w.-]*\.tsx?$"
     r"|(^|/)apps/web/src/services/api/dashboard\.api\.ts$"
     r"|(^|/)backend/app/Agregacao/[\w./-]+\.php$"
+    # [25/09] #103 Relatório Diário: a venda, o lucro bruto, a diferença e os totais do dia
+    # saíram do hook para `montar-relatorio.ts`, que as duas fontes (Supabase e API) usam.
+    # Antes moravam no `useRelatorioDiario.ts`, fora da trava. O resto da pasta é fonte e tela.
+    r"|(^|/)apps/web/src/components/relatorio-diario/hooks/montar-relatorio[\w.-]*\.tsx?$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")

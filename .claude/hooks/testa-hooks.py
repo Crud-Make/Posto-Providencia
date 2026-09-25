@@ -325,6 +325,11 @@ CASOS_FORMULA_COBERTURA = [
     ("frontend/apps/web/src/services/api/fornecedor.api.ts", False),
     ("backend/app/Fechamento/Application/LeiturasDoDia.php", False),
     ("backend/tests/Feature/Agregacao/DashboardTest.php", False),
+    # [25/09] #103 Relatório Diário: as contas do dia, não as fontes nem o hook de tela
+    ("frontend/apps/web/src/components/relatorio-diario/hooks/montar-relatorio.ts", True),
+    ("frontend/apps/web/src/components/relatorio-diario/hooks/montar-relatorio.test.ts", False),
+    ("frontend/apps/web/src/components/relatorio-diario/hooks/fonte-da-api.ts", False),
+    ("frontend/apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts", False),
 ]
 
 

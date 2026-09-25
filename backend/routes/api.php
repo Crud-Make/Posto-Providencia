@@ -1,6 +1,7 @@
 <?php
 
 use App\Agregacao\Http\Controllers\AgregacaoController;
+use App\Agregacao\Http\Controllers\RelatorioDiarioController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PresencaController;
@@ -97,6 +98,9 @@ Route::prefix('postos/{posto}')
     ->group(function (): void {
         // Encerrantes do dia (#103 P5). Dinheiro e litros saem como string decimal.
         Route::get('leituras', [LeituraController::class, 'index']);
+        // A última leitura de cada bico antes do dia: o encerrante inicial de um dia novo
+        // (Fechamento de Caixa 100% pela API, 25/09). Uma linha por bico, sem o teto de 200 do Supabase.
+        Route::get('leituras/ultimas', [LeituraController::class, 'ultimas']);
 
         // Envios dos frentistas do dia (#103 P6). Balde não informado sai null, nunca '0.00'.
         Route::get('sessoes', [FechamentoFrentistaController::class, 'index']);
@@ -123,6 +127,12 @@ Route::prefix('postos/{posto}')
         // da rede chama uma vez por posto que o usuário gere — o vizinho responde 403.
         Route::get('proprietario', [AgregacaoController::class, 'proprietario'])->middleware('posto.acesso:gerir');
         Route::get('movimento', [AgregacaoController::class, 'movimento'])->middleware('posto.acesso:gerir');
+
+        // Aba Fechamento Mensal do Fechamento de Caixa: volume, faturamento, litros por combustível e
+        // status de cada dia do mês — o que a RPC `get_fechamento_mensal` dava, SEM o lucro dela
+        // (agregacao.md §5; o lucro espera decisão do dono). Nenhum custo nem despesa: basta `ver`.
+        Route::get('fechamento-mensal/{ano}/{mes}', [AgregacaoController::class, 'fechamentoMensal'])
+            ->whereNumber(['ano', 'mes']);
     });
 
 /*
@@ -172,4 +182,19 @@ Route::prefix('postos/{posto}')
         Route::get('regua/tanques', [ReguaController::class, 'tanques']);
         Route::get('regua/medicoes', [ReguaController::class, 'medicoes']);
         Route::put('regua/medicoes', [ReguaController::class, 'grava']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Relatório Diário do painel (#103, docs/design/painel-pela-api.md "Relatório Diário")
+|--------------------------------------------------------------------------
+| Fechamentos do dia (todas as linhas, com o nome de quem gravou) e despesas do dia. Leituras e
+| compras do mês a tela já pega em `GET /leituras` e `GET /dashboard`. Traz despesa e lucro, que
+| são dado de proprietário: `posto.acesso:gerir`, como o `/dashboard`. Mesma ordem de middleware
+| do grupo protegido acima — sem token 401, posto de outro 403.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::get('relatorio-diario', [RelatorioDiarioController::class, 'show']);
     });

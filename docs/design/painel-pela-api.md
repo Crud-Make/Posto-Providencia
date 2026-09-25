@@ -139,3 +139,49 @@ validação módulo a módulo em `localhost:3015` pela skill `validar-feature-po
   `.from()` produz o falso "ninguém lê essa tabela".
 - Auth tem **cobertura de teste zero** hoje. A troca do `AuthContext` desta issue nasce sem rede
   herdada.
+
+## 7. Relatório Diário pela API (#103, 25/09/2026)
+
+Tela `components/relatorio-diario`, flag **`VITE_API_RELATORIO`** (`corteDaTelaLigado`: ausente segue
+`VITE_API_URL`, `0` deixa no Supabase). No modo API a tela **não chama o Supabase** — prova em
+`hooks/fonte-da-api.test.ts`, com o client do Supabase e os quatro services mockados para reprovar se tocados.
+
+| Antes (Supabase) | Agora (API) |
+|---|---|
+| `fechamentoService.getByDate` — `Fechamento` do dia + `usuario:Usuario(id, nome)` | `GET /relatorio-diario?data=` → `fechamentos[]` (todas as linhas do dia, com `usuario_nome`) |
+| `despesaService.getAll` + filtro `data === dia` no cliente | `GET /relatorio-diario?data=` → `despesas[]` (competência no dia, filtro no banco) |
+| `leituraService.getByDate` — `Leitura` + `bico.combustivel(id, preco_venda)` | `GET /leituras?data=` (já existia; combustível pelo `combustivel_id` da leitura) |
+| `compraService.getByDateRange(mês civil)` → `custoMedioPorCombustivel` | `GET /dashboard?inicio=dia&fim=dia` → `produtos[].compras` (já soma o mês civil) |
+
+**Rota nova:** `GET /api/postos/{posto}/relatorio-diario?data=AAAA-MM-DD` (`App\Agregacao`:
+`RelatorioDiarioController` → `RelatorioDoDia`, query builder, CA-7). Middleware `token.atual` +
+`DefinePostoAtual` + `posto.acesso:gerir` — traz despesa e alimenta lucro, dado de proprietário como o
+`/dashboard`. Corpo sem envelope:
+
+```json
+{ "data": "2026-09-20",
+  "fechamentos": [{ "id": 10, "data": "2026-09-20T00:00:00Z", "status": "FECHADO", "total_vendas": "4000.00",
+                    "diferenca": "-5.00", "turno_id": null, "usuario_nome": "Ana" }],
+  "despesas": [{ "id": 1, "descricao": "Energia", "categoria": "Energia Elétrica", "valor": "150.00",
+                 "data": "2026-09-20", "status": "pago", "data_pagamento": "2026-09-20", "observacoes": null }] }
+```
+
+Nenhuma conta no servidor. `total_vendas`/`diferenca` `null` ficam `null` (I8). Dia sem movimento é 200
+com listas vazias. Sem token 401; operador 403; gerente do Jorro no BR 403; `data` inválida 422
+(`RelatorioDiarioTest`).
+
+**Contas:** saíram do hook para `hooks/montar-relatorio.ts` **sem mudar fórmula** (venda a preço
+carimbado, lucro bruto a custo do mês, `diferenca` nula = não apurado, status Aberto/Pendente/Fechado).
+As duas fontes entregam o mesmo `InsumosDoRelatorio` e o teste de PARIDADE compara o relatório inteiro
+(`toEqual`) sobre o mesmo dia. O arquivo entrou na trava `so-fable-na-formula.py`.
+
+**Diferenças de forma, não de número:** o recorte dos fechamentos é o mesmo instante (meia-noite UTC)
+do `.eq('data', dia)`, feito no cliente como nas leituras; despesas saem em ordem de `id` (o Supabase
+ordenava por `data` desc, que no mesmo dia é a ordem física); `status` da despesa fora de `pago` vira
+`pendente` no tipo de UI (a tela não o exibe).
+
+**Canários (cada trava muda → vermelho → desfeita):** tirar o `posto_id` dos fechamentos em
+`RelatorioDoDia` → 2 testes vermelhos (vaza o BR); trocar `posto.acesso:gerir` por `posto.acesso` →
+o teste do operador vermelho; forçar o Supabase no modo API → 4 vermelhos; tirar o recorte por instante
+dos fechamentos → 1 vermelho; ignorar a compra do mês na fonte da API → a PARIDADE vermelha; tirar
+`montar-relatorio` da regex do `so-fable-na-formula.py` → `testa-hooks.py` vermelho.
