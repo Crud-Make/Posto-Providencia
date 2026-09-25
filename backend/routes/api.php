@@ -111,4 +111,11 @@ Route::prefix('postos/{posto}')
         // Custo e despesa são dado de proprietário (decisão do dono, 22/09/2026): só quem GERE o
         // posto, como o PUT acima. Operador vinculado vê o dia, não o dashboard (403).
         Route::get('dashboard', [AgregacaoController::class, 'dashboard'])->middleware('posto.acesso:gerir');
+
+        // Visão do Proprietário (#100): insumos do resumo (venda e compra por produto, despesas como
+        // linhas, último fechamento) e o movimento cru do período para o Centro do Mês e o Impacto
+        // da Troca de Preço. Mesmo dado de proprietário do dashboard: só quem GERE o posto. A tela
+        // da rede chama uma vez por posto que o usuário gere — o vizinho responde 403.
+        Route::get('proprietario', [AgregacaoController::class, 'proprietario'])->middleware('posto.acesso:gerir');
+        Route::get('movimento', [AgregacaoController::class, 'movimento'])->middleware('posto.acesso:gerir');
     });

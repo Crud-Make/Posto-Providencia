@@ -284,6 +284,25 @@ convidava a isso; `DashboardTest` afirma a ausência).
   pode diferir: a API ordena por nome, o Supabase pela primeira leitura). O lucro esperado é calculado à
   mão no teste e conferido com `lucroCombustivel`, não copiado da saída.
 
+### Visão do Proprietário (#100, 24/09/2026)
+
+`GET /api/postos/{posto}/proprietario?inicio&fim` e `GET /api/postos/{posto}/movimento?inicio&fim`,
+as duas no grupo protegido com `posto.acesso:gerir` (a tela da rede pergunta posto a posto, só pelos
+que o usuário gere no perfil de `GET /api/eu`). Sem lucro no servidor (DECISÃO 1).
+
+- `/proprietario` (`ResumoDoProprietario`; período **dentro de um mês**, 422 se não): `produtos[]`
+  vendidos no período com `litros_vendidos`, `receita` (Σ `valor_total` = `total_vendas` da RPC),
+  `receita_a_preco_litro` (Σ litros × `preco_litro`, escala 5 — a receita do `lucro_bruto` da RPC) e
+  `compras` do mês civil (= `custo_epoca` da RPC); `despesas[]` do período e `despesas_pendentes[]`
+  (todas, sem data) como valores um por linha; `ultimo_fechamento` (dia UTC ou `null`).
+- `/movimento` (`MovimentoDoPosto`): `leituras[]` com o combustível **do bico**, `compras[]`,
+  `despesas[]` do período e `medicoes[]` (`HistoricoTanque` dos tanques do posto com `data ≤ fim`, sem
+  limite inferior; `volume_fisico` nulo sai `null`). Alimenta o Centro do Mês e o Impacto da Troca.
+- Paridade com `get_dashboard_proprietario` em `ProprietarioTest`: vendas e litros exatos; `lucro_bruto`
+  = conta sobre os insumos + o fallback `preco_custo` do produto sem compra, **nomeado** — pela API esse
+  produto fica "não apurável" (DECISÃO 2). No painel: `components/dashboard-proprietario/hooks/fonte-da-api.ts`
+  (flag `VITE_API_PROPRIETARIO`).
+
 `GET /api/postos/{posto}/fechamento-mensal/{ano}/{mes}`
 
 ```json
