@@ -1,6 +1,7 @@
 <?php
 
 use App\Agregacao\Http\Controllers\AgregacaoController;
+use App\Agregacao\Http\Controllers\RelatorioDiarioController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
@@ -144,4 +145,19 @@ Route::prefix('postos/{posto}')
         Route::post('envios', [EnvioDoFrentistaController::class, 'store']);
         // Sinal de vida; `visto_em` é a hora do servidor (trigger carimba_visto_em).
         Route::post('presenca', [PresencaController::class, 'marcar']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Relatório Diário do painel (#103, docs/design/painel-pela-api.md "Relatório Diário")
+|--------------------------------------------------------------------------
+| Fechamentos do dia (todas as linhas, com o nome de quem gravou) e despesas do dia. Leituras e
+| compras do mês a tela já pega em `GET /leituras` e `GET /dashboard`. Traz despesa e lucro, que
+| são dado de proprietário: `posto.acesso:gerir`, como o `/dashboard`. Mesma ordem de middleware
+| do grupo protegido acima — sem token 401, posto de outro 403.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::get('relatorio-diario', [RelatorioDiarioController::class, 'show']);
     });
