@@ -6,9 +6,9 @@ import { createRoot, type Root } from 'react-dom/client';
  * O PWA com a API ligada (#101, fatia 1): `VITE_API_URL` + `VITE_API_PWA=1`.
  *
  * O dublê é o `fetch` (a API Laravel), não a fachada: o caminho real `App → services/api →
- * entities → shared/api/http` roda de ponta a ponta. Da fachada só se trocam as LEITURAS que
- * continuam no Supabase (lista de frentistas, envios do dia) e as duas escritas do caminho antigo,
- * para provar que elas NÃO são chamadas com a flag ligada.
+ * entities → shared/api/http` roda de ponta a ponta. Da fachada se trocam algumas LEITURAS (para
+ * este arquivo focar no PIN e no envio — as leituras pela API estão em `App.api-sem-supabase.test.tsx`)
+ * e as duas escritas do caminho antigo, para provar que elas NÃO são chamadas com a flag ligada.
  */
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
