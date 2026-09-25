@@ -16,11 +16,15 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final readonly class LeiturasDoDia
 {
-    /** @return Collection<int, Leitura> */
-    public function __invoke(CarbonImmutable $dia): Collection
+    /**
+     * @param  CarbonImmutable|null  $ultimoDia  último dia do período, inclusive; `null` = só `$dia`.
+     *                                           A aba Fechamento Mensal pede o mês inteiro assim.
+     * @return Collection<int, Leitura>
+     */
+    public function __invoke(CarbonImmutable $dia, ?CarbonImmutable $ultimoDia = null): Collection
     {
         $inicio = $dia->utc()->startOfDay();
-        $fim = $inicio->addDay();
+        $fim = ($ultimoDia ?? $dia)->utc()->startOfDay()->addDay();
 
         // `Leitura.data` é `timestamptz` e todo escritor grava meia-noite UTC. A conexão desta
         // aplicação está em **America/Sao_Paulo** (medido em 20/09/2026, `show timezone`), não em
@@ -31,6 +35,7 @@ final readonly class LeiturasDoDia
         return Leitura::query()
             ->where('data', '>=', $inicio->format('Y-m-d H:i:sP'))
             ->where('data', '<', $fim->format('Y-m-d H:i:sP'))
+            ->orderBy('data')
             ->orderBy('bico_id')
             ->get();
     }
