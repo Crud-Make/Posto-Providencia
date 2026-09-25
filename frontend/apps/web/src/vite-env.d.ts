@@ -18,6 +18,12 @@ interface ImportMetaEnv {
      */
     readonly VITE_API_DASHBOARD?: string;
     /**
+     * Corte da Visão do Proprietário (#100): `1` lê a tela inteira da API — o resumo da rede, o
+     * Centro do Mês e o Impacto da Troca de Preço —, `0` a deixa no Supabase. Ausente, vale o
+     * `VITE_API_URL`, como as outras flags de tela.
+     */
+    readonly VITE_API_PROPRIETARIO?: string;
+    /**
      * `1` faz o painel logar pela API Laravel (#102) em vez do Supabase, e escolher o posto pela
      * lista que a API devolve. Exige `VITE_API_URL`. Ausente, o login continua no Supabase.
      */

@@ -95,6 +95,31 @@
   cada um com `index.ts` e a dívida do arquivo zerada; a catraca do ESLint desce de 621 para 616 (no pwa, de 34 para 29).
 - **`regras.md` reescrito com o estado real de 19/09**, com a tabela regra → trava → arquivo → antes/depois do pwa;
   FSD-4, TS-5, TS-7, TS-10 e o Result com código real ficam como pendentes dos próximos passos, não como exceção.
+### 🏦 A Visão do Proprietário abre inteira pela API — sem RPC e sem Supabase (#100)
+
+- Com o corte ligado (`VITE_API_PROPRIETARIO`, que segue o `VITE_API_URL`; `0` deixa no Supabase),
+  a tela toda lê da API: os cards e o demonstrativo, o **Centro do Mês** e o **Impacto da Troca de
+  Preço**. Sem a flag, o caminho Supabase de sempre, intacto.
+- **Rota nova `GET /api/postos/{posto}/proprietario?inicio&fim`** (período dentro de um mês): venda e
+  compra do mês por produto, despesas do período e pendentes (uma por linha) e o último fechamento. É o
+  que a RPC `get_dashboard_proprietario` e as consultas de `Despesa`/`Fechamento` entregavam — sem
+  lucro no servidor: o lucro bruto sai de `custoMedioCompra` + `lucroCombustivel` no painel.
+- **Rota nova `GET /api/postos/{posto}/movimento?inicio&fim`**: as linhas cruas (leituras com o
+  combustível do bico, compras, despesas e a régua dos tanques até o fim) que os dois widgets liam
+  direto das tabelas. O cálculo deles não mudou: as mesmas linhas entram nas mesmas funções.
+- **Rede com isolamento:** as duas rotas exigem `posto.acesso:gerir`. A tela pergunta pelos postos
+  do perfil (`GET /api/eu`) em que o usuário GERE, um por um; gerente do Jorro que pedir o BR leva 403,
+  e o operador nem é consultado.
+- **Paridade com a RPC provada no Postgres** (`ProprietarioTest`): vendas e litros exatos, e o lucro
+  bruto da RPC = a conta sobre os insumos + o fallback do `preco_custo`. **Única diferença, por
+  decisão (DECISÃO 2 do `agregacao.md`):** produto vendido sem compra no mês a RPC custeava pelo preço
+  de custo do cadastro; pela API ele fica **"não apurável"** — o card de lucro e o demonstrativo mostram
+  "Não apurável"/"—" e um alerta diz qual produto está sem compra. Pelo Supabase nada muda.
+- Nenhuma fórmula mudou: golden 3536/0. Canários: tirar o `posto.acesso:gerir` deixa o teste do
+  operador vermelho; tirar o filtro de posto da venda deixa 4 vermelhos (inclusive o do isolamento);
+  tirar o filtro de papel no painel deixa 2 vermelhos; ler a flag errada deixa o da flag vermelho.
+  Pest 240/240 (97,2 %), vitest 1055/1055.
+
 ### 📊 O Dashboard abre inteiro pela API — nenhuma consulta ao Supabase (#100, fatia 3)
 
 - Com o corte ligado (`VITE_API_DASHBOARD`, que segue o `VITE_API_URL`), **tudo** o que a tela lê vem

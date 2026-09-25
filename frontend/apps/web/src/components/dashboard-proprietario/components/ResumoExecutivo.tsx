@@ -17,6 +17,10 @@ interface ResumoExecutivoProps {
 }
 
 export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados, periodoLabel }) => {
+  // Sem compra de algum produto no mês o custo não é apurável: número nenhum, e a tela diz qual faltou.
+  const apurado = dados.produtosSemCompra.length === 0;
+  const fundoDoLucro = !apurado ? 'from-gray-500 to-gray-600' : dados.lucroReal < 0 ? 'from-red-500 to-red-700' : 'from-green-500 to-green-700';
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Vendas do período */}
@@ -36,7 +40,7 @@ export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados, periodo
       </div>
 
       {/* Lucro do período */}
-      <div className={`bg-gradient-to-br ${dados.lucroReal < 0 ? 'from-red-500 to-red-700' : 'from-green-500 to-green-700'} rounded-2xl p-5 text-white animate-in fade-in zoom-in duration-300 delay-100`}>
+      <div className={`bg-gradient-to-br ${fundoDoLucro} rounded-2xl p-5 text-white animate-in fade-in zoom-in duration-300 delay-100`}>
         <div className="flex items-center justify-between mb-3">
           <span className="text-green-100 text-sm font-medium font-display uppercase tracking-wider">
             {dados.temDespesa ? 'Lucro Real' : 'Lucro Bruto'} · {periodoLabel}
@@ -45,9 +49,11 @@ export const ResumoExecutivo: React.FC<ResumoExecutivoProps> = ({ dados, periodo
             <TrendingUp className="w-5 h-5" />
           </div>
         </div>
-        <p className="text-3xl font-bold font-finance tracking-tight">{formatCurrency(dados.lucroReal)}</p>
+        <p className="text-3xl font-bold font-finance tracking-tight">{apurado ? formatCurrency(dados.lucroReal) : 'Não apurável'}</p>
         <p className="text-green-200 text-sm mt-1">
-          {dados.temDespesa
+          {!apurado
+            ? `Sem compra no mês: ${dados.produtosSemCompra.join(', ')}`
+            : dados.temDespesa
             ? `Margem real: ${dados.margemMedia.toFixed(1)}%`
             : 'Sem despesa lançada — valor bruto'}
         </p>
