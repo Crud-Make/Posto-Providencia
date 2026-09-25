@@ -22,7 +22,8 @@ use Illuminate\Support\Carbon;
  * só se serializam como string decimal; nenhuma conta neste model. `data_hora_envio` tem
  * DEFAULT now() no banco (:254) e é o carimbo do envio do PWA — um reINSERT o perde (decisão
  * pendente (c) do Design Doc). `frentista_id` fica inteiro: Frentista é de Cadastro (CA-7).
- * Unique `(fechamento_id, frentista_id)` em :761.
+ * Unique `(fechamento_id, frentista_id)` em :761. `chave_envio` é a chave de idempotência do envio
+ * pela API (#101, banco/init/04-acesso-do-frentista.sql): NULL nas linhas do painel e nas antigas.
  *
  * @property int $id
  * @property int $fechamento_id
@@ -42,6 +43,7 @@ use Illuminate\Support\Carbon;
  * @property ?string $baratencia
  * @property ?Carbon $data_hora_envio
  * @property string $valor_moedas
+ * @property ?string $chave_envio
  */
 final class FechamentoFrentista extends Model
 {
@@ -59,7 +61,7 @@ final class FechamentoFrentista extends Model
         'fechamento_id', 'frentista_id', 'valor_cartao', 'valor_nota', 'valor_pix', 'valor_dinheiro',
         'valor_conferido', 'observacoes', 'encerrante', 'baratao', 'diferenca_calculada',
         'valor_cartao_debito', 'valor_cartao_credito', 'posto_id', 'baratencia', 'data_hora_envio',
-        'valor_moedas',
+        'valor_moedas', 'chave_envio',
     ];
 
     /** @return array<string, string> */

@@ -4,9 +4,11 @@ use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
+use App\Fechamento\Http\Controllers\EnvioDoFrentistaController;
 use App\Fechamento\Http\Controllers\FechamentoController;
 use App\Fechamento\Http\Controllers\FechamentoFrentistaController;
 use App\Fechamento\Http\Controllers\LeituraController;
+use App\Pessoas\Http\Controllers\AcessoDoFrentistaController;
 use App\Pessoas\Http\Controllers\AutenticacaoController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -111,4 +113,28 @@ Route::prefix('postos/{posto}')
         // Custo e despesa são dado de proprietário (decisão do dono, 22/09/2026): só quem GERE o
         // posto, como o PUT acima. Operador vinculado vê o dia, não o dashboard (403).
         Route::get('dashboard', [AgregacaoController::class, 'dashboard'])->middleware('posto.acesso:gerir');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| PWA do FRENTISTA (#101, docs/design/fechamento-frentista-api.md §4 e §6)
+|--------------------------------------------------------------------------
+| O frentista entra por PIN (decisão do dono, 19/09/2026) e recebe um token curto, que só abre as
+| rotas abaixo. `frentista.do.posto` confere que o token é de FRENTISTA e que ele é deste `{posto}`
+| (401/403) e deixa o `frentista_id` do token nos atributos: é dele, e nunca do corpo, que sai quem
+| está enviando. O token do gerente não passa aqui, e o do frentista não passa no `token.atual`.
+|
+| `throttle:pin-frentista` (AppServiceProvider): 10 tentativas por minuto por IP e 5 por frentista —
+| o PIN é curto, então o limite por frentista é o que segura a adivinhação vinda de vários IPs.
+*/
+Route::post('postos/{posto}/frentistas/entrar', [AcessoDoFrentistaController::class, 'entrar'])
+    ->middleware([DefinePostoAtual::class, 'throttle:pin-frentista']);
+
+Route::prefix('postos/{posto}')
+    ->middleware([DefinePostoAtual::class, 'frentista.do.posto'])
+    ->group(function (): void {
+        // O fechamento do turno do frentista do token. Idempotente pela `chave` do corpo.
+        Route::post('envios', [EnvioDoFrentistaController::class, 'store']);
+        // Sinal de vida; `visto_em` é a hora do servidor (trigger carimba_visto_em).
+        Route::post('presenca', [PresencaController::class, 'marcar']);
     });

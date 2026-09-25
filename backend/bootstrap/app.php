@@ -1,5 +1,6 @@
 <?php
 
+use App\Pessoas\Http\Middleware\AutenticaFrentistaDoPosto;
 use App\Pessoas\Http\Middleware\AutenticaPeloTokenAtual;
 use App\Pessoas\Http\Middleware\ExigeAcessoAoPosto;
 use Illuminate\Foundation\Application;
@@ -21,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'token.atual' => AutenticaPeloTokenAtual::class,
             'posto.acesso' => ExigeAcessoAoPosto::class,
+            // PWA do frentista (#101): token de FRENTISTA e frentista deste posto. Depois do DefinePostoAtual.
+            'frentista.do.posto' => AutenticaFrentistaDoPosto::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

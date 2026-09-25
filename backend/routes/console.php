@@ -2,6 +2,7 @@
 
 use App\Compartilhado\Enums\PapelNoPosto;
 use App\Compartilhado\Enums\Role;
+use App\Pessoas\Application\DefinePinDoFrentista;
 use App\Pessoas\Application\DefineUsuario;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -51,3 +52,29 @@ Artisan::command('usuario:definir {email} {nome} {--role=OPERADOR} {--posto=* : 
 
     return 0;
 })->purpose('Cria ou atualiza um usuário do painel e seus vínculos com posto');
+
+/*
+| Define (ou troca) o PIN de um frentista para o PWA (#101). O PIN é pedido duas vezes, sem eco, e
+| vai para o banco só como hash. Trocar o PIN derruba as sessões abertas daquele frentista.
+|   php artisan frentista:pin 7
+*/
+Artisan::command('frentista:pin {frentista_id : id do Frentista}', function (DefinePinDoFrentista $define): int {
+    $id = $this->argument('frentista_id');
+    $pin = $this->secret('PIN (4 a 6 dígitos)');
+
+    if (! is_string($id) || ! ctype_digit($id) || ! is_string($pin) || $pin !== $this->secret('Repita o PIN')) {
+        $this->error('frentista_id inválido ou os dois PINs não conferem. Nada foi gravado.');
+
+        return 1;
+    }
+
+    if (! $define((int) $id, $pin)) {
+        $this->error('PIN fora do formato (4 a 6 dígitos) ou frentista inexistente. Nada foi gravado.');
+
+        return 1;
+    }
+
+    $this->info("PIN do frentista {$id} definido. Sessões abertas dele foram encerradas.");
+
+    return 0;
+})->purpose('Define o PIN com que o frentista entra no PWA');
