@@ -9,7 +9,6 @@ import { cadastroEFechamentoDaApi } from './dashboard-cadastro.api';
 import { enviosPorFrentista } from './envios-do-periodo';
 import { bicoService } from './bico.service';
 import { formaPagamentoService } from './formaPagamento.service';
-import { estoqueService } from './estoque.service';
 import { frentistaService } from './frentista.service';
 import { leituraService } from './leitura.service';
 import { fechamentoFrentistaService } from './fechamentoFrentista.service';
@@ -17,7 +16,7 @@ import { despesaService } from './despesa.service';
 import { compraService } from './compra.service';
 import { custoMedioPorCombustivel, type CompraParaCusto } from '../custo-do-mes';
 import { mesCivil } from '../../utils/periodo';
-import type { Combustivel, Leitura } from '../../types/database/index';
+import type { Combustivel } from '../../types/database/index';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -64,17 +63,6 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
   const totalLitros = (leiturasRes.data || []).reduce((acc: number, l: { litros_vendidos: number | null }) => acc + (l.litros_vendidos || 0), 0);
 
   return despesaOperacionalPorLitro(totalDespesas, totalLitros);
-}
-
-interface LeituraWithRelations extends Leitura {
-  bico?: {
-    combustivel_id: number;
-  };
-  combustivel?: {
-    Combustivel?: {
-      nome: string;
-    };
-  };
 }
 
 /**
@@ -309,32 +297,6 @@ interface DashboardAggregatedData {
   };
 }
 
-/** Item de retorno de {@link aggregatorService.fetchProfitabilityData}. */
-export interface ProfitabilityItem {
-  id: number;
-  combustivelId: number;
-  nome: string;
-  codigo: string;
-  custoMedio: number;
-  despOperacional: number;
-  custoTotalL: number;
-  precoVenda: number;
-  volumeVendido: number;
-  receitaBruta: number;
-  lucroTotal: number;
-  margemLiquidaL: number;
-  margemBrutaL: number;
-  cor: string;
-}
-
-/** Retorno de {@link aggregatorService.fetchProfitabilityData}. */
-export interface ProfitabilityResult {
-  /** Produtos com custo apurável no mês (compra lançada). */
-  itens: ProfitabilityItem[];
-  /** Produtos vendidos no mês sem compra para custear — ficam fora de `itens`. */
-  produtosSemCompra: string[];
-}
-
 export const aggregatorService = {
   /**
    * Busca dados para a tela de configurações.
@@ -555,103 +517,6 @@ export const aggregatorService = {
       });
     } catch (error) {
       return createErrorResponse(error instanceof Error ? error.message : 'Erro ao carregar dashboard');
-    }
-  },
-
-  /**
-   * Calcula a rentabilidade do posto.
-   *
-   * @param year - Ano de referência
-   * @param month - Mês de referência
-   * @param postoId - ID do posto (opcional)
-   * @returns Métricas de rentabilidade (LUCRO LÍQUIDO, MARGEM, CUSTOS) por produto, mais a
-   *          lista dos produtos que ficaram sem custo (vendidos sem compra no mês).
-   * @remarks [03/09/2026] O custo é a compra do MÊS por produto (`custoMedioCompra`,
-   *          canônico da planilha) — ver `services/custo-do-mes.ts`; antes era o carimbo
-   *          `Estoque.custo_medio`. Produto vendido sem compra não entra em `itens`: com
-   *          custo 0 ele apareceria como o mais lucrativo da tela.
-   */
-  async fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1, postoId?: number): Promise<ApiResponse<ProfitabilityResult>> {
-    try {
-      const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
-      const fimMesStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
-
-      let queryLeitura = supabase
-        .from('Leitura')
-        .select('*, bico:Bico(combustivel_id)')
-        .gte('data', inicioMesStr)
-        .lte('data', fimMesStr);
-
-      if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
-
-      const [estoqueRes, leiturasMes, despesasRes, comprasRes] = await Promise.all([
-        estoqueService.getAll(postoId),
-        queryLeitura,
-        despesaService.getByMonth(year, month, postoId),
-        compraService.getByDateRange(inicioMesStr, fimMesStr, postoId),
-      ]);
-
-      if (leiturasMes.error) return createErrorResponse(leiturasMes.error.message);
-
-      const leituras = (leiturasMes.data || []) as LeituraWithRelations[];
-      const estoque = extractData(estoqueRes);
-      const despesas = extractData(despesasRes);
-      const custoDoMes = custoMedioPorCombustivel(extractData(comprasRes));
-
-      const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
-      const totalVolumeVendido = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-
-      // Despesa operacional real por litro (fórmula da planilha Posto Jorro: H22 = H19/F11).
-      // Mês sem despesa lançada fica em 0 — nunca o fallback fixo de 0,45 (§6).
-      const despOperacional = despesaOperacionalPorLitro(totalDespesas, totalVolumeVendido);
-
-      const itens: ProfitabilityItem[] = [];
-      const produtosSemCompra: string[] = [];
-      for (const e of estoque) {
-        const vendasComb = leituras.filter(l => l.bico?.combustivel_id === e.combustivel_id);
-        const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-        const receitaBruta = vendasComb.reduce((acc, l) => acc + (l.valor_total || 0), 0);
-
-        const custoMedio = custoDoMes(e.combustivel_id);
-        if (custoMedio === null) {
-          if (volumeVendido > 0) produtosSemCompra.push(e.combustivel?.nome || 'N/A');
-          continue;
-        }
-        const custoTotalL = custoMedio + despOperacional;
-
-        // [onda 3, grupo A] Era `receitaBruta − volume × custoTotalL` inline —
-        // a MESMA conta canônica, à mão, no arquivo que já importa a função.
-        // Agora delega (e quantiza em centavos na saída, como o resto do lucro).
-        const lucroTotal = lucroCombustivel({
-          litros: volumeVendido,
-          precoVenda: volumeVendido > 0 ? receitaBruta / volumeVendido : 0,
-          custoMedio,
-          despesaOperacionalLitro: despOperacional,
-        });
-        const margemLiquidaL = volumeVendido > 0 ? lucroTotal / volumeVendido : 0;
-        const margemBrutaL = (e.combustivel?.preco_venda || 0) - custoMedio;
-
-        itens.push({
-          id: e.id,
-          combustivelId: e.combustivel_id,
-          nome: e.combustivel?.nome || 'N/A',
-          codigo: e.combustivel?.codigo || 'N/A',
-          custoMedio,
-          despOperacional,
-          custoTotalL,
-          precoVenda: e.combustivel?.preco_venda || 0,
-          volumeVendido,
-          receitaBruta,
-          lucroTotal,
-          margemLiquidaL,
-          margemBrutaL,
-          cor: corDoProduto(e.combustivel?.codigo).fundo
-        });
-      }
-
-      return createSuccessResponse({ itens, produtosSemCompra });
-    } catch (error) {
-      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao calcular rentabilidade');
     }
   }
 };
