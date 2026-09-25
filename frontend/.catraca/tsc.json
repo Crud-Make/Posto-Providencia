@@ -60,7 +60,6 @@
   "apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts|TS2379": 1,
   "apps/web/src/components/registro-compras/index.tsx|TS2532": 1,
   "apps/web/src/components/registro-compras/InputFinanceiro.tsx|TS18048": 1,
-  "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|TS2375": 1,
   "apps/web/src/components/TelaGestaoEscalas.tsx|TS2322": 1,
   "apps/web/src/components/vendas/analise/hooks/useAnaliseVendas.ts|TS18048": 7,
   "apps/web/src/components/vendas/analise/hooks/useAnaliseVendas.ts|TS2345": 1,
