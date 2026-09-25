@@ -10,7 +10,8 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * `GET /api/postos/{posto}/dashboard?inicio=YYYY-MM-DD&fim=YYYY-MM-DD` (Design Doc agregacao.md §5).
  *
- * Autorização por PostoPolicy entra na #102, quando houver usuário autenticado.
+ * Autorização fica na rota, não aqui: `token.atual` + `posto.acesso:gerir` (PostoPolicy::gerir),
+ * então este request só valida o período. Sem token 401, sem gerir o posto 403 (routes/api.php).
  */
 final class DashboardRequest extends FormRequest
 {

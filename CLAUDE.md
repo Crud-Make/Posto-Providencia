@@ -34,11 +34,13 @@ O que existe hoje e onde cada regra abaixo se encaixa:
   `push --force` proibido; `CHANGELOG.md` a cada entrega; nenhum merge ou push sem "ok" explícito.
 * **🔒 TRAVA DA REFATORAÇÃO (18/09):** **não se dá push nem merge com o sistema quebrado.** O painel
   e os dois PWAs estão em produção com dinheiro real do posto — push de árvore vermelha não quebra o
-  repositório, quebra o posto. A trava é o `pre-push` de `scripts/hooks/` (instala com
-  `scripts/instala-hooks.sh`): recusa push para a `main`, e recusa qualquer push se `bun run lint`,
-  `type-check`, `test`, **`test:golden`** ou `composer gates` reprovarem. Roda a suíte inteira, não o
-  diff: "o sistema está rodando" é afirmação sobre o sistema. Custo medido: **~1m30s**. `--no-verify`
-  passa por cima porque é do git — quem usar, diz no PR por quê.
+  repositório, quebra o posto. A trava tem duas metades. **Local**, o `pre-push` de
+  `scripts/hooks/` (instala com `scripts/instala-hooks.sh`): recusa push para a `main` e recusa
+  qualquer push se **`test:golden`** reprovar — só isso, desde 24/09, por decisão do dono. **No
+  CI**, todo PR roda oxlint, eslint, type-check, vitest, build e `composer gates`, e a proteção da
+  `main` e da `fase-a` exige `build` + `backend` verdes para mergear. O golden fica local porque
+  depende de `docs/data`, que não vai para o git. Custo do push: **~0,5 s** (era ~4 min repetindo o
+  que o CI repete). `--no-verify` passa por cima porque é do git — quem usar, diz no PR por quê.
 * **Travas automáticas** em `.claude/hooks/` (dados, git, golden, delegação, memória) continuam
   ativas e independem deste arquivo. `python3 .claude/hooks/testa-hooks.py` confere.
 * **Grafo:** `graphify-out/` é hipótese; grep confirma. Agente `grafo` é a porta de entrada.
@@ -139,8 +141,9 @@ Nenhum código refatorado deve ser mesclado sem aprovação nos 4 Quality Gates 
 ## 7\. Git Hooks e Automação CI/CD
 
 * **`pre-commit`**: Executa PHPMD (Análise de Complexidade Ciclomática), Deptrac, PHPStan e linter de TypeScript.
-* **`pre-push`**: Existe de verdade desde 18/09 (`scripts/hooks/pre-push`) — antes era só esta linha,
-  e a suíte nunca rodava no push. Executa lint, type-check, vitest, **golden masters** e
-  `composer gates`, e bloqueia push para a `main`. É a trava do §0.
+* **`pre-push`**: Existe de verdade desde 18/09 (`scripts/hooks/pre-push`). De 18 a 24/09 repetia a
+  suíte inteira num worktree (~4 min por push); em 24/09 o dono o enxugou: bloqueia push para a
+  `main` e roda os **golden masters** — o resto é do CI, que é obrigatório no merge. É a trava do §0;
+  canários em `scripts/hooks/testa-pre-push.sh`.
 * **Revisão Automatizada em PRs**: Agentes no CI/CD revisam os Pull Requests e aplicam os 4 Quality Gates antes de autorizar o merge.
 

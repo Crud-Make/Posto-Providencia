@@ -4,11 +4,49 @@ declare(strict_types=1);
 
 use App\Agregacao\Application\DadosDoPeriodo;
 use App\Agregacao\Application\Periodo;
+use App\Compartilhado\Enums\Role;
 use App\Compartilhado\Posto;
 use App\Compartilhado\PostoAtual;
+use App\Pessoas\Application\VerificaTokenDoSupabase;
+use App\Pessoas\Domain\Usuario;
 use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
 use function Pest\Laravel\getJson;
+
+/*
+| A rota exige token e `posto.acesso:gerir` (#103; quem alcança o quê está em
+| AcessoAoDashboardTest). Aqui só se prova O QUE o dashboard devolve: toda chamada vai como um
+| Admin, que gere qualquer posto — inclusive o inexistente do 404 e o do 422, que só chegam ao
+| DefinePostoAtual e ao DashboardRequest depois de passar pela porta.
+*/
+
+const SEGREDO_DASHBOARD = 'segredo-de-teste-do-conteudo-do-dashboard';
+
+function b64urlDashboard(string $cru): string
+{
+    return rtrim(strtr(base64_encode($cru), '+/', '-_'), '=');
+}
+
+function tokenDoAdminDoDashboard(): string
+{
+    $sub = 'd0d00000-0000-4000-8000-000000000001';
+    DB::table('auth.users')->insert(['id' => $sub, 'email' => $sub.'@teste.local']);
+    Usuario::query()->where('auth_user_id', $sub)->sole()->forceFill(['role' => Role::Admin, 'ativo' => true])->save();
+
+    $cabecalho = b64urlDashboard((string) json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+    $corpo = b64urlDashboard((string) json_encode(['sub' => $sub, 'aud' => 'authenticated', 'exp' => time() + 3600]));
+
+    return $cabecalho.'.'.$corpo.'.'.b64urlDashboard(hash_hmac('sha256', $cabecalho.'.'.$corpo, SEGREDO_DASHBOARD, binary: true));
+}
+
+beforeEach(function (): void {
+    config(['supabase.jwt_secret' => SEGREDO_DASHBOARD]);
+    app()->forgetInstance(VerificaTokenDoSupabase::class);
+
+    /** @var TestCase $this */
+    $this->withToken(tokenDoAdminDoDashboard());
+});
 
 /**
  * `GET /api/postos/{posto}/dashboard?inicio&fim` contra o Postgres real do compose, em transação
@@ -26,7 +64,7 @@ use function Pest\Laravel\getJson;
  *    a de 31/12 tem `data_pagamento` dentro do período — competência manda, não entra.
  *  - Posto B com o mesmo tipo de movimento, para provar que nada vaza.
  *
- * @return array{postoA: int, postoB: int, gc: int, s10: int, et: int}
+ * @return array{postoA: int, postoB: int, gc: int, s10: int, et: int, bicoGc: int, bicoS10: int, bicoGcB: int}
  */
 function cenarioAgregacao(): array
 {
@@ -96,7 +134,7 @@ function cenarioAgregacao(): array
         $despesa($postoB, '2026-01-10', '333.00'),
     ]);
 
-    return ['postoA' => $postoA, 'postoB' => $postoB, 'gc' => $gc, 's10' => $s10, 'et' => $et];
+    return ['postoA' => $postoA, 'postoB' => $postoB, 'gc' => $gc, 's10' => $s10, 'et' => $et, 'bicoGc' => $bicoGc, 'bicoS10' => $bicoS10, 'bicoGcB' => $bicoGcB];
 }
 
 const PERIODO_JANEIRO = 'inicio=2026-01-01&fim=2026-01-31';
@@ -205,6 +243,7 @@ it('devolve o contrato do §5 na raiz do JSON, sem envelope data, sem lucro e se
             'periodo' => ['inicio', 'fim'],
             'produtos' => ['*' => ['combustivel_id', 'produto', 'litros_vendidos', 'receita', 'compras' => ['litros', 'valor_total']]],
             'rateio' => ['mes_civil' => ['inicio', 'fim'], 'despesas_total', 'litros_vendidos'],
+            'leituras' => ['*' => ['bico_id', 'data', 'leitura_inicial', 'leitura_final']],
         ])
         ->assertJsonPath('periodo', ['inicio' => '2026-01-01', 'fim' => '2026-01-31'])
         ->assertJsonMissingPath('data')
@@ -521,4 +560,77 @@ it('paridade: sob o fuso do compose (America/Sao_Paulo) a RPC perde a leitura do
     expect(bccomp($rpc['volume_total'], '800.500', 3))->toBe(0)
         ->and(bccomp($rpc['total_vendas'], '4953.00', 2))->toBe(0)
         ->and(somaDecimal(array_column($corpo['produtos'], 'litros_vendidos'), 3))->toBe('1800.500');
+});
+
+/*
+|--------------------------------------------------------------------------
+| `leituras`: o campo aditivo da #103 P9 (decisão do dono, 22/09/2026, Q1 opção a)
+|--------------------------------------------------------------------------
+| O cliente roda `encerranteMensal` (packages/utils/src/encerrante-mensal.ts) sobre estas linhas para
+| os litros do rateio. O servidor só lê e devolve cru: nenhum salto do encerrante em PHP
+| (DECISÃO 1). `rateio.litros_vendidos` e `produtos[].litros_vendidos` continuam sendo Σ.
+*/
+
+it('leituras: devolve as linhas cruas do período exato (bico, dia em UTC, encerrantes em string de escala 3), sem a de fevereiro', function (): void {
+    $c = cenarioAgregacao();
+
+    getJson("/api/postos/{$c['postoA']}/dashboard?".PERIODO_JANEIRO)
+        ->assertOk()
+        ->assertJsonPath('leituras', [
+            ['bico_id' => $c['bicoGc'], 'data' => '2026-01-01', 'leitura_inicial' => '0.000', 'leitura_final' => '1000.000'],
+            ['bico_id' => $c['bicoGc'], 'data' => '2026-01-31', 'leitura_inicial' => '0.000', 'leitura_final' => '500.500'],
+            ['bico_id' => $c['bicoS10'], 'data' => '2026-01-15', 'leitura_inicial' => '0.000', 'leitura_final' => '300.000'],
+        ])
+        // aditivo: os campos que já existiam não mudam de significado
+        ->assertJsonPath('rateio.litros_vendidos', '1800.500')
+        ->assertJsonPath('produtos.2.litros_vendidos', '1500.500');
+});
+
+it('leituras não vazam entre postos: o B só vê a própria, o A nunca vê o bico do B', function (): void {
+    $c = cenarioAgregacao();
+
+    getJson("/api/postos/{$c['postoB']}/dashboard?".PERIODO_JANEIRO)
+        ->assertOk()
+        ->assertJsonPath('leituras', [
+            ['bico_id' => $c['bicoGcB'], 'data' => '2026-01-15', 'leitura_inicial' => '0.000', 'leitura_final' => '100.000'],
+        ]);
+
+    $bicosDoA = array_column(comoArray(getJson("/api/postos/{$c['postoA']}/dashboard?".PERIODO_JANEIRO)->json('leituras')), 'bico_id');
+    expect($bicosDoA)->not->toContain($c['bicoGcB']);
+});
+
+it('leituras em ordem determinística por bico e por dia, mesmo gravadas fora de ordem (a D5 não chega pela API)', function (): void {
+    $c = cenarioAgregacao();
+    $usuario = DB::table('Usuario')->insertGetId(['email' => fake()->unique()->safeEmail(), 'nome' => 'Teste Ordem']);
+    $bomba = DB::table('Bomba')->insertGetId(['posto_id' => $c['postoA'], 'nome' => 'Bomba 2']);
+    $bico = DB::table('Bico')->insertGetId(['posto_id' => $c['postoA'], 'bomba_id' => $bomba, 'combustivel_id' => $c['gc'], 'numero' => 3]);
+
+    // Gravadas 20 → 03 → 10: sem ORDER BY o Postgres tende a devolver na ordem de inserção, e o
+    // `encerranteMensal` pegaria a abertura errada se o cliente não reordenasse.
+    $linha = static fn (string $dia, string $inicial, string $final, string $litros): array => [
+        'posto_id' => $c['postoA'], 'bico_id' => $bico, 'combustivel_id' => $c['gc'], 'usuario_id' => $usuario,
+        'data' => "{$dia} 00:00:00+00", 'leitura_inicial' => $inicial, 'leitura_final' => $final,
+        'litros_vendidos' => $litros, 'preco_litro' => '6.00', 'valor_total' => '0.00',
+    ];
+    DB::table('Leitura')->insert([
+        $linha('2026-01-20', '1300.000', '1400.000', '100.000'),
+        $linha('2026-01-03', '1000.000', '1100.000', '100.000'),
+        $linha('2026-01-10', '1100.000', '1250.000', '150.000'),
+    ]);
+
+    $leituras = array_values(array_filter(
+        comoArray(getJson("/api/postos/{$c['postoA']}/dashboard?".PERIODO_JANEIRO)->json('leituras')),
+        static fn (mixed $l): bool => comoArray($l)['bico_id'] === $bico,
+    ));
+
+    expect(array_column($leituras, 'data'))->toBe(['2026-01-03', '2026-01-10', '2026-01-20'])
+        ->and(array_column($leituras, 'leitura_inicial'))->toBe(['1000.000', '1100.000', '1300.000']);
+});
+
+it('leituras vazias quando o período não tem movimento — lista, nunca null', function (): void {
+    $c = cenarioAgregacao();
+
+    getJson("/api/postos/{$c['postoA']}/dashboard?inicio=2027-06-01&fim=2027-06-30")
+        ->assertOk()
+        ->assertJsonPath('leituras', []);
 });
