@@ -2,6 +2,30 @@
 
 ## [Não Lançado]
 
+### 🔐 PWA do frentista pela API — fatia 1: PIN por frentista, envio do turno e presença (#101)
+
+- **O frentista entra por PIN** (decisão do dono, 19/09/2026 — registrada no §4 do Design Doc
+  `docs/design/fechamento-frentista-api.md`). `POST /api/postos/{posto}/frentistas/entrar` devolve um
+  token Sanctum de 14 h com ability `frentista`; PIN errado, inativo, sem PIN ou de outro posto são a
+  **mesma** resposta 401; 10 tentativas/min por IP e 5/min por frentista. O PIN mora em
+  `AcessoFrentista` (`banco/init/04-acesso-do-frentista.sql`, também no CI), só em hash, com RLS e sem
+  GRANT para os papéis do Supabase; define-se com `php artisan frentista:pin {id}`.
+- **`POST /api/postos/{posto}/envios`**: o frentista vem do TOKEN, nunca do corpo; o servidor acha ou
+  cria o pai do dia como o PWA cria, grava o `FechamentoFrentista` e reconsolida o pai com o porte fiel
+  do `consolidarFechamento` (`ConsolidacaoDoDia`, caracterizado com números tirados do TypeScript).
+  Idempotente pela `chave` (nova coluna `FechamentoFrentista.chave_envio`): o mesmo envio duas vezes é
+  200 `repetido`; segundo envio do dia é 409 `ja_enviado`.
+- **`POST /api/postos/{posto}/presenca`**: sinal de vida do frentista do token (`visto_em` do servidor).
+- **PWA atrás de `VITE_API_URL` + `VITE_API_PWA=1`**: escolher o frentista pede o PIN; o envio e a
+  presença vão pela API; 401 pede o PIN de novo sem perder os valores. Sem a flag, nada muda:
+  `App.test.tsx` intacto.
+- **Prova:** isolamento (Jorro não envia no BR: 403), frentista A não lança como B, token do gerente
+  não abre rota de frentista (e vice-versa), idempotência, PIN errado, token vencido e a reconsolidação
+  com valores exatos. Canários: cada trava muda deixou um teste vermelho e voltou. Gates: `composer
+  gates` (273 testes, cobertura 97,4 %), `lint`, `lint:eslint`, `type-check`, vitest 1230/1230, golden
+  3536/0 antes e depois. **Nenhuma fórmula de dinheiro mudou.**
+- **Fica para a fatia 2:** venda de produto, medição de tanque, leituras do PWA e aviso ao dono pela API.
+
 ### 🧱 PWA do frentista no FSD — a fatia curta do lote 2 fecha, e a ponte `src/lib/foto.ts` morre
 
 - **O `App.tsx` consome o `Result` da foto (RES-2).** O import saiu de `./lib/foto` para
