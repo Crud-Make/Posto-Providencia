@@ -6,6 +6,7 @@ use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
+use App\Compras\Http\Controllers\CompraController;
 use App\Estoque\Http\Controllers\ReguaController;
 use App\Estoque\Http\Controllers\VendaDoFrentistaController;
 use App\Fechamento\Http\Controllers\EnvioDoFrentistaController;
@@ -197,4 +198,19 @@ Route::prefix('postos/{posto}')
     ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
     ->group(function (): void {
         Route::get('relatorio-diario', [RelatorioDiarioController::class, 'show']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Registro de Compras do painel (#103, docs/design/painel-pela-api.md "Registro de Compras")
+|--------------------------------------------------------------------------
+| O "Salvar" da tela: a compra do dia por combustível (com as somas em Estoque e Tanque) e a régua
+| do dia de cada tanque, numa transação, idempotente pela `chave`. Compra e custo são dado de
+| proprietário e é ESCRITA: `posto.acesso:gerir`, como o `PUT /fechamento`. A leitura da tela vem
+| de `GET /movimento`, `GET /dashboard` e do catálogo — não há rota de leitura nova.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::post('compras', [CompraController::class, 'store']);
     });
