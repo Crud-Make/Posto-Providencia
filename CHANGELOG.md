@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🧾 Registro de Compras 100% pela API — ler e gravar (#103)
+
+- **Escrita nova:** `POST /api/postos/{posto}/compras` (módulo `App\Compras`, `posto.acesso:gerir`): o
+  "Salvar" inteiro numa transação — a `Compra` de cada combustível (custo por litro em decimal exato,
+  arredondado como o Postgres), `Estoque.quantidade_atual` e `Tanque.estoque_atual` somados no próprio
+  `UPDATE`, e a régua do dia em `HistoricoTanque` (sem medição, a régua do PWA fica). Idempotente pela
+  `chave` (`Compra.chave_compra`, `banco/init/08-compra-pela-api.sql`, também no CI): repetir não soma o
+  estoque duas vezes. Fornecedor, combustível e tanque do vizinho são 422; régua fora da janela é 422.
+- **Tela:** com `VITE_API_FORNECEDOR` (ausente segue `VITE_API_URL`) lê o mês por catálogo + `GET
+  /movimento` + `GET /dashboard` e grava pelo `POST /compras` — nenhuma chamada ao Supabase (prova com o
+  client num Proxy que reprova). A conta saiu para `montarRegistroDoMes`, uma só para as duas fontes.
+  A despesa passa a seguir a flag da tela (com `=0`, fica no Supabase junto com o resto).
+- Design Doc: `docs/design/painel-pela-api.md` §8.
+
 ### 📵 PWA do frentista pela API — fatia 2: com a flag, nada vai ao Supabase (#101)
 
 - **Leituras pela API**, todas no guard `frentista.do.posto` (o posto vem da rota, o frentista do

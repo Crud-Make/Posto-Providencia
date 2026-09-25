@@ -185,3 +185,79 @@ ordenava por `data` desc, que no mesmo dia é a ordem física); `status` da desp
 o teste do operador vermelho; forçar o Supabase no modo API → 4 vermelhos; tirar o recorte por instante
 dos fechamentos → 1 vermelho; ignorar a compra do mês na fonte da API → a PARIDADE vermelha; tirar
 `montar-relatorio` da regex do `so-fable-na-formula.py` → `testa-hooks.py` vermelho.
+
+## 8. Registro de Compras pela API (#103, 25/09/2026)
+
+Tela `components/registro-compras`, flag **`VITE_API_FORNECEDOR`** — já era o corte desta tela (o
+fornecedor foi a primeira leitura dela a migrar) e `producao.md` a usa com `0` para deixá-la no Supabase.
+Uma flag para a tela inteira: ausente segue `VITE_API_URL`, `0` deixa **tudo** no Supabase (inclusive a
+despesa, que antes seguia só o `VITE_API_URL` e deixava a tela mista). No modo API a tela **não chama o
+Supabase** — prova em `registro-compras-pela-api.test.tsx`, a TELA montada com o client do Supabase num
+Proxy que reprova ao ser tocado (lê o mês, digita compra e régua, clica "FINALIZAR COMPRA").
+
+| Antes (Supabase) | Agora (API) | |
+|---|---|---|
+| `fornecedorService.getAll` | `GET /fornecedores` (já existia) | leitura |
+| `combustivelService.getAll` (ativos, `ORDEM_COMBUSTIVEIS`) | `GET /combustiveis` + filtro `ativo` e a mesma ordem no cliente | leitura |
+| `tanqueService.getAll` (ativos, por nome) | `GET /tanques` + filtro `ativo === true` | leitura |
+| `Leitura` do período com `bico:Bico!inner(id, numero, combustivel_id)` | `GET /movimento` → `leituras` (combustível DO BICO) + `GET /bicos` para o número | leitura |
+| `Compra` do período | `GET /movimento` → `compras` | leitura |
+| `HistoricoTanque` `data < início`, `volume_fisico` não nulo, desc | `GET /movimento` → `medicoes` (`data ≤ fim`, sem limite inferior) filtradas e ordenadas no cliente | leitura |
+| `Despesa` do mês civil (ou `/dashboard` com `VITE_API_URL`) | `GET /dashboard` → `rateio.despesas_total`, pela flag da tela | leitura |
+| `compraService.create` → INSERT `Compra` + `estoqueService.update` (`Estoque.quantidade_atual += L`) | `POST /compras` | **escrita** |
+| `tanqueService.updateStock` (`Tanque.estoque_atual += L`) | `POST /compras` | **escrita** |
+| `tanqueService.saveHistory` (upsert `HistoricoTanque` por `(tanque_id, data)`) | `POST /compras` | **escrita** |
+
+Nenhuma rota de leitura nova. As duas fontes entregam a MESMA `EntradaDoRegistro`
+(`hooks/tipos-do-registro.ts`) e a conta saiu do hook para `hooks/montarRegistroDoMes.ts` **sem mudar
+uma linha** (encerranteMensal, soma das compras, régua anterior). Paridade em `fonteDoRegistro.test.ts`:
+o mesmo mês nas duas formas dá a mesma tela (`toEqual`).
+
+**Rota nova:** `POST /api/postos/{posto}/compras` (módulo novo `App\Compras`, CA-7: Estoque, Tanque,
+HistoricoTanque, Fornecedor e Combustivel por query builder). `token.atual` + `DefinePostoAtual` +
+`posto.acesso:gerir`, bloco próprio em `routes/api.php`.
+
+```json
+{ "chave": "uuid", "data": "2026-09-25", "fornecedor_id": 7,
+  "itens": [{ "combustivel_id": 1, "tanque_id": 10,
+              "compra": { "quantidade_litros": "1000.000", "valor_total": "5850.50" },
+              "volume_livro": "13000", "volume_fisico": "12990" },
+            { "combustivel_id": 2, "tanque_id": 11, "compra": null, "volume_livro": "2800.5", "volume_fisico": null }] }
+```
+
+Resposta 201 `{ data: { repetido: false, compras: [{ id, combustivel_id, fornecedor_id, data,
+quantidade_litros, valor_total, custo_por_litro }], medicoes: [{ tanque_id, data, volume_livro,
+volume_fisico }] } }`; a mesma chave com o mesmo corpo → 200 `repetido: true` **sem somar de novo**;
+a mesma chave com outro corpo → 409 `chave_reutilizada`; recusa → 422 `{ erro: { codigo, mensagem } }`
+(`fornecedor_invalido`, `combustivel_invalido`, `tanque_invalido`, `fora_da_janela`,
+`custo_fora_do_limite`, `corpo_invalido` com `campos`).
+
+**Efeitos (porte fiel de `usePersistenciaRegistro` + `compra.service` + `tanque.service`; o esquema não
+tem trigger em nenhuma dessas tabelas):** por combustível com litros > 0 — INSERT `Compra` (`data` =
+meia-noite UTC, `custo_por_litro` = valor ÷ litros arredondado na 4ª casa, observação "Atualização de
+estoque via Painel", `chave_compra`), `Estoque.quantidade_atual += litros` e `ultima_atualizacao = now()`
+(sem linha de Estoque, nada; `custo_medio` intocado desde 03/09), `Tanque.estoque_atual += litros`; por
+combustível com tanque — upsert `HistoricoTanque` com `volume_livro` e, só quando medido,
+`volume_fisico` (sem medição, a régua que o PWA gravou no dia fica). As somas são no próprio `UPDATE`
+e o Postgres arredonda na escala da coluna, como arredondava o float do painel. Números provados em
+`RegistroDeComprasTest` e conferidos contra o caminho do Supabase (node + psql): 5000 L por R$ 29.175,50
+→ custo 5.8351; 3000,555 L por R$ 10.000 → Compra 3000.56 L, custo 3.3327, Estoque 2000.10 → 5000.66;
+`volume_livro` "13654.123" → 13654.12.
+
+**O que muda de propósito:** tudo numa transação (o painel gravava combustível a combustível — com a
+régua fora da janela, a primeira compra já tinha entrado e o resto falhava); fornecedor, combustível e
+tanque têm de ser do posto (e o tanque do combustível), antes não havia trava de posto; a chave de
+idempotência (`banco/init/08-compra-pela-api.sql`, `Compra.chave_compra` unique com o combustível, no
+CI) segura o duplo clique e a rede que cai depois de gravar. O cliente reusa a chave enquanto os números
+não mudam e a troca depois do sucesso.
+
+**Canários (mutação → vermelho → desfeita):** `posto.acesso:gerir` → `posto.acesso` (operador
+vermelho); fornecedor sem filtro de posto; tanque sem filtro de posto (teste do tanque alheio apontando
+para combustível do posto); janela desligada; `chave_compra` não gravada (4 vermelhos); upsert que
+também zera `volume_fisico` (6 vermelhos); `use App\Estoque\...` em `App\Compras` (Pest Arch);
+leitura, escrita e despesa forçadas ao Supabase no modo API (Proxy reprova); chave nova a cada clique;
+dinheiro sem `emCentavos`; régua do próprio mês tomada como anterior.
+
+**Fica de fora:** gravar `Despesa` não é desta tela (o botão leva ao Fechamento, aba Receitas e
+Despesas, que ainda não funciona pela API); editar ou apagar compra lançada não existe na tela — nem
+antes, nem agora. Antes do cutover, `08-compra-pela-api.sql` tem de ser aplicado no banco de produção.
