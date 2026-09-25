@@ -14,8 +14,9 @@
  *   `meiosDaSessao`, `conferido` (I2), `diferenca` só com encerrante lançado (I4, `:185`);
  *   `valor_cartao` é o lump legado, gravado como veio (`:191`) — nunca derivado de débito+crédito;
  * - `frentistas_conhecidos`: só quem a tela carregou DO BANCO (`tempId` `existing-<id>`,
- *   `useSessoesFrentistas.ts:200`). Linha semeada não conta: se contasse, o envio tardio de um
- *   frentista semeado voltaria a ser apagado (§7 (c));
+ *   `useSessoesFrentistas.ts:200`), MAIS quem ela carregou do banco e o gerente tirou
+ *   (`frentistasRemovidos`, 25/09 — é a remoção pela API). Linha semeada não conta: se contasse,
+ *   o envio tardio de um frentista semeado voltaria a ser apagado (§7 (c));
  * - recebimentos: `valor > 0` (`:217`);
  * - totais: `total_vendas` e `diferenca` vão `null` quando o dia não está apurado (I8, como
  *   `encerrante.ts:632,646`: sem leitura declarada não há encerrante) ou quando a tela diz que não
@@ -48,6 +49,11 @@ export interface DiaNaTela {
     readonly totalFrentistas: number;
     readonly podeFechar: boolean;
     readonly observacoes: string;
+    /**
+     * Frentistas cujas sessões do banco o gerente tirou da tela (`useSessoesFrentistas`, modo API).
+     * Continuam em `frentistas_conhecidos` — e, fora de `sessoes`, o servidor os apaga (§7 (c)).
+     */
+    readonly frentistasRemovidos?: readonly number[];
 }
 
 /** Sessão que a tela carregou do banco (`useSessoesFrentistas.ts:200`); semeada é `t<n>`. */
@@ -118,10 +124,11 @@ function sessoesDeclaradas(sessoes: readonly SessaoFrentista[]): DiaDeclarado['s
     return declaradas;
 }
 
-function frentistasConhecidos(sessoes: readonly SessaoFrentista[]): DiaDeclarado['frentistas_conhecidos'] {
-    return sessoes.flatMap((sessao) =>
+function frentistasConhecidos(sessoes: readonly SessaoFrentista[], removidos: readonly number[]): DiaDeclarado['frentistas_conhecidos'] {
+    const naTela = sessoes.flatMap((sessao) =>
         sessao.tempId.startsWith(PREFIXO_DO_BANCO) && sessao.frentistaId !== null ? [sessao.frentistaId] : [],
     );
+    return [...naTela, ...removidos.filter((id) => !naTela.includes(id))];
 }
 
 function recebimentosDeclarados(payments: readonly EntradaPagamento[]): DiaDeclarado['recebimentos'] {
@@ -158,7 +165,7 @@ export function montarDiaDeclarado(dia: DiaNaTela): DiaDeclarado {
     return {
         leituras,
         sessoes: sessoesDeclaradas(dia.sessoesFrentistas),
-        frentistas_conhecidos: frentistasConhecidos(dia.sessoesFrentistas),
+        frentistas_conhecidos: frentistasConhecidos(dia.sessoesFrentistas, dia.frentistasRemovidos ?? []),
         recebimentos: recebimentosDeclarados(dia.payments),
         totais: totaisDeclarados(dia, leituras.length),
         observacoes: dia.observacoes,

@@ -58,3 +58,16 @@ export function lerFrentistasDaApi(postoId: number): ResultAsync<Frentista[], Er
     return buscarNaApi(`/api/postos/${postoId}/frentistas`, respostaDeFrentistas)
         .map((resposta) => paraFrentistasAtivos(resposta.data, postoId));
 }
+
+/**
+ * `Frentista.id → nome` de TODOS os frentistas do posto, ativos ou não.
+ *
+ * @remarks Para o resumo mensal da aba Detalhamento: o Supabase trazia o nome pelo join
+ *          `frentista:Frentista(*)`, que não filtra `ativo` — quem saiu no meio do mês continua com
+ *          nome na coluna dele. Por isso aqui não se passa por `paraFrentistasAtivos`.
+ */
+export function lerNomesDosFrentistasDaApi(postoId: number): ResultAsync<ReadonlyMap<number, string>, ErroDaApi> {
+    return buscarNaApi(`/api/postos/${postoId}/frentistas`, respostaDeFrentistas).map(
+        (resposta): ReadonlyMap<number, string> => new Map(resposta.data.map((frentista) => [frentista.id, frentista.nome] as const)),
+    );
+}
