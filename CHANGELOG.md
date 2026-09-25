@@ -2,6 +2,99 @@
 
 ## [Não Lançado]
 
+### 🔐 PWA do frentista pela API — fatia 1: PIN por frentista, envio do turno e presença (#101)
+
+- **O frentista entra por PIN** (decisão do dono, 19/09/2026 — registrada no §4 do Design Doc
+  `docs/design/fechamento-frentista-api.md`). `POST /api/postos/{posto}/frentistas/entrar` devolve um
+  token Sanctum de 14 h com ability `frentista`; PIN errado, inativo, sem PIN ou de outro posto são a
+  **mesma** resposta 401; 10 tentativas/min por IP e 5/min por frentista. O PIN mora em
+  `AcessoFrentista` (`banco/init/04-acesso-do-frentista.sql`, também no CI), só em hash, com RLS e sem
+  GRANT para os papéis do Supabase; define-se com `php artisan frentista:pin {id}`.
+- **`POST /api/postos/{posto}/envios`**: o frentista vem do TOKEN, nunca do corpo; o servidor acha ou
+  cria o pai do dia como o PWA cria, grava o `FechamentoFrentista` e reconsolida o pai com o porte fiel
+  do `consolidarFechamento` (`ConsolidacaoDoDia`, caracterizado com números tirados do TypeScript).
+  Idempotente pela `chave` (nova coluna `FechamentoFrentista.chave_envio`): o mesmo envio duas vezes é
+  200 `repetido`; segundo envio do dia é 409 `ja_enviado`.
+- **`POST /api/postos/{posto}/presenca`**: sinal de vida do frentista do token (`visto_em` do servidor).
+- **PWA atrás de `VITE_API_URL` + `VITE_API_PWA=1`**: escolher o frentista pede o PIN; o envio e a
+  presença vão pela API; 401 pede o PIN de novo sem perder os valores. Sem a flag, nada muda:
+  `App.test.tsx` intacto.
+- **Prova:** isolamento (Jorro não envia no BR: 403), frentista A não lança como B, token do gerente
+  não abre rota de frentista (e vice-versa), idempotência, PIN errado, token vencido e a reconsolidação
+  com valores exatos. Canários: cada trava muda deixou um teste vermelho e voltou. Gates: `composer
+  gates` (273 testes, cobertura 97,4 %), `lint`, `lint:eslint`, `type-check`, vitest 1230/1230, golden
+  3536/0 antes e depois. **Nenhuma fórmula de dinheiro mudou.**
+- **Fica para a fatia 2:** venda de produto, medição de tanque, leituras do PWA e aviso ao dono pela API.
+
+### 🧱 PWA do frentista no FSD — a fatia curta do lote 2 fecha, e a ponte `src/lib/foto.ts` morre
+
+- **O `App.tsx` consome o `Result` da foto (RES-2).** O import saiu de `./lib/foto` para
+  `@frentista/entities/frentista`. Em `trocarFoto`, o `Err` da redução abre o **mesmo** dialog de antes
+  ("Não deu para salvar a foto" + a frase de `mensagemDeFoto`) e **não** chama `api.salvarFotoFrentista`.
+  A falha de `api.salvarFotoFrentista` segue no `try/catch`, porque a `api` ainda é legada e lança
+  (Decisão B do Design Doc). `setSalvandoFoto(false)` continua no `finally`.
+- **A ponte legada `src/lib/foto.ts` foi apagada.** O `App.tsx` era o único importador (conferido por grep).
+  Nenhum teste existia só para ela; os 9 testes da entity ficam.
+- **`VendasScreen.tsx` usa `POSTO_ID` de `@frentista/shared/config`** nas duas `api.getProdutos`, como o
+  `TanquesScreen`. O float de `valor_total` fica literal (contrato §2 g).
+- **Prova:** `App.foto.test.tsx` (novo, 3 casos: erro da redução, sucesso, falha ao salvar). Canário: tirar o
+  `return` do `Err` e seguir para o salvar deixou o caso de erro vermelho ("expected vi.fn() to not be
+  called"); a mutação foi desfeita. `App.test.tsx` intocado. Gates: `lint` limpo, catraca de `tsc` e ESLint sem
+  erro novo (as contagens de `App.tsx` e `VendasScreen.tsx` não mudaram), vitest 1016/1016, golden 3296/0
+  antes e depois. **Nenhuma fórmula de dinheiro mudou.**
+
+### 🧱 PWA do frentista no FSD — fatia curta do lote 2: foto em `ResultAsync`, `POSTO_ID` de `shared/config` e o `CHECK` dos tanques dentro do schema
+
+- **A foto do frentista virou entity e parou de lançar.** `src/lib/foto.ts` (95 linhas, 2 `throw`) virou
+  `entities/frentista/lib/foto.ts`, devolvendo `ResultAsync<string, ErroDeFoto>` (RES-1), com a união
+  `arquivo_ilegivel | nao_e_imagem | sem_canvas | foto_grande_demais` e um `Record<ErroDeFoto['tipo'], string>`
+  que faz o `tsc` reprovar variante sem frase — a exaustividade do `assertUnreachable`, sem `throw`, que a RES-1
+  proíbe neste caminho. As frases que o frentista lê são as mesmas, e o teste as cobra uma a uma. Os 3 `TS2532`
+  de `iniciais()` (`noUncheckedIndexedAccess`) morreram junto: a catraca do `tsc` baixa uma chave.
+- **O `App.tsx` não pôde ser editado nesta sessão, então a ponte ficou explícita e com data para morrer.** Ele é
+  arquivo coberto pela trava `so-fable-na-formula` (só Opus 5.5 ou Fable), e o provedor desta sessão é o DeepSeek:
+  o `model: 'opus'` de subagente **não** destrava — a trava lê o modelo do transcript, e o provedor reescreve o
+  alias. Enquanto a fatia não for fechada em Opus/Fable, `src/lib/foto.ts` fica como **ponte legada**: delega para
+  a entity e relança `Error` com a MESMA frase, para o `catch` da tela continuar valendo. Morre no commit que
+  trocar o import do `App.tsx` por `@frentista/entities/frentista`.
+- **`POSTO_ID` deixou de ser literal em `TanquesScreen.tsx`:** o `const POSTO_ID = 1;` local saiu e o valor vem de
+  `@frentista/shared/config`. O `VendasScreen.tsx` (as duas chamadas `api.getProdutos(1)`) **não** entrou nesta
+  fatia — o arquivo está sob a mesma trava de fórmula, junto com o `HistoricoScreen`. Fica para a sessão Opus.
+- **O `CHECK` dos tanques passou a existir no TypeScript.** `medicaoParaGravarSchema` espelha o `CHECK` do INSERT
+  (`banco/init/01-esquema-base.sql:1789`): `tanque_id` inteiro positivo, `data` em `AAAA-MM-DD` e `volume_fisico`
+  não nulo, `>= 0` e no teto de `numeric(10,2)`. `salvarMedicao` valida **antes** de tocar a rede e devolve
+  `Err({tipo:'dado_invalido'})` com frase para o frentista, em vez de erro de constraint em inglês — ou, pior, do
+  silêncio da RLS. A leitura ganhou `.nonnegative()` mantendo `.nullable()`. Casas decimais e a janela de escrita
+  **não** entram no schema, e o porquê está no docblock: `multipleOf(0.01)` é armadilha de ponto flutuante, e a
+  janela depende de "hoje". Onze testes cobrem cada borda, inclusive o negativo que o banco recusaria.
+- **Nenhuma fórmula de dinheiro mudou.** O payload do envio, o parse de centavos e o `diferenca_calculada` ficaram
+  intocados; `packages/utils` e o golden, idem. O que depende de decisão do dono segue parado: os 8 `n || 0` contra
+  a catraca (Decisão A, P9) e o destino de `services/api.ts` (Decisão B, P11).
+- **`docs/design/pwa-frentista-fsd.md`** passa a ser a fonte do plano P7–P12, transcrito do transcript de 19/09, com
+  as três correções medidas em 24/09. A principal: o risco 3 estava errado — a trava de fórmula **cobre** o
+  `App.tsx`, os `screens/(Historico|Vendas)`, `features/enviar-fechamento/model` e `pages/(historico|vendas)` desde
+  22/09, e o comentário do próprio hook diz que foi este plano que achou o buraco.
+
+### 🧱 PWA do frentista rumo ao FSD — fatia mínima: travas das regras ligadas com canário, primeiros arquivos em `shared/`
+
+- **As regras de `docs/arquitetura/regras.md` passam a valer no `pwa-frentista`, cada uma com trava e canário**
+  (`apps/pwa-frentista/src/__canarios__/travas.test.ts`, 15 testes). A regra de camada e a de slice vizinho
+  (FSD-1/2) passam a valer no pwa pelo `boundaries`; a Public API (FSD-3) também por `@frentista/` e `./`; ficam proibidos
+  o import de outro app (FSD-5), o import relativo profundo (FSD-6) e o `enum` (TS-8); throw e try/catch fora da borda
+  `shared/api` (RES-1/3) também, em `pages`, `widgets`, `features`, `entities`, `shared/lib` e `shared/ui`. Todas entraram
+  com dívida zero.
+- **Alias próprio `@frentista/*`.** O `@/` significava o PWA no build e o web no type-check e no vitest,
+  então um `@/` escrito no PWA passava no build e era conferido contra o app errado. Agora `@/` é só o web.
+- **Caminhos de entrada fechados:** o pre-push passa a rodar o ESLint, o pre-commit passa a rodar o type-check
+  (~1 min por commit de `.ts`, medido) e o CI passa a compilar o PWA, que nenhum gate compilava. `neverthrow` e
+  `zod` entram no `package.json` do PWA. Os hooks só mudam em `.git/hooks` depois de reinstalados.
+- **Teste do payload do envio:** afirma o objeto exato gravado em `FechamentoFrentista` (sem quebra e com falta
+  de R$ 49,50) antes de qualquer linha de dinheiro mudar de lugar. Nenhuma fórmula mudou, e `packages/utils` e o golden
+  ficaram intocados.
+- **Primeiros `git mv`:** `lib/supabase.ts` foi para `shared/api` e `components/ReloadPrompt.tsx` para `shared/ui/reload-prompt.tsx`,
+  cada um com `index.ts` e a dívida do arquivo zerada; a catraca do ESLint desce de 621 para 616 (no pwa, de 34 para 29).
+- **`regras.md` reescrito com o estado real de 19/09**, com a tabela regra → trava → arquivo → antes/depois do pwa;
+  FSD-4, TS-5, TS-7, TS-10 e o Result com código real ficam como pendentes dos próximos passos, não como exceção.
 ### 🏦 A Visão do Proprietário abre inteira pela API — sem RPC e sem Supabase (#100)
 
 - Com o corte ligado (`VITE_API_PROPRIETARIO`, que segue o `VITE_API_URL`; `0` deixa no Supabase),

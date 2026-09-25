@@ -3,7 +3,7 @@ import { History, ShoppingBag } from 'lucide-react';
 import HistoricoScreen from './HistoricoScreen';
 import VendasScreen from './VendasScreen';
 import TanquesScreen from './TanquesScreen';
-import ReloadPrompt from '../components/ReloadPrompt';
+import { ReloadPrompt } from '@frentista/shared/ui';
 import { SelecioneOFrentista } from '../components/selecione-o-frentista';
 import type { TabType, FrentistaSelecionavel } from '../lib/tipos';
 

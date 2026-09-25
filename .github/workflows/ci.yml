@@ -46,6 +46,13 @@ jobs:
       - name: Build
         run: bun run build
 
+      # O PWA do frentista está em produção com dinheiro real e, até 19/09/2026, nenhum gate o
+      # compilava: o `build` acima é só o apps/web. Um import que resolve por hoisting local
+      # mas não no deploy só aparecia na Vercel.
+      - name: Build (pwa-frentista)
+        run: bun run build
+        working-directory: frontend/apps/pwa-frentista
+
   backend:
     # Quality gates do CLAUDE.md §6 para o Laravel (backend/): Pint, PHPStan, PHPMD, Deptrac, Pest.
     # Cobertura mínima (85 %) entra quando houver código de domínio para cobrir (#97).
@@ -72,7 +79,8 @@ jobs:
       - name: Carrega o esquema do posto no Postgres do job
         run: |
           psql "postgresql://posto:posto@localhost:5432/posto" -v ON_ERROR_STOP=1 \
-            -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql -f ../banco/init/03-autenticacao.sql
+            -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql -f ../banco/init/03-autenticacao.sql \
+            -f ../banco/init/04-acesso-do-frentista.sql
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
