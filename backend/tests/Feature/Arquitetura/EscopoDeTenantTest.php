@@ -6,6 +6,7 @@ use App\Compartilhado\PertenceAoPosto;
 use App\Compartilhado\Posto;
 use App\Fechamento\Domain\Recebimento;
 use App\Models\User;
+use App\Pessoas\Domain\TokenDeAcesso;
 use App\Pessoas\Domain\Usuario;
 use App\Pessoas\Domain\UsuarioPosto;
 use Illuminate\Database\Eloquent\Model;
@@ -151,6 +152,8 @@ it('model em tabela SEM posto_id declara como é escopado', function (): void {
     $motivos = [
         Posto::class => 'É o próprio tenant.',
         Usuario::class => 'Atravessa tenants: o mesmo usuário serve vários postos pelo UsuarioPosto.',
+        TokenDeAcesso::class => 'Escopado pelo dono: pertence a um Usuario (tokenable), e o posto de cada '
+            .'requisição é decidido pela PostoPolicy, não pelo token — o mesmo login abre vários postos.',
         Recebimento::class => 'Escopado pelo pai: fechamento_id aponta para Fechamento, que é escopado.',
         User::class => 'Sobra do instalador do Laravel: sem $table, sem uso em app/, e a '
             .'tabela users nem existe no catálogo de produção. Não é model de negócio. Some quando a '

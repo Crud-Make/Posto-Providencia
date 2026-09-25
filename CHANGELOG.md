@@ -2,6 +2,30 @@
 
 ## [Não Lançado]
 
+### 🔑 A API ganha login próprio — e o Supabase deixa de ser quem diz quem é você (#102)
+
+- **`POST /api/login`** confere e-mail e senha no `Usuario` e devolve um token do **Laravel Sanctum**
+  (modo token, `Authorization: Bearer`), com os **postos em que a pessoa pode entrar**. `GET /api/eu`
+  devolve o mesmo perfil; `POST /api/sair` apaga só o token daquela sessão.
+- **Modo token, não SPA/cookie** (revisão do `autenticacao.md` §5): o painel pode ficar na Vercel com a
+  API na VPS, e os PWAs rodam instalados no celular — cookie de sessão entre domínios não serve a nenhum.
+- **Isolamento por posto da rede Providência:** o token abre só os postos do vínculo (`UsuarioPosto`);
+  ADMIN vê todos os ativos. O gerente do Jorro recebe **403** no Posto BR — teste que prende isso.
+- **Resposta única para toda falha de login** (senha errada, e-mail inexistente, inativo, sem senha),
+  com hash conferido mesmo sem conta, para o tempo não entregar quais e-mails existem. Seis tentativas
+  por minuto por IP. Token vence em 7 dias (`SANCTUM_EXPIRACAO_MINUTOS`); desativar o usuário corta na hora.
+- **`php artisan usuario:definir`** cria a conta ou redefine a senha, e grava os vínculos
+  (`--posto=1:gerente`). É por onde as contas nascem enquanto não há "esqueci a senha" por e-mail.
+- O guard (`token.atual`) aceita os dois emissores durante a transição: o token da API e o JWT do
+  Supabase. O do Supabase sai junto com o Supabase.
+- Esquema: `banco/init/03-autenticacao.sql` (`personal_access_tokens`), também no CI.
+- **Painel, atrás de `VITE_API_LOGIN=1`:** a tela de login fala com a API, o token vai em toda chamada,
+  e depois do login vem a tela **"Em qual posto você quer entrar?"** (Jorro, BR…), com a lista que a
+  API devolve. Com mais de um posto, o painel nunca abre num posto padrão. A flag fica desligada até a
+  última tela sair do Supabase: essas telas precisam da sessão do Supabase para passar na RLS.
+  Canário: abrir no primeiro posto ou mandar o token com a flag desligada deixa 3 testes vermelhos.
+- Canário: tirar as checagens de vencimento e de usuário ativo deixa 2 testes vermelhos. Pest 227/227, 96,9%.
+
 ### 🔓 O `pre-push` passa a rodar só o golden (decisão do dono, 24/09)
 
 - **O hook deixa de repetir o CI.** De 18 a 24/09 ele criava um worktree, reinstalava `bun` e

@@ -2,9 +2,10 @@
  * Utilitários base para services da API
  */
 
-import { errAsync, ResultAsync } from 'neverthrow';
+import { errAsync, okAsync, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
 import { supabase } from '../supabase';
+import { lerTokenDaApi } from './token-da-api';
 
 /**
  * Por que uma chamada à API Laravel falhou. União discriminada: quem consome decide pela `tipo`,
@@ -64,6 +65,23 @@ export function urlDaApi(): string | null {
  * `chamarApi` resolve o endereço. Uma flag por tela que devolvesse a URL teria de ser repetida em
  * todo `*.api.ts`, que é justamente onde o endereço não se escolhe.
  */
+/**
+ * `true` quando o painel faz login pela própria API (#102) e não pelo Supabase.
+ *
+ * @remarks Liga só com `VITE_API_LOGIN=1` (ou `true`) E `VITE_API_URL` definida. Ao contrário das
+ *          flags de tela, **não** segue o global: enquanto houver tela lendo o Supabase direto, ela
+ *          precisa da sessão do Supabase para passar na RLS, e o login pela API não a cria. Ligar
+ *          antes de a última tela migrar deixa essas telas vazias.
+ */
+export function loginPelaApiLigado(): boolean {
+    const flag = import.meta.env.VITE_API_LOGIN;
+    if (urlDaApi() === null || typeof flag !== 'string') {
+        return false;
+    }
+    const valor = flag.trim().toLowerCase();
+    return valor === '1' || valor === 'true';
+}
+
 export function corteDaTelaLigado(flag: string | undefined): boolean {
     if (typeof flag !== 'string' || flag.trim() === '') {
         return urlDaApi() !== null;
@@ -88,6 +106,10 @@ export function corteDaTelaLigado(flag: string | undefined): boolean {
  * Quando o Sanctum virar o emissor, só esta função muda.
  */
 function tokenDaSessao(): ResultAsync<string | null, never> {
+    if (loginPelaApiLigado()) {
+        return okAsync(lerTokenDaApi());
+    }
+
     return ResultAsync.fromSafePromise(
         (async (): Promise<string | null> => {
             try {
@@ -157,7 +179,9 @@ function chamarApi<T>(caminho: string, requisicao: (token: string | null) => Req
             ResultAsync.fromPromise(fetch(`${base}${caminho}`, requisicao(token)), (erro): ErroDaApi => ({ tipo: 'rede', detalhe: descreverFalha(erro) })),
         )
         .andThen((resposta) =>
-            resposta.ok
+            resposta.status === 204
+                ? okAsync<unknown, ErroDaApi>(null)
+                : resposta.ok
                 ? ResultAsync.fromPromise(resposta.json() as Promise<unknown>, (erro): ErroDaApi => ({ tipo: 'formato', detalhe: descreverFalha(erro) }))
                 : recusaOuHttp(resposta),
         )
@@ -186,7 +210,7 @@ export function buscarNaApi<T>(caminho: string, schema: z.ZodType<T>): ResultAsy
  * `diaDeclarado` em `fechamento.api.ts`), e aqui só se serializa. Dinheiro e litros vão em string
  * decimal — `JSON.stringify` não toca em string, então nada vira float no caminho.
  */
-export function enviarParaApi<T>(caminho: string, metodo: 'PUT', corpo: unknown, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
+export function enviarParaApi<T>(caminho: string, metodo: 'PUT' | 'POST', corpo: unknown, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
     return chamarApi(
         caminho,
         (token) => ({
