@@ -13,6 +13,10 @@
 - **Estoque saiu do Dashboard**: só alimentava `fuelData.maxCapacity`, campo que nenhum componente lia.
   Uma consulta a menos por carregamento, nos dois caminhos.
 - Frentistas pela API vêm ordenados por nome, como o Supabase entregava.
+- **A tabela de fechamentos cobre o período inteiro.** Ela lia só o primeiro dia, enquanto os cards
+  somavam o período todo. `GET /sessoes` aceita `ate` (até 62 dias), e cada frentista soma os envios
+  do período em centavos; dentro do mesmo dia continua valendo o último envio, então um envio em
+  dobro não conta duas vezes. "Conferido" só com todos os envios marcados pelo painel.
 - **A tendência dos cards passa a ser calculada.** "+12% vs. ontem", "+5%" e "0%" estavam escritos à
   mão no código: a tela afirmava uma alta que ninguém mediu. Agora o período é comparado com o
   anterior de mesmo tamanho (um dia → o dia anterior), em vendas, litros e lucro; sem base, "—".

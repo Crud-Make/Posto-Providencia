@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Fechamento\Http\Controllers;
 
 use App\Fechamento\Application\SessoesDoDia;
-use App\Fechamento\Http\Requests\DiaRequest;
+use App\Fechamento\Http\Requests\SessoesRequest;
 use App\Fechamento\Http\Resources\FechamentoFrentistaResource;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -17,8 +17,8 @@ final class FechamentoFrentistaController
 {
     public function __construct(private readonly SessoesDoDia $sessoesDoDia) {}
 
-    public function index(DiaRequest $request): AnonymousResourceCollection
+    public function index(SessoesRequest $request): AnonymousResourceCollection
     {
-        return FechamentoFrentistaResource::collection(($this->sessoesDoDia)($request->dia()));
+        return FechamentoFrentistaResource::collection(($this->sessoesDoDia)($request->dia(), $request->ultimoDia()));
     }
 }

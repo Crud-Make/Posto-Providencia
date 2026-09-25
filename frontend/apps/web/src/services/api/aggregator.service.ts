@@ -1,12 +1,12 @@
 import { ResultAsync } from 'neverthrow';
-import { conferido, corDoProduto, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel, deIsoLocal } from '@posto/utils';
+import { corDoProduto, despesaOperacionalPorLitro, lucroCombustivel, deIsoLocal } from '@posto/utils';
 import { supabase } from '../supabase';
 import { corteDaTelaLigado, descreverErroDaApi, type ErroDaApi } from './base';
 import { lerDashboardDaApi, paraInsumosDeAgregacao, type JanelaDoRateio, type VendaPorCombustivel } from './dashboard.api';
 import { combustivelService } from './combustivel.service';
 import { lerCodigosDeCombustivelDaApi } from './combustivel.api';
 import { cadastroEFechamentoDaApi } from './dashboard-cadastro.api';
-import type { SessaoDoDia } from './fechamentoFrentista.api';
+import { enviosPorFrentista } from './envios-do-periodo';
 import { bicoService } from './bico.service';
 import { formaPagamentoService } from './formaPagamento.service';
 import { estoqueService } from './estoque.service';
@@ -17,7 +17,7 @@ import { despesaService } from './despesa.service';
 import { compraService } from './compra.service';
 import { custoMedioPorCombustivel, type CompraParaCusto } from '../custo-do-mes';
 import { mesCivil } from '../../utils/periodo';
-import type { Combustivel, FechamentoFrentista, Leitura } from '../../types/database/index';
+import type { Combustivel, Leitura } from '../../types/database/index';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -415,7 +415,7 @@ export const aggregatorService = {
       // (preso em `aggregator.dashboard.test.ts`, "uma leva só de consultas"). Com o corte ligado,
       // cadastro e fechamentos também vêm da API (fatia 3): sem isso a tela dependia da sessão do
       // Supabase, que o login pela API não cria.
-      const cadastroEFechamento = pelaApi ? cadastroEFechamentoDaApi(postoId, dataInicio) : Promise.all([
+      const cadastroEFechamento = pelaApi ? cadastroEFechamentoDaApi(postoId, dataInicio, dataFim) : Promise.all([
         frentistaService.getAll(postoId),
         formaPagamentoService.getAll(postoId),
         fechamentoFrentistaService.getByDate(dataInicio, postoId),
@@ -458,14 +458,9 @@ export const aggregatorService = {
         color: coresFormas[fp.tipo] || ['#3b82f6', '#22c55e', '#eab308', '#f97316'][idx % 4],
       }));
 
-      // ClosingsData - Lista consolidada de status dos frentistas
-      // Mapeia os fechamentos por frentista (sem filtro de turno - sistema simplificado)
-      // Pela API a sessão chega como `SessaoDoDia` (cartão pode ser `null`, sem a coluna fantasma
-      // `diferenca`); daqui só se leem os meios, `diferenca_calculada` e `observacoes`.
-      const fechamentosMap = new Map<number, FechamentoFrentista | SessaoDoDia>();
-      fechamentosFrentistaHoje.forEach((ff) => {
-        fechamentosMap.set(ff.frentista_id, ff);
-      });
+      // ClosingsData — status de cada frentista no período: os envios somam entre dias, e dentro
+      // do mesmo dia vale o último (ver `envios-do-periodo.ts`).
+      const enviosDoPeriodo = enviosPorFrentista(fechamentosFrentistaHoje);
 
       // Filtra frentistas se houver filtro específico
       const frentistasToShow = frentistaId
@@ -473,16 +468,16 @@ export const aggregatorService = {
         : frentistas;
 
       const closingsData = frentistasToShow.map((f) => {
-        const fechamento = fechamentosMap.get(f.id);
+        const envios = enviosDoPeriodo.get(f.id);
         let status: 'OK' | 'Divergente' | 'Aberto' = 'Aberto';
         let totalSales = 0;
 
-        if (fechamento) {
-          // Total conferido canônico (7 buckets, cartão aditivo, moedas + baratão)
-          totalSales = conferido(meiosFromFechamentoRow(fechamento));
+        if (envios) {
+          // Total conferido canônico (7 buckets, cartão aditivo, moedas + baratão), somado no período
+          totalSales = envios.totalConferido;
 
           // Status baseado na diferença (falta de caixa)
-          const diferenca = Math.abs(fechamento.diferenca_calculada || 0);
+          const diferenca = Math.abs(envios.diferenca);
           status = diferenca === 0 ? 'OK' : diferenca > 50 ? 'Divergente' : 'OK';
         }
 
@@ -496,7 +491,7 @@ export const aggregatorService = {
           shift: 'Dia', // Sistema simplificado sem turnos
           totalSales: totalSales,
           status: status,
-          sessionStatus: (fechamento?.observacoes?.includes('[CONFERIDO]') ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
+          sessionStatus: (envios?.conferido === true ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
         };
       });
 
