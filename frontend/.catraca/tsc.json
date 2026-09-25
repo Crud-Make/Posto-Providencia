@@ -56,7 +56,6 @@
   "apps/web/src/components/frentistas/hooks/useFrentistas.ts|TS2322": 1,
   "apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts|TS18048": 2,
   "apps/web/src/components/registro-compras/hooks/useCalculosRegistro.golden.spec.ts|TS2345": 2,
-  "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts|TS2322": 1,
   "apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts|TS2379": 1,
   "apps/web/src/components/registro-compras/index.tsx|TS2532": 1,
   "apps/web/src/components/registro-compras/InputFinanceiro.tsx|TS18048": 1,

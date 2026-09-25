@@ -1,9 +1,49 @@
 // [11/01 17:00] Refatoração para padrão Senior: JSDoc, tratamento de erros e tipagem
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { compraService, tanqueService } from '../../../services/api';
+import { descreverErroDaApi } from '../../../services/api/base';
+import { gravarRegistroDeComprasNaApi, registroDeComprasDeclarado, registroDeComprasPelaApi } from '../../../services/api/compras.api';
 import { CombustivelHibrido } from './useCombustiveisHibridos';
+import { montarRegistroDeCompras } from './montarRegistroDeCompras';
 import { parseBRFloat } from '../../../utils/formatters';
 import { isSuccess, ErrorResponse } from '../../../types/ui/response-types';
+
+type CalcEstoqueHoje = (c: CombustivelHibrido) => number;
+
+/**
+ * O "Salvar" pela API Laravel (#103): um `POST /compras` com todos os combustíveis, gravado numa
+ * transação no servidor. A chave de idempotência vale para a TENTATIVA: clicar de novo com os
+ * mesmos números reusa a chave (o servidor devolve o já gravado, sem somar o estoque duas vezes);
+ * mudar qualquer número, ou salvar com sucesso, gera outra.
+ *
+ * @returns `true` quando gravou.
+ */
+async function salvarPelaApi(
+    postoId: number,
+    tentativa: { current: { assinatura: string; chave: string } | null },
+    corpoSemChave: ReturnType<typeof montarRegistroDeCompras>,
+): Promise<boolean> {
+    const assinatura = JSON.stringify(corpoSemChave);
+    const chave = tentativa.current?.assinatura === assinatura ? tentativa.current.chave : crypto.randomUUID();
+    tentativa.current = { assinatura, chave };
+
+    const corpo = registroDeComprasDeclarado.safeParse({ chave, ...corpoSemChave });
+    if (!corpo.success) {
+        console.error('[Compras] Corpo fora do contrato da API:', corpo.error.message);
+        alert('Erro ao salvar as informações: há um valor fora do formato esperado.');
+        return false;
+    }
+
+    const gravado = await gravarRegistroDeComprasNaApi(postoId, corpo.data);
+    if (gravado.isErr()) {
+        console.error('[Compras] Falha ao salvar pela API:', gravado.error);
+        alert(`Erro ao salvar as informações. ${descreverErroDaApi(gravado.error)}`);
+        return false;
+    }
+
+    tentativa.current = null;
+    return true;
+}
 
 /**
  * Hook responsável pela persistência dos dados de registro de compras e estoque.
@@ -17,6 +57,7 @@ export const usePersistenciaRegistro = (
     onSuccess: () => Promise<void>
 ) => {
     const [saving, setSaving] = useState(false);
+    const tentativa = useRef<{ assinatura: string; chave: string } | null>(null);
 
     // Helper para consistência de parse
     const parseValue = parseBRFloat;
@@ -31,7 +72,7 @@ export const usePersistenciaRegistro = (
      */
     const salvarDados = async (
         combustiveis: CombustivelHibrido[],
-        calcEstoqueHoje: (c: CombustivelHibrido) => number,
+        calcEstoqueHoje: CalcEstoqueHoje,
         fornecedorId: number | null,
         dataCompra: string
     ) => {
@@ -71,6 +112,16 @@ export const usePersistenciaRegistro = (
 
             if (!temCompras) {
                 console.log('[Compras] Nenhuma compra para registrar (todos compra_lt = 0 ou vazio)');
+            }
+
+            // #103: pela API, uma requisição só, numa transação no servidor.
+            if (registroDeComprasPelaApi()) {
+                const corpo = montarRegistroDeCompras(combustiveis, calcEstoqueHoje, fornecedorId, dataCompra);
+                if (await salvarPelaApi(postoAtivoId, tentativa, corpo)) {
+                    alert('Movimentações salvas e estoque atualizado com sucesso!');
+                    await onSuccess();
+                }
+                return;
             }
 
             // 2. Processamento por combustível
