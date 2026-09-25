@@ -13,6 +13,10 @@
 - **Estoque saiu do Dashboard**: só alimentava `fuelData.maxCapacity`, campo que nenhum componente lia.
   Uma consulta a menos por carregamento, nos dois caminhos.
 - Frentistas pela API vêm ordenados por nome, como o Supabase entregava.
+- **A tendência dos cards passa a ser calculada.** "+12% vs. ontem", "+5%" e "0%" estavam escritos à
+  mão no código: a tela afirmava uma alta que ninguém mediu. Agora o período é comparado com o
+  anterior de mesmo tamanho (um dia → o dia anterior), em vendas, litros e lucro; sem base, "—".
+  O rótulo diz o que foi comparado ("vs. ontem", "vs. dia anterior", "vs. período anterior").
 - Nenhuma fórmula mudou: golden 3536/0. O teste de paridade Supabase × API continua com as mesmas
   contas; a API falsa passou a responder por rota. Canário: o modo API voltar a buscar o cadastro no
   Supabase deixa o teste de concorrência vermelho. Pest 230/230 (97,0 %), vitest 1033/1033.
