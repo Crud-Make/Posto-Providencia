@@ -316,6 +316,11 @@ que o usuário gere no perfil de `GET /api/eu`). Sem lucro no servidor (DECISÃO
 }
 ```
 
+**No ar desde 25/09/2026, pela metade** (`VendaDiariaDoMes`, `fechamento-diario-api.md` §5.3): só
+`dias[]` (com `periodo`), no grupo protegido com `ver`. `compras_por_combustivel` e `despesas_total`
+não subiram — servem ao lucro da aba, e o que a aba mostra no lugar do lucro da RPC espera decisão do
+dono. Até lá o painel mostra "—" no lucro pela API.
+
 `volumes_por_combustivel` é chaveado por **id**, não por nome. É isso que mata o risco do #93: posto
 novo com combustível fora dos 4 nomes deixa de zerar coluna em silêncio.
 

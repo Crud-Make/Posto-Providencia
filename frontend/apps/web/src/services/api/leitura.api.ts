@@ -74,20 +74,60 @@ export function paraLeiturasDoDia(lidas: readonly LeituraDaApi[], postoId: numbe
     const instanteDoDia = meiaNoiteUtc(dia);
     return lidas
         .filter((leitura) => Date.parse(leitura.data) === instanteDoDia)
-        .map((leitura) => ({
-            id: leitura.id,
-            data: leitura.data,
-            bico_id: leitura.bico_id,
-            combustivel_id: leitura.combustivel_id,
-            turno_id: leitura.turno_id,
-            leitura_inicial: Number(leitura.leitura_inicial),
-            leitura_final: Number(leitura.leitura_final),
-            litros_vendidos: Number(leitura.litros_vendidos),
-            preco_litro: Number(leitura.preco_litro),
-            valor_total: Number(leitura.valor_total),
-            posto_id: postoId,
-        }))
+        .map((leitura) => paraLeitura(leitura, postoId))
         .sort((a, b) => a.id - b.id);
+}
+
+/** Uma linha da API como o Supabase a entregava: string decimal → `Number()`, sem arredondar. */
+function paraLeitura(leitura: LeituraDaApi, postoId: number): LeituraDoDia {
+    return {
+        id: leitura.id,
+        data: leitura.data,
+        bico_id: leitura.bico_id,
+        combustivel_id: leitura.combustivel_id,
+        turno_id: leitura.turno_id,
+        leitura_inicial: Number(leitura.leitura_inicial),
+        leitura_final: Number(leitura.leitura_final),
+        litros_vendidos: Number(leitura.litros_vendidos),
+        preco_litro: Number(leitura.preco_litro),
+        valor_total: Number(leitura.valor_total),
+        posto_id: postoId,
+    };
+}
+
+/**
+ * Converte a resposta de `GET /leituras/ultimas?antes_de=` na lista que `leituraService.getLastReading`
+ * devolvia: uma leitura por bico, a mais nova antes do dia.
+ *
+ * @remarks O servidor já deduplica (`DISTINCT ON (bico_id)`), então aqui só se converte. A única
+ *          diferença contra o Supabase é a favor do dado: lá eram as 200 linhas mais novas
+ *          deduplicadas no cliente, e o bico cuja última leitura ficasse fora delas sumia — e a
+ *          tela o semeava com `0,000`, o odômetro inteiro virando venda (`UltimasLeiturasAntesDe.php`).
+ */
+export function paraUltimasLeituras(lidas: readonly LeituraDaApi[], postoId: number): LeituraDoDia[] {
+    return lidas.map((leitura) => paraLeitura(leitura, postoId));
+}
+
+/**
+ * Converte a resposta de `GET /leituras?data=&ate=` na lista de `leituraService.getByDateRange`.
+ *
+ * @remarks Recorte com a mesma borda do Supabase (`.gte('data', inicio).lte('data', fim)`, isto é,
+ *          `[inicio 00:00Z, fim 00:00Z]`): a API devolve até o fim do último dia, e uma leitura com
+ *          hora dentro dele entraria aqui sem entrar lá. Ordem por `data` e, no empate, por `id`.
+ */
+export function paraLeiturasDoPeriodo(lidas: readonly LeituraDaApi[], postoId: number, inicio: string, fim: string): LeituraDoDia[] {
+    const de = meiaNoiteUtc(inicio);
+    const ate = meiaNoiteUtc(fim);
+    return lidas
+        .filter((leitura) => {
+            const instante = Date.parse(leitura.data);
+            return instante >= de && instante <= ate;
+        })
+        .map((leitura) => paraLeitura(leitura, postoId))
+        .sort((a, b) => {
+            const porData = Date.parse(a.data) - Date.parse(b.data);
+            return porData !== 0 ? porData : a.id - b.id;
+        });
 }
 
 /** Leituras do dia (`AAAA-MM-DD`) do posto, lidas da API Laravel. Rota protegida: leva o Bearer da sessão. */
@@ -95,4 +135,21 @@ export function lerLeiturasDoDiaDaApi(postoId: number, dia: string): ResultAsync
     const consulta = new URLSearchParams({ data: dia }).toString();
     return buscarNaApi(`/api/postos/${postoId}/leituras?${consulta}`, respostaDeLeituras)
         .map((resposta) => paraLeiturasDoDia(resposta.data, postoId, dia));
+}
+
+/**
+ * A última leitura de cada bico ANTES do dia (`AAAA-MM-DD`, exclusivo) — o encerrante inicial de um
+ * dia novo. Rota protegida: leva o Bearer da sessão.
+ */
+export function lerUltimasLeiturasDaApi(postoId: number, antesDe: string): ResultAsync<LeituraDoDia[], ErroDaApi> {
+    const consulta = new URLSearchParams({ antes_de: antesDe }).toString();
+    return buscarNaApi(`/api/postos/${postoId}/leituras/ultimas?${consulta}`, respostaDeLeituras)
+        .map((resposta) => paraUltimasLeituras(resposta.data, postoId));
+}
+
+/** Leituras de `inicio` a `fim` (inclusive), lidas da API Laravel — o mês da aba Fechamento Mensal. */
+export function lerLeiturasDoPeriodoDaApi(postoId: number, inicio: string, fim: string): ResultAsync<LeituraDoDia[], ErroDaApi> {
+    const consulta = new URLSearchParams({ data: inicio, ate: fim }).toString();
+    return buscarNaApi(`/api/postos/${postoId}/leituras?${consulta}`, respostaDeLeituras)
+        .map((resposta) => paraLeiturasDoPeriodo(resposta.data, postoId, inicio, fim));
 }

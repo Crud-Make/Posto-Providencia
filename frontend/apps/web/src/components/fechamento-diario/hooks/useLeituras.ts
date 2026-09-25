@@ -19,7 +19,7 @@ import { useState, useCallback, useRef } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import { leituraService } from '../../../services/api';
 import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
-import { lerLeiturasDoDiaDaApi, type LeituraDoDia } from '../../../services/api/leitura.api';
+import { lerLeiturasDoDiaDaApi, lerUltimasLeiturasDaApi, type LeituraDoDia } from '../../../services/api/leitura.api';
 import { formatarParaBR } from '../../../utils/formatters';
 import {
   type ApiResponse,
@@ -33,7 +33,25 @@ import {
  * (`LeituraDoDia`). O hook lê `bico_id`, `leitura_inicial`, `leitura_final` e `preco_litro`.
  */
 type LeituraPorDataResponse = ApiResponse<LeituraDoDia[]>;
-type UltimaLeituraResponse = Awaited<ReturnType<typeof leituraService.getLastReading>>;
+type UltimaLeituraResponse = ApiResponse<LeituraDoDia[]>;
+
+/**
+ * A última leitura de cada bico antes do dia: o encerrante inicial de um dia sem leitura salva.
+ *
+ * @remarks
+ * [25/09] Pela API Laravel (`GET /leituras/ultimas`) quando VITE_API_URL existe; sem ela, nada
+ * muda. Mesma troca no call site das leituras do dia (P5), e pelo mesmo motivo: `getLastReading`
+ * tem outros chamadores. Era a última leitura desta tela que ainda ia ao Supabase no modo API.
+ */
+function ultimasLeiturasAntesDe(postoId: number, dia: string): Promise<UltimaLeituraResponse> {
+  if (urlDaApi() === null) {
+    return leituraService.getLastReading(postoId, dia);
+  }
+  return lerUltimasLeiturasDaApi(postoId, dia).match(
+    (lidas) => createSuccessResponse(lidas),
+    (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+  );
+}
 
 /**
  * Estrutura de uma leitura
@@ -265,7 +283,7 @@ export const useLeituras = (
       // `leituraService.getByDate`: `getSalesSummaryByDate` e o `aggregator.service.ts`
       // chamam o mesmo service, e o aggregator é sítio de fórmula que só o Fable edita.
       // A paridade (números, ordem por id, recorte de meia-noite UTC) fica em
-      // `leitura.api.ts`; `getLastReading` segue no Supabase até a fatia dela.
+      // `leitura.api.ts`; `getLastReading` troca em `ultimasLeiturasAntesDe` (25/09).
       const dadosRes: LeituraPorDataResponse = urlDaApi() !== null
         ? await lerLeiturasDoDiaDaApi(postoId, dataSelecionada).match(
             (lidas) => createSuccessResponse(lidas),
@@ -323,7 +341,7 @@ export const useLeituras = (
           // `dataSelecionada` não é opcional aqui: sem o recorte, o bico faltante
           // herda o encerrante do dia mais NOVO do banco, e num dia histórico isso
           // é justamente o odômetro inteiro que o comentário acima teme.
-          const ultimasRes = await leituraService.getLastReading(postoId, dataSelecionada);
+          const ultimasRes = await ultimasLeiturasAntesDe(postoId, dataSelecionada);
           const ultimas = isSuccess(ultimasRes) ? ultimasRes.data : [];
           for (const bico of semEntrada) {
             const ultima = ultimas.find(l => l.bico_id === bico.id);
@@ -341,7 +359,7 @@ export const useLeituras = (
         // Modo criação: busca última leitura para inicializar
         // [18/01 00:00] Checar success e extrair data do ApiResponse
         // Motivo: leituraService agora retorna ApiResponse
-        const ultimasLeiturasRes: UltimaLeituraResponse = await leituraService.getLastReading(postoId, dataSelecionada);
+        const ultimasLeiturasRes = await ultimasLeiturasAntesDe(postoId, dataSelecionada);
         if (!isSuccess(ultimasLeiturasRes)) {
           setErro(ultimasLeiturasRes.error);
           setLeituras({});

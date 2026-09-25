@@ -166,6 +166,19 @@ describe('frentistas_conhecidos (§7 (c))', () => {
         expect(montado.frentistas_conhecidos).toEqual([9, 10]);
         expect(montado.sessoes.map((s) => s.frentista_id)).toEqual([9, 8]);
     });
+
+    it('modo API: quem o gerente TIROU da tela continua conhecido e fora de sessoes — é assim que o servidor o apaga', () => {
+        const montado = montarDiaDeclarado(
+            dia({
+                sessoesFrentistas: [sessao({ tempId: 'existing-11', frentistaId: 9, valor_dinheiro: '100,00' })],
+                frentistasRemovidos: [14, 9],
+            }),
+        );
+
+        // 14 foi removido (conhecido, não enviado → DELETE); 9 continua na tela e não duplica.
+        expect(montado.frentistas_conhecidos).toEqual([9, 14]);
+        expect(montado.sessoes.map((s) => s.frentista_id)).toEqual([9]);
+    });
 });
 
 describe('recebimentos', () => {

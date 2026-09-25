@@ -122,7 +122,10 @@ describe('useLeituras — com VITE_API_URL as leituras do dia vêm da API (#103 
 
   it('leitura às 23:30Z do dia não entra pela API, como não entrava pelo Supabase: o bico cai no encerrante anterior', async () => {
     vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
-    vi.stubGlobal('fetch', apiFalsa({ '/api/postos/1/leituras?data=2026-01-05': leiturasDaApi }));
+    vi.stubGlobal('fetch', apiFalsa({
+      '/api/postos/1/leituras?data=2026-01-05': leiturasDaApi,
+      '/api/postos/1/leituras/ultimas?antes_de=2026-01-05': { data: [] },
+    }));
 
     const { result } = renderHook(() => useLeituras(1, '2026-01-05', [bico(7), bico(9)]));
     await act(async () => {
@@ -130,7 +133,8 @@ describe('useLeituras — com VITE_API_URL as leituras do dia vêm da API (#103 
     });
 
     expect(result.current.leituras[9]).toEqual({ inicial: '0,000', fechamento: '' });
-    expect(leituraService.getLastReading).toHaveBeenCalledWith(1, '2026-01-05');
+    // [25/09] O encerrante anterior também vem da API (`/leituras/ultimas`), não mais do Supabase.
+    expect(leituraService.getLastReading).not.toHaveBeenCalled();
   });
 
   it('sem VITE_API_URL segue no Supabase e não toca a rede', async () => {
@@ -173,5 +177,64 @@ describe('useLeituras — com VITE_API_URL as leituras do dia vêm da API (#103 
 
     expect(result.current.erro).toBe('API Laravel respondeu 401');
     expect(leituraService.getByDate).not.toHaveBeenCalled();
+  });
+});
+
+/** Forma real de `GET /api/postos/1/leituras/ultimas?antes_de=2026-01-06`: uma linha por bico. */
+const ultimasDaApi = {
+  data: [
+    {
+      id: 302, data: '2026-01-05T00:00:00Z', bico_id: 7, combustivel_id: 1, turno_id: null,
+      leitura_inicial: '1716778.963', leitura_final: '1716902.419', litros_vendidos: '123.456',
+      preco_litro: '6.38', valor_total: '787.65',
+    },
+  ],
+};
+
+describe('useLeituras — o encerrante inicial de dia novo pela API (`/leituras/ultimas`, 25/09)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('dia sem leitura: o inicial é o final do último dia pela API, o preço é herdado se-vazio, e o Supabase não é tocado', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
+    vi.stubGlobal('fetch', apiFalsa({
+      '/api/postos/1/leituras?data=2026-01-06': { data: [] },
+      '/api/postos/1/leituras/ultimas?antes_de=2026-01-06': ultimasDaApi,
+    }));
+    const restaurarPreco = vi.fn();
+
+    const { result } = renderHook(() => useLeituras(1, '2026-01-06', [bico(7), bico(9)], restaurarPreco));
+    await act(async () => {
+      await result.current.carregarLeituras();
+    });
+
+    expect(result.current.leituras[7]).toEqual({ inicial: '1.716.902,419', fechamento: '' });
+    expect(result.current.leituras[9]).toEqual({ inicial: '0,000', fechamento: '' });
+    expect(restaurarPreco).toHaveBeenCalledWith(7, 6.38, 'se-vazio');
+    expect(leituraService.getLastReading).not.toHaveBeenCalled();
+    expect(leituraService.getByDate).not.toHaveBeenCalled();
+  });
+
+  it('401 em `/leituras/ultimas` vira `erro` na tela, não encerrante inventado', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
+    vi.stubGlobal('fetch', vi.fn(async (entrada: string | URL | Request) =>
+      String(entrada).includes('/ultimas')
+        ? new Response('{}', { status: 401 })
+        : new Response(JSON.stringify({ data: [] }), { status: 200 })));
+
+    const { result } = renderHook(() => useLeituras(1, '2026-01-06', [bico(7)]));
+    await act(async () => {
+      await result.current.carregarLeituras();
+    });
+
+    expect(result.current.leituras).toEqual({});
+    expect(result.current.erro).toBe('API Laravel respondeu 401');
+    expect(leituraService.getLastReading).not.toHaveBeenCalled();
   });
 });

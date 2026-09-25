@@ -17,3 +17,16 @@ export function lerCodigosDeCombustivelDaApi(postoId: number): ResultAsync<Reado
         (resposta): ReadonlyMap<number, string> => new Map(resposta.data.map((c) => [c.id, c.codigo] as const)),
     );
 }
+
+const nomeDeCombustivel = z.object({ id: z.number().int(), nome: z.string() });
+const respostaDeNomes = z.object({ data: z.array(nomeDeCombustivel) });
+
+/**
+ * `Combustivel.id → nome` pelo catálogo, inativos inclusive — a aba Fechamento Mensal classifica os
+ * litros do dia por nome, como a RPC `get_fechamento_mensal` fazia (`fechamentoMensal.api.ts`).
+ */
+export function lerNomesDeCombustivelDaApi(postoId: number): ResultAsync<ReadonlyMap<number, string>, ErroDaApi> {
+    return buscarNaApi(`/api/postos/${postoId}/combustiveis`, respostaDeNomes).map(
+        (resposta): ReadonlyMap<number, string> => new Map(resposta.data.map((c) => [c.id, c.nome] as const)),
+    );
+}

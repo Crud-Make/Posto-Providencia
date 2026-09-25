@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { cartao, conferido, diferenca, meiosFromFechamentoRow } from '@posto/utils';
 import { fechamentoFrentistaService } from '../../../services/api/fechamentoFrentista.service';
-import { isSuccess } from '../../../types/ui/response-types';
+import { isSuccess, type ApiResponse } from '../../../types/ui/response-types';
+import { lerEnviosDoMesDaApi } from './envios-do-mes.api';
 import { agruparPorFrentista, type LinhaFechamentoFrentista } from '../../../utils/fechamentoMeios';
+import { urlDaApi } from '../../../services/api/base';
 
 /**
  * Uma coluna do bloco mensal: o que um frentista recebeu no mês, por forma de pagamento.
@@ -120,6 +122,19 @@ export function montarResumoMensal(
   return { colunas, caixa, frentistaDoMes: colunas[0] ?? null };
 }
 
+type LinhaDoResumo = Parameters<typeof montarResumoMensal>[0][number];
+
+/**
+ * Os envios do mês, pela API Laravel quando VITE_API_URL existe (25/09) e pelo Supabase sem ela.
+ * Mesma troca no call site das outras leituras da tela: o service tem outros chamadores.
+ */
+function lerEnviosDoMes(postoId: number | null, inicio: string, fim: string): Promise<ApiResponse<readonly LinhaDoResumo[]>> {
+  if (postoId !== null && postoId !== 0 && urlDaApi() !== null) {
+    return lerEnviosDoMesDaApi(postoId, inicio, fim);
+  }
+  return fechamentoFrentistaService.getByPeriodo(inicio, fim, postoId ?? undefined);
+}
+
 /**
  * Carrega os envios de `FechamentoFrentista` do mês da data selecionada e consolida
  * por frentista e forma de pagamento.
@@ -135,7 +150,7 @@ export function useResumoMensalFrentistas(postoId: number | null, dataIso: strin
     if (!dataIso || !chave) return;
     let ativo = true;
     const { inicio, fim } = limitesDoMes(dataIso);
-    fechamentoFrentistaService.getByPeriodo(inicio, fim, postoId ?? undefined).then((resposta) => {
+    lerEnviosDoMes(postoId, inicio, fim).then((resposta) => {
       if (!ativo) return;
       if (!isSuccess(resposta)) {
         setCarregado({ chave, colunas: [], caixa: { ...VAZIA, nome: 'Caixa' }, frentistaDoMes: null, erro: resposta.error });
