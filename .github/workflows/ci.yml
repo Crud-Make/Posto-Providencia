@@ -72,7 +72,7 @@ jobs:
       - name: Carrega o esquema do posto no Postgres do job
         run: |
           psql "postgresql://posto:posto@localhost:5432/posto" -v ON_ERROR_STOP=1 \
-            -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql
+            -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql -f ../banco/init/03-autenticacao.sql
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:

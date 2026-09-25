@@ -6,6 +6,7 @@ use App\Cadastro\Http\Middleware\DefinePostoAtual;
 use App\Fechamento\Http\Controllers\FechamentoController;
 use App\Fechamento\Http\Controllers\FechamentoFrentistaController;
 use App\Fechamento\Http\Controllers\LeituraController;
+use App\Pessoas\Http\Controllers\AutenticacaoController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +42,17 @@ Route::get('/saude', function () {
         'versao' => app()->version(),
         'motivo' => $motivo,
     ]), $banco === 'indisponivel' ? 503 : 200);
+});
+
+/*
+| Login próprio da API (#102, docs/design/autenticacao.md §5). Sanctum em modo token.
+| `throttle:6,1`: seis tentativas por minuto por IP — o bastante para quem erra a senha, pouco
+| para quem tenta adivinhar.
+*/
+Route::post('/login', [AutenticacaoController::class, 'entrar'])->middleware('throttle:6,1');
+Route::middleware('token.atual')->group(function (): void {
+    Route::get('/eu', [AutenticacaoController::class, 'eu']);
+    Route::post('/sair', [AutenticacaoController::class, 'sair']);
 });
 
 /*

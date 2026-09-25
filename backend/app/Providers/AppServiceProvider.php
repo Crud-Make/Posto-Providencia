@@ -10,10 +10,12 @@ use App\Compartilhado\PostoAtual;
 use App\Estoque\Application\DescontaLitrosVendidos;
 use App\Pessoas\Application\VerificaTokenDoSupabase;
 use App\Pessoas\Domain\Policies\PostoPolicy;
+use App\Pessoas\Domain\TokenDeAcesso;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -48,6 +50,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Posto::class, PostoPolicy::class);
+
+        // Token do login da API (#102) com as colunas tipadas; o model do pacote não as declara.
+        Sanctum::usePersonalAccessTokenModel(TokenDeAcesso::class);
 
         // Estoque reage a um dia gravado, sem que Fechamento o conheça: o evento mora em
         // Compartilhado e carrega só primitivos, então nenhum módulo depende do outro (CA-7).

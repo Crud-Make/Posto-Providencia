@@ -312,6 +312,15 @@ a hora de plantar proteção por rota.
 
 ## 5. Contratos
 
+> **Revisão de 24/09/2026 (decisão do dono: o Supabase é descontinuado e vira só modelo).** O login
+> próprio entrou no código com **Sanctum em modo TOKEN (Bearer)**, não SPA/cookie: o painel pode ficar
+> em outro domínio que a API, e os PWAs rodam instalados. Rotas reais: `POST /api/login {email, senha,
+> dispositivo?}` → `200 {token, usuario}`; `GET /api/eu` → `{usuario}`; `POST /api/sair` → `204`.
+> `usuario` = `{id, nome, email, role, postos: [{id, nome, papel}]}` — a lista da tela de escolha de
+> posto. Sem SMTP por ora: contas e senhas por `php artisan usuario:definir`. O texto abaixo é o
+> desenho de 17/09 e vale só onde não contradiz esta nota.
+
+
 ```
 POST /api/login            { email, senha }        → 204 + cookie de sessão
 POST /api/logout                                   → 204
