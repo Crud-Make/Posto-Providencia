@@ -3,8 +3,11 @@
 use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Agregacao\Http\Controllers\RelatorioDiarioController;
 use App\Cadastro\Http\Controllers\CatalogoController;
+use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
+use App\Estoque\Http\Controllers\ReguaController;
+use App\Estoque\Http\Controllers\VendaDoFrentistaController;
 use App\Fechamento\Http\Controllers\EnvioDoFrentistaController;
 use App\Fechamento\Http\Controllers\FechamentoController;
 use App\Fechamento\Http\Controllers\FechamentoFrentistaController;
@@ -147,6 +150,15 @@ Route::prefix('postos/{posto}')
 Route::post('postos/{posto}/frentistas/entrar', [AcessoDoFrentistaController::class, 'entrar'])
     ->middleware([DefinePostoAtual::class, 'throttle:pin-frentista']);
 
+/*
+| A tela de escolha vem ANTES do PIN, então esta lista não pode exigir token de frentista (#101,
+| fatia 2). Por isso ela expõe o mínimo para o frentista achar o próprio nome: `id` e `nome` dos
+| ativos do posto — sem foto (rosto de funcionário não é público), sem telefone e sem admissão. O
+| limite de taxa segura a varredura de `{posto}` por quem não é do posto.
+*/
+Route::get('postos/{posto}/frentistas/escolha', [FrentistaDoPwaController::class, 'escolha'])
+    ->middleware([DefinePostoAtual::class, 'throttle:60,1']);
+
 Route::prefix('postos/{posto}')
     ->middleware([DefinePostoAtual::class, 'frentista.do.posto'])
     ->group(function (): void {
@@ -154,6 +166,22 @@ Route::prefix('postos/{posto}')
         Route::post('envios', [EnvioDoFrentistaController::class, 'store']);
         // Sinal de vida; `visto_em` é a hora do servidor (trigger carimba_visto_em).
         Route::post('presenca', [PresencaController::class, 'marcar']);
+
+        // Fatia 2 (docs/design/fechamento-frentista-api.md §8.6): com a flag, o PWA não fala com o
+        // Supabase para nada. Tudo o que é PESSOAL sai do frentista do token, sem `id` na rota.
+        Route::get('frentistas/eu', [FrentistaDoPwaController::class, 'eu']);
+        Route::put('frentistas/eu/foto', [FrentistaDoPwaController::class, 'trocaFoto']);
+        // "Quem já enviou" do dia: nome e hora de todos, o valor só do próprio frentista.
+        Route::get('envios', [EnvioDoFrentistaController::class, 'doDia']);
+        Route::get('historico', [EnvioDoFrentistaController::class, 'historico']);
+        // Vendas de produto: o preço é o do banco, a chave faz o carrinho idempotente.
+        Route::get('produtos', [VendaDoFrentistaController::class, 'produtos']);
+        Route::get('vendas', [VendaDoFrentistaController::class, 'index']);
+        Route::post('vendas', [VendaDoFrentistaController::class, 'store']);
+        // Régua dos tanques: upsert por tanque e dia, na janela de escrita, só tanque do posto.
+        Route::get('regua/tanques', [ReguaController::class, 'tanques']);
+        Route::get('regua/medicoes', [ReguaController::class, 'medicoes']);
+        Route::put('regua/medicoes', [ReguaController::class, 'grava']);
     });
 
 /*

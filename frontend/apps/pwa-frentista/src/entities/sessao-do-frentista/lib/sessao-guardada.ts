@@ -19,6 +19,19 @@ export function sessaoGuardada(frentistaId: number, agora: number = Date.now()):
   return Number.isFinite(vence) && vence > agora ? lido.data : null;
 }
 
+/**
+ * A sessão guardada no aparelho, de QUALQUER frentista, se ainda não venceu; senão `null`.
+ *
+ * @remarks Para as leituras que não são de um frentista (tanques, produtos, envios do dia): a API
+ *          exige um token de frentista do posto, e o do aparelho serve. Dado pessoal (histórico,
+ *          foto, vendas do frentista) usa {@link sessaoGuardada}, que confere o frentista.
+ */
+export function sessaoDoAparelho(agora: number = Date.now()): SessaoDoFrentista | null {
+  const lido = sessaoDoFrentistaSchema.safeParse(lerJsonDoAparelho(CHAVE_SESSAO));
+  if (!lido.success) return null;
+  return sessaoGuardada(lido.data.frentista.id, agora);
+}
+
 export function guardarSessao(sessao: SessaoDoFrentista): void {
   gravarNoAparelho(CHAVE_SESSAO, JSON.stringify(sessao));
 }

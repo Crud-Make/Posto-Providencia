@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { CHAVE_SESSAO, esquecerSessao, guardarSessao, sessaoGuardada } from './sessao-guardada';
+import { CHAVE_SESSAO, esquecerSessao, guardarSessao, sessaoDoAparelho, sessaoGuardada } from './sessao-guardada';
 
 /** A sessão do frentista no aparelho (#101): só vale para o MESMO frentista e até vencer. */
 describe('sessaoGuardada', () => {
@@ -39,5 +39,13 @@ describe('sessaoGuardada', () => {
     esquecerSessao();
 
     expect(localStorage.getItem(CHAVE_SESSAO)).toBeNull();
+  });
+
+  it('sessaoDoAparelho: a de quem entrou, qualquer frentista, só antes de vencer (fatia 2)', () => {
+    expect(sessaoDoAparelho(agora)).toBeNull();
+    guardarSessao(sessao);
+
+    expect(sessaoDoAparelho(agora)).toEqual(sessao);
+    expect(sessaoDoAparelho(Date.parse('2026-09-25T02:00:01Z'))).toBeNull();
   });
 });

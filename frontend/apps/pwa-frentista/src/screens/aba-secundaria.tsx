@@ -1,9 +1,10 @@
 import type React from 'react';
-import { History, ShoppingBag } from 'lucide-react';
+import { Fuel, History, ShoppingBag } from 'lucide-react';
 import HistoricoScreen from './HistoricoScreen';
 import VendasScreen from './VendasScreen';
 import TanquesScreen from './TanquesScreen';
 import { ReloadPrompt } from '@frentista/shared/ui';
+import { pwaPelaApiLigado } from '@frentista/shared/config';
 import { SelecioneOFrentista } from '../components/selecione-o-frentista';
 import type { TabType, FrentistaSelecionavel } from '../lib/tipos';
 
@@ -18,7 +19,10 @@ import type { TabType, FrentistaSelecionavel } from '../lib/tipos';
  *          Histórico e Vendas, mudando só o ícone.
  *
  *          Tanques não exige frentista de propósito (#74): medição é do TANQUE.
- *          Como a `Leitura`, `HistoricoTanque` não tem coluna de frentista.
+ *          Como a `Leitura`, `HistoricoTanque` não tem coluna de frentista. Com a API
+ *          ligada (#101, fatia 2) passa a exigir: a medição continua sendo do tanque, mas
+ *          a API só grava com o token de um frentista do posto — é o PIN que prova que
+ *          quem mede é do posto.
  */
 export const abaSecundaria = ({ aba, frentista, aoVoltar, nav }: {
   aba: TabType;
@@ -27,6 +31,7 @@ export const abaSecundaria = ({ aba, frentista, aoVoltar, nav }: {
   nav: React.ReactNode;
 }): React.ReactNode | null => {
   if (aba === 'tanques') {
+    if (!frentista && pwaPelaApiLigado()) return <SelecioneOFrentista Icone={Fuel} aoVoltar={aoVoltar} nav={nav} />;
     return (
       <>
         <ReloadPrompt />

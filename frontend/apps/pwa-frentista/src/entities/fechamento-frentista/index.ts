@@ -8,6 +8,7 @@ export {
   enviarFechamentoFrentista,
 } from './api/fechamento-frentista-api';
 export { enviarTurnoPelaApi } from './api/envio-pela-api';
+export { buscarEnviosDoDiaPelaApi, buscarHistoricoPelaApi } from './api/leitura-pela-api';
 export { envioRegistradoSchema, paraEnvioDaApi } from './model/envio-pela-api';
 export type { EnvioDoTurno, EnvioRegistrado, ValoresDoTurno } from './model/envio-pela-api';
 export {

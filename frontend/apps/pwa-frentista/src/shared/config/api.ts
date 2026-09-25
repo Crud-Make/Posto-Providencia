@@ -12,10 +12,10 @@ export function urlDaApi(): string | null {
 /**
  * `true` quando o frentista entra por PIN e o envio do turno e a presença vão para a API.
  *
- * @remarks Liga só com `VITE_API_PWA=1` (ou `true`) E `VITE_API_URL` definida. **Não** segue o
- *          global: o PWA ainda lê do Supabase (lista de frentistas, envios do dia, histórico,
- *          vendas, tanques), e ligar a escrita pela API contra um banco que não é o mesmo que o
- *          Supabase lê deixaria a trava "já enviou" da tela olhando o lugar errado.
+ * @remarks Liga só com `VITE_API_PWA=1` (ou `true`) E `VITE_API_URL` definida. Desde a fatia 2
+ *          (#101), ligada ela desvia TUDO — leituras e escritas — para a API: o PWA não fala com o
+ *          Supabase para nada. **Não** segue o `VITE_API_URL` global de propósito: ligá-la é decidir
+ *          que o banco da API é o banco de verdade do posto.
  */
 export function pwaPelaApiLigado(): boolean {
   const flag = import.meta.env.VITE_API_PWA;

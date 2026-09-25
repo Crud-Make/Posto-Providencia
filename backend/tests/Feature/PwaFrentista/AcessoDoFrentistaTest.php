@@ -180,10 +180,10 @@ it('frentista:pin recusa PIN fora do formato, PINs que não conferem e frentista
     'inexistente' => ['999999', '1234', '1234'],
 ]);
 
-it('GET de rota do frentista não existe (só POST)', function (): void {
+it('GET /envios existe desde a fatia 2 e, sem token de frentista, é 401', function (): void {
     ['posto' => $posto] = postoDoPwa();
 
-    getJson("/api/postos/{$posto->id}/envios")->assertStatus(405);
+    getJson("/api/postos/{$posto->id}/envios?data=".DIA_PWA)->assertUnauthorized();
 });
 
 function frentistaDoPwaTrocaPin(int $frentistaId, string $pin): void

@@ -2,6 +2,37 @@
 
 ## [Não Lançado]
 
+### 📵 PWA do frentista pela API — fatia 2: com a flag, nada vai ao Supabase (#101)
+
+- **Leituras pela API**, todas no guard `frentista.do.posto` (o posto vem da rota, o frentista do
+  TOKEN): `GET /frentistas/eu` (perfil e foto do próprio), `GET /envios?data=` ("quem já enviou" —
+  nome e hora de todos, **o valor só do próprio**), `GET /historico` (últimos 20 do frentista do token),
+  `GET /produtos`, `GET /vendas?inicio=&fim=` (só as do frentista do token), `GET /regua/tanques` e
+  `GET /regua/medicoes?data=` (só tanques do posto — o PWA de hoje lê as medições de todos os postos).
+- **A lista de escolha é pública** (`GET /frentistas/escolha`, a escolha vem antes do PIN), com
+  `throttle:60,1` e **só `id` e `nome`** dos ativos: sem foto, telefone nem admissão. A foto de quem
+  entrou vem do perfil dele; antes do PIN a tela mostra as iniciais.
+- **Venda de produto** (`POST /vendas`): o carrinho inteiro numa transação, **sem preço do cliente** —
+  `valor_unitario` é o `preco_venda` do banco e `valor_total` sai em bcmath (exato; o PWA pelo Supabase
+  faz a conta em float sobre o preço que a tela carregou, dívida §2 g do FSD). Limite de estoque no
+  servidor (422 `sem_estoque`), produto de outro posto ou inativo é 422 `produto_invalido`,
+  idempotente pela `chave` (nova coluna `VendaProduto.chave_venda`, unique com o produto —
+  `banco/init/05-venda-pelo-pwa.sql`, também no CI). O estoque **não** é descontado, como hoje.
+- **Régua** (`PUT /regua/medicoes`): upsert por tanque e dia (`volume_livro` intocado), janela de
+  escrita da policy aplicada no servidor (`App\Compartilhado\JanelaDoBanco`, que o Fechamento passou a
+  usar também), tanque de outro posto é 422 `tanque_invalido`.
+- **Foto** (`PUT /frentistas/eu/foto`): só a do frentista do token (não há `id` na rota), com o CHECK
+  da coluna (JPEG em data URL, ≤ 40.000) virando 422.
+- **PWA:** com `VITE_API_PWA=1` toda a fachada `services/api.ts` delega para `services/api-pela-api.ts`;
+  o carrinho vai numa chamada com chave estável entre tentativas; a lista e os envios são relidos depois
+  do PIN; a aba Tanques passa a pedir o frentista (a API só grava com token de frentista do posto).
+  Sem a flag, nada muda (`App.test.tsx` intacto).
+- **Prova:** isolamento em cada rota nova (sem token 401, token de gerente 401, frentista do Jorro no
+  BR 403), A não lê histórico/valor nem troca foto do B, `App.api-sem-supabase.test.tsx` falha se o
+  client do Supabase for tocado. 14 canários no backend e 10 no PWA, todos vermelhos e desfeitos.
+  Gates: `composer gates` (330 testes, cobertura 97,7 %), `lint`, `lint:eslint`, `type-check`,
+  vitest 1263/1263 **sem `frontend/.env`**, golden 3536/0 antes e depois. **Nenhuma fórmula mudou.**
+- **Fica para a fatia 3:** aviso ao dono (`notifica-dono`) disparado pelo servidor.
 ### 📊 Relatório Diário pela API — nenhuma chamada ao Supabase no modo API (#103)
 
 - **`GET /api/postos/{posto}/relatorio-diario?data=`** (novo, `App\Agregacao`): todas as linhas de

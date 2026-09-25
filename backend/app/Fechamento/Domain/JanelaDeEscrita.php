@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Fechamento\Domain;
 
+use App\Compartilhado\JanelaDoBanco;
 use Carbon\CarbonImmutable;
 
 /**
@@ -25,21 +26,11 @@ use Carbon\CarbonImmutable;
  */
 final readonly class JanelaDeEscrita
 {
-    /** Primeiro dia que aceita escrita: a leitura de abertura de 31/12/2025. */
-    public const string INICIO = '2025-12-31';
-
-    /** `CURRENT_DATE + INTERVAL '2 days'` é exclusivo: hoje e amanhã entram, depois não. */
-    public const int DIAS_A_FRENTE = 2;
-
     /** @param  ?CarbonImmutable  $hojeUtc  o "hoje"; sem ele, o relógio em UTC — o teste fixa, o Command não */
     public static function aceita(CarbonImmutable $dia, ?CarbonImmutable $hojeUtc = null): bool
     {
-        $diaUtc = $dia->utc()->startOfDay();
-        $inicio = new CarbonImmutable(self::INICIO.' 00:00:00', 'UTC');
-        $hoje = $hojeUtc ?? CarbonImmutable::now('UTC');
-        $limite = $hoje->utc()->startOfDay()->addDays(self::DIAS_A_FRENTE);
-
-        return $diaUtc->greaterThanOrEqualTo($inicio) && $diaUtc->lessThan($limite);
+        // A conta mora em Compartilhado desde a #101 fatia 2: a régua do PWA (Estoque) aplica a mesma.
+        return JanelaDoBanco::aceita($dia, $hojeUtc);
     }
 
     public static function recusa(CarbonImmutable $dia): RecusaDaGravacao
