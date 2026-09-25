@@ -15,11 +15,13 @@
     "@posto/utils": "workspace:*",
     "@supabase/supabase-js": "^2.97.0",
     "lucide-react": "^0.560.0",
+    "neverthrow": "^8.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.12.0",
     "sonner": "^2.0.7",
-    "workbox-window": "^7.4.0"
+    "workbox-window": "^7.4.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

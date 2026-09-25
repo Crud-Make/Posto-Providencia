@@ -1,5 +1,5 @@
 import type React from 'react';
-import ReloadPrompt from './ReloadPrompt';
+import { ReloadPrompt } from '@frentista/shared/ui';
 
 /** Ícone do lucide-react, tipado pelo que estas telas usam. */
 type IconeDeTela = React.ComponentType<{ size?: number; className?: string }>;
