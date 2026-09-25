@@ -12,7 +12,6 @@
 export interface FuelData {
     name: string;
     volume: number;
-    maxCapacity: number;
     color: string;
 }
 

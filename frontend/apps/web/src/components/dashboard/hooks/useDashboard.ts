@@ -9,6 +9,8 @@ import { useState, useEffect } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
 import { usePeriodo } from '../../../contexts/usePeriodo';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
+import { corteDaTelaLigado } from '../../../services/api/base';
+import { frentistasDoFiltroDaApi } from '../../../services/api/dashboard-cadastro.api';
 import type { JanelaDoRateio } from '../../../services/api/dashboard.api';
 import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
@@ -71,7 +73,10 @@ export const useDashboard = () => {
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const frentistasResponse = await frentistaService.getAll(postoAtivoId);
+        // Mesmo corte do `aggregator`: com a tela na API, o filtro também sai da API (#100 fatia 3).
+        const frentistasResponse = corteDaTelaLigado(import.meta.env.VITE_API_DASHBOARD)
+          ? await frentistasDoFiltroDaApi(postoAtivoId)
+          : await frentistaService.getAll(postoAtivoId);
         setFrentistas(isSuccess(frentistasResponse) ? frentistasResponse.data : []);
       } catch (error) {
         console.error("Failed to load filter options", error);
