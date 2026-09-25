@@ -85,10 +85,10 @@ final class DadosDoPeriodo
 
         return array_values($linhas
             ->map(static fn (stdClass $linha): LeituraDoPeriodo => new LeituraDoPeriodo(
-                bicoId: self::inteiro($linha, 'bico_id'),
-                data: self::texto($linha, 'dia'),
-                leituraInicial: self::decimal($linha, 'leitura_inicial'),
-                leituraFinal: self::decimal($linha, 'leitura_final'),
+                bicoId: LinhaDoBanco::inteiro($linha, 'bico_id'),
+                data: LinhaDoBanco::texto($linha, 'dia'),
+                leituraInicial: LinhaDoBanco::decimal($linha, 'leitura_inicial'),
+                leituraFinal: LinhaDoBanco::decimal($linha, 'leitura_final'),
             ))
             ->all());
     }
@@ -125,12 +125,12 @@ final class DadosDoPeriodo
 
         return array_values($linhas
             ->map(static fn (stdClass $linha): ProdutoAgregado => new ProdutoAgregado(
-                combustivelId: self::inteiro($linha, 'combustivel_id'),
-                produto: self::texto($linha, 'produto'),
-                litrosVendidos: self::decimal($linha, 'litros_vendidos'),
-                receita: self::decimal($linha, 'receita'),
-                comprasLitros: self::decimal($linha, 'compras_litros'),
-                comprasValorTotal: self::decimal($linha, 'compras_valor_total'),
+                combustivelId: LinhaDoBanco::inteiro($linha, 'combustivel_id'),
+                produto: LinhaDoBanco::texto($linha, 'produto'),
+                litrosVendidos: LinhaDoBanco::decimal($linha, 'litros_vendidos'),
+                receita: LinhaDoBanco::decimal($linha, 'receita'),
+                comprasLitros: LinhaDoBanco::decimal($linha, 'compras_litros'),
+                comprasValorTotal: LinhaDoBanco::decimal($linha, 'compras_valor_total'),
             ))
             ->all());
     }
@@ -175,39 +175,8 @@ final class DadosDoPeriodo
 
         return new RateioDoMesCivil(
             mesCivil: $mesCivil,
-            despesasTotal: self::decimal($despesas, 'total'),
-            litrosVendidos: self::decimal($litros, 'litros'),
+            despesasTotal: LinhaDoBanco::decimal($despesas, 'total'),
+            litrosVendidos: LinhaDoBanco::decimal($litros, 'litros'),
         );
-    }
-
-    private static function inteiro(stdClass $linha, string $campo): int
-    {
-        $valor = $linha->{$campo} ?? null;
-        if (! is_int($valor)) {
-            throw new LogicException("Coluna {$campo}: esperava inteiro do Postgres.");
-        }
-
-        return $valor;
-    }
-
-    private static function texto(stdClass $linha, string $campo): string
-    {
-        $valor = $linha->{$campo} ?? null;
-        if (! is_string($valor)) {
-            throw new LogicException("Coluna {$campo}: esperava texto do Postgres.");
-        }
-
-        return $valor;
-    }
-
-    /** O PDO pgsql entrega `numeric` como string — é o que garante escala exata e zero float. */
-    private static function decimal(stdClass $linha, string $campo): string
-    {
-        $valor = $linha->{$campo} ?? null;
-        if (! is_string($valor) || ! is_numeric($valor)) {
-            throw new LogicException("Coluna {$campo}: esperava numeric (string decimal) do Postgres.");
-        }
-
-        return $valor;
     }
 }

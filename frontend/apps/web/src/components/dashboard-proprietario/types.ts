@@ -32,6 +32,15 @@ export interface ResumoFinanceiro {
    */
   temDespesa: boolean;
   frentistasAtivos: number;
+  /**
+   * Produtos vendidos no período sem compra lançada no mês. Não vazio = o custo não é
+   * apurável, e a tela mostra o lucro como "não apurável" em vez de um número.
+   *
+   * @remarks Só o caminho da API preenche (DECISÃO 2 de `docs/design/agregacao.md`: sem compra
+   *          não se inventa custo). O caminho Supabase segue a RPC, que cai no `preco_custo` do
+   *          cadastro, e deixa a lista vazia.
+   */
+  produtosSemCompra: readonly string[];
 }
 
 /**

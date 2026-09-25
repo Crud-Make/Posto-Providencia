@@ -12,7 +12,15 @@ import {
   type ResumoEstoque,
 } from '@posto/utils';
 import { somarDias, deIsoLocal } from '@posto/utils';
-import { supabase } from '@/services/supabase';
+import { visaoDoProprietarioPelaApi } from '@/services/api/proprietario.api';
+import {
+  insumosDaApi,
+  insumosDoSupabase,
+  type FornecedorDoBanco,
+  type InsumosDoResumo,
+  type MedicaoDoBanco,
+  type TanqueDoBanco,
+} from './insumos-do-resumo';
 import { intervaloDoMes, type Periodo } from '@/utils/periodo';
 import { hojeIso } from '@/utils/periodo';
 
@@ -64,10 +72,7 @@ export interface ReferenciaProduto {
   readonly tanqueId: number | null;
 }
 
-export interface Fornecedor {
-  readonly id: number;
-  readonly nome: string;
-}
+export type Fornecedor = FornecedorDoBanco;
 
 
 
@@ -76,43 +81,6 @@ interface RetornoHook {
   carregando: boolean;
   erro: string | null;
   recarregar: () => Promise<void>;
-}
-
-interface BicoDoBanco {
-  id: number;
-  numero: number;
-  combustivel_id: number | null;
-}
-
-interface CombustivelDoBanco {
-  id: number;
-  nome: string;
-  codigo: string | null;
-}
-
-interface LeituraDoBanco {
-  data: string;
-  bico_id: number;
-  leitura_inicial: number | string | null;
-  leitura_final: number | string | null;
-  valor_total: number | string | null;
-}
-
-interface CompraDoBanco {
-  combustivel_id: number | null;
-  quantidade_litros: number | string | null;
-  valor_total: number | string | null;
-}
-
-interface TanqueDoBanco {
-  id: number;
-  combustivel_id: number | null;
-}
-
-interface MedicaoDoBanco {
-  tanque_id: number;
-  data: string;
-  volume_fisico: number | string | null;
 }
 
 const num = (valor: number | string | null | undefined): number => Number(valor ?? 0);
@@ -160,46 +128,12 @@ export function useResumoMensal(postoId: number | null, mesIso: string): Retorno
     try {
       const periodo: Periodo = intervaloDoMes(mesIso, hojeIso());
 
-      const [
-        bicosRes,
-        combustiveisRes,
-        leiturasRes,
-        comprasRes,
-        despesasRes,
-        tanquesRes,
-        fornecedoresRes,
-      ] = await Promise.all([
-          supabase.from('Bico').select('id, numero, combustivel_id').eq('posto_id', postoId),
-          supabase.from('Combustivel').select('id, nome, codigo').eq('posto_id', postoId),
-          supabase
-            .from('Leitura')
-            .select('data, bico_id, leitura_inicial, leitura_final, valor_total')
-            .eq('posto_id', postoId)
-            .gte('data', periodo.inicio)
-            .lte('data', periodo.fim),
-          supabase
-            .from('Compra')
-            .select('combustivel_id, quantidade_litros, valor_total')
-            .eq('posto_id', postoId)
-            .gte('data', periodo.inicio)
-            .lte('data', periodo.fim),
-          supabase
-            .from('Despesa')
-            .select('valor')
-            .eq('posto_id', postoId)
-            .gte('data', periodo.inicio)
-            .lte('data', periodo.fim),
-          supabase.from('Tanque').select('id, combustivel_id').eq('posto_id', postoId),
-          supabase.from('Fornecedor').select('id, nome').order('nome'),
-        ]);
-
-      const bicos = (bicosRes.data ?? []) as BicoDoBanco[];
-      const combustiveis = (combustiveisRes.data ?? []) as CombustivelDoBanco[];
-      const leituras = (leiturasRes.data ?? []) as LeituraDoBanco[];
-      const compras = (comprasRes.data ?? []) as CompraDoBanco[];
-      const despesas = (despesasRes.data ?? []) as { valor: number | string | null }[];
-      const tanques = (tanquesRes.data ?? []) as TanqueDoBanco[];
-      const fornecedores = (fornecedoresRes.data ?? []) as Fornecedor[];
+      const insumos = await lerInsumos(postoId, periodo);
+      if (insumos === null) {
+        setErro('Falha ao carregar o resumo mensal.');
+        return;
+      }
+      const { bicos, combustiveis, leituras, compras, despesas, tanques, fornecedores, medicoes } = insumos;
 
       const nomeProduto = new Map(combustiveis.map((c) => [c.id, c.nome]));
       const produtoDoBico = new Map(
@@ -292,8 +226,9 @@ export function useResumoMensal(postoId: number | null, mesIso: string): Retorno
           : null;
 
       // ── Bloco 3: estoque e perda ───────────────────────────────────────────
-      const estoque = await montarEstoque(
+      const estoque = montarEstoque(
         tanques,
+        medicoes,
         nomeProduto,
         periodo,
         compraPorProduto,
@@ -344,6 +279,18 @@ export function useResumoMensal(postoId: number | null, mesIso: string): Retorno
 }
 
 /**
+ * As linhas do mês pela fonte ligada: a API com `VITE_API_PROPRIETARIO` (#100), o Supabase sem.
+ * `null` quando a API falha — a tela mostra o erro em vez de cair no Supabase em silêncio.
+ */
+async function lerInsumos(postoId: number, periodo: Periodo): Promise<InsumosDoResumo | null> {
+  if (!visaoDoProprietarioPelaApi()) return insumosDoSupabase(postoId, periodo);
+  return insumosDaApi(postoId, periodo).match(
+    (lidos) => lidos,
+    () => null,
+  );
+}
+
+/**
  * Dia anterior a uma data ISO local (`aaaa-mm-dd`), sem passar por fuso.
  *
  * @remarks `new Date(iso)` interpreta a string como UTC e, no GMT-3 do posto,
@@ -363,26 +310,16 @@ function diaAnterior(iso: string): string {
  *          de abertura fica de fora: sem ela o estoque teórico seria calculado
  *          a partir de zero e apontaria uma perda inteira que nunca existiu.
  */
-async function montarEstoque(
-  tanques: TanqueDoBanco[],
+function montarEstoque(
+  tanques: readonly TanqueDoBanco[],
+  medicoes: readonly MedicaoDoBanco[],
   nomeProduto: Map<number, string>,
   periodo: Periodo,
   compraPorProduto: Map<string, { litros: number; valor: number }>,
   venda: ResumoProdutos
-): Promise<{ resumo: ResumoEstoque | null; semAbertura: string[] }> {
+): { resumo: ResumoEstoque | null; semAbertura: string[] } {
   if (tanques.length === 0) return { resumo: null, semAbertura: [] };
 
-  const { data } = await supabase
-    .from('HistoricoTanque')
-    .select('tanque_id, data, volume_fisico')
-    .in(
-      'tanque_id',
-      tanques.map((t) => t.id)
-    )
-    .lte('data', periodo.fim)
-    .order('data', { ascending: true });
-
-  const medicoes = (data ?? []) as MedicaoDoBanco[];
   if (medicoes.length === 0) {
     return { resumo: null, semAbertura: [...new Set(tanques.map((t) => produtoDoTanque(t, nomeProduto)))] };
   }
