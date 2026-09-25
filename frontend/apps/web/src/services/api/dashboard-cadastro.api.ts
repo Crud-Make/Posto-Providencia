@@ -35,11 +35,11 @@ export function frentistasPorNome(frentistas: readonly Frentista[]): Frentista[]
     return [...frentistas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-export function cadastroEFechamentoDaApi(postoId: number, dia: string): Promise<CadastroEFechamentoDoDashboard> {
+export function cadastroEFechamentoDaApi(postoId: number, inicio: string, fim: string): Promise<CadastroEFechamentoDoDashboard> {
     return Promise.all([
         comoResposta(lerFrentistasDaApi(postoId).map(frentistasPorNome)),
         comoResposta(lerFormasDePagamentoDaApi(postoId)),
-        comoResposta(lerSessoesDoDiaDaApi(postoId, dia)),
+        comoResposta(lerSessoesDoDiaDaApi(postoId, inicio, fim)),
     ]);
 }
 

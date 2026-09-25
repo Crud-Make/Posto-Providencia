@@ -20,11 +20,14 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final readonly class SessoesDoDia
 {
-    /** @return Collection<int, FechamentoFrentista> */
-    public function __invoke(CarbonImmutable $dia): Collection
+    /**
+     * @param  CarbonImmutable|null  $ultimoDia  último dia do período, inclusive; `null` = só `$dia`.
+     * @return Collection<int, FechamentoFrentista>
+     */
+    public function __invoke(CarbonImmutable $dia, ?CarbonImmutable $ultimoDia = null): Collection
     {
         $inicio = $dia->utc()->startOfDay();
-        $fim = $inicio->addDay();
+        $fim = ($ultimoDia ?? $dia)->utc()->startOfDay()->addDay();
 
         // Offset EXPLÍCITO no valor ligado, pelo mesmo motivo de `LeiturasDoDia`: a conexão está
         // em America/Sao_Paulo, não em UTC, e string sem offset seria lida como horário local.

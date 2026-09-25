@@ -141,9 +141,12 @@ export function paraSessoesDoDia(lidas: readonly SessaoDaApi[], postoId: number)
         .sort((a, b) => a.id - b.id);
 }
 
-/** Sessões dos frentistas do dia (`AAAA-MM-DD`) do posto, lidas da API Laravel. Rota protegida: leva o Bearer da sessão. */
-export function lerSessoesDoDiaDaApi(postoId: number, dia: string): ResultAsync<SessaoDoDia[], ErroDaApi> {
-    const consulta = new URLSearchParams({ data: dia }).toString();
+/**
+ * Sessões dos frentistas do dia (`AAAA-MM-DD`) do posto, lidas da API Laravel. Rota protegida: leva o
+ * Bearer da sessão. Com `ate` (inclusive), o período inteiro — o Dashboard usa; o Fechamento de Caixa não.
+ */
+export function lerSessoesDoDiaDaApi(postoId: number, dia: string, ate?: string): ResultAsync<SessaoDoDia[], ErroDaApi> {
+    const consulta = new URLSearchParams(ate !== undefined && ate !== dia ? { data: dia, ate } : { data: dia }).toString();
     return buscarNaApi(`/api/postos/${postoId}/sessoes?${consulta}`, respostaDeSessoes)
         .map((resposta) => paraSessoesDoDia(resposta.data, postoId));
 }
