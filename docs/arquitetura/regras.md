@@ -55,7 +55,7 @@ Estas regras existem para proteger essa igualdade.
 
 | ID | Regra | Trava | Onde | Estado |
 |---|---|---|---|---|
-| DOM-1 | Nenhuma fórmula de dinheiro muda sem golden master rodando | `bun run test:golden` | `scripts/hooks/pre-push` | ⚠️ PARCIAL — **o CI não roda o golden** (depende de `docs/data/`, gitignored). A trava existe só na máquina do dono |
+| DOM-1 | Nenhuma fórmula de dinheiro muda sem golden master rodando | `bun run test:golden` | `scripts/hooks/pre-push` | ⚠️ PARCIAL — **o CI não roda o golden** (depende de `docs/data/`, gitignored). A trava existe só na máquina do dono. Desde 24/09 o golden é a ÚNICA suíte que o `pre-push` roda (o resto é do CI), com canário em `testa-pre-push.sh` que prova que sinal trocado em `diferenca` barra o push |
 | DOM-2 | Cálculo de domínio mora em `frontend/packages/utils` | — | — | ❌ SEM TRAVA — 8 módulos de fórmula vivem fora hoje, 3 sem golden |
 | DOM-3 | Saída de fórmula é quantizada por `emCentavos` | — | — | ❌ SEM TRAVA — `Math.round(x*100)/100` reescrito à mão em 5 lugares |
 | DOM-4 | `diferenca = concentrador − conferido` | golden | `packages/utils/*.golden.spec.ts` | ✅ ATIVA |
@@ -120,7 +120,8 @@ Origem: *domain-driven-hexagon* (Sairyss), *Clean architecture with TypeScript: 
 Origem: decisão do dono de 20/09/2026 (`docs/architecture.md` §2) e `docs/design/fase-a-laravel.md`
 DECISÃO 5, onde a regra já estava **em prosa, sem ID e sem executor**, desde 17/09.
 
-O gate roda dentro do `composer gates` (Pest), que o `pre-push` e o CI executam. O CI carrega
+O gate roda dentro do `composer gates` (Pest), que o CI executa em todo PR (o `pre-push` deixou de
+rodá-lo em 24/09 — ver §7 do CLAUDE.md). O CI carrega
 `banco/init/01-esquema-base.sql` antes de rodar, então o `information_schema` que o teste consulta é o
 **esquema real**, não uma lista escrita à mão.
 
@@ -186,7 +187,7 @@ exige tipo está inoperante hoje**, não por desligada, mas por falta do parser.
 | TS-9 | Data de calendário nunca por `toISOString().split()` | `no-restricted-syntax` | `frontend/eslint.config.mjs:68-80` | ⚠️ PARCIAL — só no CI |
 | TS-10 | kebab-case em arquivo e pasta | — | — | ❌ SEM TRAVA — 187 de 435 fora do padrão. Dívida aceita; `git mv` em massa colide com o strangler |
 
-> **A assimetria que anula metade das travas:** `pre-commit` e `pre-push` rodam **oxlint**;
+> **A assimetria que anula metade das travas:** o `pre-commit` roda **oxlint** (o `pre-push`, desde 24/09, só o golden);
 > o CI roda **oxlint + eslint**. As regras de *forma* (complexidade) estão no oxlint; as de
 > *conteúdo* (`any`, `toISOString`, e todas as type-aware) estão no eslint. **Quem commita
 > e dá push localmente não é barrado por nenhuma regra de conteúdo.** Fechar essa assimetria
@@ -212,7 +213,7 @@ por último o que acrescenta regra nova.
 1. **DOM-1 no CI.** O golden é a única coisa que separa este sistema de um que erra dinheiro
    em silêncio, e hoje ele só roda na máquina do dono.
 2. **Fechar a assimetria oxlint × eslint** (TS-6, TS-9 e futuras type-aware passam a valer
-   no `pre-push`). Não custa regra nova — só faz valer as que já existem.
+   no `pre-commit`; o `pre-push` já não roda lint desde 24/09). Não custa regra nova — só faz valer as que já existem.
 3. **CA-2:** quebrar `Http` em dois no `deptrac.yaml`. Devolve o dente que o #111 tirou.
 4. **PROC-5:** canário para cada Quality Gate. Sem isso nenhum ✅ desta tabela é confiável.
 5. **FSD-1..4** via `eslint-plugin-boundaries`, escopado **só às pastas FSD**.

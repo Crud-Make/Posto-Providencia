@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🔓 O `pre-push` passa a rodar só o golden (decisão do dono, 24/09)
+
+- **O hook deixa de repetir o CI.** De 18 a 24/09 ele criava um worktree, reinstalava `bun` e
+  `composer` e rodava lint, type-check, vitest, golden e `composer gates`: ~4 min por push para
+  provar o que o CI (`build` + `backend`, obrigatórios na `main` e na `fase-a`) prova de novo no
+  PR. Agora faz duas coisas: recusa push para a `main` e roda `bun run test:golden` (~0,5 s), a
+  única suíte que o CI não consegue rodar porque depende de `docs/data`.
+- **Limite dito no próprio hook:** o golden roda sobre a árvore do checkout, não sobre o commit;
+  quando o commit que sobe não é o HEAD, ou `frontend/` tem mudança não commitada, ele avisa.
+- **Canários novos** em `scripts/hooks/testa-pre-push.sh`: sadio libera, `main` barra, e
+  `diferenca` com o sinal trocado barra pelo golden. Os três conferidos em 24/09.
+- CLAUDE.md §0 e §7, `docs/arquitetura/regras.md` (DOM-1, TEN, assimetria oxlint × eslint) e
+  `docs/design/cutover.md` descrevem o hook como ele é agora.
+
 ### ⛽ A venda do dia do painel passa a vir do encerrante (#103 P8)
 
 - **`useFechamento` troca a fonte do `total_vendas`:** sai `calcularTotais` (float, quantizado
