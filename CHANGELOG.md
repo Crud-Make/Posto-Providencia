@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### 📊 Relatório Diário pela API — nenhuma chamada ao Supabase no modo API (#103)
+
+- **`GET /api/postos/{posto}/relatorio-diario?data=`** (novo, `App\Agregacao`): todas as linhas de
+  `Fechamento` do dia com o nome de quem gravou e as `Despesa` de competência no dia, decimal em string,
+  `null` onde o banco tem `null`. `posto.acesso:gerir` (dado de proprietário, como o `/dashboard`).
+- **Painel atrás de `VITE_API_RELATORIO`** (ausente segue `VITE_API_URL`, `0` fica no Supabase): a tela lê
+  `/relatorio-diario`, `/leituras` e `/dashboard` (compra do mês civil). Sem a flag, o caminho de sempre.
+- **As contas saíram do hook para `montar-relatorio.ts` sem mudar fórmula**, e entraram na trava
+  `so-fable-na-formula.py`. O TS2375 e 2 erros de lint congelados do hook foram pagos na mudança.
+- **Prova:** paridade Supabase × API do relatório inteiro sobre o mesmo dia; modo API com o Supabase
+  mockado para reprovar se tocado; isolamento (Jorro → BR 403, operador 403, sem token 401). Canários
+  listados em `docs/design/painel-pela-api.md` §7. **Nenhuma fórmula de dinheiro mudou.**
 ### 💰 Fechamento de Caixa 100% pela API no modo API (#103)
 
 - **Nenhuma chamada ao Supabase com `VITE_API_URL` + `VITE_API_LOGIN=1`.** Mapeadas as que sobravam

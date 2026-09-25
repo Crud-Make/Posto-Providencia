@@ -126,7 +126,7 @@
   "apps/web/src/components/registro-compras/InputFinanceiro.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/registro-compras/SecaoCompras.tsx|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|@typescript-eslint/no-floating-promises": 1,
-  "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/vendas/analise/components/TabelaVendas.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/vendas/analise/hooks/useAnaliseVendas.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/vendas/analise/hooks/useAnaliseVendas.ts|@typescript-eslint/strict-boolean-expressions": 1,

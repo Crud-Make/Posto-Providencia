@@ -29,4 +29,9 @@ interface ImportMetaEnv {
      */
     readonly VITE_API_LOGIN?: string;
     readonly VITE_API_FORNECEDOR?: string;
+    /**
+     * Corte do Relatório Diário (#103): `1` lê a tela inteira da API — `/relatorio-diario`,
+     * `/leituras` e `/dashboard` —, `0` a deixa no Supabase. Ausente, vale o `VITE_API_URL`.
+     */
+    readonly VITE_API_RELATORIO?: string;
 }
