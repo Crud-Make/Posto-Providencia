@@ -60,6 +60,10 @@ FORMULA = re.compile(
     # saíram do hook para `montar-relatorio.ts`, que as duas fontes (Supabase e API) usam.
     # Antes moravam no `useRelatorioDiario.ts`, fora da trava. O resto da pasta é fonte e tela.
     r"|(^|/)apps/web/src/components/relatorio-diario/hooks/montar-relatorio[\w.-]*\.tsx?$"
+    # [25/09] #103 Análise de Custos: custo do mês, rateio e lucro por produto saíram de
+    # `aggregatorService.fetchProfitabilityData` para `montar-analise.ts`, que as duas fontes usam.
+    # O resto da pasta (fontes, carregador, hook) é dado e tela.
+    r"|(^|/)apps/web/src/components/analise-custos/hooks/montar-analise[\w.-]*\.tsx?$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")

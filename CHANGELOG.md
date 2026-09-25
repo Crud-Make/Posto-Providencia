@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 💹 Análise de Custos pela API — nenhuma chamada ao Supabase no modo API (#103)
+
+- **Sem rota nova:** a tela lê `GET /dashboard?inicio=aaaa-mm-01&fim=aaaa-mm-último` (venda, compras e
+  rateio do mês, `posto.acesso:gerir`) e o catálogo `GET /combustiveis` (nome, código, preço de bomba).
+  Flag **`VITE_API_CUSTOS`** (ausente segue `VITE_API_URL`, `0` deixa no Supabase).
+- **As contas saíram do aggregator** (`fetchProfitabilityData`, −135 linhas) para
+  `components/analise-custos/hooks/montar-analise.ts`, sem mudar fórmula, e entraram na trava
+  `so-fable-na-formula.py`. Duas fontes (`fonte-supabase.ts`, `fonte-da-api.ts`) entregam os mesmos
+  insumos; `carregar-analise.ts` escolhe.
+- **Prova:** PARIDADE Supabase × API com o resultado inteiro igual (`toEqual`), modo API com o client
+  do Supabase mockado para reprovar se tocado, 403 da API vira erro sem cair no Supabase, dinheiro em
+  número cru é fora do contrato. 3 canários vermelhos e desfeitos. **Nenhuma fórmula mudou.**
+- `item.id` passa a ser o `combustivel_id` (era `Estoque.id`, só `key` do React). Design Doc:
+  `docs/design/painel-pela-api.md` §8.
 ### 📵 PWA do frentista pela API — fatia 2: com a flag, nada vai ao Supabase (#101)
 
 - **Leituras pela API**, todas no guard `frentista.do.posto` (o posto vem da rota, o frentista do

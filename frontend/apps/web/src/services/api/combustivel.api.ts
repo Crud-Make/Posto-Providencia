@@ -30,3 +30,26 @@ export function lerNomesDeCombustivelDaApi(postoId: number): ResultAsync<Readonl
         (resposta): ReadonlyMap<number, string> => new Map(resposta.data.map((c) => [c.id, c.nome] as const)),
     );
 }
+
+const decimalEmString = z.string().regex(/^-?\d+(\.\d+)?$/, 'decimal fora de string');
+const combustivelComPreco = z.object({ id: z.number().int(), nome: z.string(), codigo: z.string(), preco_venda: decimalEmString });
+const respostaComPreco = z.object({ data: z.array(combustivelComPreco) });
+
+/** Combustível do catálogo com o preço de bomba atual, já em número. */
+export interface CombustivelComPreco {
+    readonly id: number;
+    readonly nome: string;
+    readonly codigo: string;
+    readonly precoVenda: number;
+}
+
+/**
+ * Catálogo de combustíveis com nome, código e preço de bomba, inativos inclusive — a lista de
+ * produtos da Análise de Custos no modo API (o `Estoque` que o caminho Supabase lê não tem rota, e
+ * é 1:1 com `Combustivel`). `preco_venda` chega como string decimal (`decimal:2` no model).
+ */
+export function lerCombustiveisComPrecoDaApi(postoId: number): ResultAsync<readonly CombustivelComPreco[], ErroDaApi> {
+    return buscarNaApi(`/api/postos/${postoId}/combustiveis`, respostaComPreco).map((resposta) =>
+        resposta.data.map((c) => ({ id: c.id, nome: c.nome, codigo: c.codigo, precoVenda: Number(c.preco_venda) })),
+    );
+}
