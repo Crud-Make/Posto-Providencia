@@ -12,6 +12,17 @@
  */
 export type ErroDeApi =
   | { readonly tipo: 'banco'; readonly mensagem: string }
+  | {
+      /**
+       * A API Laravel (#101) respondeu fora do 2xx. `status` 0 = a API nem está configurada
+       * (`VITE_API_URL` ausente). `codigo` é o `erro.codigo` do envelope (`ja_enviado`,
+       * `fora_da_janela`…), quando veio.
+       */
+      readonly tipo: 'api';
+      readonly status: number;
+      readonly codigo: string | null;
+      readonly mensagem: string;
+    }
   | { readonly tipo: 'rede'; readonly mensagem: string; readonly causa: unknown }
   | { readonly tipo: 'dado_invalido'; readonly mensagem: string };
 
@@ -41,6 +52,22 @@ export function assertUnreachable(valor: never): never {
 }
 
 /**
+ * A exceção de uma recusa da API Laravel, para a fachada legada (que lança) — com `status` e
+ * `codigo` para quem chama distinguir "PIN vencido" (401) de "já enviado" (409).
+ */
+export class RecusaDaApi extends Error {
+  readonly status: number;
+  readonly codigo: string | null;
+
+  constructor(status: number, codigo: string | null, mensagem: string) {
+    super(mensagem);
+    this.name = 'RecusaDaApi';
+    this.status = status;
+    this.codigo = codigo;
+  }
+}
+
+/**
  * Converte o erro da borda na exceção que a fachada legada (`services/api.ts`) sempre lançou.
  *
  * @returns `banco` e `dado_invalido` viram `new Error(mensagem)`, como o `throw new Error(
@@ -52,6 +79,8 @@ export function paraExcecao(erro: ErroDeApi): unknown {
     case 'banco':
     case 'dado_invalido':
       return new Error(erro.mensagem);
+    case 'api':
+      return new RecusaDaApi(erro.status, erro.codigo, erro.mensagem);
     case 'rede':
       return erro.causa;
     default:

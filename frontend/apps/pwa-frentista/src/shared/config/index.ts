@@ -11,3 +11,5 @@ export const POSTO_ID = 1;
  *          caem num turno canônico único e a web mostra o dia inteiro (`getByDate`).
  */
 export const TURNO_CANONICO = 1;
+
+export { pwaPelaApiLigado, urlDaApi } from './api';

@@ -7,6 +7,9 @@ export {
   consolidarFechamento,
   enviarFechamentoFrentista,
 } from './api/fechamento-frentista-api';
+export { enviarTurnoPelaApi } from './api/envio-pela-api';
+export { envioRegistradoSchema, paraEnvioDaApi } from './model/envio-pela-api';
+export type { EnvioDoTurno, EnvioRegistrado, ValoresDoTurno } from './model/envio-pela-api';
 export {
   envioDoDiaSchema,
   enviosDoDiaSchema,

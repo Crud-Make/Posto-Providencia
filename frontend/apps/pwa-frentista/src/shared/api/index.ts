@@ -7,3 +7,6 @@ export { conferirDepoisDeGravar, validar } from './validar';
 export type { RespostaDoSupabase } from './executar';
 export { assertUnreachable, erroDeRede, paraExcecao } from './erros';
 export type { ErroDeApi } from './erros';
+export { postarNaApi } from './http';
+export { apagarDoAparelho, gravarNoAparelho, lerDoAparelho, lerJsonDoAparelho } from './armazenamento';
+export { RecusaDaApi } from './erros';

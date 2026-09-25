@@ -1,8 +1,11 @@
 import type { ResultAsync } from 'neverthrow';
-import { paraExcecao, type ErroDeApi } from '@frentista/shared/api';
+import { paraExcecao, RecusaDaApi, type ErroDeApi } from '@frentista/shared/api';
+import { pwaPelaApiLigado } from '@frentista/shared/config';
+import { esquecerSessao, sessaoGuardada } from '@frentista/entities/sessao-do-frentista';
 import {
   buscarFrentistasAtivos,
   marcarPresencaDoFrentista,
+  marcarPresencaPelaApi,
   salvarFotoDoFrentista,
   type Frentista,
 } from '@frentista/entities/frentista';
@@ -13,7 +16,10 @@ import {
   buscarOuCriarFechamento,
   consolidarFechamento,
   enviarFechamentoFrentista,
+  enviarTurnoPelaApi,
   type EnvioDoDia,
+  type EnvioRegistrado,
+  type ValoresDoTurno,
   type FechamentoFrentistaPayload,
   type ItemDoHistorico,
   type LinhaCriada,
@@ -54,6 +60,11 @@ const desembrulhar = <T,>(resultado: ResultAsync<T, ErroDeApi>): Promise<T> =>
     (valor) => valor,
     (erro) => { throw paraExcecao(erro); },
   );
+
+/** 401 da API: o token venceu ou foi revogado (PIN trocado, frentista desativado). Pede o PIN de novo. */
+const esquecerSe401 = (erro: ErroDeApi): void => {
+  if (erro.tipo === 'api' && erro.status === 401) esquecerSessao();
+};
 
 export const api = {
   /** Busca Frentistas ativos do Posto */
@@ -119,14 +130,52 @@ export const api = {
     return desembrulhar(registrarVenda(payload));
   },
 
+  /** `true` quando este aparelho tem sessão (PIN digitado neste turno) do frentista. Só vale com a API ligada. */
+  temSessao(frentistaId: number): boolean {
+    return sessaoGuardada(frentistaId) !== null;
+  },
+
+  /**
+   * Envia o turno pela API (#101), com o token da sessão do frentista.
+   *
+   * @remarks Sem sessão válida lança `RecusaDaApi` 401 SEM ir à rede — a tela pede o PIN. Um 401
+   *          da API também apaga a sessão guardada. 409 (`ja_enviado`, `chave_reutilizada`) e 422
+   *          (`fora_da_janela`) sobem como `RecusaDaApi` com a mensagem do servidor.
+   */
+  enviarTurnoPelaApi(postoId: number, frentistaId: number, dataStr: string, chave: string, valores: ValoresDoTurno): Promise<EnvioRegistrado> {
+    const sessao = sessaoGuardada(frentistaId);
+    if (sessao === null) {
+      return Promise.reject(new RecusaDaApi(401, 'sem_sessao', 'Digite o PIN de novo para enviar.'));
+    }
+    return desembrulhar(enviarTurnoPelaApi(postoId, sessao.token, dataStr, chave, valores).mapErr((erro) => {
+      esquecerSe401(erro);
+      return erro;
+    }));
+  },
+
   /**
    * Sinal de vida: registra que o app está aberto com este frentista selecionado.
    *
    * @remarks Falha em silêncio: presença é conveniência, e um erro do banco aqui não pode
    *          atrapalhar o frentista que está tentando fechar o caixa. Rejeição de rede sobe
    *          como antes (quem chama faz `void`).
+   *
+   *          Com a API ligada (#101), vai pela API com o token da sessão; sem sessão (PIN ainda
+   *          não digitado neste turno) não bate — a API não aceitaria.
    */
   async marcarPresenca(frentistaId: number, postoId: number): Promise<void> {
+    if (pwaPelaApiLigado()) {
+      const sessao = sessaoGuardada(frentistaId);
+      if (sessao === null) return;
+      await marcarPresencaPelaApi(postoId, sessao.token).match(
+        () => undefined,
+        (erro) => {
+          esquecerSe401(erro);
+          console.warn('[presenca] sinal não registrado:', erro.mensagem);
+        },
+      );
+      return;
+    }
     await marcarPresencaDoFrentista(frentistaId, postoId).match(
       () => undefined,
       (erro) => {

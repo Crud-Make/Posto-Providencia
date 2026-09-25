@@ -1,5 +1,6 @@
 import type { ResultAsync } from 'neverthrow';
-import { executar, supabase, validar, type ErroDeApi } from '@frentista/shared/api';
+import { z } from 'zod';
+import { executar, postarNaApi, supabase, validar, type ErroDeApi } from '@frentista/shared/api';
 import { listaDeFrentistasSchema, type Frentista } from '../model/schema';
 
 /**
@@ -55,4 +56,12 @@ export function marcarPresencaDoFrentista(frentistaId: number, postoId: number):
       .from('PresencaFrentista')
       .upsert({ frentista_id: frentistaId, posto_id: postoId }, { onConflict: 'frentista_id' }),
   ).map(() => undefined);
+}
+
+/**
+ * Sinal de vida pela API (#101): o frentista é o do TOKEN, e `visto_em` é a hora do servidor
+ * (trigger `carimba_visto_em`), como no caminho do Supabase. A resposta é 204.
+ */
+export function marcarPresencaPelaApi(postoId: number, token: string): ResultAsync<void, ErroDeApi> {
+  return postarNaApi(`/api/postos/${postoId}/presenca`, {}, token, z.null()).map(() => undefined);
 }

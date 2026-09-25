@@ -10,7 +10,10 @@ import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/util
 import { api } from './services/api';
 import { abaSecundaria } from './screens/aba-secundaria';
 import { ReloadPrompt } from '@frentista/shared/ui';
-import { POSTO_ID, TURNO_CANONICO } from '@frentista/shared/config';
+import { POSTO_ID, TURNO_CANONICO, pwaPelaApiLigado } from '@frentista/shared/config';
+import { RecusaDaApi } from '@frentista/shared/api';
+import { PedirPin } from '@frentista/features/entrar-com-pin';
+import { useChaveDoEnvio } from '@frentista/features/envio-pela-api';
 import { abaSalvaOuPadrao, dataFechamentoInicial, formatCurrency } from '@frentista/shared/lib';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
 import { reduzirParaAvatar, iniciais, mensagemDeFoto } from '@frentista/entities/frentista';
@@ -220,6 +223,9 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   });
   const [frentistas, setFrentistas] = useState<FrentistaSelecionavel[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // API ligada (#101): o frentista escolhido na lista só vira o selecionado depois do PIN.
+  const [pinPara, setPinPara] = useState<FrentistaSelecionavel | null>(null);
+  const { chavePara, esquecer: esquecerChave } = useChaveDoEnvio();
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const [salvandoFoto, setSalvandoFoto] = useState(false);
 
@@ -428,13 +434,10 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
       // dia caem num turno canônico único e a web mostra o dia inteiro (getByDate).
       const turnoId = TURNO_CANONICO;
 
-      // Chama a lógica inteligente da interface
-      const fechamentoId = await api.getOrCreateFechamento(postoId, dataStr, turnoId);
-
-      const payload = {
-        fechamento_id: fechamentoId,
-        frentista_id: selectedFrentista.id,
-        posto_id: postoId,
+      // Os valores do payload, os MESMOS nos dois caminhos (contrato §2(a) de
+      // docs/design/pwa-frentista-fsd.md). Pela API (#101) o servidor decide o pai,
+      // o frentista (do token) e o posto; pelo Supabase, o payload de sempre.
+      const valores = {
         encerrante: valueEncerrante,
         valor_pix: parseInt(payments.pix.replace(/\D/g, ''), 10) / 100 || 0,
         valor_dinheiro: parseInt(payments.dinheiro.replace(/\D/g, ''), 10) / 100 || 0,
@@ -449,12 +452,28 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         observacoes: "Fechamento via PWA Frentista"
       };
 
-      const enviado = await api.submitFrentistaClosing(payload) as { id?: number } | null;
+      if (pwaPelaApiLigado()) {
+        const assinatura = JSON.stringify([dataStr, selectedFrentista.id, valores]);
+        await api.enviarTurnoPelaApi(postoId, selectedFrentista.id, dataStr, chavePara(assinatura), valores);
+        esquecerChave();
+      } else {
+        // Chama a lógica inteligente da interface
+        const fechamentoId = await api.getOrCreateFechamento(postoId, dataStr, turnoId);
 
-      // Dispara e segue, sem `await`: o frentista não deve esperar a rede do
-      // aviso para ver "enviado com sucesso", e `avisarDono` engole os próprios
-      // erros de propósito — o porquê está no JSDoc dela.
-      if (enviado?.id) void api.avisarDono(enviado.id);
+        const payload = {
+          fechamento_id: fechamentoId,
+          frentista_id: selectedFrentista.id,
+          posto_id: postoId,
+          ...valores,
+        };
+
+        const enviado = await api.submitFrentistaClosing(payload) as { id?: number } | null;
+
+        // Dispara e segue, sem `await`: o frentista não deve esperar a rede do
+        // aviso para ver "enviado com sucesso", e `avisarDono` engole os próprios
+        // erros de propósito — o porquê está no JSDoc dela.
+        if (enviado?.id) void api.avisarDono(enviado.id);
+      }
 
       setEnviosVersao((v) => v + 1);
       setConfirmarDataDiferente(false);
@@ -468,6 +487,8 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
       // Desarma a confirmação de data: sem isso o próximo toque enviaria direto,
       // sem o "sim" consciente que a data diferente de hoje exige.
       setConfirmarDataDiferente(false);
+      // Sessão vencida (fim do turno, PIN trocado): pede o PIN de novo; os valores ficam na tela.
+      if (err instanceof RecusaDaApi && err.status === 401) setPinPara(selectedFrentista);
       setDialog({ isOpen: true, title: 'Erro', message: err instanceof Error ? err.message : 'Ocorreu um erro no servidor.', type: 'error' });
     } finally {
       setIsSubmitting(false);
@@ -756,10 +777,20 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
           frentistas={frentistas}
           selecionado={selectedFrentista}
           aoEscolher={(frentista) => {
-            setSelectedFrentista(frentista);
             setIsModalOpen(false);
+            if (pwaPelaApiLigado() && !api.temSessao(frentista.id)) setPinPara(frentista);
+            else setSelectedFrentista(frentista);
           }}
           aoFechar={() => setIsModalOpen(false)}
+        />
+      )}
+
+      {pinPara !== null && (
+        <PedirPin
+          postoId={POSTO_ID}
+          frentista={pinPara}
+          aoEntrar={() => { setSelectedFrentista(pinPara); setPinPara(null); }}
+          aoCancelar={() => setPinPara(null)}
         />
       )}
 
