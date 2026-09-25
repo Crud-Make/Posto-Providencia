@@ -28,6 +28,12 @@ interface ImportMetaEnv {
      * lista que a API devolve. Exige `VITE_API_URL`. Ausente, o login continua no Supabase.
      */
     readonly VITE_API_LOGIN?: string;
+    /**
+     * Corte do Registro de Compras (#103) — o nome ficou do primeiro pedaço que migrou (a lista de
+     * fornecedores). `1` põe a tela INTEIRA na API: fornecedores, vendas, compras e régua do mês
+     * (catálogo + `/movimento`), despesa (`/dashboard`) e o "Salvar" (`POST /compras`). `0` a deixa
+     * inteira no Supabase. Ausente, vale o `VITE_API_URL`.
+     */
     readonly VITE_API_FORNECEDOR?: string;
     /**
      * Corte do Relatório Diário (#103): `1` lê a tela inteira da API — `/relatorio-diario`,

@@ -82,6 +82,9 @@ function direcaoPermitidaEntreModulos(): array
         'Pessoas' => [],
         // Estoque ouve LeiturasDoDiaGravadas, que mora em Compartilhado: não conhece Fechamento.
         'Estoque' => [],
+        // Compras (#103, Registro de Compras) soma no Estoque e no Tanque e grava a régua por query
+        // builder: não conhece App\Estoque nem App\Cadastro (CA-7).
+        'Compras' => [],
     ];
 }
 

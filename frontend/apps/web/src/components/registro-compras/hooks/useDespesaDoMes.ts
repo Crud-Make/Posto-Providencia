@@ -17,12 +17,17 @@
  * do decimal da API, quantizado por `emCentavos`, sem somar de novo. Em erro, o hook segura o
  * último valor bom e expõe o erro (console e {@link useDespesaDoMesComErro}), nunca troca por 0
  * calado (decisão do dono, 22/09/2026). Sem API, o caminho Supabase segue como estava.
+ *
+ * #103 (Registro de Compras 100% pela API): a fonte segue a flag DA TELA
+ * (`registroDeComprasPelaApi`, `VITE_API_FORNECEDOR`), não mais só o `VITE_API_URL` — com a tela
+ * no Supabase (`=0`), a despesa também fica lá, e a tela nunca mistura os dois motores.
  */
 import { useEffect, useState } from 'react';
 import { emCentavos } from '@posto/utils';
 import type { ResultAsync } from 'neverthrow';
 import { supabase } from '../../../services/supabase';
-import { urlDaApi, type ErroDaApi } from '../../../services/api/base';
+import type { ErroDaApi } from '../../../services/api/base';
+import { registroDeComprasPelaApi } from '../../../services/api/compras.api';
 import { lerDashboardDaApi } from '../../../services/api/dashboard.api';
 import { mesCivil } from '../../../utils/periodo';
 
@@ -53,7 +58,7 @@ export const useDespesaDoMesComErro = (postoId: number | null, mesIso: string): 
         if (postoId === null || postoId === 0) return;
         let ativo = true;
 
-        if (urlDaApi() !== null) {
+        if (registroDeComprasPelaApi()) {
             void lerDespesaDoMes(postoId, mesIso).match(
                 valor => {
                     if (!ativo) return;

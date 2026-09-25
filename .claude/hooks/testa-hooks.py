@@ -335,6 +335,11 @@ CASOS_FORMULA_COBERTURA = [
     ("frontend/apps/web/src/components/analise-custos/hooks/fonte-da-api.ts", False),
     ("frontend/apps/web/src/components/analise-custos/hooks/carregar-analise.ts", False),
     ("frontend/apps/web/src/components/analise-custos/hooks/useAnaliseCustos.ts", False),
+    # [25/09] #103 Registro de Compras: as contas do mês, não a fonte nem o hook de tela
+    ("frontend/apps/web/src/components/registro-compras/hooks/montarRegistroDoMes.ts", True),
+    ("frontend/apps/web/src/components/registro-compras/hooks/montarRegistroDeCompras.ts", True),
+    ("frontend/apps/web/src/components/registro-compras/hooks/montarRegistroDoMes.test.ts", False),
+    ("frontend/apps/web/src/components/registro-compras/hooks/fonteDoRegistro.ts", False),
 ]
 
 

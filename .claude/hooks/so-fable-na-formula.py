@@ -64,6 +64,10 @@ FORMULA = re.compile(
     # `aggregatorService.fetchProfitabilityData` para `montar-analise.ts`, que as duas fontes usam.
     # O resto da pasta (fontes, carregador, hook) é dado e tela.
     r"|(^|/)apps/web/src/components/analise-custos/hooks/montar-analise[\w.-]*\.tsx?$"
+    # [25/09] #103 Registro de Compras: custo, compra e régua do mês saíram do hook para
+    # `montarRegistroDoMes.ts` e `montarRegistroDeCompras.ts`, que as duas fontes usam.
+    # `fonteDoRegistro.ts` e o hook de tela são dado e tela.
+    r"|(^|/)apps/web/src/components/registro-compras/hooks/montarRegistro(DoMes|DeCompras)[\w.-]*\.tsx?$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")
