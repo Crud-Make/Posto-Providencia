@@ -13,7 +13,7 @@ import { ReloadPrompt } from '@frentista/shared/ui';
 import { POSTO_ID, TURNO_CANONICO } from '@frentista/shared/config';
 import { abaSalvaOuPadrao, dataFechamentoInicial, formatCurrency } from '@frentista/shared/lib';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
-import { reduzirParaAvatar, iniciais } from './lib/foto';
+import { reduzirParaAvatar, iniciais, mensagemDeFoto } from '@frentista/entities/frentista';
 import { hojeIso } from '@posto/utils';
 import type { TabType, FrentistaSelecionavel } from './lib/tipos';
 
@@ -281,7 +281,20 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     const alvo = selectedFrentista;
     setSalvandoFoto(true);
     try {
-      const avatar = await reduzirParaAvatar(arquivo);
+      // A redução devolve Result (RES-1): a falha dela não passa pelo `catch`.
+      // O `catch` abaixo segue só para `api.salvarFotoFrentista`, que ainda é
+      // legada e lança (Decisão B do Design Doc pwa-frentista-fsd).
+      const reduzido = await reduzirParaAvatar(arquivo);
+      if (reduzido.isErr()) {
+        setDialog({
+          isOpen: true,
+          title: 'Não deu para salvar a foto',
+          message: mensagemDeFoto(reduzido.error),
+          type: 'error',
+        });
+        return;
+      }
+      const avatar = reduzido.value;
       await api.salvarFotoFrentista(alvo.id, avatar);
 
       setSelectedFrentista(atual => (atual && atual.id === alvo.id ? { ...atual, foto: avatar } : atual));

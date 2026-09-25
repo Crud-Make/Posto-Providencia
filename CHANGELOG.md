@@ -2,6 +2,23 @@
 
 ## [Não Lançado]
 
+### 🧱 PWA do frentista no FSD — a fatia curta do lote 2 fecha, e a ponte `src/lib/foto.ts` morre
+
+- **O `App.tsx` consome o `Result` da foto (RES-2).** O import saiu de `./lib/foto` para
+  `@frentista/entities/frentista`. Em `trocarFoto`, o `Err` da redução abre o **mesmo** dialog de antes
+  ("Não deu para salvar a foto" + a frase de `mensagemDeFoto`) e **não** chama `api.salvarFotoFrentista`.
+  A falha de `api.salvarFotoFrentista` segue no `try/catch`, porque a `api` ainda é legada e lança
+  (Decisão B do Design Doc). `setSalvandoFoto(false)` continua no `finally`.
+- **A ponte legada `src/lib/foto.ts` foi apagada.** O `App.tsx` era o único importador (conferido por grep).
+  Nenhum teste existia só para ela; os 9 testes da entity ficam.
+- **`VendasScreen.tsx` usa `POSTO_ID` de `@frentista/shared/config`** nas duas `api.getProdutos`, como o
+  `TanquesScreen`. O float de `valor_total` fica literal (contrato §2 g).
+- **Prova:** `App.foto.test.tsx` (novo, 3 casos: erro da redução, sucesso, falha ao salvar). Canário: tirar o
+  `return` do `Err` e seguir para o salvar deixou o caso de erro vermelho ("expected vi.fn() to not be
+  called"); a mutação foi desfeita. `App.test.tsx` intocado. Gates: `lint` limpo, catraca de `tsc` e ESLint sem
+  erro novo (as contagens de `App.tsx` e `VendasScreen.tsx` não mudaram), vitest 1016/1016, golden 3296/0
+  antes e depois. **Nenhuma fórmula de dinheiro mudou.**
+
 ### 🧱 PWA do frentista no FSD — fatia curta do lote 2: foto em `ResultAsync`, `POSTO_ID` de `shared/config` e o `CHECK` dos tanques dentro do schema
 
 - **A foto do frentista virou entity e parou de lançar.** `src/lib/foto.ts` (95 linhas, 2 `throw`) virou

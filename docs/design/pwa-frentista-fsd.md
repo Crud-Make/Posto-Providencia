@@ -2,7 +2,7 @@
 
 **Módulo:** `frontend/apps/pwa-frentista` · **Branch:** `refactor/pwa-frentista-fsd`
 **Trabalho-pai:** #101 (o PWA pela API Laravel) — esta refatoração é a preparação de terreno.
-**Estado:** aprovado · P7–P8 implementados; **metade da fatia curta do lote 2 entregue** (`977840b`) · P9–P12 pendentes · **Data:** 19/09/2026 (plano), 24/09/2026 (transcrição, revisada contra medição)
+**Estado:** aprovado · P7–P8 implementados; **fatia curta do lote 2 completa** (`977840b` + o fechamento em Opus 5.5, 24/09) · P9–P12 pendentes · **Data:** 19/09/2026 (plano), 24/09/2026 (transcrição, revisada contra medição)
 **Idioma:** pt-BR
 
 > Este documento existe porque até 24/09 o plano do lote 2 só vivia no transcript da sessão de 19/09.
@@ -40,6 +40,7 @@ Conferido no filesystem da worktree `pp-pwa-fsd`, não suposto:
 | **P7b** | `shared/config` + `shared/lib` com funções puras | ✅ feito |
 | **P7c** | borda `shared/api` com `ResultAsync`, `ErroDeApi`, `assertUnreachable` | ✅ feito |
 | **P8** | entities com `ResultAsync` + Zod; `services/api.ts` vira fachada | ✅ feito (`eedb410`) |
+| **Fatia curta (§6)** | foto na entity, `POSTO_ID` nas telas, `CHECK` dos tanques no schema | ✅ completa — metade em `977840b`; o `App.tsx` e o `VendasScreen.tsx` fechados em 24/09 por Opus 5.5; a ponte `src/lib/foto.ts` **morreu** |
 | **P9** | `features/enviar-fechamento` | ⛔ **pendente — bloqueado por decisão do dono** |
 | **P10** | `widgets/*` + `features/trocar-foto` | ⛔ pendente |
 | **P11** | `pages/*`, `app/`, remoção do legado | ⛔ **pendente — bloqueado por decisão do dono** |
@@ -55,8 +56,8 @@ Conferido no filesystem da worktree `pp-pwa-fsd`, não suposto:
    `src/lib/foto.ts` com os 3 `TS2532` vivos, apesar de a mensagem prometer o contrário.
    **Resolvido no `977840b`**: a implementação foi para `entities/frentista/lib/foto.ts` (170
    linhas, `ResultAsync`) e `src/lib/foto.ts` virou ponte legada de 42 linhas; a chave
-   `lib/foto.ts|TS2532: 3` saiu do `.catraca/tsc.json`. O que resta da pendência 1 da §6 é
-   **trocar o import do `App.tsx`**, não mover o arquivo.
+   `lib/foto.ts|TS2532: 3` saiu do `.catraca/tsc.json`. A troca do import do `App.tsx`, que era
+   o que restava, também foi feita (24/09, Opus 5.5), e a ponte foi apagada — ver §6.
 3. **O `test:golden` não cobre o PWA.** Não existe nenhum `*.golden.spec.ts` sob
    `apps/pwa-frentista` — os 3296 testes do golden vivem em `packages/utils` e no `apps/web`.
    A rede de segurança real deste módulo é o `App.test.tsx` + `services/api.test.ts`. Isso não
@@ -235,19 +236,18 @@ dinheiro. Deliberadamente **não** incluem P9 nem P11.
 | 2 | `POSTO_ID` de `shared/config` nas duas telas | `VendasScreen.tsx:46,:101` (`getProdutos(1)`), `TanquesScreen.tsx:18,:47` | `shared/config` já exporta `POSTO_ID = 1`; as telas o ignoram |
 | 3 | Schemas de `volume_fisico` espelhando o `CHECK` | `entities/tanque/model/schema.ts` | o `CHECK` exige `>= 0`; o TS não representa |
 
-**Estado entregue em 24/09 — a fatia fechou pela metade, e não por escolha:**
+**Estado entregue em 24/09: a fatia está completa.** A primeira metade entrou em `977840b`, e a segunda foi fechada por Opus 5.5 na mesma data.
 
 | # | O que entrou | O que ficou |
 |---|---|---|
-| 1 | `entities/frentista/lib/foto.ts` com `ResultAsync`, os 4 erros, `mensagemDeFoto` e o teste (9 casos); 3 `TS2532` zerados; `src/lib/foto.ts` virou **ponte legada** que preserva o contrato de `throw` | trocar o import do `App.tsx` por `@frentista/entities/frentista` e consumir o `Result` — **barrado pela trava** |
-| 2 | `TanquesScreen.tsx` sem o literal `POSTO_ID` | as duas `api.getProdutos(1)` do `VendasScreen.tsx` — **barrado pela trava** |
+| 1 | `entities/frentista/lib/foto.ts` com `ResultAsync`, os 4 erros, `mensagemDeFoto` e o teste (9 casos); 3 `TS2532` zerados. Depois disso o `App.tsx` importa de `@frentista/entities/frentista`: o `Err` da redução abre o mesmo dialog de antes e não chama `api.salvarFotoFrentista`; a falha do salvar segue no `try/catch` (Decisão B). A ponte `src/lib/foto.ts` foi **apagada**. Prova: `App.foto.test.tsx` (3 casos, com canário) | nada |
+| 2 | `TanquesScreen.tsx` e `VendasScreen.tsx` (as duas `api.getProdutos`) leem `POSTO_ID` de `shared/config` | nada. O float de `valor_total` fica literal (§2 g) |
 | 3 | `medicaoParaGravarSchema` + `.nonnegative()` na leitura + validação antes da rede + 11 testes | nada |
 
-**Quem pode escrever cada uma (medido em 24/09, ver §7 risco 3):** o que sobra dos itens 1 e 2 cai sob
-o `so-fable-na-formula` — **só Opus 5.5/Fable**, e com o provedor em DeepSeek **nem o subagente com
-`model: 'opus'` passa** (a trava lê o transcript, e o provedor reescreve o alias). Destravar exige
-`claude-provedor` no Anthropic e sessão nova. O resto — `entities/**` e `TanquesScreen.tsx` — passa em
-qualquer modelo.
+**Quem pôde escrever cada uma (medido em 24/09, ver §7 risco 3):** o `App.tsx` e o `VendasScreen.tsx`
+caem sob o `so-fable-na-formula`, então só Opus 5.5 ou Fable escrevem neles. Com o provedor em DeepSeek, a trava
+barrou até o subagente com `model: 'opus'`. O fechamento só aconteceu com o `claude-provedor` de volta no
+Anthropic, em sessão nova. `entities/**` e `TanquesScreen.tsx` passam em qualquer modelo.
 
 **Fora do escopo, explicitamente:** os 8 `n || 0` de dinheiro (Decisão A), o destino de
 `services/api.ts` (Decisão B), o float de `VendasScreen:82/:94`, o `diff > 0` de `Historico:79`.
@@ -300,7 +300,8 @@ A coluna é `numeric(10,2)` (`:290`). Consequências para o schema:
    `deepseek/deepseek-v4.1-flash`, que é o campo que `modelo_de()` lê (`:112-162`). Subagente com
    `model: 'opus'` foi despachado e **negado**, com a mesma mensagem. Ou seja: nestas condições,
    destravar exige **trocar o provedor** (Anthropic) e abrir sessão nova — não basta pedir o modelo
-   no `Agent`. A ponte de `src/lib/foto.ts` existe exatamente por isso (§6).
+   no `Agent`. Foi por isso que a ponte `src/lib/foto.ts` existiu entre o `977840b` e o fechamento
+   de 24/09. Ela já foi apagada (§6).
 4. **O hook `dinheiro-quantiza-por-emcentavos.py`** casa `frontend/apps/*/src` e pode disparar se o
    `VendasScreen` (float em `:82/:94`) for movido. A regra é **parar e registrar, não contornar**.
 5. **Colisão com o PR #128** (`feat/#102-guard-token-atual`, tip `3d4553f`) — agora **medida**: o

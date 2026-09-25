@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingBag, ChevronLeft, Package, Minus, Plus, Check } from 'lucide-react';
 import { api } from '../services/api';
+import { POSTO_ID } from '@frentista/shared/config';
 
 interface VendasProps {
     frentistaId: number;
@@ -43,7 +44,7 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
 
     useEffect(() => {
         Promise.all([
-            api.getProdutos(1),
+            api.getProdutos(POSTO_ID),
             api.getVendasProdutoHoje(frentistaId)
         ]).then(([prods, vendas]) => {
             setProdutos(prods);
@@ -98,7 +99,7 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
             setCarrinho([]);
             // Refresh
             const [prods, vendas] = await Promise.all([
-                api.getProdutos(1),
+                api.getProdutos(POSTO_ID),
                 api.getVendasProdutoHoje(frentistaId)
             ]);
             setProdutos(prods);
