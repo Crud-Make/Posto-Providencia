@@ -14,6 +14,33 @@
 - **Prova:** paridade Supabase × API do relatório inteiro sobre o mesmo dia; modo API com o Supabase
   mockado para reprovar se tocado; isolamento (Jorro → BR 403, operador 403, sem token 401). Canários
   listados em `docs/design/painel-pela-api.md` §7. **Nenhuma fórmula de dinheiro mudou.**
+### 💰 Fechamento de Caixa 100% pela API no modo API (#103)
+
+- **Nenhuma chamada ao Supabase com `VITE_API_URL` + `VITE_API_LOGIN=1`.** Mapeadas as que sobravam
+  na tela e nas abas dela, e trocadas no call site (sem a flag, o caminho de hoje fica intacto):
+  encerrante inicial de dia novo (`getLastReading` → `GET /leituras/ultimas?antes_de=`, rota nova, com
+  `DISTINCT ON` e sem o teto de 200 linhas que fazia um bico parado nascer com `0,000`); resumo mensal
+  por frentista da aba Detalhamento (`getByPeriodo` → `GET /sessoes?data=&ate=` + catálogo); aba
+  Fechamento Mensal (RPC `get_fechamento_mensal` → `GET /fechamento-mensal/{ano}/{mes}`, rota nova em
+  `App\Agregacao`; encerrantes por `GET /leituras?data=&ate=` + catálogo de bicos, na mesma
+  consolidação extraída para `encerrantes-do-mes.ts`).
+- **Remover envio de frentista não apaga na hora pela API**: o frentista fica em
+  `frentistas_conhecidos[]` e o `PUT /fechamento` do Salvar o apaga na mesma transação (§7 (c)). A
+  marca `[CONFERIDO]` vai em `observacoes` no mesmo PUT.
+- **Tempo real desligado de forma explícita no login pela API** (`useTempoRealDoFechamento`): os três
+  canais do Supabase não abrem; a aba Leituras mostra o aviso e o botão "Recarregar do servidor". Sem
+  polling — o realtime vai para o Laravel depois (decisão do dono, 21/09). Com login no Supabase os
+  canais seguem como eram.
+- **Receitas e Despesas** não tem rota no Laravel: no login pela API a aba avisa e não chama o Supabase.
+- **Lucro na aba Fechamento Mensal pela API sai "—"**: a rota nova devolve volume, faturamento, litros
+  por combustível e status do dia (paridade com a RPC provada em teste), mas **não** o lucro da RPC
+  (`preco_custo` de hoje, taxa chumbada, sem despesa — `agregacao.md` §0). O que pôr no lugar é decisão
+  do dono.
+- **Prova:** teste de ponta a ponta que monta a tela inteira no modo API com o client do Supabase
+  lançando em qualquer acesso; isolamento das rotas novas (sem token 401, gerente do Jorro 403 no BR,
+  operador não grava); 15 canários (6 no backend, 9 no front), todos vermelhos com a trava muda. Gates:
+  `composer gates` (294 testes, cobertura 97,6 %), `lint`, `lint:eslint`, `type-check`, vitest
+  1258/1258 sem `frontend/.env`, golden 3536/0 antes e depois. **Nenhuma fórmula de dinheiro mudou.**
 
 ### 🔐 PWA do frentista pela API — fatia 1: PIN por frentista, envio do turno e presença (#101)
 

@@ -33,7 +33,10 @@ import { useFechamento } from './hooks/useFechamento';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useSubmissaoFechamento } from './hooks/useSubmissaoFechamento';
 import type { SessaoFrentista } from '../../types/fechamento';
-import { supabase } from '../../services/supabase';
+import { loginPelaApiLigado } from '../../services/api/base';
+import { useTempoRealDoFechamento } from './hooks/useTempoRealDoFechamento';
+import { AvisoSemTempoReal } from './components/AvisoSemTempoReal';
+import { AbaForaDaApi } from './components/AbaForaDaApi';
 
 // Subcomponentes
 import { HeaderFechamento } from './components/HeaderFechamento';
@@ -83,7 +86,7 @@ const TelaFechamentoDiario: React.FC = () => {
 
    const {
       sessoes: frentistaSessions, carregando: loadingSessoes,
-      carregarSessoes, alterarCampoFrentista, aoSairCampoFrentista, definirSessoes, removerFrentista
+      carregarSessoes, alterarCampoFrentista, aoSairCampoFrentista, definirSessoes, removerFrentista, frentistasRemovidosEm
    } = useSessoesFrentistas(postoAtivoId, frentistas);
 
    const {
@@ -93,58 +96,9 @@ const TelaFechamentoDiario: React.FC = () => {
       sincronizarComSessoes
    } = usePagamentos(postoAtivoId);
 
-   // --- 🔴 REALTIME: Escuta envios do PWA em tempo real ---
-   useEffect(() => {
-      const channel = supabase
-         .channel('pwa-envios-realtime')
-         .on(
-            'postgres_changes',
-            {
-               event: '*',
-               schema: 'public',
-               table: 'FechamentoFrentista'
-            },
-            (payload) => {
-               console.log('🔔 Alteração de FechamentoFrentista detectada em tempo real:', payload.eventType, payload);
-               // Recarrega as sessões forçando refresh
-               if (selectedDate) {
-                  carregarSessoes(selectedDate, true);
-               }
-            }
-         )
-         .subscribe((status) => {
-            console.log('📡 Realtime status:', status);
-         });
-
-      return () => {
-         supabase.removeChannel(channel);
-      };
-   }, [selectedDate, carregarSessoes]);
-
-   // --- 🔴 REALTIME: Escuta leituras de bico (OCR encerrante) em tempo real ---
-   useEffect(() => {
-      const channel = supabase
-         .channel('leituras-bico-realtime')
-         .on(
-            'postgres_changes',
-            {
-               event: '*',
-               schema: 'public',
-               table: 'Leitura'
-            },
-            (payload) => {
-               console.log('🔔 Alteração de Leitura detectada em tempo real:', payload.eventType, payload);
-               carregarLeituras(true);
-            }
-         )
-         .subscribe((status) => {
-            console.log('📡 Realtime status (Leitura):', status);
-         });
-
-      return () => {
-         supabase.removeChannel(channel);
-      };
-   }, [carregarLeituras]);
+   // --- Tempo real: envios do PWA e leituras por foto. Desligado no modo API (sem sessão do
+   // Supabase e sem o realtime do Laravel, que é fatia futura) — ver useTempoRealDoFechamento.
+   const tempoReal = useTempoRealDoFechamento({ dataSelecionada: selectedDate, carregarSessoes, carregarLeituras });
 
    const { totalVendas, totalFrentistas, diferenca, podeFechar } = useFechamento(bicos, leituras, frentistaSessions, payments);
 
@@ -260,6 +214,18 @@ const TelaFechamentoDiario: React.FC = () => {
          />
 
          <div className="w-full px-2 lg:px-3 py-4 space-y-4">
+            {!tempoReal && activeTab === 'leituras' && (
+               <AvisoSemTempoReal
+                  recarregando={loading}
+                  onRecarregar={() => {
+                     void carregarLeituras(true);
+                     if (selectedDate) {
+                        void carregarSessoes(selectedDate, true);
+                        void carregarPagamentos(selectedDate, true);
+                     }
+                  }}
+               />
+            )}
             {loading && <div className="mb-6"><ProgressIndicator current={50} total={100} label="Sincronizando dados..." /></div>}
             {error && <div className="p-4 bg-red-900/20 text-red-200 rounded-xl border border-red-500/30 flex items-center gap-3 animate-shake"><AlertTriangle size={20} className="text-red-400" /><span>{error}</span></div>}
             {success && <div className="p-4 bg-emerald-900/20 text-emerald-200 rounded-xl border border-emerald-500/30 flex items-center gap-3 animate-bounce-subtle"><TrendingUp size={20} className="text-emerald-400" /><span>{success}</span></div>}
@@ -289,7 +255,8 @@ const TelaFechamentoDiario: React.FC = () => {
                      dataSelecionada={selectedDate}
                   />
                ) : activeTab === 'receitas-despesas' ? (
-                  <PainelReceitasDespesas />
+                  // Módulo sem rota no Laravel ainda: no login pela API a aba não chama o Supabase.
+                  loginPelaApiLigado() ? <AbaForaDaApi aba="Receitas e Despesas" /> : <PainelReceitasDespesas />
                ) : activeTab === 'fechamento-mensal' ? (
                   <FechamentoMensal isEmbedded={true} />
                ) : (
@@ -324,6 +291,7 @@ const TelaFechamentoDiario: React.FC = () => {
                diferenca,
                podeFechar,
                observacoes,
+               frentistasRemovidos: frentistasRemovidosEm(selectedDate),
                limparAutoSave,
                onSuccess: () => {
                   setSuccess(null);

@@ -28,6 +28,7 @@ import {
 } from '../../../types/ui/response-types';
 import { cartao, conferido } from '@posto/utils';
 import { meiosDaSessao } from '../../../utils/fechamentoMeios';
+import { comMarcaDeConferido, registrarRemocao, remocoesDoDia, SEM_REMOCOES, type RemocoesDoDia } from './remocao-de-sessao';
 
 /**
  * As duas fontes cabem aqui: o Supabase devolve a linha com `frentista` e `fechamento`
@@ -65,6 +66,11 @@ interface RetornoSessoesFrentistas {
   alterarCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
   aoSairCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
   definirSessoes: React.Dispatch<React.SetStateAction<SessaoFrentista[]>>;
+  /**
+   * Modo API: frentistas cujas sessões do banco o gerente tirou da tela no dia `data`. Vão no
+   * `frentistas_conhecidos[]` do Salvar, que é onde a remoção acontece (ver `remocao-de-sessao.ts`).
+   */
+  frentistasRemovidosEm: (data: string) => readonly number[];
 }
 
 // ... (interfaces mantidas)
@@ -124,6 +130,7 @@ export const useSessoesFrentistas = (
   // inserido — o INSERT caía no buraco e o envio só aparecia no F5 — e
   // (2) redisparava o efeito de restauração do rascunho. Lendo por ref, a
   // função é estável e o canal fica de pé.
+  const [remocoes, setRemocoes] = useState<RemocoesDoDia>(SEM_REMOCOES);
   const frentistasRef = useRef<Frentista[]>(frentistasCadastrados);
   useEffect(() => {
     frentistasRef.current = frentistasCadastrados;
@@ -147,6 +154,9 @@ export const useSessoesFrentistas = (
     }
 
     setCarregando(true);
+    // Recarga do banco devolve à tela o que foi tirado e ainda não salvo: a remoção pendente morre
+    // junto, senão o Salvar apagaria uma linha que o gerente está vendo de volta.
+    setRemocoes(SEM_REMOCOES);
     try {
       // O envio do frentista é por dia: `getByDate` carrega todos os envios da data.
       // [16/08] O parâmetro `turno` saiu — ele já não chegava à consulta, servia só ao
@@ -295,6 +305,15 @@ export const useSessoesFrentistas = (
    * Remove sessão de frentista
    */
   const removerFrentista = useCallback(async (tempId: string) => {
+    // [25/09] Modo API: nada vai ao banco agora. A sessão sai da tela e o frentista fica declarado
+    // em `frentistas_conhecidos[]`; o `PUT /fechamento` do Salvar a apaga, na mesma transação do dia.
+    if (urlDaApi() !== null) {
+      const dia = ultimoContextoCarregado.current.data;
+      setRemocoes(atual => registrarRemocao(atual, dia, sessoes.find(s => s.tempId === tempId)));
+      setSessoes(prev => prev.filter(s => s.tempId !== tempId));
+      return;
+    }
+
     // Se for um registro que já existe no banco, exclui lá também
     if (tempId.startsWith('existing-')) {
       const id = parseInt(tempId.replace('existing-', ''), 10);
@@ -312,7 +331,7 @@ export const useSessoesFrentistas = (
 
     setSessoes(prev => prev.filter(s => s.tempId !== tempId));
     console.log('➖ Frentista removido da tela:', tempId);
-  }, []);
+  }, [sessoes]);
 
   /**
    * Atualiza campos de uma sessão
@@ -322,6 +341,14 @@ export const useSessoesFrentistas = (
       setSessoes(prev =>
         prev.map(fs => (fs.tempId === tempId ? { ...fs, ...atualizacoes } : fs))
       );
+
+      // [25/09] Modo API: a marca vai na `observacoes` da sessão e viaja no Salvar (PUT do dia).
+      if (atualizacoes.status === 'conferido' && urlDaApi() !== null) {
+        setSessoes(prev =>
+          prev.map(fs => (fs.tempId === tempId ? { ...fs, observacoes: comMarcaDeConferido(fs.observacoes) } : fs))
+        );
+        return;
+      }
 
       // Persiste mudança de status explicitamente
       if (atualizacoes.status === 'conferido') {
@@ -414,6 +441,8 @@ export const useSessoesFrentistas = (
     }, { cartao: 0, cartao_debito: 0, cartao_credito: 0, nota: 0, pix: 0, dinheiro: 0, moedas: 0, baratao: 0, total: 0 });
   }, [sessoes]);
 
+  const frentistasRemovidosEm = useCallback((data: string) => remocoesDoDia(remocoes, data), [remocoes]);
+
   return {
     sessoes,
     carregando,
@@ -424,6 +453,7 @@ export const useSessoesFrentistas = (
     atualizarSessao,
     alterarCampoFrentista,
     aoSairCampoFrentista,
-    definirSessoes: setSessoes
+    definirSessoes: setSessoes,
+    frentistasRemovidosEm
   };
 };

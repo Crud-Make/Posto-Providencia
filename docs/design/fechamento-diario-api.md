@@ -1,6 +1,6 @@
 # Fechamento diário pela API — Design Doc
 
-Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota. Em 20/09/2026 o guard da DECISÃO A entrou no backend (commit `465efd5`, `autenticacao.md` §3b), então **P5–P7 e P11 deixaram de estar bloqueadas pelo guard**. **P5, P6 e P7 estão FEITAS — a LEITURA do fechamento diário fechou inteira** — e a §7 (f) foi resolvida por transcrição em 20/09 (a §5 agora descreve o que subiu, não o que se propôs); P8 tinha (d) como bloqueio e (d) foi DECIDIDA pelo dono em 20/09 (§7); P10 espera §7 (b)–(e); P11 espera P10 e o §7** **Em 21/09/2026 a P10 e a P11 subiram: a ESCRITA do fechamento do dia passa a existir pela API — Command transacional, rota PUT autenticada e o `handleSave` do painel desviado por `VITE_API_URL`. Com isso o fechamento diário fecha leitura E escrita, e é a PRIMEIRA tela do painel completa pela API. Ela nasce DESLIGADA em produção de propósito: nenhum `Usuario` tem `auth_user_id` (401 em todo login real) e a Vercel não tem `VITE_API_URL`. Resta a P9.** **Em 22/09/2026 a P8 subiu: o `total_vendas` do painel passa a vir do encerrante (`vendaDoDiaPeloEncerrante`, `5436b4c` + `c2368cd`), dia não apurado é `null` nos dois caminhos de gravação, e `calcularTotais` foi apagado com o golden que o media (`0d0c9f3`).** **Ainda em 22/09/2026 a P9 subiu PELA METADE — passos 1–2 (`8aef1b8`), estruturais: o cálculo de `useCustoMensal` foi extraído para a função pura `calculaCustoMensal` (`hooks/custo-mensal.ts`), presa por caracterização; fonte (Supabase) e fórmula não mudaram. Os passos 3–6 esperam (linha P9 da §0).** **Ainda em 22/09/2026 os passos 3–6 da P9 subiram (`008e8ff`…`8b705d9`): o `/dashboard` ganha o campo aditivo `leituras`, `useCustoMensal` e `useDespesaDoMes` leem pela API quando `VITE_API_URL` existe, e o caminho Supabase passa compra e despesa para o mês civil (D1/D2). Com isso o fechamento diário não tem mais leitura de dinheiro presa ao Supabase quando a API está ligada.** · Data: 18/09/2026 · Última atualização: 22/09/2026
+Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovadas pelo dono e feitas em 18/09/2026; P4a/P4b feitas em 19/09/2026 (sem commit) usando SÓ as rotas do catálogo da #97, que já existiam — a P4 não cria rota. Em 20/09/2026 o guard da DECISÃO A entrou no backend (commit `465efd5`, `autenticacao.md` §3b), então **P5–P7 e P11 deixaram de estar bloqueadas pelo guard**. **P5, P6 e P7 estão FEITAS — a LEITURA do fechamento diário fechou inteira** — e a §7 (f) foi resolvida por transcrição em 20/09 (a §5 agora descreve o que subiu, não o que se propôs); P8 tinha (d) como bloqueio e (d) foi DECIDIDA pelo dono em 20/09 (§7); P10 espera §7 (b)–(e); P11 espera P10 e o §7** **Em 21/09/2026 a P10 e a P11 subiram: a ESCRITA do fechamento do dia passa a existir pela API — Command transacional, rota PUT autenticada e o `handleSave` do painel desviado por `VITE_API_URL`. Com isso o fechamento diário fecha leitura E escrita, e é a PRIMEIRA tela do painel completa pela API. Ela nasce DESLIGADA em produção de propósito: nenhum `Usuario` tem `auth_user_id` (401 em todo login real) e a Vercel não tem `VITE_API_URL`. Resta a P9.** **Em 22/09/2026 a P8 subiu: o `total_vendas` do painel passa a vir do encerrante (`vendaDoDiaPeloEncerrante`, `5436b4c` + `c2368cd`), dia não apurado é `null` nos dois caminhos de gravação, e `calcularTotais` foi apagado com o golden que o media (`0d0c9f3`).** **Ainda em 22/09/2026 a P9 subiu PELA METADE — passos 1–2 (`8aef1b8`), estruturais: o cálculo de `useCustoMensal` foi extraído para a função pura `calculaCustoMensal` (`hooks/custo-mensal.ts`), presa por caracterização; fonte (Supabase) e fórmula não mudaram. Os passos 3–6 esperam (linha P9 da §0).** **Ainda em 22/09/2026 os passos 3–6 da P9 subiram (`008e8ff`…`8b705d9`): o `/dashboard` ganha o campo aditivo `leituras`, `useCustoMensal` e `useDespesaDoMes` leem pela API quando `VITE_API_URL` existe, e o caminho Supabase passa compra e despesa para o mês civil (D1/D2). Com isso o fechamento diário não tem mais leitura de dinheiro presa ao Supabase quando a API está ligada.** **Em 25/09/2026 a P12 fechou a tela INTEIRA pela API no login pela API — nenhuma chamada ao Supabase, provado por teste de ponta a ponta (§5.3); ficam para o dono o lucro da aba Fechamento Mensal e a aba Receitas e Despesas.** · Data: 18/09/2026 · Última atualização: 25/09/2026
 
 > Primeiro módulo do painel a migrar do PostgREST para a API Laravel, e o que faz nascer
 > `App\Fechamento` no backend. Contrato comum às fatias: `painel-pela-api.md`. Regra de domínio:
@@ -25,6 +25,7 @@ Issue: #103 item 1 (mãe: #60) · Estado: **rascunho — fatias P0 a P3 aprovada
 | P9 | `useCustoMensal` sai do Supabase direto | sim (Fable/Opus 5.5) | **passos 1–2 FEITOS em 22/09/2026** (`8aef1b8`), estruturais — nenhum número de dinheiro e nenhuma fonte mudam. Passo 1: caracterização com o Supabase mockado, `useCustoMensal.test.ts` (14) e `registro-compras/hooks/useDespesaDoMes.test.ts` (8): janela do mês cortada em hoje (`intervaloDoMes`, `utils/periodo.ts:45-50`), produto sem compra = `null`, custo = Σvalor/Σlitros, rateio = despesa ÷ litros do encerrante, `posto_id` em toda consulta; os defeitos ficam fixados e marcados (despesa somada em float, D5, `.error` ignorado virando 0). Passo 2: nasce `hooks/custo-mensal.ts` (`calculaCustoMensal`, `:95-109`, 11 casos em `custo-mensal.test.ts`); o hook só busca (`useCustoMensal.ts:42-61`) e delega (`:65-70`), mesma assinatura. Canários: janela no mês civil → 2 vermelhos; `temDespesa` com `> 1` → vermelho nos dois testes. test:golden 3564/0 antes e depois. **Passos 3–6 FEITOS em 22/09/2026**, com as decisões do dono do mesmo dia (Q1–Q5). **3a** (`008e8ff`): Q1 opção (a) — o salto do encerrante NÃO ganha cópia em PHP; o `GET /dashboard` ganha o campo ADITIVO `leituras` (`bico_id`, dia em UTC, `leitura_inicial`, `leitura_final`, string decimal, ordem por bico, dia e id — `DadosDoPeriodo::leituras()`, `LeituraDoPeriodo`, `LeituraDoPeriodoResource`) e o Zod correspondente em `dashboard.api.ts`; `rateio.litros_vendidos` e `produtos[].litros_vendidos` seguem sendo Σ (Q2 some: a Visão do Proprietário não muda). Pest de forma, isolamento por posto, ordem e período vazio; canários: sem ORDER BY por dia e sem filtro de `posto_id` → vermelho. **3b** (`83fe974`): `custoMensalDaApi` em `custo-mensal.ts` (custo por `custoMedioCompra` sobre `produtos[].compras`, rateio por `despesaOperacionalPorLitro` com os litros de `encerranteMensal` sobre `leituras` — **D3** —, despesa em um `Number` quantizado por `emCentavos`, dia real em cada leitura, então sem a D5) e `custo-mensal.golden.spec.ts` (jan–jul de `posto_jorro_2026.sqlite`, `toBe` exato: custo = `media_lt`, rateio = despesa ÷ encerrante do Resumo Mensal, paridade com `calculaCustoMensal`, fevereiro em 0,4693 R$/L e não 0,6152). test:golden 3499 → 3536, 0 fail. Canários: litros pela Σ, sem `emCentavos`, `dia: 1`. **4a** (`cd3cfca`): `lerCustoDoMes` (mês civil) e o desvio em `useCustoMensal`; erro — inclusive o 403 de quem só tem `ver` (**Q3**) — vira custo indisponível (todo produto `null`, nunca 0, sem cair para o Supabase), com `erro` no retorno, e a aba Gestão de Bicos mostra "—" só nesse caso. A rota segue `gerir`. **4b** (`2cd963d`): no fallback Supabase só Compra e Despesa passam a `mesCivil` (**D1/D2**, também no mês corrente); a Leitura segue em `intervaloDoMes`. O hook ganha `provisorio` (true no mês corrente, **Q4**); a tela ainda não mostra a marca. **5a** (`34c57aa`): `useDespesaDoMes` lê `rateio.despesas_total` pela API (um `Number`, `emCentavos`), assinatura `number` mantida; em erro segura o último valor bom e expõe o erro (console e `useDespesaDoMesComErro`). **5b** (`8b705d9`): fallback Supabase de `useDespesaDoMes` no mês civil. **CA-7 fica sem objeto:** a P9 lê o `/dashboard` do FRONT e nenhuma classe PHP passou a depender de outro módulo; como a D3 foi feita pela opção (a), a regra do encerrante continua morando só em `@posto/utils` (sem ressalva de locality). **Base do golden:** medida 3499/0 na `pp-p9-api` antes dos passos 3–6 (o 3564 citado acima é anterior ao `0d0c9f3`). **Fica FORA desta fatia, registrado:** a D5 e a soma da despesa em float no fallback Supabase (`custo-mensal.ts` `calculaCustoMensal`, `useDespesaDoMes.ts`), que é o caminho de PRODUÇÃO enquanto a Vercel não define `VITE_API_URL`; o terceiro leitor com corte em hoje (`useCombustiveisHibridos.ts:141`); e as queries de `Despesa` copiadas (`use-resumo-mensal.ts:187`, `useDashboardEstoque.ts:69`, `useDashboardProprietario.ts:138`, `aiService.ts:57`, `use-planilha-do-banco.ts`). **Divergência nova entre telas:** o custo do fechamento diário rateia pelo encerrante (D3) e a Visão do Proprietário segue rateando pela Σ `rateio.litros_vendidos` (nos dois caminhos) — em fevereiro/2026, 0,4693 contra 0,6152 R$/L; alinhar é fatia própria, com golden. |
 | P10 | Command `GravaFechamentoDoDia`, sem rota | sim (Fable) | **FEITA em 21/09/2026.** `App\Fechamento\Domain\{JanelaDeEscrita, TotaisDeclarados, RecusaDaGravacao}` e `App\Fechamento\Application\{DiaDeclarado, GravaFechamentoDoDia, GravaFilhosDoDia}`. Transacional (`DB::transaction`), nenhum arquivo acima de 146 linhas. O VO chama-se **`TotaisDeclarados`**, e não `TotaisDoDia` como a §3 previa: `totaisDoDia` já é a função canônica de `packages/utils/src/fechamento.ts:118` e faz outra coisa (calcula; o VO só confere). O Command **não recalcula** `conferido`, `total_vendas`, `total_recebido` nem `valor_cartao` — revalida SÓ `diferenca = total_vendas − total_recebido`, exata em centavos |
 | P11 | rota PUT autenticada e troca de `handleSave` | sim (Fable) | **FEITA em 21/09/2026.** `PUT /api/postos/{posto}/fechamento`, `GravaFechamentoDoDiaRequest`, `FechamentoController::update`, `RespostaDaGravacao`. **A peça que faltava não virou classe nova:** em vez do alias `posto.gerir` que esta linha previa, o `ExigeAcessoAoPosto` passou a receber a habilidade **por parâmetro** (`posto.acesso:gerir`), decisão do dono em 21/09 — uma classe e um teste, em vez de dois. No painel: `enviarParaApi` (`base.ts`), `gravarFechamentoDoDiaNaApi` (`fechamento.api.ts`), o montador puro `montarDiaDeclarado.ts` e o legado extraído para `gravacaoLegadaSupabase.ts`. **Não pode ser ligada em produção:** nenhum `Usuario` tem `auth_user_id`, então o PUT responde 401 a todo login real, e a Vercel não tem `VITE_API_URL` |
+| P12 | a tela INTEIRA pela API no modo API (`VITE_API_LOGIN=1`, sem sessão do Supabase) | não (transporte; nenhuma fórmula) | **FEITA em 25/09/2026** (`c4d5ce5` backend, `fdb1a74` painel). Rotas novas `GET /leituras/ultimas` e `GET /fechamento-mensal/{ano}/{mes}`; `GET /leituras` aceita `ate`. Remoção de envio vira `frentistas_conhecidos[]`; tempo real do Supabase desligado no login pela API com botão de recarregar; aba Receitas e Despesas avisa que não tem rota. Mapa, contratos e pendências na §5.3 |
 
 Nada desta rodada é commitado sem revisão do dono. Nenhuma fórmula muda em fatia estrutural: quem
 toca `calcLitros`/`calcVenda` (`useLeituras.ts:437-460`), a taxa (`useFechamento.ts:175-181`,
@@ -214,7 +215,7 @@ GET /api/postos/{posto}/fechamento?data=AAAA-MM-DD          → FechamentoContro
 ### 5.2 No ar desde 21/09 (P10, P11) — era proposta até a fatia subir
 
 ```
-GET /api/postos/{posto}/leituras/ultimas?antes_de=AAAA-MM-DD
+GET /api/postos/{posto}/leituras/ultimas?antes_de=AAAA-MM-DD      (no ar desde 25/09 — §5.3)
   → uma linha por bico (hoje o cliente dedupa de um limit 200, leitura.service.ts:186-214)
 
 PUT /api/postos/{posto}/fechamento?data=AAAA-MM-DD       (P11 — policy 'gerir', que não tem middleware)
@@ -244,6 +245,68 @@ está OK — é escopado pelo pai (`fechamento_id`), e o gate de tenant exige es
 `Bico`, `Escala`, `FechamentoFrentista`, `Leitura`. A migration que conserta os cinco é **DDL contra
 produção** e espera o "vai" do dono; enquanto não entrar, tudo que se construir sobre multi-tenant
 está sobre um banco que só atende um posto.
+
+### 5.3 No ar desde 25/09 (P12) — a tela inteira sem Supabase no modo API
+
+"Modo API" aqui é o login pela API (`VITE_API_LOGIN=1` + `VITE_API_URL`): não existe sessão do
+Supabase, e qualquer consulta a ele volta vazia ou com erro. A prova é
+`fechamento-de-caixa-pela-api.test.tsx`: monta a tela inteira, percorre as cinco abas (inclusive a
+visão Mês do Detalhamento), recarrega, remove um envio e salva — com o client do Supabase lançando em
+qualquer acesso. As leituras de dado trocam por `urlDaApi()` (como P4–P11: ler e gravar da mesma
+fonte); o tempo real e a aba sem rota trocam por `loginPelaApiLigado()`, porque com login no Supabase
+(o ensaio de 27/09) os canais e a aba continuam funcionando.
+
+| Onde | Antes (Supabase) | Agora (modo API) |
+|---|---|---|
+| cadastro: bicos, frentistas, formas de pagamento | `bicoService`, `frentistaService`, `formaPagamentoService` | `GET /bicos`, `/frentistas`, `/formas-pagamento` (P4a/P4b) |
+| leituras do dia | `leituraService.getByDate` | `GET /leituras?data=` (P5) |
+| encerrante inicial de dia novo | `leituraService.getLastReading` (limit 200 + dedupe no cliente) | **`GET /leituras/ultimas?antes_de=`** (novo) |
+| envios do dia | `fechamentoFrentistaService.getByDate` | `GET /sessoes?data=` (P6) |
+| recebimentos do dia | `fechamentoService.getDoDia` + `getWithDetails` | `GET /fechamento?data=` (P7) |
+| Salvar | `gravacaoLegadaSupabase.ts` (~8 idas, sem transação) | `PUT /fechamento?data=` (P11) |
+| lixeira do envio | `fechamentoFrentistaService.delete` na hora | **nada na hora**: `frentistas_conhecidos[]` no PUT (`remocao-de-sessao.ts`) |
+| marca `[CONFERIDO]` | `fechamentoFrentistaService.update` na hora | `observacoes` da sessão, no PUT |
+| custo do mês (Gestão de Bicos) | 3 consultas diretas | `GET /dashboard` (P9; operador recebe 403 → "—") |
+| Detalhamento › Mês | `fechamentoFrentistaService.getByPeriodo` (join `Frentista`) | `GET /sessoes?data=&ate=` + `GET /frentistas` (nomes, inativos inclusive) |
+| Fechamento Mensal: resumo diário | RPC `get_fechamento_mensal` | **`GET /fechamento-mensal/{ano}/{mes}`** (novo) — **sem lucro** |
+| Fechamento Mensal: encerrantes | `leituraService.getByDateRange` (join `Bico`) | `GET /leituras?data=&ate=` + `GET /bicos` (inativos inclusive) |
+| Fechamento Mensal: "dados pendentes" | `leituraService.getByDateRange` | `GET /leituras?data=&ate=` |
+| tempo real (3 canais: `FechamentoFrentista`, `Leitura`, `Fechamento`) | `supabase.channel` | **desligado** + aviso e botão "Recarregar do servidor" (`useTempoRealDoFechamento`) |
+| aba Receitas e Despesas | `despesaService`, `despesaFixaService`, `receitaService`, `recebimentoService`, `compraService`, `categoriaService` | **sem rota no Laravel**: a aba avisa (`AbaForaDaApi`) e não chama nada |
+
+```
+GET /api/postos/{posto}/leituras/ultimas?antes_de=AAAA-MM-DD   → LeituraController@ultimas
+  → { data: [ LeituraResource… ] }    uma por bico: a mais nova com data < antes_de 00:00Z,
+                                       DISTINCT ON (bico_id) ORDER BY data DESC, id DESC
+GET /api/postos/{posto}/leituras?data=AAAA-MM-DD&ate=AAAA-MM-DD → LeituraController@index
+  → o período [data 00:00Z, ate+1 00:00Z); `PeriodoRequest` (ex-`SessoesRequest`), teto de 62 dias
+GET /api/postos/{posto}/fechamento-mensal/{ano}/{mes}          → AgregacaoController@fechamentoMensal
+  → { periodo: {inicio, fim},
+      dias: [{ data, volume_total, faturamento_bruto,
+               volumes_por_combustivel: { "<combustivel_id>": "<litros>" }, status }] }
+     um dia por dia com Leitura; status = do Fechamento mais recente do dia, 'ABERTO' sem fechamento
+```
+
+As três no grupo protegido (`token.atual` → `DefinePostoAtual` → `posto.acesso`, habilidade `ver`),
+com isolamento em `FechamentoDeCaixaPelaApiTest` (sem token 401, gerente do Jorro 403 no BR, operador
+vê e não grava). `/fechamento-mensal` não leva custo nem despesa, por isso `ver` e não `gerir`.
+
+**Paridade com a RPC** (`FechamentoDeCaixaPelaApiTest`): volume, faturamento, litros por combustível
+e status batem. Duas diferenças, nomeadas: a RPC repete o dia uma vez por `Fechamento` do dia (LEFT
+JOIN), a API devolve o dia uma vez com o status do mais recente; e a API **não** devolve
+`lucro_bruto`/`custo_taxas`/`lucro_liquido`. O painel classifica os litros nos 4 baldes do gráfico
+pela MESMA regra de nome da RPC (`baldesDoCombustivel`), e mostra o lucro como "—".
+
+**Pendências para o dono (nenhuma decidida aqui):**
+
+1. **Lucro da aba Fechamento Mensal pela API.** A RPC mostra `bruto − taxas` diário com `preco_custo`
+   de hoje, taxa chumbada e sem despesa (`agregacao.md` §0, DECISÕES 3 e 4). Pela API o card fica "—".
+   Opções: (a) o lucro do mês pelo canônico (`lucro.ts`, custo do mês + despesa rateada), sem série
+   diária; (b) manter "—" até a aba ser redesenhada; (c) outra.
+2. **Aba Receitas e Despesas** precisa de módulo próprio no Laravel (escrita de `Despesa`, lançamento
+   de fixas e de taxas de cartão, `Receita`, leitura de `Compra`/`Recebimento`). Fatia separada.
+3. **Remover um envio agora só vale ao Salvar** (antes apagava na hora). Recarregar antes de salvar
+   devolve a linha à tela. É o desenho da §7 (c); confirmar que é o comportamento desejado.
 
 ## 6. DECISÃO A — autorização durante a transição (dono, 18/09/2026)
 

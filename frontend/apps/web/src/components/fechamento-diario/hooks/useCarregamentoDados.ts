@@ -27,6 +27,7 @@ import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
 import { lerBicosComDetalhesDaApi } from '../../../services/api/bico.api';
 import { lerFrentistasDaApi } from '../../../services/api/frentista.api';
 import { supabase } from '../../../services/supabase';
+import { tempoRealLigado } from './useTempoRealDoFechamento';
 import {
   type ApiResponse,
   createErrorResponse,
@@ -211,7 +212,9 @@ export const useCarregamentoDados = (
    * dados automaticamente quando necessário
    */
   useEffect(() => {
-    if (!postoId) return;
+    // [25/09] Desligado no login pela API, como os canais da tela (`useTempoRealDoFechamento`):
+    // não há sessão do Supabase, e o realtime do Laravel é fatia futura (decisão de 21/09).
+    if (!postoId || !tempoRealLigado()) return;
 
     const canal = supabase
       .channel(`fechamento-${postoId}`)

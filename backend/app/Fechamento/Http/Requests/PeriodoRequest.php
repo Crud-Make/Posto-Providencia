@@ -9,12 +9,16 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 /**
- * `GET /sessoes?data=AAAA-MM-DD[&ate=AAAA-MM-DD]`. Sem `ate`, um dia só — o contrato de sempre (a tela
- * de Fechamento de Caixa). Com `ate`, o período inteiro, para o Dashboard: antes ele pedia só o
- * primeiro dia e a tabela de fechamentos contradizia os cards, que somam o período todo.
- * Teto de 62 dias: cobre dois meses cheios, que é o maior período que a tela oferece.
+ * `?data=AAAA-MM-DD[&ate=AAAA-MM-DD]` de `GET /sessoes` e `GET /leituras`. Sem `ate`, um dia só — o
+ * contrato de sempre (a tela de Fechamento de Caixa). Com `ate`, o período inteiro: o Dashboard pede
+ * as sessões do período (antes pedia só o primeiro dia e a tabela contradizia os cards), e a aba
+ * Fechamento Mensal pede as leituras e as sessões do mês (#103, Fechamento de Caixa 100% pela API).
+ * Teto de 62 dias: cobre dois meses cheios, que é o maior período que as telas oferecem.
+ *
+ * Era `SessoesRequest`; virou `PeriodoRequest` quando `GET /leituras` passou a aceitar `ate` — a
+ * mesma validação, não uma cópia dela.
  */
-final class SessoesRequest extends FormRequest
+final class PeriodoRequest extends FormRequest
 {
     public function authorize(): bool
     {
