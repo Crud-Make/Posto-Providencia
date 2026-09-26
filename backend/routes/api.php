@@ -3,6 +3,7 @@
 use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Agregacao\Http\Controllers\RelatorioDiarioController;
 use App\Cadastro\Http\Controllers\CatalogoController;
+use App\Cadastro\Http\Controllers\EquipeController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
@@ -12,6 +13,7 @@ use App\Estoque\Http\Controllers\VendaDoFrentistaController;
 use App\Fechamento\Http\Controllers\EnvioDoFrentistaController;
 use App\Fechamento\Http\Controllers\FechamentoController;
 use App\Fechamento\Http\Controllers\FechamentoFrentistaController;
+use App\Fechamento\Http\Controllers\HistoricoDaEquipeController;
 use App\Fechamento\Http\Controllers\LeituraController;
 use App\Pessoas\Http\Controllers\AcessoDoFrentistaController;
 use App\Pessoas\Http\Controllers\AutenticacaoController;
@@ -213,4 +215,25 @@ Route::prefix('postos/{posto}')
     ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
     ->group(function (): void {
         Route::post('compras', [CompraController::class, 'store']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Tela Frentistas do painel — gestão de equipe (#103, docs/design/painel-pela-api.md §10)
+|--------------------------------------------------------------------------
+| Listar (ativos e inativos, com a foto), cadastrar, editar e desativar frentista, e o histórico
+| recente de cada um. É dado pessoal (rosto) e é escrita de cadastro: `posto.acesso:gerir`, com a
+| ordem de sempre — sem token 401, posto de outro 403, frentista de outro posto 404. O `posto_id`
+| sai da rota, nunca do corpo. "Desativar" é o "Excluir" da tela (nada é apagado) e derruba as
+| sessões de PIN abertas do frentista. O PIN NÃO tem rota: quem o define (comando no servidor ou
+| tela do gerente) espera decisão do dono.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::get('equipe', [EquipeController::class, 'index']);
+        Route::post('equipe', [EquipeController::class, 'store']);
+        Route::put('equipe/{frentista}', [EquipeController::class, 'update'])->whereNumber('frentista');
+        Route::post('equipe/{frentista}/desativar', [EquipeController::class, 'desativar'])->whereNumber('frentista');
+        Route::get('equipe/{frentista}/historico', [HistoricoDaEquipeController::class, 'index'])->whereNumber('frentista');
     });
