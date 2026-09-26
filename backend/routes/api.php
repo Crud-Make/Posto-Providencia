@@ -9,6 +9,7 @@ use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
 use App\Compras\Http\Controllers\CompraController;
 use App\Estoque\Http\Controllers\ReguaController;
+use App\Estoque\Http\Controllers\TanquesDoPainelController;
 use App\Estoque\Http\Controllers\VendaDoFrentistaController;
 use App\Fechamento\Http\Controllers\EnvioDoFrentistaController;
 use App\Fechamento\Http\Controllers\FechamentoController;
@@ -236,4 +237,20 @@ Route::prefix('postos/{posto}')
         Route::put('equipe/{frentista}', [EquipeController::class, 'update'])->whereNumber('frentista');
         Route::post('equipe/{frentista}/desativar', [EquipeController::class, 'desativar'])->whereNumber('frentista');
         Route::get('equipe/{frentista}/historico', [HistoricoDaEquipeController::class, 'index'])->whereNumber('frentista');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Tanques (Combustível) do painel (#103, docs/design/painel-pela-api.md §11)
+|--------------------------------------------------------------------------
+| A leitura da tela numa rota (tanques ativos com o combustível, réguas, compras e vendas desde a
+| régua, despesas do mês e o histórico do gráfico) e a "Nova Medição (Régua)" do gerente, que grava
+| pela MESMA regra da régua do PWA (`GravaMedicaoDeTanque`). Traz custo e despesa, que são dado de
+| proprietário, e grava: `posto.acesso:gerir` nas duas. Sem token 401, posto de outro 403.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::get('tanques/painel', [TanquesDoPainelController::class, 'show']);
+        Route::put('tanques/medicoes', [TanquesDoPainelController::class, 'medir']);
     });

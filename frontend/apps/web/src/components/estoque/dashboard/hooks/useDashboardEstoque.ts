@@ -1,228 +1,104 @@
 import { useState, useEffect, useCallback } from 'react';
+import { hojeIso } from '@posto/utils';
 import { usePosto } from '../../../../contexts/usePosto';
-import { supabase } from '../../../../services/supabase';
-import { tanqueService } from '../../../../services/api';
-import { Tanque, TankHistory } from '../types';
-import { isSuccess } from '../../../../types/ui/response-types';
-import { despesaOperacionalPorLitro, hojeIso } from '@posto/utils';
-import { estoqueAtualDerivado, type MovimentoLitros, type ReguaTanque } from '../model/estoque-derivado';
+import type { Tanque, TankHistory } from '../types';
+import { carregarPainel } from './carregar-painel';
+import type { PainelMontado } from './montar-painel';
+import { gravarMedicao } from './gravar-medicao';
 
-interface ReguaRow { tanque_id: number; data: string; volume_fisico: number | string | null }
-interface CompraRow { combustivel_id: number | null; data: string; quantidade_litros: number | string }
-interface LeituraRow { data: string; litros_vendidos: number | string | null; bico: { combustivel_id: number } | null }
-
-export const useDashboardEstoque = () => {
-  const { postoAtivoId } = usePosto();
-  const [tanques, setTanques] = useState<Tanque[]>([]);
-  const [histories, setHistories] = useState<TankHistory>({});
-  // Despesa operacional por litro do mês corrente — alimenta o "Lucro
-  // Previsto" do ResumoFinanceiro (onda 3, grupo B). 0 sem despesa lançada.
-  const [despesaLitro, setDespesaLitro] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  // Estado para o modal de medição
+/** Estado do modal "Nova Medição (Régua)". */
+function useModalMedicao() {
   const [showMedicaoModal, setShowMedicaoModal] = useState(false);
   const [selectedTanque, setSelectedTanque] = useState<Tanque | null>(null);
   const [medicaoValue, setMedicaoValue] = useState('');
   const [medicaoObservacao, setMedicaoObservacao] = useState('');
-  const [savingMedicao, setSavingMedicao] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (!postoAtivoId) return;
-
-    try {
-      setLoading(true);
-      const response = await tanqueService.getAll(postoAtivoId);
-
-      if (!isSuccess(response)) {
-        setLoading(false);
-        return;
-      }
-
-      const data = response.data;
-      const tanqueIds = data.map((t) => t.id);
-
-      // As três fontes da regra da corrente. `Leitura` é a única que cresce
-      // todo dia; as outras duas são pequenas. Sem filtro de data: a data de
-      // corte é a régua de CADA tanque, resolvida em `estoqueAtualDerivado`.
-      // Mês corrente em hora local (hojeIso, nunca toISOString): é o período
-      // do rateio de despesa que o card de lucro previsto desconta.
-      const mesCorrente = hojeIso().slice(0, 7);
-      const [anoM, mesM] = mesCorrente.split('-').map(Number);
-      const fimMes = `${mesCorrente}-${String(new Date(anoM, mesM, 0).getDate()).padStart(2, '0')}`;
-
-      const [reguasRes, comprasRes, leiturasRes, despesasRes] = await Promise.all([
-        supabase
-          .from('HistoricoTanque')
-          .select('tanque_id, data, volume_fisico')
-          .in('tanque_id', tanqueIds)
-          .not('volume_fisico', 'is', null),
-        supabase
-          .from('Compra')
-          .select('combustivel_id, data, quantidade_litros')
-          .eq('posto_id', postoAtivoId),
-        supabase
-          .from('Leitura')
-          .select('data, litros_vendidos, bico:Bico!inner(combustivel_id)')
-          .eq('posto_id', postoAtivoId),
-        supabase
-          .from('Despesa')
-          .select('valor')
-          .eq('posto_id', postoAtivoId)
-          .gte('data', `${mesCorrente}-01`)
-          .lte('data', fimMes),
-      ]);
-
-      const reguas: ReguaTanque[] = ((reguasRes.data ?? []) as ReguaRow[]).map((r) => ({
-        tanqueId: r.tanque_id,
-        data: r.data.slice(0, 10),
-        litros: Number(r.volume_fisico),
-      }));
-      const compras: MovimentoLitros[] = ((comprasRes.data ?? []) as CompraRow[])
-        .filter((c) => c.combustivel_id !== null)
-        .map((c) => ({ combustivelId: c.combustivel_id as number, data: c.data, litros: Number(c.quantidade_litros) }));
-      const vendas: MovimentoLitros[] = ((leiturasRes.data ?? []) as unknown as LeituraRow[])
-        .filter((l) => l.bico !== null)
-        .map((l) => ({ combustivelId: (l.bico as { combustivel_id: number }).combustivel_id, data: l.data, litros: Number(l.litros_vendidos ?? 0) }));
-
-      // Rateio canônico do mês corrente: despesas lançadas ÷ litros vendidos.
-      const despesaDoMes = (despesasRes.data ?? []).reduce(
-        (acc, d) => acc + Number((d as { valor: number | null }).valor ?? 0),
-        0
-      );
-      const litrosVendidosMes = vendas
-        .filter((v) => v.data.slice(0, 7) === mesCorrente)
-        .reduce((acc, v) => acc + v.litros, 0);
-      setDespesaLitro(despesaOperacionalPorLitro(despesaDoMes, litrosVendidosMes));
-
-      const derivado = estoqueAtualDerivado(
-        data.map((t) => ({ id: t.id, combustivelId: t.combustivel_id })),
-        reguas,
-        compras,
-        vendas
-      );
-
-      setTanques(
-        data.map((t) => {
-          const estoque = derivado.get(t.id) ?? null;
-          return { ...t, estoque_atual: estoque ?? 0, medido: estoque !== null };
-        })
-      );
-
-      // Fetch histories
-      const histMap: TankHistory = {};
-      await Promise.all(data.map(async (t) => {
-        try {
-          const resHist = await tanqueService.getHistory(t.id, 30);
-          const hist = isSuccess(resHist) ? resHist.data : [];
-          // `HistoricoTanque` traz `volume_livro`/`volume_fisico` anuláveis;
-          // `TankHistoryEntry` os tem opcionais. "Não medido" vira AUSENTE,
-          // nunca 0 — 0 litros é uma medição real e diferente de não ter medido.
-          histMap[t.id] = (hist ?? []).map((h) => ({
-            id: h.id,
-            data: h.data,
-            volume_livro: h.volume_livro ?? undefined,
-            volume_fisico: h.volume_fisico ?? undefined,
-          }));
-        } catch (e) {
-          console.error(`Erro ao buscar histórico tanque ${t.id}`, e);
-          histMap[t.id] = [];
-        }
-      }));
-      setHistories(histMap);
-
-    } catch (error) {
-      console.error("Erro ao carregar tanques", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [postoAtivoId]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  /**
-   * Salva a medição de régua.
-   *
-   * @remarks A régua vai para `HistoricoTanque.volume_fisico` e só para lá:
-   *          é dela que o estoque atual é derivado. Antes também se
-   *          carimbava `Tanque.estoque_atual`, e era esse carimbo que
-   *          divergia — a venda nunca o subtraía.
-   */
-  const handleSaveMedicao = async () => {
-    if (!selectedTanque || !medicaoValue) return;
-
-    try {
-      setSavingMedicao(true);
-      const novoValor = parseFloat(medicaoValue.replace(',', '.'));
-
-      if (isNaN(novoValor) || novoValor < 0) {
-        alert('Valor de medição inválido');
-        return;
-      }
-
-      if (novoValor > selectedTanque.capacidade) {
-        alert(`O valor não pode exceder a capacidade do tanque (${selectedTanque.capacidade.toLocaleString()} L)`);
-        return;
-      }
-
-      const resultado = await tanqueService.saveHistory({
-        tanque_id: selectedTanque.id,
-        data: hojeIso(),
-        volume_fisico: novoValor
-      });
-      if (!isSuccess(resultado)) {
-        alert(`Erro ao salvar medição: ${resultado.error}`);
-        return;
-      }
-
-      // Limpa os campos e fecha o modal
-      setMedicaoValue('');
-      setMedicaoObservacao('');
-      setSelectedTanque(null);
-      setShowMedicaoModal(false);
-
-      // Recarrega os dados
-      await loadData();
-
-    } catch (error) {
-      console.error('Erro ao salvar medição:', error);
-      alert('Erro ao salvar medição. Tente novamente.');
-    } finally {
-      setSavingMedicao(false);
-    }
-  };
-
-  // Handler para abrir o modal de medição
   const openMedicaoModal = (tanque?: Tanque) => {
-    if (tanque) {
-      setSelectedTanque(tanque);
-      setMedicaoValue(tanque.estoque_atual.toString().replace('.', ','));
-    } else {
-      setSelectedTanque(null);
-      setMedicaoValue('');
-    }
+    setSelectedTanque(tanque ?? null);
+    setMedicaoValue(tanque === undefined ? '' : tanque.estoque_atual.toString().replace('.', ','));
     setMedicaoObservacao('');
     setShowMedicaoModal(true);
   };
 
-  return {
-    loading,
-    tanques,
-    histories,
-    despesaLitro,
-    showMedicaoModal,
-    setShowMedicaoModal,
-    selectedTanque,
-    setSelectedTanque,
-    medicaoValue,
-    setMedicaoValue,
-    medicaoObservacao,
-    setMedicaoObservacao,
-    savingMedicao,
-    loadData,
-    handleSaveMedicao,
-    openMedicaoModal
+  const fecharEnviado = () => {
+    setMedicaoValue('');
+    setMedicaoObservacao('');
+    setSelectedTanque(null);
+    setShowMedicaoModal(false);
   };
+
+  return {
+    showMedicaoModal, setShowMedicaoModal, selectedTanque, setSelectedTanque, medicaoValue, setMedicaoValue,
+    medicaoObservacao, setMedicaoObservacao, openMedicaoModal, fecharEnviado,
+  };
+}
+
+/** O valor digitado, ou a mensagem do `alert` que o recusa (mesmas regras de antes). */
+function validarMedicao(texto: string, tanque: Tanque): number | string {
+  const valor = parseFloat(texto.replace(',', '.'));
+  if (isNaN(valor) || valor < 0) return 'Valor de medição inválido';
+  if (valor > tanque.capacidade) return `O valor não pode exceder a capacidade do tanque (${tanque.capacidade.toLocaleString()} L)`;
+  return valor;
+}
+
+/**
+ * A tela de Tanques: carrega pela fonte ligada (API com `VITE_API_TANQUES`, Supabase sem — ver
+ * `carregar-painel.ts`) e grava a régua do dia (`gravar-medicao.ts`). As contas estão em
+ * `montar-painel.ts`.
+ */
+export const useDashboardEstoque = () => {
+  const { postoAtivoId } = usePosto();
+  const [tanques, setTanques] = useState<Tanque[]>([]);
+  const [histories, setHistories] = useState<TankHistory>({});
+  // Despesa operacional por litro do mês corrente — alimenta o "Lucro Previsto" (0 sem despesa).
+  const [despesaLitro, setDespesaLitro] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [savingMedicao, setSavingMedicao] = useState(false);
+  const modal = useModalMedicao();
+
+  const aplicar = useCallback((painel: PainelMontado) => {
+    setDespesaLitro(painel.despesaLitro);
+    setTanques(painel.tanques);
+    setHistories(painel.historicos);
+    setLoading(false);
+  }, []);
+  const falhar = useCallback((erro: string) => {
+    console.error('Erro ao carregar tanques', erro);
+    setLoading(false);
+  }, []);
+
+  /** O botão "Atualizar" e a releitura depois de medir: mostram o carregando. */
+  const loadData = useCallback(async () => {
+    if (postoAtivoId === 0) return;
+    setLoading(true);
+    (await carregarPainel(postoAtivoId)).match(aplicar, falhar);
+  }, [postoAtivoId, aplicar, falhar]);
+
+  // A primeira leitura (e a troca de posto) só aplica o resultado: o `loading` já nasce `true`.
+  useEffect(() => {
+    if (postoAtivoId === 0) return;
+    void carregarPainel(postoAtivoId).match(aplicar, falhar);
+  }, [postoAtivoId, aplicar, falhar]);
+
+  const handleSaveMedicao = async () => {
+    const tanque = modal.selectedTanque;
+    if (tanque === null || modal.medicaoValue === '' || postoAtivoId === 0) return;
+    const valor = validarMedicao(modal.medicaoValue, tanque);
+    if (typeof valor === 'string') {
+      alert(valor);
+      return;
+    }
+    setSavingMedicao(true);
+    const gravado = await gravarMedicao(postoAtivoId, tanque.id, hojeIso(), valor);
+    setSavingMedicao(false);
+    if (gravado.isErr()) {
+      alert(`Erro ao salvar medição: ${gravado.error}`);
+      return;
+    }
+    modal.fecharEnviado();
+    await loadData();
+  };
+
+  const { fecharEnviado: _fechar, ...estadoDoModal } = modal;
+  return { loading, tanques, histories, despesaLitro, ...estadoDoModal, savingMedicao, loadData, handleSaveMedicao };
 };

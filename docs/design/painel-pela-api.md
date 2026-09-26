@@ -373,3 +373,89 @@ tela de PIN nesta fatia; o painel continua sem ver nem mexer no PIN.
 **Fica de fora:** CPF, telefone, turno e vínculo com usuário (`user_id`) não estão no formulário — nem
 antes, nem agora. Criar frentista não é idempotente (sem chave): o botão fica desabilitado enquanto
 grava, como antes; um duplo envio pela rede cria dois cadastros, que se desativa um. Sem esquema novo.
+
+## 11. Tanques (Combustível) pela API (#103, 26/09/2026)
+
+Tela `components/estoque/dashboard` (rota `/estoque/tanques`), flag **`VITE_API_TANQUES`**
+(`corteDaTelaLigado`: ausente segue `VITE_API_URL`, `0` deixa **leitura e medição** no Supabase). No modo
+API a tela **não chama o Supabase** — prova em `tanques-pela-api.test.tsx`, a TELA montada com o client do
+Supabase num Proxy que reprova ao ser tocado (lê, abre a "Nova Medição (Régua)", escolhe o tanque, digita,
+confirma e relê).
+
+| Antes (Supabase, `useDashboardEstoque`) | Agora (API) | |
+|---|---|---|
+| `tanqueService.getAll` — `Tanque` ativo + `combustivel(nome, codigo, preco_venda, preco_custo)`, por nome | `GET /tanques/painel` → `tanques` | leitura |
+| `HistoricoTanque` dos tanques, `volume_fisico` não nulo (as réguas da corrente) | → `reguas` | leitura |
+| `Compra` do posto, **todas** | → `compras` desde `movimento_desde` | leitura |
+| `Leitura` do posto, **todas**, com o combustível do bico (`Bico!inner`) | → `vendas` desde `movimento_desde` | leitura |
+| `Despesa` do mês local (competência) | → `despesas` | leitura |
+| `tanqueService.getHistory(id, 30)` — uma consulta **por tanque** | → `historico` (uma só) | leitura |
+| `tanqueService.saveHistory({ tanque_id, data: hojeIso(), volume_fisico })` (upsert) | `PUT /tanques/medicoes` | **escrita** |
+
+A tela não cria, não edita nem desativa tanque (isso é Configurações), não ajusta estoque à mão e não
+grava `volume_livro` — só a régua física. `Tanque.estoque_atual` (o carimbo) não é lido nem escrito: o
+estoque exibido é DERIVADO (`model/estoque-derivado.ts`) desde 03/09.
+
+**Rotas novas** (módulo `App\Estoque`, bloco próprio em `routes/api.php`, `token.atual` +
+`DefinePostoAtual` + `posto.acesso:gerir` nas duas — a leitura traz `preco_custo` e despesa, dado de
+proprietário como o `/dashboard`; a escrita é de quem gere):
+
+`GET /api/postos/{posto}/tanques/painel?mes=AAAA-MM&historico_desde=AAAA-MM-DD` — os dois recortes vêm do
+relógio LOCAL do painel, como antes (`hojeIso().slice(0, 7)` e hoje − 30). Corpo sem envelope, decimal em
+string, nenhuma conta:
+
+```json
+{ "mes": { "inicio": "2026-09-01", "fim": "2026-09-30" }, "movimento_desde": "2026-08-20",
+  "tanques": [{ "id": 10, "nome": "T-GC", "combustivel_id": 1, "capacidade": "15000.00",
+                "combustivel": { "nome": "Gasolina Comum", "codigo": "GC", "preco_venda": "6.50", "preco_custo": "5.1234" } }],
+  "reguas":   [{ "tanque_id": 10, "data": "2026-09-18", "volume_fisico": "8000.50" }],
+  "compras":  [{ "combustivel_id": 2, "data": "2026-09-12", "quantidade_litros": "5000.55" }],
+  "vendas":   [{ "combustivel_id": 1, "data": "2026-09-20", "litros_vendidos": "333.125" }],
+  "despesas": [{ "data": "2026-09-01", "valor": "1500.00" }],
+  "historico": [{ "id": 8, "tanque_id": 10, "data": "2026-09-19", "volume_livro": "7900.00", "volume_fisico": null }] }
+```
+
+`movimento_desde` = a mais antiga entre as ÚLTIMAS réguas de cada tanque ativo, ou o 1º do mês, o que vier
+antes (`MovimentoDosTanques::desde`). É recorte, não conta: cada tanque só soma o que é posterior à própria
+régua, e a venda do mês (divisor do rateio) começa no dia 1 — nenhuma linha cortada é lida pela tela. O
+Supabase mandava tudo desde sempre (e o PostgREST corta em 1000 linhas por padrão — ver "perguntas").
+`Leitura`/`Compra` saem no dia UTC, o mesmo prefixo que a tela comparava no timestamp.
+
+`PUT /api/postos/{posto}/tanques/medicoes` — `{ tanque_id, data: "AAAA-MM-DD", volume_fisico: "12345.678" }`
+→ 200 `{ data: { tanque_id, data, volume_fisico: "12345.68" } }`. Recusa: 422 `{ erro: { codigo, mensagem } }`
+— `tanque_invalido` (tanque de outro posto), `fora_da_janela`, `corpo_invalido` (número JSON, vírgula,
+expoente, negativo, 8+ dígitos inteiros).
+
+**Uma regra de régua só.** O PUT chama `App\Estoque\Application\GravaMedicaoDeTanque`, o MESMO da régua do
+PWA (`PUT /regua/medicoes`): upsert por `(tanque_id, data)` que só toca `volume_fisico` (o `volume_livro`
+que o Registro de Compras gravou no dia fica), `JanelaDoBanco` e tanque do posto. Muda só a porta (guard do
+gerente em vez do do frentista) e o FormRequest (`MedicaoDoPainelRequest`): o painel manda `String(numero)`
+— o texto que o `JSON.stringify` do supabase-js mandava — com as casas que o float tiver, e o
+`numeric(10,2)` arredonda no banco como antes (`15000.555` → `15000.56`, `1234.5649` → `1234.56`). Até 7
+dígitos inteiros, para o arredondamento nunca estourar a coluna. Idempotente por natureza: repetir o mesmo
+PUT deixa a mesma linha (provado). O teto da capacidade continua na tela, como antes.
+
+**Contas:** saíram do hook para `hooks/montar-painel.ts` **sem mudar fórmula** (Σ despesas do mês ÷ Σ
+litros vendidos no mês por `despesaOperacionalPorLitro`; estoque de cada tanque por
+`estoqueAtualDerivado`; "Valor Bruto"/"Lucro Previsto" seguem em `calculos-resumo-financeiro.ts`). As
+fontes `hooks/fonte-supabase.ts` (as consultas de antes, movidas) e `hooks/fonte-da-api.ts` entregam o mesmo
+`InsumosDoPainel`; `hooks/carregar-painel.ts` escolhe, `hooks/gravar-medicao.ts` grava. PARIDADE em
+`hooks/fonte-do-painel.test.ts`: as duas fontes REAIS (Supabase com o builder mockado, API com o `fetch`
+mockado), o mesmo posto — com compra e venda antes do corte só no lado do Supabase — dão a mesma tela
+(`toEqual`): T-ET 7950,55 L, T-GC 7667,375 L, despesa/L 1750,55 ÷ 383,125. `montar-painel` entrou na trava
+`so-fable-na-formula.py`.
+
+**Isolamento** (`TanquesDoPainelTest`, 17 testes): sem token 401 nas duas rotas; operador 403 nas duas;
+gerente do posto A no B 403 nas duas, nada gravado; tanque do B pelo posto A 422 `tanque_invalido`; tanque
+inativo, régua e histórico dele, leitura/compra/despesa do outro posto fora da resposta (`assertExactJson`).
+
+**Diferenças de forma, não de número:** o histórico vem numa consulta em vez de uma por tanque; a ordem das
+compras/vendas/despesas é `data, id` (no Supabase, a física) — só pode mexer no último ulp de uma soma em
+float antes do `emCentavos`; na troca de posto a tela recarrega sem o spinner (o React 19 barra `setState`
+síncrono no efeito; "Atualizar" e a releitura depois de medir mostram o spinner como antes).
+
+**Canários (mutação → vermelho → desfeita):** listados no relatório da entrega e no `CHANGELOG.md`.
+
+**Fica de fora:** o campo "Observações" do modal nunca foi gravado (nem antes, nem agora — `HistoricoTanque`
+não tem a coluna); o botão "Ver Relatório Completo" não faz nada (nem antes). `model/estoque-derivado.ts`
+é conta e não está na trava de fórmula (já não estava).

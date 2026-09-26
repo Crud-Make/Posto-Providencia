@@ -15,8 +15,6 @@
   "apps/web/src/components/dashboard/components/PresencaFrentistas.tsx|TS2375": 1,
   "apps/web/src/components/escalas/utils/exportPdf.ts|TS6133": 1,
   "apps/web/src/components/estoque/dashboard/components/calculos-resumo-financeiro.golden.spec.ts|TS2345": 2,
-  "apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts|TS2322": 1,
-  "apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts|TS2345": 1,
   "apps/web/src/components/estoque/dashboard/index.tsx|TS2322": 1,
   "apps/web/src/components/estoque/dashboard/model/estoque-derivado.ts|TS2532": 1,
   "apps/web/src/components/estoque/gestao/hooks/useGestaoEstoque.ts|TS2379": 1,
