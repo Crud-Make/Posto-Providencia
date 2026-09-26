@@ -33,6 +33,19 @@ export const dashboardDaApi = z.object({
         despesas_total: decimalEmString,
         litros_vendidos: decimalEmString,
     }),
+    /**
+     * Leituras cruas do período exato, em ordem de bico, dia e id (`LeituraDoPeriodoResource.php`).
+     * Aditivo da #103 P9 (decisão do dono, 22/09/2026, Q1 opção a): é o insumo do `encerranteMensal`
+     * de `@posto/utils` para os litros do rateio; o servidor não calcula o salto do encerrante.
+     */
+    leituras: z.array(
+        z.object({
+            bico_id: z.number().int(),
+            data: dataIso,
+            leitura_inicial: decimalEmString,
+            leitura_final: decimalEmString,
+        }),
+    ),
 });
 
 export type DashboardDaApi = z.infer<typeof dashboardDaApi>;

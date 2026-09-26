@@ -61,8 +61,8 @@ de branch de refatoração é ruído; `main` não deployável é risco de dinhei
 
 **Decisão: a troca do Root Directory é um passo DESTE cutover** (passo 6 do §2), executado na
 mesma janela em que a `fase-a` entra na `main` e os dois layouts convergem. Até lá, preview vermelha
-fica vermelha, e o gate que vale é o do §7 do CLAUDE.md — CI (`build`, `backend`) e `pre-push`, que
-rodam a suíte inteira e estão verdes.
+fica vermelha, e o gate que vale é o do §7 do CLAUDE.md — o CI (`build`, `backend`), que roda a suíte
+inteira e é obrigatório no merge, e o `pre-push`, que desde 24/09 roda só o golden.
 
 ### 🔎 Duas heranças a arrumar na mesma janela
 

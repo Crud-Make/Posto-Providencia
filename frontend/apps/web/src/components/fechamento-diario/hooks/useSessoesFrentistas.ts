@@ -16,10 +16,26 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { fechamentoFrentistaService, frentistaService } from '../../../services/api';
+import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
+import { lerFrentistasDaApi } from '../../../services/api/frentista.api';
+import { lerSessoesDoDiaDaApi, type SessaoDoDia } from '../../../services/api/fechamentoFrentista.api';
 import { paraReais, formatarValorSimples, formatarValorAoSair } from '../../../utils/formatters';
-import { isSuccess } from '../../../types/ui/response-types';
+import {
+  type ApiResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  isSuccess
+} from '../../../types/ui/response-types';
 import { cartao, conferido } from '@posto/utils';
 import { meiosDaSessao } from '../../../utils/fechamentoMeios';
+import { comMarcaDeConferido, registrarRemocao, remocoesDoDia, SEM_REMOCOES, type RemocoesDoDia } from './remocao-de-sessao';
+
+/**
+ * As duas fontes cabem aqui: o Supabase devolve a linha com `frentista` e `fechamento`
+ * aninhados, a API só a linha (`SessaoDoDia`). O hook lê `id`, `frentista_id`, os baldes,
+ * `encerrante`, `valor_conferido`, `observacoes` e `data_hora_envio` — nenhuma relação.
+ */
+type SessoesPorDataResponse = ApiResponse<SessaoDoDia[]>;
 
 /**
  * Interface para totais detalhados dos frentistas
@@ -50,6 +66,11 @@ interface RetornoSessoesFrentistas {
   alterarCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
   aoSairCampoFrentista: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
   definirSessoes: React.Dispatch<React.SetStateAction<SessaoFrentista[]>>;
+  /**
+   * Modo API: frentistas cujas sessões do banco o gerente tirou da tela no dia `data`. Vão no
+   * `frentistas_conhecidos[]` do Salvar, que é onde a remoção acontece (ver `remocao-de-sessao.ts`).
+   */
+  frentistasRemovidosEm: (data: string) => readonly number[];
 }
 
 // ... (interfaces mantidas)
@@ -109,6 +130,7 @@ export const useSessoesFrentistas = (
   // inserido — o INSERT caía no buraco e o envio só aparecia no F5 — e
   // (2) redisparava o efeito de restauração do rascunho. Lendo por ref, a
   // função é estável e o canal fica de pé.
+  const [remocoes, setRemocoes] = useState<RemocoesDoDia>(SEM_REMOCOES);
   const frentistasRef = useRef<Frentista[]>(frentistasCadastrados);
   useEffect(() => {
     frentistasRef.current = frentistasCadastrados;
@@ -132,14 +154,25 @@ export const useSessoesFrentistas = (
     }
 
     setCarregando(true);
+    // Recarga do banco devolve à tela o que foi tirado e ainda não salvo: a remoção pendente morre
+    // junto, senão o Salvar apagaria uma linha que o gerente está vendo de volta.
+    setRemocoes(SEM_REMOCOES);
     try {
       // O envio do frentista é por dia: `getByDate` carrega todos os envios da data.
       // [16/08] O parâmetro `turno` saiu — ele já não chegava à consulta, servia só ao
       // guard de cache acima, e mantê-lo dava a impressão de que a busca filtrava por turno.
-      const dadosRes = await fechamentoFrentistaService.getByDate(
-        data,
-        postoId
-      );
+      // [20/09] Sessões do dia pela API Laravel (#103 P6) quando VITE_API_URL existe; sem
+      // ela, nada muda. A troca é AQUI, no call site, e não dentro de
+      // `fechamentoFrentistaService.getByDate`: o `aggregator.service.ts` chama o mesmo
+      // service (e lê o `frentista` aninhado, que a API não traz), e é sítio de fórmula que só
+      // o Fable edita. A paridade (números, null continua null — I8 —, ordem por id, recorte
+      // UTC do dia) fica em `fechamentoFrentista.api.ts`.
+      const dadosRes: SessoesPorDataResponse = urlDaApi() !== null
+        ? await lerSessoesDoDiaDaApi(postoId, data).match(
+            (lidas) => createSuccessResponse(lidas),
+            (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+          )
+        : await fechamentoFrentistaService.getByDate(data, postoId);
 
       if (!isSuccess(dadosRes)) {
         console.error('❌ Erro ao carregar sessões:', dadosRes.error);
@@ -155,7 +188,17 @@ export const useSessoesFrentistas = (
       if (frentistasCadastradosAtuais.length > 0) {
         frentistasAtivos = frentistasCadastradosAtuais.filter(f => f.ativo);
       } else {
-        const frentistasRes = await frentistaService.getAll(postoId);
+        // [19/09] Mesma troca de transporte de `useCarregamentoDados`: API (#97) com
+        // VITE_API_URL, Supabase sem ela — no call site, nunca dentro do service, porque o
+        // aggregator também o usa. `lerFrentistasDaApi` já devolve só os ativos; o
+        // `.filter(ativo)` abaixo continua por paridade com o caminho antigo.
+        const frentistasRes: ApiResponse<Frentista[]> =
+          urlDaApi() !== null
+            ? await lerFrentistasDaApi(postoId).match(
+                (frentistas) => createSuccessResponse(frentistas),
+                (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+              )
+            : await frentistaService.getAll(postoId);
         if (isSuccess(frentistasRes)) {
           frentistasAtivos = frentistasRes.data.filter((f: Frentista) => f.ativo);
         }
@@ -262,6 +305,15 @@ export const useSessoesFrentistas = (
    * Remove sessão de frentista
    */
   const removerFrentista = useCallback(async (tempId: string) => {
+    // [25/09] Modo API: nada vai ao banco agora. A sessão sai da tela e o frentista fica declarado
+    // em `frentistas_conhecidos[]`; o `PUT /fechamento` do Salvar a apaga, na mesma transação do dia.
+    if (urlDaApi() !== null) {
+      const dia = ultimoContextoCarregado.current.data;
+      setRemocoes(atual => registrarRemocao(atual, dia, sessoes.find(s => s.tempId === tempId)));
+      setSessoes(prev => prev.filter(s => s.tempId !== tempId));
+      return;
+    }
+
     // Se for um registro que já existe no banco, exclui lá também
     if (tempId.startsWith('existing-')) {
       const id = parseInt(tempId.replace('existing-', ''), 10);
@@ -279,7 +331,7 @@ export const useSessoesFrentistas = (
 
     setSessoes(prev => prev.filter(s => s.tempId !== tempId));
     console.log('➖ Frentista removido da tela:', tempId);
-  }, []);
+  }, [sessoes]);
 
   /**
    * Atualiza campos de uma sessão
@@ -289,6 +341,14 @@ export const useSessoesFrentistas = (
       setSessoes(prev =>
         prev.map(fs => (fs.tempId === tempId ? { ...fs, ...atualizacoes } : fs))
       );
+
+      // [25/09] Modo API: a marca vai na `observacoes` da sessão e viaja no Salvar (PUT do dia).
+      if (atualizacoes.status === 'conferido' && urlDaApi() !== null) {
+        setSessoes(prev =>
+          prev.map(fs => (fs.tempId === tempId ? { ...fs, observacoes: comMarcaDeConferido(fs.observacoes) } : fs))
+        );
+        return;
+      }
 
       // Persiste mudança de status explicitamente
       if (atualizacoes.status === 'conferido') {
@@ -381,6 +441,8 @@ export const useSessoesFrentistas = (
     }, { cartao: 0, cartao_debito: 0, cartao_credito: 0, nota: 0, pix: 0, dinheiro: 0, moedas: 0, baratao: 0, total: 0 });
   }, [sessoes]);
 
+  const frentistasRemovidosEm = useCallback((data: string) => remocoesDoDia(remocoes, data), [remocoes]);
+
   return {
     sessoes,
     carregando,
@@ -391,6 +453,7 @@ export const useSessoesFrentistas = (
     atualizarSessao,
     alterarCampoFrentista,
     aoSairCampoFrentista,
-    definirSessoes: setSessoes
+    definirSessoes: setSessoes,
+    frentistasRemovidosEm
   };
 };

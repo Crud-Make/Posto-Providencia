@@ -23,41 +23,10 @@ import {
   type CompraComData,
   type ReguaComData,
 } from '@posto/utils';
-import { supabase } from '@/services/supabase';
+import { visaoDoProprietarioPelaApi } from '@/services/api/proprietario.api';
+import { descreverErroDaApi } from '@/services/api/base';
+import { insumosDaApi, insumosDoSupabase, type InsumosDaTroca } from './insumos-da-troca';
 import { intervaloDoMes, hojeIso } from '@/utils/periodo';
-
-interface LeituraDoBanco {
-  readonly data: string;
-  readonly litros_vendidos: number | null;
-  readonly preco_litro: number | null;
-  readonly bico: { readonly combustivel_id: number } | null;
-}
-
-interface CompraDoBanco {
-  readonly combustivel_id: number;
-  readonly data: string;
-  readonly quantidade_litros: number;
-  readonly valor_total: number;
-}
-
-interface ReguaDoBanco {
-  readonly tanque_id: number;
-  readonly data: string;
-  /** Nulo = medição não feita naquele dia — régua que NÃO existe, nunca 0 L. */
-  readonly volume_fisico: number | null;
-}
-
-interface TanqueDoBanco {
-  readonly id: number;
-  readonly combustivel_id: number;
-}
-
-interface CombustivelDoBanco {
-  readonly id: number;
-  readonly nome: string;
-  /** Sigla da planilha (GC/GA/ET/S10) — chave de `corDoProduto`. */
-  readonly codigo: string | null;
-}
 
 /** Uma troca do mês, pronta para exibição. */
 export interface ImpactoExibivel extends ImpactoTroca {
@@ -97,6 +66,21 @@ function inicioDoMesAnterior(mesIso: string): string {
   return mes === 1 ? `${ano - 1}-12-01` : `${ano}-${String(mes - 1).padStart(2, '0')}-01`;
 }
 
+/**
+ * As linhas pela fonte ligada: a API com `VITE_API_PROPRIETARIO` (#100), o Supabase sem. Falha da
+ * API vira `throw` aqui, na borda, porque o hook já trata falha do Supabase assim — a tela mostra o
+ * erro, não cai no Supabase em silêncio.
+ */
+async function lerInsumos(postoId: number, inicioBusca: string, fim: string): Promise<InsumosDaTroca> {
+  if (!visaoDoProprietarioPelaApi()) return insumosDoSupabase(postoId, inicioBusca, fim);
+  return insumosDaApi(postoId, inicioBusca, fim).match(
+    (lidos) => lidos,
+    (erro) => {
+      throw new Error(descreverErroDaApi(erro));
+    },
+  );
+}
+
 export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
   const [dados, setDados] = useState<DadosImpactoTrocaPreco | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -110,44 +94,20 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
       const periodo = intervaloDoMes(mesIso, hojeIso());
       const inicioBusca = inicioDoMesAnterior(mesIso);
 
-      const [leiturasRes, comprasRes, reguasRes, tanquesRes, combustiveisRes] = await Promise.all([
-        supabase
-          .from('Leitura')
-          .select('data, litros_vendidos, preco_litro, bico:Bico!inner(combustivel_id)')
-          .eq('posto_id', postoId)
-          .gte('data', inicioBusca)
-          .lte('data', periodo.fim),
-        supabase
-          .from('Compra')
-          .select('combustivel_id, data, quantidade_litros, valor_total')
-          .eq('posto_id', postoId)
-          .gte('data', inicioBusca)
-          .lte('data', periodo.fim),
-        supabase
-          .from('HistoricoTanque')
-          .select('tanque_id, data, volume_fisico')
-          .not('volume_fisico', 'is', null)
-          .gte('data', inicioBusca)
-          .lte('data', periodo.fim),
-        supabase.from('Tanque').select('id, combustivel_id').eq('posto_id', postoId),
-        supabase.from('Combustivel').select('id, nome, codigo').eq('posto_id', postoId),
-      ]);
-
-      const primeiraFalha = [leiturasRes, comprasRes, reguasRes, tanquesRes, combustiveisRes]
-        .find((r) => r.error != null);
-      if (primeiraFalha?.error) throw new Error(primeiraFalha.error.message);
+      const { leituras: leiturasDoBanco, compras: comprasDoBanco, reguas: reguasDoBanco, tanques, combustiveis } =
+        await lerInsumos(postoId, inicioBusca, periodo.fim);
 
       const combustivelDoTanque = new Map<number, number>(
-        ((tanquesRes.data ?? []) as TanqueDoBanco[]).map((t) => [t.id, t.combustivel_id]),
+        tanques.map((t) => [t.id, t.combustivel_id]),
       );
-      const cadastroCombustiveis = (combustiveisRes.data ?? []) as CombustivelDoBanco[];
+      const cadastroCombustiveis = combustiveis;
       const nomeDoCombustivel = new Map<number, string>(cadastroCombustiveis.map((c) => [c.id, c.nome]));
       const codigoDoCombustivel = new Map<number, string | null>(
         cadastroCombustiveis.map((c) => [c.id, c.codigo]),
       );
 
       // A fronteira do mapper: daqui para baixo é camelCase e domínio puro.
-      const leituras: LeituraPrecoDia[] = ((leiturasRes.data ?? []) as unknown as LeituraDoBanco[])
+      const leituras: LeituraPrecoDia[] = leiturasDoBanco
         .filter((l) => l.bico != null)
         .map((l) => ({
           data: l.data.slice(0, 10),
@@ -156,7 +116,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
           litrosVendidos: l.litros_vendidos ?? 0,
         }));
 
-      const compras: CompraComData[] = ((comprasRes.data ?? []) as CompraDoBanco[]).map((c) => ({
+      const compras: CompraComData[] = comprasDoBanco.map((c) => ({
         combustivel: String(c.combustivel_id),
         data: c.data.slice(0, 10),
         litros: c.quantidade_litros,
@@ -165,7 +125,7 @@ export function useImpactoTrocaPreco(postoId: number | null, mesIso: string) {
 
       // O filtro de nulo repete o da query de propósito: régua sem medição que
       // escapasse viraria "tanque com 0 L" lá na corrente (null × n = 0 em JS).
-      const reguas: ReguaComData[] = ((reguasRes.data ?? []) as ReguaDoBanco[])
+      const reguas: ReguaComData[] = reguasDoBanco
         .filter((r) => combustivelDoTanque.has(r.tanque_id) && r.volume_fisico != null)
         .map((r) => ({
           combustivel: String(combustivelDoTanque.get(r.tanque_id)),

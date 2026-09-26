@@ -60,3 +60,36 @@ existe porque ele não estava.
 Contagens locais iguais às de produção (Postgres 17.6): 45 tabelas, 103 policies, 22 funções,
 9 triggers, 2 views, 130 índices, 5 enums, 42 sequences, 141 constraints, RLS ligada em 45/45.
 `get_dashboard_proprietario` e `dentro_da_janela_de_escrita` executam.
+
+## Banco PRÓPRIO por worktree (desde 24/09/2026)
+
+O `docker-compose.yml` da raiz sobe UM Postgres, com `container_name` fixo (`posto-postgres`)
+e a porta 5433 fixa. Como as worktrees são cópias do mesmo repositório, o `docker compose up`
+de qualquer uma encontra o container da outra no ar, reusa — e o banco acaba MONTANDO O
+`banco/init` DO CHECKOUT PRINCIPAL.
+
+Isso mordeu de verdade: em 23/09/2026 o checkout principal ganhou
+`banco/init/02-multi-tenant-uniques-por-posto.sql` (de outra sessão) e 3 testes do Pest
+passaram a reprovar em TODA branch, inclusive numa que não toca no esquema. O container
+servia um esquema mais novo do que o da worktree.
+
+Para worktrees, use o script:
+
+```
+scripts/banco-da-worktree.sh subir    # sobe (ou religa) o banco desta pasta
+scripts/banco-da-worktree.sh status
+scripts/banco-da-worktree.sh parar    # o volume e o dado ficam
+scripts/banco-da-worktree.sh zerar    # apaga o volume desta pasta (pede confirmação)
+```
+
+Ele cria um container `posto-pg-<pasta>`, um volume `<pasta>_pg` e uma porta derivada do NOME
+DA PASTA (estável entre execuções), aplica o `banco/init` da worktree, carrega o
+`banco/dados/cadastros.sql` (do principal, quando a worktree não tem) e aponta o `DB_PORT` do
+`backend/.env` **e do `backend/phpunit.xml`**.
+
+O `phpunit.xml` importa: ele fixa `<env name="DB_PORT" value="5433"/>`, e env de PROCESSO vence
+o `.env` do Laravel (o Dotenv não sobrescreve o que já existe). Sem esse ajuste o Pest bate no
+banco compartilhado mesmo com o `.env` certo — foi o que aconteceu na primeira tentativa.
+
+O checkout principal continua usando `docker compose` como sempre (container `posto-postgres`,
+porta 5433). O script não o toca.

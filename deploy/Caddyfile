@@ -1,0 +1,36 @@
+# O edge de produção (#105) — TLS e o domínio público.
+#
+# O certificado é automático: o Caddy fala com o Let's Encrypt sozinho e renova sozinho. As duas
+# condições são de rede, não de configuração: o DNS do `DOMINIO_API` já tem de apontar para esta
+# VPS, e as portas 80 e 443 têm de estar abertas. Sem isso ele não emite — e o log diz por quê.
+#
+# O domínio vem do ambiente (`DOMINIO_API`), não escrito aqui: trocar de domínio não deve exigir
+# editar arquivo versionado, e o nome de produção não pertence ao repositório.
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$DOMINIO_API} {
+	encode zstd gzip
+
+	# `api` é o nome do serviço no `docker-compose.prod.yml`, na rede do compose.
+	reverse_proxy api:8080
+
+	header {
+		# O painel é https; a API também. Sem HSTS, o primeiro acesso pode sair em http.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		# Não anunciar o servidor: não há motivo para facilitar o reconhecimento.
+		-Server
+	}
+
+	# O log fica no volume `caddy-dados` (`/data`), que sobrevive ao `down`.
+	log {
+		output file /data/acesso.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

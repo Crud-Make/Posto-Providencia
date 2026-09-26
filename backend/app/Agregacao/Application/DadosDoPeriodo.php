@@ -31,6 +31,9 @@ use stdClass;
  *                       o filtro de `despesaService.getByMonth`) e Σ `Leitura.litros_vendidos` de
  *                       TODOS os combustíveis, ambos do MESMO mês civil (aggregator.service.ts:43-61;
  *                       lucro.ts:36-41 `despesaOperacionalPorLitro` divide no cliente, não aqui)
+ *  - `leituras`       ← as linhas de `Leitura` do período exato (bico, dia UTC, encerrantes), cruas,
+ *                       para o cliente rodar `encerranteMensal` (#103 P9, decisão do dono 22/09/2026).
+ *                       Aditivo: `rateio.litros_vendidos` continua sendo Σ `litros_vendidos`.
  */
 final class DadosDoPeriodo
 {
@@ -55,7 +58,39 @@ final class DadosDoPeriodo
             periodo: $periodo,
             produtos: $this->produtos($posto, $periodo),
             rateio: $this->rateio($posto, $periodo->mesCivil()),
+            leituras: $this->leituras($posto, $periodo),
         );
+    }
+
+    /**
+     * Leituras cruas do período exato, para o cliente rodar `encerranteMensal` sobre os litros do
+     * rateio (decisão do dono, 22/09/2026, #103 P9 Q1 opção a). Nenhuma conta aqui: o salto do
+     * encerrante mora em `encerrante-mensal.ts` e não ganha cópia em PHP (DECISÃO 1).
+     *
+     * Ordem determinística por bico, dia e id — o unique `leitura_unica_bico_data` já torna
+     * (bico, data) único, e o `id` desempata se um dia o índice sumir.
+     *
+     * @return list<LeituraDoPeriodo>
+     */
+    private function leituras(int $posto, Periodo $periodo): array
+    {
+        $linhas = DB::table('Leitura')
+            ->selectRaw('id, bico_id, '.self::DIA_UTC.'::text AS dia, leitura_inicial::numeric(15,3) AS leitura_inicial, leitura_final::numeric(15,3) AS leitura_final')
+            ->where('posto_id', $posto)
+            ->whereRaw(self::DIA_UTC.' BETWEEN ? AND ?', [$periodo->inicio, $periodo->fim])
+            ->orderBy('bico_id')
+            ->orderByRaw(self::DIA_UTC)
+            ->orderBy('id')
+            ->get();
+
+        return array_values($linhas
+            ->map(static fn (stdClass $linha): LeituraDoPeriodo => new LeituraDoPeriodo(
+                bicoId: LinhaDoBanco::inteiro($linha, 'bico_id'),
+                data: LinhaDoBanco::texto($linha, 'dia'),
+                leituraInicial: LinhaDoBanco::decimal($linha, 'leitura_inicial'),
+                leituraFinal: LinhaDoBanco::decimal($linha, 'leitura_final'),
+            ))
+            ->all());
     }
 
     /**
@@ -90,12 +125,12 @@ final class DadosDoPeriodo
 
         return array_values($linhas
             ->map(static fn (stdClass $linha): ProdutoAgregado => new ProdutoAgregado(
-                combustivelId: self::inteiro($linha, 'combustivel_id'),
-                produto: self::texto($linha, 'produto'),
-                litrosVendidos: self::decimal($linha, 'litros_vendidos'),
-                receita: self::decimal($linha, 'receita'),
-                comprasLitros: self::decimal($linha, 'compras_litros'),
-                comprasValorTotal: self::decimal($linha, 'compras_valor_total'),
+                combustivelId: LinhaDoBanco::inteiro($linha, 'combustivel_id'),
+                produto: LinhaDoBanco::texto($linha, 'produto'),
+                litrosVendidos: LinhaDoBanco::decimal($linha, 'litros_vendidos'),
+                receita: LinhaDoBanco::decimal($linha, 'receita'),
+                comprasLitros: LinhaDoBanco::decimal($linha, 'compras_litros'),
+                comprasValorTotal: LinhaDoBanco::decimal($linha, 'compras_valor_total'),
             ))
             ->all());
     }
@@ -140,39 +175,8 @@ final class DadosDoPeriodo
 
         return new RateioDoMesCivil(
             mesCivil: $mesCivil,
-            despesasTotal: self::decimal($despesas, 'total'),
-            litrosVendidos: self::decimal($litros, 'litros'),
+            despesasTotal: LinhaDoBanco::decimal($despesas, 'total'),
+            litrosVendidos: LinhaDoBanco::decimal($litros, 'litros'),
         );
-    }
-
-    private static function inteiro(stdClass $linha, string $campo): int
-    {
-        $valor = $linha->{$campo} ?? null;
-        if (! is_int($valor)) {
-            throw new LogicException("Coluna {$campo}: esperava inteiro do Postgres.");
-        }
-
-        return $valor;
-    }
-
-    private static function texto(stdClass $linha, string $campo): string
-    {
-        $valor = $linha->{$campo} ?? null;
-        if (! is_string($valor)) {
-            throw new LogicException("Coluna {$campo}: esperava texto do Postgres.");
-        }
-
-        return $valor;
-    }
-
-    /** O PDO pgsql entrega `numeric` como string — é o que garante escala exata e zero float. */
-    private static function decimal(stdClass $linha, string $campo): string
-    {
-        $valor = $linha->{$campo} ?? null;
-        if (! is_string($valor) || ! is_numeric($valor)) {
-            throw new LogicException("Coluna {$campo}: esperava numeric (string decimal) do Postgres.");
-        }
-
-        return $valor;
     }
 }

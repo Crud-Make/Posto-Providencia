@@ -1,0 +1,23 @@
+# O que NÃO entra na imagem de produção (#105).
+#
+# Sem este arquivo o `COPY . .` levaria o `vendor/` do host — que tem as dev-dependencies —, o
+# `.env` com os segredos de desenvolvimento e o cache do Deptrac. Três problemas de uma vez:
+# imagem maior, build mais lento, e o `.env` de dev podendo viajar para a VPS.
+.git
+.env
+.env.*
+vendor
+node_modules
+tests
+storage/logs/*
+bootstrap/cache/*
+.deptrac.cache
+phpstan.neon
+phpmd.xml
+phpunit.xml
+.claude
+.mcp.json
+boost.json
+AGENTS.md
+CLAUDE.md
+README.md

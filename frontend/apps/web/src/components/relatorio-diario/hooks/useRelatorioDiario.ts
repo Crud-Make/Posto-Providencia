@@ -2,134 +2,39 @@
  * Hook do Relatório Diário.
  *
  * @remarks
- * Carrega fechamentos, leituras e despesas do posto e consolida totais do dia.
- *
- * [06/09/2026] O turno saiu daqui. O sistema decidiu não ter turno (PR #53), mas este hook
- * ainda agrupava por `Turno` e filtrava fechamento E leitura por `turno_id === turno.id`.
- * O painel grava `Leitura.turno_id = null` — a primeira leitura salva por ele sumia da
- * tela (0 L num dia com 6 bicos), e o dia aparecia rotulado "Manhã" porque a tabela só
- * tem Manhã/Tarde/Noite. Agora o dia é a unidade: tudo do dia, uma linha só.
+ * Carrega os insumos do dia — fechamentos, leituras, despesas e compras do mês — e consolida os
+ * totais. A fonte é escolhida aqui: a API Laravel com `VITE_API_RELATORIO` (#103,
+ * `fonte-da-api.ts`), o Supabase sem (`fonte-supabase.ts`). As contas são as mesmas nas duas
+ * (`montar-relatorio.ts`), e nenhuma mudou com a troca.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
 import { usePeriodo } from '../../../contexts/usePeriodo';
-import {
-    fechamentoService,
-    leituraService,
-    compraService,
-    despesaService
-} from '../../../services/api';
-import { custoMedioPorCombustivel } from '../../../services/custo-do-mes';
-import { mesCivil } from '../../../utils/periodo';
+import { descreverErroDaApi } from '../../../services/api/base';
+import { relatorioDiarioPelaApi } from '../../../services/api/relatorio-diario.api';
 import { ShiftData, DailyTotals, ExpenseData } from '../types';
-import type { ApiResponse } from '../../../types/ui/response-types';
-import { isSuccess } from '../../../types/ui/response-types';
-import type { DBDespesa } from '../../../types/database/index';
-import { semLancamento } from '@posto/utils';
+import type { InsumosDoRelatorio } from './insumos';
+import { insumosDaApi } from './fonte-da-api';
+import { insumosDoSupabase } from './fonte-supabase';
+import { montarRelatorio } from './montar-relatorio';
+
+/** Mantido aqui para quem já importava do hook (o teste do preço do dia). */
+export { vendaLucroDaLeitura } from './montar-relatorio';
 
 /**
- * Fechamento com os campos necessários para o relatório diário.
+ * Os insumos do dia pela fonte ligada. Falha da API vira `throw` com a mensagem do erro — o mesmo
+ * destino da falha do Supabase (o `catch` do hook) —, e nunca cai para o Supabase: com o login
+ * pela API não há sessão dele, e cair lá mostraria um dia vazio como se fosse verdade.
  */
-interface FechamentoDiario {
-    turno_id?: number | null;
-    total_vendas?: number | null;
-    diferenca?: number | null;
-    /**
-     * `'ABERTO'` enquanto o dia não foi consolidado pelo painel, `'FECHADO'` depois.
-     *
-     * @remarks
-     * Campo decisivo, e que este hook ignorava. O PWA cria o `Fechamento` pai com
-     * `total_vendas`, `total_recebido` e `diferenca` zerados (`getOrCreateFechamento`)
-     * e nunca os atualiza — quem preenche é o passo 5 de `useSubmissaoFechamento`,
-     * ao salvar pelo painel. Sem olhar o status, um dia só lançado pelo celular
-     * aparecia como "FECHADO" com R$ 0,00 de venda. Medido em 13/08/2026:
-     * `status = 'ABERTO'` ⟺ `total_vendas = 0`, em 12 de 12 casos; os 201 FECHADO
-     * têm todos o valor preenchido.
-     */
-    status?: string | null;
-    usuario?: {
-        nome?: string | null;
-    } | null;
-}
+export async function carregarInsumos(dia: string, postoId: number): Promise<InsumosDoRelatorio> {
+    if (!relatorioDiarioPelaApi()) return insumosDoSupabase(dia, postoId);
 
-/**
- * Leitura com os campos necessários para cálculo de volume e lucro.
- */
-interface LeituraDiaria {
-    turno_id?: number | null;
-    leitura_inicial: number;
-    leitura_final: number;
-    /** Preço do litro NO DIA da leitura, carimbado na submissão. */
-    preco_litro?: number | null;
-    /** Venda do bico no dia, gravada na submissão (`litros × preco_litro`). */
-    valor_total?: number | null;
-    bico?: {
-        combustivel?: {
-            id?: number;
-            preco_venda?: number | null;
-        } | null;
-    } | null;
-}
-
-/**
- * Venda e lucro bruto de uma leitura, a preço DO DIA e a custo DO MÊS.
- *
- * @remarks
- * O preço vem do que foi carimbado na própria leitura (`preco_litro`/
- * `valor_total`); o `preco_venda` do cadastro é só fallback para linha antiga
- * sem preço gravado. Era daqui que saía o bug do "preço único": dia de janeiro
- * (R$ 6,28) exibido a preço de agosto (R$ 6,98) — o cadastro guarda um preço
- * só, o de hoje.
- *
- * [06/09/2026] O custo tinha o mesmo defeito, do outro lado da conta: vinha do
- * `preco_custo` do cadastro, congelado em janeiro (o #80 tirou esse carimbo de
- * três telas). Agora é injetado — custo médio da compra do MÊS do dia, por
- * combustível (`custo-do-mes.ts`, modelo da planilha). Sem compra do produto no
- * mês, `lucro` é `null`: não apurável, nunca "custo zero = lucro cheio". Lucro
- * bruto por litro, sem rateio de despesa: a despesa do dia é subtraída no total.
- *
- * @param custoLitro - R$/L da compra do mês para o combustível da leitura; `null` sem compra.
- */
-export function vendaLucroDaLeitura(
-    l: LeituraDiaria,
-    custoLitro: number | null
-): { volume: number; venda: number; lucro: number | null } {
-    const volume = Number(l.leitura_final) - Number(l.leitura_inicial);
-    if (volume <= 0) return { volume: 0, venda: 0, lucro: 0 };
-
-    const precoDoDia = Number(l.preco_litro ?? l.bico?.combustivel?.preco_venda ?? 0);
-    const venda = l.valor_total != null ? Number(l.valor_total) : volume * precoDoDia;
-
-    return { volume, venda, lucro: custoLitro === null ? null : volume * (precoDoDia - custoLitro) };
-}
-
-/**
- * Extrai o `data` de uma `ApiResponse` com mensagem de erro consistente.
- *
- * @param response - Resposta retornada pelos services
- */
-function extractApiData<T>(response: ApiResponse<T>): T {
-    if (isSuccess(response)) return response.data;
-    throw new Error(response.error || 'Erro ao buscar dados do serviço');
-}
-
-/**
- * Normaliza uma despesa do banco para o formato de UI.
- *
- * @param despesa - Registro do banco
- */
-function mapDbDespesaToUi(despesa: DBDespesa): ExpenseData {
-    return {
-        id: String(despesa.id),
-        descricao: despesa.descricao,
-        categoria: despesa.categoria ?? 'Outros',
-        valor: Number(despesa.valor),
-        data: despesa.data,
-        status: despesa.status,
-        posto_id: Number(despesa.posto_id),
-        data_pagamento: despesa.data_pagamento ?? null,
-        observacoes: despesa.observacoes ?? undefined
-    };
+    return insumosDaApi(dia, postoId).match(
+        (insumos) => insumos,
+        (erro) => {
+            throw new Error(descreverErroDaApi(erro));
+        }
+    );
 }
 
 export const useRelatorioDiario = () => {
@@ -154,142 +59,10 @@ export const useRelatorioDiario = () => {
         
         try {
             setLoading(true);
-
-            // 1. Load basic data
-            // [18/01 10:34] Extraído payload de ApiResponse para evitar `filter is not a function` em despesas.
-            // Custo do litro: compra do MÊS do dia, por combustível (ver `vendaLucroDaLeitura`).
-            const mesDoDia = mesCivil(selectedDate);
-            const [fechamentosRes, leiturasRes, despesasRes, comprasRes] = await Promise.all([
-                fechamentoService.getByDate(selectedDate, postoAtivoId),
-                leituraService.getByDate(selectedDate, postoAtivoId),
-                despesaService.getAll(postoAtivoId),
-                compraService.getByDateRange(mesDoDia.inicio, mesDoDia.fim, postoAtivoId)
-            ]);
-
-            const fechamentos = extractApiData(fechamentosRes as ApiResponse<FechamentoDiario[]>);
-            const leituras = extractApiData(leiturasRes as ApiResponse<LeituraDiaria[]>);
-            const custoDoMes = custoMedioPorCombustivel(isSuccess(comprasRes) ? comprasRes.data : []);
-            // [18/01 10:40] Ajustado mapeamento de Despesa do banco para UI (id string).
-            const despesasDb = extractApiData(despesasRes as ApiResponse<DBDespesa[]>);
-            const despesas = despesasDb.map(mapDbDespesaToUi);
-
-            // Filter expenses for the specific day
-            const dayExpenses = despesas
-                .filter(d => d.data === selectedDate)
-                .map(d => ({
-                    ...d,
-                    valor: Number(d.valor)
-                }));
-                
-            setExpensesDay(dayExpenses);
-            const totalDespesas = dayExpenses.reduce((sum, d) => sum + Number(d.valor), 0);
-
-            // 2. O dia inteiro numa linha só — sem filtro por turno (ver cabeçalho).
-            const processedShifts: ShiftData[] = [(() => {
-                    const fechamentosTurno = fechamentos;
-
-                    const totalVendasFechamento = fechamentosTurno.reduce((acc, f) => acc + Number(f.total_vendas || 0), 0);
-                    // [04/09/2026] `diferenca` NULA é "não apurado" (sem encerrante completo),
-                    // não zero — e não se soma com zero: um pai não apurado deixa o turno
-                    // inteiro não apurado. Antes o `|| 0` transformava isso em "bateu".
-                    const naoApurado = fechamentosTurno.some(f => f.diferenca === null || f.diferenca === undefined);
-                    const totalDiferencaFechamento = naoApurado
-                        ? null
-                        : fechamentosTurno.reduce((acc, f) => acc + Number(f.diferenca), 0);
-
-                    const leiturasTurno = leituras;
-
-                    // Venda, litros e lucro bruto a partir das leituras. Um produto sem
-                    // compra no mês deixa o lucro do dia inteiro não apurável (`null`).
-                    let litrosTurno = 0;
-                    let lucroTurno: number | null = 0;
-                    let vendasLeituras = 0;
-
-                    leiturasTurno.forEach(l => {
-                        const combustivelId = l.bico?.combustivel?.id;
-                        const custo = combustivelId === undefined ? null : custoDoMes(combustivelId);
-                        const { volume, venda, lucro } = vendaLucroDaLeitura(l, custo);
-                        litrosTurno += volume;
-                        vendasLeituras += venda;
-                        lucroTurno = lucroTurno === null || lucro === null ? null : lucroTurno + lucro;
-                    });
-
-                    // O total do `Fechamento` só vale depois que o dia foi CONSOLIDADO pelo
-                    // painel — antes disso ele é zero por construção, e usá-lo mostrava
-                    // "R$ 0,00 vendidos" num dia com 1.288 L na bomba. Enquanto o dia está
-                    // aberto, a venda real vem das leituras, que é a mesma fonte do dashboard.
-                    const consolidado =
-                        fechamentosTurno.length > 0 &&
-                        fechamentosTurno.every(f => f.status === 'FECHADO');
-
-                    const totalVendas = consolidado ? totalVendasFechamento : vendasLeituras;
-
-                    // A diferença de caixa vai para a tela como está gravada, sempre.
-                    // [13/08/2026] Aqui existia uma heurística que a ZERAVA quando
-                    // `|diferenca + totalVendas| < 5`, para "não mostrar quebra gigante".
-                    // Ela estava errada duas vezes: o sinal (com `diferenca = encerrante −
-                    // conferido`, "nada lançado" dá +totalVendas, então a condição pedia
-                    // 2×totalVendas < 5 — 0 de 201 fechamentos do histórico a satisfaziam),
-                    // e o próprio ato de zerar, que apaga da tela justamente o número que o
-                    // sistema existe para acusar. O estado agora é pergunta, não reescrita.
-                    const diferencaFinal: number | null = totalDiferencaFechamento;
-
-                    // 'Aberto'   = o turno nem começou (nenhum fechamento criado).
-                    // 'Pendente' = o frentista lançou pelo PWA, mas ninguém fechou o dia no
-                    //              painel. É o estado dos 12 dias achados em 13/08/2026, o mais
-                    //              antigo parado desde 26/07 — e que a tela mostrava como
-                    //              "FECHADO, R$ 0,00", ou seja, um dia sem conferência nenhuma
-                    //              com cara de dia conferido e batido.
-                    // 'Fechado'  = consolidado pelo painel, com os totais gravados.
-                    const statusLabel: 'Aberto' | 'Fechado' | 'Pendente' =
-                        fechamentosTurno.length === 0
-                            ? 'Aberto'
-                            : !consolidado || totalDiferencaFechamento === null || semLancamento(totalVendas, totalDiferencaFechamento)
-                                ? 'Pendente'
-                                : 'Fechado';
-
-                    const frentistasNomes = fechamentosTurno
-                        .map(f => f.usuario?.nome)
-                        .filter((name): name is string => !!name); // Remove nulos
-
-                    // Remove duplicatas de nomes
-                    const frentistasUnicos = [...new Set(frentistasNomes)];
-
-                    return {
-                        turnoName: 'Dia',
-                        turnoId: 0,
-                        status: statusLabel,
-                        vendas: totalVendas,
-                        litros: litrosTurno,
-                        lucro: lucroTurno,
-                        diferenca: diferencaFinal,
-                        frentistas: frentistasUnicos
-                    };
-                })()];
-
-            setShiftsData(processedShifts);
-
-            // 3. Calculate Totals
-            const totalVendas = processedShifts.reduce((acc, curr) => acc + curr.vendas, 0);
-            const totalLitros = processedShifts.reduce((acc, curr) => acc + curr.litros, 0);
-            const totalLucro: number | null = processedShifts.some(s => s.lucro === null)
-                ? null
-                : processedShifts.reduce((acc, curr) => acc + (curr.lucro as number), 0);
-            // Um turno não apurado deixa o dia não apurado — nada de somar `null` como zero.
-            const totalDiferenca: number | null = processedShifts.some(s => s.diferenca === null)
-                ? null
-                : processedShifts.reduce((acc, curr) => acc + (curr.diferenca as number), 0);
-
-            setTotals({
-                vendas: totalVendas,
-                litros: totalLitros,
-                lucro: totalLucro,
-                despesas: totalDespesas,
-                lucroLiquido: totalLucro === null ? null : totalLucro - totalDespesas,
-                diferenca: totalDiferenca,
-                projetadoMensal: totalVendas * 30 // Naive projection
-            });
-
+            const relatorio = montarRelatorio(await carregarInsumos(selectedDate, postoAtivoId));
+            setExpensesDay(relatorio.expensesDay);
+            setShiftsData(relatorio.shiftsData);
+            setTotals(relatorio.totals);
         } catch (error) {
             console.error('Error loading daily report:', error);
         } finally {

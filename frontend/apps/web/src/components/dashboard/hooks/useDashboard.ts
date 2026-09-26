@@ -9,10 +9,13 @@ import { useState, useEffect } from 'react';
 import { usePosto } from '../../../contexts/usePosto';
 import { usePeriodo } from '../../../contexts/usePeriodo';
 import { fetchDashboardData, frentistaService } from '../../../services/api';
+import { corteDaTelaLigado } from '../../../services/api/base';
+import { frentistasDoFiltroDaApi } from '../../../services/api/dashboard-cadastro.api';
 import type { JanelaDoRateio } from '../../../services/api/dashboard.api';
 import type { Frentista } from '@posto/types';
 import { FuelData, PaymentMethod, AttendantClosing, AttendantPerformance } from '../../../types/ui/dashboard';
 import { hojeIso } from '../../../utils/periodo';
+import { periodoAnterior } from '../tendencia';
 import type { ApiResponse } from '../../../types/ui/response-types';
 import { isSuccess } from '../../../types/ui/response-types';
 
@@ -59,6 +62,8 @@ export const useDashboard = () => {
   const { postoAtivoId } = usePosto();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
+  /** KPIs do período anterior de mesmo tamanho — a base da tendência dos cards. `null` = sem base. */
+  const [anterior, setAnterior] = useState<DashboardKpis | null>(null);
 
   // Filters state — o período vem do contexto: é o mesmo das demais telas de análise.
   const { periodo, definirPeriodo: setPeriodo } = usePeriodo();
@@ -71,7 +76,10 @@ export const useDashboard = () => {
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const frentistasResponse = await frentistaService.getAll(postoAtivoId);
+        // Mesmo corte do `aggregator`: com a tela na API, o filtro também sai da API (#100 fatia 3).
+        const frentistasResponse = corteDaTelaLigado(import.meta.env.VITE_API_DASHBOARD)
+          ? await frentistasDoFiltroDaApi(postoAtivoId)
+          : await frentistaService.getAll(postoAtivoId);
         setFrentistas(isSuccess(frentistasResponse) ? frentistasResponse.data : []);
       } catch (error) {
         console.error("Failed to load filter options", error);
@@ -89,14 +97,16 @@ export const useDashboard = () => {
         setLoading(true);
         // Modo diário: passa null para turno (carrega dados do dia inteiro)
         // [18/01 10:34] Extraído payload de ApiResponse para evitar `kpis` indefinido no Dashboard.
-        const dashboardResponse = (await fetchDashboardData(
-          periodo.inicio,
-          periodo.fim,
-          selectedFrentista,
-          postoAtivoId
-        )) as ApiResponse<DashboardData>;
+        // O período anterior vai junto (mesmo filtro de frentista): é a base da tendência dos cards.
+        // Falha nele não derruba a tela — a tendência só vira "—".
+        const base = periodoAnterior(periodo);
+        const [dashboardResponse, anteriorResponse] = (await Promise.all([
+          fetchDashboardData(periodo.inicio, periodo.fim, selectedFrentista, postoAtivoId),
+          fetchDashboardData(base.inicio, base.fim, selectedFrentista, postoAtivoId),
+        ])) as [ApiResponse<DashboardData>, ApiResponse<DashboardData>];
         const dashboardData = extractApiData(dashboardResponse);
         setData(dashboardData);
+        setAnterior(isSuccess(anteriorResponse) ? anteriorResponse.data.kpis : null);
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
       } finally {
@@ -124,6 +134,7 @@ export const useDashboard = () => {
   return {
     loading,
     data,
+    anterior,
     periodo,
     setPeriodo,
     selectedFrentista,

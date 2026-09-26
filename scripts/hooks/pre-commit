@@ -77,8 +77,15 @@ if [ -n "$ts_no_indice" ]; then
         arquivos="$(printf '%s\n' "$ts_no_indice" | sed 's#^frontend/##')"
         # shellcheck disable=SC2086
         passo "ESLint reprovou: erro novo nos arquivos do índice" bun scripts/catraca.mjs eslint $arquivos || exit 1
+        # tsc pela catraca (19/09/2026, decisão do dono): é o que dá pre-commit ao
+        # `noImplicitReturns` (RES-4) e às flags estritas do tsconfig — até aqui um erro de
+        # tipo novo só aparecia no pre-push ou no CI. Roda o monorepo inteiro porque o tsc não
+        # tem lint parcial confiável (um arquivo do índice muda o tipo de quem o importa).
+        # Custo medido em 19/09 na base atual: 39 s (revisão) e 64–71 s (duas rodadas
+        # seguidas na máquina do dono, sob carga). Contar com ~1 min por commit de .ts.
+        passo "type-check reprovou: erro novo do tsc (catraca)" bun run type-check || exit 1
     else
-        echo "[pre-commit] aviso: branch sem scripts/catraca.mjs — ESLint type-aware pulado"
+        echo "[pre-commit] aviso: branch sem scripts/catraca.mjs — ESLint type-aware e tsc pulados"
     fi
 fi
 exit 0

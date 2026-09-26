@@ -18,6 +18,10 @@ const respostaDaApi: DashboardDaApi = {
         despesas_total: '22158.46',
         litros_vendidos: '45678.901',
     },
+    leituras: [
+        { bico_id: 1, data: '2026-01-01', leitura_inicial: '1716778.963', leitura_final: '1717451.532' },
+        { bico_id: 1, data: '2026-01-02', leitura_inicial: '1717451.532', leitura_final: '1718359.423' },
+    ],
 };
 
 const CODIGOS: ReadonlyMap<number, string> = new Map([
@@ -128,6 +132,28 @@ describe('lerDashboardDaApi', () => {
         const lido = await lerDashboardDaApi(99, '2026-01-01', '2026-01-31');
 
         expect(lido.isErr() && lido.error).toEqual({ tipo: 'http', status: 404 });
+    });
+
+    it('encerrante como número em vez de string decimal é resposta fora do contrato (#103 P9)', async () => {
+        vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+        respondeCom({
+            ...respostaDaApi,
+            leituras: [{ bico_id: 1, data: '2026-01-01', leitura_inicial: 1716778.963, leitura_final: '1717451.532' }],
+        });
+
+        const lido = await lerDashboardDaApi(1, '2026-01-01', '2026-01-31');
+
+        expect(lido.isErr() && lido.error.tipo).toBe('formato');
+    });
+
+    it('resposta sem o campo leituras é fora do contrato (#103 P9)', async () => {
+        vi.stubEnv('VITE_API_URL', 'http://localhost:8000');
+        const { leituras: _semLeituras, ...semLeituras } = respostaDaApi;
+        respondeCom(semLeituras);
+
+        const lido = await lerDashboardDaApi(1, '2026-01-01', '2026-01-31');
+
+        expect(lido.isErr() && lido.error.tipo).toBe('formato');
     });
 
     it('receita como número em vez de string decimal é resposta fora do contrato', async () => {

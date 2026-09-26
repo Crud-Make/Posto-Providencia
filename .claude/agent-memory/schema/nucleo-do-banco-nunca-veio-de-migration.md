@@ -5,6 +5,12 @@ metadata:
   type: project
 ---
 
+> ⚠️ **Parcialmente revogada em 17/09/2026.** O DDL do núcleo **está no repo**
+> desde o commit `b8fb465`, em `banco/init/01-esquema-base.sql` (45 tabelas, bate
+> 45/45 com o catálogo — reconferido 20/09/2026). Ver
+> [[banco-local-docker-espelha-producao]]. O que segue valendo aqui é só o que
+> está escrito abaixo: o **histórico de migrations** não é inventário do esquema.
+
 O histórico de migrations **não descreve** o núcleo do banco. Conferido em
 **12/08/2026** contra `supabase_migrations.schema_migrations`.
 

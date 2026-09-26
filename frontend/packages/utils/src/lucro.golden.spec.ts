@@ -59,6 +59,7 @@ import {
     margemPercentual,
     custoMedioCompra,
     custoLitrosVendidos,
+    emCentavos,
 } from './lucro';
 
 // Custo médio de compra recalculado a partir da compra crua (litros/valor) do
@@ -79,7 +80,13 @@ test('custoMedioCompra devolve null sem compra no período (nunca 0)', () => {
     expect(custoMedioCompra([{ litros: 0, valorTotal: 0 }])).toBeNull();
 });
 
-const TOL = 1.0; // R$ 1,00 de tolerância (arredondamentos de custo/rateio na planilha)
+/**
+ * Um centavo. Era R$ 1,00 até 21/09/2026 — folga que deixava passar lucro
+ * sem `emCentavos` E lucro deslocado em +R$ 0,01 (auditoria por mutação).
+ * Resíduo real medido contra a planilha: 0,0041 por bico, 0,0073 no total,
+ * 0,0026 na identidade — todos abaixo do centavo.
+ */
+const TOL = 0.01;
 
 // Custo médio de compra por produto (aba compra/custo do mês 01).
 const custoPorProduto: Record<string, number> = {};
@@ -117,6 +124,8 @@ for (const b of fixture.mes_01_por_produto) {
             despesaOperacionalLitro: despOp,
         });
         expect(Math.abs(lucro - b.lucro_bico_rs)).toBeLessThan(TOL);
+        // Dinheiro sai quantizado — pega o lucro sem `emCentavos` (21/09).
+        expect(lucro).toBe(emCentavos(lucro));
     });
 }
 
@@ -176,6 +185,10 @@ test('custoLitrosVendidos fecha a identidade lucro = venda − custo − despesa
     const { custo, produtosSemCompra } = custoLitrosVendidos(produtosDoMes01);
     expect(produtosSemCompra).toEqual([]);
     expect(custo).not.toBeNull();
+    expect(custo).toBe(emCentavos(custo as number));
+    // Medido em 21/09/2026; é o mesmo custo de janeiro que `custo-historico.golden`
+    // apura pelo caminho da RPC. Sem o número, +R$ 0,01 aqui passava pela identidade.
+    expect(custo).toBe(241267.16);
     const lucroPelaIdentidade =
         fixture.mes_01_total.venda_total_rs - (custo as number) - fixture.mes_01_despesas_total_rs;
     expect(Math.abs(lucroPelaIdentidade - fixture.mes_01_total.lucro_total_rs)).toBeLessThan(TOL);

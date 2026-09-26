@@ -23,8 +23,17 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { bicoService, frentistaService } from '../../../services/api';
+import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
+import { lerBicosComDetalhesDaApi } from '../../../services/api/bico.api';
+import { lerFrentistasDaApi } from '../../../services/api/frentista.api';
 import { supabase } from '../../../services/supabase';
-import { isSuccess } from '../../../types/ui/response-types';
+import { tempoRealLigado } from './useTempoRealDoFechamento';
+import {
+  type ApiResponse,
+  createErrorResponse,
+  createSuccessResponse,
+  isSuccess
+} from '../../../types/ui/response-types';
 import { useEstadoPersistido } from '../../../shared/lib/estado-persistido';
 
 /**
@@ -139,10 +148,30 @@ export const useCarregamentoDados = (
       // Carrega em paralelo para melhor performance
       // [18/01 00:00] Checar success e extrair data do ApiResponse
       // Motivo: services agora retornam ApiResponse
-      const [dadosBicosRes, dadosFrentistasRes] = await Promise.all([
-        bicoService.getWithDetails(postoId),
-        frentistaService.getAll(postoId)
-      ]);
+      // [19/09] Bicos e frentistas pela API Laravel (#97) quando VITE_API_URL existe; sem
+      // ela, nada muda. A troca é AQUI, no call site, e não dentro de
+      // `bicoService.getWithDetails` / `frentistaService.getAll`: o `aggregator.service.ts`
+      // (:352, :420) chama os mesmos métodos, e o aggregator é sítio de fórmula que só o
+      // Fable edita (Design Doc fechamento-diario-api.md §2). O filtro de `ativo` é do
+      // cliente, porque `CatalogoDoPosto` não filtra e o Supabase filtrava
+      // (`bico.service.ts:52`, `frentista.service.ts:51`). `preco_venda` chega da API como
+      // string decimal e já vem convertido em `bico.api.ts`; a sobreposição por
+      // `precosEditados` (acima) continua igual para as duas fontes.
+      const viaApi = urlDaApi() !== null;
+      const bicosPromise: Promise<ApiResponse<BicoComDetalhes[]>> = viaApi
+        ? lerBicosComDetalhesDaApi(postoId).match(
+            (bicosLidos) => createSuccessResponse(bicosLidos),
+            (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+          )
+        : bicoService.getWithDetails(postoId);
+      const frentistasPromise: Promise<ApiResponse<Frentista[]>> = viaApi
+        ? lerFrentistasDaApi(postoId).match(
+            (frentistas) => createSuccessResponse(frentistas),
+            (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR')
+          )
+        : frentistaService.getAll(postoId);
+
+      const [dadosBicosRes, dadosFrentistasRes] = await Promise.all([bicosPromise, frentistasPromise]);
 
       const erros: string[] = [];
       if (!isSuccess(dadosBicosRes)) {
@@ -183,7 +212,9 @@ export const useCarregamentoDados = (
    * dados automaticamente quando necessário
    */
   useEffect(() => {
-    if (!postoId) return;
+    // [25/09] Desligado no login pela API, como os canais da tela (`useTempoRealDoFechamento`):
+    // não há sessão do Supabase, e o realtime do Laravel é fatia futura (decisão de 21/09).
+    if (!postoId || !tempoRealLigado()) return;
 
     const canal = supabase
       .channel(`fechamento-${postoId}`)

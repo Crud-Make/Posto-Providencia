@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import * as React from 'react';
 import type { BicoComDetalhes } from '../../../types/fechamento';
+import type { Frentista } from '../../../types/database/index';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -189,5 +190,144 @@ describe('useCarregamentoDados — preço editado na tela não pode voltar sozin
     });
 
     expect(result.current.bicos.map(b => b.combustivel.preco_venda)).toEqual([6.28, 6.28, 6.28]);
+  });
+});
+
+/** Forma real de `GET /api/postos/1/frentistas` (19/09/2026): a API não filtra `ativo`. */
+const frentistasDaApi = {
+  data: [
+    { id: 3, nome: 'Barbara', telefone: null, data_admissao: '2026-01-27T00:00:00.000000Z', ativo: false, turno_id: 2 },
+    { id: 7, nome: 'Elyon', telefone: null, data_admissao: '2026-01-27T00:46:34.901295Z', ativo: true, turno_id: 2 },
+  ],
+};
+
+/** Forma real de `GET /api/postos/1/bicos` (19/09/2026), com um bico inativo que o Supabase nunca devolvia. */
+const bicosDaApi = {
+  data: [
+    {
+      id: 7, numero: 1, ativo: true,
+      bomba: { id: 4, nome: 'BOMBA 01', localizacao: null, ativo: true },
+      combustivel: { id: 1, nome: 'Gasolina Comum', codigo: 'GC', cor: '#FFD700', ativo: true, preco_venda: '6.98', preco_custo: '5.3452' },
+      tanque: { id: 1 },
+    },
+    {
+      id: 8, numero: 2, ativo: false,
+      bomba: { id: 4, nome: 'BOMBA 01', localizacao: null, ativo: true },
+      combustivel: { id: 2, nome: 'Gasolina Aditivada', codigo: 'GA', cor: '#FF4500', ativo: true, preco_venda: '6.98', preco_custo: '5.3110' },
+      tanque: { id: 2 },
+    },
+  ],
+};
+
+/** `fetch` falso que responde por rota, como a API Laravel responderia. */
+function apiFalsa(rotas: Record<string, unknown>): ReturnType<typeof vi.fn> {
+  return vi.fn(async (entrada: unknown) => {
+    const url = String(entrada);
+    const rota = Object.keys(rotas).find(r => url.endsWith(r));
+    return rota === undefined
+      ? new Response('{}', { status: 404 })
+      : new Response(JSON.stringify(rotas[rota]), { status: 200 });
+  });
+}
+
+describe('useCarregamentoDados — com VITE_API_URL o catálogo vem da API (#97); sem ela, do Supabase', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+    localStorage.clear();
+    vi.mocked(frentistaService.getAll).mockResolvedValue({
+      success: true,
+      data: [{ id: 99, nome: 'Do Supabase', ativo: true } as unknown as Frentista],
+      timestamp: new Date().toISOString(),
+    });
+    vi.mocked(bicoService.getWithDetails).mockResolvedValue({
+      success: true,
+      data: [bico(1, 6.98)],
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('frentistas: lê da API, deixa o inativo de fora e não chama frentistaService.getAll', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
+    vi.stubGlobal('fetch', apiFalsa({ '/api/postos/1/bicos': bicosDaApi, '/api/postos/1/frentistas': frentistasDaApi }));
+
+    const { result } = renderHook(() => useCarregamentoDados(1, '2026-01-01'));
+    await act(async () => {
+      await result.current.carregarDados();
+    });
+
+    expect(result.current.frentistas.map(f => f.id)).toEqual([7]);
+    expect(result.current.erro).toBeNull();
+    expect(frentistaService.getAll).not.toHaveBeenCalled();
+  });
+
+  it('bicos: lê da API, preco_venda "6.98" chega como o número 6.98, o inativo fica fora e bicoService não é chamado', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
+    vi.stubGlobal('fetch', apiFalsa({ '/api/postos/1/bicos': bicosDaApi, '/api/postos/1/frentistas': frentistasDaApi }));
+
+    const { result } = renderHook(() => useCarregamentoDados(1, '2026-01-01'));
+    await act(async () => {
+      await result.current.carregarDados();
+    });
+
+    expect(result.current.bicos.map(b => b.id)).toEqual([7]);
+    expect(result.current.bicos[0]?.combustivel.preco_venda).toBe(6.98);
+    expect(result.current.bicos[0]?.bomba.nome).toBe('BOMBA 01');
+    expect(result.current.erro).toBeNull();
+    expect(bicoService.getWithDetails).not.toHaveBeenCalled();
+  });
+
+  it('I10 vale também pela API: o preço editado na tela sobrevive à recarga que rebusca 6,98 do cadastro', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
+    vi.stubGlobal('fetch', apiFalsa({ '/api/postos/1/bicos': bicosDaApi, '/api/postos/1/frentistas': frentistasDaApi }));
+
+    const { result } = renderHook(() => useCarregamentoDados(1, '2026-01-01'));
+    await act(async () => {
+      await result.current.carregarDados();
+    });
+    act(() => {
+      result.current.updateBicoPrice(7, 6.28);
+    });
+    await act(async () => {
+      await result.current.carregarDados();
+    });
+
+    expect(result.current.bicos[0]?.combustivel.preco_venda).toBe(6.28);
+  });
+
+  it('sem VITE_API_URL segue no Supabase e não toca a rede', async () => {
+    vi.stubEnv('VITE_API_URL', '');
+    vi.stubGlobal('fetch', vi.fn());
+
+    const { result } = renderHook(() => useCarregamentoDados(1, '2026-01-01'));
+    await act(async () => {
+      await result.current.carregarDados();
+    });
+
+    expect(result.current.frentistas.map(f => f.id)).toEqual([99]);
+    expect(result.current.bicos.map(b => b.id)).toEqual([1]);
+    expect(frentistaService.getAll).toHaveBeenCalledWith(1);
+    expect(bicoService.getWithDetails).toHaveBeenCalledWith(1);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('API fora do ar vira `erro` na tela, não exceção nem lista inventada', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    }));
+
+    const { result } = renderHook(() => useCarregamentoDados(1, '2026-01-01'));
+    await act(async () => {
+      await result.current.carregarDados();
+    });
+
+    expect(result.current.frentistas).toEqual([]);
+    expect(result.current.erro).toBe('API Laravel inacessível: Failed to fetch');
   });
 });

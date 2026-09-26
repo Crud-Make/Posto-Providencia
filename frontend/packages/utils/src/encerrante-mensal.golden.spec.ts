@@ -27,6 +27,7 @@
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { encerranteMensal, type LeituraDiariaBico } from './encerrante-mensal';
+import { emCentavos } from './lucro';
 
 const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
@@ -109,6 +110,10 @@ for (const mes of MESES) {
             expect(obtido).toBeDefined();
             expect(Math.abs((obtido as { litros: number }).litros - esperado.litros))
                 .toBeLessThan(TOL_LITROS);
+            // Litro sai exato ao mililitro: `emMl`/`paraLitros` viradas em identidade
+            // passavam verdes pela folga acima (auditoria de 21/09).
+            const litros = (obtido as { litros: number }).litros;
+            expect(litros).toBe(Math.round(litros * 1000) / 1000);
         });
 
         test(`mês ${mes} · bico ${chave} · encerrante inicial e final batem com a planilha`, () => {
@@ -204,10 +209,27 @@ const BRUTO_ESPERADO: Record<number, { nosso: number; planilha: number }> = {
     7: { nosso: 207897.81, planilha: 207897.81 },
 };
 
+/**
+ * O bruto que o MÓDULO devolve, ao centavo — medido em 21/09/2026.
+ *
+ * @remarks Difere de `BRUTO_ESPERADO.nosso` em 1 a 8 centavos por mês, e o
+ *          `TOL_REAIS` de R$ 1,00 escondia isso: `nosso` é a soma crua das
+ *          linhas da planilha; o módulo arredonda cada dia ao centavo ANTES de
+ *          somar (é o "eixo 1" medido em `total-vendas-encerrante.golden.spec.ts`,
+ *          −2 centavos em janeiro). Travado aqui para que bruto em float e +R$ 0,01
+ *          por bico reprovem — as duas mutações passavam verdes pela folga.
+ */
+const BRUTO_DO_MODULO: Record<number, number> = {
+    1: 290062.94, 2: 184195.75, 3: 288251.04, 4: 314514.14,
+    5: 289030.32, 6: 287036.34, 7: 207897.83,
+};
+
 for (const mes of MESES) {
     test(`mês ${mes} · bruto somado dia a dia`, () => {
         const c = consolidadoDoMes(mes);
         expect(Math.abs(c.bruto - BRUTO_ESPERADO[mes].nosso)).toBeLessThan(TOL_REAIS);
+        expect(c.bruto).toBe(BRUTO_DO_MODULO[mes] ?? Number.NaN);
+        for (const b of c.bicos) expect(b.bruto).toBe(emCentavos(b.bruto));
     });
 }
 

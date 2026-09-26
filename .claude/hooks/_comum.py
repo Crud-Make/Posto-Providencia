@@ -102,9 +102,44 @@ FORMULA = re.compile(
     r"|(^|/)apps/web/src/services/api/aggregator\.service\.ts$"
     r"|(^|/)app/Agregacao/[\w/-]+\.php$"
     r"|(^|/)app/Fechamento/Domain/[\w/-]+\.php$"
+    # [21/09] Buraco achado pelo plano da #103 P8: o painel tem a SUA somadora de
+    # dinheiro (`calcularTotais`) e o encerrante do dono tem a TERCEIRA, e nenhuma
+    # das duas estava coberta — qualquer modelo podia reescrever a fórmula por ali.
+    # `venda-do-dia` entra junto porque nasce nesta fatia como a somadora nova.
+    r"|(^|/)apps/web/src/utils/(calculators|venda-do-dia)[\w.-]*\.tsx?$"
+    r"|(^|/)packages/api-core/src/encerrante[\w.-]*\.ts$"
+    # [22/09] Buraco achado pelo plano do FSD do pwa-frentista: o payload do envio
+    # (valor_conferido, diferenca_calculada, os 7 valor_* em centavos) é montado no
+    # App.tsx e vai para features/enviar-fechamento/model; o Histórico decide o sinal
+    # da diferença e o Vendas soma valor_total. Nada disso estava na trava.
+    r"|(^|/)apps/pwa-frentista/src/App\.tsx$"
+    r"|(^|/)apps/pwa-frentista/src/features/enviar-fechamento/model/[\w./-]+\.tsx?$"
+    r"|(^|/)apps/pwa-frentista/src/screens/(Historico|Vendas)Screen\.tsx$"
+    r"|(^|/)apps/pwa-frentista/src/pages/(historico|vendas)/[\w./-]+\.tsx?$"
+    # [22/09] Buraco achado pelo plano da #103 P9 (passos 3–6): o custo do mês e o
+    # rateio da despesa por litro são calculados em `custo-mensal.ts` e lidos por
+    # `useCustoMensal`/`useDespesaDoMes`, o `/dashboard` chega por `dashboard.api.ts`,
+    # e o servidor soma compra, despesa e litros em `App\Agregacao`. Nada disso estava
+    # na trava. Só esses arquivos: o resto de `fechamento-diario/hooks` é tela.
+    r"|(^|/)apps/web/src/components/fechamento-diario/hooks/(custo-mensal|useCustoMensal)[\w.-]*\.tsx?$"
+    r"|(^|/)apps/web/src/components/registro-compras/hooks/useDespesaDoMes[\w.-]*\.tsx?$"
+    r"|(^|/)apps/web/src/services/api/dashboard\.api\.ts$"
+    r"|(^|/)backend/app/Agregacao/[\w./-]+\.php$"
+    # [25/09] #103 Relatório Diário: a venda, o lucro bruto, a diferença e os totais do dia
+    # saíram do hook para `montar-relatorio.ts`, que as duas fontes (Supabase e API) usam.
+    # Antes moravam no `useRelatorioDiario.ts`, fora da trava. O resto da pasta é fonte e tela.
+    r"|(^|/)apps/web/src/components/relatorio-diario/hooks/montar-relatorio[\w.-]*\.tsx?$"
+    # [25/09] #103 Análise de Custos: custo do mês, rateio e lucro por produto saíram de
+    # `aggregatorService.fetchProfitabilityData` para `montar-analise.ts`, que as duas fontes usam.
+    # O resto da pasta (fontes, carregador, hook) é dado e tela.
+    r"|(^|/)apps/web/src/components/analise-custos/hooks/montar-analise[\w.-]*\.tsx?$"
+    # [25/09] #103 Registro de Compras: custo, compra e régua do mês saíram do hook para
+    # `montarRegistroDoMes.ts` e `montarRegistroDeCompras.ts`, que as duas fontes usam.
+    # `fonteDoRegistro.ts` e o hook de tela são dado e tela.
+    r"|(^|/)apps/web/src/components/registro-compras/hooks/montarRegistro(DoMes|DeCompras)[\w.-]*\.tsx?$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
-TESTE_LIVRE = re.compile(r"\.(test|spec)\.ts$")
+TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")
 TESTE_DE_REGRA = re.compile(r"\.(golden\.spec|regressao\.test)\.ts$")
 
 

@@ -14,8 +14,14 @@ import {
     type MeiosPagamento,
 } from '@posto/utils';
 import type { SessaoFrentista } from '../types/fechamento';
-// `paraReais`/`parseValue` vêm de `./formatters` — nunca `analisarValor`, que é o
-// parser de encerrante e divide dinheiro por mil.
+// ⚠️ CORRIGIDO EM 20/09/2026: este comentário afirmava que `parseValue` "nunca" é
+// `analisarValor`. Era FALSO — `formatters.ts:83` faz `export const parseValue =
+// analisarValor`, alias puro. A MESMA função parseia dinheiro aqui e encerrante de bomba
+// em `useSubmissaoFechamento.ts:147-148`, e ela tem um ramo que divide por mil.
+// Não estoura hoje porque `formatarValorAoSair` sempre devolve string com vírgula e o
+// parser cai no ramo seguro — é mina armada, não segurança. Ver a memória
+// `salvar-o-dia-apaga-leitura-base`. Quem for separar os dois parsers: o Command da P10
+// deve receber NÚMERO, não string, justamente para não replicar esta ambiguidade em PHP.
 import { parseValue, paraReais } from './formatters';
 
 /** Constrói {@link MeiosPagamento} a partir de uma `SessaoFrentista` da UI. */

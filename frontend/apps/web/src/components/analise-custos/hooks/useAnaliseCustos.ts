@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchProfitabilityData } from '../../../services/api';
-import { isSuccess } from '../../../types/ui/response-types';
 import { usePosto } from '../../../contexts/usePosto';
 import { usePeriodo } from '../../../contexts/usePeriodo';
 import { ProfitabilityItem, Margins } from '../types';
 import { paraMesLocal, deIsoLocal } from '@posto/utils';
 import { calculatePrice, calculateProfit } from './calculos-analise-custos';
+import { carregarAnalise } from './carregar-analise';
 
 export const useAnaliseCustos = () => {
     const { postoAtivoId } = usePosto();
@@ -24,15 +23,15 @@ export const useAnaliseCustos = () => {
             setLoading(true);
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
-            // [03/09] Desembrulha o envelope: o wrapper era `.bind` (tipo `any`) e o
-            // objeto `{ success, data }` ia parar em `data` — a tela estourava no render.
-            const result = await fetchProfitabilityData(year, month, postoAtivoId);
-            if (!isSuccess(result)) {
+            // Fonte (API ou Supabase) e contas em ./carregar-analise; falha zera a tela, como antes.
+            const result = await carregarAnalise(year, month, postoAtivoId);
+            if (result.isErr()) {
+                console.error("Erro ao carregar dados de lucratividade:", result.error);
                 setData([]);
                 setProdutosSemCompra([]);
                 return;
             }
-            const { itens, produtosSemCompra: semCompra } = result.data;
+            const { itens, produtosSemCompra: semCompra } = result.value;
             setData(itens);
             setProdutosSemCompra(semCompra);
 

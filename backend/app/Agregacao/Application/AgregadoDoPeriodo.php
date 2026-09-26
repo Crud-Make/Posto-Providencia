@@ -23,5 +23,13 @@ final readonly class AgregadoDoPeriodo
         public array $produtos,
         /** Despesa e litros do mês civil, para `despesaOperacionalPorLitro` no cliente. */
         public RateioDoMesCivil $rateio,
+        /**
+         * Leituras cruas do PERÍODO EXATO, ordenadas por bico, dia e id — para o cliente rodar
+         * `encerranteMensal` (decisão do dono, 22/09/2026, #103 P9 Q1 opção a). Aditivo: nenhum
+         * outro campo muda de significado.
+         *
+         * @var list<LeituraDoPeriodo>
+         */
+        public array $leituras = [],
     ) {}
 }

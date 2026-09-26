@@ -11,6 +11,18 @@ metadata:
 **A assinatura Max expira quarta-feira, 23/09/2026.** A cota semanal renova quinta 24/09 — ou seja,
 **a renovação nunca chega**: os 30 % que sobraram em 17/09 são tudo.
 
+**FECHADO em 20/09:** o dono confirmou que a Max expira quarta e **decidiu ficar no harness do
+Claude Code com DeepSeek V4.1 Flash** — que já é o que o `claude-provedor` aponta, nada a mudar no
+script. Avaliou e descartou no mesmo dia: GPT-6 Astra, Trae SOLO e Cursor+Grok. O argumento que
+pesou: trocar de FERRAMENTA (Trae, Cursor) mataria os 8 hooks do Claude Code, enquanto trocar só o
+MOTOR preserva hooks, skills, catraca e memória de agente. Medido: das travas, **8 são de git/CI e
+sobrevivem a qualquer ferramenta**; 6 das 8 que morrem têm equivalente tardio no commit ou push.
+**Só `so-fable-na-formula.py` não tem substituto** — git não sabe qual modelo escreveu o arquivo.
+
+Consequência a partir de quarta: o hook **barra o DeepSeek** de editar `packages/utils`, golden e
+aggregator. Isso está CERTO e fica como está — falha fechada é a proteção que se quer quando o
+modelo atrás fica mais fraco.
+
 Configurado e testado em 17/09:
 
 - Chave da OpenRouter em `~/.config/openrouter/chave` (0600). Saldo real: **US$ 5,85**
@@ -24,8 +36,20 @@ Configurado e testado em 17/09:
 - Testado de verdade: o slug resolve, responde em pt-BR. **78 % dos tokens de saída foram
   `reasoning`**, e saída custa 4x a entrada — é aí que o saldo vai embora.
 
-**PENDENTE — a chave expira em 2026-09-24T23:24Z**, menos de um dia depois de a troca disparar.
-Precisa gerar outra na OpenRouter **sem data de expiração** e substituir o arquivo.
+**✅ RESOLVIDO em 20/09:** chave nova gerada e instalada em `~/.config/openrouter/chave` (0600),
+conferida pela API: `expires_at` nulo, **sem validade**, limite de US$ 10, uso zero. A antiga
+(`sk-or-v1-857...0df`, que expirava 2026-09-24T23:24Z) precisa ser apagada no painel da OpenRouter —
+segue válida até lá.
+
+Conferir o estado da chave e o saldo a qualquer momento, sem imprimir a chave:
+```bash
+curl -s -H "Authorization: Bearer $(cat ~/.config/openrouter/chave)" https://openrouter.ai/api/v1/key
+curl -s -H "Authorization: Bearer $(cat ~/.config/openrouter/chave)" https://openrouter.ai/api/v1/credits
+```
+
+**Saldo medido em 20/09: US$ 5,85** (36,00 comprados − 30,15 usados). O limite de US$ 10 da chave é
+teto dela, não saldo da conta — quem manda é o saldo. Timer conferido: dispara
+**quarta 23/09 às 23:59**.
 
 Modelos avaliados e descartados em 17/09, com motivo: Muse Code/Spark (decisão do dono — reviews de
 código ruim; batem com o 1.2, que faz 55 % no DeepSWE; só o 1.3 subiu para 75,4 %), Antigravity CLI

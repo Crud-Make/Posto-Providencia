@@ -5,6 +5,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { PeriodoProvider } from './contexts/PeriodoContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/useAuth';
+import { usePosto } from './contexts/usePosto';
+import { loginPelaApiLigado } from './services/api/base';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import UpdateNotifier from './shared/ui/UpdateNotifier';
@@ -29,6 +31,7 @@ const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGe
 const TelaFechamentoMensal = React.lazy(() => import('./components/fechamento-mensal'));
 const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
 const TelaLogin = React.lazy(() => import('./components/login'));
+const TelaEscolherPosto = React.lazy(() => import('./components/login/escolher-posto'));
 const TelaRedefinirSenha = React.lazy(() => import('./components/login/redefinir-senha'));
 const TelaPlanilhaMensal = React.lazy(() => import('./pages/planilha-mensal'));
 
@@ -95,6 +98,7 @@ const AppRoutes = () => {
  */
 const PortaDeEntrada: React.FC = () => {
   const { autenticado, carregando, recuperandoSenha } = useAuth();
+  const { postoAtivo } = usePosto();
 
   if (carregando) return <LoadingFallback />;
 
@@ -112,6 +116,16 @@ const PortaDeEntrada: React.FC = () => {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <TelaLogin />
+      </Suspense>
+    );
+  }
+
+  // Login pela API (#102): sem posto escolhido não há painel — a rede tem vários postos e cada um
+  // vê só o próprio dado. Abrir num posto padrão mostraria o movimento de um no lugar do outro.
+  if (loginPelaApiLigado() && postoAtivo === null) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <TelaEscolherPosto />
       </Suspense>
     );
   }

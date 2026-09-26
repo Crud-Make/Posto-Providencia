@@ -57,4 +57,22 @@ cd frontend && ./node_modules/.bin/oxlint -c /tmp/ox.json apps packages 2>&1 \
   | sed -E 's/.*complexity of ([0-9]+).*/\1/' | sort -rn | uniq -c
 ```
 
+**19/09/2026 — duas armadilhas ao medir teto de LINHAS com config fora do repo:**
+(a) o `ignorePatterns` de um `-c /scratchpad/ox.json` é resolvido relativo ao
+arquivo de config, então **não** exclui `generated.ts`/`database.types.ts` — eles
+entram na contagem de `max-lines` (2 hits a mais). O `.oxlintrc.json` real, dentro
+de `frontend/`, exclui certo. Filtrar à mão: `grep -vE 'generated.ts|database.types.ts'`.
+(b) `max-lines`/`max-lines-per-function` mudam ~2× com `skipBlankLines`/`skipComments`:
+em 19/09, 300 linhas/arquivo deu 26 arquivos de produção sem skip e 14 com skip;
+60 linhas/função deu 186 sem skip e 161 com skip. **Sempre dizer qual opção** — o
+número do dono (26 arquivos, 161 funções) mistura as duas.
+```bash
+# regra por vez; troque o JSON da regra
+echo '{"categories":{"correctness":"off"},"rules":{"eslint/max-lines-per-function":["error",{"max":60,"skipBlankLines":true,"skipComments":true}]}}' > $S/ox.json
+./node_modules/.bin/oxlint -c $S/ox.json --format unix apps packages | grep -E '^[^ ]+:[0-9]+:[0-9]+:' \
+  | grep -vE '\.(test|spec)\.|generated.ts|database.types.ts|__canarios__' | wc -l
+```
+Backend: PHPMD com `ExcessiveMethodLength` 60 / `ExcessiveClassLength` 300 / CCN 10
+em `app,routes,database` devolveu **zero** em 19/09 — os tetos entram sem catraca.
+
 Ver [[divida-aceita]] e [[falsos-positivos-varredura]].

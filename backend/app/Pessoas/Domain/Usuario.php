@@ -8,13 +8,17 @@ use App\Compartilhado\Enums\Role;
 use App\Compartilhado\Posto;
 use Database\Factories\UsuarioFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Autenticavel;
 use Illuminate\Support\Carbon;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
- * Tabela "Usuario" do esquema de produção (banco/init/01-esquema-base.sql). Só leitura na #97.
+ * Tabela "Usuario" do esquema de produção (banco/init/01-esquema-base.sql).
+ *
+ * Desde a #102 (24/09/2026) é quem faz login na API: `senha` guarda o hash (cast `hashed`) e o
+ * Sanctum emite o token pessoal para ele. A tabela não tem `remember_token` — a API não usa sessão.
  *
  * @property int $id
  * @property string $email
@@ -26,8 +30,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon $createdAt
  * @property Carbon $updatedAt
  */
-final class Usuario extends Model
+final class Usuario extends Autenticavel
 {
+    use HasApiTokens;
+
     /** @use HasFactory<UsuarioFactory> */
     use HasFactory;
 
@@ -43,12 +49,21 @@ final class Usuario extends Model
     /** @var list<string> */
     protected $hidden = ['senha'];
 
+    /** Sem coluna `remember_token`: string vazia desliga o "lembrar de mim" do Authenticatable. */
+    protected $rememberTokenName = '';
+
+    public function getAuthPasswordName(): string
+    {
+        return 'senha';
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
             'role' => Role::class,
             'ativo' => 'boolean',
+            'senha' => 'hashed',
         ];
     }
 

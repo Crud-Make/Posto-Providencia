@@ -12,6 +12,7 @@
  *          de 2026 (`docs/data/posto_jorro_2026.sqlite`), onde bate com as
  *          colunas `litros` e `venda_bico` da própria planilha.
  */
+import { emCentavos } from './lucro';
 
 /** Acima disto num turno, é quase certo que caiu ou sobrou um dígito. */
 export const MAX_LITROS_PLAUSIVEL = 3000;
@@ -50,6 +51,36 @@ export const litrosVendidos = ({ inicial, fechamento }: LeituraDeBico): number =
  */
 export const valorDaLeitura = (leitura: LeituraDeBico, precoLitro: number): number =>
     litrosVendidos(leitura) * precoLitro;
+
+/**
+ * `total_vendas` do dia pelo ENCERRANTE: a soma de `Leitura.valor_total` dos
+ * bicos lidos, em precisão de centavos — ou `null` quando o dia não está apurado.
+ *
+ * @param valoresLidos `valor_total` de cada `Leitura` do dia (uma por bico lido), em reais.
+ * @param bicosAtivos  Quantos bicos o cadastro tem. Vem de `Bico.ativo` no banco,
+ *                     nunca de constante: bico novo muda o que "completo" significa.
+ * @returns A venda do dia, ou `null` = NÃO APURADO (menos bicos lidos que o cadastro).
+ * @remarks Decisão do dono, 20/09/2026 (Design Doc `fechamento-diario-api.md`
+ *          §7 d): "quem manda é o encerrante". O medidor do bico é um número só,
+ *          por dia, seja quantos forem os frentistas ou os envios — somar envios
+ *          soma relatos parciais sobre o mesmo bico. O painel, que recalculava
+ *          `litros × preço de HOJE`, somava R$ 23.784,61 a mais em janeiro
+ *          (golden `total-vendas-encerrante.golden.spec.ts`).
+ *
+ *          I8: `null` é "não apurado"; `0` é "zero informado" (todos os bicos
+ *          lidos, nenhum litro). Nunca um pelo outro — o dia não apurado que
+ *          nasce 0 tem a cara exata do dia que bateu.
+ *
+ *          Soma em centavos a cada passo, como `totaisDoDia`. Não altere sem
+ *          rodar `bun run test:golden`.
+ */
+export function totalVendasDoEncerrante(
+    valoresLidos: readonly number[],
+    bicosAtivos: number
+): number | null {
+    if (valoresLidos.length === 0 || valoresLidos.length < bicosAtivos) return null;
+    return emCentavos(valoresLidos.reduce((acc, v) => emCentavos(acc + emCentavos(v)), 0));
+}
 
 /**
  * Aponta por que a leitura é suspeita, para a tela avisar antes de gravar.

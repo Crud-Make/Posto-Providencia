@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { corDoProduto } from '@posto/utils';
 import { usePosto } from '../../contexts/usePosto';
-import { fechamentoMensalService, FechamentoMensalResumo, EncerranteMensalConsolidado } from '../../services/api/fechamentoMensal.service';
-import { leituraService } from '../../services/api';
-import { DollarSign, AlertCircle, RefreshCw, FileText, Activity, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
+import type { FechamentoMensalResumo, EncerranteMensalConsolidado } from '../../services/api/fechamentoMensal.service';
+import { haLeiturasNoMes, lerEncerrantesDoMes, lerResumoDoMes } from './fonte-do-mes';
+import { CardLucro } from './CardLucro';
+import { AlertCircle, RefreshCw, FileText, Activity, BarChart2, Droplet, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Calendario, modoMes } from '@shared/ui/calendario';
 import { usePeriodo } from '../../contexts/usePeriodo';
 import { useNavigate } from 'react-router-dom';
@@ -61,14 +62,18 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
         return dados.reduce((acc, curr) => ({
             volume: acc.volume + curr.volume_total,
             faturamento: acc.faturamento + curr.faturamento_bruto,
-            lucro: acc.lucro + curr.lucro_liquido,
-            taxas: acc.taxas + curr.custo_taxas,
+            lucro: acc.lucro + (curr.lucro_liquido ?? 0),
+            taxas: acc.taxas + (curr.custo_taxas ?? 0),
             gas: acc.gas + curr.vol_gasolina,
             adt: acc.adt + curr.vol_aditivada,
             eta: acc.eta + curr.vol_etanol,
             die: acc.die + curr.vol_diesel
         }), { volume: 0, faturamento: 0, lucro: 0, taxas: 0, gas: 0, adt: 0, eta: 0, die: 0 });
     }, [dados]);
+
+    // Pela API o lucro não vem (a rota não o calcula — agregacao.md §0): o card mostra "—", nunca
+    // um 0 que pareça prejuízo zerado. Com o Supabase todo dia traz o lucro da RPC, como sempre.
+    const lucroApurado = dados.every(d => d.lucro_liquido !== null);
 
     /** "Dia 01 a 24" — até onde o mês está realmente fechado. */
     const periodoFechado = encerrantes.ultimoDiaFechado === null
@@ -109,8 +114,8 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
             const [ano, mes] = selectedMonth.split('-').map(Number);
 
             const [resumo, encerrantes] = await Promise.all([
-                fechamentoMensalService.getResumoMensal(postoAtivo.id, mes, ano),
-                fechamentoMensalService.getEncerrantesMensal(postoAtivo.id, mes, ano)
+                lerResumoDoMes(postoAtivo.id, mes, ano),
+                lerEncerrantesDoMes(postoAtivo.id, mes, ano)
             ]);
 
             setDados(resumo);
@@ -118,13 +123,8 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
 
             // Verifica pendências se não houver dados fechados
             if (resumo.length === 0 && encerrantes.bicos.length === 0) {
-                const startDate = `${selectedMonth}-01`;
-                const lastDay = new Date(ano, mes, 0).getDate();
-                const endDate = `${selectedMonth}-${lastDay}`;
-
                 try {
-                    const leiturasRes = await leituraService.getByDateRange(startDate, endDate, postoAtivo.id);
-                    if (leiturasRes.success && leiturasRes.data && leiturasRes.data.length > 0) {
+                    if (await haLeiturasNoMes(postoAtivo.id, mes, ano)) {
                         setTemDadosPendentes(true);
                     }
                 } catch (err) {
@@ -243,30 +243,7 @@ const FechamentoMensal: React.FC<FechamentoMensalProps> = ({ isEmbedded = false 
                     {/* Top Stats Cards with Glow Effects */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Lucro */}
-                        <div className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border border-slate-700/50 rounded-2xl p-6 overflow-hidden hover:border-emerald-500/30 transition-all duration-500 shadow-lg hover:shadow-emerald-900/10">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-opacity opacity-50 group-hover:opacity-100"></div>
-
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <p className="text-[10px] font-black text-emerald-500/80 uppercase tracking-widest mb-1">Lucro Líquido</p>
-                                    <h3 className="text-3xl font-black text-white tracking-tight">{formatCurrency(totalizers.lucro)}</h3>
-                                </div>
-                                <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 group-hover:scale-110 transition-transform border border-emerald-500/20">
-                                    <DollarSign size={24} />
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex justify-between text-xs font-medium">
-                                    <span className="text-slate-500">Meta: {formatCurrency(metaLucro)}</span>
-                                    <span className="text-emerald-400">{((totalizers.lucro / metaLucro) * 100).toFixed(1)}%</span>
-                                </div>
-                                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700/30">
-                                    <div className="h-full bg-gradient-to-r from-emerald-600 to-teal-400 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                                        style={{ width: `${Math.min((totalizers.lucro / metaLucro) * 100, 100)}%` }}></div>
-                                </div>
-                            </div>
-                        </div>
+                        <CardLucro lucro={totalizers.lucro} apurado={lucroApurado} meta={metaLucro} formatCurrency={formatCurrency} />
 
                         {/* Volume */}
                         <div className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border border-slate-700/50 rounded-2xl p-6 overflow-hidden hover:border-blue-500/30 transition-all duration-500 shadow-lg hover:shadow-blue-900/10">

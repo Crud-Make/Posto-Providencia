@@ -20,6 +20,8 @@ export default defineConfig({
             // Paridade com o vite.config.ts: sem este alias, qualquer teste que alcance um
             // arquivo importando '@shared/...' quebra na resolução.
             '@shared': path.resolve(__dirname, './apps/web/src/shared'),
+            // Alias do pwa-frentista (`@/` é o web). Paridade com apps/pwa-frentista/vite.config.ts.
+            '@frentista': path.resolve(__dirname, './apps/pwa-frentista/src'),
             '@posto/types': path.resolve(__dirname, './packages/types/src/index.ts'),
             '@posto/utils': path.resolve(__dirname, './packages/utils/src/index.ts'),
             '@posto/api-core': path.resolve(__dirname, './packages/api-core/src/index.ts'),

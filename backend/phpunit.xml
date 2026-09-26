@@ -33,10 +33,12 @@
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <!-- Postgres real do compose (esquema de produção); DatabaseTransactions reverte cada teste.
-             DB_PORT/DB_HOST vêm do ambiente quando existem (CI usa 5432 no serviço). -->
+             DB_PORT/DB_HOST NÃO são fixados aqui de propósito (24/09/2026): `<env>` vira variável
+             de PROCESSO e vence o `.env` do Laravel (o Dotenv não sobrescreve o que já existe),
+             então o valor fixo em 5433 fazia o Pest bater no banco do checkout principal mesmo
+             quando a worktree tinha o seu (`scripts/banco-da-worktree.sh`). Agora valem o `.env`
+             da árvore e, no CI, o `DB_PORT: 5432` do job — que já era assim que funcionava. -->
         <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_HOST" value="127.0.0.1"/>
-        <env name="DB_PORT" value="5433"/>
         <env name="DB_DATABASE" value="posto"/>
         <env name="DB_USERNAME" value="posto"/>
         <env name="DB_PASSWORD" value="posto"/>

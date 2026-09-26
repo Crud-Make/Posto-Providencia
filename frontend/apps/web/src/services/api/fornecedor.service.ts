@@ -5,7 +5,7 @@ import {
   createSuccessResponse,
   createErrorResponse
 } from '../../types/ui/response-types';
-import { descreverErroDaApi, urlDaApi } from './base';
+import { corteDaTelaLigado, descreverErroDaApi } from './base';
 import { lerFornecedoresDaApi } from './fornecedor.api';
 
 // [14/01 19:05] Alinhando tipos de Fornecedor com aliases e helpers
@@ -24,9 +24,10 @@ export const fornecedorService = {
    * @param postoId - ID do posto (opcional)
    */
   async getAll(postoId?: number): Promise<ApiResponse<Fornecedor[]>> {
-    // Primeira leitura do painel pela API Laravel (#103). Só quando VITE_API_URL existe e há posto:
-    // a rota é por posto, e sem posto a query antiga lia todos — isso fica no Supabase.
-    if (urlDaApi() !== null && postoId !== undefined) {
+    // Primeira leitura do painel pela API Laravel (#103). Só quando o corte desta tela está ligado
+    // e há posto: a rota é por posto, e sem posto a query antiga lia todos — isso fica no Supabase.
+    // `VITE_API_FORNECEDOR=0` deixa esta tela no Supabase mesmo com o `VITE_API_URL` ligado.
+    if (corteDaTelaLigado(import.meta.env.VITE_API_FORNECEDOR) && postoId !== undefined) {
       return lerFornecedoresDaApi(postoId).match(
         (fornecedores) => createSuccessResponse(fornecedores),
         (erro) => createErrorResponse(descreverErroDaApi(erro), 'FETCH_ERROR'),

@@ -12,7 +12,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      // `@frentista/`, não `@/`: no monorepo `@/` é o apps/web (frontend/tsconfig.json), e um
+      // `@/` aqui passava no build do Vite mas era conferido contra o web no tsc e no vitest.
+      '@frentista': path.resolve(__dirname, './src'),
     },
   },
   plugins: [

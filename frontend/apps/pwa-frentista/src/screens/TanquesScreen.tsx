@@ -12,10 +12,9 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowLeft, Check, Droplets, Loader2 } from 'lucide-react';
+import { POSTO_ID } from '@frentista/shared/config';
 import { corDoProduto, hojeIso } from '@posto/utils';
 import { api } from '../services/api';
-
-const POSTO_ID = 1;
 
 const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as const;
 

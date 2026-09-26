@@ -28,6 +28,8 @@ const porLitro = (v: number) =>
  */
 export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = ({ dados }) => {
   const positivo = dados.lucroReal >= 0;
+  // Produto vendido sem compra no mês: o custo não é apurável, e lucro nenhum é afirmado.
+  const apurado = dados.produtosSemCompra.length === 0;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
@@ -89,7 +91,7 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
               Lucro Bruto
             </p>
             <p className="text-3xl font-bold text-gray-900 dark:text-white font-finance tracking-tight">
-              {formatCurrency(dados.lucroBruto)}
+              {apurado ? formatCurrency(dados.lucroBruto) : '—'}
             </p>
 
             <div className="mt-4 pt-4 border-t border-blue-200/50 dark:border-blue-800/30 space-y-1">
@@ -144,10 +146,15 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
             <p
               className={`text-3xl font-bold ${positivo ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} font-finance tracking-tight`}
             >
-              {formatCurrency(dados.lucroReal)}
+              {apurado ? formatCurrency(dados.lucroReal) : '—'}
             </p>
 
             <div className="mt-4 pt-4 border-t border-emerald-200/50 dark:border-emerald-800/30">
+              {!apurado ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Não apurável: sem compra no mês de {dados.produtosSemCompra.join(', ')}.
+                </p>
+              ) : (
               <div className="flex items-center gap-2">
                 <span
                   className={`px-2 py-1 rounded text-xs font-medium ${positivo ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-700'}`}
@@ -158,6 +165,7 @@ export const DemonstrativoFinanceiro: React.FC<DemonstrativoFinanceiroProps> = (
                   Margem {dados.margemMedia.toFixed(2)}%
                 </span>
               </div>
+              )}
             </div>
           </div>
         </div>

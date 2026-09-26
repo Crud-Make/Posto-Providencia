@@ -28,6 +28,8 @@ import { usePresencaFrentistas } from './hooks/usePresencaFrentistas';
 import { usePosto } from '../../contexts/usePosto';
 import { useNavigate } from 'react-router-dom';
 import { legendaDoLucro } from './rotulos';
+import { rotuloDaComparacao, variacao } from './tendencia';
+import { hojeIso } from '../../utils/periodo';
 
 // [14/01 07:00] Refatorado para usar useNavigate em vez de prop callback.
 // Permite navegação direta para a rota de fechamento.
@@ -53,6 +55,7 @@ const TelaDashboard: React.FC = () => {
   const {
     loading,
     data,
+    anterior,
     periodo,
     setPeriodo,
     selectedFrentista,
@@ -90,6 +93,13 @@ const TelaDashboard: React.FC = () => {
     totalProfit: 0,
     produtosSemCompra: [],
   };
+
+  // Tendência real contra o período anterior de mesmo tamanho (ver ./tendencia.ts). Até 24/09 os
+  // três cards mostravam "+12%", "+5%" e "0%" escritos à mão.
+  const comparacao = rotuloDaComparacao(periodo, hojeIso());
+  const tendenciaVendas = variacao(kpis.totalSales, anterior?.totalSales);
+  const tendenciaLitros = variacao(kpis.totalVolume, anterior?.totalVolume);
+  const tendenciaLucro = variacao(kpis.totalProfit, anterior?.totalProfit);
 
   return (
     <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
@@ -151,9 +161,9 @@ const TelaDashboard: React.FC = () => {
         <KPICard
           title="TOTAL VENDIDO"
           value={`R$ ${kpis.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          trendValue="+12%"
-          trendLabel="vs. ontem"
-          isNegativeTrend={false}
+          trendValue={tendenciaVendas.texto}
+          trendLabel={comparacao}
+          isNegativeTrend={tendenciaVendas.negativa}
           Icon={Banknote}
           iconBgColor="bg-red-50"
           iconColor="text-red-400"
@@ -161,9 +171,9 @@ const TelaDashboard: React.FC = () => {
         <KPICard
           title="LITROS VENDIDOS"
           value={`${kpis.totalVolume?.toLocaleString('pt-BR') || '0'} L`}
-          trendValue="+5%"
-          trendLabel="vs. ontem"
-          isNegativeTrend={false}
+          trendValue={tendenciaLitros.texto}
+          trendLabel={comparacao}
+          isNegativeTrend={tendenciaLitros.negativa}
           Icon={Droplet}
           iconBgColor="bg-blue-100"
           iconColor="text-blue-500"
@@ -173,9 +183,9 @@ const TelaDashboard: React.FC = () => {
           value={kpis.totalProfit === null
             ? '—'
             : `R$ ${(kpis.totalProfit ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          trendValue="0%"
+          trendValue={tendenciaLucro.texto}
           trendLabel={legendaDoLucro(kpis.produtosSemCompra, kpis.janelaDoRateio)}
-          isNegativeTrend={false}
+          isNegativeTrend={tendenciaLucro.negativa}
           Icon={TrendingUp}
           iconBgColor="bg-green-50"
           iconColor="text-green-500"

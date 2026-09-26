@@ -5,8 +5,8 @@ export const meta = {
   phases: [
     { title: 'Mapear', detail: 'grafo, historico, conformidade e os 5 níveis de zoom, em paralelo (somente leitura)', model: 'opus' },
     { title: 'Verificar', detail: 'um cético por relatório tenta derrubar cada afirmação', model: 'opus' },
-    { title: 'Planejar', detail: 'agente principal consolida o plano', model: 'fable' },
-    { title: 'Executar', detail: 'agente principal edita, um passo por vez, na árvore atual', model: 'fable' },
+    { title: 'Planejar', detail: 'agente principal consolida o plano', model: 'opus' },
+    { title: 'Executar', detail: 'agente principal edita, um passo por vez, na árvore atual', model: 'opus' },
     { title: 'Gates', detail: 'agente independente roda e lê os quality gates da Fase 4', model: 'opus' },
     { title: 'Revisar', detail: 'revisão adversarial do diff e patch de documentação', model: 'opus' },
   ],
@@ -20,11 +20,11 @@ export const meta = {
 //                   plano; 1 revisor adversarial (que também aponta doc desatualizada) no executar.
 //                   Gates, canário, hooks e regras são IDÊNTICOS ao modo completo. Proibido quando o
 //                   trabalho toca dinheiro/fórmula, cria arquitetura nova ou grava no banco: aí é o completo.
-// O agente principal (planejar/executar) roda em Fable 5.1; todos os outros em Opus.
+// Todos os agentes rodam em Opus 5.5 (22/09: o dono trocou o Fable pelo Opus 5.5 também no principal).
 // Nada aqui faz commit, push ou merge: isso fica com o dono, depois de ler o resultado.
 // ---------------------------------------------------------------------------
 
-const PRINCIPAL = 'fable'
+const PRINCIPAL = 'opus'
 const DEMAIS = 'opus'
 const MAX_TENTATIVAS_GATES = 2
 

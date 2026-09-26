@@ -1,12 +1,14 @@
-import { errAsync, okAsync, ResultAsync } from 'neverthrow';
-import { conferido, corDoProduto, meiosFromFechamentoRow, despesaOperacionalPorLitro, lucroCombustivel, deIsoLocal } from '@posto/utils';
+import { ResultAsync } from 'neverthrow';
+import { corDoProduto, despesaOperacionalPorLitro, lucroCombustivel, deIsoLocal } from '@posto/utils';
 import { supabase } from '../supabase';
-import { descreverErroDaApi, urlDaApi, type ErroDaApi } from './base';
+import { corteDaTelaLigado, descreverErroDaApi, type ErroDaApi } from './base';
 import { lerDashboardDaApi, paraInsumosDeAgregacao, type JanelaDoRateio, type VendaPorCombustivel } from './dashboard.api';
 import { combustivelService } from './combustivel.service';
+import { lerCodigosDeCombustivelDaApi } from './combustivel.api';
+import { cadastroEFechamentoDaApi } from './dashboard-cadastro.api';
+import { enviosPorFrentista } from './envios-do-periodo';
 import { bicoService } from './bico.service';
 import { formaPagamentoService } from './formaPagamento.service';
-import { estoqueService } from './estoque.service';
 import { frentistaService } from './frentista.service';
 import { leituraService } from './leitura.service';
 import { fechamentoFrentistaService } from './fechamentoFrentista.service';
@@ -14,7 +16,7 @@ import { despesaService } from './despesa.service';
 import { compraService } from './compra.service';
 import { custoMedioPorCombustivel, type CompraParaCusto } from '../custo-do-mes';
 import { mesCivil } from '../../utils/periodo';
-import type { Combustivel, FechamentoFrentista, Leitura } from '../../types/database/index';
+import type { Combustivel } from '../../types/database/index';
 import {
   ApiResponse,
   createSuccessResponse,
@@ -61,17 +63,6 @@ async function despesaOperacionalMensal(refDate: Date, postoId?: number): Promis
   const totalLitros = (leiturasRes.data || []).reduce((acc: number, l: { litros_vendidos: number | null }) => acc + (l.litros_vendidos || 0), 0);
 
   return despesaOperacionalPorLitro(totalDespesas, totalLitros);
-}
-
-interface LeituraWithRelations extends Leitura {
-  bico?: {
-    combustivel_id: number;
-  };
-  combustivel?: {
-    Combustivel?: {
-      nome: string;
-    };
-  };
 }
 
 /**
@@ -184,16 +175,11 @@ async function lerInsumosDoSupabase(dataInicio: string, dataFim: string, postoId
 }
 
 /**
- * `Combustivel.id → codigo` do cadastro (Supabase), para a cor do gráfico. O `ApiResponse` legado
- * vira `Result` aqui, na borda: falha do cadastro é `Err` tipado, não exceção — antes o
- * `extractData` lançava dentro do `.map` do `ResultAsync` e o erro virava Promise rejeitada.
+ * `Combustivel.id → codigo` do cadastro, para a cor do gráfico — pelo catálogo da API desde a
+ * fatia 3 da #100 (antes vinha do Supabase). Falha do cadastro é `Err` tipado, não exceção.
  */
 function codigosDoCadastro(postoId: number): ResultAsync<ReadonlyMap<number, string>, ErroDosInsumos> {
-  return ResultAsync.fromSafePromise(combustivelService.getAll(postoId)).andThen((res) =>
-    res.success === true
-      ? okAsync(new Map(res.data.map((c) => [c.id, c.codigo] as const)))
-      : errAsync<ReadonlyMap<number, string>, ErroDosInsumos>({ tipo: 'cadastro', detalhe: res.error }),
-  );
+  return lerCodigosDeCombustivelDaApi(postoId).mapErr((erro): ErroDosInsumos => ({ tipo: 'cadastro', detalhe: descreverErroDaApi(erro) }));
 }
 
 /**
@@ -207,9 +193,9 @@ function codigosDoCadastro(postoId: number): ResultAsync<ReadonlyMap<number, str
  * propósito, e `janelaDoRateio` é o que permite a tela avisar. Nenhuma conta de dinheiro acontece
  * aqui além do próprio `despesaOperacionalPorLitro` canônico — o mesmo que o caminho Supabase usa.
  *
- * A cor do combustível precisa do `codigo`, que a API não devolve (`ProdutoAgregadoResource`):
- * ele vem do cadastro (`combustivelService.getAll`, Supabase), troca parcial deliberada até
- * existir `GET /api/combustiveis`. Combustível fora do cadastro cai em `corDoProduto(undefined)`.
+ * A cor do combustível precisa do `codigo`, que a API de agregação não devolve
+ * (`ProdutoAgregadoResource`): ele vem do catálogo (`GET /api/postos/{posto}/combustiveis`).
+ * Combustível fora do cadastro cai em `corDoProduto(undefined)`.
  */
 function insumosDaApi(postoId: number, dataInicio: string, dataFim: string): ResultAsync<InsumosDeAgregacao, ErroDosInsumos> {
   return ResultAsync.combine([
@@ -311,32 +297,6 @@ interface DashboardAggregatedData {
   };
 }
 
-/** Item de retorno de {@link aggregatorService.fetchProfitabilityData}. */
-export interface ProfitabilityItem {
-  id: number;
-  combustivelId: number;
-  nome: string;
-  codigo: string;
-  custoMedio: number;
-  despOperacional: number;
-  custoTotalL: number;
-  precoVenda: number;
-  volumeVendido: number;
-  receitaBruta: number;
-  lucroTotal: number;
-  margemLiquidaL: number;
-  margemBrutaL: number;
-  cor: string;
-}
-
-/** Retorno de {@link aggregatorService.fetchProfitabilityData}. */
-export interface ProfitabilityResult {
-  /** Produtos com custo apurável no mês (compra lançada). */
-  itens: ProfitabilityItem[];
-  /** Produtos vendidos no mês sem compra para custear — ficam fora de `itens`. */
-  produtosSemCompra: string[];
-}
-
 export const aggregatorService = {
   /**
    * Busca dados para a tela de configurações.
@@ -386,7 +346,7 @@ export const aggregatorService = {
 
   /**
    * Busca dados para o dashboard principal.
-   * Agrega vendas, estoque, frentistas e formas de pagamento.
+   * Agrega vendas, frentistas e formas de pagamento.
    * O intervalo chega pronto da tela (calendário), em ISO local `aaaa-mm-dd`.
    *
    * @param dataInicio - Primeiro dia do período, ISO local `aaaa-mm-dd`
@@ -402,31 +362,31 @@ export const aggregatorService = {
     postoId?: number
   ): Promise<ApiResponse<DashboardAggregatedData>> {
     try {
-      // Strangler (#100, fatia 2): venda, compra e rateio vêm da API Laravel quando
-      // `VITE_API_URL` existe e há posto (a rota é por posto); sem isso, o caminho de sempre.
-      // A Vercel não define a variável, então a produção segue no Supabase até o cutover.
-      const fonte: ResultAsync<InsumosDeAgregacao, ErroDosInsumos> =
-        urlDaApi() !== null && postoId !== undefined
-          ? insumosDaApi(postoId, dataInicio, dataFim)
-          : insumosDoSupabase(dataInicio, dataFim, postoId);
+      // Strangler (#100, fatia 2): venda, compra e rateio vêm da API Laravel quando o corte da
+      // tela está ligado e há posto (a rota é por posto); sem isso, o caminho de sempre. O corte
+      // segue `VITE_API_URL`, salvo `VITE_API_DASHBOARD=0` — o ensaio de 27/09 acende só o
+      // Fechamento de Caixa e deixa o Dashboard no Supabase.
+      const pelaApi = corteDaTelaLigado(import.meta.env.VITE_API_DASHBOARD) && postoId !== undefined;
+      const fonte: ResultAsync<InsumosDeAgregacao, ErroDosInsumos> = pelaApi
+        ? insumosDaApi(postoId, dataInicio, dataFim)
+        : insumosDoSupabase(dataInicio, dataFim, postoId);
 
       // Onda única: as consultas de cadastro e fechamento são disparadas ANTES de esperar a fonte,
       // então começam junto com ela — nenhuma depende do resultado de outra. Antes da fatia 2 eram
       // 7 consultas numa `Promise.all` só, e o caminho sem `VITE_API_URL` tem de continuar assim
-      // (preso em `aggregator.dashboard.test.ts`, "uma leva só de consultas"). Estoque, frentista,
-      // forma e fechamento seguem no Supabase — a API de agregação não os entrega.
-      const cadastroEFechamento = Promise.all([
-        estoqueService.getAll(postoId),
+      // (preso em `aggregator.dashboard.test.ts`, "uma leva só de consultas"). Com o corte ligado,
+      // cadastro e fechamentos também vêm da API (fatia 3): sem isso a tela dependia da sessão do
+      // Supabase, que o login pela API não cria.
+      const cadastroEFechamento = pelaApi ? cadastroEFechamentoDaApi(postoId, dataInicio, dataFim) : Promise.all([
         frentistaService.getAll(postoId),
         formaPagamentoService.getAll(postoId),
         fechamentoFrentistaService.getByDate(dataInicio, postoId),
       ]);
       const lidos = await fonte;
-      const [estoqueRes, frentistasRes, formasPagamentoRes, fechamentosFrentistaHojeRes] = await cadastroEFechamento;
+      const [frentistasRes, formasPagamentoRes, fechamentosFrentistaHojeRes] = await cadastroEFechamento;
       if (lidos.isErr()) return createErrorResponse(descreverErroDosInsumos(lidos.error), 'FETCH_ERROR');
       const insumos = lidos.value;
 
-      const estoque = extractData(estoqueRes);
       const custoDoMes = custoMedioPorCombustivel(insumos.compras);
       const frentistas = extractData(frentistasRes);
       const formasPagamento = extractData(formasPagamentoRes);
@@ -446,7 +406,6 @@ export const aggregatorService = {
       const fuelData = insumos.porCombustivel.map(v => ({
         name: v.combustivel?.nome || 'N/A',
         volume: v.litros,
-        maxCapacity: estoque.find(e => e.combustivel_id === v.combustivel?.id)?.capacidade_tanque ?? 0,
         // Cor da planilha pelo código — não a do cadastro nem mapa local (o de
         // antes trocava GC com S10). Um padrão só no sistema inteiro.
         color: corDoProduto(v.combustivel?.codigo).fundo,
@@ -461,12 +420,9 @@ export const aggregatorService = {
         color: coresFormas[fp.tipo] || ['#3b82f6', '#22c55e', '#eab308', '#f97316'][idx % 4],
       }));
 
-      // ClosingsData - Lista consolidada de status dos frentistas
-      // Mapeia os fechamentos por frentista (sem filtro de turno - sistema simplificado)
-      const fechamentosMap = new Map<number, FechamentoFrentista>();
-      fechamentosFrentistaHoje.forEach((ff) => {
-        fechamentosMap.set(ff.frentista_id, ff);
-      });
+      // ClosingsData — status de cada frentista no período: os envios somam entre dias, e dentro
+      // do mesmo dia vale o último (ver `envios-do-periodo.ts`).
+      const enviosDoPeriodo = enviosPorFrentista(fechamentosFrentistaHoje);
 
       // Filtra frentistas se houver filtro específico
       const frentistasToShow = frentistaId
@@ -474,16 +430,16 @@ export const aggregatorService = {
         : frentistas;
 
       const closingsData = frentistasToShow.map((f) => {
-        const fechamento = fechamentosMap.get(f.id);
+        const envios = enviosDoPeriodo.get(f.id);
         let status: 'OK' | 'Divergente' | 'Aberto' = 'Aberto';
         let totalSales = 0;
 
-        if (fechamento) {
-          // Total conferido canônico (7 buckets, cartão aditivo, moedas + baratão)
-          totalSales = conferido(meiosFromFechamentoRow(fechamento));
+        if (envios) {
+          // Total conferido canônico (7 buckets, cartão aditivo, moedas + baratão), somado no período
+          totalSales = envios.totalConferido;
 
           // Status baseado na diferença (falta de caixa)
-          const diferenca = Math.abs(fechamento.diferenca_calculada || 0);
+          const diferenca = Math.abs(envios.diferenca);
           status = diferenca === 0 ? 'OK' : diferenca > 50 ? 'Divergente' : 'OK';
         }
 
@@ -497,7 +453,7 @@ export const aggregatorService = {
           shift: 'Dia', // Sistema simplificado sem turnos
           totalSales: totalSales,
           status: status,
-          sessionStatus: (fechamento?.observacoes?.includes('[CONFERIDO]') ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
+          sessionStatus: (envios?.conferido === true ? 'conferido' : 'pendente') as 'conferido' | 'pendente',
         };
       });
 
@@ -561,103 +517,6 @@ export const aggregatorService = {
       });
     } catch (error) {
       return createErrorResponse(error instanceof Error ? error.message : 'Erro ao carregar dashboard');
-    }
-  },
-
-  /**
-   * Calcula a rentabilidade do posto.
-   *
-   * @param year - Ano de referência
-   * @param month - Mês de referência
-   * @param postoId - ID do posto (opcional)
-   * @returns Métricas de rentabilidade (LUCRO LÍQUIDO, MARGEM, CUSTOS) por produto, mais a
-   *          lista dos produtos que ficaram sem custo (vendidos sem compra no mês).
-   * @remarks [03/09/2026] O custo é a compra do MÊS por produto (`custoMedioCompra`,
-   *          canônico da planilha) — ver `services/custo-do-mes.ts`; antes era o carimbo
-   *          `Estoque.custo_medio`. Produto vendido sem compra não entra em `itens`: com
-   *          custo 0 ele apareceria como o mais lucrativo da tela.
-   */
-  async fetchProfitabilityData(year: number = new Date().getFullYear(), month: number = new Date().getMonth() + 1, postoId?: number): Promise<ApiResponse<ProfitabilityResult>> {
-    try {
-      const inicioMesStr = `${year}-${String(month).padStart(2, '0')}-01`;
-      const fimMesStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
-
-      let queryLeitura = supabase
-        .from('Leitura')
-        .select('*, bico:Bico(combustivel_id)')
-        .gte('data', inicioMesStr)
-        .lte('data', fimMesStr);
-
-      if (postoId) queryLeitura = queryLeitura.eq('posto_id', postoId);
-
-      const [estoqueRes, leiturasMes, despesasRes, comprasRes] = await Promise.all([
-        estoqueService.getAll(postoId),
-        queryLeitura,
-        despesaService.getByMonth(year, month, postoId),
-        compraService.getByDateRange(inicioMesStr, fimMesStr, postoId),
-      ]);
-
-      if (leiturasMes.error) return createErrorResponse(leiturasMes.error.message);
-
-      const leituras = (leiturasMes.data || []) as LeituraWithRelations[];
-      const estoque = extractData(estoqueRes);
-      const despesas = extractData(despesasRes);
-      const custoDoMes = custoMedioPorCombustivel(extractData(comprasRes));
-
-      const totalDespesas = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
-      const totalVolumeVendido = leituras.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-
-      // Despesa operacional real por litro (fórmula da planilha Posto Jorro: H22 = H19/F11).
-      // Mês sem despesa lançada fica em 0 — nunca o fallback fixo de 0,45 (§6).
-      const despOperacional = despesaOperacionalPorLitro(totalDespesas, totalVolumeVendido);
-
-      const itens: ProfitabilityItem[] = [];
-      const produtosSemCompra: string[] = [];
-      for (const e of estoque) {
-        const vendasComb = leituras.filter(l => l.bico?.combustivel_id === e.combustivel_id);
-        const volumeVendido = vendasComb.reduce((acc, l) => acc + (l.litros_vendidos || 0), 0);
-        const receitaBruta = vendasComb.reduce((acc, l) => acc + (l.valor_total || 0), 0);
-
-        const custoMedio = custoDoMes(e.combustivel_id);
-        if (custoMedio === null) {
-          if (volumeVendido > 0) produtosSemCompra.push(e.combustivel?.nome || 'N/A');
-          continue;
-        }
-        const custoTotalL = custoMedio + despOperacional;
-
-        // [onda 3, grupo A] Era `receitaBruta − volume × custoTotalL` inline —
-        // a MESMA conta canônica, à mão, no arquivo que já importa a função.
-        // Agora delega (e quantiza em centavos na saída, como o resto do lucro).
-        const lucroTotal = lucroCombustivel({
-          litros: volumeVendido,
-          precoVenda: volumeVendido > 0 ? receitaBruta / volumeVendido : 0,
-          custoMedio,
-          despesaOperacionalLitro: despOperacional,
-        });
-        const margemLiquidaL = volumeVendido > 0 ? lucroTotal / volumeVendido : 0;
-        const margemBrutaL = (e.combustivel?.preco_venda || 0) - custoMedio;
-
-        itens.push({
-          id: e.id,
-          combustivelId: e.combustivel_id,
-          nome: e.combustivel?.nome || 'N/A',
-          codigo: e.combustivel?.codigo || 'N/A',
-          custoMedio,
-          despOperacional,
-          custoTotalL,
-          precoVenda: e.combustivel?.preco_venda || 0,
-          volumeVendido,
-          receitaBruta,
-          lucroTotal,
-          margemLiquidaL,
-          margemBrutaL,
-          cor: corDoProduto(e.combustivel?.codigo).fundo
-        });
-      }
-
-      return createSuccessResponse({ itens, produtosSemCompra });
-    } catch (error) {
-      return createErrorResponse(error instanceof Error ? error.message : 'Erro ao calcular rentabilidade');
     }
   }
 };

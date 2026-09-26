@@ -1,6 +1,9 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import { loginPelaApiLigado } from '../services/api/base';
+import type { PerfilDaApi } from '../services/api/sessao.api';
+import { useAuthDaApi } from './useAuthDaApi';
 
 /**
  * Estado de autenticação do painel.
@@ -23,6 +26,11 @@ import { supabase } from '../services/supabase';
  */
 export interface EstadoAutenticacao {
   readonly sessao: Session | null;
+  /**
+   * Quem está logado e em quais postos pode entrar — só no login pela API (#102). No login pelo
+   * Supabase é `null`, e a lista de postos continua vindo do banco.
+   */
+  readonly usuario: PerfilDaApi | null;
   readonly carregando: boolean;
   /** `true` quando há sessão — o banco passa a responder como `authenticated`. */
   readonly autenticado: boolean;
@@ -42,7 +50,19 @@ export interface EstadoAutenticacao {
 
 const AuthContext = createContext<EstadoAutenticacao | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+/**
+ * Escolhe o emissor da sessão pela flag `VITE_API_LOGIN` (ver `loginPelaApiLigado`). A flag é
+ * fixa durante a vida da página, então cada provedor chama os próprios hooks sempre na mesma ordem.
+ */
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+  loginPelaApiLigado() ? <ProvedorDaApi>{children}</ProvedorDaApi> : <ProvedorSupabase>{children}</ProvedorSupabase>;
+
+const ProvedorDaApi: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const valor = useAuthDaApi();
+  return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
+};
+
+const ProvedorSupabase: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessao, setSessao] = useState<Session | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [recuperandoSenha, setRecuperandoSenha] = useState(false);
@@ -119,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const valor = useMemo<EstadoAutenticacao>(
     () => ({
       sessao,
+      usuario: null,
       carregando,
       autenticado: sessao !== null,
       recuperandoSenha,

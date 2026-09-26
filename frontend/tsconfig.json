@@ -60,6 +60,12 @@
       "@shared/*": [
         "./apps/web/src/shared/*"
       ],
+      // [19/09] Alias do pwa-frentista. `@/` já é o apps/web neste monorepo, então o alias
+      // do app é `@frentista/`: mesmo mecanismo da FSD-6, com o prefixo do app. Sem esta
+      // chave, um import `@frentista/...` passava no build do Vite e caía no tsc/vitest.
+      "@frentista/*": [
+        "./apps/pwa-frentista/src/*"
+      ],
       "@posto/types": [
         "./packages/types/src/index.ts"
       ],

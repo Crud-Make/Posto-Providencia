@@ -5,6 +5,14 @@ metadata:
   type: project
 ---
 
+**Atualizado em 19/09/2026:** agora são **duas**. Nova:
+`versao-testada-funcionando-pre-raiz` → tag **anotada** (objeto `464c100`, tagger
+17/09/2026) sobre `6662b24` (06/09/2026, merge do PR #92), mensagem *"Ponto de
+retorno antes da reorganização da raiz (#95): main de 06/09/2026, v4.0.0 + PR #92"*.
+É ancestral da `fase-a`. Presença no origin **não conferida** em 19/09.
+Nenhuma das duas cobre a fase-a pós-travas (#119, 18/09) — refatoração nova sobre a
+fase-a ainda pede tag própria.
+
 **Corrigido em 17/09/2026.** A versão anterior desta nota (28/08/2026) dizia que
 nenhuma ref `versao-testada-funcionando-*` existia. Envelheceu: hoje existe **uma**.
 

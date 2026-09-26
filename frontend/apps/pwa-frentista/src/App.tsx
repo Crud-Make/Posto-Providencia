@@ -9,28 +9,16 @@ import type { LucideIcon } from 'lucide-react';
 import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/utils';
 import { api } from './services/api';
 import { abaSecundaria } from './screens/aba-secundaria';
-import ReloadPrompt from './components/ReloadPrompt';
+import { ReloadPrompt } from '@frentista/shared/ui';
+import { POSTO_ID, TURNO_CANONICO, pwaPelaApiLigado } from '@frentista/shared/config';
+import { RecusaDaApi } from '@frentista/shared/api';
+import { PedirPin } from '@frentista/features/entrar-com-pin';
+import { useChaveDoEnvio } from '@frentista/features/envio-pela-api';
+import { abaSalvaOuPadrao, dataFechamentoInicial, formatCurrency } from '@frentista/shared/lib';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
-import { reduzirParaAvatar, iniciais } from './lib/foto';
+import { reduzirParaAvatar, iniciais, mensagemDeFoto } from '@frentista/entities/frentista';
 import { hojeIso } from '@posto/utils';
 import type { TabType, FrentistaSelecionavel } from './lib/tipos';
-
-const POSTO_ID = 1;
-
-/**
- * Abas que este app ainda tem.
- *
- * @remarks Existe por causa da saída do Encerrante para o app do dono. A aba
- *          ficava salva em `localStorage` (`pwa.activeTab`), e o celular de
- *          quem já usava o app guarda `'encerrante'` — um valor que não
- *          corresponde mais a tela nenhuma. Sem esta conferência, o app abriria
- *          no Registro com a barra inferior sem nada selecionado, e o frentista
- *          veria o app "esquecido" numa aba fantasma.
- */
-const ABAS_VALIDAS: readonly TabType[] = ['registro', 'vendas', 'historico', 'tanques', 'perfil'];
-
-const abaSalvaOuPadrao = (valor: string | null): TabType =>
-  ABAS_VALIDAS.includes(valor as TabType) ? (valor as TabType) : 'registro';
 
 interface EnvioDoDia {
   id: number;
@@ -42,32 +30,6 @@ interface EnvioDoDia {
 
 /** Chave do `localStorage` onde a data escolhida sobrevive ao reload. */
 const CHAVE_DATA_FECHAMENTO = 'pwa.dataFechamento';
-
-/**
- * Restaura a data salva SÓ se foi gravada hoje.
- *
- * @remarks A data persiste porque abrir a câmera no celular descarrega a página
- *          (ver `selectedFrentista`). Mas sem validade ela virava armadilha: no
- *          dia seguinte o app abria na data de ontem e o frentista enviava o
- *          caixa de hoje no dia errado sem aviso. Por isso grava-se junto o dia
- *          em que foi salva, e valor de outro dia — ou o formato antigo, string
- *          pura — é descartado em favor de hoje.
- */
-const dataFechamentoInicial = (salvo: string | null, hoje: string = hojeIso()): string => {
-  if (!salvo) return hoje;
-  try {
-    const obj: unknown = JSON.parse(salvo);
-    if (
-      typeof obj === 'object' && obj !== null &&
-      'data' in obj && 'gravadoEm' in obj &&
-      typeof obj.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(obj.data) &&
-      obj.gravadoEm === hoje
-    ) {
-      return obj.data;
-    }
-  } catch { /* formato antigo (string pura) ou lixo: cai em hoje */ }
-  return hoje;
-};
 
 const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as const;
 
@@ -110,13 +72,6 @@ const PaymentCard = ({ title, icon: Icon, iconColor, value, onChange }: PaymentC
     </div>
   </div>
 );
-
-const formatCurrency = (value: string) => {
-  const numericValue = value.replace(/\D/g, '');
-  if (!numericValue) return '';
-  const amount = parseInt(numericValue, 10) / 100;
-  return amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
 
 /**
  * Foto do frentista, com as iniciais do nome como reserva.
@@ -182,9 +137,14 @@ const ListaDeEnviosDoDia = ({ erro, envios, aoTentarDeNovo }: {
               {new Date(e.data_hora_envio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
-          <p className="text-sm font-bold text-emerald-400 font-mono whitespace-nowrap">
-            R$ {Number(e.valor_conferido ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
+          {/* Pela API (#101) o valor do COLEGA não vem (dado de caixa dele): mostra só que enviou. */}
+          {e.valor_conferido === null && pwaPelaApiLigado() ? (
+            <p className="text-xs font-semibold text-emerald-400 whitespace-nowrap">enviado</p>
+          ) : (
+            <p className="text-sm font-bold text-emerald-400 font-mono whitespace-nowrap">
+              R$ {Number(e.valor_conferido ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          )}
         </li>
       ))}
     </ul>
@@ -268,6 +228,12 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   });
   const [frentistas, setFrentistas] = useState<FrentistaSelecionavel[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // API ligada (#101): o frentista escolhido na lista só vira o selecionado depois do PIN.
+  const [pinPara, setPinPara] = useState<FrentistaSelecionavel | null>(null);
+  // Sobe a cada PIN aceito: com a API ligada, a lista (e a foto de quem entrou) e os envios do dia
+  // só se leem COM sessão, então são relidos depois do login (#101, fatia 2).
+  const [versaoDaSessao, setVersaoDaSessao] = useState(0);
+  const { chavePara, esquecer: esquecerChave } = useChaveDoEnvio();
   const inputFotoRef = useRef<HTMLInputElement>(null);
   const [salvandoFoto, setSalvandoFoto] = useState(false);
 
@@ -282,7 +248,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
 
   useEffect(() => {
     // Busca do banco POSTO ID: 1 como padrão (Pode vir de config/storage depois)
-    api.getFrentistas(1).then(data => {
+    api.getFrentistas(POSTO_ID).then(data => {
       if (!data) return;
       setFrentistas(data);
       // `selectedFrentista` vem do localStorage e carrega a foto de quando foi
@@ -295,7 +261,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         return fresco ? { ...atual, foto: fresco.foto } : atual;
       });
     }).catch(err => console.error(err));
-  }, []);
+  }, [versaoDaSessao]);
 
   useEffect(() => {
     try {
@@ -329,7 +295,20 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     const alvo = selectedFrentista;
     setSalvandoFoto(true);
     try {
-      const avatar = await reduzirParaAvatar(arquivo);
+      // A redução devolve Result (RES-1): a falha dela não passa pelo `catch`.
+      // O `catch` abaixo segue só para `api.salvarFotoFrentista`, que ainda é
+      // legada e lança (Decisão B do Design Doc pwa-frentista-fsd).
+      const reduzido = await reduzirParaAvatar(arquivo);
+      if (reduzido.isErr()) {
+        setDialog({
+          isOpen: true,
+          title: 'Não deu para salvar a foto',
+          message: mensagemDeFoto(reduzido.error),
+          type: 'error',
+        });
+        return;
+      }
+      const avatar = reduzido.value;
       await api.salvarFotoFrentista(alvo.id, avatar);
 
       setSelectedFrentista(atual => (atual && atual.id === alvo.id ? { ...atual, foto: avatar } : atual));
@@ -372,7 +351,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   const [erroEnvios, setErroEnvios] = useState<string | null>(null);
   useEffect(() => {
     let ativo = true;
-    api.getEnviosDoDia(1, dataFechamento)
+    api.getEnviosDoDia(POSTO_ID, dataFechamento)
       .then((rows) => { if (ativo) { setEnviosDoDia(rows as unknown as EnvioDoDia[]); setErroEnvios(null); } })
       .catch((err: unknown) => {
         if (!ativo) return;
@@ -382,7 +361,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         setErroEnvios(err instanceof Error ? err.message : 'Falha ao carregar os envios.');
       });
     return () => { ativo = false; };
-  }, [dataFechamento, enviosVersao]);
+  }, [dataFechamento, enviosVersao, versaoDaSessao]);
   /** Pedido de confirmação pendente por a data não ser hoje. Ver `handleSubmit`. */
   const [confirmarDataDiferente, setConfirmarDataDiferente] = useState(false);
 
@@ -458,18 +437,15 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     setIsSubmitting(true);
     try {
       const dataStr = dataFechamento;
-      const postoId = 1;
+      const postoId = POSTO_ID;
       // Universal (pedido do dono): frentista não escolhe turno. Todos os envios do
       // dia caem num turno canônico único e a web mostra o dia inteiro (getByDate).
-      const turnoId = 1;
+      const turnoId = TURNO_CANONICO;
 
-      // Chama a lógica inteligente da interface
-      const fechamentoId = await api.getOrCreateFechamento(postoId, dataStr, turnoId);
-
-      const payload = {
-        fechamento_id: fechamentoId,
-        frentista_id: selectedFrentista.id,
-        posto_id: postoId,
+      // Os valores do payload, os MESMOS nos dois caminhos (contrato §2(a) de
+      // docs/design/pwa-frentista-fsd.md). Pela API (#101) o servidor decide o pai,
+      // o frentista (do token) e o posto; pelo Supabase, o payload de sempre.
+      const valores = {
         encerrante: valueEncerrante,
         valor_pix: parseInt(payments.pix.replace(/\D/g, ''), 10) / 100 || 0,
         valor_dinheiro: parseInt(payments.dinheiro.replace(/\D/g, ''), 10) / 100 || 0,
@@ -484,12 +460,28 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         observacoes: "Fechamento via PWA Frentista"
       };
 
-      const enviado = await api.submitFrentistaClosing(payload) as { id?: number } | null;
+      if (pwaPelaApiLigado()) {
+        const assinatura = JSON.stringify([dataStr, selectedFrentista.id, valores]);
+        await api.enviarTurnoPelaApi(postoId, selectedFrentista.id, dataStr, chavePara(assinatura), valores);
+        esquecerChave();
+      } else {
+        // Chama a lógica inteligente da interface
+        const fechamentoId = await api.getOrCreateFechamento(postoId, dataStr, turnoId);
 
-      // Dispara e segue, sem `await`: o frentista não deve esperar a rede do
-      // aviso para ver "enviado com sucesso", e `avisarDono` engole os próprios
-      // erros de propósito — o porquê está no JSDoc dela.
-      if (enviado?.id) void api.avisarDono(enviado.id);
+        const payload = {
+          fechamento_id: fechamentoId,
+          frentista_id: selectedFrentista.id,
+          posto_id: postoId,
+          ...valores,
+        };
+
+        const enviado = await api.submitFrentistaClosing(payload) as { id?: number } | null;
+
+        // Dispara e segue, sem `await`: o frentista não deve esperar a rede do
+        // aviso para ver "enviado com sucesso", e `avisarDono` engole os próprios
+        // erros de propósito — o porquê está no JSDoc dela.
+        if (enviado?.id) void api.avisarDono(enviado.id);
+      }
 
       setEnviosVersao((v) => v + 1);
       setConfirmarDataDiferente(false);
@@ -503,6 +495,8 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
       // Desarma a confirmação de data: sem isso o próximo toque enviaria direto,
       // sem o "sim" consciente que a data diferente de hoje exige.
       setConfirmarDataDiferente(false);
+      // Sessão vencida (fim do turno, PIN trocado): pede o PIN de novo; os valores ficam na tela.
+      if (err instanceof RecusaDaApi && err.status === 401) setPinPara(selectedFrentista);
       setDialog({ isOpen: true, title: 'Erro', message: err instanceof Error ? err.message : 'Ocorreu um erro no servidor.', type: 'error' });
     } finally {
       setIsSubmitting(false);
@@ -791,10 +785,20 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
           frentistas={frentistas}
           selecionado={selectedFrentista}
           aoEscolher={(frentista) => {
-            setSelectedFrentista(frentista);
             setIsModalOpen(false);
+            if (pwaPelaApiLigado() && !api.temSessao(frentista.id)) setPinPara(frentista);
+            else setSelectedFrentista(frentista);
           }}
           aoFechar={() => setIsModalOpen(false)}
+        />
+      )}
+
+      {pinPara !== null && (
+        <PedirPin
+          postoId={POSTO_ID}
+          frentista={pinPara}
+          aoEntrar={() => { setSelectedFrentista(pinPara); setPinPara(null); setVersaoDaSessao((v) => v + 1); }}
+          aoCancelar={() => setPinPara(null)}
         />
       )}
 

@@ -49,13 +49,10 @@ export { aggregatorService } from './aggregator.service';
 // onde esperava o array — a rota estourava no render e o tsc não via. Wrapper
 // explícito preserva o tipo de retorno.
 import { aggregatorService } from './aggregator.service';
-export type { ProfitabilityItem, ProfitabilityResult } from './aggregator.service';
 export const fetchSettingsData: typeof aggregatorService.fetchSettingsData =
   (...args) => aggregatorService.fetchSettingsData(...args);
 export const fetchDashboardData: typeof aggregatorService.fetchDashboardData =
   (...args) => aggregatorService.fetchDashboardData(...args);
-export const fetchProfitabilityData: typeof aggregatorService.fetchProfitabilityData =
-  (...args) => aggregatorService.fetchProfitabilityData(...args);
 
 // Importa para montar objeto api
 import { postoService } from './posto.service';

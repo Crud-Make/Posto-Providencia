@@ -66,5 +66,27 @@ rg -U --no-heading -c -e "from\s+['\"](\.|@/|@posto|@shared|@widgets|@pages|@fea
      -g '*.ts' -g '*.tsx' frontend/apps frontend/packages   # vazio = ok
   ```
 
+## Auditoria 19/09/2026 sobre `origin/fase-a` (40abfee) — o que aprendi de novo
+
+- Medir branch que não é o checkout: `git archive origin/fase-a frontend backend | tar -x -C <scratch>`
+  e rodar o resolvedor lá. Retirar comentários (`/* */` e `//`) antes do regex: exemplo em
+  JSDoc (`import('./components/…')`) vira aresta falsa.
+- **Cliente Supabase por símbolo, não por aresta:** `services/api/base.ts` reexporta
+  `supabase` (`export { supabase }` no fim do arquivo) e parte dos services importa de
+  `'./base.ts'` (com extensão). Contar importadores de `services/supabase.ts` subconta os que
+  seguram o cliente. Conferir:
+  `rg -U --no-heading -o "import\s*\{[^}]*\bsupabase\b[^}]*\}\s*from\s*'[^']+'" frontend/apps/web/src | grep -o "from '[^']*'" | sort | uniq -c`
+- **`rg -U -o` conta cada casamento em dobro** em alguns arquivos (visto 19/09). Para contar
+  chamada `supabase.from/rpc`, usar `re.findall` em Python, não `rg -U -o | wc -l`.
+- Ciclo de ARQUIVO: zero. Ciclo de PASTA: `services` ↔ `services/api` só existe por causa de
+  `services/index.ts`, que não tem importador (barril morto). Reconfirmar:
+  `rg -n "/services['\"]" frontend/apps/web/src` (vazio = morto).
+- O ESLint de FSD (`frontend/eslint.config.mjs`, `boundaries/dependencies` com
+  `default: "allow"`) não enxerga legado: `shared/` importando `contexts/` ou `utils/`, e
+  `components/X` importando `components/Y` por dentro passam verdes. Não há `import/no-cycle`
+  nem dependency-cruiser: `grep -n "no-cycle\|dependency-cruiser" frontend/eslint.config.mjs frontend/package.json`.
+
+Backend: ver [[backend-arestas-invisiveis-aos-gates]].
+
 Relacionado: [[superficie-supabase-por-app]], [[api-core-nao-le-compra-nem-tanque]],
 [[mover-apps-packages-para-frontend]].

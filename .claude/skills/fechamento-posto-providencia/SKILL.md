@@ -15,6 +15,11 @@ description: >-
   implementações duplicadas sem antes ter o teste rodando contra todas elas.
 ---
 
+> **Só o Fable 5 mexe em regra de cálculo (decisão do dono, 18/09/2026).** Editar
+> `frontend/packages/utils/src/*.ts`, o `aggregator.service.ts` ou um golden/regressão de
+> dinheiro com outro modelo é barrado pelo hook `.claude/hooks/so-fable-na-formula.py`.
+> Sessão principal: `/model fable`. Subagente/workflow: `model: 'fable'`. Ler é livre.
+
 # fechamento-posto-providencia — domain + safe-refactoring rule
 
 > **Language:** these instructions are in English; **all output to the owner is

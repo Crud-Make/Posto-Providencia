@@ -5,7 +5,8 @@
  *          não precisar importar do `App.tsx` — que por sua vez importa a aba.
  */
 
-export type TabType = 'registro' | 'vendas' | 'historico' | 'tanques' | 'perfil';
+/** Reexportado de `shared/lib` (onde mora desde 22/09), para os imports antigos seguirem valendo. */
+export type { TabType } from '@frentista/shared/lib';
 
 export interface FrentistaSelecionavel {
   id: number;

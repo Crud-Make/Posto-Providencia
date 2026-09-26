@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { presencasRelevantes, type PresencaFrentista } from '@posto/utils';
 import { presencaService } from '../../../services/api';
+import { corteDaTelaLigado } from '../../../services/api/base';
+import { presencasDaApi } from '../../../services/api/dashboard-cadastro.api';
 import { isSuccess } from '../../../types/ui/response-types';
 
 /** De quanto em quanto tempo o painel relê e reavalia os textos de tempo. */
@@ -30,7 +32,11 @@ export function usePresencaFrentistas(postoId?: number): EstadoPresenca {
   const [carregando, setCarregando] = useState(true);
 
   const buscar = useCallback(async () => {
-    const resposta = await presencaService.getAll(postoId);
+    // Com a tela na API (#100 fatia 3), a presença vem de `GET /presencas` — rota com login, que
+    // leva a foto; sem posto não há rota, e fica o caminho de sempre.
+    const resposta = corteDaTelaLigado(import.meta.env.VITE_API_DASHBOARD) && postoId !== undefined
+      ? await presencasDaApi(postoId)
+      : await presencaService.getAll(postoId);
     const momento = new Date();
 
     // Erro não limpa a lista: manter o último estado conhecido é melhor que

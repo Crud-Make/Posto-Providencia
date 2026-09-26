@@ -16,7 +16,7 @@
  */
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { despesaOperacionalPorLitro, somarDespesas } from '@posto/utils';
+import { despesaOperacionalPorLitro, emCentavos, somarDespesas } from '@posto/utils';
 import { lucroPrevistoEstoque, valorBrutoEstoque } from './calculos-resumo-financeiro';
 
 const SQLITE = `${import.meta.dir}/../../../../../../../../docs/data/posto_jorro_2026.sqlite`;
@@ -93,7 +93,11 @@ test('consolidado: o card É a projeção canônica — antes prometia R$ 5.765,
         0
     );
 
-    expect(doCard).toBeCloseTo(canonico, 2);
+    // Exatidão, não folga: `toBeCloseTo(_, 1)` tolera CINCO CENTAVOS, e medido
+    // por mutação em 20/09 isso deixava passar tanto a soma em float quanto um
+    // centavo deslocado. A saída é dinheiro e nasce quantizada — então iguala-se
+    // ao canônico quantizado, sem arredondar o lado do módulo.
+    expect(doCard).toBe(emCentavos(canonico));
     expect(doCard).toBeCloseTo(5_640.91, 1);
 
     // O ANTES, como régua do que mudou na tela: sem o desconto da despesa o

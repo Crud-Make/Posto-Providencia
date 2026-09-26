@@ -38,6 +38,11 @@ interface TabGestaoBicosProps {
     /** Custo médio de compra do mês por produto — ver `useCustoMensal`. */
     custoMedioPorProduto: Record<string, number | null>;
     despesaOperacionalLitro: number;
+    /**
+     * `true` quando o custo do mês não pôde ser lido (ex.: 403 da API para quem só tem `ver` —
+     * decisão do dono, 22/09/2026, Q3). O lucro e a margem aparecem como "—", nunca como 0.
+     */
+    custoIndisponivel?: boolean;
     loading?: boolean;
 }
 
@@ -50,6 +55,7 @@ export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
     leituras,
     custoMedioPorProduto,
     despesaOperacionalLitro,
+    custoIndisponivel = false,
     loading
 }) => {
     // Separação de Lógica: Hook customizado para cálculos
@@ -93,7 +99,7 @@ export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
                     </span>
                     <div className="flex items-end gap-3 mt-2">
                         <span className="text-2xl font-black text-white">
-                            {formatCurrency(dadosConsolidados.lucroTotal)}
+                            {custoIndisponivel ? '—' : formatCurrency(dadosConsolidados.lucroTotal)}
                         </span>
                         <span className="text-xs text-slate-500 mb-1 font-medium">
                             / {formatCurrency(metaLucroGlobal)}
@@ -286,11 +292,11 @@ export const TabGestaoBicos: React.FC<TabGestaoBicosProps> = ({
                                     <td className="px-6 py-4 text-right text-slate-400">{formatCurrency(item.faturamento)}</td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="inline-flex items-center gap-1 font-bold text-sm">
-                                            <span className={corDeSinal(item.margem).texto}>{item.margem.toFixed(1)}%</span>
+                                            <span className={corDeSinal(item.margem).texto}>{custoIndisponivel ? '—' : `${item.margem.toFixed(1)}%`}</span>
                                         </div>
                                     </td>
                                     <td className={`px-6 py-4 text-right font-black group-hover:scale-105 transition-transform ${corDeSinal(item.lucro).texto}`}>
-                                        {formatCurrency(item.lucro)}
+                                        {custoIndisponivel ? '—' : formatCurrency(item.lucro)}
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="w-24 h-1.5 bg-slate-800 rounded-full mx-auto overflow-hidden">

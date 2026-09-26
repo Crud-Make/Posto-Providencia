@@ -18,6 +18,7 @@
 import { test, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { litrosVendidos, valorDaLeitura, motivoImplausivel } from './leitura';
+import { emCentavos } from './lucro';
 
 const SQLITE = `${import.meta.dir}/../../../../docs/data/posto_jorro_2026.sqlite`;
 const db = new Database(SQLITE, { readonly: true });
@@ -60,6 +61,9 @@ for (const l of LINHAS) {
     test(`${String(l.mes).padStart(2, '0')}/${String(l.dia).padStart(2, '0')} · ${l.bico} · litros`, () => {
         const obtido = litrosVendidos({ inicial: l.inicial, fechamento: l.fechamento });
         expect(Math.abs(obtido - l.litros)).toBeLessThan(TOL_LITROS);
+        // Exato ao mililitro: medido em 21/09/2026, 0 das 1.188 linhas divergem.
+        // A folga acima deixava passar um deslocamento de 1 mL (auditoria de 21/09).
+        expect(Math.round(obtido * 1000)).toBe(Math.round(l.litros * 1000));
     });
 }
 
@@ -86,6 +90,9 @@ for (const l of COM_PRECO) {
     test(`${String(l.mes).padStart(2, '0')}/${String(l.dia).padStart(2, '0')} · ${l.bico} · venda`, () => {
         const obtido = valorDaLeitura({ inicial: l.inicial, fechamento: l.fechamento }, l.valor_lt as number);
         expect(Math.abs(obtido - l.venda_bico)).toBeLessThan(TOL_REAIS);
+        // Exato ao centavo: medido em 21/09/2026, 0 das 990 linhas divergem. A folga
+        // acima deixava +R$ 0,01 passar em 649 linhas (auditoria de 21/09).
+        expect(emCentavos(obtido)).toBe(emCentavos(l.venda_bico));
     });
 }
 

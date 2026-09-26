@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import * as React from 'react';
-import type { SessaoFrentista } from '../../../types/fechamento';
+import type { BicoComDetalhes, SessaoFrentista } from '../../../types/fechamento';
 import { useFechamento } from './useFechamento';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,7 +60,7 @@ const sessaoComDinheiro = (valor: string): SessaoFrentista =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any;
 
-function renderizar(sessoes: SessaoFrentista[]) {
+function renderizar(sessoes: SessaoFrentista[], bicosDaTela: typeof bicos = bicos) {
     const container = document.createElement('div');
     let root: Root | null = null;
     let resultado: ReturnType<typeof useFechamento> | null = null;
@@ -68,7 +68,7 @@ function renderizar(sessoes: SessaoFrentista[]) {
     // A sonda entrega o resultado por callback: atribuir a variável de fora de
     // dentro do componente é o que a regra do React Compiler barra no lint.
     function Sonda({ aoCalcular }: { aoCalcular: (r: ReturnType<typeof useFechamento>) => void }) {
-        aoCalcular(useFechamento(bicos, leituras, sessoes, []));
+        aoCalcular(useFechamento(bicosDaTela, leituras, sessoes, []));
         return null;
     }
 
@@ -120,5 +120,22 @@ describe('useFechamento — sinal da diferença (§6)', () => {
 
         expect(r.totalFrentistas).toBe(900);
         expect(r.diferenca).toBe(100);
+    });
+});
+
+describe('useFechamento — dia não apurado (I8, #103 P8)', () => {
+    it('menos leituras que bicos ativos → totalVendas null, e a diferença fica 0 por falta de termo', () => {
+        // O fixture de cima tem 1 bico e 1 leitura (1 < 1 é falso) e por isso NUNCA foi
+        // canário de nulidade. Aqui são DOIS bicos ativos e a mesma leitura única: o dia
+        // não está apurado, e `0` seria "apurou e deu zero" — afirmação que ninguém fez.
+        const segundoBico = {
+            id: 2, numero: 2, combustivel_id: 1, combustivel: { id: 1, nome: 'Gasolina Comum', preco_venda: 5, cor: '#f5c239' },
+        } as unknown as BicoComDetalhes;
+        const r = renderizar([sessaoComDinheiro('900,00')], [...bicos, segundoBico]);
+
+        expect(r.totalVendas).toBeNull();
+        expect(r.diferenca).toBe(0);
+        expect(r.totalFrentistas).toBe(900);
+        expect(r.exibicao.totalVendas).toBe('—');
     });
 });

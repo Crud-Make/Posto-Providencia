@@ -97,4 +97,13 @@ Sem coluna nova. `Frentista.foto` nunca sai pela API de catálogo.
 - `posto_id` é NULLABLE com `DEFAULT 1` em 8 das 10 tabelas: o escopo trata `null` como "não é
   deste posto". Tornar NOT NULL é migration da DECISÃO 5, fora desta issue.
 - `Combustivel.preco_custo` é `numeric` sem escala: cast `decimal:4` para não truncar custo por litro.
-- Sem autenticação ainda: os endpoints são públicos até a #102. Igual ao PostgREST de hoje, nem mais nem menos.
+- O catálogo segue **sem autenticação** (`backend/routes/api.php:50-60`), igual ao PostgREST de hoje.
+  O `GET …/dashboard` saiu deste grupo em 22/09 (#103) e mora no grupo protegido com
+  `posto.acesso:gerir` (ver `agregacao.md` §Autorização). **Fechar o catálogo é fatia própria**, e ela
+  importa porque o catálogo expõe dado que não devia ser público: `preco_custo`/`preco_venda`
+  (`CombustivelResource.php:23-24`; também em `tanques` e `bicos`, que sempre carregam o combustível
+  por `with()` em `CatalogoDoPosto.php:36/:48`), `taxa` (`FormaPagamentoResource.php:22`,
+  `MaquininhaResource.php:21`), `cnpj`/`contato` (`FornecedorResource.php:20-21`) e
+  `telefone`/`data_admissao` (`FrentistaResource.php:20-21`). Quem consome sem token hoje:
+  `bico.api.ts:94`, `frentista.api.ts:58`, `formaPagamento.api.ts:59` e `fornecedor.api.ts:38`. Esbarra
+  no mesmo bloqueio do dashboard: sem `Usuario.auth_user_id` vinculado em produção, fechar é 401.
