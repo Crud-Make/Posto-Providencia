@@ -10,12 +10,16 @@
 -- Preços diferentes dos do Jorro de propósito: número igual nos dois postos esconde vazamento. Os
 -- preços, nomes e capacidades reais do BR também ainda não vieram.
 --
+-- O JORRO NÃO MUDA (decisão do dono, 26/09): nenhuma linha de posto_id = 1 é criada, alterada ou
+-- apagada — nem PIN de frentista do Jorro. A única linha que cita o Jorro é o vínculo do Elias em
+-- `UsuarioPosto` (é a conta decidida em 24/09; não toca dado do posto). `retrato-do-jorro.sql`
+-- tira o retrato antes e depois para provar.
+--
 -- Contas (`Usuario.role` + `UsuarioPosto.role`, ver PapelNoPosto):
 --   * ADMIN já existente sem senha: ganha senha (ADMIN passa no PostoPolicy de todo posto);
 --   * Elias (postoprovidenciaa@gmail.com): GERENTE, vínculo `gerente` no Jorro E no BR;
 --   * gerente.br@ensaio.local: GERENTE só no BR — é quem prova o 403 ao pedir o Jorro.
--- PIN: 2 frentistas ativos do Jorro que ainda não têm PIN (o painel ainda não define PIN — decisão
--- pendente do dono) e 3 frentistas novos do BR.
+-- PIN: só nos 3 frentistas novos do BR.
 
 \set ON_ERROR_STOP on
 
@@ -74,18 +78,10 @@ WITH novos AS (
 )
 INSERT INTO pin_do_ensaio SELECT 'B' || row_number() OVER (ORDER BY id), id FROM novos;
 
-INSERT INTO pin_do_ensaio
-SELECT 'J' || row_number() OVER (ORDER BY f.id), f.id
-FROM "Frentista" f
-WHERE f.posto_id = 1 AND f.ativo AND f.turno_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM "AcessoFrentista" a WHERE a.frentista_id = f.id)
-ORDER BY f.id LIMIT 2;
-
 INSERT INTO "AcessoFrentista" (frentista_id, pin_hash)
 SELECT p.frentista_id, h.hash
 FROM pin_do_ensaio p
-JOIN (VALUES ('B1', :'h_pin_b1'), ('B2', :'h_pin_b2'), ('B3', :'h_pin_b3'),
-             ('J1', :'h_pin_j1'), ('J2', :'h_pin_j2')) h(rotulo, hash) USING (rotulo);
+JOIN (VALUES ('B1', :'h_pin_b1'), ('B2', :'h_pin_b2'), ('B3', :'h_pin_b3')) h(rotulo, hash) USING (rotulo);
 
 UPDATE "Usuario" SET senha = :'h_dono', "updatedAt" = now()
 WHERE role = 'ADMIN' AND ativo AND senha IS NULL;

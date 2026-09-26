@@ -4,7 +4,8 @@
 # `posto-pg-*` ou `posto-postgres` — recusa qualquer outra porta, e nunca fala com o Supabase.
 #
 # Uso: scripts/semeia-ensaio-dois-postos.sh <porta>   (ex.: 5469; a da worktree: scripts/banco-da-worktree.sh)
-# Imprime UMA vez as senhas e PINs gerados; guarde para o ensaio. Rodar de novo não refaz nada.
+# O Jorro não muda: tira o retrato dele (banco/ensaio/retrato-do-jorro.sql) antes e depois do seed e
+# aborta se diferir. Imprime UMA vez as senhas e PINs gerados; guarde para o ensaio. Rodar de novo não refaz nada.
 set -euo pipefail
 
 PORTA="${1:?uso: scripts/semeia-ensaio-dois-postos.sh <porta do Postgres local>}"
@@ -18,6 +19,12 @@ fi
 export PGHOST=127.0.0.1 PGPORT="$PORTA" PGUSER="${PGUSER:-posto}" PGDATABASE="${PGDATABASE:-posto}"
 export PGPASSWORD="${PGPASSWORD:-posto}"
 
+if [[ "$(psql -Atc "SELECT EXISTS (SELECT 1 FROM \"Posto\" WHERE id = 1)")" != "t" ]]; then
+    echo "Recusado: o banco da porta $PORTA não tem o Jorro (Posto id 1) — o BR tomaria o id dele." >&2
+    echo "Suba o banco com os cadastros (scripts/banco-da-worktree.sh subir) e rode de novo." >&2
+    exit 1
+fi
+
 if [[ "$(psql -Atc "SELECT EXISTS (SELECT 1 FROM \"Posto\" WHERE nome = 'Posto BR')")" == "t" ]]; then
     echo "Posto BR já existe no banco da porta $PORTA — nada feito. Para refazer, recrie o volume do compose."
     exit 0
@@ -29,14 +36,22 @@ pin() { printf '%06d' "$(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 ))"; }
 
 SENHA_DONO=$(senha); SENHA_ELIAS=$(senha); SENHA_SO_BR=$(senha)
 declare -A PIN
-for r in B1 B2 B3 J1 J2; do PIN[$r]=$(pin); done
+for r in B1 B2 B3; do PIN[$r]=$(pin); done
 
 DIR=$(cd "$(dirname "$0")/.." && pwd)
+retrato() { psql -Atq -f "$DIR/banco/ensaio/retrato-do-jorro.sql"; }
+ANTES=$(retrato)
+
 psql -v ON_ERROR_STOP=1 -q \
     -v h_dono="$(hash "$SENHA_DONO")" -v h_elias="$(hash "$SENHA_ELIAS")" -v h_so_br="$(hash "$SENHA_SO_BR")" \
     -v h_pin_b1="$(hash "${PIN[B1]}")" -v h_pin_b2="$(hash "${PIN[B2]}")" -v h_pin_b3="$(hash "${PIN[B3]}")" \
-    -v h_pin_j1="$(hash "${PIN[J1]}")" -v h_pin_j2="$(hash "${PIN[J2]}")" \
     -f "$DIR/banco/ensaio/posto-br.sql"
+
+if [[ "$(retrato)" != "$ANTES" ]]; then
+    echo "ERRO: o retrato do Jorro mudou durante o seed. Compare: diff <(echo \"\$ANTES\") <(retrato)" >&2
+    exit 1
+fi
+echo "Jorro intacto: retrato idêntico antes e depois ($(wc -l <<<"$ANTES") tabelas com posto_id)."
 
 cat <<EOF
 
@@ -45,5 +60,5 @@ ADMIN(s) listados acima  senha: $SENHA_DONO
 postoprovidenciaa@gmail.com (Elias, Jorro + BR)  senha: $SENHA_ELIAS
 gerente.br@ensaio.local (só BR)  senha: $SENHA_SO_BR
 PINs (rótulo → frentista na lista FRENTISTAS_COM_PIN acima):
-  B1 ${PIN[B1]}   B2 ${PIN[B2]}   B3 ${PIN[B3]}   J1 ${PIN[J1]}   J2 ${PIN[J2]}
+  B1 ${PIN[B1]}   B2 ${PIN[B2]}   B3 ${PIN[B3]}
 EOF
