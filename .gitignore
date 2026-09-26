@@ -138,3 +138,6 @@ supabase/.temp/
 
 # Segredo da produção (#105): o exemplo é versionado, o arquivo real não.
 deploy/.env.producao
+
+# Senhas e PINs do ensaio local de dois postos (scripts/demo/prepara-demo.sh) — nunca versionar.
+scripts/demo/.credenciais-demo
