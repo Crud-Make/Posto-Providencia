@@ -20,7 +20,7 @@ export const DetalhesFrentista: React.FC<DetalhesFrentistaProps> = ({
 
     useEffect(() => {
         if (frentista?.id) {
-            carregarHistorico(frentista.id);
+            carregarHistorico(frentista.id, frentista.postoId);
         }
     }, [frentista, carregarHistorico]);
 

@@ -45,4 +45,11 @@ interface ImportMetaEnv {
      * catálogo `/combustiveis` —, `0` a deixa no Supabase. Ausente, vale o `VITE_API_URL`.
      */
     readonly VITE_API_CUSTOS?: string;
+    /**
+     * Corte da tela Frentistas — gestão de equipe (#103): `1` põe a tela INTEIRA na API — a lista
+     * (`/equipe`), o cadastro, a edição, o "Excluir" (`/equipe/{id}/desativar`) e o histórico
+     * (`/equipe/{id}/historico` + `/turnos`) —, `0` a deixa inteira no Supabase. Ausente, vale o
+     * `VITE_API_URL`.
+     */
+    readonly VITE_API_FRENTISTAS?: string;
 }
