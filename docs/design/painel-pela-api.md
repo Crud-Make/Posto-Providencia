@@ -295,6 +295,84 @@ dinheiro sem `emCentavos`; régua do próprio mês tomada como anterior.
 Despesas, que ainda não funciona pela API); editar ou apagar compra lançada não existe na tela — nem
 antes, nem agora. Antes do cutover, `08-compra-pela-api.sql` tem de ser aplicado no banco de produção.
 
+## 10. Frentistas (gestão de equipe) pela API (#103, 26/09/2026)
+
+Tela `components/frentistas` ("Gestão de Equipe"), flag própria **`VITE_API_FRENTISTAS`** (ausente
+segue `VITE_API_URL`, `0` deixa a tela inteira no Supabase). No modo API a tela **não chama o
+Supabase** — nem o canal de tempo real. Prova em `gestao-de-equipe-pela-api.test.tsx`: a TELA montada
+com o client do Supabase num Proxy que reprova ao ser tocado, percorrendo listar, filtrar inativos,
+abrir o histórico, cadastrar, editar e "Excluir". A escolha da fonte mora em
+`hooks/fonteDaEquipe.ts`; os hooks só guardam estado.
+
+| Antes (Supabase) | Agora (API) | |
+|---|---|---|
+| `Frentista` `select('*').eq('posto_id').order('nome')` (ativos e inativos) | `GET /equipe` | leitura |
+| `FechamentoFrentista` + `Fechamento(data, turno:Turno(nome))`, `order id desc limit 30` | `GET /equipe/{id}/historico` + `GET /turnos` (nome do turno) | leitura |
+| canal `frentistas_changes_gestao` (`postgres_changes` em `Frentista`) | nenhum — a lista é relida depois de cada gravação | tempo real |
+| `frentistaService.create({ nome, data_admissao, ativo, posto_id })` | `POST /equipe` | **escrita** |
+| `frentistaService.update(id, { nome, data_admissao, ativo, posto_id })` | `PUT /equipe/{id}` | **escrita** |
+| `frentistaService.delete(id)` = `UPDATE ativo = false` (botão "Excluir") | `POST /equipe/{id}/desativar` | **escrita** |
+
+**Rotas novas** (bloco próprio em `routes/api.php`; `token.atual` + `DefinePostoAtual` +
+`posto.acesso:gerir` em todas — é dado pessoal e escrita de cadastro; `{id}` só dígitos):
+
+- `GET /api/postos/{posto}/equipe` → `{ data: [{ id, nome, data_admissao: "2025-03-10T00:00:00Z", ativo, foto }] }`,
+  ativos e inativos, por nome. **`foto` sai aqui** (rota protegida, a tela mostra o rosto); **CPF e
+  telefone não saem** — a tela não os exibe. O catálogo público `GET /frentistas` segue sem foto.
+- `POST /api/postos/{posto}/equipe` com `{ nome, data_admissao: "AAAA-MM-DD", ativo: boolean }` → 201
+  `{ data: <frentista> }`. `PUT /api/postos/{posto}/equipe/{id}` com o mesmo corpo → 200.
+  `nome` é aparado e não pode ser vazio; `ativo` é booleano de JSON (`"true"` e `1` são 422); forma
+  errada → 422 `{ erro: { codigo: 'corpo_invalido', mensagem, campos } }`. `posto_id` no corpo é
+  ignorado.
+- `POST /api/postos/{posto}/equipe/{id}/desativar` → 200 `{ data: <frentista com ativo false> }`.
+- `GET /api/postos/{posto}/equipe/{id}/historico` → os 30 envios mais novos, no mesmo item do
+  histórico do PWA (`ItemDoHistoricoResource`: `diferenca_calculada` em string decimal,
+  `fechamento: { data: "AAAA-MM-DD", turno_id }`). Módulo Fechamento (`HistoricoParaOGerente`).
+
+Frentista de outro posto → **404** (o escopo `PertenceAoPosto` o esconde; o histórico confere
+`Frentista.posto_id` por query builder, CA-7).
+
+**Efeitos (porte fiel; a tabela `Frentista` não tem trigger em `01-esquema-base.sql`):** criar grava
+nome, admissão (meia-noite UTC — o que o PostgREST gravava de `'AAAA-MM-DD'` numa `timestamptz`) e
+status, com CPF, telefone, turno, `user_id` e foto nulos, como o INSERT de hoje; editar grava os mesmos
+três campos e **não toca** CPF, telefone, foto, turno nem posto; "Excluir" continua sendo `ativo =
+false` (nada é apagado; as FKs de `FechamentoFrentista` etc. seguem intactas).
+
+**O que muda de propósito:**
+- o posto é o da ROTA. O UPDATE do Supabase gravava o `posto_id` do corpo — editar pelo painel
+  "mudava" o frentista de posto; o histórico do Supabase não filtrava posto. Agora frentista de outro
+  posto não é lido nem editável pelo id;
+- **desativar derruba as sessões de PIN abertas** do frentista. O `VerificaTokenDoFrentista` já
+  recusava token de inativo a cada requisição (teste: desativado por fora → 401 na hora); agora os
+  tokens também são apagados, então reativar não ressuscita a sessão de antes — ele entra de novo
+  pelo PIN. Cadastro emite `Compartilhado\Eventos\FrentistaDesativado` dentro da transação e
+  `Pessoas\Application\DerrubaSessoesDoFrentista` apaga os tokens (síncrono: se falhar, a desativação
+  volta). Nenhum módulo conhece o outro (CA-7). O PIN em si fica;
+- no modo API a recusa do servidor mantém o formulário aberto e mostra o motivo (no Supabase o
+  `ApiResponse` do service nunca foi lido — gravação recusada fechava o modal como sucesso; esse
+  caminho ficou **intacto**);
+- sem tempo real no modo API ("realtime fica no Laravel", decisão de 21/09): a lista é relida depois de
+  cada gravação da própria tela; mudança feita em outra aba só aparece ao recarregar.
+
+**Paridade de exibição mantida, com defeito conhecido:** `data_admissao` e a data do histórico chegam
+como meia-noite UTC e a tela faz `new Date(x).toLocaleDateString('pt-BR')`, que em São Paulo mostra
+**o dia anterior**. Era assim no Supabase e continua igual (o formulário usa `split('T')[0]` e acerta).
+Consertar é mudança de tela, fora desta fatia.
+
+**Canários (mutação → vermelho → desfeita):** ouvinte do `FrentistaDesativado` desligado (2
+vermelhos: sessões sobrevivem); `posto.acesso:gerir` → `posto.acesso` (operador vermelho); histórico
+sem filtro de posto e edição com `withoutGlobalScope('posto')` (404 do vizinho vermelho);
+`boolean:strict` → `boolean` (`ativo: 1` vermelho); canal do Supabase aberto no modo API (Proxy
+reprova); flag ignorada (teste do `VITE_API_FRENTISTAS=0` vermelho); `posto_id` no corpo do POST
+(corpo exato vermelho); nome do turno fora do histórico.
+
+**⏸ Decisão PENDENTE do dono — não implementada:** quem define o PIN do frentista — só o comando no
+servidor (`php artisan frentista:pin`, como hoje) ou uma tela no painel para o gerente. Não há rota nem
+tela de PIN nesta fatia; o painel continua sem ver nem mexer no PIN.
+
+**Fica de fora:** CPF, telefone, turno e vínculo com usuário (`user_id`) não estão no formulário — nem
+antes, nem agora. Criar frentista não é idempotente (sem chave): o botão fica desabilitado enquanto
+grava, como antes; um duplo envio pela rede cria dois cadastros, que se desativa um. Sem esquema novo.
 ## 11. Tanques (Combustível) pela API (#103, 26/09/2026)
 
 Tela `components/estoque/dashboard` (rota `/estoque/tanques`), flag **`VITE_API_TANQUES`**

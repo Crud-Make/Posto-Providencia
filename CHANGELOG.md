@@ -15,6 +15,19 @@
   despesa, estoque derivado) saíram do hook para `montar-painel.ts`, uma só para as duas fontes, e entraram
   na trava `so-fable-na-formula.py`. **Nenhuma fórmula mudou** — PARIDADE Supabase × API com números exatos.
 - Design Doc: `docs/design/painel-pela-api.md` §11.
+### 👥 Frentistas (gestão de equipe) 100% pela API — ler e gravar (#103)
+
+- **Rotas novas**, todas `token.atual` + `DefinePostoAtual` + `posto.acesso:gerir`: `GET /equipe`
+  (ativos e inativos, com a foto, sem CPF nem telefone), `POST /equipe`, `PUT /equipe/{id}`,
+  `POST /equipe/{id}/desativar` (o "Excluir" da tela, que nunca apagou) e `GET /equipe/{id}/historico`
+  (os 30 envios mais novos). O posto é o da rota; frentista de outro posto é 404.
+- **Desativar derruba as sessões de PIN** abertas do frentista (evento `FrentistaDesativado` em
+  Compartilhado, ouvido por Pessoas na mesma transação): reativar não ressuscita o token antigo.
+- **Tela:** com `VITE_API_FRENTISTAS` (ausente segue `VITE_API_URL`) lista, mostra o histórico,
+  cadastra, edita e desativa pela API — nenhuma chamada ao Supabase, nem o canal de tempo real (prova
+  com o client num Proxy que reprova). Sem a flag, o caminho de hoje fica intacto. Nenhuma fórmula mudou.
+- A definição do PIN pelo painel **não** entrou: espera decisão do dono. Design Doc:
+  `docs/design/painel-pela-api.md` §10.
 
 ### 🧾 Registro de Compras 100% pela API — ler e gravar (#103)
 
