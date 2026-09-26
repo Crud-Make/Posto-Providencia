@@ -373,6 +373,7 @@ tela de PIN nesta fatia; o painel continua sem ver nem mexer no PIN.
 **Fica de fora:** CPF, telefone, turno e vínculo com usuário (`user_id`) não estão no formulário — nem
 antes, nem agora. Criar frentista não é idempotente (sem chave): o botão fica desabilitado enquanto
 grava, como antes; um duplo envio pela rede cria dois cadastros, que se desativa um. Sem esquema novo.
+
 ## 11. Tanques (Combustível) pela API (#103, 26/09/2026)
 
 Tela `components/estoque/dashboard` (rota `/estoque/tanques`), flag **`VITE_API_TANQUES`**

@@ -52,6 +52,7 @@ interface ImportMetaEnv {
      * `VITE_API_URL`.
      */
     readonly VITE_API_FRENTISTAS?: string;
+    /**
      * Corte da tela Tanques (Combustível) (#103): `1` põe a tela INTEIRA na API — a leitura
      * (`/tanques/painel`) e a "Nova Medição (Régua)" (`PUT /tanques/medicoes`) —, `0` a deixa
      * inteira no Supabase. Ausente, vale o `VITE_API_URL`.

@@ -15,6 +15,7 @@
   despesa, estoque derivado) saíram do hook para `montar-painel.ts`, uma só para as duas fontes, e entraram
   na trava `so-fable-na-formula.py`. **Nenhuma fórmula mudou** — PARIDADE Supabase × API com números exatos.
 - Design Doc: `docs/design/painel-pela-api.md` §11.
+
 ### 👥 Frentistas (gestão de equipe) 100% pela API — ler e gravar (#103)
 
 - **Rotas novas**, todas `token.atual` + `DefinePostoAtual` + `posto.acesso:gerir`: `GET /equipe`

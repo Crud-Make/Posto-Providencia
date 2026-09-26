@@ -228,6 +228,19 @@ Route::prefix('postos/{posto}')
 | sai da rota, nunca do corpo. "Desativar" é o "Excluir" da tela (nada é apagado) e derruba as
 | sessões de PIN abertas do frentista. O PIN NÃO tem rota: quem o define (comando no servidor ou
 | tela do gerente) espera decisão do dono.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::get('equipe', [EquipeController::class, 'index']);
+        Route::post('equipe', [EquipeController::class, 'store']);
+        Route::put('equipe/{frentista}', [EquipeController::class, 'update'])->whereNumber('frentista');
+        Route::post('equipe/{frentista}/desativar', [EquipeController::class, 'desativar'])->whereNumber('frentista');
+        Route::get('equipe/{frentista}/historico', [HistoricoDaEquipeController::class, 'index'])->whereNumber('frentista');
+    });
+
+/*
+|--------------------------------------------------------------------------
 | Tanques (Combustível) do painel (#103, docs/design/painel-pela-api.md §11)
 |--------------------------------------------------------------------------
 | A leitura da tela numa rota (tanques ativos com o combustível, réguas, compras e vendas desde a
@@ -238,11 +251,6 @@ Route::prefix('postos/{posto}')
 Route::prefix('postos/{posto}')
     ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
     ->group(function (): void {
-        Route::get('equipe', [EquipeController::class, 'index']);
-        Route::post('equipe', [EquipeController::class, 'store']);
-        Route::put('equipe/{frentista}', [EquipeController::class, 'update'])->whereNumber('frentista');
-        Route::post('equipe/{frentista}/desativar', [EquipeController::class, 'desativar'])->whereNumber('frentista');
-        Route::get('equipe/{frentista}/historico', [HistoricoDaEquipeController::class, 'index'])->whereNumber('frentista');
         Route::get('tanques/painel', [TanquesDoPainelController::class, 'show']);
         Route::put('tanques/medicoes', [TanquesDoPainelController::class, 'medir']);
     });
