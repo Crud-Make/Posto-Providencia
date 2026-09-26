@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### ⛽ Tanques (Combustível) 100% pela API — ler e medir (#103)
+
+- **Rotas novas** (módulo `App\Estoque`, `posto.acesso:gerir`): `GET /api/postos/{posto}/tanques/painel?mes=&historico_desde=`
+  (tanques ativos com o combustível, réguas medidas, compras e vendas desde a régua mais antiga que ainda
+  vale, despesas do mês e o histórico de 30 dias — numa resposta, sem conta) e `PUT /tanques/medicoes`, a
+  "Nova Medição (Régua)" pela MESMA regra da régua do PWA (`GravaMedicaoDeTanque`: upsert por tanque e dia,
+  janela do banco, tanque do posto). O volume vai com as casas do float e o `numeric(10,2)` arredonda como
+  antes (`15000.555` → `15000.56`).
+- **Tela:** com `VITE_API_TANQUES` (ausente segue `VITE_API_URL`, `0` deixa tudo no Supabase) nenhuma
+  chamada ao Supabase — prova com a tela montada e o client num Proxy que reprova. As contas (rateio da
+  despesa, estoque derivado) saíram do hook para `montar-painel.ts`, uma só para as duas fontes, e entraram
+  na trava `so-fable-na-formula.py`. **Nenhuma fórmula mudou** — PARIDADE Supabase × API com números exatos.
+- Design Doc: `docs/design/painel-pela-api.md` §11.
+
 ### 🧾 Registro de Compras 100% pela API — ler e gravar (#103)
 
 - **Escrita nova:** `POST /api/postos/{posto}/compras` (módulo `App\Compras`, `posto.acesso:gerir`): o

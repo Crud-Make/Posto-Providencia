@@ -340,6 +340,11 @@ CASOS_FORMULA_COBERTURA = [
     ("frontend/apps/web/src/components/registro-compras/hooks/montarRegistroDeCompras.ts", True),
     ("frontend/apps/web/src/components/registro-compras/hooks/montarRegistroDoMes.test.ts", False),
     ("frontend/apps/web/src/components/registro-compras/hooks/fonteDoRegistro.ts", False),
+    # [26/09] #103 Tanques (Combustível): as contas da tela, não as fontes nem o hook
+    ("frontend/apps/web/src/components/estoque/dashboard/hooks/montar-painel.ts", True),
+    ("frontend/apps/web/src/components/estoque/dashboard/hooks/fonte-da-api.ts", False),
+    ("frontend/apps/web/src/components/estoque/dashboard/hooks/fonte-do-painel.test.ts", False),
+    ("frontend/apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts", False),
 ]
 
 

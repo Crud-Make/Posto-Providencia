@@ -60,8 +60,6 @@
   "apps/web/src/components/estoque/dashboard/components/InventoryHistoryChart.tsx|@typescript-eslint/strict-boolean-expressions": 3,
   "apps/web/src/components/estoque/dashboard/components/ModalMedicao.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/estoque/dashboard/components/TabelaResumo.tsx|@typescript-eslint/strict-boolean-expressions": 3,
-  "apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts|@typescript-eslint/no-floating-promises": 1,
-  "apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/estoque/dashboard/index.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/estoque/gestao/components/ModalProduto.tsx|@typescript-eslint/strict-boolean-expressions": 5,
   "apps/web/src/components/estoque/gestao/components/TabelaEstoque.tsx|@typescript-eslint/strict-boolean-expressions": 1,

@@ -68,6 +68,10 @@ FORMULA = re.compile(
     # `montarRegistroDoMes.ts` e `montarRegistroDeCompras.ts`, que as duas fontes usam.
     # `fonteDoRegistro.ts` e o hook de tela são dado e tela.
     r"|(^|/)apps/web/src/components/registro-compras/hooks/montarRegistro(DoMes|DeCompras)[\w.-]*\.tsx?$"
+    # [26/09] #103 Tanques (Combustível): o rateio da despesa do mês e o estoque derivado de cada
+    # tanque saíram do `useDashboardEstoque` para `montar-painel.ts`, que as duas fontes usam.
+    # Fontes, carregador, gravação e hook de tela são dado e tela.
+    r"|(^|/)apps/web/src/components/estoque/dashboard/hooks/montar-painel[\w.-]*\.tsx?$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")
