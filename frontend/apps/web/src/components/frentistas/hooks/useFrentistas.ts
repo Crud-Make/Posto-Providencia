@@ -1,9 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '../../../services/supabase';
-import { frentistaService } from '../../../services/api';
 import { usePosto } from '../../../contexts/usePosto';
 import { PerfilFrentista, DadosFormularioFrentista } from '../types';
+import { okAsync, type ResultAsync } from 'neverthrow';
+import { assinarMudancasDaEquipe, carregarEquipe, desativarFrentista, gravarFrentista } from './fonteDaEquipe';
 
+/** Sem posto ativo a lista é vazia, sem ir a fonte nenhuma (como antes). */
+const lerEquipe = (postoId: number): ResultAsync<PerfilFrentista[], string> => (postoId > 0 ? carregarEquipe(postoId) : okAsync([]));
+
+/**
+ * Estado da tela Frentistas. A fonte (Supabase ou API Laravel) é escolhida em `fonteDaEquipe`, pela
+ * flag `VITE_API_FRENTISTAS`; aqui só se guarda o que a tela mostra.
+ */
 export const useFrentistas = () => {
     const { postoAtivoId } = usePosto();
     const [frentistas, setFrentistas] = useState<PerfilFrentista[]>([]);
@@ -11,114 +18,57 @@ export const useFrentistas = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const carregarFrentistas = useCallback(async () => {
-        if (!postoAtivoId) {
-            setFrentistas([]);
-            setLoading(false);
-            return;
-        }
+    // O que a fonte devolveu vai para a tela nestes dois — nunca no corpo do efeito, só depois da leitura.
+    const mostrar = useCallback((lista: PerfilFrentista[]) => {
+        setFrentistas(lista);
+        setLoading(false);
+    }, []);
+    const falhar = useCallback((motivo: string) => {
+        console.error('Erro ao carregar frentistas:', motivo);
+        setError(motivo);
+        setLoading(false);
+    }, []);
 
+    const carregarFrentistas = useCallback(async () => {
         setLoading(true);
         setError(null);
-
-        try {
-            // Busca todos os frentistas (ativos e inativos)
-            const { data: dadosFrentistas, error: erroFrentistas } = await supabase
-                .from('Frentista')
-                .select('*')
-                .eq('posto_id', postoAtivoId)
-                .order('nome');
-
-            if (erroFrentistas) throw erroFrentistas;
-
-            // Mapeia para o tipo PerfilFrentista
-            const listaMapeada: PerfilFrentista[] = (dadosFrentistas || []).map((f) => ({
-                id: String(f.id),
-                nome: f.nome,
-                status: f.ativo ? 'Ativo' : 'Inativo',
-                dataAdmissao: f.data_admissao,
-                // `PerfilFrentista.telefone` é opcional (`string | undefined`);
-                // a coluna é `string | null`. Ambos significam "sem telefone" —
-                // normaliza para `undefined`, que é o vocabulário do tipo.
-                telefone: f.telefone ?? undefined,
-                // Já vinha no `select('*')`; só se perdia aqui, no mapeamento.
-                foto: f.foto ?? null,
-                postoId: f.posto_id
-            }));
-
-            setFrentistas(listaMapeada);
-        } catch (err: unknown) {
-            console.error('Erro ao carregar frentistas:', err);
-            setError(err instanceof Error ? err.message : 'Erro ao carregar lista de frentistas');
-        } finally {
-            setLoading(false);
-        }
-    }, [postoAtivoId]);
+        await lerEquipe(postoAtivoId).match(mostrar, falhar);
+    }, [postoAtivoId, mostrar, falhar]);
 
     useEffect(() => {
-        carregarFrentistas();
+        void lerEquipe(postoAtivoId).match(mostrar, falhar);
+        return assinarMudancasDaEquipe(() => void carregarFrentistas());
+    }, [postoAtivoId, mostrar, falhar, carregarFrentistas]);
 
-        // Realtime subscription
-        const subscription = supabase
-            .channel('frentistas_changes_gestao')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'Frentista' },
-                () => carregarFrentistas()
-            )
-            .subscribe();
-
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, [carregarFrentistas]);
-
+    /** `false` mantém o formulário aberto: sem posto ativo, ou a gravação foi recusada. */
     const salvarFrentista = async (dados: DadosFormularioFrentista, id?: string): Promise<boolean> => {
-        // Sem posto ativo nada foi gravado: devolve `false` para o formulário
-        // continuar aberto. Antes devolvia `undefined`, falsy do mesmo jeito —
-        // o comportamento em tela não muda, só o contrato fica honesto.
-        if (!postoAtivoId) return false;
+        if (!(postoAtivoId > 0)) return false;
 
         setSaving(true);
-        try {
-            const dadosParaSalvar = {
-                ...dados,
-                posto_id: postoAtivoId
-            };
+        const gravada = await gravarFrentista(postoAtivoId, dados, id);
+        if (gravada.isOk()) await carregarFrentistas();
+        setSaving(false);
 
-            if (id) {
-                await frentistaService.update(Number(id), dadosParaSalvar);
-            } else {
-                await frentistaService.create(dadosParaSalvar);
-            }
-            await carregarFrentistas();
-            return true;
-        } catch (err: unknown) {
-            console.error('Erro ao salvar frentista:', err);
-            throw err;
-        } finally {
-            setSaving(false);
-        }
+        return gravada.match(() => true, (motivo) => {
+            console.error('Erro ao salvar frentista:', motivo);
+            setError(motivo);
+            window.alert(`Erro ao salvar frentista: ${motivo}`);
+            return false;
+        });
     };
 
+    /** O "Excluir" da tela (desativa). Lança na falha: quem chama mostra o alerta. */
     const excluirFrentista = async (id: string) => {
-        try {
-            await frentistaService.delete(Number(id));
-            await carregarFrentistas();
-            return true;
-        } catch (err: unknown) {
-            console.error('Erro ao excluir frentista:', err);
-            throw err;
+        if (!(postoAtivoId > 0)) return false;
+
+        const desativado = await desativarFrentista(postoAtivoId, id);
+        if (desativado.isErr()) {
+            console.error('Erro ao excluir frentista:', desativado.error);
+            throw new Error(desativado.error);
         }
+        await carregarFrentistas();
+        return true;
     };
 
-    return {
-        frentistas,
-        loading,
-        saving,
-        error,
-        carregarFrentistas,
-        salvarFrentista,
-        excluirFrentista
-    };
+    return { frentistas, loading, saving, error, carregarFrentistas, salvarFrentista, excluirFrentista };
 };
