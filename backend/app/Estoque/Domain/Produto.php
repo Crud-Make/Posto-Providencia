@@ -8,6 +8,7 @@ use App\Compartilhado\PertenceAoPosto;
 use Database\Factories\ProdutoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Tabela "Produto" (banco/init/01-esquema-base.sql:397) — a conveniência do posto (óleo, aditivo…),
@@ -16,7 +17,9 @@ use Illuminate\Database\Eloquent\Model;
  * `preco_venda`/`preco_custo` são `numeric(10,2)`: saem como string decimal pelo cast, nunca float.
  * `estoque_atual` é inteiro. **A venda NÃO desconta `estoque_atual`** — nem pelo PWA de hoje (insert
  * cru em `VendaProduto`, sem trigger), nem pela API: é o comportamento mantido (pergunta 5 do Design
- * Doc `fechamento-frentista-api.md`).
+ * Doc `fechamento-frentista-api.md`). Quem mexe em `estoque_atual` e `preco_custo` é a movimentação
+ * de estoque do painel ({@see MovimentacaoEstoque}); `chave_cadastro` é a idempotência do "Novo
+ * Produto" pela API (banco/init/12-estoque-de-produtos-pela-api.sql), NULL nas linhas antigas.
  *
  * @property int $id
  * @property string $nome
@@ -30,6 +33,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $unidade_medida
  * @property ?bool $ativo
  * @property int|null $posto_id
+ * @property ?string $chave_cadastro
+ * @property Carbon|null $created_at
  */
 final class Produto extends Model
 {
@@ -47,7 +52,7 @@ final class Produto extends Model
     /** @var list<string> */
     protected $fillable = [
         'nome', 'codigo_barras', 'categoria', 'descricao', 'preco_custo', 'preco_venda', 'estoque_atual',
-        'estoque_minimo', 'unidade_medida', 'ativo', 'posto_id',
+        'estoque_minimo', 'unidade_medida', 'ativo', 'posto_id', 'chave_cadastro',
     ];
 
     /** @return array<string, string> */

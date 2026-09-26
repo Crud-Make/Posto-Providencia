@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Estoque\Http\Resources;
 
+use App\Estoque\Application\MovimentacaoRegistrada;
+use App\Estoque\Application\ProdutoGravado;
 use App\Estoque\Application\VendaRegistrada;
 use App\Estoque\Domain\MedicaoDeTanque;
 use App\Estoque\Domain\RecusaDoEstoque;
@@ -14,6 +16,8 @@ use Illuminate\Http\JsonResponse;
  *
  * - carrinho novo → 201 `{ data: { repetido: false, vendas: [...] } }`; repetição → 200, `repetido: true`;
  * - medição → 200 `{ data: { tanque_id, data, volume_fisico } }` (upsert: gravar de novo é o mesmo 200);
+ * - produto novo do painel → 201 `{ data: { repetido: false, produto } }`; repetição → 200, `repetido: true`;
+ * - movimentação do painel → 201 `{ data: { repetido: false, movimentacao, produto } }`; repetição → 200;
  * - recusa → `{ erro: { codigo, mensagem } }`, 409 para `chave_reutilizada` e 422 para as demais.
  */
 final class RespostaDoEstoque
@@ -37,6 +41,31 @@ final class RespostaDoEstoque
         }
 
         return response()->json(['data' => (new MedicaoResource($resultado))->resolve()]);
+    }
+
+    public static function doProduto(ProdutoGravado|RecusaDoEstoque $resultado): JsonResponse
+    {
+        if ($resultado instanceof RecusaDoEstoque) {
+            return self::recusa($resultado);
+        }
+
+        return response()->json(['data' => [
+            'repetido' => $resultado->repetido,
+            'produto' => (new ProdutoDoPainelResource($resultado->produto))->resolve(),
+        ]], $resultado->repetido ? 200 : 201);
+    }
+
+    public static function daMovimentacao(MovimentacaoRegistrada|RecusaDoEstoque $resultado): JsonResponse
+    {
+        if ($resultado instanceof RecusaDoEstoque) {
+            return self::recusa($resultado);
+        }
+
+        return response()->json(['data' => [
+            'repetido' => $resultado->repetido,
+            'movimentacao' => (new MovimentacaoResource($resultado->movimentacao))->resolve(),
+            'produto' => (new ProdutoDoPainelResource($resultado->produto))->resolve(),
+        ]], $resultado->repetido ? 200 : 201);
     }
 
     private static function recusa(RecusaDoEstoque $recusa): JsonResponse
