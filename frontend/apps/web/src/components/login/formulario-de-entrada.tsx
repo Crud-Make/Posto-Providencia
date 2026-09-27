@@ -1,6 +1,7 @@
 import React, { useActionState, useRef, useState } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
+import { lembrarSenhaNoNavegador } from './lembrar-senha';
 
 const CLASSE_CAMPO =
   'block h-12 w-full rounded-lg border pl-11 pr-3.5 text-[15px] placeholder:opacity-60 ' +
@@ -115,8 +116,12 @@ interface Props {
 }
 
 /**
- * E-mail e senha da tela de entrada. Nada é guardado no navegador (regra do dono, 27/09/2026): a
+ * E-mail e senha da tela de entrada. O app não guarda nada no navegador (regra do dono, 27/09/2026): a
  * caixa "Salvar meu acesso neste computador", que guardava e-mail e senha em texto puro, saiu.
+ *
+ * @remarks "Lembrar a senha" (27/09/2026) entrega o login ao gerenciador de senhas do navegador, e só
+ *          depois de a entrada dar certo — senha errada não vai para o cofre. Na próxima vez o
+ *          navegador preenche; o posto continua sendo escolhido no cartão.
  */
 const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) => {
   const { entrar, pedirRecuperacaoSenha } = useAuth();
@@ -132,7 +137,9 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
     if (!email) return 'Informe o e-mail.';
     if (!senha) return 'Informe a senha.';
     antesDeEntrar();
-    return entrar(email, senha);
+    const falha = await entrar(email, senha);
+    if (falha === null && formData.get('lembrar') === 'sim') void lembrarSenhaNoNavegador(email, senha);
+    return falha;
   }, null);
 
   const aoEsquecerSenha = async () => {
@@ -169,7 +176,7 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
               id="login-email"
               name="email"
               type="email"
-              autoComplete="email"
+              autoComplete="username"
               inputMode="email"
               spellCheck={false}
               placeholder="voce@postoprovidencia.com.br"
@@ -213,6 +220,11 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
             <BotaoVerSenha visivel={mostrarSenha} aoAlternar={() => setMostrarSenha((v) => !v)} />
           </div>
         </div>
+
+        <label className="-mt-1 flex cursor-pointer items-center gap-2.5 text-[14px]" style={{ color: 'var(--texto-medio)' }}>
+          <input type="checkbox" name="lembrar" value="sim" className="h-4 w-4 accent-[#A30E19]" />
+          Lembrar a senha neste navegador
+        </label>
 
         <MensagemDoLogin erro={erro ?? erroExterno} aviso={aviso} />
 

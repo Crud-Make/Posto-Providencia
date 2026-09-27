@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🔑 Painel: "Lembrar a senha neste navegador" (#102)
+
+- Caixa na tela de entrada, desmarcada por padrão. Marcada, e **só depois de a entrada dar certo**, o
+  login vai para o gerenciador de senhas do navegador (`navigator.credentials.store`, Chrome/Edge);
+  no Firefox e no Safari vale a oferta de salvar do próprio navegador. Na volta, o navegador preenche.
+- O app segue sem guardar nada: nem senha, nem token, nem posto. O campo de e-mail passa a
+  `autocomplete="username"`, que é o que os gerenciadores casam com a senha.
+
 ### 🚪 Painel: uma tela só para entrar — os postos e a senha juntos (#102)
 
 - **A tela do canvas "Escolha de Posto — Rede Providência" é a única de entrada** (regra do dono,
