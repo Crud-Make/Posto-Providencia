@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Semeia o ensaio do MVP com dois postos (skill validar-mvp-dois-postos): Posto BR com 24 bicos,
-# contas do ensaio e PINs. Roda banco/ensaio/posto-br.sql SÓ no Postgres local de um container
+# contas do ensaio e 3 frentistas SEM chave (cada um cadastra a sua no PWA). Roda
+# banco/ensaio/posto-br.sql SÓ no Postgres local de um container
 # `posto-pg-*` ou `posto-postgres` — recusa qualquer outra porta, e nunca fala com o Supabase.
 #
 # Uso: scripts/semeia-ensaio-dois-postos.sh <porta>   (ex.: 5469; a da worktree: scripts/banco-da-worktree.sh)
 # O Jorro não muda: tira o retrato dele (banco/ensaio/retrato-do-jorro.sql) antes e depois do seed e
-# aborta se diferir. Imprime UMA vez as senhas e PINs gerados; guarde para o ensaio. Rodar de novo não refaz nada.
+# aborta se diferir. Imprime UMA vez as senhas geradas; guarde para o ensaio. Rodar de novo não
+# refaz nada.
 set -euo pipefail
 
 PORTA="${1:?uso: scripts/semeia-ensaio-dois-postos.sh <porta do Postgres local>}"
@@ -32,11 +34,8 @@ fi
 
 hash() { php -r 'echo password_hash($argv[1], PASSWORD_BCRYPT, ["cost" => 12]);' "$1"; }
 senha() { openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 14; }
-pin() { printf '%06d' "$(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 ))"; }
 
 SENHA_DONO=$(senha); SENHA_ELIAS=$(senha); SENHA_SO_BR=$(senha)
-declare -A PIN
-for r in B1 B2 B3; do PIN[$r]=$(pin); done
 
 DIR=$(cd "$(dirname "$0")/.." && pwd)
 retrato() { psql -Atq -f "$DIR/banco/ensaio/retrato-do-jorro.sql"; }
@@ -44,7 +43,6 @@ ANTES=$(retrato)
 
 psql -v ON_ERROR_STOP=1 -q \
     -v h_dono="$(hash "$SENHA_DONO")" -v h_elias="$(hash "$SENHA_ELIAS")" -v h_so_br="$(hash "$SENHA_SO_BR")" \
-    -v h_pin_b1="$(hash "${PIN[B1]}")" -v h_pin_b2="$(hash "${PIN[B2]}")" -v h_pin_b3="$(hash "${PIN[B3]}")" \
     -f "$DIR/banco/ensaio/posto-br.sql"
 
 if [[ "$(retrato)" != "$ANTES" ]]; then
@@ -59,6 +57,5 @@ cat <<EOF
 ADMIN(s) listados acima  senha: $SENHA_DONO
 postoprovidenciaa@gmail.com (Elias, Jorro + BR)  senha: $SENHA_ELIAS
 gerente.br@ensaio.local (só BR)  senha: $SENHA_SO_BR
-PINs (rótulo → frentista na lista FRENTISTAS_COM_PIN acima):
-  B1 ${PIN[B1]}   B2 ${PIN[B2]}   B3 ${PIN[B3]}
+Frentistas do BR: sem chave — cada um cadastra a sua no primeiro acesso do PWA.
 EOF

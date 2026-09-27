@@ -2,7 +2,7 @@
 --
 -- NÃO RODAR À MÃO e NUNCA em produção: quem roda é `scripts/semeia-ensaio-dois-postos.sh`, que só
 -- aceita o Postgres local de um container `posto-pg-*` e gera os hashes (bcrypt, o mesmo do
--- `Hash::check` do Laravel) das senhas e PINs que passa aqui como variáveis do psql.
+-- `Hash::check` do Laravel) das senhas que passa aqui como variáveis do psql.
 --
 -- O catálogo do BR é DE ENSAIO: 4 combustíveis, 4 tanques, 6 bombas × 4 bicos = 24 bicos (o número
 -- que o dono confirmou em 26/09; o Jorro tem 6), um bico de cada combustível por bomba. A divisão real
@@ -19,7 +19,8 @@
 --   * ADMIN já existente sem senha: ganha senha (ADMIN passa no PostoPolicy de todo posto);
 --   * Elias (postoprovidenciaa@gmail.com): GERENTE, vínculo `gerente` no Jorro E no BR;
 --   * gerente.br@ensaio.local: GERENTE só no BR — é quem prova o 403 ao pedir o Jorro.
--- PIN: só nos 3 frentistas novos do BR.
+-- PIN: nenhum. Cada frentista cadastra a própria chave no primeiro acesso do PWA (decisão do dono,
+-- 27/09) — o ensaio testa esse cadastro.
 
 \set ON_ERROR_STOP on
 
@@ -66,22 +67,10 @@ INSERT INTO "Turno" (nome, horario_inicio, horario_fim, posto_id) VALUES
 INSERT INTO "FormaPagamento" (nome, tipo, taxa, posto_id)
 SELECT nome, tipo, taxa, :posto_br FROM "FormaPagamento" WHERE posto_id = 1 AND ativo;
 
-CREATE TEMP TABLE pin_do_ensaio (rotulo text PRIMARY KEY, frentista_id integer NOT NULL);
-
-WITH novos AS (
-    INSERT INTO "Frentista" (nome, data_admissao, turno_id, posto_id)
-    SELECT f.nome, now() - interval '30 days',
-           (SELECT id FROM "Turno" WHERE posto_id = :posto_br AND nome = f.turno), :posto_br
-    FROM (VALUES ('Ana (BR)', 'Manhã', 1), ('Bruno (BR)', 'Tarde', 2), ('Carla (BR)', 'Noite', 3)) f(nome, turno, ordem)
-    ORDER BY f.ordem
-    RETURNING id
-)
-INSERT INTO pin_do_ensaio SELECT 'B' || row_number() OVER (ORDER BY id), id FROM novos;
-
-INSERT INTO "AcessoFrentista" (frentista_id, pin_hash)
-SELECT p.frentista_id, h.hash
-FROM pin_do_ensaio p
-JOIN (VALUES ('B1', :'h_pin_b1'), ('B2', :'h_pin_b2'), ('B3', :'h_pin_b3')) h(rotulo, hash) USING (rotulo);
+INSERT INTO "Frentista" (nome, data_admissao, turno_id, posto_id)
+SELECT f.nome, now() - interval '30 days', t.id, :posto_br
+FROM (VALUES ('Ana (BR)', 'Manhã'), ('Bruno (BR)', 'Tarde'), ('Carla (BR)', 'Noite')) f(nome, turno)
+JOIN "Turno" t ON t.posto_id = :posto_br AND t.nome = f.turno;
 
 UPDATE "Usuario" SET senha = :'h_dono', "updatedAt" = now()
 WHERE role = 'ADMIN' AND ativo AND senha IS NULL;
@@ -110,7 +99,8 @@ SELECT (SELECT count(*) FROM "Combustivel" WHERE posto_id = :posto_br) AS combus
        (SELECT count(*) FROM "Bico"        WHERE posto_id = :posto_br) AS bicos,
        (SELECT count(*) FROM "Turno"       WHERE posto_id = :posto_br) AS turnos,
        (SELECT count(*) FROM "FormaPagamento" WHERE posto_id = :posto_br) AS formas;
-\echo '--- FRENTISTAS_COM_PIN'
-SELECT p.rotulo, f.id, f.nome, f.posto_id FROM pin_do_ensaio p JOIN "Frentista" f ON f.id = p.frentista_id ORDER BY p.rotulo;
+\echo '--- FRENTISTAS_DO_BR (sem chave — cadastram no PWA)'
+SELECT f.id, f.nome, EXISTS (SELECT 1 FROM "AcessoFrentista" a WHERE a.frentista_id = f.id) AS tem_chave
+FROM "Frentista" f WHERE f.posto_id = :posto_br ORDER BY f.id;
 \echo '--- ADMINS_COM_SENHA_DO_DONO'
 SELECT email FROM "Usuario" WHERE role = 'ADMIN' AND senha = :'h_dono';
