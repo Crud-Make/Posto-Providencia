@@ -11,14 +11,15 @@
 -- preços, nomes e capacidades reais do BR também ainda não vieram.
 --
 -- O JORRO NÃO MUDA (decisão do dono, 26/09): nenhuma linha de posto_id = 1 é criada, alterada ou
--- apagada — nem PIN de frentista do Jorro. A única linha que cita o Jorro é o vínculo do Elias em
+-- apagada — nem PIN de frentista do Jorro. A única linha que cita o Jorro é o vínculo do Elias do Jorro em
 -- `UsuarioPosto` (é a conta decidida em 24/09; não toca dado do posto). `retrato-do-jorro.sql`
 -- tira o retrato antes e depois para provar.
 --
 -- Contas (`Usuario.role` + `UsuarioPosto.role`, ver PapelNoPosto):
 --   * ADMIN já existente sem senha: ganha senha (ADMIN passa no PostoPolicy de todo posto);
---   * Elias (postoprovidenciaa@gmail.com): GERENTE, vínculo `gerente` no Jorro E no BR;
---   * gerente.br@ensaio.local: GERENTE só no BR — é quem prova o 403 ao pedir o Jorro.
+--   * CONTAS SEPARADAS POR POSTO (decisão do dono, 27/09): o Elias tem uma conta por posto, cada uma
+--     GERENTE só no próprio — elias.jorro@ensaio.local (Jorro) e elias.br@ensaio.local (BR). Cada uma
+--     prova o 403 ao pedir o outro posto. E-mails fictícios: nada oficial ainda.
 -- PIN: nenhum. Cada frentista cadastra a própria chave no primeiro acesso do PWA (decisão do dono,
 -- 27/09) — o ensaio testa esse cadastro.
 
@@ -76,14 +77,13 @@ UPDATE "Usuario" SET senha = :'h_dono', "updatedAt" = now()
 WHERE role = 'ADMIN' AND ativo AND senha IS NULL;
 
 INSERT INTO "Usuario" (email, nome, senha, role) VALUES
-    ('postoprovidenciaa@gmail.com', 'Elias',            :'h_elias', 'GERENTE'),
-    ('gerente.br@ensaio.local',     'Gerente só do BR', :'h_so_br', 'GERENTE')
+    ('elias.jorro@ensaio.local', 'Elias (Jorro)', :'h_elias_jorro', 'GERENTE'),
+    ('elias.br@ensaio.local',    'Elias (BR)',    :'h_elias_br',    'GERENTE')
 ON CONFLICT (email) DO UPDATE SET senha = EXCLUDED.senha, role = 'GERENTE', ativo = true, "updatedAt" = now();
 
 INSERT INTO "UsuarioPosto" (usuario_id, posto_id, role, ativo)
 SELECT u.id, v.posto_id, 'gerente', true
-FROM (VALUES ('postoprovidenciaa@gmail.com', 1), ('postoprovidenciaa@gmail.com', :posto_br),
-             ('gerente.br@ensaio.local', :posto_br)) v(email, posto_id)
+FROM (VALUES ('elias.jorro@ensaio.local', 1), ('elias.br@ensaio.local', :posto_br)) v(email, posto_id)
 JOIN "Usuario" u USING (email)
 ON CONFLICT (usuario_id, posto_id) DO UPDATE SET role = 'gerente', ativo = true;
 

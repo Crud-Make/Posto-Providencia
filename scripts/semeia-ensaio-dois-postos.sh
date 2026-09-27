@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Semeia o ensaio do MVP com dois postos (skill validar-mvp-dois-postos): Posto BR com 24 bicos,
-# contas do ensaio e 3 frentistas SEM chave (cada um cadastra a sua no PWA). Roda
+# uma conta de gerente por posto e 3 frentistas SEM chave (cada um cadastra a sua no PWA). Roda
 # banco/ensaio/posto-br.sql SÓ no Postgres local de um container
 # `posto-pg-*` ou `posto-postgres` — recusa qualquer outra porta, e nunca fala com o Supabase.
 #
@@ -35,14 +35,14 @@ fi
 hash() { php -r 'echo password_hash($argv[1], PASSWORD_BCRYPT, ["cost" => 12]);' "$1"; }
 senha() { openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 14; }
 
-SENHA_DONO=$(senha); SENHA_ELIAS=$(senha); SENHA_SO_BR=$(senha)
+SENHA_DONO=$(senha); SENHA_ELIAS_JORRO=$(senha); SENHA_ELIAS_BR=$(senha)
 
 DIR=$(cd "$(dirname "$0")/.." && pwd)
 retrato() { psql -Atq -f "$DIR/banco/ensaio/retrato-do-jorro.sql"; }
 ANTES=$(retrato)
 
 psql -v ON_ERROR_STOP=1 -q \
-    -v h_dono="$(hash "$SENHA_DONO")" -v h_elias="$(hash "$SENHA_ELIAS")" -v h_so_br="$(hash "$SENHA_SO_BR")" \
+    -v h_dono="$(hash "$SENHA_DONO")" -v h_elias_jorro="$(hash "$SENHA_ELIAS_JORRO")" -v h_elias_br="$(hash "$SENHA_ELIAS_BR")" \
     -f "$DIR/banco/ensaio/posto-br.sql"
 
 if [[ "$(retrato)" != "$ANTES" ]]; then
@@ -55,7 +55,7 @@ cat <<EOF
 
 === Credenciais do ensaio (banco local na porta $PORTA) — não vão para o git ===
 ADMIN(s) listados acima  senha: $SENHA_DONO
-postoprovidenciaa@gmail.com (Elias, Jorro + BR)  senha: $SENHA_ELIAS
-gerente.br@ensaio.local (só BR)  senha: $SENHA_SO_BR
+elias.jorro@ensaio.local (só Jorro)  senha: $SENHA_ELIAS_JORRO
+elias.br@ensaio.local (só BR)  senha: $SENHA_ELIAS_BR
 Frentistas do BR: sem chave — cada um cadastra a sua no primeiro acesso do PWA.
 EOF
