@@ -202,7 +202,7 @@ Tela `components/analise-custos`, flag **`VITE_API_CUSTOS`** (`corteDaTelaLigado
 | `compraService.getByDateRange(mês)` → `custoMedioPorCombustivel` | `/dashboard` → `produtos[].compras` (Σ do mês civil) |
 
 `/dashboard` é `posto.acesso:gerir`: sem token 401, operador 403, gerente de outro posto 403 — já provado
-em `AcessoAoDashboardTest`. O catálogo segue público (pendência antiga de `cadastro.md`).
+em `AcessoAoDashboardTest`. O catálogo fechou em 26/09 (#102): `posto.acesso` = `ver`, ver `cadastro.md`.
 
 **Contas:** saíram de `aggregator.service.ts` (−135 linhas) para `hooks/montar-analise.ts` **sem mudar
 fórmula** (custo da compra do mês, despesa do mês ÷ litros do mês, `lucroCombustivel` em centavos,

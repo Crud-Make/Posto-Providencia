@@ -6,7 +6,7 @@ import { buscarNaApi, type ErroDaApi } from './base';
 /**
  * Presença dos frentistas pela API (`GET /api/postos/{posto}/presencas`, #100 fatia 3). Mesmo
  * formato que o `presencaService` (Supabase) entrega ao card do Dashboard. A rota exige login: é ela
- * que leva a foto, que o catálogo público esconde.
+ * que leva a foto, que o catálogo esconde.
  */
 const presencaDaApi = z.object({
     frentista_id: z.number().int(),
