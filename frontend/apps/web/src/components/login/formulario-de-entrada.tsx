@@ -109,8 +109,6 @@ const ConteudoDoBotaoEntrar: React.FC<{ pendente: boolean }> = ({ pendente }) =>
 };
 
 interface Props {
-  /** Chamado com o login certo nas mãos, antes de entrar — é onde a tela marca o posto escolhido. */
-  antesDeEntrar: () => void;
   /** Recusa que vem de fora do submit (ex.: a conta não é do posto escolhido). */
   erroExterno: string | null;
 }
@@ -123,7 +121,7 @@ interface Props {
  *          depois de a entrada dar certo — senha errada não vai para o cofre. Na próxima vez o
  *          navegador preenche; o posto continua sendo escolhido no cartão.
  */
-const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) => {
+const FormularioDeEntrada: React.FC<Props> = ({ erroExterno }) => {
   const { entrar, pedirRecuperacaoSenha } = useAuth();
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -136,7 +134,6 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
     const senha = String(formData.get('senha') ?? '');
     if (!email) return 'Informe o e-mail.';
     if (!senha) return 'Informe a senha.';
-    antesDeEntrar();
     const falha = await entrar(email, senha);
     if (falha === null && formData.get('lembrar') === 'sim') void lembrarSenhaNoNavegador(email, senha);
     return falha;

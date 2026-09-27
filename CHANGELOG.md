@@ -2,6 +2,15 @@
 
 ## [Não Lançado]
 
+### 🐛 Painel: a tela de entrada não desloga mais sozinha (#102)
+
+- Ao entrar pela tela nova, o login dava 200 e o painel chamava `/api/sair` na hora (achado no ensaio
+  Jorro+BR de 27/09). O posto era marcado dentro do envio do formulário (action do React 19) e só
+  era gravado depois do usuário; nesse meio-tempo "usuário sem posto" disparava a recusa de conta de
+  outro posto. Agora o posto é marcado no clique do cartão.
+- Teste novo com os provedores de verdade (`index.integracao.test.tsx`); o antigo simulava `useAuth`
+  e `usePosto` e não via a corrida. Canário: o código anterior reprova (`/api/sair` chamado 1×).
+
 ### 🔑 Painel: "Lembrar a senha neste navegador" (#102)
 
 - Caixa na tela de entrada, desmarcada por padrão. Marcada, e **só depois de a entrada dar certo**, o

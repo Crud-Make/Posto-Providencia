@@ -74,6 +74,14 @@ const TelaDeEntrada: React.FC = () => {
   const agora = new Date();
   const comCartoes = loginPelaApiLigado();
 
+  // O posto é marcado no clique do cartão, fora do envio do formulário. Marcado dentro do envio (uma
+  // action do React 19), ele só era gravado depois do usuário, e nesse meio-tempo "usuário sem posto"
+  // disparava a recusa de conta de outro posto: o painel entrava e saía sozinho (ensaio de 27/09).
+  const escolher = (posto: PostoDaRede) => {
+    setEscolhido(posto);
+    setPostoAtivo(comoPosto(posto));
+  };
+
   return (
     <div className="relative min-h-screen lg:grid lg:grid-cols-12" style={{ ...variaveisDoTema(theme), background: 'var(--fundo)', color: 'var(--texto)' }}>
       <div className="absolute inset-x-0 top-0 grid h-1.5 grid-cols-3" aria-hidden="true">
@@ -108,7 +116,7 @@ const TelaDeEntrada: React.FC = () => {
             {lista.estado === 'pronta' && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
                 {lista.postos.map((posto) => (
-                  <CartaoDoPosto key={posto.id} id={posto.id} nome={posto.nome} selecionado={escolhido?.id === posto.id} aoEscolher={() => setEscolhido(posto)} />
+                  <CartaoDoPosto key={posto.id} id={posto.id} nome={posto.nome} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} />
                 ))}
               </div>
             )}
@@ -118,7 +126,7 @@ const TelaDeEntrada: React.FC = () => {
         {(!comCartoes || escolhido !== null) && (
           <section className="w-full max-w-md rounded-2xl border p-6" style={{ background: 'var(--painel)', borderColor: 'var(--borda-cartao)' }} aria-label="Entrar">
             <h2 className="mb-5 font-display text-xl font-semibold">{escolhido === null ? 'Entrar no painel' : `Entrar no ${escolhido.nome}`}</h2>
-            <FormularioDeEntrada key={escolhido?.id ?? 0} antesDeEntrar={() => escolhido !== null && setPostoAtivo(comoPosto(escolhido))} erroExterno={recusa} />
+            <FormularioDeEntrada key={escolhido?.id ?? 0} erroExterno={recusa} />
           </section>
         )}
 
