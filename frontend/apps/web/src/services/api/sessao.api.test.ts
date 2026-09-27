@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { buscarNaApi, loginPelaApiLigado } from './base';
-import { entrarNaApi, mensagemDoLogin, perfilDaSessao, sairDaApi } from './sessao.api';
-import { guardarTokenDaApi, lerTokenDaApi } from './token-da-api';
+import { entrarNaApi, mensagemDoLogin, perfilDaSessao, postosDaRede, sairDaApi } from './sessao.api';
+import { esquecerTokenDaApi, guardarTokenDaApi, lerTokenDaApi } from './token-da-api';
 
 /**
  * Login próprio da API (#102): o painel entra, guarda o token, manda o token em toda chamada e o
@@ -39,7 +39,10 @@ function ligaLoginPelaApi(): void {
     vi.stubEnv('VITE_API_LOGIN', '1');
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+    localStorage.clear();
+    esquecerTokenDaApi();
+});
 afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
@@ -147,5 +150,28 @@ describe('mensagemDoLogin', () => {
         expect(mensagemDoLogin({ tipo: 'http', status: 429 })).toBe('Muitas tentativas. Espere um minuto e tente de novo.');
         expect(mensagemDoLogin({ tipo: 'rede', detalhe: 'x' })).toBe('Não foi possível falar com o servidor. Confira a internet.');
         expect(mensagemDoLogin({ tipo: 'http', status: 500 })).toBe('Não foi possível entrar agora. Tente de novo.');
+    });
+});
+
+describe('postosDaRede e o token só na memória (27/09)', () => {
+    it('GET /api/postos devolve id e nome dos postos para os cartões da tela de entrada', async () => {
+        ligaLoginPelaApi();
+        respondeCom({ data: [{ id: 1, nome: 'Posto Jorro' }, { id: 2, nome: 'Posto BR' }] });
+
+        const postos = await postosDaRede().match((lista) => lista, () => []);
+
+        expect(postos).toEqual([{ id: 1, nome: 'Posto Jorro' }, { id: 2, nome: 'Posto BR' }]);
+        expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('http://localhost:8000/api/postos');
+    });
+
+    it('entrar NÃO grava nada no navegador: o token vive só na memória da página', async () => {
+        ligaLoginPelaApi();
+        respondeCom({ token: '3|posto_abc', usuario: PERFIL });
+
+        await entrarNaApi('postoprovidenciaa@gmail.com', 'segredo123').match(() => null, () => null);
+
+        expect(lerTokenDaApi()).toBe('3|posto_abc');
+        expect(localStorage.length).toBe(0);
+        expect(sessionStorage.length).toBe(0);
     });
 });
