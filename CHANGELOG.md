@@ -2,6 +2,23 @@
 
 ## [Não Lançado]
 
+### 🖊️ Foto do posto: canetinha no painel para o gerente trocar a fachada (#102)
+
+- Decisão do dono (27/09): a canetinha fica **no painel, depois de entrar**, ao lado da foto e do nome
+  do posto na barra lateral, e só aparece para o admin ou o gerente/admin **daquele** posto — a mesma
+  regra do `gerir` do servidor, que é quem decide (401 sem token, 403 operador ou outro posto).
+- `PUT /api/postos/{posto}/foto` grava um JPEG em data URL (até 300 000 caracteres, `CHECK` no banco;
+  `null` remove). O painel reduz a foto no aparelho (até 1280 px, qualidade em degraus) e converte PNG
+  para JPEG antes de enviar.
+- `GET /api/postos` passa a trazer `foto`: só o caminho versionado `/api/postos/{id}/foto?v=…`, nunca a
+  imagem. `GET /api/postos/{id}/foto` é público e devolve o JPEG com cache de 1 ano (o `?v` muda a
+  cada troca). A foto vale nos cartões da tela de entrada do painel e na escolha de posto do PWA; sem
+  foto, o Jorro segue com a imagem antiga e os outros com as iniciais.
+- Esquema: `banco/init/13-foto-do-posto.sql` (colunas `foto`, `foto_atualizada_em`), incluído no CI.
+- ⚠️ Terceira cópia do redutor de foto do navegador (PWA frentista, pwa-dono e agora o painel): o
+  comentário do PWA pedia um pacote compartilhado no terceiro uso — pendência registrada.
+- Testado no navegador: PNG 2400×1400 virou JPEG 1280×747 (22 KB), servido nos três lugares.
+
 ### 🪪 Tela de entrada: a senha aparece embaixo do posto escolhido (#102)
 
 - Pedido do dono (27/09): escolheu o Posto BR, o formulário abre embaixo do cartão do BR, e não

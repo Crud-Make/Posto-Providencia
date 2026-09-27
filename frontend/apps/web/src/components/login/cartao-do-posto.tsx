@@ -5,13 +5,15 @@ import { fotoDoPosto, iniciaisDoPosto } from './escolha-de-posto-estilo';
 interface Props {
   id: number;
   nome: string;
+  /** Caminho versionado da foto na API (`GET /api/postos`), ou `null`. */
+  caminhoDaFoto: string | null;
   selecionado: boolean;
   aoEscolher: () => void;
 }
 
 /** Um posto na tela de entrada: foto (ou as iniciais), nome e "Entrar". Marcado quando escolhido. */
-const CartaoDoPosto: React.FC<Props> = ({ id, nome, selecionado, aoEscolher }) => {
-  const foto = fotoDoPosto(id);
+const CartaoDoPosto: React.FC<Props> = ({ id, nome, caminhoDaFoto, selecionado, aoEscolher }) => {
+  const foto = fotoDoPosto(id, caminhoDaFoto);
   return (
     <button
       type="button"

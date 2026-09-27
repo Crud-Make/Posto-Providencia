@@ -131,7 +131,7 @@ const TelaDeEntrada: React.FC = () => {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-flow-row-dense lg:gap-6">
                 {lista.postos.map((posto, i) => (
                   <React.Fragment key={posto.id}>
-                    <CartaoDoPosto id={posto.id} nome={posto.nome} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} />
+                    <CartaoDoPosto id={posto.id} nome={posto.nome} caminhoDaFoto={posto.foto ?? null} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} />
                     {escolhido?.id === posto.id && (
                       <CaixaDeEntrada titulo={`Entrar no ${posto.nome}`} classe={i % 2 === 1 ? 'md:col-start-2' : 'md:col-start-1'}>
                         <FormularioDeEntrada key={posto.id} postoId={posto.id} erroExterno={recusa} />

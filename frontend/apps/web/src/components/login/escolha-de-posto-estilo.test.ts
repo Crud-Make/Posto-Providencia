@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fotoDoPosto, fraseDoDia, iniciaisDoPosto, saudacao, variaveisDoTema } from './escolha-de-posto-estilo';
 
 describe('fraseDoDia', () => {
@@ -36,8 +36,13 @@ describe('iniciaisDoPosto e fotoDoPosto', () => {
   });
 
   it('só o Jorro (posto 1) tem foto por enquanto', () => {
-    expect(fotoDoPosto(1)).toBe('/fundo-login.jpg');
-    expect(fotoDoPosto(2)).toBeNull();
+    expect(fotoDoPosto(1, null)).toBe('/fundo-login.jpg');
+    expect(fotoDoPosto(2, null)).toBeNull();
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    // Foto subida pela canetinha vence a imagem antiga do Jorro, e o BR ganha a sua.
+    expect(fotoDoPosto(1, '/api/postos/1/foto?v=9')).toBe('http://api.test/api/postos/1/foto?v=9');
+    expect(fotoDoPosto(2, '/api/postos/2/foto?v=3')).toBe('http://api.test/api/postos/2/foto?v=3');
+    vi.unstubAllEnvs();
   });
 });
 

@@ -2,12 +2,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { okAsync } from 'neverthrow';
 
 /** Com dois postos na rede, a barra lateral diz em qual posto se está (ensaio Jorro+BR, 27/09/2026). */
 
 const estado = { postoAtivo: null as null | { id: number; nome: string } };
 
-vi.mock('../contexts/useAuth', () => ({ useAuth: () => ({ autenticado: true, sair: vi.fn() }) }));
+const perfil = { id: 7, nome: 'Elias', email: 'e@x', role: 'GERENTE', postos: [{ id: 2, nome: 'Posto BR', papel: 'gerente' }] }; // a forma REAL de /api/login
+vi.mock('../contexts/useAuth', () => ({ useAuth: () => ({ autenticado: true, sair: vi.fn(), usuario: perfil }) }));
+vi.mock('../services/api/sessao.api', () => ({
+  postosDaRede: () => okAsync([{ id: 2, nome: 'Posto BR', foto: '/api/postos/2/foto?v=1' }]),
+}));
+vi.mock('../services/api/base', () => ({ urlDaApi: () => 'http://api.test', descreverErroDaApi: () => 'erro', enviarParaApi: vi.fn() }));
 vi.mock('../contexts/usePosto', () => ({ usePosto: () => ({ postoAtivo: estado.postoAtivo }) }));
 vi.mock('../contexts/useTheme', () => ({ useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() }) }));
 
@@ -50,4 +56,18 @@ describe('BarraLateral', () => {
     await montar();
     expect(postoDaBarra()).toBeNull();
   });
+
+  it('gerente do posto vê a foto da API e a canetinha', async () => {
+    estado.postoAtivo = { id: 2, nome: 'Posto BR' };
+    await montar();
+    expect(div.querySelector('img[alt="Fachada do Posto BR"]')?.getAttribute('src')).toBe('http://api.test/api/postos/2/foto?v=1');
+    expect(div.querySelector('button[aria-label="Trocar a foto do Posto BR"]')).not.toBeNull();
+  });
+
+  it('quem não gerencia o posto não vê a canetinha', async () => {
+    estado.postoAtivo = { id: 1, nome: 'Posto Jorro' };
+    await montar();
+    expect(div.querySelector('button[aria-label^="Trocar a foto"]')).toBeNull();
+  });
 });
+
