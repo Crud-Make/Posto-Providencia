@@ -120,7 +120,7 @@ Supabase, então não dá para logar nos dois com a mesma credencial.
 
 | Issue | Entrega |
 |---|---|
-| **#102** | **Entregue em 20/09 (`465efd5`):** guard por Bearer (o token do login atual) e `PostoPolicy` com dente — ver §3b. **Ainda não entregue:** Sanctum como segundo emissor, migração dos 16 usuários, e pendurar o guard nas rotas do catálogo, que **seguem públicas**. O painel continua logando no Supabase. |
+| **#102** | **Entregue em 20/09 (`465efd5`):** guard por Bearer (o token do login atual) e `PostoPolicy` com dente — ver §3b. **Ainda não entregue:** Sanctum como segundo emissor e migração dos 16 usuários. O guard nas rotas do catálogo entrou em 26/09. O painel continua logando no Supabase. |
 | **#103** | O painel para de falar com o Postgres **e** troca o emissor do token na mesma entrega. Nunca há um momento `anon`. |
 
 Custo: a #102 deixa de ter efeito visível no painel. Ganho: não existe janela de perda silenciosa.
@@ -181,9 +181,13 @@ o que `DefinePostoAtual` já deixou na requisição.
 ### Quais rotas já usam o guard (atualizado em 22/09)
 
 No grupo protegido de `routes/api.php:77-99`: `leituras`, `sessoes` e `GET fechamento` (P5–P7, habilidade
-`ver`), e `PUT fechamento` (P11) e `GET dashboard` (#103, 22/09) com `posto.acesso:gerir`. O catálogo segue
-**público** no grupo de `routes/api.php:50-60`. A pendência registrada em `cadastro.md` — pendurar a
-`PostoPolicy` nas rotas do catálogo — **continua aberta**, e é fatia própria.
+`ver`), e `PUT fechamento` (P11) e `GET dashboard` (#103, 22/09) com `posto.acesso:gerir`.
+
+**Catálogo: pendência fechada em 26/09/2026.** As nove rotas do catálogo (`combustiveis`, `tanques`,
+`bombas`, `bicos`, `turnos`, `frentistas`, `formas-pagamento`, `maquininhas`, `fornecedores`) passaram a
+`token.atual` + `DefinePostoAtual` + `posto.acesso` (`ver`). Públicas ficam só as portas de antes de
+qualquer login: `GET /saude`, `POST /login`, `POST …/frentistas/entrar` e `GET …/frentistas/escolha`
+(id e nome). Detalhe e provas em `cadastro.md` §Riscos.
 
 ### Lado do cliente: existe desde a P5
 
@@ -205,7 +209,7 @@ requisição sem sessão leva 401 na rota protegida, sem fallback.
 | Item | Estado |
 |---|---|
 | Guard de identidade + policy com dente | ✅ feito (20/09, `465efd5`) |
-| Pendurar o guard no catálogo (`routes/api.php:50-60`) | ❌ — fatia própria (ver `cadastro.md`) |
+| Pendurar o guard no catálogo | ✅ feito (26/09, `posto.acesso` = `ver`; ver `cadastro.md`) |
 | Pendurar o guard no dashboard | ✅ feito (22/09, #103, `posto.acesso:gerir`) |
 | `base.ts` enviar `Authorization` | ✅ feito (`5897f1c`, #103 P5) |
 | Sanctum como segundo emissor | ❌ — depende do "ok" do dono para o `composer.json` |
@@ -364,7 +368,7 @@ Toda rota da API passa a exigir identidade — **exceto** as do PWA do frentista
 
 > ⚠️ **Estado em 22/09:** isto descreve o ALVO, não o que roda. Leituras, sessões, fechamento e
 > dashboard já estão atrás do guard (§3b), e o painel manda `Authorization` desde a P5 (`base.ts`);
-> o catálogo da #97 segue público (`backend/routes/api.php:50-60`), fatia própria.
+> o catálogo da #97 também, desde 26/09 (`posto.acesso` = `ver`).
 (#101). Até lá elas seguem públicas, como já estão.
 
 ## Testes

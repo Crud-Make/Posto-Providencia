@@ -9,7 +9,8 @@ namespace App\Estoque\Domain;
  * `RecusaDaGravacao` do Fechamento, que este módulo não pode importar: CA-7).
  *
  * Códigos: `produto_invalido`, `sem_estoque`, `chave_reutilizada` (venda); `tanque_invalido`,
- * `fora_da_janela` (régua).
+ * `fora_da_janela` (régua); `produto_invalido`, `custo_fora_da_coluna`, `chave_reutilizada`
+ * (movimentação de estoque e cadastro de produto do painel).
  */
 final readonly class RecusaDoEstoque
 {

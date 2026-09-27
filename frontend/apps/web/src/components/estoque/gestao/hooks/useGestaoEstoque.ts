@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { stockService } from '../../../../services/stockService';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { usePosto } from '../../../../contexts/usePosto';
 import { Produto, MovementType } from '../types';
+import { carregarProdutos, gravarProduto, movimentoDoFormulario, produtoDoFormulario, registrarMovimentacao } from './fonte-do-estoque';
+
+/** Uma chave de idempotência por TENTATIVA — gerada a cada abertura de modal (ver `fonte-do-estoque`). */
+const novaChave = (): string => crypto.randomUUID();
 
 export const useGestaoEstoque = () => {
   const { postoAtivoId } = usePosto();
@@ -16,24 +19,30 @@ export const useGestaoEstoque = () => {
   const [editingProduct, setEditingProduct] = useState<Produto | null>(null);
   const [selectedProductForMovement, setSelectedProductForMovement] = useState<Produto | null>(null);
   const [movementType, setMovementType] = useState<MovementType>('entrada');
+  const chaveDoModal = useRef<string>(novaChave());
 
+  const aplicar = useCallback((lidos: Produto[]) => {
+    setProducts(lidos);
+    setLoading(false);
+  }, []);
+  const falhar = useCallback((erro: string) => {
+    console.error('Error loading products:', erro);
+    setLoading(false);
+  }, []);
+
+  /** Releitura depois de gravar: mostra o spinner, como antes. */
   const loadProducts = useCallback(async () => {
-    if (!postoAtivoId) return;
-    
+    if (postoAtivoId === 0) return;
     setLoading(true);
-    try {
-      const data = await stockService.getAllProducts(postoAtivoId);
-      setProducts(data);
-    } catch (error) {
-      console.error('Error loading products:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [postoAtivoId]);
+    (await carregarProdutos(postoAtivoId)).match(aplicar, falhar);
+  }, [postoAtivoId, aplicar, falhar]);
 
+  // A primeira leitura (e a troca de posto) sem `setLoading` síncrono no efeito — o React 19 o
+  // barra; o spinner inicial já vem do `useState(true)`.
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    if (postoAtivoId === 0) return;
+    void carregarProdutos(postoAtivoId).match(aplicar, falhar);
+  }, [postoAtivoId, aplicar, falhar]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -66,73 +75,46 @@ export const useGestaoEstoque = () => {
   }, [products]);
 
   const handleSaveProduct = async (formData: FormData) => {
-    const productData = {
-      nome: formData.get('nome') as string,
-      codigo_barras: formData.get('codigo_barras') as string,
-      categoria: formData.get('categoria') as string,
-      preco_custo: Number(formData.get('preco_custo')),
-      preco_venda: Number(formData.get('preco_venda')),
-      estoque_minimo: Number(formData.get('estoque_minimo')),
-      unidade_medida: formData.get('unidade_medida') as string,
-      descricao: formData.get('descricao') as string,
-    };
-
-    try {
-      if (editingProduct) {
-        await stockService.updateProduct(editingProduct.id, productData);
-      } else {
-        await stockService.createProduct({
-          ...productData,
-          estoque_atual: Number(formData.get('estoque_inicial') || 0),
-          posto_id: postoAtivoId
-        });
-      }
-      setIsProductModalOpen(false);
-      setEditingProduct(null);
-      loadProducts();
-    } catch (error) {
-      console.error('Error saving product:', error);
-      alert('Erro ao salvar produto');
+    const gravado = await gravarProduto(postoAtivoId, produtoDoFormulario(formData), editingProduct?.id, chaveDoModal.current);
+    if (gravado.isErr()) {
+      console.error('Error saving product:', gravado.error);
+      alert(gravado.error);
+      return;
     }
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
+    void loadProducts();
   };
 
   const handleSaveMovement = async (formData: FormData) => {
     if (!selectedProductForMovement) return;
 
-    const type = formData.get('tipo') as MovementType;
-    const quantity = Number(formData.get('quantidade'));
-
-    try {
-      await stockService.registerMovement({
-        produto_id: selectedProductForMovement.id,
-        tipo: type,
-        quantidade: quantity,
-        valor_unitario: type === 'entrada' ? Number(formData.get('valor_unitario')) : undefined,
-        observacao: formData.get('observacao') as string,
-        data: new Date().toISOString(),
-        posto_id: postoAtivoId
-      });
-      setIsMovementModalOpen(false);
-      setSelectedProductForMovement(null);
-      setMovementType('entrada'); // Reset default
-      loadProducts();
-    } catch (error) {
-      console.error('Error saving movement:', error);
-      alert('Erro ao registrar movimentação');
+    const gravado = await registrarMovimentacao(postoAtivoId, selectedProductForMovement.id, movimentoDoFormulario(formData), chaveDoModal.current);
+    if (gravado.isErr()) {
+      console.error('Error saving movement:', gravado.error);
+      alert(gravado.error);
+      return;
     }
+    setIsMovementModalOpen(false);
+    setSelectedProductForMovement(null);
+    setMovementType('entrada'); // Reset default
+    void loadProducts();
   };
 
   const openNewProductModal = () => {
+    chaveDoModal.current = novaChave();
     setEditingProduct(null);
     setIsProductModalOpen(true);
   };
 
   const openEditProductModal = (product: Produto) => {
+    chaveDoModal.current = novaChave();
     setEditingProduct(product);
     setIsProductModalOpen(true);
   };
 
   const openMovementModal = (product: Produto) => {
+    chaveDoModal.current = novaChave();
     setSelectedProductForMovement(product);
     setMovementType('entrada');
     setIsMovementModalOpen(true);

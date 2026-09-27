@@ -24,6 +24,47 @@
   abre como antes. O `pwa-dono` fica de fora. Nenhuma fórmula mudou. Design Doc:
   `docs/design/fechamento-frentista-api.md` §8.7.
 
+### 🔒 O catálogo do posto fecha atrás de login — cada posto vê só o próprio (#102)
+
+- As nove rotas do catálogo (`GET /api/postos/{posto}/{combustiveis,tanques,bombas,bicos,turnos,frentistas,
+  formas-pagamento,maquininhas,fornecedores}`) passam de públicas a `token.atual` + `DefinePostoAtual` +
+  `posto.acesso` (`ver`). Antes, qualquer um na internet — e um gerente só do Jorro — lia do Posto BR preço de
+  custo e de venda, taxa de cartão, CNPJ de fornecedor e telefone de frentista.
+- Sem token **401**; gerente de outro posto **403**; posto inexistente **404** (depois do token); token de
+  frentista (PIN) **401** — o PWA não usa o catálogo. Públicas seguem só `GET /saude`, `POST /login`,
+  `POST …/frentistas/entrar` e `GET …/frentistas/escolha` (id e nome).
+- Quem consome é só o painel, sempre por `base.ts` com o Bearer da sessão; nenhum código de tela mudou.
+  Em produção, vale o mesmo requisito das outras rotas protegidas: login da API ou `auth_user_id` vinculado.
+- Provas em `CatalogoTest.php` (401 × 9, 403 × 9, 200 × 9, vínculo inativo, token de frentista), com canário:
+  sem `token.atual` no grupo, 20 testes reprovam. Docs: `cadastro.md` §Riscos e `autenticacao.md` §3b.
+
+### 🛢️ Produtos e Estoque (loja) 100% pela API — ler, cadastrar, editar e movimentar (#103)
+
+- **Rotas novas** (módulo `App\Estoque`, `posto.acesso:gerir`): `GET /estoque/produtos` (ativos com o custo),
+  `POST /estoque/produtos` ("Novo Produto"), `PUT /estoque/produtos/{id}` ("Editar", nunca mexe no estoque) e
+  `POST /estoque/movimentacoes` (entrada soma e refaz o custo médio, saída subtrai, ajuste soma — numa
+  transação, com o produto travado; antes eram três chamadas soltas do navegador). Posto da rota; produto de
+  outro posto é 404/422. Cadastro e movimentação idempotentes pela `chave` (`banco/init/12-*.sql`, também no CI):
+  repetir não cria o produto nem soma o estoque duas vezes.
+- **Custo médio** portado para `PrecoMedioDoProduto` (bcmath, arredondado como o `numeric(10,2)`), **sem mudar a
+  conta** — paridade com números exatos nos dois lados e em 11.315 casos aleatórios; só o empate exato da 3ª
+  casa difere (o float gravava 422,32 onde o exato é 422,325 → 422,33). As duas pontas entraram na trava
+  `so-fable-na-formula.py`.
+- **Tela:** com `VITE_API_ESTOQUE` (ausente segue `VITE_API_URL`, `0` deixa tudo no Supabase) nenhuma chamada
+  ao Supabase — prova com a tela montada e o client num Proxy que reprova. Sem a flag, o caminho de hoje fica
+  intacto. O "Valor em Estoque" não mudou de conta.
+- **Achado:** a entrada pelo Supabase falha inteira hoje (manda `valor_unitario`, coluna que não existe em
+  `MovimentacaoEstoque`); pela API ela grava. Design Doc: `docs/design/painel-pela-api.md` §12.
+
+### 🏪 Dois postos da rede fecham o mesmo dia — os uniques passam a incluir o posto (#93)
+
+- `banco/init/02-multi-tenant-uniques-por-posto.sql` troca os cinco uniques de tabela escopada que
+  não tinham `posto_id` (o do `Fechamento` era `(data, turno_id)`): até aqui, o segundo posto a abrir
+  o mesmo dia recebia **500** e nada gravava. Aplicado também no passo de esquema do CI.
+- O teste que prendia o limite ("trava conhecida até a #93") vira a prova do contrário: Jorro e BR
+  abrem o mesmo dia, cada um com o seu `Fechamento` e os seus envios.
+- Commit original `8d87a79` (24/09), trazido para cima da `fase-a` atual sem conflito.
+
 ### ⛽ Tanques (Combustível) 100% pela API — ler e medir (#103)
 
 - **Rotas novas** (módulo `App\Estoque`, `posto.acesso:gerir`): `GET /api/postos/{posto}/tanques/painel?mes=&historico_desde=`

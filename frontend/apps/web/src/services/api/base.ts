@@ -99,9 +99,9 @@ export function corteDaTelaLigado(flag: string | undefined): boolean {
  * para as fatias migrarem — o token que ele já tem é o que a API aceita.
  *
  * **Nunca falha.** Sem sessão, ou com erro ao ler a sessão, devolve `null` e a requisição sai sem
- * `Authorization`. É deliberado: o catálogo da #97 ainda é público e a P4a/P4b o consome sem
- * token; fazer a falta de sessão virar erro quebraria o que já funciona. Rota protegida sem token
- * responde 401, que é o comportamento certo.
+ * `Authorization`. É deliberado: quem decide é o servidor. Toda rota do painel é protegida —
+ * inclusive o catálogo da #97, fechado na #102 — e sem token responde 401, que é o comportamento
+ * certo; só `/saude` e `/login` dispensam token.
  *
  * Quando o Sanctum virar o emissor, só esta função muda.
  */

@@ -345,6 +345,13 @@ CASOS_FORMULA_COBERTURA = [
     ("frontend/apps/web/src/components/estoque/dashboard/hooks/fonte-da-api.ts", False),
     ("frontend/apps/web/src/components/estoque/dashboard/hooks/fonte-do-painel.test.ts", False),
     ("frontend/apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts", False),
+    # [26/09] #103 Produtos e Estoque (loja): o custo médio do produto nas duas pontas
+    ("frontend/apps/web/src/services/calculos-estoque-produto.ts", True),
+    ("backend/app/Estoque/Domain/PrecoMedioDoProduto.php", True),
+    ("frontend/apps/web/src/services/calculos-estoque-produto.test.ts", False),
+    ("frontend/apps/web/src/services/stockService.ts", False),
+    ("backend/app/Estoque/Application/RegistraMovimentacaoDeEstoque.php", False),
+    ("frontend/apps/web/src/components/estoque/gestao/hooks/useGestaoEstoque.ts", False),
 ]
 
 
