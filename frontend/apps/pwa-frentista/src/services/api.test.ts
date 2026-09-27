@@ -220,7 +220,7 @@ describe('services/api — salvarMedicaoTanque (conferência anti-RLS)', () => {
     it('grava por upsert (tanque, data) e confere relendo', async () => {
         responder({ data: null, error: null }, { data: { volume_fisico: 5000 }, error: null });
 
-        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000)).resolves.toBeUndefined();
+        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000, 1)).resolves.toBeUndefined();
 
         expect(estado.chamadas.map((c) => c.tabela)).toEqual(['HistoricoTanque', 'HistoricoTanque']);
         expect(metodos(0)).toEqual([
@@ -236,22 +236,22 @@ describe('services/api — salvarMedicaoTanque (conferência anti-RLS)', () => {
 
     it('volume relido como string numérica igual ainda vale', async () => {
         responder({ data: null, error: null }, { data: { volume_fisico: '5000' }, error: null });
-        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000)).resolves.toBeUndefined();
+        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000, 1)).resolves.toBeUndefined();
     });
 
     it('volume relido diferente = gravação barrada, erro explícito', async () => {
         responder({ data: null, error: null }, { data: { volume_fisico: 4000 }, error: null });
-        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000)).rejects.toThrow('A medição não foi gravada');
+        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000, 1)).rejects.toThrow('A medição não foi gravada');
     });
 
     it('releitura vazia = gravação barrada, erro explícito', async () => {
         responder({ data: null, error: null }, { data: null, error: null });
-        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000)).rejects.toThrow('A medição não foi gravada');
+        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000, 1)).rejects.toThrow('A medição não foi gravada');
     });
 
     it('erro no upsert lança sem reler', async () => {
         responder({ data: null, error: { message: 'fora da janela' } });
-        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000)).rejects.toThrow('fora da janela');
+        await expect(api.salvarMedicaoTanque(2, '2026-09-22', 5000, 1)).rejects.toThrow('fora da janela');
         expect(estado.chamadas).toHaveLength(1);
     });
 });
@@ -266,7 +266,7 @@ describe('services/api — getVendasProdutoHoje (recorte de meia-noite local)', 
         };
         responder({ data: [venda], error: null });
 
-        await expect(api.getVendasProdutoHoje(4)).resolves.toEqual([venda]);
+        await expect(api.getVendasProdutoHoje(4, 1)).resolves.toEqual([venda]);
 
         const inicio = new Date(`${hojeIso()}T00:00:00`);
         const fim = new Date(inicio);
@@ -283,7 +283,7 @@ describe('services/api — getVendasProdutoHoje (recorte de meia-noite local)', 
 
     it('null do banco vira lista vazia', async () => {
         responder({ data: null, error: null });
-        await expect(api.getVendasProdutoHoje(4)).resolves.toEqual([]);
+        await expect(api.getVendasProdutoHoje(4, 1)).resolves.toEqual([]);
     });
 });
 
@@ -318,7 +318,7 @@ describe('services/api — leituras simples (tabela e colunas)', () => {
 
     it('getMedicoesDoDia: HistoricoTanque do dia', async () => {
         responder({ data: [{ tanque_id: 1, volume_fisico: 10 }], error: null });
-        await expect(api.getMedicoesDoDia('2026-09-22')).resolves.toEqual([{ tanque_id: 1, volume_fisico: 10 }]);
+        await expect(api.getMedicoesDoDia('2026-09-22', 1)).resolves.toEqual([{ tanque_id: 1, volume_fisico: 10 }]);
         expect(metodos(0)).toEqual([['select', 'tanque_id, volume_fisico'], ['eq', 'data', '2026-09-22']]);
     });
 
@@ -334,7 +334,7 @@ describe('services/api — leituras simples (tabela e colunas)', () => {
 
     it('getHistoricoFrentista: últimos 20 do frentista, do mais novo', async () => {
         responder({ data: null, error: null });
-        await expect(api.getHistoricoFrentista(2)).resolves.toEqual([]);
+        await expect(api.getHistoricoFrentista(2, 1)).resolves.toEqual([]);
         const m = metodos(0);
         expect(m[1]).toEqual(['eq', 'frentista_id', 2]);
         expect(m[2]).toEqual(['order', 'id', { ascending: false }]);
@@ -343,7 +343,7 @@ describe('services/api — leituras simples (tabela e colunas)', () => {
 
     it('salvarFotoFrentista: update só da foto, pelo id', async () => {
         responder({ data: null, error: null });
-        await expect(api.salvarFotoFrentista(2, null)).resolves.toBeUndefined();
+        await expect(api.salvarFotoFrentista(2, null, 1)).resolves.toBeUndefined();
         expect(metodos(0)).toEqual([['update', { foto: null }], ['eq', 'id', 2]]);
     });
 

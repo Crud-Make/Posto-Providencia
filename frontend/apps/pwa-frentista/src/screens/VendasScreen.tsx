@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingBag, ChevronLeft, Package, Minus, Plus, Check } from 'lucide-react';
 import { api } from '../services/api';
-import { POSTO_ID, pwaPelaApiLigado } from '@frentista/shared/config';
+import { pwaPelaApiLigado } from '@frentista/shared/config';
 import { useChaveDoEnvio } from '@frentista/features/envio-pela-api';
 
 interface VendasProps {
+    /** O posto escolhido no aparelho (`features/escolher-posto`). */
+    postoId: number;
     frentistaId: number;
     frentistaNome: string;
     onVoltar: () => void;
@@ -36,7 +38,7 @@ interface VendaHoje {
     produto: { nome: string; categoria: string } | null;
 }
 
-const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVoltar }) => {
+const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNome, onVoltar }) => {
     const [produtos, setProdutos] = useState<Produto[]>([]);
     const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
     const [vendasHoje, setVendasHoje] = useState<VendaHoje[]>([]);
@@ -48,8 +50,8 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
 
     useEffect(() => {
         Promise.all([
-            api.getProdutos(POSTO_ID),
-            api.getVendasProdutoHoje(frentistaId)
+            api.getProdutos(postoId),
+            api.getVendasProdutoHoje(frentistaId, postoId)
         ]).then(([prods, vendas]) => {
             setProdutos(prods);
             // Cliente Supabase não tipado com o Database gerado: o join infere `produto`
@@ -57,7 +59,7 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
             setVendasHoje(vendas as unknown as VendaHoje[]);
         }).catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, [frentistaId]);
+    }, [frentistaId, postoId]);
 
     const addToCarrinho = (produto: Produto) => {
         setCarrinho(prev => {
@@ -93,7 +95,7 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
             if (pwaPelaApiLigado()) {
                 // O carrinho inteiro numa chamada, sem preço: preço e total são do servidor.
                 const itens = carrinho.map((c) => ({ produto_id: c.produto.id, quantidade: c.quantidade }));
-                await api.registrarCarrinhoPelaApi(frentistaId, chavePara(JSON.stringify([frentistaId, itens])), itens);
+                await api.registrarCarrinhoPelaApi(frentistaId, chavePara(JSON.stringify([frentistaId, itens])), itens, postoId);
                 esquecerChave();
             } else {
                 for (const item of carrinho) {
@@ -110,8 +112,8 @@ const VendasScreen: React.FC<VendasProps> = ({ frentistaId, frentistaNome, onVol
             setCarrinho([]);
             // Refresh
             const [prods, vendas] = await Promise.all([
-                api.getProdutos(POSTO_ID),
-                api.getVendasProdutoHoje(frentistaId)
+                api.getProdutos(postoId),
+                api.getVendasProdutoHoje(frentistaId, postoId)
             ]);
             setProdutos(prods);
             setVendasHoje(vendas as unknown as VendaHoje[]);

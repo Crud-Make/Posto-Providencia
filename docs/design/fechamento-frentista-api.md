@@ -143,6 +143,8 @@ atrás de flag (`VITE_API_URL` + `VITE_API_PWA=1`). Sem a flag, o PWA grava no S
   quebrável offline, então o hash não pode ficar ao alcance da chave pública do Supabase. Definido
   **só por comando** (`php artisan frentista:pin {frentista_id}`, pede duas vezes, sem eco); trocar o
   PIN derruba as sessões abertas do frentista. Rota de gestão do PIN pelo painel ficou fora (mínimo).
+  *Desde 27/09/2026 o próprio frentista cria a chave no primeiro acesso (§8.7); o comando ficou para
+  o gerente zerar/trocar.*
 - **Limite:** 10 tentativas/min por IP e 5/min por frentista (`LimitesDeTaxaServiceProvider`).
 
 ### 8.2 Idempotência e unicidade
@@ -209,7 +211,7 @@ em **string decimal**; o PWA converte para número só para exibir (`decimalDaAp
 
 | Rota | Módulo | Corpo / query | Resposta |
 |---|---|---|---|
-| `GET /frentistas/escolha` | Cadastro | — (**sem token**, `throttle:60,1`) | 200 `{ data: [{ id, nome }] }` ativos do posto, por nome |
+| `GET /frentistas/escolha` | Cadastro | — (**sem token**, `throttle:60,1`) | 200 `{ data: [{ id, nome, tem_chave }] }` ativos do posto, por nome (`tem_chave` desde 27/09, §8.7) |
 | `GET /frentistas/eu` | Cadastro | — | 200 `{ data: { id, nome, foto } }` do frentista do token |
 | `PUT /frentistas/eu/foto` | Cadastro | `{ foto: "data:image/jpeg;base64,…" \| null }` (≤ 40.000) | 200 o perfil · 422 fora do CHECK |
 | `GET /envios?data=AAAA-MM-DD` | Fechamento | — | 200 `{ data: [{ id, frentista_id, frentista: { nome }, data_hora_envio, valor_conferido }] }` — `valor_conferido` **só no envio do próprio**, `null` nos outros |
@@ -272,13 +274,74 @@ grava com token de frentista do posto — pergunta 6).
   um antes; é o mesmo comportamento de hoje com o `timestamptz` do Supabase, não foi mexido.
 - O aviso ao dono continua de fora (fatia 3).
 
+### 8.7 Escolha do posto e primeiro acesso — 26 e 27/09/2026
+
+O PWA estava preso no Posto Jorro (`POSTO_ID = 1` em `shared/config`). Para o ensaio com os dois
+postos da rede, o dono decidiu em 26/09 "escolhe na 1ª vez e lembra" e, em **27/09, trocou por:
+o posto é escolhido NA HORA, toda vez que o app abre — nada de posto guardado no aparelho.** No mesmo
+dia decidiu que **cada frentista cria a própria chave (PIN) no primeiro acesso** (responde a pergunta
+2 de §9); zerar a chave continua sendo do gerente, hoje pelo `php artisan frentista:pin`.
+
+**Rotas** (públicas: vêm antes de haver token):
+
+| Rota | Módulo | Corpo | Resposta |
+|---|---|---|---|
+| `GET /api/postos` | Cadastro | — (sem `{posto}`, `throttle:60,1`) | 200 `{ data: [{ id, nome }] }` dos postos `ativo = true`, **por id** |
+| `POST /api/postos/{posto}/frentistas/primeiro-acesso` | Pessoas | `{ frentista_id, pin, pin_confirmacao }` (`throttle:pin-frentista`, o mesmo do `entrar`) | 201 a sessão, igual ao `entrar` (`{ token, vence_em, frentista }`) · 404 `{ message: "Frentista não encontrado." }` · 409 `{ erro: { codigo: "ja_tem_chave", mensagem: "Este frentista já tem chave. Peça ao gerente para zerar." } }` · 422 formato/confirmação |
+| `GET /api/postos/{posto}/frentistas/escolha` (mudou) | Cadastro | — | 200 `{ data: [{ id, nome, tem_chave }] }` — `tem_chave` é só o booleano, nunca o hash |
+
+- **`GET /api/postos` expõe só `id` e `nome`** — `cnpj`, endereço, cidade, telefone e e-mail do
+  `Posto` ficam de fora já no `select` (`App\Cadastro\Application\PostosDaRede`), não só na
+  serialização (`Http\Resources\PostoParaEscolherResource`). Controller fino, sem entrada.
+- **Primeiro acesso** (`App\Pessoas\Application\CriaChaveDoFrentista`): só grava se o frentista é
+  DESTE posto, está ativo e ainda não tem linha em `AcessoFrentista`. A criação é **atômica pelo PK
+  `frentista_id`** — `INSERT … ON CONFLICT DO NOTHING` (`insertOrIgnore`), nunca "confere e depois
+  insere": dois pedidos simultâneos gravam um PIN só, o segundo recebe 409 e o hash do primeiro fica.
+  Outro posto, inativo ou inexistente → a MESMA 404, sem dizer qual. O formato é
+  `DefinePinDoFrentista::FORMATO` e a confirmação tem de ser igual (FormRequest
+  `PrimeiroAcessoRequest`). O sucesso emite a sessão pela MESMA `EntrarComoFrentista` do login — um
+  lugar só emite token de frentista. A recusa é valor (`Domain\RecusaDoPrimeiroAcesso`), não exceção.
+- **`tem_chave` na lista de escolha**: um `EXISTS` em `AcessoFrentista` por SQL em
+  `Cadastro\Application\FrentistaDoPwa` — Cadastro não importa o Domain de Pessoas (CA-7).
+- Nenhuma aresta nova entre módulos. Testes: `backend/tests/Feature/Cadastro/PostosDoPwaTest.php`,
+  `backend/tests/Feature/PwaFrentista/PrimeiroAcessoTest.php` e o da lista em `LeiturasDoPwaTest.php`.
+
+**No PWA** (`features/escolher-posto`, `entities/posto`, `features/entrar-com-pin`):
+- A porta (`PortaDoPosto`) monta o app só depois de haver posto; o posto chega às telas **por props**
+  (`postoId`), nunca de constante. A fachada `services/api.ts` perdeu o padrão `POSTO_ID`: o
+  `postoId` é obrigatório.
+- Com 2+ postos ativos: tela **"Em qual posto?"** a cada abertura. Com um só: entra direto, e o
+  botão de troca não aparece. Nada do posto vai para o `localStorage`.
+- **Sessão de PIN guardada e o posto**: ao guardar, o PWA carimba a sessão com o `posto_id` em que
+  ela foi aberta (a API não o devolve). Ao entrar num posto, a sessão só continua se for dele
+  (`sessaoEhDoPosto`); de outro posto — ou guardada antes do carimbo — é descartada junto com o
+  frentista selecionado (`pwa.frentista`). Escolher o MESMO posto de novo não pede o PIN outra vez.
+- **Trocar posto** (link discreto no topo, com o nome do posto): encerra a sessão de PIN e o frentista
+  selecionado e volta à escolha.
+- **Primeiro acesso**: tocar num nome com `tem_chave: false` abre **"Crie sua chave"** (dois campos,
+  teclado numérico, 4 a 6 dígitos, sem eco); criada, ele já entra. Com chave, o PIN de sempre. 409
+  (a lista estava velha) cai na tela do PIN com a mensagem do servidor.
+- **Sem a API** (`VITE_API_PWA` desligada, o PWA de produção no Supabase): a instalação é de um posto
+  só, e a lista é esse posto (`POSTO_DA_INSTALACAO_SUPABASE`, id 1, em
+  `entities/posto/api/posto-api.ts`) — entra direto, no primeiro render, como antes. Sem PIN nem
+  primeiro acesso nesse caminho.
+- Testes: `App.escolha-de-posto.test.tsx`, `App.primeiro-acesso.test.tsx`,
+  `entities/posto/lib/posto-para-entrar.test.ts`, `entities/sessao-do-frentista/lib/sessao-guardada.test.ts`
+  e `features/entrar-com-pin/model/mensagem-da-chave.test.ts`.
+
+**Limites conhecidos.** Frentista selecionado sem sessão guardada nenhuma (a sessão já tinha sido
+apagada por um 401) não tem posto a conferir e continua selecionado ao escolher outro posto; o PIN é
+pedido no primeiro envio, no posto certo. O limite `pin-frentista` conta por frentista nas duas rotas
+(`entrar` e `primeiro-acesso`) somadas. O `pwa-dono` segue preso no posto 1 (fora, decisão do dono).
+
 ## 9. Perguntas abertas para o dono (fatias 1 e 2)
 
 1. **Reenvio com valor diferente.** Hoje o frentista que já enviou o dia recebe 409 e "fale com o
    gerente no painel". Deve continuar assim, ou o frentista pode corrigir o próprio envio (substituir),
    e até quando?
-2. **Quem define o PIN.** Hoje só por comando no servidor. Precisa de tela no painel para o gerente
-   definir/trocar o PIN de cada frentista?
+2. ~~**Quem define o PIN.**~~ **Respondida pelo dono em 27/09/2026:** o próprio frentista, no
+   primeiro acesso pelo PWA (§8.7). Zerar é do gerente — hoje pelo `php artisan frentista:pin`; tela
+   no painel para zerar segue em aberto.
 3. **Duração da sessão.** 14 h por login. Serve para os turnos do posto, ou o PIN deve ser pedido a
    cada envio?
 4. **(fatia 2) Valor do colega na lista "já enviou".** Pelo Supabase, todo frentista via o valor

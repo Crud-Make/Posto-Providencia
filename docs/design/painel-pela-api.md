@@ -369,6 +369,9 @@ reprova); flag ignorada (teste do `VITE_API_FRENTISTAS=0` vermelho); `posto_id` 
 **⏸ Decisão PENDENTE do dono — não implementada:** quem define o PIN do frentista — só o comando no
 servidor (`php artisan frentista:pin`, como hoje) ou uma tela no painel para o gerente. Não há rota nem
 tela de PIN nesta fatia; o painel continua sem ver nem mexer no PIN.
+*Atualização 27/09/2026 (decisão do dono):* quem cria o PIN é o **próprio frentista, no primeiro acesso
+pelo PWA** (`POST /frentistas/primeiro-acesso`, `docs/design/fechamento-frentista-api.md` §8.7). Zerar
+é do gerente, hoje pelo `frentista:pin`; uma tela no painel para zerar segue em aberto.
 
 **Fica de fora:** CPF, telefone, turno e vínculo com usuário (`user_id`) não estão no formulário — nem
 antes, nem agora. Criar frentista não é idempotente (sem chave): o botão fica desabilitado enquanto

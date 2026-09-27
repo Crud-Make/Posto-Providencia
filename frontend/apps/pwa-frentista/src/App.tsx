@@ -10,9 +10,11 @@ import { conferido, diferenca, isSobra, meiosFromPwaPayments } from '@posto/util
 import { api } from './services/api';
 import { abaSecundaria } from './screens/aba-secundaria';
 import { ReloadPrompt } from '@frentista/shared/ui';
-import { POSTO_ID, TURNO_CANONICO, pwaPelaApiLigado } from '@frentista/shared/config';
-import { RecusaDaApi } from '@frentista/shared/api';
-import { PedirPin } from '@frentista/features/entrar-com-pin';
+import { TURNO_CANONICO, pwaPelaApiLigado } from '@frentista/shared/config';
+import { RecusaDaApi, apagarDoAparelho } from '@frentista/shared/api';
+import { BotaoTrocarPosto, PortaDoPosto } from '@frentista/features/escolher-posto';
+import type { PostoAtual } from '@frentista/entities/posto';
+import { EntrarNoTurno } from '@frentista/features/entrar-com-pin';
 import { useChaveDoEnvio } from '@frentista/features/envio-pela-api';
 import { abaSalvaOuPadrao, dataFechamentoInicial, formatCurrency } from '@frentista/shared/lib';
 import { useSinalDeVida } from './lib/use-sinal-de-vida';
@@ -218,7 +220,9 @@ const ModalDeFrentistas = ({ frentistas, selecionado, aoEscolher, aoFechar }: {
   </div>
 );
 
-const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateAction<DialogState>> }) => {
+const AppComponent = ({ setDialog, postoAtual }: { setDialog: React.Dispatch<React.SetStateAction<DialogState>>; postoAtual: PostoAtual }) => {
+  // O posto vem da porta (`features/escolher-posto`), escolhido no aparelho — nunca de constante.
+  const postoId = postoAtual.posto.id;
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Persistimos frentista e aba: no mobile, abrir a câmera pode descarregar a
   // página da memória e recarregar ao voltar — sem isso o app perdia o estado
@@ -247,8 +251,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   });
 
   useEffect(() => {
-    // Busca do banco POSTO ID: 1 como padrão (Pode vir de config/storage depois)
-    api.getFrentistas(POSTO_ID).then(data => {
+    api.getFrentistas(postoId).then(data => {
       if (!data) return;
       setFrentistas(data);
       // `selectedFrentista` vem do localStorage e carrega a foto de quando foi
@@ -261,7 +264,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         return fresco ? { ...atual, foto: fresco.foto } : atual;
       });
     }).catch(err => console.error(err));
-  }, [versaoDaSessao]);
+  }, [versaoDaSessao, postoId]);
 
   useEffect(() => {
     try {
@@ -276,7 +279,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
 
   // Aparece como "trabalhando agora" no painel do dono enquanto o app estiver
   // aberto com um frentista escolhido.
-  useSinalDeVida(selectedFrentista?.id ?? null, POSTO_ID);
+  useSinalDeVida(selectedFrentista?.id ?? null, postoId);
 
   /**
    * Troca a foto de perfil do frentista escolhido neste aparelho.
@@ -309,7 +312,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         return;
       }
       const avatar = reduzido.value;
-      await api.salvarFotoFrentista(alvo.id, avatar);
+      await api.salvarFotoFrentista(alvo.id, avatar, postoId);
 
       setSelectedFrentista(atual => (atual && atual.id === alvo.id ? { ...atual, foto: avatar } : atual));
       setFrentistas(lista => lista.map(f => (f.id === alvo.id ? { ...f, foto: avatar } : f)));
@@ -351,7 +354,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   const [erroEnvios, setErroEnvios] = useState<string | null>(null);
   useEffect(() => {
     let ativo = true;
-    api.getEnviosDoDia(POSTO_ID, dataFechamento)
+    api.getEnviosDoDia(postoId, dataFechamento)
       .then((rows) => { if (ativo) { setEnviosDoDia(rows as unknown as EnvioDoDia[]); setErroEnvios(null); } })
       .catch((err: unknown) => {
         if (!ativo) return;
@@ -361,7 +364,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
         setErroEnvios(err instanceof Error ? err.message : 'Falha ao carregar os envios.');
       });
     return () => { ativo = false; };
-  }, [dataFechamento, enviosVersao, versaoDaSessao]);
+  }, [dataFechamento, enviosVersao, versaoDaSessao, postoId]);
   /** Pedido de confirmação pendente por a data não ser hoje. Ver `handleSubmit`. */
   const [confirmarDataDiferente, setConfirmarDataDiferente] = useState(false);
 
@@ -437,7 +440,6 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     setIsSubmitting(true);
     try {
       const dataStr = dataFechamento;
-      const postoId = POSTO_ID;
       // Universal (pedido do dono): frentista não escolhe turno. Todos os envios do
       // dia caem num turno canônico único e a web mostra o dia inteiro (getByDate).
       const turnoId = TURNO_CANONICO;
@@ -537,6 +539,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   const secundaria = abaSecundaria({
     aba: activeTab,
     frentista: selectedFrentista,
+    postoId,
     aoVoltar: () => setActiveTab('registro'),
     nav: renderBottomNav(),
   });
@@ -546,6 +549,7 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
     <div className="flex flex-col min-h-screen bg-[#0A0D14] text-slate-100 font-sans pb-24">
       <ReloadPrompt />
       <div className="p-5 flex-1 space-y-4">
+        <BotaoTrocarPosto atual={postoAtual} />
 
         {/* Selecionar Frentista */}
         <div
@@ -794,10 +798,10 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
       )}
 
       {pinPara !== null && (
-        <PedirPin
-          postoId={POSTO_ID}
+        <EntrarNoTurno
+          postoId={postoId}
           frentista={pinPara}
-          aoEntrar={() => { setSelectedFrentista(pinPara); setPinPara(null); setVersaoDaSessao((v) => v + 1); }}
+          aoEntrar={() => { setSelectedFrentista({ ...pinPara, temChave: true }); setPinPara(null); setVersaoDaSessao((v) => v + 1); }}
           aoCancelar={() => setPinPara(null)}
         />
       )}
@@ -807,12 +811,20 @@ const AppComponent = ({ setDialog }: { setDialog: React.Dispatch<React.SetStateA
   );
 };
 
+/**
+ * Ao mudar de posto, o frentista selecionado é do posto anterior: sai do aparelho junto com a sessão
+ * de PIN (que a porta apaga). De módulo, e não inline, porque a porta pede função estável.
+ */
+const esquecerFrentistaDoAparelho = (): void => apagarDoAparelho('pwa.frentista');
+
 export default function App() {
   const [dialog, setDialog] = useState<DialogState>({ isOpen: false, title: '', message: '', type: 'success' });
 
   return (
     <>
-      <AppComponent setDialog={setDialog} />
+      <PortaDoPosto aoMudarDePosto={esquecerFrentistaDoAparelho}>
+        {(postoAtual) => <AppComponent key={postoAtual.posto.id} setDialog={setDialog} postoAtual={postoAtual} />}
+      </PortaDoPosto>
       {dialog.isOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setDialog({ ...dialog, isOpen: false })} />

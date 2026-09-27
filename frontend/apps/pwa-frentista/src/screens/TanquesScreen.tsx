@@ -12,7 +12,6 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowLeft, Check, Droplets, Loader2 } from 'lucide-react';
-import { POSTO_ID } from '@frentista/shared/config';
 import { corDoProduto, hojeIso } from '@posto/utils';
 import { api } from '../services/api';
 
@@ -31,7 +30,7 @@ interface Feedback {
 /** Só dígitos, no máximo 6 — régua é litro inteiro; 999.999 L cobre qualquer tanque. */
 const mascaraLitros = (bruto: string) => bruto.replace(/\D/g, '').slice(0, 6);
 
-const TanquesScreen = ({ onVoltar }: { onVoltar: () => void }) => {
+const TanquesScreen = ({ postoId, onVoltar }: { postoId: number; onVoltar: () => void }) => {
   const [tanques, setTanques] = useState<TanqueDaTela[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
@@ -43,15 +42,15 @@ const TanquesScreen = ({ onVoltar }: { onVoltar: () => void }) => {
   const [versao, setVersao] = useState(0);
 
   useEffect(() => {
-    api.getTanques(POSTO_ID)
+    api.getTanques(postoId)
       .then((t) => { setTanques(t); setErroCarga(null); })
       .catch((e: unknown) => setErroCarga(e instanceof Error ? e.message : 'Falha ao carregar os tanques.'))
       .finally(() => setCarregando(false));
-  }, []);
+  }, [postoId]);
 
   useEffect(() => {
     let ativo = true;
-    api.getMedicoesDoDia(data)
+    api.getMedicoesDoDia(data, postoId)
       .then((rows) => {
         if (!ativo) return;
         const mapa = new Map<number, number>();
@@ -62,7 +61,7 @@ const TanquesScreen = ({ onVoltar }: { onVoltar: () => void }) => {
       })
       .catch(() => { if (ativo) setMedidoNoDia(new Map()); });
     return () => { ativo = false; };
-  }, [data, versao]);
+  }, [data, versao, postoId]);
 
   const preenchidos = useMemo(
     () => tanques.filter((t) => (valores[t.id] ?? '') !== ''),
@@ -78,7 +77,7 @@ const TanquesScreen = ({ onVoltar }: { onVoltar: () => void }) => {
     for (const t of preenchidos) {
       const litros = parseInt(valores[t.id], 10);
       try {
-        await api.salvarMedicaoTanque(t.id, data, litros);
+        await api.salvarMedicaoTanque(t.id, data, litros, postoId);
         gravadas += 1;
       } catch (e) {
         falhas.push(`${t.combustivel?.nome ?? `Tanque ${t.id}`}: ${e instanceof Error ? e.message : 'erro'}`);

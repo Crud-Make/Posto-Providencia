@@ -8,15 +8,16 @@ import { frentistaSchema, type Frentista } from '../model/schema';
  *
  * @remarks A lista de escolha é lida ANTES do PIN, sem token, e por isso só traz `id` e `nome`: a
  *          foto de cada um não é pública. Aqui ela vira `Frentista` com `foto: null` (a tela mostra as
- *          iniciais); a foto do frentista que tem sessão no aparelho vem do perfil dele.
+ *          iniciais); a foto do frentista que tem sessão no aparelho vem do perfil dele. `tem_chave`
+ *          (27/09/2026) vira `temChave`: sem chave, o PWA abre "Crie sua chave" em vez do PIN.
  */
-const paraEscolherSchema = z.object({ data: z.array(z.object({ id: z.number(), nome: z.string() })) });
+const paraEscolherSchema = z.object({ data: z.array(z.object({ id: z.number(), nome: z.string(), tem_chave: z.boolean() })) });
 
 const perfilSchema = z.object({ data: frentistaSchema });
 
 export function buscarFrentistasParaEscolherPelaApi(postoId: number): ResultAsync<Frentista[], ErroDeApi> {
   return lerDaApi(`/api/postos/${postoId}/frentistas/escolha`, null, null, paraEscolherSchema)
-    .map((resposta) => resposta.data.map((f) => ({ ...f, foto: null })));
+    .map((resposta) => resposta.data.map((f) => ({ id: f.id, nome: f.nome, foto: null, temChave: f.tem_chave })));
 }
 
 /** O perfil do PRÓPRIO frentista do token (`id`, `nome`, `foto`). */

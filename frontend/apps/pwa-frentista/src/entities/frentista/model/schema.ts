@@ -10,6 +10,11 @@ export const frentistaSchema = z.object({
   id: z.number(),
   nome: z.string(),
   foto: z.string().nullable(),
+  /**
+   * Só na lista de escolha pela API (27/09/2026): `false` = ainda não criou a chave (PIN), e o PWA
+   * abre "Crie sua chave". Ausente no caminho do Supabase, que não tem PIN.
+   */
+  temChave: z.boolean().optional(),
 });
 
 export type Frentista = z.infer<typeof frentistaSchema>;

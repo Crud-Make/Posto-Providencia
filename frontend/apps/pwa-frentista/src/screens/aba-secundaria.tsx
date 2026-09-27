@@ -24,9 +24,11 @@ import type { TabType, FrentistaSelecionavel } from '../lib/tipos';
  *          a API só grava com o token de um frentista do posto — é o PIN que prova que
  *          quem mede é do posto.
  */
-export const abaSecundaria = ({ aba, frentista, aoVoltar, nav }: {
+export const abaSecundaria = ({ aba, frentista, postoId, aoVoltar, nav }: {
   aba: TabType;
   frentista: FrentistaSelecionavel | null;
+  /** O posto escolhido no aparelho (`features/escolher-posto`). */
+  postoId: number;
   aoVoltar: () => void;
   nav: React.ReactNode;
 }): React.ReactNode | null => {
@@ -35,7 +37,7 @@ export const abaSecundaria = ({ aba, frentista, aoVoltar, nav }: {
     return (
       <>
         <ReloadPrompt />
-        <TanquesScreen onVoltar={aoVoltar} />
+        <TanquesScreen postoId={postoId} onVoltar={aoVoltar} />
         {nav}
       </>
     );
@@ -46,7 +48,7 @@ export const abaSecundaria = ({ aba, frentista, aoVoltar, nav }: {
     return (
       <>
         <ReloadPrompt />
-        <HistoricoScreen frentistaId={frentista.id} frentistaNome={frentista.nome} onVoltar={aoVoltar} />
+        <HistoricoScreen postoId={postoId} frentistaId={frentista.id} frentistaNome={frentista.nome} onVoltar={aoVoltar} />
         {nav}
       </>
     );
@@ -57,7 +59,7 @@ export const abaSecundaria = ({ aba, frentista, aoVoltar, nav }: {
     return (
       <>
         <ReloadPrompt />
-        <VendasScreen frentistaId={frentista.id} frentistaNome={frentista.nome} onVoltar={aoVoltar} />
+        <VendasScreen postoId={postoId} frentistaId={frentista.id} frentistaNome={frentista.nome} onVoltar={aoVoltar} />
         {nav}
       </>
     );

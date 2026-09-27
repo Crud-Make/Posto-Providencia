@@ -13,4 +13,6 @@ export interface FrentistaSelecionavel {
   nome: string;
   /** Data URL JPEG vinda da coluna `Frentista.foto`. Nulo = mostra as iniciais. */
   foto?: string | null;
+  /** `false` = ainda não criou a chave (PIN): o toque no nome abre "Crie sua chave" (27/09/2026). */
+  temChave?: boolean | undefined;
 }

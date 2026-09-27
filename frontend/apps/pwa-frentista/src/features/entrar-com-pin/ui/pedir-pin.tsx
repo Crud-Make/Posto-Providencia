@@ -5,6 +5,8 @@ import { FORMATO_DO_PIN, mensagemDoLogin } from '../model/mensagem-do-login';
 interface PedirPinProps {
   postoId: number;
   frentista: { id: number; nome: string };
+  /** Mensagem a mostrar ao abrir (ex.: o 409 "já tem chave" vindo do primeiro acesso). */
+  aviso?: string | null;
   /** A sessão já foi guardada no aparelho; quem chama só segue o fluxo. */
   aoEntrar: () => void;
   aoCancelar: () => void;
@@ -17,9 +19,9 @@ interface PedirPinProps {
  *          Só dígitos, teclado numérico, sem eco. O PIN nunca é guardado: o que fica no aparelho
  *          é o token da sessão, que vence no fim do turno.
  */
-export const PedirPin = ({ postoId, frentista, aoEntrar, aoCancelar }: PedirPinProps) => {
+export const PedirPin = ({ postoId, frentista, aviso = null, aoEntrar, aoCancelar }: PedirPinProps) => {
   const [pin, setPin] = useState('');
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(aviso);
   const [entrando, setEntrando] = useState(false);
 
   const entrar = (): void => {
