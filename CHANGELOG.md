@@ -6,7 +6,8 @@
 
 - **Painel:** a barra lateral mostra o nome do posto ativo embaixo da marca (some com a barra recolhida).
 - **PWA do frentista:** o cartão "Selecionar Frentista" dizia "Posto Jorro" fixo no código, mesmo com o
-  Posto BR escolhido; agora mostra o posto escolhido. Achados no ensaio Jorro+BR de 27/09.
+  Posto BR escolhido; agora mostra o posto escolhido. E a escolha de frentista dizia "8 frentistas
+  ativos" fixo (o BR tem 3); agora conta a lista do posto. Achados no ensaio Jorro+BR de 27/09.
 
 ### 🐛 Painel: a tela de entrada não desloga mais sozinha (#102)
 
