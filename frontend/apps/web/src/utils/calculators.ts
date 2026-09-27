@@ -115,21 +115,27 @@ export const calcularVenda = (
  * @returns true se fechamento > inicial, false caso contrário
  *
  * @remarks
- * Leitura válida significa que houve avanço no encerrante
- * (fechamento maior que inicial)
+ * Leitura válida: o fechamento foi digitado e o encerrante não andou para trás.
+ *
+ * @remarks Bico parado no dia (fechamento = inicial, 0 L) é leitura VÁLIDA — decisão do dono,
+ *          27/09/2026, no ensaio do Posto BR: com 24 bicos, sempre sobra bico que não vendeu, e a regra
+ *          antiga (`>`) travava o Salvar do dia inteiro. Fechamento em branco continua inválido: bico
+ *          não medido não é bico parado.
  *
  * @example
  * validarLeitura("1.000", "1.500") // true
- * validarLeitura("1.500", "1.000") // false
- * validarLeitura("1.000", "1.000") // false
+ * validarLeitura("1.000", "1.000") // true  — bico parado, 0 L
+ * validarLeitura("1.500", "1.000") // false — encerrante voltou
+ * validarLeitura("0,000", "")      // false — não medido
  */
 export const validarLeitura = (
   leituraInicial: string,
   leituraFechamento: string
 ): boolean => {
-  const fechamento = analisarValor(leituraFechamento || '');
+  if (leituraFechamento.trim() === '') return false;
+  const fechamento = analisarValor(leituraFechamento);
   const inicial = analisarValor(leituraInicial || '');
-  return fechamento > inicial;
+  return fechamento >= inicial;
 };
 
 /**

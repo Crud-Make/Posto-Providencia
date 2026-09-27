@@ -2,6 +2,17 @@
 
 ## [Não Lançado]
 
+### ⛽ Fechamento de Caixa: bico parado no dia (0 L) não trava mais o Salvar (#103)
+
+- Decisão do dono (27/09), no ensaio do Posto BR: com 24 bicos sempre sobra bico que não vendeu. A
+  validação exigia final **maior** que inicial e travava o Salvar do dia inteiro sem dizer por quê.
+  Agora final = inicial é leitura válida (0 L); final em branco continua travando — não medido não é parado.
+- Ao reabrir o dia, bico com final = inicial era lido como leitura-base (1ª foto) e voltava em branco,
+  deixando o dia "não apurado". Agora só é leitura-base quando **todos** os bicos do dia estão iguais.
+- Bico novo (inicial 0,000) aceita 0,000 como fechamento; a tela mostra 0,000 L em vez de "-".
+- Nenhuma fórmula de dinheiro mudou (`packages/utils` intacto); API e banco já aceitavam 0 L.
+  vitest 1406/0, golden 3536/0, dois canários.
+
 ### ✉️ Painel: o cartão do posto lembra o e-mail e pede só a senha (#102)
 
 - Depois da primeira entrada num posto, o cartão mostra "Entrar como <e-mail> · Trocar" e o cursor já
