@@ -2,6 +2,12 @@
 
 ## [Não Lançado]
 
+### 🪪 Tela de entrada: a senha aparece embaixo do posto escolhido (#102)
+
+- Pedido do dono (27/09): escolheu o Posto BR, o formulário abre embaixo do cartão do BR, e não
+  embaixo do Jorro. Na grade de 2 colunas o formulário fica na coluna do cartão; no celular, logo
+  depois dele. O login pelo Supabase (sem cartões) segue com o formulário sozinho.
+
 ### 👥 Fechamento de Caixa: os envios do app foram para a aba Detalhamento Frentistas (#103)
 
 - Decisão do dono (27/09), no ensaio do Posto BR: com 24 bicos a tabela "Envios do App" ficava lá

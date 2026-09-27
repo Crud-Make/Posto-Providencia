@@ -58,6 +58,14 @@ function useRecusaContaDeOutroPosto(escolhido: PostoDaRede | null): string | nul
   return recusa;
 }
 
+/** O cartão com o e-mail e a senha — embaixo do posto escolhido, ou sozinho no login pelo Supabase. */
+const CaixaDeEntrada: React.FC<{ titulo: string; classe: string; children: React.ReactNode }> = ({ titulo, classe, children }) => (
+  <section className={`w-full rounded-2xl border p-6 ${classe}`} style={{ background: 'var(--painel)', borderColor: 'var(--borda-cartao)' }} aria-label="Entrar">
+    <h2 className="mb-5 font-display text-xl font-semibold">{titulo}</h2>
+    {children}
+  </section>
+);
+
 /**
  * A tela de entrada do painel — a ÚNICA (regra do dono, 27/09/2026, sobre o canvas "Escolha de
  * Posto — Rede Providência"): logo, saudação e frase do dia à esquerda; à direita, os cartões dos
@@ -117,20 +125,29 @@ const TelaDeEntrada: React.FC = () => {
             {lista.estado === 'carregando' && <Loader2 className="h-6 w-6 animate-spin" aria-label="Carregando os postos" />}
             {lista.estado === 'falhou' && <p role="alert" style={{ color: 'var(--acento)' }}>Não foi possível carregar os postos. Confira a internet e recarregue a página.</p>}
             {lista.estado === 'pronta' && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
-                {lista.postos.map((posto) => (
-                  <CartaoDoPosto key={posto.id} id={posto.id} nome={posto.nome} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} />
+              // `grid-flow-row-dense`: o formulário entra logo depois do cartão escolhido, na COLUNA
+              // dele (pedido do dono, 27/09/2026 — escolheu o BR, a senha aparece embaixo do BR); o
+              // modo denso devolve o cartão seguinte ao buraco que sobra na linha de cima.
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-flow-row-dense lg:gap-6">
+                {lista.postos.map((posto, i) => (
+                  <React.Fragment key={posto.id}>
+                    <CartaoDoPosto id={posto.id} nome={posto.nome} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} />
+                    {escolhido?.id === posto.id && (
+                      <CaixaDeEntrada titulo={`Entrar no ${posto.nome}`} classe={i % 2 === 1 ? 'md:col-start-2' : 'md:col-start-1'}>
+                        <FormularioDeEntrada key={posto.id} postoId={posto.id} erroExterno={recusa} />
+                      </CaixaDeEntrada>
+                    )}
+                  </React.Fragment>
                 ))}
               </div>
             )}
           </>
         )}
 
-        {(!comCartoes || escolhido !== null) && (
-          <section className="w-full max-w-md rounded-2xl border p-6" style={{ background: 'var(--painel)', borderColor: 'var(--borda-cartao)' }} aria-label="Entrar">
-            <h2 className="mb-5 font-display text-xl font-semibold">{escolhido === null ? 'Entrar no painel' : `Entrar no ${escolhido.nome}`}</h2>
-            <FormularioDeEntrada key={escolhido?.id ?? 0} postoId={escolhido?.id ?? null} erroExterno={recusa} />
-          </section>
+        {!comCartoes && (
+          <CaixaDeEntrada titulo="Entrar no painel" classe="max-w-md">
+            <FormularioDeEntrada postoId={null} erroExterno={recusa} />
+          </CaixaDeEntrada>
         )}
 
         <p className="text-sm" style={{ color: 'var(--texto-suave)' }}>
