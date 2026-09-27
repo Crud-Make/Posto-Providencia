@@ -350,7 +350,7 @@ entrega. Fica registrado aqui para não virar endpoint órfão.
 
 ## Riscos e decisões em aberto
 
-- 📌 **Fatia própria registrada em 22/09: fechar o catálogo público.** O dashboard fechou, mas as
+- ✅ **Fechada em 26/09 (#102): o catálogo passou a `token.atual` + `posto.acesso` (`ver`).** Registro de 22/09: o dashboard fechou, mas as
   rotas do catálogo (`routes/api.php:50-60`) seguem sem token e expõem `preco_custo`/`preco_venda`
   (em `combustiveis`, e em `tanques`/`bicos`, que trazem o combustível), `taxa` de formas de
   pagamento e maquininhas, `cnpj`/`contato` de fornecedores e `telefone`/`data_admissao` de

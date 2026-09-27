@@ -97,13 +97,21 @@ Sem coluna nova. `Frentista.foto` nunca sai pela API de catálogo.
 - `posto_id` é NULLABLE com `DEFAULT 1` em 8 das 10 tabelas: o escopo trata `null` como "não é
   deste posto". Tornar NOT NULL é migration da DECISÃO 5, fora desta issue.
 - `Combustivel.preco_custo` é `numeric` sem escala: cast `decimal:4` para não truncar custo por litro.
-- O catálogo segue **sem autenticação** (`backend/routes/api.php:50-60`), igual ao PostgREST de hoje.
-  O `GET …/dashboard` saiu deste grupo em 22/09 (#103) e mora no grupo protegido com
-  `posto.acesso:gerir` (ver `agregacao.md` §Autorização). **Fechar o catálogo é fatia própria**, e ela
-  importa porque o catálogo expõe dado que não devia ser público: `preco_custo`/`preco_venda`
-  (`CombustivelResource.php:23-24`; também em `tanques` e `bicos`, que sempre carregam o combustível
-  por `with()` em `CatalogoDoPosto.php:36/:48`), `taxa` (`FormaPagamentoResource.php:22`,
-  `MaquininhaResource.php:21`), `cnpj`/`contato` (`FornecedorResource.php:20-21`) e
-  `telefone`/`data_admissao` (`FrentistaResource.php:20-21`). Quem consome sem token hoje:
-  `bico.api.ts:94`, `frentista.api.ts:58`, `formaPagamento.api.ts:59` e `fornecedor.api.ts:38`. Esbarra
-  no mesmo bloqueio do dashboard: sem `Usuario.auth_user_id` vinculado em produção, fechar é 401.
+- ~~O catálogo segue sem autenticação~~ — **fechado em 26/09/2026 (#102, `feat/#102-catalogo-com-login`).**
+  O grupo do catálogo em `backend/routes/api.php` passou a `['token.atual', DefinePostoAtual::class,
+  'posto.acesso']` (habilidade `ver`: é cadastro de leitura para quem trabalha no posto; o que é dado de
+  proprietário — dashboard, proprietário, movimento — segue em `posto.acesso:gerir`). Sem token 401,
+  posto de outro 403, posto inexistente 404 (depois do token). Motivo: o catálogo expõe
+  `preco_custo`/`preco_venda` (`combustiveis`, e `tanques`/`bicos` que carregam o combustível), `taxa`
+  (`formas-pagamento`, `maquininhas`), `cnpj`/`contato` (`fornecedores`) e `telefone`/`data_admissao`
+  (`frentistas`), e cada posto da rede vê só o próprio. Quem consome: só o painel web, sempre por
+  `buscarNaApi` (`base.ts`, que manda o Bearer da sessão) — `bico.api.ts`, `combustivel.api.ts`,
+  `compras.api.ts`, `equipe.api.ts` (`/turnos`), `formaPagamento.api.ts`, `fornecedor.api.ts`,
+  `frentista.api.ts` e `proprietario.api.ts`. O PWA do frentista **não** usa o catálogo (tem
+  `frentistas/escolha`, `regua/tanques`, `produtos` próprios), e o token de PIN é recusado aqui (401).
+  Públicas seguem só `GET /saude`, `POST /login`, `POST /postos/{posto}/frentistas/entrar` e
+  `GET /postos/{posto}/frentistas/escolha` (id e nome). Provas em
+  `backend/tests/Feature/Cadastro/CatalogoTest.php` (401 × 9 rotas, 403 gerente de outro posto, 200 gerente
+  do posto, vínculo inativo 403, token de frentista 401). Requisito de produção, igual às demais rotas
+  protegidas: o painel precisa do login da API (`VITE_API_LOGIN=1`) ou de `Usuario.auth_user_id`
+  vinculado, senão o catálogo responde 401.

@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🔒 O catálogo do posto fecha atrás de login — cada posto vê só o próprio (#102)
+
+- As nove rotas do catálogo (`GET /api/postos/{posto}/{combustiveis,tanques,bombas,bicos,turnos,frentistas,
+  formas-pagamento,maquininhas,fornecedores}`) passam de públicas a `token.atual` + `DefinePostoAtual` +
+  `posto.acesso` (`ver`). Antes, qualquer um na internet — e um gerente só do Jorro — lia do Posto BR preço de
+  custo e de venda, taxa de cartão, CNPJ de fornecedor e telefone de frentista.
+- Sem token **401**; gerente de outro posto **403**; posto inexistente **404** (depois do token); token de
+  frentista (PIN) **401** — o PWA não usa o catálogo. Públicas seguem só `GET /saude`, `POST /login`,
+  `POST …/frentistas/entrar` e `GET …/frentistas/escolha` (id e nome).
+- Quem consome é só o painel, sempre por `base.ts` com o Bearer da sessão; nenhum código de tela mudou.
+  Em produção, vale o mesmo requisito das outras rotas protegidas: login da API ou `auth_user_id` vinculado.
+- Provas em `CatalogoTest.php` (401 × 9, 403 × 9, 200 × 9, vínculo inativo, token de frentista), com canário:
+  sem `token.atual` no grupo, 20 testes reprovam. Docs: `cadastro.md` §Riscos e `autenticacao.md` §3b.
+
 ### 🏪 Dois postos da rede fecham o mesmo dia — os uniques passam a incluir o posto (#93)
 
 - `banco/init/02-multi-tenant-uniques-por-posto.sql` troca os cinco uniques de tabela escopada que

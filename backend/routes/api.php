@@ -68,9 +68,13 @@ Route::middleware('token.atual')->group(function (): void {
 
 /*
 | Catálogo do posto — só leitura (#97, docs/design/cadastro.md). `{posto}` vira o PostoAtual.
-| Ainda SEM token: fechar o catálogo é fatia própria (pendência em docs/design/cadastro.md).
+| Atrás de login desde a #102 (autenticacao.md §3b): o catálogo traz preço de custo e de venda,
+| taxa de cartão, CNPJ e telefone de frentista, e cada posto vê só o próprio. Mesma ordem do grupo
+| protegido abaixo — sem token 401, posto de outro 403 — com `posto.acesso` = `ver`: é cadastro de
+| leitura para quem trabalha no posto, não dado de proprietário. O token é o do PAINEL: o de
+| frentista não passa no `token.atual`, e o PWA não usa o catálogo (tem rotas próprias).
 */
-Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(function (): void {
+Route::prefix('postos/{posto}')->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso'])->group(function (): void {
     Route::get('combustiveis', [CatalogoController::class, 'combustiveis']);
     Route::get('tanques', [CatalogoController::class, 'tanques']);
     Route::get('bombas', [CatalogoController::class, 'bombas']);
@@ -91,11 +95,8 @@ Route::prefix('postos/{posto}')->middleware(DefinePostoAtual::class)->group(func
 | `PostoAtual` que escopa os models, e `posto.acesso` pergunta à PostoPolicy se esse usuário
 | alcança ESTE posto. A policy precisa do posto já resolvido, por isso vem depois.
 |
-| O catálogo acima continua público de propósito: a P4a/P4b já o consome sem token, e
-| fechá-lo é fatia própria (pendência em docs/design/cadastro.md). Ele ainda expõe dado que não
-| devia ser público: preco_custo/preco_venda (combustiveis, e tanques e bicos, que trazem o
-| combustível), taxa (formas-pagamento, maquininhas), cnpj/contato (fornecedores) e
-| telefone/data_admissao (frentistas). O dashboard saiu de lá e mora aqui (#103).
+| Públicas ficam só as portas de antes de qualquer login: `GET /saude`, `POST /login`, e do PWA
+| `POST /frentistas/entrar` e `GET /frentistas/escolha` (id e nome). O catálogo acima fechou na #102.
 */
 Route::prefix('postos/{posto}')
     ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso'])
