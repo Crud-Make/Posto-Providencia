@@ -551,3 +551,47 @@ a releitura depois de gravar mostra o spinner como antes); a recusa do servidor 
 **Fica de fora / perguntas:** a venda de produto pelo PWA segue sem baixar `estoque_atual` (pergunta pendente
 do dono, não mudou); o "Balanço/Ajuste" só soma (a tela não deixa quantidade negativa) — se o dono quer ajuste
 para baixo, é regra nova; `responsavel` da movimentação poderia ser o gerente do token, mas antes ficava vazio.
+
+## 13. Bombas e Bicos (Configurações) pela API (#153, 27/09/2026)
+
+Cartão "Bombas e Bicos" de `components/configuracoes/TelaConfiguracoes.tsx`, flag **`VITE_API_BICOS`**
+(`corteDaTelaLigado`: ausente segue `VITE_API_URL`, `0` deixa a tabela antiga `GestaoBicos`, só leitura, do
+Supabase). Com a flag, a tela monta `GestaoDeBicos` — **o primeiro slice FSD do `web`**,
+`src/features/gestao-de-bicos/` (`api/cadastro-de-bicos.api.ts`, `model/{pista,use-gestao-de-bicos}.ts`,
+`ui/*`), importado só pela Public API `index.ts` (`GestaoDeBicos`, `bicosPelaApi`). Do legado o slice usa
+apenas `@/services/api/base`. Os produtos e as formas de pagamento da mesma tela não foram tocados, e o
+`useConfiguracoesData` continua buscando `nozzles` no Supabase mesmo com a flag ligada (o dado fica sem uso).
+
+| Antes (Supabase) | Agora (API) | |
+|---|---|---|
+| `GestaoBicos` lista `nozzles` de `fetchSettingsData`, sem editar | `GET /bombas`, `/bicos`, `/combustiveis`, `/tanques` (catálogo, `posto.acesso` = `ver`), agrupados por bomba no cliente (`agruparPorBomba`) | leitura |
+| — (não havia cadastro pela tela; bico nascia por seed/SQL) | `POST /bombas`, `PUT /bombas/{bomba}` | **escrita** |
+| — | `POST /bicos`, `PUT /bicos/{bico}` | **escrita** |
+
+**Rotas novas** (módulo `App\Cadastro`, bloco próprio em `routes/api.php`, `token.atual` + `DefinePostoAtual` +
+`posto.acesso:gerir` nas quatro; sem token 401, posto de outro 403, bomba/bico de outro posto 404). **Não há
+rota de apagar**: desativar é `ativo: false` no `PUT`. O posto é o da ROTA; `posto_id` no corpo é ignorado.
+
+- `POST|PUT /api/postos/{posto}/bombas[/{bomba}]` — `{ nome: string ≤ 60, localizacao?: string ≤ 120 | null,
+  ativo: boolean }` → 201 (criar) / 200 (editar) `{ data: bomba }` (`BombaResource`). Recusa 422:
+  `nome_repetido` (nome único no posto), `bomba_com_bicos_ativos` (desativar bomba com bico ativo).
+- `POST|PUT /api/postos/{posto}/bicos[/{bico}]` — `{ numero: 1..999, bomba_id, combustivel_id, tanque_id,
+  ativo: boolean }` → 201 / 200 `{ data: bico }` com bomba, combustível e tanque (`BicoResource`). Recusa 422:
+  `bomba_invalida` (de outro posto, ou desativada para bico ativo), `combustivel_invalido`, `tanque_invalido`
+  (de outro posto ou de outro combustível), `numero_repetido` (número entre os ativos do posto; o unique
+  `(bomba_id, numero)` do banco volta como a mesma recusa, não 500), `combustivel_travado`.
+- Recusa de forma: 422 `{ erro: { codigo: 'corpo_invalido', mensagem, campos } }`; recusa de regra: 422
+  `{ erro: { codigo, mensagem } }` (`RespostaDoCadastro`). `ativo` tem de ser booleano de JSON (`boolean:strict`).
+
+**Regra que protege o passado:** bico com `Leitura` lançada **não troca de combustível** — o Fechamento Mensal
+dá nome às leituras antigas pelo catálogo do bico; para mudar, desativa e cria outro. A `Leitura` é do módulo
+Fechamento e é lida por `DB::table('Leitura')`, sem model (CA-7). Edição trava a linha (`lockForUpdate`) dentro
+da transação. Não há idempotência por chave (diferente do §12): criar duas vezes o mesmo bico cai em
+`numero_repetido`, e a mesma bomba em `nome_repetido`.
+
+**Testes:** `backend/tests/Feature/Cadastro/BombasEBicosDoPainelTest.php` (19 testes) e, no painel,
+`features/gestao-de-bicos/model/pista.test.ts` e `ui/gestao-de-bicos.test.tsx` (pista por bomba, corpo do novo
+bico, recusa no formulário, formulário incompleto não chama a API).
+
+**Fica de fora:** o slice não prova, como o §12, que a tela inteira deixa de tocar o Supabase — o resto de
+Configurações segue no legado.

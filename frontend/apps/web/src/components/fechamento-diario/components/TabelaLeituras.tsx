@@ -5,6 +5,7 @@ import React from 'react';
 import { BicoComDetalhes } from '../../../types/fechamento';
 import { paraReais } from '../../../utils/formatters';
 import { corDoProduto } from '@posto/utils';
+import { agruparPorBomba } from './agruparPorBomba';
 
 interface TabelaLeiturasProps {
   bicos: BicoComDetalhes[];
@@ -103,6 +104,9 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
     }
   };
 
+  // [27/09] Linhas em blocos por bomba (#155): o BR tem 24 bicos, e o gerente lê a pista bomba a bomba.
+  const grupos = React.useMemo(() => agruparPorBomba(bicos), [bicos]);
+
   // Calcula o total geral de vendas (Litros * Preço)
   const totalGeralVendas = bicos.reduce((acc, bico) => {
     const litros = calcLitros(bico.id).value;
@@ -175,7 +179,17 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
             </tr>
           </thead>
           <tbody className="bg-slate-800 divide-y divide-slate-700/50">
-            {bicos.map((bico) => {
+            {grupos.map((grupo) => (
+              <React.Fragment key={grupo.bombaId}>
+                <tr className="bg-slate-900/70">
+                  <th scope="rowgroup" colSpan={6} className="px-6 py-2.5 text-left text-xs font-bold text-slate-300 uppercase tracking-wider font-display">
+                    {grupo.nome}
+                    <span className="ml-2 font-normal normal-case text-slate-500">
+                      {grupo.bicos.length} {grupo.bicos.length === 1 ? 'bico' : 'bicos'}
+                    </span>
+                  </th>
+                </tr>
+                {grupo.bicos.map((bico) => {
               const leitura = leituras[bico.id] || { inicial: '', fechamento: '' };
               const litros = calcLitros(bico.id);
               const totalVenda = litros.value * bico.combustivel.preco_venda;
@@ -194,7 +208,6 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-bold text-slate-200">{bico.combustivel.nome}</div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wide">{bico.bomba.nome}</div>
                       </div>
                     </div>
                   </td>
@@ -256,7 +269,9 @@ export const TabelaLeituras: React.FC<TabelaLeiturasProps> = ({
                   </td>
                 </tr>
               );
-            })}
+                })}
+              </React.Fragment>
+            ))}
           </tbody>
           <tfoot className="bg-slate-900/50 font-bold border-t border-slate-700/50">
             <tr>

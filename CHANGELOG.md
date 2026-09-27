@@ -62,6 +62,32 @@
   no Firefox e no Safari vale a oferta de salvar do próprio navegador. Na volta, o navegador preenche.
 - O app segue sem guardar nada: nem senha, nem token, nem posto. O campo de e-mail passa a
   `autocomplete="username"`, que é o que os gerenciadores casam com a senha.
+### ⛽ Fechamento de Caixa: Leituras de Bomba agrupadas por bomba (#155)
+
+- A aba **Leituras de Bomba** mostra os bicos em blocos por bomba — um título por bomba (com a
+  contagem de bicos) e os bicos dela logo abaixo, em ordem de número —, na ordem em que o gerente
+  anda pela pista. Antes era uma lista corrida com o nome da bomba em letra pequena em cada linha;
+  com os 24 bicos do BR, a linha certa se perdia.
+- Só apresentação: nenhuma conta, valor ou gravação mudou (golden 3536/0). Os blocos são as bombas
+  cadastradas — quando o layout real do BR for montado em Configurações → Bombas e Bicos, a aba
+  acompanha sem mudança de código. No Jorro a ordem é a mesma de antes.
+
+### ⛽ API: o gerente cadastra bombas e bicos do posto (#153)
+
+- **O posto monta a própria pista pela API**, sem o seed ser reescrito: o Posto BR tem 24 bicos e a
+  divisão real ainda não veio. `POST/PUT /api/postos/{posto}/bombas` e `POST/PUT
+  /api/postos/{posto}/bicos`, só para quem gere o posto (`posto.acesso:gerir`); o posto é o da rota.
+- **Nada se apaga:** desativar é `ativo: false` no PUT. Bomba só desativa sem bico ativo.
+- **Regras do bico**, recusadas com código (422): bomba, combustível e tanque têm de ser do posto; o
+  tanque é do combustível do bico; o número é único entre os bicos ativos do posto; **bico com
+  leitura lançada não troca de combustível** (a aba Fechamento Mensal dá nome às leituras antigas
+  pelo catálogo do bico — trocar reescreveria o relatório passado): desativa e cadastra outro.
+- **Painel: Configurações → Bombas e Bicos** (flag `VITE_API_BICOS`; ausente, vale o `VITE_API_URL`)
+  troca a tabela antiga — cujos botões Adicionar/Editar/Excluir nunca fizeram nada — pela pista
+  agrupada por bomba, bicos em ordem de número, com "+ Bomba", "+ Bico" e editar. O "Novo bico"
+  sugere o próximo número livre e, escolhido o combustível, só oferece os tanques dele (com um só,
+  já o escolhe). A recusa do servidor aparece no formulário. Primeiro slice FSD do painel:
+  `features/gestao-de-bicos`.
 
 ### 🚪 Painel: uma tela só para entrar — os postos e a senha juntos (#102)
 
