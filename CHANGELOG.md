@@ -2,6 +2,22 @@
 
 ## [Não Lançado]
 
+### 🧪 Ensaio do MVP com os dois postos — skill e seed do Posto BR
+
+- **Skill `validar-mvp-dois-postos`** (`.claude/skills/`): pré-requisitos bloqueantes conferidos por comando
+  (multi-tenant #144 na `fase-a`, esquema, Posto BR, contas, flags da API, gates), o roteiro do dia nos dois
+  postos na mesma data, a prova de isolamento pela API (403 cruzado, PIN cruzado, `posto_id` no banco) e o
+  relatório com veredito. Ressalva do BR: a tela de Fechamento com **24 bicos** (o Jorro tem 6). O Jorro
+  não muda no ensaio (só leitura); os PWAs, presos em `POSTO_ID = 1`, entram como pré-requisito (P7).
+- **`scripts/semeia-ensaio-dois-postos.sh <porta>`** + `banco/ensaio/posto-br.sql`: cria o Posto BR (4
+  combustíveis, 4 tanques, 6 bombas × 4 = 24 bicos, turnos, formas de pagamento, 3 frentistas), as contas
+  (Elias GERENTE nos dois postos; um gerente só do BR) e 3 frentistas do BR SEM chave (cada um cadastra
+  a sua no primeiro acesso do PWA — decisão de 27/09), com senhas geradas na hora e mostradas uma vez. **Não toca o Jorro:** tira o retrato dele
+  (`banco/ensaio/retrato-do-jorro.sql`, contagem + md5 de cada tabela com `posto_id = 1`) antes e depois e
+  aborta se diferir. Só roda num container `posto-pg-*`/`posto-postgres` local; não refaz se o BR já existe.
+  Conferido num banco de worktree: 24 bicos pela API, login lista os postos certos, gerente só-BR leva 403
+  no Jorro, retrato do Jorro idêntico. Catálogo é de ensaio — preços reais do BR ainda não vieram.
+
 ### 🔒 O catálogo do posto fecha atrás de login — cada posto vê só o próprio (#102)
 
 - As nove rotas do catálogo (`GET /api/postos/{posto}/{combustiveis,tanques,bombas,bicos,turnos,frentistas,
