@@ -2,6 +2,15 @@
 
 ## [Não Lançado]
 
+### ✉️ Painel: o cartão do posto lembra o e-mail e pede só a senha (#102)
+
+- Depois da primeira entrada num posto, o cartão mostra "Entrar como <e-mail> · Trocar" e o cursor já
+  vai para a Senha (pedido do dono, 27/09). "Trocar" esquece o e-mail e volta a pedir.
+- Fica no navegador **só o e-mail**, por posto (`painel.email-do-posto.<id>`); senha, token e posto
+  ativo continuam fora. Conta recusada por ser de outro posto não fica lembrada.
+- O login continua por e-mail + senha: só senha, ou uma chave curta, deixaria o painel — que mostra
+  o dinheiro dos postos e fica na internet — a um palpite de qualquer conta do posto.
+
 ### 📍 Painel e PWA dizem em qual posto se está (#102)
 
 - **Painel:** a barra lateral mostra o nome do posto ativo embaixo da marca (some com a barra recolhida).

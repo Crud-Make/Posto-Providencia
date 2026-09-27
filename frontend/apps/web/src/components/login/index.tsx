@@ -9,6 +9,7 @@ import type { Posto } from '../../types/database/index';
 import CartaoDoPosto from './cartao-do-posto';
 import { fraseDoDia, saudacao, variaveisDoTema } from './escolha-de-posto-estilo';
 import FormularioDeEntrada from './formulario-de-entrada';
+import { esquecerEmail } from './email-lembrado';
 
 const FAIXA = ['#042992', '#A30E19', '#E5BE41'] as const;
 
@@ -49,6 +50,8 @@ function useRecusaContaDeOutroPosto(escolhido: PostoDaRede | null): string | nul
   useEffect(() => {
     if (!loginPelaApiLigado() || usuario === null || postoAtivo !== null) return;
     const mensagem = `Esta conta não é do ${escolhido?.nome ?? 'posto escolhido'}.`;
+    // O e-mail lembrado era de outro posto: esquece, para a próxima entrada pedir o e-mail de novo.
+    if (escolhido !== null) esquecerEmail(escolhido.id);
     void sair().then(() => setRecusa(mensagem));
   }, [usuario, postoAtivo, escolhido, sair]);
 
@@ -126,7 +129,7 @@ const TelaDeEntrada: React.FC = () => {
         {(!comCartoes || escolhido !== null) && (
           <section className="w-full max-w-md rounded-2xl border p-6" style={{ background: 'var(--painel)', borderColor: 'var(--borda-cartao)' }} aria-label="Entrar">
             <h2 className="mb-5 font-display text-xl font-semibold">{escolhido === null ? 'Entrar no painel' : `Entrar no ${escolhido.nome}`}</h2>
-            <FormularioDeEntrada key={escolhido?.id ?? 0} erroExterno={recusa} />
+            <FormularioDeEntrada key={escolhido?.id ?? 0} postoId={escolhido?.id ?? null} erroExterno={recusa} />
           </section>
         )}
 

@@ -93,6 +93,7 @@ async function entrarNoCartao(posto: string): Promise<void> {
 
 beforeEach(() => {
     rede.sair.mockClear();
+    localStorage.clear();
 });
 afterEach(() => {
     act(() => raiz.unmount());
@@ -116,5 +117,41 @@ describe('TelaDeEntrada com os provedores de verdade', () => {
 
         expect(rede.sair).toHaveBeenCalledTimes(1);
         expect(div.textContent).toContain('Esta conta não é do Posto Jorro.');
+    });
+
+    it('entrou uma vez: na volta o cartão lembra o e-mail e pede só a senha', async () => {
+        rede.postosDoLogin = [JORRO];
+        await montar();
+        await entrarNoCartao('Posto Jorro');
+        expect(localStorage.getItem('painel.email-do-posto.1')).toBe('elias@ensaio.local');
+        act(() => raiz.unmount());
+        div.remove();
+
+        await montar();
+        await act(async () => botao('Posto Jorro').click());
+
+        expect(div.textContent).toContain('Entrar como elias@ensaio.local');
+        expect(campo('email').readOnly).toBe(true);
+        expect(localStorage.getItem('painel.email-do-posto.2')).toBeNull();
+        expect(Object.keys(localStorage).some((k) => /senha|token/i.test(k) || /testes/.test(localStorage.getItem(k) ?? ''))).toBe(false);
+    });
+
+    it('"Trocar" esquece o e-mail e volta a pedir', async () => {
+        localStorage.setItem('painel.email-do-posto.1', 'outro@ensaio.local');
+        await montar();
+        await act(async () => botao('Posto Jorro').click());
+        await act(async () => botao('Trocar').click());
+
+        expect(div.textContent).not.toContain('Entrar como');
+        expect(campo('email').readOnly).toBe(false);
+        expect(localStorage.getItem('painel.email-do-posto.1')).toBeNull();
+    });
+
+    it('conta de outro posto recusada não fica lembrada', async () => {
+        rede.postosDoLogin = [BR];
+        await montar();
+        await entrarNoCartao('Posto Jorro');
+
+        expect(localStorage.getItem('painel.email-do-posto.1')).toBeNull();
     });
 });
