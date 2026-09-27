@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### ⛽ API: o gerente cadastra bombas e bicos do posto (#153)
+
+- **O posto monta a própria pista pela API**, sem o seed ser reescrito: o Posto BR tem 24 bicos e a
+  divisão real ainda não veio. `POST/PUT /api/postos/{posto}/bombas` e `POST/PUT
+  /api/postos/{posto}/bicos`, só para quem gere o posto (`posto.acesso:gerir`); o posto é o da rota.
+- **Nada se apaga:** desativar é `ativo: false` no PUT. Bomba só desativa sem bico ativo.
+- **Regras do bico**, recusadas com código (422): bomba, combustível e tanque têm de ser do posto; o
+  tanque é do combustível do bico; o número é único entre os bicos ativos do posto; **bico com
+  leitura lançada não troca de combustível** (a aba Fechamento Mensal dá nome às leituras antigas
+  pelo catálogo do bico — trocar reescreveria o relatório passado): desativa e cadastra outro.
+- A tela Gestão de Bicos do painel ainda não usa estas rotas (os botões dela nunca fizeram nada) —
+  é a fatia seguinte.
+
 ### 🚪 Painel: uma tela só para entrar — os postos e a senha juntos (#102)
 
 - **A tela do canvas "Escolha de Posto — Rede Providência" é a única de entrada** (regra do dono,

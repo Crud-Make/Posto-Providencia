@@ -2,6 +2,7 @@
 
 use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Agregacao\Http\Controllers\RelatorioDiarioController;
+use App\Cadastro\Http\Controllers\BombasEBicosController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\EquipeController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
@@ -292,4 +293,22 @@ Route::prefix('postos/{posto}')
         Route::post('estoque/produtos', [ProdutosDoPainelController::class, 'store']);
         Route::put('estoque/produtos/{produto}', [ProdutosDoPainelController::class, 'update'])->whereNumber('produto');
         Route::post('estoque/movimentacoes', [ProdutosDoPainelController::class, 'movimentar']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Cadastro de bombas e bicos do painel (#153)
+|--------------------------------------------------------------------------
+| O gerente monta a pista do posto pela tela (o Posto BR tem 24 bicos) em vez de o seed ser
+| reescrito. Escrita de cadastro: `posto.acesso:gerir`, na ordem de sempre — sem token 401, posto de
+| outro 403, bomba/bico de outro posto 404. O `posto_id` sai da rota, nunca do corpo. Não há rota de
+| apagar: desativar é `ativo: false` no PUT. A leitura continua nas rotas do catálogo (`bombas`, `bicos`).
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::post('bombas', [BombasEBicosController::class, 'criaBomba']);
+        Route::put('bombas/{bomba}', [BombasEBicosController::class, 'editaBomba'])->whereNumber('bomba');
+        Route::post('bicos', [BombasEBicosController::class, 'criaBico']);
+        Route::put('bicos/{bico}', [BombasEBicosController::class, 'editaBico'])->whereNumber('bico');
     });
