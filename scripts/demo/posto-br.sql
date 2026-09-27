@@ -17,10 +17,11 @@
 -- a segunda execução calcula os mesmos valores e não grava nada.
 --
 -- O que cria (posto_id = o do "Posto BR", id 2 quando livre):
---   Cadastro: Posto, 4 Combustivel, 2 Bomba, 4 Tanque, 4 Bico, 9 FormaPagamento, 1 Maquininha,
+--   Cadastro: Posto, 4 Combustivel, 6 Bomba, 4 Tanque, 24 Bico (4 por bomba, numerados 1–24), 9 FormaPagamento, 1 Maquininha,
 --             3 Turno, 3 Frentista, 4 Estoque, 1 Fornecedor, 2 Produto.
 --   Movimento de jan/2026, nos MESMOS dias em que o Posto 1 tem Leitura (ou 1..31 se não tiver):
---     Leitura: 4 bicos × dia, ~60 % do volume do Jorro por combustível, encerrante encadeado;
+--     Leitura: 24 bicos × dia, ~60 % do volume do Jorro por combustível, repartido de forma
+--              desigual entre as 6 bombas, encerrante encadeado por bico;
 --     Compra: 1 por combustível (15/01); Despesa: 6 itens (31/01);
 --     Fechamento FECHADO + 2 FechamentoFrentista + Recebimento nos dias 1 a 15.
 --   Os dias 16 a 31 ficam SEM fechamento de propósito: é onde o ensaio envia pelo PWA.
@@ -53,13 +54,14 @@ DECLARE
   v_turno   integer[];
   v_frent   integer[];
   v_comb    record;
-  v_bomba1  integer;
-  v_bomba2  integer;
+  v_bomba   integer;
+  v_b       integer;
   v_tanque  bigint;
   v_bico    record;
   v_dia     date;
   v_dias    date[];
   v_litros  numeric;
+  v_peso    numeric[] := ARRAY[0.25, 0.21, 0.17, 0.15, 0.12, 0.10];  -- parte de cada bomba no dia
   v_ini     numeric;
   v_fim     numeric;
   v_n       integer;
@@ -94,17 +96,17 @@ BEGIN
   ON CONFLICT (codigo, posto_id) DO NOTHING;
 
   ---------------------------------------------------------------------------------------------
-  -- Bombas, tanques e bicos: 2 bombas, 1 bico por combustível
+  -- Bombas, tanques e bicos: 6 bombas × 4 bicos (GC, GA, ET, S10, nessa ordem em toda bomba),
+  -- numerados 1–24; um tanque por combustível alimenta os 6 bicos dele.
   ---------------------------------------------------------------------------------------------
   INSERT INTO "Bomba" (nome, localizacao, ativo, posto_id)
-  VALUES ('BR BOMBA 01', 'Ilha 1', true, v_posto), ('BR BOMBA 02', 'Ilha 2', true, v_posto)
+  SELECT 'BR BOMBA ' || lpad(n::text, 2, '0'), 'Ilha ' || ((n + 1) / 2), true, v_posto
+    FROM generate_series(1, 6) n
   ON CONFLICT (nome, posto_id) DO NOTHING;
-  SELECT id INTO v_bomba1 FROM "Bomba" WHERE nome = 'BR BOMBA 01' AND posto_id = v_posto;
-  SELECT id INTO v_bomba2 FROM "Bomba" WHERE nome = 'BR BOMBA 02' AND posto_id = v_posto;
 
   FOR v_comb IN
     SELECT c.id, c.codigo,
-           CASE c.codigo WHEN 'GC' THEN 1 WHEN 'GA' THEN 2 WHEN 'ET' THEN 3 ELSE 4 END AS numero,
+           CASE c.codigo WHEN 'GC' THEN 1 WHEN 'GA' THEN 2 WHEN 'ET' THEN 3 ELSE 4 END AS ordem,
            CASE c.codigo WHEN 'GC' THEN 15000 WHEN 'GA' THEN 10000 WHEN 'ET' THEN 10000 ELSE 10000 END AS capacidade,
            CASE c.codigo WHEN 'GC' THEN 7200.00 WHEN 'GA' THEN 1850.00 WHEN 'ET' THEN 2600.00 ELSE 1100.00 END AS estoque,
            c.preco_custo
@@ -117,9 +119,12 @@ BEGIN
       RETURNING id INTO v_tanque;
     END IF;
 
-    INSERT INTO "Bico" (numero, bomba_id, combustivel_id, ativo, posto_id, tanque_id)
-    VALUES (v_comb.numero, CASE WHEN v_comb.numero <= 2 THEN v_bomba1 ELSE v_bomba2 END, v_comb.id, true, v_posto, v_tanque)
-    ON CONFLICT (bomba_id, numero) DO NOTHING;
+    FOR v_b IN 1..6 LOOP
+      SELECT id INTO v_bomba FROM "Bomba" WHERE nome = 'BR BOMBA ' || lpad(v_b::text, 2, '0') AND posto_id = v_posto;
+      INSERT INTO "Bico" (numero, bomba_id, combustivel_id, ativo, posto_id, tanque_id)
+      VALUES ((v_b - 1) * 4 + v_comb.ordem, v_bomba, v_comb.id, true, v_posto, v_tanque)
+      ON CONFLICT (bomba_id, numero) DO NOTHING;
+    END LOOP;
 
     INSERT INTO "Estoque" (combustivel_id, quantidade_atual, custo_medio, capacidade_tanque, posto_id)
     VALUES (v_comb.id, v_comb.estoque, v_comb.preco_custo, v_comb.capacidade, v_posto)
@@ -190,13 +195,17 @@ BEGIN
   END IF;
 
   ---------------------------------------------------------------------------------------------
-  -- Leituras: encerrante encadeado por bico. Litros = 60 % do mesmo combustível no Jorro no
-  -- mesmo dia, com uma oscilação fixa de ±5 %; sem Jorro no dia, um volume-base por combustível.
+  -- Leituras: encerrante encadeado por bico (inicial do dia = final do dia anterior do MESMO bico).
+  -- O combustível no dia vende 60 % do mesmo combustível no Jorro (oscilação fixa de ±5 %; sem
+  -- Jorro no dia, um volume-base), repartido entre as 6 bombas pelo peso de cada uma (25 % a 10 %)
+  -- com um ruído fixo de −8 % a +8 % por bico e dia — desigual e determinístico.
   ---------------------------------------------------------------------------------------------
   FOR v_bico IN
-    SELECT b.id, b.combustivel_id, c.codigo,
+    SELECT b.id, b.numero, b.combustivel_id, c.codigo,
+           (b.numero - 1) / 4 + 1 AS bomba,
            CASE c.codigo WHEN 'GC' THEN 6.39 WHEN 'GA' THEN 6.49 WHEN 'ET' THEN 4.69 ELSE 6.39 END AS preco_jan,
-           CASE c.codigo WHEN 'GC' THEN 612000.000 WHEN 'GA' THEN 215400.500 WHEN 'ET' THEN 187250.250 ELSE 98760.750 END AS encerrante0,
+           CASE c.codigo WHEN 'GC' THEN 612000.000 WHEN 'GA' THEN 215400.500 WHEN 'ET' THEN 187250.250 ELSE 98760.750 END
+             + ((b.numero - 1) / 4) * 73519.125 AS encerrante0,
            CASE c.codigo WHEN 'GC' THEN 780 WHEN 'GA' THEN 150 WHEN 'ET' THEN 250 ELSE 60 END AS base
       FROM "Bico" b JOIN "Combustivel" c ON c.id = b.combustivel_id
      WHERE b.posto_id = v_posto
@@ -210,7 +219,10 @@ BEGIN
       IF v_litros = 0 THEN
         v_litros := v_bico.base;
       END IF;
-      v_litros := round(v_litros * 0.60 * (0.95 + ((extract(day FROM v_dia)::int * 7 + v_bico.id) % 11) / 100.0), 3);
+      v_litros := round(v_litros * 0.60
+                        * (0.95 + ((extract(day FROM v_dia)::int * 7 + v_bico.numero) % 11) / 100.0)
+                        * v_peso[v_bico.bomba]
+                        * (0.92 + ((extract(day FROM v_dia)::int * 5 + v_bico.numero * 3) % 17) / 100.0), 3);
       v_ini := v_fim;
       v_fim := v_ini + v_litros;
 
