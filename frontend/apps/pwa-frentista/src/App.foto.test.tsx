@@ -101,7 +101,7 @@ describe('PWA do frentista — trocar a foto', () => {
         await montar();
         await escolherFoto();
 
-        expect(mocks.salvarFotoFrentista).toHaveBeenCalledWith(1, 'data:image/jpeg;base64,AVATAR');
+        expect(mocks.salvarFotoFrentista).toHaveBeenCalledWith(1, 'data:image/jpeg;base64,AVATAR', 1);
         expect(container.textContent).not.toContain('Não deu para salvar a foto');
         expect(container.querySelector('img[src="data:image/jpeg;base64,AVATAR"]')).not.toBeNull();
     });

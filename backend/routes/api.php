@@ -5,6 +5,7 @@ use App\Agregacao\Http\Controllers\RelatorioDiarioController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\EquipeController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
+use App\Cadastro\Http\Controllers\PostoDoPwaController;
 use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
 use App\Compras\Http\Controllers\CompraController;
@@ -155,6 +156,22 @@ Route::prefix('postos/{posto}')
 */
 Route::post('postos/{posto}/frentistas/entrar', [AcessoDoFrentistaController::class, 'entrar'])
     ->middleware([DefinePostoAtual::class, 'throttle:pin-frentista']);
+
+/*
+| Primeiro acesso (decisão do dono, 27/09/2026): o PRÓPRIO frentista cria a chave (PIN) no PWA, uma
+| vez. Público como o `entrar` (vem antes de haver token) e com o MESMO limite, que conta por
+| frentista nas duas rotas. Só grava se o frentista é deste posto, está ativo e ainda não tem chave
+| (409); zerar é do gerente (`frentista:pin`). Sucesso devolve a sessão, como o `entrar`.
+*/
+Route::post('postos/{posto}/frentistas/primeiro-acesso', [AcessoDoFrentistaController::class, 'primeiroAcesso'])
+    ->middleware([DefinePostoAtual::class, 'throttle:pin-frentista']);
+
+/*
+| A escolha do POSTO vem antes de tudo no PWA (decisão do dono, 26/09/2026: "escolhe na 1ª vez e
+| lembra"), então também não pode exigir token. Expõe só `id` e `nome` dos postos ATIVOS, por id —
+| nada de cnpj, endereço, telefone ou e-mail. Mesmo limite de taxa da lista de frentistas.
+*/
+Route::get('postos', [PostoDoPwaController::class, 'index'])->middleware('throttle:60,1');
 
 /*
 | A tela de escolha vem ANTES do PIN, então esta lista não pode exigir token de frentista (#101,

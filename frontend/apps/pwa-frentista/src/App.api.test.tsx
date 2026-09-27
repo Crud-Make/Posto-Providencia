@@ -43,6 +43,9 @@ const json = (status: number, corpo: unknown): Response =>
   new Response(JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json' } });
 
 const fetchFalso = vi.fn(async (url: string, init: RequestInit): Promise<Response> => {
+  // A porta do posto (#101, 26/09): um posto só na rede, entra direto nele. Fora de `chamadas`,
+  // que este arquivo lê por posição a partir do PIN.
+  if (url.endsWith('/api/postos')) return json(200, { data: [{ id: 1, nome: 'Posto Jorro' }] });
   const cabecalhos = new Headers(init.headers);
   chamadas.push({ url, corpo: JSON.parse(String(init.body)) as unknown, auth: cabecalhos.get('Authorization') });
   if (url.endsWith('/frentistas/entrar')) {
@@ -61,6 +64,13 @@ const envioAceito = (): Response => json(201, {
 
 let container: HTMLDivElement;
 let root: Root;
+
+/** A porta do posto (#101, 26/09) lê `GET /api/postos` antes de montar o app: espera ela abrir. */
+const esperarAPorta = async () => {
+  for (let i = 0; i < 50 && (container.textContent ?? '').includes('Carregando os postos'); i += 1) {
+    await act(async () => { await new Promise((fim) => setTimeout(fim, 0)); });
+  }
+};
 
 const clicar = async (el: Element) => {
   await act(async () => { el.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
@@ -103,6 +113,7 @@ describe('PWA do frentista com a API ligada (#101)', () => {
     document.body.appendChild(container);
     root = createRoot(container);
     await act(async () => { root.render(React.createElement(App)); });
+    await esperarAPorta();
   });
 
   afterEach(() => {

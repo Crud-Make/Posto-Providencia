@@ -38,7 +38,9 @@ const ENVIOS = [
 function responder(url: string, metodo: string): Response {
   const caminho = new URL(url).pathname.replace('/api/postos/1', '');
   const rotas: Record<string, () => Response> = {
-    'GET /frentistas/escolha': () => json(200, { data: [{ id: 7, nome: 'Ana' }, { id: 8, nome: 'Bia' }] }),
+    // A porta do posto (#101, 26/09): um posto só na rede, entra direto nele.
+    'GET /api/postos': () => json(200, { data: [{ id: 1, nome: 'Posto Jorro' }] }),
+    'GET /frentistas/escolha': () => json(200, { data: [{ id: 7, nome: 'Ana', tem_chave: true }, { id: 8, nome: 'Bia', tem_chave: true }] }),
     'POST /frentistas/entrar': () => json(200, { token: '9|ana', vence_em: '2999-01-01T00:00:00Z', frentista: { id: 7, nome: 'Ana' } }),
     'GET /frentistas/eu': () => json(200, { data: { id: 7, nome: 'Ana', foto: null } }),
     'POST /presenca': () => new Response(null, { status: 204 }),
@@ -67,6 +69,13 @@ const fetchFalso = vi.fn(async (url: string, init: RequestInit): Promise<Respons
 
 let container: HTMLDivElement;
 let root: Root;
+
+/** A porta do posto (#101, 26/09) lê `GET /api/postos` antes de montar o app: espera ela abrir. */
+const esperarAPorta = async () => {
+  for (let i = 0; i < 50 && (container.textContent ?? '').includes('Carregando os postos'); i += 1) {
+    await act(async () => { await new Promise((fim) => setTimeout(fim, 0)); });
+  }
+};
 
 const clicar = async (el: Element) => {
   await act(async () => { el.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
@@ -102,6 +111,7 @@ describe('PWA com a API ligada: nada no Supabase (#101, fatia 2)', () => {
     document.body.appendChild(container);
     root = createRoot(container);
     await act(async () => { root.render(React.createElement(App)); });
+    await esperarAPorta();
   });
 
   afterEach(() => {

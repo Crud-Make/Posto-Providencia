@@ -3,6 +3,8 @@ import { History, ArrowDown, ArrowUp, CheckCircle, ChevronLeft } from 'lucide-re
 import { api } from '../services/api';
 
 interface HistoricoProps {
+    /** O posto escolhido no aparelho (`features/escolher-posto`). */
+    postoId: number;
     frentistaId: number;
     frentistaNome: string;
     onVoltar: () => void;
@@ -26,18 +28,18 @@ interface HistoricoItem {
     fechamento: { data: string; turno_id: number } | null;
 }
 
-const HistoricoScreen: React.FC<HistoricoProps> = ({ frentistaId, frentistaNome, onVoltar }) => {
+const HistoricoScreen: React.FC<HistoricoProps> = ({ postoId, frentistaId, frentistaNome, onVoltar }) => {
     const [historico, setHistorico] = useState<HistoricoItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.getHistoricoFrentista(frentistaId)
+        api.getHistoricoFrentista(frentistaId, postoId)
             // Cliente Supabase não tipado com o Database gerado: o join infere `fechamento`
             // como array na estrutura, mas essa FK é many-to-one — em runtime vem objeto único.
             .then(data => setHistorico(data as unknown as HistoricoItem[]))
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, [frentistaId]);
+    }, [frentistaId, postoId]);
 
     const formatDate = (dateStr: string) => {
         const d = new Date(dateStr);

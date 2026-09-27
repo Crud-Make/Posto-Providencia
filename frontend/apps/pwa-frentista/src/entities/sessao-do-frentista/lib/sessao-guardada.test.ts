@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { CHAVE_SESSAO, esquecerSessao, guardarSessao, sessaoDoAparelho, sessaoGuardada } from './sessao-guardada';
+import { CHAVE_SESSAO, esquecerSessao, guardarSessao, sessaoDoAparelho, sessaoEhDoPosto, sessaoGuardada } from './sessao-guardada';
 
 /** A sessão do frentista no aparelho (#101): só vale para o MESMO frentista e até vencer. */
 describe('sessaoGuardada', () => {
@@ -47,5 +47,28 @@ describe('sessaoGuardada', () => {
 
     expect(sessaoDoAparelho(agora)).toEqual(sessao);
     expect(sessaoDoAparelho(Date.parse('2026-09-25T02:00:01Z'))).toBeNull();
+  });
+});
+
+/** A sessão só vale no posto em que foi aberta (27/09/2026: o posto é escolhido a cada abertura). */
+describe('sessaoEhDoPosto', () => {
+  const sessao = { token: '1|posto_x', vence_em: '2999-01-01T00:00:00Z', frentista: { id: 7, nome: 'Ana' } };
+
+  beforeEach(() => { localStorage.clear(); });
+
+  it('sem sessão guardada: nada a descartar', () => {
+    expect(sessaoEhDoPosto(2)).toBe(true);
+  });
+
+  it('sessão aberta no mesmo posto: vale', () => {
+    guardarSessao({ ...sessao, posto_id: 2 });
+    expect(sessaoEhDoPosto(2)).toBe(true);
+  });
+
+  it('sessão de outro posto, ou sem o carimbo de posto (guardada antes dele): não vale', () => {
+    guardarSessao({ ...sessao, posto_id: 1 });
+    expect(sessaoEhDoPosto(2)).toBe(false);
+    guardarSessao(sessao);
+    expect(sessaoEhDoPosto(1)).toBe(false);
   });
 });

@@ -2,6 +2,28 @@
 
 ## [Não Lançado]
 
+### 📍 PWA do frentista: "Em qual posto?" a cada abertura e o frentista cria a própria chave (#101)
+
+- **Rota nova, pública:** `GET /api/postos` (módulo `App\Cadastro`, sem token, `throttle:60,1`): `id` e
+  `nome` dos postos ativos, por id. Nada do cadastro do posto sai dela — cnpj, endereço, telefone e
+  e-mail ficam de fora já no `select`.
+- **Primeiro acesso (decisão do dono, 27/09):** `POST /api/postos/{posto}/frentistas/primeiro-acesso`
+  (módulo `App\Pessoas`, mesmo limite do `entrar`) grava a chave (PIN) do frentista DESTE posto, ativo,
+  que ainda não tem uma — por insert atômico no PK, então dois pedidos juntos não gravam dois PINs — e
+  já devolve a sessão. Já tem chave → 409 "Este frentista já tem chave. Peça ao gerente para zerar."
+  (o PIN antigo continua valendo); outro posto, inativo ou inexistente → a mesma 404. A lista de
+  escolha passa a dizer `tem_chave` (só o booleano, nunca o hash). Zerar continua com o gerente
+  (`frentista:pin`).
+- **PWA:** com os dois postos ativos, toda abertura pergunta "Em qual posto?" (Posto Jorro, Posto BR);
+  nada do posto fica no aparelho. Com um posto só, entra direto. A sessão de PIN guardada só continua
+  se foi aberta no posto escolhido agora; de outro posto é descartada. "Trocar posto", discreto no
+  topo, encerra a sessão de PIN. Quem ainda não tem chave vê "Crie sua chave" (PIN + confirmação,
+  teclado numérico); quem tem, o PIN de sempre.
+- A constante `POSTO_ID = 1` do `pwa-frentista` morreu: o posto chega às telas por props, e a fachada
+  `services/api.ts` exige o `postoId`. Sem a API (o PWA no Supabase) a instalação segue de um posto só e
+  abre como antes. O `pwa-dono` fica de fora. Nenhuma fórmula mudou. Design Doc:
+  `docs/design/fechamento-frentista-api.md` §8.7.
+
 ### 🧪 Ensaio do MVP com os dois postos — skill e seed do Posto BR
 
 - **Skill `validar-mvp-dois-postos`** (`.claude/skills/`): pré-requisitos bloqueantes conferidos por comando

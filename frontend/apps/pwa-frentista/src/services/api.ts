@@ -1,6 +1,6 @@
 import type { ResultAsync } from 'neverthrow';
 import { paraExcecao, RecusaDaApi, type ErroDeApi } from '@frentista/shared/api';
-import { POSTO_ID, pwaPelaApiLigado } from '@frentista/shared/config';
+import { pwaPelaApiLigado } from '@frentista/shared/config';
 import { esquecerSessao, sessaoGuardada } from '@frentista/entities/sessao-do-frentista';
 import {
   buscarFrentistasAtivos,
@@ -54,8 +54,9 @@ import { apiPelaApi } from './api-pela-api';
  *
  *          Com a API ligada (`VITE_API_PWA=1`, #101 fatia 2), toda leitura e escrita desta fachada
  *          delega para `./api-pela-api` — o PWA não chama o Supabase para nada. Sem a flag, o
- *          caminho do Supabase é o de sempre, linha por linha. O `postoId` que falta em alguns
- *          métodos antigos entra como último parâmetro com `POSTO_ID` de padrão (as telas não mudam).
+ *          caminho do Supabase é o de sempre, linha por linha. O `postoId` que faltava em alguns
+ *          métodos antigos entra como último parâmetro, OBRIGATÓRIO: é o posto escolhido no aparelho
+ *          (`features/escolher-posto`, 26/09/2026), que as telas recebem por props.
  */
 
 /**
@@ -81,7 +82,7 @@ export const api = {
   },
 
   /** Grava o avatar do frentista. O porquê de a garantia ser só de tela está na entity. */
-  salvarFotoFrentista(frentistaId: number, foto: string | null, postoId: number = POSTO_ID): Promise<void> {
+  salvarFotoFrentista(frentistaId: number, foto: string | null, postoId: number): Promise<void> {
     if (pwaPelaApiLigado()) return apiPelaApi.salvarFotoFrentista(postoId, frentistaId, foto);
     return desembrulhar(salvarFotoDoFrentista(frentistaId, foto));
   },
@@ -120,7 +121,7 @@ export const api = {
   },
 
   /** Busca histórico de fechamentos de um frentista */
-  getHistoricoFrentista(frentistaId: number, postoId: number = POSTO_ID): Promise<ItemDoHistorico[]> {
+  getHistoricoFrentista(frentistaId: number, postoId: number): Promise<ItemDoHistorico[]> {
     if (pwaPelaApiLigado()) return apiPelaApi.getHistoricoFrentista(postoId, frentistaId);
     return desembrulhar(buscarHistoricoDoFrentista(frentistaId));
   },
@@ -147,7 +148,7 @@ export const api = {
    * `chave`; preço e total são do servidor. Só existe com a API ligada — sem ela a tela grava item a
    * item por `registrarVendaProduto`, como sempre.
    */
-  registrarCarrinhoPelaApi(frentistaId: number, chave: string, itens: readonly ItemDoCarrinho[], postoId: number = POSTO_ID): Promise<void> {
+  registrarCarrinhoPelaApi(frentistaId: number, chave: string, itens: readonly ItemDoCarrinho[], postoId: number): Promise<void> {
     return apiPelaApi.registrarCarrinho(postoId, frentistaId, chave, itens);
   },
 
@@ -213,19 +214,19 @@ export const api = {
   },
 
   /** Medições de régua já gravadas no dia — para avisar que reenvio substitui. */
-  getMedicoesDoDia(dataStr: string, postoId: number = POSTO_ID): Promise<MedicaoDoDia[]> {
+  getMedicoesDoDia(dataStr: string, postoId: number): Promise<MedicaoDoDia[]> {
     if (pwaPelaApiLigado()) return apiPelaApi.getMedicoesDoDia(postoId, dataStr);
     return desembrulhar(buscarMedicoesDoDia(dataStr));
   },
 
   /** Grava a medição de régua (upsert por tanque+dia) e confere a gravação (anti-RLS). */
-  salvarMedicaoTanque(tanqueId: number, dataStr: string, volumeFisico: number, postoId: number = POSTO_ID): Promise<void> {
+  salvarMedicaoTanque(tanqueId: number, dataStr: string, volumeFisico: number, postoId: number): Promise<void> {
     if (pwaPelaApiLigado()) return apiPelaApi.salvarMedicaoTanque(postoId, tanqueId, dataStr, volumeFisico);
     return desembrulhar(salvarMedicao(tanqueId, dataStr, volumeFisico));
   },
 
   /** Busca vendas de produtos do dia por frentista (recorte de meia-noite local, na entity). */
-  getVendasProdutoHoje(frentistaId: number, postoId: number = POSTO_ID): Promise<VendaDeHoje[]> {
+  getVendasProdutoHoje(frentistaId: number, postoId: number): Promise<VendaDeHoje[]> {
     if (pwaPelaApiLigado()) return apiPelaApi.getVendasProdutoHoje(postoId, frentistaId);
     return desembrulhar(buscarVendasDeHoje(frentistaId));
   },

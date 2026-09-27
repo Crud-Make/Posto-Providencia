@@ -32,6 +32,18 @@ export function sessaoDoAparelho(agora: number = Date.now()): SessaoDoFrentista 
   return sessaoGuardada(lido.data.frentista.id, agora);
 }
 
+/**
+ * `true` quando o aparelho NÃO tem sessão guardada de outro posto: não há sessão nenhuma, ou a
+ * guardada foi aberta em `postoId` (vencida ou não — o vencimento é de `sessaoGuardada`). Sessão de
+ * outro posto, ou sem o carimbo de posto, é `false`: quem entra num posto a descarta.
+ */
+export function sessaoEhDoPosto(postoId: number): boolean {
+  const guardado = lerJsonDoAparelho(CHAVE_SESSAO);
+  if (guardado === undefined) return true;
+  const lido = sessaoDoFrentistaSchema.safeParse(guardado);
+  return lido.success && lido.data.posto_id === postoId;
+}
+
 export function guardarSessao(sessao: SessaoDoFrentista): void {
   gravarNoAparelho(CHAVE_SESSAO, JSON.stringify(sessao));
 }

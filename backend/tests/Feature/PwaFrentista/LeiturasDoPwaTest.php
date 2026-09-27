@@ -20,7 +20,7 @@ require_once __DIR__.'/Cenario.php';
 
 const FOTO_PWA = 'data:image/jpeg;base64,/9j/AAAA';
 
-it('a lista de escolha é pública e traz só id e nome dos ATIVOS do posto, por nome', function (): void {
+it('a lista de escolha é pública e traz só id, nome e tem_chave dos ATIVOS do posto, por nome — nunca o hash', function (): void {
     ['posto' => $posto, 'frentista' => $ana] = postoDoPwa();
     DB::table('Frentista')->where('id', $ana->id)->update(['nome' => 'Ana', 'foto' => FOTO_PWA, 'telefone' => '75999990000']);
     $bia = frentistaDoPwa($posto, pin: null);
@@ -30,9 +30,11 @@ it('a lista de escolha é pública e traz só id e nome dos ATIVOS do posto, por
 
     $resposta = getJson("/api/postos/{$posto->id}/frentistas/escolha")
         ->assertOk()
-        ->assertExactJson(['data' => [['id' => $ana->id, 'nome' => 'Ana'], ['id' => $bia->id, 'nome' => 'Bia']]]);
+        ->assertExactJson(['data' => [['id' => $ana->id, 'nome' => 'Ana', 'tem_chave' => true], ['id' => $bia->id, 'nome' => 'Bia', 'tem_chave' => false]]]);
 
     expect($resposta->getContent())->not->toContain('base64')
+        ->and($resposta->getContent())->not->toContain('pin_hash')
+        ->and($resposta->getContent())->not->toContain('$2y$')
         ->and($resposta->getContent())->not->toContain('75999990000')
         ->and($inativo->id)->not->toBe($ana->id)
         ->and($outro->id)->not->toBe($posto->id)

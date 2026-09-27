@@ -61,16 +61,16 @@ afterEach(() => {
 describe('fachada pela API — frentista', () => {
   it('a lista de escolha vai SEM token e chega sem foto; com sessão, a foto de quem entrou vem do perfil', async () => {
     responder = (url) => url.endsWith('/frentistas/escolha')
-      ? json(200, { data: [{ id: 7, nome: 'Ana' }, { id: 8, nome: 'Bia' }] })
+      ? json(200, { data: [{ id: 7, nome: 'Ana', tem_chave: true }, { id: 8, nome: 'Bia', tem_chave: false }] })
       : json(200, { data: { id: 7, nome: 'Ana', foto: 'data:image/jpeg;base64,ANA' } });
 
-    await expect(api.getFrentistas(1)).resolves.toEqual([{ id: 7, nome: 'Ana', foto: null }, { id: 8, nome: 'Bia', foto: null }]);
+    await expect(api.getFrentistas(1)).resolves.toEqual([{ id: 7, nome: 'Ana', foto: null, temChave: true }, { id: 8, nome: 'Bia', foto: null, temChave: false }]);
     expect(chamadas).toEqual([{ url: 'http://api.teste/api/postos/1/frentistas/escolha', metodo: 'GET', corpo: undefined, auth: null }]);
 
     entrarComoAna();
     await expect(api.getFrentistas(1)).resolves.toEqual([
-      { id: 7, nome: 'Ana', foto: 'data:image/jpeg;base64,ANA' },
-      { id: 8, nome: 'Bia', foto: null },
+      { id: 7, nome: 'Ana', foto: 'data:image/jpeg;base64,ANA', temChave: true },
+      { id: 8, nome: 'Bia', foto: null, temChave: false },
     ]);
     expect(chamadas[2]).toMatchObject({ url: 'http://api.teste/api/postos/1/frentistas/eu', auth: 'Bearer 9|ana' });
   });
@@ -79,12 +79,12 @@ describe('fachada pela API — frentista', () => {
     responder = () => json(200, { data: { id: 7, nome: 'Ana', foto: null } });
     entrarComoAna();
 
-    await api.salvarFotoFrentista(7, 'data:image/jpeg;base64,X');
+    await api.salvarFotoFrentista(7, 'data:image/jpeg;base64,X', 1);
     expect(chamadas).toEqual([{
       url: 'http://api.teste/api/postos/1/frentistas/eu/foto', metodo: 'PUT', corpo: { foto: 'data:image/jpeg;base64,X' }, auth: 'Bearer 9|ana',
     }]);
 
-    await expect(api.salvarFotoFrentista(8, null)).rejects.toBeInstanceOf(RecusaDaApi);
+    await expect(api.salvarFotoFrentista(8, null, 1)).rejects.toBeInstanceOf(RecusaDaApi);
     expect(chamadas).toHaveLength(1);
   });
 
@@ -92,7 +92,7 @@ describe('fachada pela API — frentista', () => {
     responder = () => json(401, { message: 'Token inválido.' });
     entrarComoAna();
 
-    await expect(api.getHistoricoFrentista(7)).rejects.toMatchObject({ status: 401 });
+    await expect(api.getHistoricoFrentista(7, 1)).rejects.toMatchObject({ status: 401 });
     expect(localStorage.getItem('pwa.sessaoFrentista')).toBeNull();
   });
 });
@@ -125,11 +125,11 @@ describe('fachada pela API — fechamento', () => {
     }] });
     entrarComoAna();
 
-    const [item] = await api.getHistoricoFrentista(7);
+    const [item] = await api.getHistoricoFrentista(7, 1);
     expect(chamadas[0]?.url).toBe('http://api.teste/api/postos/1/historico');
     expect(item).toMatchObject({ encerrante: 3700, valor_pix: 845.1, valor_dinheiro: null, fechamento: { data: '2026-01-07', turno_id: 1 } });
 
-    await expect(api.getHistoricoFrentista(8)).rejects.toMatchObject({ status: 401 });
+    await expect(api.getHistoricoFrentista(8, 1)).rejects.toMatchObject({ status: 401 });
     expect(chamadas).toHaveLength(1);
   });
 });
@@ -147,7 +147,7 @@ describe('fachada pela API — vendas', () => {
     responder = () => json(200, { data: [{ id: 1, quantidade: '2.00', valor_unitario: '19.90', valor_total: '39.80', data: '2026-09-25T15:00:00Z', produto: { nome: 'Óleo', categoria: 'Óleo' } }] });
     entrarComoAna();
 
-    const [venda] = await api.getVendasProdutoHoje(7);
+    const [venda] = await api.getVendasProdutoHoje(7, 1);
 
     const url = new URL(chamadas[0]?.url ?? '');
     const inicio = new Date(url.searchParams.get('inicio') ?? '');
@@ -162,7 +162,7 @@ describe('fachada pela API — vendas', () => {
     responder = () => json(201, { data: { repetido: false, vendas: [] } });
     entrarComoAna();
 
-    await api.registrarCarrinhoPelaApi(7, 'c0ffee00-0000-4000-8000-000000000001', [{ produto_id: 3, quantidade: 2 }, { produto_id: 4, quantidade: 1 }]);
+    await api.registrarCarrinhoPelaApi(7, 'c0ffee00-0000-4000-8000-000000000001', [{ produto_id: 3, quantidade: 2 }, { produto_id: 4, quantidade: 1 }], 1);
 
     expect(chamadas).toEqual([{
       url: 'http://api.teste/api/postos/1/vendas', metodo: 'POST', auth: 'Bearer 9|ana',
@@ -174,7 +174,7 @@ describe('fachada pela API — vendas', () => {
     responder = () => json(422, { erro: { codigo: 'sem_estoque', mensagem: 'Só há 1 de Filtro no estoque.' } });
     entrarComoAna();
 
-    await expect(api.registrarCarrinhoPelaApi(7, 'c0ffee00-0000-4000-8000-000000000002', [{ produto_id: 4, quantidade: 2 }]))
+    await expect(api.registrarCarrinhoPelaApi(7, 'c0ffee00-0000-4000-8000-000000000002', [{ produto_id: 4, quantidade: 2 }], 1))
       .rejects.toThrow('Só há 1 de Filtro no estoque.');
   });
 });
@@ -187,7 +187,7 @@ describe('fachada pela API — régua', () => {
     entrarComoAna();
 
     await expect(api.getTanques(1)).resolves.toEqual([{ id: 2, combustivel: { nome: 'Gasolina', codigo: 'GC' } }]);
-    await expect(api.getMedicoesDoDia('2026-09-25')).resolves.toEqual([{ tanque_id: 2, volume_fisico: 5000 }]);
+    await expect(api.getMedicoesDoDia('2026-09-25', 1)).resolves.toEqual([{ tanque_id: 2, volume_fisico: 5000 }]);
     expect(chamadas.map((c) => c.url)).toEqual([
       'http://api.teste/api/postos/1/regua/tanques',
       'http://api.teste/api/postos/1/regua/medicoes?data=2026-09-25',
@@ -198,18 +198,18 @@ describe('fachada pela API — régua', () => {
     responder = () => json(200, { data: { tanque_id: 2, data: '2026-09-25', volume_fisico: '5000.00' } });
     entrarComoAna();
 
-    await expect(api.salvarMedicaoTanque(2, '2026-09-25', 5000)).resolves.toBeUndefined();
+    await expect(api.salvarMedicaoTanque(2, '2026-09-25', 5000, 1)).resolves.toBeUndefined();
     expect(chamadas[0]).toMatchObject({ metodo: 'PUT', corpo: { tanque_id: 2, data: '2026-09-25', volume_fisico: '5000' } });
 
-    await expect(api.salvarMedicaoTanque(2, '2026-09-25', 4999)).rejects.toThrow('A medição não foi gravada');
+    await expect(api.salvarMedicaoTanque(2, '2026-09-25', 4999, 1)).rejects.toThrow('A medição não foi gravada');
   });
 
   it('valor que o CHECK recusaria nem chega à rede; 422 da janela sobe com a mensagem', async () => {
     entrarComoAna();
-    await expect(api.salvarMedicaoTanque(2, '2026-09-25', -1)).rejects.toThrow('Confira o tanque');
+    await expect(api.salvarMedicaoTanque(2, '2026-09-25', -1, 1)).rejects.toThrow('Confira o tanque');
     expect(chamadas).toHaveLength(0);
 
     responder = () => json(422, { erro: { codigo: 'fora_da_janela', mensagem: 'O dia 30/12/2025 está fora da janela de escrita.' } });
-    await expect(api.salvarMedicaoTanque(2, '2025-12-30', 10)).rejects.toThrow('fora da janela');
+    await expect(api.salvarMedicaoTanque(2, '2025-12-30', 10, 1)).rejects.toThrow('fora da janela');
   });
 });

@@ -147,7 +147,7 @@ describe('PWA do frentista — abas', () => {
         await montar();
 
         expect(container.textContent).not.toContain('Selecione um frentista primeiro');
-        expect(mocks.getHistoricoFrentista).toHaveBeenCalledWith(1);
+        expect(mocks.getHistoricoFrentista).toHaveBeenCalledWith(1, 1);
     });
 
     it('vendas com frentista abre a tela e busca os produtos', async () => {
