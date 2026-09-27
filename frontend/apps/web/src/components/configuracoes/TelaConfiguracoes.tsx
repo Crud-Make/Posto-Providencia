@@ -18,6 +18,7 @@ import {
     ModalResetSistema,
     ModalApagarMes
 } from './components/index';
+import { bicosPelaApi, GestaoDeBicos } from '@features/gestao-de-bicos';
 
 /**
  * Tela de Configurações do Sistema.
@@ -97,10 +98,14 @@ const TelaConfiguracoes: React.FC = () => {
                                     products={products}
                                     loading={loading}
                                 />
-                                <GestaoBicos
-                                    nozzles={nozzles}
-                                    loading={loading}
-                                />
+                                {bicosPelaApi() ? (
+                                    <GestaoDeBicos postoId={postoAtivoId} />
+                                ) : (
+                                    <GestaoBicos
+                                        nozzles={nozzles}
+                                        loading={loading}
+                                    />
+                                )}
                             </div>
 
                             {/* Coluna Direita: Pagamentos, Parâmetros e Reset */}
