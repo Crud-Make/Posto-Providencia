@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### ⛽ Fechamento de Caixa: Leituras de Bomba agrupadas por bomba (#155)
+
+- A aba **Leituras de Bomba** mostra os bicos em blocos por bomba — um título por bomba (com a
+  contagem de bicos) e os bicos dela logo abaixo, em ordem de número —, na ordem em que o gerente
+  anda pela pista. Antes era uma lista corrida com o nome da bomba em letra pequena em cada linha;
+  com os 24 bicos do BR, a linha certa se perdia.
+- Só apresentação: nenhuma conta, valor ou gravação mudou (golden 3536/0). Os blocos são as bombas
+  cadastradas — quando o layout real do BR for montado em Configurações → Bombas e Bicos, a aba
+  acompanha sem mudança de código. No Jorro a ordem é a mesma de antes.
+
 ### ⛽ API: o gerente cadastra bombas e bicos do posto (#153)
 
 - **O posto monta a própria pista pela API**, sem o seed ser reescrito: o Posto BR tem 24 bicos e a

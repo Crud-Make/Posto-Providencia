@@ -105,3 +105,36 @@ describe('TabelaLeituras — preço em massa por combustível', () => {
     expect(() => campoPrecoDoCombustivel('Gasolina Comum')).toThrow();
   });
 });
+
+describe('TabelaLeituras — linhas agrupadas por bomba (#155)', () => {
+  it('um título por bomba, na ordem da pista, com os bicos dela logo abaixo e os campos na mesma ordem', () => {
+    const naBomba = (id: number, numero: number, bombaId: number, bombaNome: string): BicoComDetalhes =>
+      ({ ...bico(id, 10, 'Gasolina Comum'), numero, bomba: { id: bombaId, nome: bombaNome } }) as unknown as BicoComDetalhes;
+    const bicos = [naBomba(1, 3, 2, 'BOMBA 02'), naBomba(2, 1, 1, 'BOMBA 01'), naBomba(3, 2, 1, 'BOMBA 01')];
+    const onInicial = vi.fn();
+
+    act(() => {
+      root.render(
+        <TabelaLeituras
+          bicos={bicos}
+          leituras={semLeituras()}
+          onLeituraInicialChange={onInicial}
+          onLeituraFechamentoChange={vi.fn()}
+          onLeituraInicialBlur={vi.fn()}
+          onLeituraFechamentoBlur={vi.fn()}
+          calcLitros={semLitros}
+        />,
+      );
+    });
+
+    const linhas = Array.from(container.querySelectorAll('tbody tr')).map((tr) =>
+      tr.querySelector('th[scope="rowgroup"]')?.textContent ?? `bico ${tr.querySelector('td div div')?.textContent}`,
+    );
+    expect(linhas).toEqual(['BOMBA 012 bicos', 'bico 1', 'bico 2', 'BOMBA 021 bico', 'bico 3']);
+
+    // O primeiro campo de leitura inicial é o do bico 1 (id 2): digitar nele não cai em outro bico.
+    const primeiroInicial = container.querySelector<HTMLInputElement>('tbody input')!;
+    digitar(primeiroInicial, '100');
+    expect(onInicial).toHaveBeenCalledWith(2, '100');
+  });
+});
