@@ -22,6 +22,32 @@
   `entities/posto/lib/marca-do-posto.test.ts`, `shared/lib/frase-do-dia.test.ts`; o
   `App.escolha-de-posto.test.tsx` passou a procurar o novo título.
 
+### 👥 Ensaio: contas separadas por posto
+
+- O seed do ensaio (`banco/ensaio/posto-br.sql`) passa a criar **uma conta de gerente por posto**,
+  decisão do dono de 27/09: `elias.jorro@ensaio.local` só no Jorro e `elias.br@ensaio.local` só no BR.
+  E-mails fictícios até haver os oficiais; o `postoprovidenciaa@gmail.com` e o "gerente só do BR" saem.
+- A skill `validar-mvp-dois-postos` acompanha: cada conta entra direto no próprio posto e leva 403 no outro.
+- **`scripts/prova-isolamento-ensaio.sh`**: a prova de isolamento pela API em um comando — login de cada
+  conta lista só o próprio posto; 14 rotas cruzadas dão 403 nos dois sentidos; frentista cadastrado no BR
+  não aparece no Jorro; chave do frentista (404 pelo outro posto, 201, 409 na 2ª, a antiga segue valendo,
+  não entra no Jorro); sessão do PWA recusada no outro posto; retrato do Jorro idêntico. **33 ok, 0 falha**
+  num banco recém-semeado. Canário: vínculo falso da conta do BR com o Jorro → 10 falhas.
+
+### 🎨 Login e escolha de posto com a logo nova da Rede Providência (#102)
+
+- **Logo nova** (`public/logo-providencia.png`) no login, na redefinição de senha, na barra lateral e
+  na escolha de posto; as cinco logos antigas foram apagadas (`logo-login.jpg`, `logo-posto.png`,
+  `logo-lisa.png`, `logo-rede.png`, `marca-posto@2x.png`). Ícones do app (`pwa-192`, `pwa-512`,
+  `apple-touch-icon`) trocados pela gota da logo nova.
+- **Login redesenhado:** faixa azul/vermelho/dourado da marca, foto do posto com a frase do dia,
+  modo claro e escuro com botão de alternar, rodapé "© Rede Providência. Todos os direitos
+  reservados." e "Jesus te ama". A lógica (lembrar acesso, esqueci a senha) não mudou.
+- **Escolha de posto redesenhada:** saudação pela hora, frase do dia no lugar de "Em qual posto você
+  quer entrar?", cartões com a foto do posto (o Jorro; o BR mostra as iniciais até ter foto) e o papel.
+  Aparece só para quem tem mais de um posto (desde 27/09 cada posto tem contas próprias).
+- Cores medidas da logo: vermelho `#A30E19`, azul `#042992`, dourado `#E5BE41`.
+
 ### 📍 PWA do frentista: "Em qual posto?" a cada abertura e o frentista cria a própria chave (#101)
 
 - **Rota nova, pública:** `GET /api/postos` (módulo `App\Cadastro`, sem token, `throttle:60,1`): `id` e

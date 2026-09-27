@@ -47,9 +47,9 @@ description: >-
 | # | O que | Como conferir | Se falhar |
 |---|---|---|---|
 | P1 | **Multi-tenant na `fase-a`** — os 5 uniques com `posto_id` (PR #144, `feat/#93-multi-tenant-na-fase-a`) | `git fetch && git merge-base --is-ancestor origin/feat/#93-multi-tenant-na-fase-a origin/fase-a` | Sem ele, o 2º posto a fechar o mesmo dia leva **500** no unique do `Fechamento`. Pedir o "ok" do dono para mergear o #144. |
-| P2 | Banco sobe com o esquema inteiro, incluindo o `02-*.sql` do #93 e o `08-compra-pela-api.sql` | `docker compose up -d` e `\d "Fechamento"` mostra unique com `posto_id` | Recriar o volume do compose (é local — conferir antes que é o banco da worktree certa: `scripts/banco-da-worktree.sh`). |
+| P2 | Banco sobe com o esquema inteiro (o `scripts/banco-da-worktree.sh subir` às vezes volta ANTES de aplicar os cadastros — rode de novo até o Jorro existir; o seed recusa banco sem ele), incluindo o `02-*.sql` do #93 e o `08-compra-pela-api.sql` | `docker compose up -d` e `\d "Fechamento"` mostra unique com `posto_id` | Recriar o volume do compose (é local — conferir antes que é o banco da worktree certa: `scripts/banco-da-worktree.sh`). |
 | P3 | **Posto BR existe** com catálogo próprio e **24 bicos** (6 bombas × 4; o Jorro tem 6), turnos, formas de pagamento e 3 frentistas com PIN | `scripts/semeia-ensaio-dois-postos.sh <porta>` — cria tudo e imprime o resumo (`bicos = 24`); depois `GET /api/postos/2/bicos` devolve 24 linhas **só do posto 2** | O script só aceita um container `posto-pg-*`/`posto-postgres` local e não refaz se o BR já existir. Catálogo é DE ENSAIO: preços diferentes dos do Jorro de propósito; preços e divisão reais por bomba ainda não vieram do Elias. |
-| P4 | **Contas e PINs** — o mesmo script: ADMIN sem senha ganha senha; Elias (`postoprovidenciaa@gmail.com`) GERENTE no Jorro **e** no BR (o vínculo é a única linha que cita o Jorro); `gerente.br@ensaio.local` só no BR (para o 403); os 3 frentistas do BR nascem SEM chave (cada um cadastra a sua no PWA — decisão de 27/09). O script aborta se o retrato do Jorro mudar | `POST /api/login` de cada um: `usuario.postos` lista 2, 2 e 1 posto | As senhas e PINs saem UMA vez na tela do script: guarde para o ensaio, não vão para o git. |
+| P4 | **Contas SEPARADAS POR POSTO** (decisão de 27/09) — o mesmo script: ADMIN sem senha ganha senha; `elias.jorro@ensaio.local` GERENTE **só** no Jorro e `elias.br@ensaio.local` GERENTE **só** no BR (e-mails fictícios até haver os oficiais); os 3 frentistas do BR nascem SEM chave (cada um cadastra a sua no PWA). O script aborta se o retrato do Jorro mudar | `POST /api/login` de cada um: `usuario.postos` lista **1** posto cada (o do e-mail) | As senhas saem UMA vez na tela do script: guarde para o ensaio, não vão para o git. |
 | P5 | **Todas as flags da API ligadas** no web e no PWA: `VITE_API_URL` + `VITE_API_{LOGIN,DASHBOARD,PROPRIETARIO,RELATORIO,CUSTOS,FORNECEDOR,FRENTISTAS,TANQUES,PWA}=1` | `git grep -oh "VITE_API_[A-Z_]*" frontend \| sort -u` — a lista tem de bater com o `.env` do ensaio | Flag desligada = tela lendo do Supabase = posto 2 invisível ou dado do Jorro de produção na tela. |
 | P7 | **O PWA do frentista escolhe o posto NA HORA (toda vez que abre, sem lembrar) e o frentista cadastra a própria chave no primeiro acesso** (`POST /postos/{posto}/frentistas/primeiro-acesso`, branch `feat/#101-pwa-escolha-de-posto`). **Os PWAs acessam os dois postos.** Em 26/09 os dois estavam presos no Jorro: `POSTO_ID = 1` em `pwa-frentista/src/shared/config/index.ts` e em duas telas do `pwa-dono` (que ainda é 100% Supabase) | `git grep -n "POSTO_ID *= *1" frontend/apps/pwa-*/src` → vazio; no PWA do frentista dá para chegar à lista de frentistas do BR | Sem isso, B1–B3 não entram no PWA e o R2/R3 não roda. É feature (escolha do posto no PWA), não ajuste de ensaio. |
 | P6 | Gates verdes no commit do ensaio | em `backend/`: `composer gates`; em `frontend/`: `bun run type-check`, `bun run test`, **`bun run test:golden`** (nunca `bun test` puro) | Não ensaiar sobre árvore vermelha. |
@@ -74,10 +74,10 @@ resolveu (mesma data, dois postos), provada sem escrever no Jorro.
 
 | Passo | Quem / onde | O que fazer | O que conferir |
 |---|---|---|---|
-| R1 | Elias, painel | Login → tela de escolha mostra **Jorro e BR** | Usuário só-BR vê só o BR (sem tela de escolha ou com 1 opção) |
+| R1 | Elias, painel | Login com `elias.br@…` → entra direto no **BR**; sair e entrar com `elias.jorro@…` → entra direto no **Jorro** | Nenhuma das duas contas vê o outro posto em lugar nenhum (seletor, menu, URL trocando o id) |
 | R2 | Frentistas do BR, PWA | Abrir o PWA → escolher **Posto BR** → tocar no próprio nome → **"Crie sua chave"** (PIN + confirmação) → entra; marcar presença. Fechar e reabrir: pergunta o posto de novo | Chave criada 1 vez só: tentar criar de novo para o mesmo frentista → 409 "peça ao gerente para zerar", e a chave antiga segue valendo; confirmação diferente → recusa; frentista do BR **não** aparece nem entra escolhendo o Jorro (`/postos/1/frentistas/entrar` → 401/404) |
 | R3 | Frentistas B1–B3, PWA do BR | Leituras de encerrante, envio do caixa (dinheiro, cartão, pix), 1 venda de produto, 1 medição de régua | Reenvio idêntico não duplica (idempotência); reenvio com valor diferente → 409 (pergunta 3 pendente do dono) |
-| R4 | Elias, painel → Fechamento de Caixa do BR, na data que o Jorro já fechou | Abrir o dia, conferir, **Salvar** | Salva sem 500 (unique com `posto_id`); os envios do R3 aparecem só no BR; `diferenca = concentrador − conferido`; `total_vendas` = o do encerrante |
+| R4 | Elias (conta do BR), painel → Fechamento de Caixa do BR, na data que o Jorro já fechou | Abrir o dia, conferir, **Salvar** | Salva sem 500 (unique com `posto_id`); os envios do R3 aparecem só no BR; `diferenca = concentrador − conferido`; `total_vendas` = o do encerrante |
 | R4b | **Ressalva do BR: 24 bicos** | No Fechamento do BR, lançar encerrante nos 24 bicos (inclusive o 24) e salvar; repetir no celular (largura de 375 px) | As 24 linhas aparecem, na ordem do bico, sem corte nem rolagem quebrada; o total por combustível soma 6 bicos cada; nada foi desenhado pensando só nos 6 do Jorro (grade fixa, `slice`, limite de linhas) |
 | R5 | Painel → Relatório Diário, Dashboard, Visão Proprietário, Análise de Custos — **nos dois postos** | Ler o dia/mês | No BR, só o que o R3/R4 gravou; no Jorro, os mesmos números de antes do ensaio (anote-os no início) |
 | R6 | Painel → Registro de Compras, Tanques, Frentistas — **só no BR** | 1 compra, 1 medição, cadastrar 1 frentista, desativar 1 | Nada disso aparece ao trocar para o Jorro; o frentista novo aparece no PWA do BR sem chave e cadastra a sua; frentista desativado perde a sessão de PIN |
@@ -91,10 +91,24 @@ para e consulta a skill.
 
 ## §3 — Prova de isolamento (o coração do ensaio)
 
-Além do que o roteiro já cobre pela tela, ataque a API direto com o token de cada usuário:
+Além do que o roteiro já cobre pela tela, ataque a API direto com o token de cada usuário. Os itens 1, 2,
+3 e 5 estão automatizados em `scripts/prova-isolamento-ensaio.sh` (33 conferências; sobe o backend na
+8766 contra o banco do ensaio). Rode num banco recém-semeado, **antes** de o Elias usar a tela:
 
-1. **Usuário só-BR pedindo o Jorro:** `GET /api/postos/1/dashboard`, `/fechamento`,
-   `/relatorio-diario`, `/equipe`, `POST /api/postos/1/compras` → todos **403**. Um 200
+```
+SENHA_JORRO=<do seed> SENHA_BR=<do seed> scripts/prova-isolamento-ensaio.sh <porta> [pasta do backend com vendor/]
+```
+
+Saída `RESULTADO: N ok, 0 falha(s)` e exit 0 = isolamento provado pela API. Canário (27/09): dar à conta
+do BR um vínculo com o Jorro em `UsuarioPosto` → 10 falhas, inclusive o retrato do Jorro. O PIN tem
+limite de 5/min por frentista: entre duas rodadas, espere 1 minuto (senão 429). Depois dela, re-semeie
+(recrie o volume) para o ensaio começar limpo.
+
+Os itens, um a um:
+
+1. **Conta de um posto pedindo o outro:** com o token de `elias.br@…`, `GET /api/postos/1/dashboard`,
+   `/fechamento`, `/relatorio-diario`, `/equipe`, `POST /api/postos/1/compras` → todos **403**; e o mesmo
+   com o token de `elias.jorro@…` contra `/api/postos/2/...`. Um 200
    aqui é o defeito mais grave possível: parar o ensaio e reportar.
 2. **Recurso de um posto pela rota do outro:** `PUT /api/postos/2/equipe/{id de frentista do Jorro}`
    e `POST .../desativar` → 403/404, **nunca** 200.
