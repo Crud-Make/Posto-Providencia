@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🔁 Painel: a escolha do posto aparece em todo login (#102)
+
+- **"Escolha o posto para começar" é o padrão geral** (regra do dono, 27/09): aparece a cada login,
+  a cada recarga da página e também para quem tem um posto só. O navegador não guarda mais o posto
+  (`postoAtivoId` saiu do `localStorage` nos dois caminhos, API e Supabase); a escolha vale só para a
+  sessão em que foi feita — saiu e entrou, pergunta de novo. Antes, quem entrou num posto uma vez
+  nunca mais via a tela, porque nem o Sair apagava a chave.
+
 ### 🎨 PWA do frentista: marca nova da rede e foto do posto na escolha (#101)
 
 - **Tela de escolha do posto com a marca nova**, o mesmo visual do painel: faixa azul/vermelho/dourado

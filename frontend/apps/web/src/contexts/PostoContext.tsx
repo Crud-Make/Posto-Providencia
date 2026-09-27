@@ -95,11 +95,8 @@ const ProvedorDePostoSupabase: React.FC<PostoProviderProps> = ({ children }) => 
             if (postosData.length > 0 && !postoAtivoDefinidoRef.current) {
                 postoAtivoDefinidoRef.current = true;
 
-                // Verificar se há um posto salvo no localStorage
-                const savedPostoId = localStorage.getItem('postoAtivoId');
-                const defaultPosto = savedPostoId
-                    ? postosData.find((p) => p.id === parseInt(savedPostoId, 10)) || postosData[0]
-                    : postosData[0];
+                // O navegador não guarda o posto (regra de 27/09/2026).
+                const defaultPosto = postosData[0];
 
                 setPostoAtivoState(defaultPosto);
                 setPostoAtivoId(defaultPosto.id);
@@ -140,7 +137,6 @@ const ProvedorDePostoSupabase: React.FC<PostoProviderProps> = ({ children }) => 
     const setPostoAtivo = (posto: Posto) => {
         setPostoAtivoState(posto);
         setPostoAtivoId(posto.id);
-        localStorage.setItem('postoAtivoId', posto.id.toString());
     };
 
     // Função para definir posto ativo por ID

@@ -50,11 +50,11 @@ beforeEach(() => localStorage.clear());
 afterEach(() => act(() => raiz.unmount()));
 
 describe('usePostosDaApi', () => {
-    it('um posto só: entra direto nele', () => {
+    it('um posto só: também passa pela tela de escolha (padrão geral, 27/09)', () => {
         comPostos([JORRO]);
         montar();
-        expect(atual.postoAtivo?.nome).toBe('Posto Jorro');
-        expect(atual.postoAtivoId).toBe(1);
+        expect(atual.postos.map((p) => p.nome)).toEqual(['Posto Jorro']);
+        expect(atual.postoAtivo).toBeNull();
     });
 
     it('dois postos e nenhuma escolha: nenhum ativo (vai para a tela de escolha)', () => {
@@ -64,19 +64,40 @@ describe('usePostosDaApi', () => {
         expect(atual.postoAtivo).toBeNull();
     });
 
-    it('escolher o BR ativa o BR e lembra a escolha', () => {
+    it('escolher o BR ativa o BR e o navegador NÃO guarda nada', () => {
         comPostos([JORRO, BR]);
         montar();
         act(() => atual.setPostoAtivoById(2));
         expect(atual.postoAtivo?.nome).toBe('Posto BR');
-        expect(localStorage.getItem('postoAtivoId')).toBe('2');
+        expect(localStorage.length).toBe(0);
     });
 
-    it('escolha guardada de um posto que a conta NÃO tem é ignorada', () => {
-        localStorage.setItem('postoAtivoId', '99');
+    it('posto guardado por versão antiga do painel é ignorado: a escolha aparece de novo', () => {
+        localStorage.setItem('postoAtivoId', '1');
         comPostos([JORRO, BR]);
         montar();
         expect(atual.postoAtivo).toBeNull();
+    });
+
+    it('saiu e entrou de novo: a escolha anterior não vale, pergunta outra vez', () => {
+        comPostos([JORRO, BR]);
+        montar();
+        act(() => atual.setPostoAtivoById(1));
+        expect(atual.postoAtivo?.nome).toBe('Posto Jorro');
+        act(() => {
+            perfil = null;
+            raiz.render(<Sonda aoMudar={(valor) => { atual = valor; }} />);
+        });
+        act(() => {
+            comPostos([JORRO, BR]);
+            raiz.render(<Sonda aoMudar={(valor) => { atual = valor; }} />);
+        });
+        expect(atual.postoAtivo).toBeNull();
+    });
+
+    it('posto que a conta NÃO tem não fica ativo', () => {
+        comPostos([JORRO, BR]);
+        montar();
         act(() => atual.setPostoAtivoById(99));
         expect(atual.postoAtivo).toBeNull();
     });
