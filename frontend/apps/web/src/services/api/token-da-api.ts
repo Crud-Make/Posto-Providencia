@@ -1,34 +1,21 @@
 /**
  * Onde o painel guarda o token do login da API (#102, Sanctum modo token).
  *
- * @remarks `localStorage` porque o token precisa sobreviver ao recarregar a página e o painel não
- *          usa cookie (a API pode estar em outro domínio). Toda leitura e escrita é protegida:
- *          navegador em modo privado ou com armazenamento bloqueado lança no acesso, e aí o
- *          painel simplesmente não lembra a sessão — pede o login de novo, nunca quebra.
+ * @remarks Só na memória da página (regra do dono, 27/09/2026: "o navegador não pode salvar nada").
+ *          Recarregar a página ou fechar a aba encerra a sessão, e a tela de entrada — escolha do
+ *          posto + e-mail e senha — aparece de novo. Antes ficava no `localStorage`, e quem entrou
+ *          uma vez caía direto no último posto sem passar pela escolha.
  */
-const CHAVE = 'posto.tokenDaApi';
+let tokenAtual: string | null = null;
 
 export function lerTokenDaApi(): string | null {
-    try {
-        const token = localStorage.getItem(CHAVE);
-        return token === null || token === '' ? null : token;
-    } catch {
-        return null;
-    }
+    return tokenAtual;
 }
 
 export function guardarTokenDaApi(token: string): void {
-    try {
-        localStorage.setItem(CHAVE, token);
-    } catch {
-        // Sem armazenamento a sessão vale só até recarregar a página — ver @remarks.
-    }
+    tokenAtual = token === '' ? null : token;
 }
 
 export function esquecerTokenDaApi(): void {
-    try {
-        localStorage.removeItem(CHAVE);
-    } catch {
-        // Nada guardado para apagar.
-    }
+    tokenAtual = null;
 }

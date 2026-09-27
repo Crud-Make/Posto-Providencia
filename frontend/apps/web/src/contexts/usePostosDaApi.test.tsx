@@ -95,6 +95,29 @@ describe('usePostosDaApi', () => {
         expect(atual.postoAtivo).toBeNull();
     });
 
+    it('posto escolhido ANTES da senha vale para o login que vem em seguida', () => {
+        perfil = null;
+        montar();
+        act(() => atual.setPostoAtivo({ id: 2, nome: 'Posto BR' } as never));
+        expect(atual.postoAtivo).toBeNull();
+        act(() => {
+            comPostos([JORRO, BR]);
+            raiz.render(<Sonda aoMudar={(valor) => { atual = valor; }} />);
+        });
+        expect(atual.postoAtivo?.nome).toBe('Posto BR');
+    });
+
+    it('escolheu antes da senha um posto que a conta NÃO tem: nenhum ativo', () => {
+        perfil = null;
+        montar();
+        act(() => atual.setPostoAtivo({ id: 2, nome: 'Posto BR' } as never));
+        act(() => {
+            comPostos([JORRO]);
+            raiz.render(<Sonda aoMudar={(valor) => { atual = valor; }} />);
+        });
+        expect(atual.postoAtivo).toBeNull();
+    });
+
     it('posto que a conta NÃO tem não fica ativo', () => {
         comPostos([JORRO, BR]);
         montar();

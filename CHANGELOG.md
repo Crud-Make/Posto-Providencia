@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### 🚪 Painel: uma tela só para entrar — os postos e a senha juntos (#102)
+
+- **A tela do canvas "Escolha de Posto — Rede Providência" é a única de entrada** (regra do dono,
+  27/09): logo, saudação e frase do dia à esquerda; à direita os cartões dos postos (lista pública
+  `GET /api/postos`, só id e nome) e, ao escolher um, o e-mail e a senha na MESMA tela. Entrou, o
+  painel abre direto no posto escolhido; conta que não é daquele posto é recusada e sai.
+- **Saíram** a tela de login com a foto de fundo e a escolha de posto depois do login
+  (`escolher-posto.tsx`), e a caixa "Salvar meu acesso neste computador" (guardava e-mail e senha em
+  texto puro). O token do login pela API vive só na memória: recarregou ou saiu, volta a esta tela.
+- Com o login pelo Supabase (flag desligada) não há lista pública de postos: o formulário aparece
+  sem os cartões.
+
 ### 🔁 Painel: a escolha do posto aparece em todo login (#102)
 
 - **"Escolha o posto para começar" é o padrão geral** (regra do dono, 27/09): aparece a cada login,

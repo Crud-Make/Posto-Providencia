@@ -61,6 +61,17 @@ export function sairDaApi(): ResultAsync<null, ErroDaApi> {
     });
 }
 
+const postoDaRedeSchema = z.object({ id: z.number().int().positive(), nome: z.string() });
+export type PostoDaRede = z.infer<typeof postoDaRedeSchema>;
+
+/**
+ * Os postos ativos da rede, para os cartões da tela de entrada — rota PÚBLICA (a mesma do PWA do
+ * frentista), porque a escolha do posto vem antes da senha. Só `id` e `nome` saem dela.
+ */
+export function postosDaRede(): ResultAsync<PostoDaRede[], ErroDaApi> {
+    return buscarNaApi('/api/postos', z.object({ data: z.array(postoDaRedeSchema) })).map((resposta) => resposta.data);
+}
+
 /** A frase que a tela de login mostra para cada falha. */
 export function mensagemDoLogin(erro: ErroDaApi): string {
     if (erro.tipo === 'http' && erro.status === 401) return 'E-mail ou senha incorretos.';

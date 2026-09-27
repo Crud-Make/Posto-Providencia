@@ -31,7 +31,6 @@ const TelaGestaoClientes = React.lazy(() => import('./components/clientes/TelaGe
 const TelaFechamentoMensal = React.lazy(() => import('./components/fechamento-mensal'));
 const TelaDashboardProprietario = React.lazy(() => import('./components/dashboard-proprietario'));
 const TelaLogin = React.lazy(() => import('./components/login'));
-const TelaEscolherPosto = React.lazy(() => import('./components/login/escolher-posto'));
 const TelaRedefinirSenha = React.lazy(() => import('./components/login/redefinir-senha'));
 const TelaPlanilhaMensal = React.lazy(() => import('./pages/planilha-mensal'));
 
@@ -112,20 +111,13 @@ const PortaDeEntrada: React.FC = () => {
     );
   }
 
-  if (!autenticado) {
+  // Uma tela só para entrar (27/09/2026): cartões dos postos + e-mail e senha. Com o login pela API
+  // não há painel sem posto escolhido — cada posto da rede vê só o próprio dado —, então a mesma tela
+  // segura quem entrou sem posto válido (ela recusa e sai).
+  if (!autenticado || (loginPelaApiLigado() && postoAtivo === null)) {
     return (
       <Suspense fallback={<LoadingFallback />}>
         <TelaLogin />
-      </Suspense>
-    );
-  }
-
-  // Login pela API (#102): sem posto escolhido não há painel — a rede tem vários postos e cada um
-  // vê só o próprio dado. Abrir num posto padrão mostraria o movimento de um no lugar do outro.
-  if (loginPelaApiLigado() && postoAtivo === null) {
-    return (
-      <Suspense fallback={<LoadingFallback />}>
-        <TelaEscolherPosto />
       </Suspense>
     );
   }

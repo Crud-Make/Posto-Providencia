@@ -21,20 +21,24 @@ export function postoDoPerfil(posto: PostoDoUsuario): Posto {
   };
 }
 
-/** A escolha vale só para a sessão em que foi feita: saiu e entrou de novo, é outro perfil. */
+/**
+ * A escolha do posto. Feita na tela de entrada ANTES da senha, nasce sem sessão (`sessao: null`) e
+ * vale para o login que vem em seguida; feita com alguém logado, vale só para aquela sessão — saiu e
+ * entrou, é outro perfil, e a escolha antiga não conta.
+ */
 interface Escolha {
-  sessao: PerfilDaApi;
+  sessao: PerfilDaApi | null;
   postoId: number;
 }
 
 /**
  * Posto ativo no login pela API (#102): a lista é a do perfil (só os postos do vínculo), e o ativo
- * é o que a pessoa escolheu NESTA sessão.
+ * é o que a pessoa escolheu na tela de entrada.
  *
- * @remarks Regra do dono (27/09/2026): a tela "Escolha o posto para começar" é o padrão geral —
- *          aparece a cada login, a cada recarga e mesmo para quem tem um posto só. O navegador não
- *          guarda o posto (nada de `localStorage`): abrir direto num posto lembrado mostraria o dado
- *          de um posto da rede para quem queria o outro.
+ * @remarks Regra do dono (27/09/2026): uma tela só — os cartões dos postos e, no mesmo lugar, o
+ *          e-mail e a senha. O navegador não guarda o posto (nada de `localStorage`): recarregou,
+ *          escolhe de novo. Posto escolhido que a conta não tem não fica ativo (`null`), e a tela de
+ *          entrada recusa o acesso.
  */
 export function usePostosDaApi(): PostoContextType {
   const { usuario, carregando } = useAuth();
@@ -43,14 +47,13 @@ export function usePostosDaApi(): PostoContextType {
   const postos = useMemo(() => (usuario?.postos ?? []).map(postoDoPerfil), [usuario]);
 
   const postoAtivo = useMemo(() => {
-    if (escolha === null || usuario === null || escolha.sessao !== usuario) return null;
+    if (escolha === null || usuario === null) return null;
+    if (escolha.sessao !== null && escolha.sessao !== usuario) return null;
     return postos.find((p) => p.id === escolha.postoId) ?? null;
   }, [postos, escolha, usuario]);
 
   const setPostoAtivo = useCallback(
-    (posto: Posto) => {
-      if (usuario !== null) setEscolha({ sessao: usuario, postoId: posto.id });
-    },
+    (posto: Posto) => setEscolha({ sessao: usuario, postoId: posto.id }),
     [usuario],
   );
 
