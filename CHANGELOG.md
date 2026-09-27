@@ -2,6 +2,17 @@
 
 ## [Não Lançado]
 
+### 👥 Fechamento de Caixa: os envios do app foram para a aba Detalhamento Frentistas (#103)
+
+- Decisão do dono (27/09), no ensaio do Posto BR: com 24 bicos a tabela "Envios do App" ficava lá
+  embaixo da aba Leituras de Bomba. Agora Leituras tem só as bombas, e os envios abrem a visão **Dia**
+  do Detalhamento Frentistas — nos dois postos, a mesma tela.
+- A barra Vendas (bomba) × Apurado (frentistas) → Diferença + **Salvar** e o aviso "recarregue antes
+  de salvar" aparecem nas duas abas (`abaDoCaixaDoDia`): quem edita o caixa vê a diferença e salva ali.
+- "N recebidos" conta só quem mandou caixa: somava as linhas vazias semeadas ("3 recebidos" com 1
+  envio). E fala "1 recebido" no singular.
+- vitest 1408/0, golden 3536/0; canários da barra nas duas abas e do contador. Dívida do tsc −1.
+
 ### ⛽ Fechamento de Caixa: bico parado no dia (0 L) não trava mais o Salvar (#103)
 
 - Decisão do dono (27/09), no ensaio do Posto BR: com 24 bicos sempre sobra bico que não vendeu. A

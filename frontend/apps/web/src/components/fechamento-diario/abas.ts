@@ -24,3 +24,12 @@ export type AbaFechamento = (typeof ABAS)[number]['chave'];
 export function abaFechamentoDe(valor: string | null): AbaFechamento | null {
     return ABAS.some((a) => a.chave === valor) ? (valor as AbaFechamento) : null;
 }
+
+/**
+ * As abas que mexem no caixa do dia — Leituras de Bomba (bombas) e Detalhamento Frentistas (envios do
+ * app): nelas aparecem a barra Vendas × Apurado → Diferença + Salvar e o aviso de recarregar antes de
+ * salvar. Os envios foram para o Detalhamento em 27/09/2026 (decisão do dono).
+ */
+export function abaDoCaixaDoDia(aba: AbaFechamento): boolean {
+    return aba === 'leituras' || aba === 'detalhamento';
+}

@@ -3,15 +3,18 @@ import { RefreshCcw, Smartphone, Trash2 } from 'lucide-react';
 import type { SessaoFrentista } from '../../../types/fechamento';
 import type { Frentista } from '../../../types/database/index';
 import { paraReais, parseValue } from '../../../utils/formatters';
+import { sessaoSemMovimento } from '../../../utils/fechamentoMeios';
 
 interface EnviosMobileProps {
   sessoes: SessaoFrentista[];
   frentistas: Frentista[];
-  onRefresh?: () => void;
-  loading?: boolean;
-  onUpdateCampo?: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
-  onBlurCampo?: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
-  onRemoverSessao?: (tempId: string) => void;
+  // `| undefined` explícito: a aba Detalhamento repassa as props opcionais que recebe
+  // (`exactOptionalPropertyTypes`).
+  onRefresh?: (() => void) | undefined;
+  loading?: boolean | undefined;
+  onUpdateCampo?: ((tempId: string, campo: keyof SessaoFrentista, valor: string) => void) | undefined;
+  onBlurCampo?: ((tempId: string, campo: keyof SessaoFrentista, valor: string) => void) | undefined;
+  onRemoverSessao?: ((tempId: string) => void) | undefined;
 }
 
 export const EnviosMobile: React.FC<EnviosMobileProps> = ({
@@ -24,6 +27,12 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
   onRemoverSessao
 }) => {
   const sessoesComFrentista = React.useMemo(() => sessoes.filter(s => s.frentistaId), [sessoes]);
+  // "Recebidos" conta quem mandou caixa. A tela semeia uma linha vazia por frentista ativo, e o
+  // contador somava essas também: "3 recebidos" com 1 envio só (ensaio do Posto BR, 27/09/2026).
+  const recebidos = React.useMemo(
+    () => sessoesComFrentista.filter(s => !sessaoSemMovimento(s)).length,
+    [sessoesComFrentista],
+  );
 
   return (
     <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700/50 overflow-hidden">
@@ -40,7 +49,7 @@ export const EnviosMobile: React.FC<EnviosMobileProps> = ({
 
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-            {sessoesComFrentista.length} recebidos
+            {recebidos} {recebidos === 1 ? 'recebido' : 'recebidos'}
           </span>
           {onRefresh && (
             <button

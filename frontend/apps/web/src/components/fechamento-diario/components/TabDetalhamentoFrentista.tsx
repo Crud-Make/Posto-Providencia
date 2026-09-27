@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SessaoFrentista, Frentista } from '../../../types/fechamento';
 import { TabelaConciliacaoFrentistas } from './detalhamento/TabelaConciliacaoFrentistas';
+import { EnviosMobile } from './EnviosMobile';
 import { ResumoMensalFrentistas } from './detalhamento/ResumoMensalFrentistas';
 import { useResumoMensalFrentistas } from '../hooks/useResumoMensalFrentistas';
 
@@ -18,6 +19,10 @@ interface TabDetalhamentoFrentistaProps {
    * Quem converte é o consumidor (`fechamento-diario/index.tsx`), não esta aba.
    */
   onUpdateCampo?: (tempId: string, campo: string, valor: number | string) => void;
+  /** Os envios do app: formatar ao sair do campo, excluir um envio, recarregar do servidor. */
+  onBlurCampo?: (tempId: string, campo: keyof SessaoFrentista, valor: string) => void;
+  onRemoverSessao?: (tempId: string) => void;
+  onRefresh?: () => void;
   postoId: number | null;
   /** Data selecionada no cabeçalho (ISO `YYYY-MM-DD`); o mês vem dela. */
   dataSelecionada: string | null;
@@ -35,7 +40,8 @@ const rotuloDoMes = (dataIso: string | null): string => {
  * Aba de Detalhamento por Frentista.
  *
  * @remarks
- * Duas visões: **Dia** (a conciliação editável do dia selecionado) e **Mês** (o bloco
+ * Duas visões: **Dia** (os envios do app dos frentistas e a conciliação editável do dia — os envios
+ * vieram da aba Leituras de Bomba em 27/09/2026) e **Mês** (o bloco
  * `Caixa Dia 01 a 31` da planilha — quanto cada frentista recebeu por forma de
  * pagamento no mês, e quem é o frentista do mês). Adicionada em 30/08/2026.
  */
@@ -44,6 +50,9 @@ export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> =
   frentistas,
   loading,
   onUpdateCampo,
+  onBlurCampo,
+  onRemoverSessao,
+  onRefresh,
   postoId,
   dataSelecionada,
 }) => {
@@ -81,6 +90,15 @@ export const TabDetalhamentoFrentista: React.FC<TabDetalhamentoFrentistaProps> =
         </div>
       ) : (
         <>
+          <EnviosMobile
+            sessoes={frentistaSessions}
+            frentistas={frentistas}
+            onRefresh={onRefresh}
+            loading={loading}
+            onUpdateCampo={onUpdateCampo}
+            onBlurCampo={onBlurCampo}
+            onRemoverSessao={onRemoverSessao}
+          />
           <TabelaConciliacaoFrentistas
             sessoes={frentistaSessions}
             frentistas={frentistas}

@@ -21,7 +21,6 @@
   "apps/web/src/components/fechamento-diario/components/TabDetalhamentoFrentista.tsx|TS18048": 1,
   "apps/web/src/components/fechamento-diario/components/TabDetalhamentoFrentista.tsx|TS2345": 1,
   "apps/web/src/components/fechamento-diario/components/TabDetalhamentoFrentista.tsx|TS2375": 1,
-  "apps/web/src/components/fechamento-diario/components/TabLeituras.tsx|TS2375": 1,
   "apps/web/src/components/fechamento-diario/hooks/useCalculoGestaoBicos.test.ts|TS2532": 4,
   "apps/web/src/components/fechamento-diario/hooks/useCalculoGestaoBicos.ts|TS2532": 2,
   "apps/web/src/components/fechamento-diario/hooks/useCarregamentoDados.test.ts|TS2532": 9,
