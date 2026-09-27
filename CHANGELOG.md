@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 🛢️ Produtos e Estoque (loja) 100% pela API — ler, cadastrar, editar e movimentar (#103)
+
+- **Rotas novas** (módulo `App\Estoque`, `posto.acesso:gerir`): `GET /estoque/produtos` (ativos com o custo),
+  `POST /estoque/produtos` ("Novo Produto"), `PUT /estoque/produtos/{id}` ("Editar", nunca mexe no estoque) e
+  `POST /estoque/movimentacoes` (entrada soma e refaz o custo médio, saída subtrai, ajuste soma — numa
+  transação, com o produto travado; antes eram três chamadas soltas do navegador). Posto da rota; produto de
+  outro posto é 404/422. Cadastro e movimentação idempotentes pela `chave` (`banco/init/12-*.sql`, também no CI):
+  repetir não cria o produto nem soma o estoque duas vezes.
+- **Custo médio** portado para `PrecoMedioDoProduto` (bcmath, arredondado como o `numeric(10,2)`), **sem mudar a
+  conta** — paridade com números exatos nos dois lados e em 11.315 casos aleatórios; só o empate exato da 3ª
+  casa difere (o float gravava 422,32 onde o exato é 422,325 → 422,33). As duas pontas entraram na trava
+  `so-fable-na-formula.py`.
+- **Tela:** com `VITE_API_ESTOQUE` (ausente segue `VITE_API_URL`, `0` deixa tudo no Supabase) nenhuma chamada
+  ao Supabase — prova com a tela montada e o client num Proxy que reprova. Sem a flag, o caminho de hoje fica
+  intacto. O "Valor em Estoque" não mudou de conta.
+- **Achado:** a entrada pelo Supabase falha inteira hoje (manda `valor_unitario`, coluna que não existe em
+  `MovimentacaoEstoque`); pela API ela grava. Design Doc: `docs/design/painel-pela-api.md` §12.
+
 ### 🏪 Dois postos da rede fecham o mesmo dia — os uniques passam a incluir o posto (#93)
 
 - `banco/init/02-multi-tenant-uniques-por-posto.sql` troca os cinco uniques de tabela escopada que

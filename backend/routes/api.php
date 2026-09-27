@@ -8,6 +8,7 @@ use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PresencaController;
 use App\Cadastro\Http\Middleware\DefinePostoAtual;
 use App\Compras\Http\Controllers\CompraController;
+use App\Estoque\Http\Controllers\ProdutosDoPainelController;
 use App\Estoque\Http\Controllers\ReguaController;
 use App\Estoque\Http\Controllers\TanquesDoPainelController;
 use App\Estoque\Http\Controllers\VendaDoFrentistaController;
@@ -253,4 +254,24 @@ Route::prefix('postos/{posto}')
     ->group(function (): void {
         Route::get('tanques/painel', [TanquesDoPainelController::class, 'show']);
         Route::put('tanques/medicoes', [TanquesDoPainelController::class, 'medir']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Produtos e Estoque (loja) do painel (#103, docs/design/painel-pela-api.md §12)
+|--------------------------------------------------------------------------
+| A lista dos produtos ativos com o custo, o "Novo/Editar Produto" e a "Registrar Movimentação"
+| (entrada, saída, ajuste), que mexe em `Produto.estoque_atual` e refaz o custo médio numa transação.
+| Traz `preco_custo` (dado de proprietário) e grava: `posto.acesso:gerir` em todas — sem token 401,
+| posto de outro 403, operador 403. O `posto_id` sai da rota, nunca do corpo. O prefixo `estoque/`
+| existe porque `GET /produtos` já é a lista do PWA do frentista (sem custo, outro guard). O cadastro
+| e a movimentação são idempotentes pela `chave` do corpo.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::get('estoque/produtos', [ProdutosDoPainelController::class, 'index']);
+        Route::post('estoque/produtos', [ProdutosDoPainelController::class, 'store']);
+        Route::put('estoque/produtos/{produto}', [ProdutosDoPainelController::class, 'update'])->whereNumber('produto');
+        Route::post('estoque/movimentacoes', [ProdutosDoPainelController::class, 'movimentar']);
     });
