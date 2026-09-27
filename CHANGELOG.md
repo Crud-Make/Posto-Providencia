@@ -20,6 +20,15 @@
 - **Achado:** a entrada pelo Supabase falha inteira hoje (manda `valor_unitario`, coluna que não existe em
   `MovimentacaoEstoque`); pela API ela grava. Design Doc: `docs/design/painel-pela-api.md` §12.
 
+### 🏪 Dois postos da rede fecham o mesmo dia — os uniques passam a incluir o posto (#93)
+
+- `banco/init/02-multi-tenant-uniques-por-posto.sql` troca os cinco uniques de tabela escopada que
+  não tinham `posto_id` (o do `Fechamento` era `(data, turno_id)`): até aqui, o segundo posto a abrir
+  o mesmo dia recebia **500** e nada gravava. Aplicado também no passo de esquema do CI.
+- O teste que prendia o limite ("trava conhecida até a #93") vira a prova do contrário: Jorro e BR
+  abrem o mesmo dia, cada um com o seu `Fechamento` e os seus envios.
+- Commit original `8d87a79` (24/09), trazido para cima da `fase-a` atual sem conflito.
+
 ### ⛽ Tanques (Combustível) 100% pela API — ler e medir (#103)
 
 - **Rotas novas** (módulo `App\Estoque`, `posto.acesso:gerir`): `GET /api/postos/{posto}/tanques/painel?mes=&historico_desde=`

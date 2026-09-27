@@ -79,7 +79,7 @@ jobs:
       - name: Carrega o esquema do posto no Postgres do job
         run: |
           psql "postgresql://posto:posto@localhost:5432/posto" -v ON_ERROR_STOP=1 \
-            -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql -f ../banco/init/03-autenticacao.sql \
+            -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql -f ../banco/init/02-multi-tenant-uniques-por-posto.sql -f ../banco/init/03-autenticacao.sql \
             -f ../banco/init/04-acesso-do-frentista.sql -f ../banco/init/05-venda-pelo-pwa.sql \
             -f ../banco/init/08-compra-pela-api.sql -f ../banco/init/12-estoque-de-produtos-pela-api.sql
       - name: Setup PHP
