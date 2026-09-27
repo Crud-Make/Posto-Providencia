@@ -66,9 +66,10 @@ interface ImportMetaEnv {
      */
     readonly VITE_API_ESTOQUE?: string;
     /**
-     * Corte de Configurações → Bombas e Bicos (#153): `1` troca a tabela antiga (só leitura, do
-     * Supabase) pela gestão da pista pela API — lista por bomba e cadastro de bombas e bicos
-     * (`POST`/`PUT /bombas` e `/bicos`) —, `0` deixa a tabela antiga. Ausente, vale o `VITE_API_URL`.
+     * Corte de Configurações → pista do posto (#153, #157): `1` troca a tabela antiga de bicos (só
+     * leitura, do Supabase) pelos cartões Combustíveis e Tanques + Bombas e Bicos pela API
+     * (`POST`/`PUT /combustiveis`, `/tanques`, `/bombas` e `/bicos`) —, `0` deixa a tabela antiga.
+     * Ausente, vale o `VITE_API_URL`.
      */
     readonly VITE_API_BICOS?: string;
 }

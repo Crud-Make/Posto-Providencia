@@ -8,10 +8,12 @@ const api = vi.hoisted(() => ({
     lerPistaDaApi: vi.fn(),
     gravarBicoNaApi: vi.fn(),
     gravarBombaNaApi: vi.fn(),
+    gravarCombustivelNaApi: vi.fn(),
+    gravarTanqueNaApi: vi.fn(),
 }));
 vi.mock('../api/cadastro-de-bicos.api', () => api);
 
-const { GestaoDeBicos } = await import('./gestao-de-bicos');
+const { PistaDoPosto } = await import('./pista-do-posto');
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -25,12 +27,12 @@ const pista: PistaDaApi = {
         { id: 10, numero: 1, ativo: true, bomba: { id: 1 }, combustivel: { id: 6 }, tanque: { id: 60 } },
     ],
     combustiveis: [
-        { id: 5, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true },
-        { id: 6, nome: 'Etanol', codigo: 'ET', cor: '#43A047', ativo: true },
+        { id: 5, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.89' },
+        { id: 6, nome: 'Etanol', codigo: 'ET', cor: '#43A047', ativo: true, preco_venda: '4.89' },
     ],
     tanques: [
-        { id: 50, nome: 'Tanque GC', combustivel_id: 5, ativo: true },
-        { id: 60, nome: 'Tanque ET', combustivel_id: 6, ativo: true },
+        { id: 50, nome: 'Tanque GC', combustivel_id: 5, capacidade: '20000.00', ativo: true },
+        { id: 60, nome: 'Tanque ET', combustivel_id: 6, capacidade: '15000.00', ativo: true },
     ],
 };
 
@@ -51,7 +53,7 @@ afterEach(() => {
 });
 
 async function monta(): Promise<void> {
-    await act(async () => { root.render(<GestaoDeBicos postoId={7} />); });
+    await act(async () => { root.render(<PistaDoPosto postoId={7} />); });
 }
 
 function botao(texto: string): HTMLButtonElement {
@@ -67,14 +69,14 @@ function preenche(campo: HTMLInputElement | HTMLSelectElement, valor: string): v
     campo.dispatchEvent(new Event(campo instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }));
 }
 
-describe('GestaoDeBicos', () => {
+describe('PistaDoPosto — bombas e bicos', () => {
     it('mostra a pista do posto da rota agrupada por bomba, bicos em ordem de número', async () => {
         await monta();
 
         expect(api.lerPistaDaApi).toHaveBeenCalledWith(7);
-        const bombas = [...container.querySelectorAll('h4')].map((h) => h.textContent);
+        const bombas = [...container.querySelectorAll('h4')].map((h) => h.textContent).filter((t) => t?.startsWith('BOMBA') === true);
         expect(bombas).toEqual(['BOMBA 01', 'BOMBA 02']);
-        const primeira = container.querySelector('section');
+        const primeira = [...container.querySelectorAll('section')].find((sec) => sec.querySelector('h4')?.textContent === 'BOMBA 01');
         expect(primeira?.textContent).toMatch(/1.*Etanol.*Tanque ET.*2.*Gasolina Comum.*Tanque GC/);
         expect(container.textContent).toContain('2 bicos ativos em 2 bombas');
     });
@@ -122,5 +124,44 @@ describe('GestaoDeBicos', () => {
 
         expect(api.gravarBicoNaApi).not.toHaveBeenCalled();
         expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe('Escolha a bomba.');
+    });
+});
+
+describe('PistaDoPosto — combustíveis e tanques (#157)', () => {
+    it('mostra cada combustível com o preço e os tanques dele', async () => {
+        await monta();
+        const gc = [...container.querySelectorAll('section')].find((sec) => sec.querySelector('h4')?.textContent === 'Gasolina Comum');
+        expect(gc?.textContent).toContain('R$ 6,89');
+        expect(gc?.textContent).toContain('Tanque GC');
+        expect(gc?.textContent).toContain('20.000 L');
+    });
+
+    it('editar o preço: "6,99" digitado vai para a API como "6.99" (string, sem float) e a pista recarrega', async () => {
+        api.gravarCombustivelNaApi.mockImplementation(() => okAsync({ id: 5, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.99' }));
+        await monta();
+        await act(async () => { botao('Editar Gasolina Comum').click(); });
+        const campos = document.querySelectorAll<HTMLInputElement>('[role="dialog"] input');
+        const preco = [...campos].find((c) => c.placeholder === '6,89');
+        expect(preco?.value).toBe('6,89');
+        await act(async () => { preenche(preco!, '6,99'); });
+        await act(async () => { botao('Salvar').click(); });
+
+        expect(api.gravarCombustivelNaApi).toHaveBeenCalledWith(7, 5, { nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', preco_venda: '6.99', ativo: true });
+        expect(api.lerPistaDaApi).toHaveBeenCalledTimes(2);
+    });
+
+    it('"+ tanque de Etanol" já abre com o Etanol escolhido e nunca manda estoque', async () => {
+        api.gravarTanqueNaApi.mockImplementation(() => okAsync({ id: 61, nome: 'Tanque ET 2', combustivel_id: 6, capacidade: '10000.00', ativo: true }));
+        await monta();
+        await act(async () => { botao('+ tanque de Etanol').click(); });
+        const [nome, capacidade] = document.querySelectorAll<HTMLInputElement>('[role="dialog"] input');
+        expect(document.querySelector<HTMLSelectElement>('[role="dialog"] select')?.value).toBe('6');
+        await act(async () => {
+            preenche(nome!, 'Tanque ET 2');
+            preenche(capacidade!, '10.000');
+        });
+        await act(async () => { botao('Salvar').click(); });
+
+        expect(api.gravarTanqueNaApi).toHaveBeenCalledWith(7, null, { nome: 'Tanque ET 2', combustivel_id: 6, capacidade: '10000', ativo: true });
     });
 });

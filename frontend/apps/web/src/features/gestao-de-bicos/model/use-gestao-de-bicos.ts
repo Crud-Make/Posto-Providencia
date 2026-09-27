@@ -4,10 +4,14 @@ import { descreverErroDaApi, type ErroDaApi } from '@/services/api/base';
 import {
     gravarBicoNaApi,
     gravarBombaNaApi,
+    gravarCombustivelNaApi,
+    gravarTanqueNaApi,
     lerPistaDaApi,
     type BicoDeclarado,
     type BombaDeclarada,
+    type CombustivelDeclarado,
     type PistaDaApi,
+    type TanqueDeclarado,
 } from '../api/cadastro-de-bicos.api';
 
 /** Recusa de regra do servidor chega com a frase pronta para o gerente; o resto vira diagnóstico. */
@@ -22,9 +26,11 @@ export interface GestaoDeBicos {
     /** Grava e recarrega a pista; devolve a mensagem da recusa, ou `null` se gravou. */
     readonly gravarBomba: (id: number | null, corpo: BombaDeclarada) => Promise<string | null>;
     readonly gravarBico: (id: number | null, corpo: BicoDeclarado) => Promise<string | null>;
+    readonly gravarCombustivel: (id: number | null, corpo: CombustivelDeclarado) => Promise<string | null>;
+    readonly gravarTanque: (id: number | null, corpo: TanqueDeclarado) => Promise<string | null>;
 }
 
-/** O catálogo da pista do posto e as escritas dele, todos pela API (#153). */
+/** O catálogo da pista do posto e as escritas dele, todos pela API (#153, #157). */
 export function useGestaoDeBicos(postoId: number | null): GestaoDeBicos {
     const [pista, setPista] = useState<PistaDaApi | null>(null);
     const [carregando, setCarregando] = useState(true);
@@ -68,5 +74,14 @@ export function useGestaoDeBicos(postoId: number | null): GestaoDeBicos {
         [gravar],
     );
 
-    return { pista, carregando, erro, gravarBomba, gravarBico };
+    const gravarCombustivel = useCallback(
+        (id: number | null, corpo: CombustivelDeclarado) => gravar((posto) => gravarCombustivelNaApi(posto, id, corpo)),
+        [gravar],
+    );
+    const gravarTanque = useCallback(
+        (id: number | null, corpo: TanqueDeclarado) => gravar((posto) => gravarTanqueNaApi(posto, id, corpo)),
+        [gravar],
+    );
+
+    return { pista, carregando, erro, gravarBomba, gravarBico, gravarCombustivel, gravarTanque };
 }
