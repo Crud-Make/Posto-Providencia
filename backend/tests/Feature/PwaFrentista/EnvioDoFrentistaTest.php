@@ -223,16 +223,19 @@ it('sem token, ou com token que não existe, é 401', function (): void {
     withToken('1|token-que-nao-existe')->postJson("/api/postos/{$posto->id}/envios", corpoDoEnvio())->assertUnauthorized();
 });
 
-it('trava conhecida até a #93: o dia já aberto por OUTRO posto no turno 1 recusa o envio (500) sem gravar nada', function (): void {
+it('#93: dois postos da rede abrem o MESMO dia, cada um com o seu fechamento, sem se enxergar', function (): void {
     ['posto' => $jorro, 'frentista' => $frentista] = postoDoPwa();
     ['posto' => $br, 'frentista' => $doBr] = postoDoPwa();
     withToken(tokenDoFrentista($br, $doBr))->postJson("/api/postos/{$br->id}/envios", corpoDoEnvio())->assertCreated();
 
-    // O unique de produção é (data, turno_id), sem posto_id (01-esquema-base.sql:757): o pai do BR
-    // ocupa o dia. A migration multi-tenant da #93 troca o unique; até lá, falha alta e nada gravado.
+    // Até a #93 o unique era (data, turno_id), sem posto_id: o pai do BR ocupava o dia e o Jorro
+    // recebia 500. Com `02-multi-tenant-uniques-por-posto.sql` o unique inclui o posto.
     withToken(tokenDoFrentista($jorro, $frentista))
         ->postJson("/api/postos/{$jorro->id}/envios", corpoDoEnvio(['chave' => '9e8d7c6b-5a49-4382-9170-6f5e4d3c2b1a']))
-        ->assertServerError();
+        ->assertCreated();
 
-    expect(DB::table('FechamentoFrentista')->where('frentista_id', $frentista->id)->exists())->toBeFalse();
+    $pais = DB::table('Fechamento')->whereIn('posto_id', [$jorro->id, $br->id])->pluck('posto_id')->sort()->values()->all();
+    expect($pais)->toBe(collect([$jorro->id, $br->id])->sort()->values()->all())
+        ->and(DB::table('FechamentoFrentista')->where('frentista_id', $frentista->id)->value('posto_id'))->toBe($jorro->id)
+        ->and(DB::table('FechamentoFrentista')->where('frentista_id', $doBr->id)->value('posto_id'))->toBe($br->id);
 });

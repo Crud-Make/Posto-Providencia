@@ -470,32 +470,34 @@ it('dia sem leitura declarada não emite evento: não há litros a descontar', f
 
 /*
 |--------------------------------------------------------------------------
-| Multi-tenant — afirmar, não consertar (passo 4)
+| Multi-tenant — TEN-5 fechada (passo 4)
 |--------------------------------------------------------------------------
-| A escrita COLIDE com `Fechamento_data_turno_idx` (data, turno_id) (01-esquema-base.sql:757),
-| porque o Command grava turno_id = 1 (I7). Consertar é DDL contra produção e espera o "vai" do
-| dono (memória multi-tenant-impossivel-sem-migration). Aqui o defeito deixa de ser folclore.
+| Até 22/09/2026 a escrita COLIDIA com `Fechamento_data_turno_idx` (data, turno_id)
+| (01-esquema-base.sql:757), porque o Command grava turno_id = 1 (I7).
+| banco/init/02-multi-tenant-uniques-por-posto.sql trocou a chave para
+| (data, turno_id, posto_id) — ver docs/arquitetura/regras.md TEN-5.
 */
 
-it('🔴 DÍVIDA DE ESQUEMA: dois postos não fecham o mesmo dia — UNIQUE (data, turno_id) sem posto_id', function (): void {
-    // Este teste AFIRMA a limitação. No dia em que a migration incluir posto_id no unique, é ele
-    // que fica vermelho e aponta para a decisão — mesmo padrão de DescontaLitrosVendidosTest:86.
+it('TEN-5 fechada: dois postos fecham o MESMO dia sem colidir', function (): void {
     $a = cenarioP10();
     $paiA = gravaP10(diaP10(sessoes: [sessaoP10($a['frentistaA'], '100.00')], totalRecebido: '100.00'), $a['usuario']->id);
     assert($paiA instanceof Fechamento);
 
     $b = cenarioP10();   // redefine o PostoAtual para o posto B
 
-    // O escopo funciona: B NÃO enxerga o Fechamento de A (senão faria UPDATE nele em vez de
-    // tentar INSERT) — e é exatamente por isso que esbarra no unique sem posto_id.
-    expect(fn () => gravaP10(diaP10(sessoes: [sessaoP10($b['frentistaA'], '999.00')], totalRecebido: '999.00'), $b['usuario']->id))
-        ->toThrow(QueryException::class, 'Fechamento_data_turno_idx');
+    $paiB = gravaP10(diaP10(sessoes: [sessaoP10($b['frentistaA'], '999.00')], totalRecebido: '999.00'), $b['usuario']->id);
+    assert($paiB instanceof Fechamento);
 
-    // E B não tocou em nada de A: a transação de B desfez o que tentou, e A continua como estava.
-    expect(Fechamento::query()->count())->toBe(0);   // visto de B
+    // B não tocou em nada de A.
+    expect(Fechamento::query()->count())->toBe(1);   // visto de B: só o dele
+    $deB = Fechamento::query()->sole();
+    expect($deB->id)->toBe($paiB->id)
+        ->and($deB->total_recebido)->toBe('999.00');
+
     app(PostoAtual::class)->definir($a['posto']->id);
     $deA = Fechamento::query()->sole();
     expect($deA->id)->toBe($paiA->id)
+        ->and($deA->id)->not->toBe($paiB->id)
         ->and($deA->total_recebido)->toBe('100.00')
         ->and(FechamentoFrentista::query()->where('fechamento_id', $paiA->id)->count())->toBe(1);
 });
@@ -504,15 +506,17 @@ it('os uniques que sustentam os dois UPSERTs existem e NÃO colidem entre postos
     // `fechamento_frentista_unico_por_dia` está APLICADO (a memória varredura-19-08, que dizia
     // "escrito e não aplicado", está vencida): é ele que sustenta o UPSERT das sessões. O de
     // Leitura é por (bico_id, data), e bico é por posto — dois postos gravam o mesmo dia sem colidir.
+    // Desde 22/09 (TEN-5), `Fechamento_data_turno_idx` virou `Fechamento_data_turno_posto_idx`,
+    // com posto_id na chave — ver banco/init/02-multi-tenant-uniques-por-posto.sql.
     /** @var list<mixed> $definicoes */
     $definicoes = DB::table('pg_indexes')
-        ->whereIn('indexname', ['Fechamento_data_turno_idx', 'fechamento_frentista_unico_por_dia', 'leitura_unica_bico_data'])
+        ->whereIn('indexname', ['Fechamento_data_turno_posto_idx', 'fechamento_frentista_unico_por_dia', 'leitura_unica_bico_data'])
         ->orderBy('indexname')
         ->pluck('indexdef')->all();
     $texto = implode("\n", array_map(static fn (mixed $d): string => is_string($d) ? $d : '', $definicoes));
 
     expect($definicoes)->toHaveCount(3)
-        ->and($texto)->toContain('UNIQUE INDEX "Fechamento_data_turno_idx"')->toContain('(data, turno_id)')
+        ->and($texto)->toContain('UNIQUE INDEX "Fechamento_data_turno_posto_idx"')->toContain('(data, turno_id, posto_id)')
         ->toContain('UNIQUE INDEX fechamento_frentista_unico_por_dia')->toContain('(fechamento_id, frentista_id)')
         ->toContain('UNIQUE INDEX leitura_unica_bico_data')->toContain('(bico_id, data)');
 
