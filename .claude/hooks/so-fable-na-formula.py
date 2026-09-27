@@ -72,6 +72,11 @@ FORMULA = re.compile(
     # tanque saíram do `useDashboardEstoque` para `montar-painel.ts`, que as duas fontes usam.
     # Fontes, carregador, gravação e hook de tela são dado e tela.
     r"|(^|/)apps/web/src/components/estoque/dashboard/hooks/montar-painel[\w.-]*\.tsx?$"
+    # [26/09] #103 Produtos e Estoque (loja): o custo médio ponderado do produto, que o painel
+    # fazia no cliente (`calculos-estoque-produto.ts`, que nunca esteve na trava) e agora a API
+    # faz no servidor (`PrecoMedioDoProduto.php`) na "Registrar Movimentação". As duas pontas.
+    r"|(^|/)apps/web/src/services/calculos-estoque-produto\.ts$"
+    r"|(^|/)backend/app/Estoque/Domain/PrecoMedioDoProduto\.php$"
 )
 # Teste comum de utils pode mudar à vontade; golden e regressão de dinheiro não.
 TESTE_LIVRE = re.compile(r"\.(test|spec)\.tsx?$")

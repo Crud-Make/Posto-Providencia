@@ -202,7 +202,7 @@ Tela `components/analise-custos`, flag **`VITE_API_CUSTOS`** (`corteDaTelaLigado
 | `compraService.getByDateRange(mês)` → `custoMedioPorCombustivel` | `/dashboard` → `produtos[].compras` (Σ do mês civil) |
 
 `/dashboard` é `posto.acesso:gerir`: sem token 401, operador 403, gerente de outro posto 403 — já provado
-em `AcessoAoDashboardTest`. O catálogo segue público (pendência antiga de `cadastro.md`).
+em `AcessoAoDashboardTest`. O catálogo fechou em 26/09 (#102): `posto.acesso` = `ver`, ver `cadastro.md`.
 
 **Contas:** saíram de `aggregator.service.ts` (−135 linhas) para `hooks/montar-analise.ts` **sem mudar
 fórmula** (custo da compra do mês, despesa do mês ÷ litros do mês, `lucroCombustivel` em centavos,
@@ -459,3 +459,92 @@ síncrono no efeito; "Atualizar" e a releitura depois de medir mostram o spinner
 **Fica de fora:** o campo "Observações" do modal nunca foi gravado (nem antes, nem agora — `HistoricoTanque`
 não tem a coluna); o botão "Ver Relatório Completo" não faz nada (nem antes). `model/estoque-derivado.ts`
 é conta e não está na trava de fórmula (já não estava).
+
+## 12. Produtos e Estoque (loja) pela API (#103, 26/09/2026)
+
+Tela `components/estoque/gestao` (a loja: óleo, aditivo, filtro), flag **`VITE_API_ESTOQUE`**
+(`corteDaTelaLigado`: ausente segue `VITE_API_URL`, `0` deixa **lista, cadastro, edição e movimentação** no
+Supabase). No modo API a tela **não chama o Supabase** — prova em `produtos-e-estoque-pela-api.test.tsx`, a
+TELA montada com o client do Supabase num Proxy que reprova ao ser tocado (lista, cartões, Novo Produto,
+Editar, entrada, saída, reenvio depois de falha de rede, recusa do servidor). `components/estoque/dashboard`
+(Tanques, §11) não foi tocada.
+
+| Antes (Supabase, `useGestaoEstoque` → `stockService`) | Agora (API) | |
+|---|---|---|
+| `getAllProducts(posto)` — `Produto` ativo do posto, `select('*')`, por nome | `GET /estoque/produtos` | leitura |
+| `createProduct({ ...formulário, estoque_atual: estoque_inicial, posto_id })` | `POST /estoque/produtos` | **escrita** |
+| `updateProduct(id, formulário)` + `updated_at` | `PUT /estoque/produtos/{id}` | **escrita** |
+| `registerMovement`: insere `MovimentacaoEstoque`, lê o produto, regrava `estoque_atual` e `preco_custo` (três chamadas soltas do navegador) | `POST /estoque/movimentacoes` (uma transação, produto travado) | **escrita** |
+
+A tela não tem RPC nem tempo real, não apaga nem desativa produto (o `deleteProduct` do service não é
+chamado por ela) e não lê `MovimentacaoEstoque` (o `getMovementsByProduct` também não). O "Valor em
+Estoque", o "Estoque Baixo" e o total continuam no hook, **com a mesma conta** — as duas fontes entregam o
+mesmo `Produto` (paridade em `hooks/fonte-do-estoque.test.ts`, `toEqual`).
+
+**Rotas novas** (módulo `App\Estoque`, bloco próprio em `routes/api.php`, `token.atual` + `DefinePostoAtual` +
+`posto.acesso:gerir` nas quatro — a lista traz `preco_custo`, dado de proprietário, e as outras gravam). O
+prefixo `estoque/` existe porque `GET /produtos` já é a lista do PWA do frentista (sem custo, outro guard).
+
+- `GET /api/postos/{posto}/estoque/produtos` → `{ data: [{ id, nome, codigo_barras, categoria, descricao,
+  preco_custo: "10.00", preco_venda: "19.90", estoque_atual, estoque_minimo, unidade_medida, ativo, posto_id,
+  created_at }] }` — ativos do posto, por nome.
+- `POST /api/postos/{posto}/estoque/produtos` — `{ chave: uuid, nome, codigo_barras, categoria, preco_custo:
+  "12.5", preco_venda: "19.9", estoque_minimo, unidade_medida, descricao, estoque_inicial }` → 201 `{ data: {
+  repetido: false, produto } }`; a mesma chave de novo (mesmo posto e nome) → 200 `repetido: true`, sem criar
+  outro; a chave em outro cadastro → 409 `chave_reutilizada`. O "Estoque Inicial" vai direto em
+  `estoque_atual`, sem movimentação — como antes.
+- `PUT /api/postos/{posto}/estoque/produtos/{id}` — os mesmos campos, sem `chave` e sem estoque → 200 `{ data:
+  produto }`. Nunca mexe em `estoque_atual` (mandar é ignorado). Produto de outro posto → 404.
+- `POST /api/postos/{posto}/estoque/movimentacoes` — `{ chave: uuid, produto_id, tipo: "entrada"|"saida"|"ajuste",
+  quantidade ≥ 1, valor_unitario?: "20", observacao? }` → 201 `{ data: { repetido: false, movimentacao, produto } }`;
+  repetição → 200 `repetido: true` **sem mexer no estoque outra vez**; a chave em outra movimentação → 409.
+  Recusa 422: `produto_invalido` (produto de outro posto), `custo_fora_da_coluna`, `corpo_invalido`.
+
+Preços e custo unitário saem do painel como `String(numero)` — o texto que o supabase-js mandava — e o
+`numeric(10,2)` arredonda no banco, como antes (até 7 dígitos inteiros; número JSON, vírgula e expoente são
+422). Inteiros com a guarda da coluna `integer` (±1.000.000). O posto é o da ROTA; `posto_id` e `data` no
+corpo são ignorados. Texto vazio (código de barras, descrição, observação) vira `null` — o Supabase gravava `''`.
+
+**O efeito da movimentação** (`RegistraMovimentacaoDeEstoque`, porte fiel do `registerMovement`):
+
+| tipo | `estoque_atual` | `preco_custo` |
+|---|---|---|
+| `entrada` | `+ quantidade` | custo médio ponderado (`PrecoMedioDoProduto`) |
+| `saida` | `− quantidade` (pode ficar negativo, como antes) | não muda |
+| `ajuste` | `+ quantidade` (o "Balanço/Ajuste" só soma, como antes) | não muda |
+
+`MovimentacaoEstoque` ganha `produto_id`, `tipo`, `quantidade`, `observacao`, `posto_id` e `data` = agora no
+relógio do SERVIDOR (antes, o do navegador); `responsavel` continua vazio. A tabela **não tem coluna de valor
+unitário**: o custo da entrada só vive no novo `preco_custo`.
+
+**Custo médio — PARIDADE.** `PrecoMedioDoProduto::aposEntrada` é o porte de `precoMedioPonderadoProduto`
+(`services/calculos-estoque-produto.ts`) **sem mudar a conta** — `(estoque × custo + qtd × valor) ÷ (estoque +
+qtd)`, custo mantido com valor ausente/≤ 0 ou estoque final ≤ 0 —, em decimal exato (bcmath) e arredondado
+como o Postgres grava `numeric(10,2)` (metade para longe do zero). Tabela de 12 casos com números exatos nos
+dois lados (`PrecoMedioDoProdutoTest.php` e o gêmeo `calculos-estoque-produto.paridade.test.ts`); fora dela,
+11.315 casos aleatórios conferidos no Postgres do compose deram o mesmo número, **exceto 4 — todos empate exato
+na 3ª casa** (ex.: 4 un a R$ 106,75 + 100 a R$ 434,948 = 422,325): o float do navegador ficava um ulp abaixo do
+meio e o Supabase gravava 422,32; a API grava 422,33. As duas pontas da conta entraram na trava
+`so-fable-na-formula.py` (o arquivo TS nunca esteve nela).
+
+**Idempotência** (`banco/init/12-estoque-de-produtos-pela-api.sql`, também no CI): `MovimentacaoEstoque.
+chave_movimentacao` e `Produto.chave_cadastro`, `uuid` com índice único, NULL nas linhas antigas. O painel gera
+a chave a cada ABERTURA de modal; "Salvar" de novo no mesmo modal (duplo clique, rede que caiu depois de
+gravar) reusa a chave — provado na tela.
+
+**Isolamento** (`ProdutosDoPainelTest`, 24 testes): sem token 401 nas quatro rotas; operador 403 nas quatro;
+gerente do posto A no B 403 nas quatro, nada muda no B; produto do B editado pelo A 404, movimentado pelo A 422
+`produto_invalido`; cadastro com `posto_id` do B no corpo grava no A; inativo e produto do B fora da lista.
+
+**Achado (não corrigido no caminho do Supabase, que fica intacto):** a ENTRADA pelo Supabase manda
+`valor_unitario` no `insert` de `MovimentacaoEstoque`, e a tabela não tem essa coluna (esquema gerado do
+catálogo) — o PostgREST recusa (`PGRST204`) e a entrada falha inteira: nem a movimentação nem o estoque. Saída e
+ajuste funcionam. Pela API, a entrada grava e refaz o custo, que é o que o código pretendia.
+
+**Diferenças de forma, não de número:** a lista tem desempate por `id`; `created_at` vem em ISO 8601 sem
+microssegundos; na troca de posto a tela recarrega sem o spinner (React 19 barra `setState` síncrono no efeito;
+a releitura depois de gravar mostra o spinner como antes); a recusa do servidor aparece no `alert`.
+
+**Fica de fora / perguntas:** a venda de produto pelo PWA segue sem baixar `estoque_atual` (pergunta pendente
+do dono, não mudou); o "Balanço/Ajuste" só soma (a tela não deixa quantidade negativa) — se o dono quer ajuste
+para baixo, é regra nova; `responsavel` da movimentação poderia ser o gerente do token, mas antes ficava vazio.

@@ -17,7 +17,6 @@
   "apps/web/src/components/estoque/dashboard/components/calculos-resumo-financeiro.golden.spec.ts|TS2345": 2,
   "apps/web/src/components/estoque/dashboard/index.tsx|TS2322": 1,
   "apps/web/src/components/estoque/dashboard/model/estoque-derivado.ts|TS2532": 1,
-  "apps/web/src/components/estoque/gestao/hooks/useGestaoEstoque.ts|TS2379": 1,
   "apps/web/src/components/fechamento-diario/components/detalhamento/DetalhamentoRow.tsx|TS2375": 1,
   "apps/web/src/components/fechamento-diario/components/TabDetalhamentoFrentista.tsx|TS18048": 1,
   "apps/web/src/components/fechamento-diario/components/TabDetalhamentoFrentista.tsx|TS2345": 1,
