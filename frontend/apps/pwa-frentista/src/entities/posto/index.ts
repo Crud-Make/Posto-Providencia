@@ -2,5 +2,6 @@
 // o posto é escolhido NA HORA, toda vez que o app abre — nada de posto guardado no aparelho.
 export { buscarPostosAtivos, buscarPostosAtivosPelaApi, postosSemRede } from './api/posto-api';
 export { postoParaEntrar } from './lib/posto-para-entrar';
+export { fotoDoPosto, iniciaisDoPosto } from './lib/marca-do-posto';
 export { postoSchema, postosDaApiSchema } from './model/schema';
 export type { Posto, PostoAtual } from './model/schema';

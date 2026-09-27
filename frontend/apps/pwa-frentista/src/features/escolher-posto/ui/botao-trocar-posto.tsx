@@ -3,7 +3,7 @@ import type { PostoAtual } from '@frentista/entities/posto';
 
 /**
  * O posto escolhido, discreto no topo, e a troca (#101, 27/09/2026). Trocar encerra a sessão de
- * PIN e volta à tela "Em qual posto?". Com um posto só na rede não há troca, e o nome basta.
+ * PIN e volta à tela "Escolha o posto". Com um posto só na rede não há troca, e o nome basta.
  */
 export const BotaoTrocarPosto = ({ atual }: { readonly atual: PostoAtual }) => (
   <div className="flex items-center justify-between text-xs text-slate-400 px-1">
