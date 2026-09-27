@@ -44,7 +44,7 @@ let root: Root | null = null;
 
 const texto = (): string => container?.textContent ?? '';
 const botao = (rotulo: string): HTMLButtonElement | undefined =>
-  Array.from(container?.querySelectorAll<HTMLButtonElement>('button') ?? []).find((b) => b.textContent?.trim() === rotulo);
+  Array.from(container?.querySelectorAll<HTMLButtonElement>('button') ?? []).find((b) => (b.getAttribute('aria-label') ?? b.textContent?.trim()) === rotulo);
 const lidas = (trecho: string): string[] => urls.filter((u) => u.includes(trecho));
 
 const esperar = async () => {
@@ -93,10 +93,10 @@ describe('PWA do frentista: posto escolhido na hora (#101, 27/09/2026)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('pergunta "Em qual posto?" com os postos ativos da API, antes de ler qualquer frentista', async () => {
+  it('pergunta "Escolha o posto" com os postos ativos da API, antes de ler qualquer frentista', async () => {
     await abrir();
 
-    expect(texto()).toContain('Em qual posto?');
+    expect(texto()).toContain('Escolha o posto para começar');
     expect(botao('Posto Jorro')).toBeDefined();
     expect(botao('Posto BR')).toBeDefined();
     expect(urls).toEqual(['http://api.teste/api/postos']);
@@ -107,7 +107,7 @@ describe('PWA do frentista: posto escolhido na hora (#101, 27/09/2026)', () => {
 
     await clicar(botao('Posto BR'));
 
-    expect(texto()).not.toContain('Em qual posto?');
+    expect(texto()).not.toContain('Escolha o posto para começar');
     expect(lidas('/api/postos/2/frentistas/escolha')).toHaveLength(1);
     expect(lidas('/api/postos/1/')).toHaveLength(0);
     expect(localStorage.getItem('pwa.posto')).toBeNull();
@@ -119,7 +119,7 @@ describe('PWA do frentista: posto escolhido na hora (#101, 27/09/2026)', () => {
 
     await abrir();
 
-    expect(texto()).toContain('Em qual posto?');
+    expect(texto()).toContain('Escolha o posto para começar');
   });
 
   it('com um só posto ativo, entra direto nele e não oferece troca', async () => {
@@ -127,7 +127,7 @@ describe('PWA do frentista: posto escolhido na hora (#101, 27/09/2026)', () => {
 
     await abrir();
 
-    expect(texto()).not.toContain('Em qual posto?');
+    expect(texto()).not.toContain('Escolha o posto para começar');
     expect(texto()).toContain('Posto BR');
     expect(lidas('/api/postos/2/frentistas/escolha')).toHaveLength(1);
     expect(botao('Trocar posto')).toBeUndefined();
@@ -173,7 +173,7 @@ describe('PWA do frentista: posto escolhido na hora (#101, 27/09/2026)', () => {
 
     await clicar(botao('Trocar posto'));
 
-    expect(texto()).toContain('Em qual posto?');
+    expect(texto()).toContain('Escolha o posto para começar');
     expect(localStorage.getItem('pwa.sessaoFrentista')).toBeNull();
     expect(localStorage.getItem('pwa.frentista')).toBeNull();
   });
@@ -185,11 +185,11 @@ describe('PWA do frentista: posto escolhido na hora (#101, 27/09/2026)', () => {
     vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(bloqueado);
 
     await abrir();
-    expect(texto()).toContain('Em qual posto?');
+    expect(texto()).toContain('Escolha o posto para começar');
 
     await clicar(botao('Posto BR'));
 
-    expect(texto()).not.toContain('Em qual posto?');
+    expect(texto()).not.toContain('Escolha o posto para começar');
     expect(lidas('/api/postos/2/frentistas/escolha')).toHaveLength(1);
   });
 });

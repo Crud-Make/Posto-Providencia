@@ -310,8 +310,14 @@ dia decidiu que **cada frentista cria a própria chave (PIN) no primeiro acesso*
 - A porta (`PortaDoPosto`) monta o app só depois de haver posto; o posto chega às telas **por props**
   (`postoId`), nunca de constante. A fachada `services/api.ts` perdeu o padrão `POSTO_ID`: o
   `postoId` é obrigatório.
-- Com 2+ postos ativos: tela **"Em qual posto?"** a cada abertura. Com um só: entra direto, e o
-  botão de troca não aparece. Nada do posto vai para o `localStorage`.
+- Com 2+ postos ativos: tela **"Escolha o posto para começar"** a cada abertura (até 27/09 o título era
+  "Em qual posto?"). Com um só: entra direto, e o botão de troca não aparece. Nada do posto vai para o
+  `localStorage`.
+- **Marca nova na tela de escolha (27/09)**, igual ao painel: faixa tricolor, logo da rede numa placa
+  branca, saudação + frase do dia, tema claro/escuro (segue o aparelho; botão sol/lua), e um cartão por
+  posto com a foto `public/postos/<id>.jpg` — sem mapa id → arquivo no código; foto ausente ou que não
+  carrega (`onError`) vira as iniciais (`iniciaisDoPosto`: "Posto BR" → "BR", "Posto Jorro" → "J").
+  Só essa tela mudou de visual; "Crie sua chave" e o PIN seguem no tema escuro do app.
 - **Sessão de PIN guardada e o posto**: ao guardar, o PWA carimba a sessão com o `posto_id` em que
   ela foi aberta (a API não o devolve). Ao entrar num posto, a sessão só continua se for dele
   (`sessaoEhDoPosto`); de outro posto — ou guardada antes do carimbo — é descartada junto com o

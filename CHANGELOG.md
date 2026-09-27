@@ -2,6 +2,26 @@
 
 ## [Não Lançado]
 
+### 🎨 PWA do frentista: marca nova da rede e foto do posto na escolha (#101)
+
+- **Tela de escolha do posto com a marca nova**, o mesmo visual do painel: faixa azul/vermelho/dourado
+  no topo, logo nova da rede (`public/logo-providencia.png`) numa placa branca, saudação e frase do
+  dia (uma por dia do mês, mesma lista e ordem do painel), "Escolha o posto para começar" e o rodapé
+  "© {ano} Rede Providência". Tema claro/escuro por variáveis CSS (`shared/ui/tema.ts`), começando no
+  `prefers-color-scheme` do aparelho, com botão sol/lua. Fontes Sora (títulos) e Manrope (texto) via
+  Google Fonts, com `display=swap` — sem rede, cai na fonte do sistema. Saiu o título "Em qual posto?".
+- **Cartão por posto com foto**: tenta `/postos/<id>.jpg` (sem mapa id → arquivo no código); se a foto
+  não existe ou não carrega, mostra as iniciais num círculo (`iniciaisDoPosto`: "Posto BR" → "BR",
+  "Posto Jorro" → "J"). `public/postos/1.jpg` é a fachada do Jorro que o painel usa no login. O cartão
+  inteiro é o botão (nome acessível = nome do posto, foco visível); tocar escolhe o posto — a regra do
+  #148 (escolhe na hora, um posto só entra direto, "Crie sua chave") não mudou.
+- **Ícones do PWA com a marca nova** (a gota): `pwa-192x192.png`, `pwa-512x512.png` e
+  `apple-touch-icon.png` copiados do painel; `pwa-maskable-512x512.png` gerado deles, com a gota dentro
+  da zona segura de 80 %; `logo.png` (marca antiga, sem uso no código) trocado pela logo nova.
+- Testes: `features/escolher-posto/ui/tela-escolher-posto.test.tsx`,
+  `entities/posto/lib/marca-do-posto.test.ts`, `shared/lib/frase-do-dia.test.ts`; o
+  `App.escolha-de-posto.test.tsx` passou a procurar o novo título.
+
 ### 👥 Ensaio: contas separadas por posto
 
 - O seed do ensaio (`banco/ensaio/posto-br.sql`) passa a criar **uma conta de gerente por posto**,

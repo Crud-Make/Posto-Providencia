@@ -22,6 +22,6 @@ export interface PostoAtual {
   readonly posto: Posto;
   /** `false` com um posto só na rede: não há para onde trocar, e o botão nem aparece. */
   readonly podeTrocar: boolean;
-  /** Encerra a sessão de PIN do aparelho e volta à tela "Em qual posto?". */
+  /** Encerra a sessão de PIN do aparelho e volta à tela "Escolha o posto". */
   readonly trocarPosto: () => void;
 }

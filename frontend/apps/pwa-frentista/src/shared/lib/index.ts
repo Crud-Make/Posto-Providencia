@@ -3,3 +3,4 @@ export { formatCurrency } from './formatar-moeda';
 export { dataFechamentoInicial } from './data-fechamento';
 export { ABAS_VALIDAS, abaSalvaOuPadrao } from './aba-salva';
 export type { TabType } from './tipos-de-aba';
+export { fraseDoDia, saudacao } from './frase-do-dia';
