@@ -58,4 +58,11 @@ interface ImportMetaEnv {
      * inteira no Supabase. Ausente, vale o `VITE_API_URL`.
      */
     readonly VITE_API_TANQUES?: string;
+    /**
+     * Corte da tela Produtos e Estoque — a loja (#103): `1` põe a tela INTEIRA na API — a lista
+     * (`GET /estoque/produtos`), o "Novo/Editar Produto" (`POST`/`PUT /estoque/produtos`) e a
+     * "Registrar Movimentação" (`POST /estoque/movimentacoes`) —, `0` a deixa inteira no Supabase.
+     * Ausente, vale o `VITE_API_URL`.
+     */
+    readonly VITE_API_ESTOQUE?: string;
 }
