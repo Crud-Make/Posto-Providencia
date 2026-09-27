@@ -4,6 +4,7 @@ use App\Agregacao\Http\Controllers\AgregacaoController;
 use App\Agregacao\Http\Controllers\RelatorioDiarioController;
 use App\Cadastro\Http\Controllers\BombasEBicosController;
 use App\Cadastro\Http\Controllers\CatalogoController;
+use App\Cadastro\Http\Controllers\CombustiveisETanquesController;
 use App\Cadastro\Http\Controllers\EquipeController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PostoDoPwaController;
@@ -311,4 +312,9 @@ Route::prefix('postos/{posto}')
         Route::put('bombas/{bomba}', [BombasEBicosController::class, 'editaBomba'])->whereNumber('bomba');
         Route::post('bicos', [BombasEBicosController::class, 'criaBico']);
         Route::put('bicos/{bico}', [BombasEBicosController::class, 'editaBico'])->whereNumber('bico');
+        // #157: combustível (com preço de venda, sem custo) e tanque (sem estoque — nasce 0, a partida é a régua).
+        Route::post('combustiveis', [CombustiveisETanquesController::class, 'criaCombustivel']);
+        Route::put('combustiveis/{combustivel}', [CombustiveisETanquesController::class, 'editaCombustivel'])->whereNumber('combustivel');
+        Route::post('tanques', [CombustiveisETanquesController::class, 'criaTanque']);
+        Route::put('tanques/{tanque}', [CombustiveisETanquesController::class, 'editaTanque'])->whereNumber('tanque');
     });
