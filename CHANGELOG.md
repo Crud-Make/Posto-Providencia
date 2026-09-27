@@ -2,6 +2,12 @@
 
 ## [Não Lançado]
 
+### 📍 Painel e PWA dizem em qual posto se está (#102)
+
+- **Painel:** a barra lateral mostra o nome do posto ativo embaixo da marca (some com a barra recolhida).
+- **PWA do frentista:** o cartão "Selecionar Frentista" dizia "Posto Jorro" fixo no código, mesmo com o
+  Posto BR escolhido; agora mostra o posto escolhido. Achados no ensaio Jorro+BR de 27/09.
+
 ### 🐛 Painel: a tela de entrada não desloga mais sozinha (#102)
 
 - Ao entrar pela tela nova, o login dava 200 e o painel chamava `/api/sair` na hora (achado no ensaio

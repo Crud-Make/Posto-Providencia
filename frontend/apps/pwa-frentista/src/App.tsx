@@ -598,7 +598,7 @@ const AppComponent = ({ setDialog, postoAtual }: { setDialog: React.Dispatch<Rea
                 </h2>
                 <ChevronDown size={16} className="text-slate-400" />
               </div>
-              <p className="text-sm text-slate-400 mt-0.5">Posto Jorro</p>
+              <p className="text-sm text-slate-400 mt-0.5">{postoAtual.posto.nome}</p>
             </div>
           </div>
           {selectedFrentista ? (

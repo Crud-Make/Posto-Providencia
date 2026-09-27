@@ -15,10 +15,12 @@ import {
   Table2,
   Menu,
   LogOut,
-  Calculator
+  Calculator,
+  MapPin
 } from 'lucide-react';
 import { useTheme } from '../contexts/useTheme';
 import { useAuth } from '../contexts/useAuth';
+import { usePosto } from '../contexts/usePosto';
 import { NavLink } from 'react-router-dom';
 
 interface SidebarProps {
@@ -50,6 +52,8 @@ interface SidebarProps {
 const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhida = false, onAlternarRecolhida }) => {
   const { theme, toggleTheme } = useTheme();
   const { autenticado, sair } = useAuth();
+  // Com dois postos na rede, a barra diz em qual se está (ensaio Jorro+BR, 27/09/2026).
+  const nomeDoPosto = usePosto().postoAtivo?.nome;
 
   // Recolhida, a barra vira faixa de ícones. Antes isto eram 16 ternários de
   // `recolhida` espalhados pelo JSX — um por slot de estilo —, e cada um contava
@@ -134,6 +138,13 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
             </button>
           )}
         </div>
+
+        {nomeDoPosto !== undefined && (
+          <p className={`mx-6 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200 ${estreita.rotulo}`}>
+            <MapPin size={16} className="shrink-0 text-marca-vermelho" aria-hidden="true" />
+            <span className="truncate" data-testid="posto-da-barra">{nomeDoPosto}</span>
+          </p>
+        )}
 
         {/* Navigation */}
         <nav className={`flex-1 px-4 py-6 space-y-1 ${estreita.nav}`}>
