@@ -2,6 +2,18 @@
 
 ## [Não Lançado]
 
+### ✏️ Foto do posto: lápis no próprio cartão da tela de entrada (#102)
+
+- Pedido do dono (27/09): trocar a foto sem entrar no painel. Lápis no canto da foto de cada cartão →
+  abre a galeria/câmera → a janela mostra a prévia e pede **só a senha** (o e-mail vem lembrado daquele
+  posto; sem ele, e-mail e senha uma vez). A foto aparece no cartão na hora.
+- Sem senha nenhuma ficou de fora de propósito (explicado ao dono, que escolheu a senha): a tela de
+  entrada é pública, e qualquer um na internet poderia trocar a foto dos postos.
+- A senha vale só para a troca: `POST /api/login` → `PUT /api/postos/{id}/foto` com esse token →
+  `POST /api/sair`, dando certo ou não. A sessão do painel não é tocada (`enviarParaApiComToken`).
+  Conta de outro posto: "Esta conta não pode trocar a foto deste posto." (403 do servidor).
+- A canetinha do menu lateral, para quem já entrou, continua.
+
 ### 🖊️ Foto do posto: canetinha no painel para o gerente trocar a fachada (#102)
 
 - Decisão do dono (27/09): a canetinha fica **no painel, depois de entrar**, ao lado da foto e do nome

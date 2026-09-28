@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { ResultAsync } from 'neverthrow';
-import { enviarParaApi, urlDaApi, type ErroDaApi } from './base';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
+import { enviarParaApi, enviarParaApiComToken, urlDaApi, type ErroDaApi } from './base';
 import type { PerfilDaApi } from './sessao.api';
 
 /**
@@ -37,4 +37,43 @@ export function podeTrocarFotoDoPosto(usuario: PerfilDaApi | null, postoId: numb
   // maiúsculas. Compara sem caixa para não depender de nenhum dos dois.
   const papel = usuario.postos.find((p) => p.id === postoId)?.papel.toUpperCase();
   return papel === 'GERENTE' || papel === 'ADMIN';
+}
+
+const respostaDoLogin = z.object({ token: z.string().min(1) });
+
+/** Encerra o token da troca; falhar aqui não desfaz a troca nem muda o que a tela conta. */
+function encerrar(token: string): ResultAsync<null, never> {
+    return enviarParaApiComToken('/api/sair', 'POST', {}, z.unknown(), token)
+        .map(() => null)
+        .orElse(() => okAsync(null));
+}
+
+/**
+ * Troca a foto pelo cartão da tela de entrada, sem entrar no painel (pedido do dono, 27/09/2026): entra
+ * com o e-mail e a senha do gerente SÓ para esta troca, grava a foto e encerra o token — dando certo ou
+ * não. Quem decide se a conta pode é o servidor (`gerir` do posto): conta de outro posto leva 403.
+ */
+export function trocarFotoComSenha(
+    postoId: number,
+    email: string,
+    senha: string,
+    foto: string,
+): ResultAsync<string | null, ErroDaApi> {
+    return enviarParaApiComToken('/api/login', 'POST', { email, senha, dispositivo: 'foto-do-posto' }, respostaDoLogin, null).andThen(
+        ({ token }) =>
+            enviarParaApiComToken(`/api/postos/${postoId}/foto`, 'PUT', { foto }, respostaDaTroca, token)
+                .andThen((r) => encerrar(token).map(() => r.data.foto))
+                .orElse((erro) => encerrar(token).andThen(() => errAsync(erro))),
+    );
+}
+
+/** A frase da janela de troca para cada falha. */
+export function mensagemDaTrocaDeFoto(erro: ErroDaApi): string {
+    const status = erro.tipo === 'http' || erro.tipo === 'recusado' ? erro.status : null;
+    if (status === 401) return 'E-mail ou senha incorretos.';
+    if (status === 403) return 'Esta conta não pode trocar a foto deste posto.';
+    if (status === 429) return 'Muitas tentativas. Espere um minuto e tente de novo.';
+    if (status === 422) return 'O servidor não aceitou essa foto. Tente outra imagem.';
+    if (erro.tipo === 'rede') return 'Não foi possível falar com o servidor. Confira a internet.';
+    return 'Não foi possível trocar a foto agora. Tente de novo.';
 }

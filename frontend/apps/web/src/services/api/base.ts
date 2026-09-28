@@ -168,15 +168,20 @@ function recusaOuHttp(resposta: Response): ResultAsync<never, ErroDaApi> {
  * O `try/catch` do `fetch` vira `ResultAsync.fromPromise` aqui, na borda — regra de negócio acima
  * disto não lança. A resposta entra como `unknown` e só sai tipada depois do `safeParse`.
  */
-function chamarApi<T>(caminho: string, requisicao: (token: string | null) => RequestInit, schema: z.ZodType<T>): ResultAsync<T, ErroDaApi> {
+function chamarApi<T>(
+    caminho: string,
+    requisicao: (token: string | null) => RequestInit,
+    schema: z.ZodType<T>,
+    obterToken: () => ResultAsync<string | null, ErroDaApi> = tokenDaSessao,
+): ResultAsync<T, ErroDaApi> {
     const base = urlDaApi();
     if (base === null) {
         return errAsync({ tipo: 'sem_api' });
     }
 
-    return tokenDaSessao()
-        .andThen((token) =>
-            ResultAsync.fromPromise(fetch(`${base}${caminho}`, requisicao(token)), (erro): ErroDaApi => ({ tipo: 'rede', detalhe: descreverFalha(erro) })),
+    return obterToken()
+        .andThen((tokenDaVez) =>
+            ResultAsync.fromPromise(fetch(`${base}${caminho}`, requisicao(tokenDaVez)), (erro): ErroDaApi => ({ tipo: 'rede', detalhe: descreverFalha(erro) })),
         )
         .andThen((resposta) =>
             resposta.status === 204
@@ -219,6 +224,31 @@ export function enviarParaApi<T>(caminho: string, metodo: 'PUT' | 'POST', corpo:
             body: JSON.stringify(corpo),
         }),
         schema,
+    );
+}
+
+/**
+ * Escrita com um token DADO, fora da sessão do painel (`null` = sem token).
+ *
+ * @remarks Existe para a troca da foto pelo cartão da tela de entrada (27/09/2026): o gerente digita a
+ * senha só para aquela troca, o token nasce e morre ali, e a sessão do painel nem é tocada.
+ */
+export function enviarParaApiComToken<T>(
+    caminho: string,
+    metodo: 'PUT' | 'POST',
+    corpo: unknown,
+    schema: z.ZodType<T>,
+    token: string | null,
+): ResultAsync<T, ErroDaApi> {
+    return chamarApi(
+        caminho,
+        (tokenDaVez) => ({
+            method: metodo,
+            headers: { ...cabecalhos(tokenDaVez), 'Content-Type': 'application/json' },
+            body: JSON.stringify(corpo),
+        }),
+        schema,
+        () => okAsync(token),
     );
 }
 

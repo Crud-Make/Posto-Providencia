@@ -10,13 +10,14 @@ import CartaoDoPosto from './cartao-do-posto';
 import { fraseDoDia, saudacao, variaveisDoTema } from './escolha-de-posto-estilo';
 import FormularioDeEntrada from './formulario-de-entrada';
 import { esquecerEmail } from './email-lembrado';
+import TrocarFotoNoCartao from './trocar-foto-no-cartao';
 
 const FAIXA = ['#042992', '#A30E19', '#E5BE41'] as const;
 
 type ListaDePostos = { estado: 'carregando' } | { estado: 'pronta'; postos: PostoDaRede[] } | { estado: 'falhou' };
 
 /** Os postos dos cartões. Sem o login pela API não há lista pública: o formulário aparece sozinho. */
-function usePostosDaTela(): ListaDePostos {
+function usePostosDaTela(): [ListaDePostos, (postoId: number, foto: string | null) => void] {
   const [lista, setLista] = useState<ListaDePostos>(() => (loginPelaApiLigado() ? { estado: 'carregando' } : { estado: 'pronta', postos: [] }));
 
   useEffect(() => {
@@ -31,7 +32,11 @@ function usePostosDaTela(): ListaDePostos {
     };
   }, []);
 
-  return lista;
+  // A foto trocada no cartão aparece na hora, sem recarregar a lista.
+  const trocarFoto = (postoId: number, foto: string | null) =>
+    setLista((atual) => (atual.estado === 'pronta' ? { estado: 'pronta', postos: atual.postos.map((p) => (p.id === postoId ? { ...p, foto } : p)) } : atual));
+
+  return [lista, trocarFoto];
 }
 
 function comoPosto(posto: PostoDaRede): Posto {
@@ -79,7 +84,8 @@ const CaixaDeEntrada: React.FC<{ titulo: string; classe: string; children: React
 const TelaDeEntrada: React.FC = () => {
   const { setPostoAtivo } = usePosto();
   const { theme, toggleTheme } = useTheme();
-  const lista = usePostosDaTela();
+  const [lista, trocarFotoDaLista] = usePostosDaTela();
+  const [fotoEmTroca, setFotoEmTroca] = useState<{ posto: PostoDaRede; arquivo: File } | null>(null);
   const [escolhido, setEscolhido] = useState<PostoDaRede | null>(null);
   const recusa = useRecusaContaDeOutroPosto(escolhido);
   const agora = new Date();
@@ -131,7 +137,7 @@ const TelaDeEntrada: React.FC = () => {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-flow-row-dense lg:gap-6">
                 {lista.postos.map((posto, i) => (
                   <React.Fragment key={posto.id}>
-                    <CartaoDoPosto id={posto.id} nome={posto.nome} caminhoDaFoto={posto.foto ?? null} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} />
+                    <CartaoDoPosto id={posto.id} nome={posto.nome} caminhoDaFoto={posto.foto ?? null} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} aoEscolherFoto={(arquivo) => setFotoEmTroca({ posto, arquivo })} />
                     {escolhido?.id === posto.id && (
                       <CaixaDeEntrada titulo={`Entrar no ${posto.nome}`} classe={i % 2 === 1 ? 'md:col-start-2' : 'md:col-start-1'}>
                         <FormularioDeEntrada key={posto.id} postoId={posto.id} erroExterno={recusa} />
@@ -148,6 +154,19 @@ const TelaDeEntrada: React.FC = () => {
           <CaixaDeEntrada titulo="Entrar no painel" classe="max-w-md">
             <FormularioDeEntrada postoId={null} erroExterno={recusa} />
           </CaixaDeEntrada>
+        )}
+
+        {fotoEmTroca !== null && (
+          <TrocarFotoNoCartao
+            postoId={fotoEmTroca.posto.id}
+            nome={fotoEmTroca.posto.nome}
+            arquivo={fotoEmTroca.arquivo}
+            aoTrocar={(foto) => {
+              trocarFotoDaLista(fotoEmTroca.posto.id, foto);
+              setFotoEmTroca(null);
+            }}
+            aoFechar={() => setFotoEmTroca(null)}
+          />
         )}
 
         <p className="text-sm" style={{ color: 'var(--texto-suave)' }}>
