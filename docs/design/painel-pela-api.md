@@ -1,6 +1,6 @@
 # Painel web pela API — Design Doc
 
-Issue: #103 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Atualizado: 18/09/2026 (DECISÃO 2: o `AuthContext` não é pré-requisito das fatias — o guard aceita o token atual; ver correção no §3)
+Issue: #103 (mãe: #60) · Estado: **aprovado** (dono, 18/09/2026) · Data: 17/09/2026 · Atualizado: 27/09/2026 (§14, #157: combustíveis e tanques) · 18/09/2026 (DECISÃO 2: o `AuthContext` não é pré-requisito das fatias — o guard aceita o token atual; ver correção no §3)
 
 > A maior fatia da Fase A. Cada módulo abre sub-issue própria quando chega a vez; este doc é o
 > contrato comum às oito.
@@ -558,7 +558,7 @@ Cartão "Bombas e Bicos" de `components/configuracoes/TelaConfiguracoes.tsx`, fl
 (`corteDaTelaLigado`: ausente segue `VITE_API_URL`, `0` deixa a tabela antiga `GestaoBicos`, só leitura, do
 Supabase). Com a flag, a tela monta `GestaoDeBicos` — **o primeiro slice FSD do `web`**,
 `src/features/gestao-de-bicos/` (`api/cadastro-de-bicos.api.ts`, `model/{pista,use-gestao-de-bicos}.ts`,
-`ui/*`), importado só pela Public API `index.ts` (`GestaoDeBicos`, `bicosPelaApi`). Do legado o slice usa
+`ui/*`), importado só pela Public API `index.ts` (`GestaoDeBicos`, `bicosPelaApi`; desde a #157, `PistaDoPosto` no lugar de `GestaoDeBicos` — ver §14). Do legado o slice usa
 apenas `@/services/api/base`. Os produtos e as formas de pagamento da mesma tela não foram tocados, e o
 `useConfiguracoesData` continua buscando `nozzles` no Supabase mesmo com a flag ligada (o dado fica sem uso).
 
@@ -595,3 +595,43 @@ bico, recusa no formulário, formulário incompleto não chama a API).
 
 **Fica de fora:** o slice não prova, como o §12, que a tela inteira deixa de tocar o Supabase — o resto de
 Configurações segue no legado.
+
+## 14. Combustíveis e Tanques (Configurações) pela API (#157, fatia 2 da #153, 27/09/2026)
+
+Mesma tela e mesma flag do §13 (**`VITE_API_BICOS`**). A Public API do slice `features/gestao-de-bicos` passa a
+exportar **`PistaDoPosto`** (`ui/pista-do-posto.tsx`) no lugar de `GestaoDeBicos`: os cartões "Combustíveis e
+Tanques" (`ui/combustiveis-e-tanques.tsx`, `ui/formulario-de-{combustivel,tanque}.tsx`) e "Bombas e Bicos"
+dividem um estado só (`model/use-gestao-de-bicos.ts`), e gravar um recarrega a pista dos dois. A conversão de
+texto da tela para string decimal (`"6,99"` → `"6.99"`, sem float) e o corpo dos formulários ficam em
+`model/cadastro.ts` (`precoDoTexto`, `capacidadeDoTexto`, `corpoDoCombustivel`, `corpoDoTanque`).
+
+| Antes (Supabase) | Agora (API) | |
+|---|---|---|
+| — (combustível e tanque nasciam por seed/SQL) | `POST /combustiveis`, `PUT /combustiveis/{combustivel}` | **escrita** |
+| — | `POST /tanques`, `PUT /tanques/{tanque}` | **escrita** |
+
+**Rotas novas** (`App\Cadastro`, mesmo bloco do §13 em `routes/api.php`, `posto.acesso:gerir`; sem rota de
+apagar — desativar é `ativo: false`; o posto é o da ROTA, `posto_id` no corpo é ignorado). Controller
+`CombustiveisETanquesController` → `CombustiveisDoPosto` / `TanquesDoPosto`, ambos transacionais, edição com
+`lockForUpdate`; `RespostaDoCadastro` traduz `Combustivel` e `Tanque` como traduz bomba e bico.
+
+- `POST|PUT /api/postos/{posto}/combustiveis[/{combustivel}]` — `{ nome: string ≤ 60, codigo: 1–6 letras/dígitos
+  (gravado em maiúsculas), cor?: "#RRGGBB" | null, preco_venda: string decimal > 0 (até 2 casas), ativo: boolean }`
+  → 201 / 200 `{ data: combustivel }`. **Sem `preco_custo`** (ignorado se vier): custo é da compra. O
+  `preco_venda` é o ponto de partida do dia; o preço que vale é o que o dia salvo grava em `Leitura.preco_litro`.
+  Recusa 422: `codigo_repetido` (código único no posto, mesmo desativado; o unique do banco volta como a mesma
+  recusa), `codigo_travado` (trocar o código de combustível com `Leitura` ou `Compra`),
+  `combustivel_com_bicos_ativos` (desativar com bico ativo).
+- `POST|PUT /api/postos/{posto}/tanques[/{tanque}]` — `{ nome: string ≤ 60, combustivel_id, capacidade: string
+  decimal > 0 (até 2 casas), ativo: boolean }` → 201 / 200 `{ data: tanque }`. **Sem estoque:** `estoque_atual` no
+  corpo é ignorado, o tanque nasce com 0 (default da coluna) e a partida é a primeira régua; editar nunca toca
+  `estoque_atual`. Recusa 422: `combustivel_invalido` (não existe no posto), `combustivel_travado` (trocar o
+  combustível de tanque com bico ligado ou régua em `HistoricoTanque`), `tanque_com_bicos_ativos` (desativar com
+  bico ativo).
+
+**CA-7:** `Leitura` (Fechamento), `Compra` e `HistoricoTanque` são lidas por `DB::table`, sem model de outro
+módulo; nenhuma aresta nova no Deptrac nem no Pest Arch.
+
+**Testes:** `backend/tests/Feature/Cadastro/CombustiveisETanquesDoPainelTest.php` (21, com datasets) e, no
+painel, `features/gestao-de-bicos/model/cadastro.test.ts` e mais 3 casos em `ui/gestao-de-bicos.test.tsx`
+(combustível com preço e tanques, preço `"6,99"` vai como `"6.99"`, "+ tanque" nunca manda estoque).

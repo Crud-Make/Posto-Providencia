@@ -10,7 +10,9 @@ namespace App\Cadastro\Domain;
  *
  * Códigos (#153, bombas e bicos): `nome_repetido`, `bomba_com_bicos_ativos` (bomba);
  * `bomba_invalida`, `combustivel_invalido`, `tanque_invalido`, `numero_repetido`,
- * `combustivel_travado` (bico).
+ * `combustivel_travado` (bico). #157: `codigo_repetido`, `codigo_travado`,
+ * `combustivel_com_bicos_ativos` (combustível); `combustivel_invalido`, `combustivel_travado`,
+ * `tanque_com_bicos_ativos` (tanque).
  */
 final readonly class RecusaDoCadastro
 {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Fuel, Plus } from 'lucide-react';
 import type { BombaDaApi, PistaDaApi } from '../api/cadastro-de-bicos.api';
 import { agruparPorBomba, proximoNumeroLivre, type BicoNaPista, type FormularioDeBico as EstadoDoBico } from '../model/pista';
-import { useGestaoDeBicos } from '../model/use-gestao-de-bicos';
+import type { GestaoDeBicos as Gestao } from '../model/use-gestao-de-bicos';
 import { BombaNaPistaCartao } from './bomba-na-pista';
 import { FormularioDeBico } from './formulario-de-bico';
 import { FormularioDeBomba } from './formulario-de-bomba';
@@ -68,8 +68,8 @@ const Cabecalho: React.FC<CabecalhoProps> = ({ pista, aoNovaBomba, aoNovoBico })
  * Configurações → Bombas e Bicos (#153): a pista do posto agrupada por bomba, e o cadastro dela
  * pela API. É aqui que o gerente monta os bicos do posto (o BR tem 24) sem mexer no banco.
  */
-export const GestaoDeBicos: React.FC<{ readonly postoId: number | null }> = ({ postoId }) => {
-    const { pista, carregando, erro, gravarBomba, gravarBico } = useGestaoDeBicos(postoId);
+export const GestaoDeBicos: React.FC<{ readonly gestao: Gestao }> = ({ gestao }) => {
+    const { pista, carregando, erro, gravarBomba, gravarBico } = gestao;
     const [mostrarInativos, setMostrarInativos] = useState(false);
     const [aberto, setAberto] = useState<Aberto | null>(null);
     const grupos = pista === null ? [] : agruparPorBomba(pista, mostrarInativos);
