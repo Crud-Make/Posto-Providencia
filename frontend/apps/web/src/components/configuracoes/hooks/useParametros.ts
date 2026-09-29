@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { configuracaoService } from '../../../services/api';
 import { Configuracao } from '../../../types';
+import { descreverErroDaApi } from '../../../services/api/base';
+import { configuracoesPelaApi, corpoDosParametros, gravarParametrosNaApi, lerParametrosDaApi, type ParametrosDaApi } from '../../../services/api/configuracoes.api';
 
 /**
  * Hook para gerenciamento de parâmetros de configuração.
@@ -17,9 +19,21 @@ export const useParametros = (postoAtivoId: number) => {
     const [saving, setSaving] = useState(false);
     const [configsModified, setConfigsModified] = useState(false);
 
+    /** #103: chave que o posto ainda não tem lê `null` e a tela mantém o padrão dela. */
+    const aplicar = (p: ParametrosDaApi) => {
+        if (p.tolerancia_divergencia !== null) setTolerance(p.tolerancia_divergencia);
+        if (p.dias_estoque_critico !== null) setDiasEstoqueCritico(p.dias_estoque_critico);
+        if (p.dias_estoque_baixo !== null) setDiasEstoqueBaixo(p.dias_estoque_baixo);
+    };
+
     useEffect(() => {
         const loadConfigs = async () => {
             if (!postoAtivoId) return;
+            if (configuracoesPelaApi()) {
+                const lidos = await lerParametrosDaApi(postoAtivoId);
+                lidos.match(aplicar, (erro) => console.error('Parâmetros pela API:', descreverErroDaApi(erro)));
+                return;
+            }
             try {
                 const response = await configuracaoService.getAll(postoAtivoId);
                 const configs = response.success ? (response.data || []) : [];
@@ -38,8 +52,25 @@ export const useParametros = (postoAtivoId: number) => {
         loadConfigs();
     }, [postoAtivoId]);
 
+    /** #103: um PUT só, com UPSERT no servidor — no BR (sem as linhas) o UPDATE antigo falhava. */
+    const salvarPelaApi = async () => {
+        const gravado = await gravarParametrosNaApi(postoAtivoId, corpoDosParametros(tolerance, diasEstoqueCritico, diasEstoqueBaixo));
+        setSaving(false);
+        if (gravado.isErr()) {
+            alert(gravado.error.tipo === 'recusado' ? 'Valores inválidos: confira a tolerância (ex.: 50,00) e os dias (inteiros a partir de 1).' : descreverErroDaApi(gravado.error));
+            return;
+        }
+        aplicar(gravado.value);
+        setConfigsModified(false);
+        alert("Configurações salvas com sucesso!");
+    };
+
     const handleSaveConfigs = async () => {
         setSaving(true);
+        if (configuracoesPelaApi()) {
+            await salvarPelaApi();
+            return;
+        }
         try {
             const results = await Promise.all([
                 configuracaoService.update("tolerancia_divergencia", tolerance, postoAtivoId),

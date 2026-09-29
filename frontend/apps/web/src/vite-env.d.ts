@@ -72,4 +72,10 @@ interface ImportMetaEnv {
      * Ausente, vale o `VITE_API_URL`.
      */
     readonly VITE_API_BICOS?: string;
+    /**
+     * Corte de Configurações → formas de pagamento e parâmetros (#103): `1` lê e grava as formas
+     * (`GET`/`POST`/`PUT /formas-pagamento`) e os parâmetros (`GET`/`PUT /parametros`) pela API, `0`
+     * deixa no Supabase. Ausente, vale o `VITE_API_URL`.
+     */
+    readonly VITE_API_CONFIGURACOES?: string;
 }
