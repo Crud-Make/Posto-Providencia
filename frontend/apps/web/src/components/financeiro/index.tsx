@@ -1,21 +1,22 @@
 import React from 'react';
 import { usePosto } from '../../contexts/usePosto';
-import { useFiltrosFinanceiros } from './hooks/useFiltrosFinanceiros';
-import { useFinanceiro } from './hooks/useFinanceiro';
+import { useFiltrosFinanceiros, type FiltrosFinanceiros as Filtros } from './hooks/useFiltrosFinanceiros';
+import { useFinanceiro, type DadosFinanceiros } from './hooks/useFinanceiro';
 import { useFluxoCaixa } from './hooks/useFluxoCaixa';
 import { FiltrosFinanceiros } from './components/FiltrosFinanceiros';
 import { ResumoFinanceiro } from './components/ResumoFinanceiro';
 import { GraficoFluxoCaixa } from './components/GraficoFluxoCaixa';
 import { DespesasPorCategoria } from './components/DespesasPorCategoria';
 import { ListaDespesas } from './components/ListaDespesas';
-import { CreditCard, Loader2, Plus, Repeat } from 'lucide-react';
+import { CreditCard, Info, Loader2, Plus, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FixaPendente } from '@posto/utils';
 import FormDespesa from '../despesas/components/FormDespesa';
 import { DespesaFormData } from '../despesas/types';
-import { despesaService } from '../../services/api';
-import { isSuccess } from '../../types/ui/response-types';
-import { despesaFixaService, type LancamentoFixa } from '../../services/api/despesa-fixa.service';
+import type { LancamentoFixa } from '../../services/api/despesa-fixa.service';
+import { despesasPelaApi } from '../../services/api/despesas.api';
+import { criarDespesa, despesasDoMes, fixasPendentesDoMes, lancarMensais } from './hooks/fonteDasDespesas';
+import { useDespesasDaApi } from './hooks/useDespesasDaApi';
 import { hojeIso, mesAtualIso, ultimoDiaDoMes, deIsoLocal } from '../../utils/periodo';
 import { ModalFixasPendentes } from './components/ModalFixasPendentes';
 import { ModalTaxasCartao } from './components/ModalTaxasCartao';
@@ -41,7 +42,36 @@ import { CATEGORIA_TAXAS_CARTAO, provedorDaDescricao } from './components/taxas-
  *
  * @module PainelReceitasDespesas
  */
+/** Uma chave de idempotência por lançamento: a mesma até dar certo, nova depois. */
+function useChaveDeLancamento(): { chave: () => string; concluir: () => void } {
+  const atual = React.useRef<string | null>(null);
+  return {
+    chave: () => (atual.current ??= crypto.randomUUID()),
+    concluir: () => { atual.current = null; },
+  };
+}
+
+type FonteDosDados = (filtros: Filtros) => {
+  dados: DadosFinanceiros;
+  carregando: boolean;
+  erro: string | null;
+  recarregar: () => Promise<void>;
+};
+
+/**
+ * #103: com `VITE_API_DESPESAS` a aba lê e lança despesas pela API; o resumo e o gráfico (que
+ * dependem de leituras, recebimentos e compras) ainda não vêm por ela e ficam ocultos. A fonte é
+ * escolhida a cada render e passada ao painel, que a chama sempre — a `key` troca o painel inteiro
+ * se a escolha mudar, e os hooks nunca trocam de ordem.
+ */
 export const PainelReceitasDespesas: React.FC = () => {
+  const pelaApi = despesasPelaApi();
+  return pelaApi
+    ? <Painel key="api" pelaApi usarDados={useDespesasDaApi} />
+    : <Painel key="supabase" pelaApi={false} usarDados={useFinanceiro} />;
+};
+
+const Painel: React.FC<{ readonly pelaApi: boolean; readonly usarDados: FonteDosDados }> = ({ pelaApi, usarDados }) => {
   const { postoAtivoId } = usePosto();
   const [showFormDespesa, setShowFormDespesa] = React.useState(false);
   const [fixasPendentes, setFixasPendentes] = React.useState<FixaPendente[] | null>(null);
@@ -51,18 +81,22 @@ export const PainelReceitasDespesas: React.FC = () => {
   const [buscandoTaxas, setBuscandoTaxas] = React.useState(false);
 
   const { filtros, atualizar, resetar, aplicarPreset } = useFiltrosFinanceiros(postoAtivoId || undefined);
-  const { dados, carregando, erro, recarregar } = useFinanceiro(filtros);
+  const { dados, carregando, erro, recarregar } = usarDados(filtros);
+  const chaveDaNova = useChaveDeLancamento();
+  const chaveDasFixas = useChaveDeLancamento();
+  const chaveDasTaxas = useChaveDeLancamento();
   const { series } = useFluxoCaixa(dados, 'diario');
 
   const handleSaveDespesa = async (data: DespesaFormData, id?: string): Promise<boolean> => {
-    if (!id) {
-      const response = await despesaService.create(data);
-      if (response.success) {
-        await recarregar();
-        return true;
-      }
+    if (id !== undefined || !postoAtivoId) return false;
+    const gravado = await criarDespesa(postoAtivoId, data, chaveDaNova.chave());
+    if (gravado.isErr()) {
+      toast.error(gravado.error);
+      return false;
     }
-    return false;
+    chaveDaNova.concluir();
+    await recarregar();
+    return true;
   };
 
   /**
@@ -78,16 +112,16 @@ export const PainelReceitasDespesas: React.FC = () => {
     if (!postoAtivoId) return;
     setBuscandoFixas(true);
     try {
-      const res = await despesaFixaService.pendentesDoMes(mesDoFiltro, postoAtivoId);
-      if (!isSuccess(res)) {
+      const res = await fixasPendentesDoMes(postoAtivoId, mesDoFiltro);
+      if (res.isErr()) {
         toast.error(res.error);
         return;
       }
-      if (res.data.length === 0) {
+      if (res.value.length === 0) {
         toast.info('Nenhuma despesa fixa pendente neste mês — todas já foram lançadas.');
         return;
       }
-      setFixasPendentes(res.data);
+      setFixasPendentes(res.value);
     } finally {
       setBuscandoFixas(false);
     }
@@ -109,13 +143,14 @@ export const PainelReceitasDespesas: React.FC = () => {
     if (!postoAtivoId) return;
     const data = dataDoLancamentoMensal();
 
-    const res = await despesaFixaService.lancar(lancamentos, data, postoAtivoId);
-    if (!isSuccess(res)) {
+    const res = await lancarMensais(postoAtivoId, lancamentos, data, chaveDasFixas.chave());
+    if (res.isErr()) {
       toast.error(res.error);
       return;
     }
+    chaveDasFixas.concluir();
 
-    toast.success(`${res.data} despesa(s) fixa(s) lançada(s) em ${data.split('-').reverse().join('/')}.`);
+    toast.success(`${res.value} despesa(s) fixa(s) lançada(s) em ${data.split('-').reverse().join('/')}.`);
     setFixasPendentes(null);
     await recarregar();
   };
@@ -130,9 +165,9 @@ export const PainelReceitasDespesas: React.FC = () => {
     try {
       const [ano, m] = mesDoFiltro.split('-').map(Number);
       const anterior = m === 1 ? { ano: ano - 1, mes: 12 } : { ano, mes: m - 1 };
-      const res = await despesaService.getByMonth(anterior.ano, anterior.mes, postoAtivoId);
-      const provedores = isSuccess(res)
-        ? res.data
+      const res = await despesasDoMes(postoAtivoId, anterior.ano, anterior.mes);
+      const provedores = res.isOk()
+        ? res.value
             .filter((d) => d.categoria === CATEGORIA_TAXAS_CARTAO)
             .map((d) => provedorDaDescricao(d.descricao))
             .filter((p): p is string => p !== null)
@@ -147,13 +182,14 @@ export const PainelReceitasDespesas: React.FC = () => {
     if (!postoAtivoId) return;
     const data = dataDoLancamentoMensal();
 
-    const res = await despesaFixaService.lancar(lancamentos, data, postoAtivoId);
-    if (!isSuccess(res)) {
+    const res = await lancarMensais(postoAtivoId, lancamentos, data, chaveDasTaxas.chave());
+    if (res.isErr()) {
       toast.error(res.error);
       return;
     }
+    chaveDasTaxas.concluir();
 
-    toast.success(`Taxa de ${res.data} provedor(es) lançada em ${data.split('-').reverse().join('/')}.`);
+    toast.success(`Taxa de ${res.value} provedor(es) lançada(s) em ${data.split('-').reverse().join('/')}.`);
     setProvedoresTaxa(null);
     await recarregar();
   };
@@ -214,7 +250,17 @@ export const PainelReceitasDespesas: React.FC = () => {
         </div>
       )}
 
-      <ResumoFinanceiro dados={dados} carregando={carregando} />
+      {pelaApi ? (
+        <div className="p-4 bg-sky-900/20 text-sky-200 rounded-xl border border-sky-500/30 flex items-start gap-3 text-sm">
+          <Info size={18} className="mt-0.5 shrink-0" />
+          <span>
+            As despesas lançadas aqui já entram no rateio do lucro. O resumo do mês (receitas, lucro e margem)
+            está no Dashboard e na Visão do Proprietário.
+          </span>
+        </div>
+      ) : (
+        <ResumoFinanceiro dados={dados} carregando={carregando} />
+      )}
 
       {carregando ? (
         <div className="flex flex-col items-center justify-center min-h-[400px] w-full text-slate-500">
@@ -223,9 +269,11 @@ export const PainelReceitasDespesas: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-          <div className="lg:col-span-2">
-            <GraficoFluxoCaixa series={series} />
-          </div>
+          {!pelaApi && (
+            <div className="lg:col-span-2">
+              <GraficoFluxoCaixa series={series} />
+            </div>
+          )}
           <div>
             <DespesasPorCategoria dados={dados} />
           </div>
