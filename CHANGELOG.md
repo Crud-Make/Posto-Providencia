@@ -2,6 +2,24 @@
 
 ## [Não Lançado]
 
+### 🌄 Tela de entrada: a chegada a Caldas do Jorro, com modo escuro (#102)
+
+- Desenho aprovado pelo dono (28/09) no canvas "Tela de entrada — Rede Providência": o fundo é a
+  chegada a Caldas do Jorro — o pórtico novo ("Bem-vindo ao Oásis do Sertão"), a estrada passando por
+  ele, a serra, a caatinga e a terra vermelha — e, à esquerda, o Posto BR com o nome POSTO
+  PROVIDÊNCIA na cobertura, calçamento na frente do pátio e a estradinha até a pista; do outro lado da
+  estrada, árvores e moitas. Desenho em SVG (`cena-da-chegada.tsx`), não foto: as fotos da entrada têm
+  ~400 px.
+- **Modo escuro:** o botão sol/lua volta à tela; escuro, a chegada vira noite — céu estrelado, luzes
+  do posto acesas, cartões e campos escuros.
+- Os postos são cartões deitados (foto + lápis + nome + "Entrar"). **Escolhido, o cartão mostra só a
+  senha** com a seta (o e-mail vem lembrado do posto; aparelho novo pede o e-mail uma vez). "Esqueceu a
+  senha?" e "Entrar com outra conta" ficam pequenos embaixo dos cartões. Saiu o painel de entrar à parte.
+- Sem a caixa "Lembrar a senha": o login certo vai direto ao gerenciador do navegador, que pergunta.
+- O login pelo Supabase (produção até o cutover) segue com o formulário completo, sobre a mesma cena.
+- Tela larga mostra mais céu e caatinga dos lados em vez de cortar o pórtico; no celular a cena fica na
+  parte de baixo, atrás dos cartões, e a saudação fica sobre o céu liso. Fonte Pacifico no letreiro.
+
 ### ✏️ Foto do posto: lápis no próprio cartão da tela de entrada (#102)
 
 - Pedido do dono (27/09): trocar a foto sem entrar no painel. Lápis no canto da foto de cada cartão →

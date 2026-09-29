@@ -7,12 +7,12 @@ import { loginPelaApiLigado } from '../../services/api/base';
 import { postosDaRede, type PostoDaRede } from '../../services/api/sessao.api';
 import type { Posto } from '../../types/database/index';
 import CartaoDoPosto from './cartao-do-posto';
+import CenaDaChegada from './cena-da-chegada';
 import { fraseDoDia, saudacao, variaveisDoTema } from './escolha-de-posto-estilo';
 import FormularioDeEntrada from './formulario-de-entrada';
-import { esquecerEmail } from './email-lembrado';
+import { emailLembrado, esquecerEmail } from './email-lembrado';
+import SenhaNoCartao from './senha-no-cartao';
 import TrocarFotoNoCartao from './trocar-foto-no-cartao';
-
-const FAIXA = ['#042992', '#A30E19', '#E5BE41'] as const;
 
 type ListaDePostos = { estado: 'carregando' } | { estado: 'pronta'; postos: PostoDaRede[] } | { estado: 'falhou' };
 
@@ -63,23 +63,44 @@ function useRecusaContaDeOutroPosto(escolhido: PostoDaRede | null): string | nul
   return recusa;
 }
 
-/** O cartão com o e-mail e a senha — embaixo do posto escolhido, ou sozinho no login pelo Supabase. */
-const CaixaDeEntrada: React.FC<{ titulo: string; classe: string; children: React.ReactNode }> = ({ titulo, classe, children }) => (
-  <section className={`w-full rounded-2xl border p-6 ${classe}`} style={{ background: 'var(--painel)', borderColor: 'var(--borda-cartao)' }} aria-label="Entrar">
-    <h2 className="mb-5 font-display text-xl font-semibold">{titulo}</h2>
-    {children}
-  </section>
-);
+/** "Esqueceu a senha?" e "Entrar com outra conta", pequenos, embaixo dos cartões. */
+const AjudaDaEntrada: React.FC<{ escolhido: PostoDaRede; aoTrocarConta: () => void }> = ({ escolhido, aoTrocarConta }) => {
+  const { pedirRecuperacaoSenha } = useAuth();
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  const aoEsquecer = async () => {
+    const email = emailLembrado(escolhido.id) ?? '';
+    const falha = await pedirRecuperacaoSenha(email);
+    setAviso(falha ?? `Enviamos o link de recuperação para ${email}.`);
+  };
+
+  return (
+    <div className="flex flex-col gap-1 text-sm font-semibold text-[var(--terra-texto)]">
+      <div className="flex flex-wrap gap-x-5 gap-y-1">
+        <button type="button" onClick={() => void aoEsquecer()} className="underline-offset-4 hover:underline">
+          Esqueceu a senha?
+        </button>
+        <button type="button" onClick={aoTrocarConta} className="underline-offset-4 hover:underline">
+          Entrar com outra conta
+        </button>
+      </div>
+      {aviso !== null && (
+        <p role="status" className="max-w-xl font-medium">
+          {aviso}
+        </p>
+      )}
+    </div>
+  );
+};
 
 /**
- * A tela de entrada do painel — a ÚNICA (regra do dono, 27/09/2026, sobre o canvas "Escolha de
- * Posto — Rede Providência"): logo, saudação e frase do dia à esquerda; à direita, os cartões dos
- * postos e, na mesma tela, o e-mail e a senha do posto escolhido. Entrou, o painel abre direto
- * nesse posto. Sai a tela de login com a foto de fundo e a escolha de posto depois do login.
+ * A tela de entrada do painel — a ÚNICA: a chegada a Caldas do Jorro ao entardecer (o pórtico, a
+ * estrada e o Posto BR), a saudação no céu e, embaixo, um cartão por posto. Escolhido, o cartão mostra
+ * só a senha (desenho aprovado pelo dono em 28/09/2026). Entrou, o painel abre direto nesse posto.
  *
- * @remarks Nada fica no navegador: nem o posto, nem o token, nem o e-mail. Recarregou ou saiu,
- *          esta tela volta. Com o login pelo Supabase (flag desligada, produção da transição) não
- *          há lista pública de postos, e o formulário aparece sem os cartões.
+ * @remarks No navegador fica só o e-mail lembrado de cada posto; posto e token não. Com o login pelo
+ *          Supabase (flag desligada, produção da transição) não há lista pública de postos, e o
+ *          formulário completo aparece sozinho sobre a mesma cena.
  */
 const TelaDeEntrada: React.FC = () => {
   const { setPostoAtivo } = usePosto();
@@ -87,6 +108,7 @@ const TelaDeEntrada: React.FC = () => {
   const [lista, trocarFotoDaLista] = usePostosDaTela();
   const [fotoEmTroca, setFotoEmTroca] = useState<{ posto: PostoDaRede; arquivo: File } | null>(null);
   const [escolhido, setEscolhido] = useState<PostoDaRede | null>(null);
+  const [versaoDaConta, setVersaoDaConta] = useState(0);
   const recusa = useRecusaContaDeOutroPosto(escolhido);
   const agora = new Date();
   const comCartoes = loginPelaApiLigado();
@@ -99,80 +121,103 @@ const TelaDeEntrada: React.FC = () => {
     setPostoAtivo(comoPosto(posto));
   };
 
+  const trocarConta = () => {
+    if (escolhido !== null) esquecerEmail(escolhido.id);
+    setVersaoDaConta((v) => v + 1);
+  };
+
   return (
-    <div className="relative min-h-screen lg:grid lg:grid-cols-12" style={{ ...variaveisDoTema(theme), background: 'var(--fundo)', color: 'var(--texto)' }}>
-      <div className="absolute inset-x-0 top-0 grid h-1.5 grid-cols-3" aria-hidden="true">
-        {FAIXA.map((cor) => (
-          <div key={cor} style={{ background: cor }} />
-        ))}
+    <div
+      className="relative min-h-screen overflow-hidden text-[var(--tinta)]"
+      style={{ ...variaveisDoTema(theme), background: theme === 'dark' ? '#050A1E' : '#6F86C4' }}
+    >
+      {/* No celular a cena fica na parte de baixo e o céu liso fica atrás da saudação; com o pórtico
+          em tela cheia, o letreiro caía em cima da frase do dia. */}
+      <CenaDaChegada className="absolute inset-x-0 bottom-0 h-[60%] w-full sm:h-full" noite={theme === 'dark'} />
+
+      <div className="relative flex min-h-screen flex-col gap-8 px-5 pb-6 pt-6 lg:px-16 lg:pb-10 lg:pt-12">
+        <header className="flex items-start justify-between gap-4">
+          <div className="rounded-2xl bg-white px-4 py-3 shadow-[0_10px_26px_rgba(19,41,75,0.18)]">
+            <img src="/logo-providencia.png" alt="Posto Providência" className="h-auto w-40 lg:w-56" />
+          </div>
+          <div className="flex items-center gap-5">
+            <p className="hidden items-center gap-3 text-base font-medium italic lg:flex">
+              <span className="h-0.5 w-8 bg-[#A30E19]" aria-hidden="true" />
+              Jesus te ama
+            </p>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Usar modo claro' : 'Usar modo escuro'}
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--cartao)] text-[var(--texto)] shadow-[0_8px_20px_rgba(19,41,75,0.2)]"
+            >
+              {theme === 'dark' ? <Sun className="h-5 w-5" aria-hidden="true" /> : <Moon className="h-5 w-5" aria-hidden="true" />}
+            </button>
+          </div>
+        </header>
+
+        <section className="flex max-w-xl flex-col gap-3">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--tinta-media)] lg:text-sm">
+            {agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </span>
+          <h1 className="font-display text-5xl font-extrabold leading-[0.9] tracking-tight lg:text-[88px]">{saudacao(agora, '')}.</h1>
+          <p className="text-lg font-medium leading-snug text-[var(--tinta)] lg:text-[22px]">{fraseDoDia(agora)}</p>
+        </section>
+
+        <div className="mt-auto flex flex-col gap-3">
+          {comCartoes && (
+            <>
+              <h2 className="text-sm font-extrabold uppercase tracking-[0.14em] text-[var(--terra-texto)]">Escolha o posto</h2>
+              {lista.estado === 'carregando' && <Loader2 className="h-6 w-6 animate-spin" aria-label="Carregando os postos" />}
+              {lista.estado === 'falhou' && (
+                <p role="alert" className="font-semibold text-[var(--acento)]">
+                  Não foi possível carregar os postos. Confira a internet e recarregue a página.
+                </p>
+              )}
+              {lista.estado === 'pronta' && (
+                <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-5">
+                  {lista.postos.map((posto) => (
+                    <CartaoDoPosto
+                      key={posto.id}
+                      id={posto.id}
+                      nome={posto.nome}
+                      caminhoDaFoto={posto.foto ?? null}
+                      selecionado={escolhido?.id === posto.id}
+                      aoEscolher={() => escolher(posto)}
+                      aoEscolherFoto={(arquivo) => setFotoEmTroca({ posto, arquivo })}
+                    >
+                      <SenhaNoCartao key={`${posto.id}-${versaoDaConta}`} postoId={posto.id} nome={posto.nome} erroExterno={recusa} />
+                    </CartaoDoPosto>
+                  ))}
+                </div>
+              )}
+              {escolhido !== null && <AjudaDaEntrada escolhido={escolhido} aoTrocarConta={trocarConta} />}
+            </>
+          )}
+
+          {!comCartoes && (
+            <section className="w-full max-w-md rounded-2xl bg-[var(--painel)] p-6 text-[var(--texto)] shadow-[0_20px_44px_rgba(19,41,75,0.28)]" aria-label="Entrar">
+              <h2 className="mb-5 font-display text-xl font-semibold">Entrar no painel</h2>
+              <FormularioDeEntrada postoId={null} erroExterno={recusa} />
+            </section>
+          )}
+
+          <p className="text-xs font-medium text-[var(--terra-texto)] opacity-80">© {agora.getFullYear()} Rede Providência</p>
+        </div>
       </div>
 
-      <aside className="flex flex-col gap-6 px-5 pb-6 pt-9 lg:col-span-5 lg:justify-between lg:border-r lg:px-10 lg:py-14 xl:col-span-4" style={{ background: 'var(--painel)', borderColor: 'var(--linha)' }}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="rounded-xl bg-white px-3 py-2">
-            <img src="/logo-providencia.png" alt="Posto Providência" className="h-auto w-44 lg:w-64" />
-          </div>
-          <button type="button" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Usar modo claro' : 'Usar modo escuro'} className="flex h-11 w-11 items-center justify-center rounded-xl border" style={{ borderColor: 'var(--borda-botao)', background: 'var(--botao)', color: 'var(--texto-medio)' }}>
-            {theme === 'dark' ? <Sun className="h-5 w-5" aria-hidden="true" /> : <Moon className="h-5 w-5" aria-hidden="true" />}
-          </button>
-        </div>
-        <div className="flex flex-col gap-4">
-          <span className="text-xs font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--acento)' }}>{saudacao(agora, '')}</span>
-          <div className="h-1 w-12 rounded-sm bg-[#E5BE41]" aria-hidden="true" />
-          <p className="font-display text-2xl font-semibold leading-tight lg:text-4xl">{fraseDoDia(agora)}</p>
-        </div>
-        <p className="hidden text-sm italic lg:block" style={{ color: 'var(--texto-suave)' }}>Jesus te ama</p>
-      </aside>
-
-      <main className="flex flex-col justify-center gap-6 px-5 pb-8 lg:col-span-7 lg:px-14 lg:py-16 xl:col-span-8">
-        {comCartoes && (
-          <>
-            <h1 className="text-base font-bold lg:font-display lg:text-xl">Escolha o posto para começar</h1>
-            {lista.estado === 'carregando' && <Loader2 className="h-6 w-6 animate-spin" aria-label="Carregando os postos" />}
-            {lista.estado === 'falhou' && <p role="alert" style={{ color: 'var(--acento)' }}>Não foi possível carregar os postos. Confira a internet e recarregue a página.</p>}
-            {lista.estado === 'pronta' && (
-              // `grid-flow-row-dense`: o formulário entra logo depois do cartão escolhido, na COLUNA
-              // dele (pedido do dono, 27/09/2026 — escolheu o BR, a senha aparece embaixo do BR); o
-              // modo denso devolve o cartão seguinte ao buraco que sobra na linha de cima.
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-flow-row-dense lg:gap-6">
-                {lista.postos.map((posto, i) => (
-                  <React.Fragment key={posto.id}>
-                    <CartaoDoPosto id={posto.id} nome={posto.nome} caminhoDaFoto={posto.foto ?? null} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} aoEscolherFoto={(arquivo) => setFotoEmTroca({ posto, arquivo })} />
-                    {escolhido?.id === posto.id && (
-                      <CaixaDeEntrada titulo={`Entrar no ${posto.nome}`} classe={i % 2 === 1 ? 'md:col-start-2' : 'md:col-start-1'}>
-                        <FormularioDeEntrada key={posto.id} postoId={posto.id} erroExterno={recusa} />
-                      </CaixaDeEntrada>
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {!comCartoes && (
-          <CaixaDeEntrada titulo="Entrar no painel" classe="max-w-md">
-            <FormularioDeEntrada postoId={null} erroExterno={recusa} />
-          </CaixaDeEntrada>
-        )}
-
-        {fotoEmTroca !== null && (
-          <TrocarFotoNoCartao
-            postoId={fotoEmTroca.posto.id}
-            nome={fotoEmTroca.posto.nome}
-            arquivo={fotoEmTroca.arquivo}
-            aoTrocar={(foto) => {
-              trocarFotoDaLista(fotoEmTroca.posto.id, foto);
-              setFotoEmTroca(null);
-            }}
-            aoFechar={() => setFotoEmTroca(null)}
-          />
-        )}
-
-        <p className="text-sm" style={{ color: 'var(--texto-suave)' }}>
-          © {agora.getFullYear()} Rede Providência. Todos os direitos reservados.
-        </p>
-      </main>
+      {fotoEmTroca !== null && (
+        <TrocarFotoNoCartao
+          postoId={fotoEmTroca.posto.id}
+          nome={fotoEmTroca.posto.nome}
+          arquivo={fotoEmTroca.arquivo}
+          aoTrocar={(foto) => {
+            trocarFotoDaLista(fotoEmTroca.posto.id, foto);
+            setFotoEmTroca(null);
+          }}
+          aoFechar={() => setFotoEmTroca(null)}
+        />
+      )}
     </div>
   );
 };
