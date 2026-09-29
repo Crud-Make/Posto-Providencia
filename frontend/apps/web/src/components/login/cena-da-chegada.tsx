@@ -14,12 +14,20 @@ const DIA = {
   ceu: ['#6F86C4', '#B3A6D0', '#E9BFC0', '#F6CFA6'], nuvem: 0.55, serra: '#9C98B8', caatinga: '#4E6A44', mandacaru: '#3F5838',
   terra: '#C98A5A', terraBorda: '#B77A4C', estrada: ['#5A5B66', '#2E3038'], calcada: '#D9D3C8', portico: '#2A9C98', patio: '#BDB7AE', luz: 0,
   folha: ['#4E6A44', '#62824F', '#3F5838'], tronco: '#6B4A33', bloco: '#CFC4B2', junta: '#9E9384',
+  casas: ['#EAD9B0', '#D98C6A', '#9CC0C9', '#F2EDE4', '#C9A6C7'], telhado: '#A5553A', janela: '#5C6B85', lanterna: 0,
 };
 const NOITE = {
   ceu: ['#050A1E', '#101A4A', '#3A2A5C', '#8C4A3C'], nuvem: 0.12, serra: '#262A4A', caatinga: '#1A2A22', mandacaru: '#132019',
   terra: '#5E3F2C', terraBorda: '#4E3424', estrada: ['#2A2C36', '#15161C'], calcada: '#8C877E', portico: '#1E7C79', patio: '#77726B', luz: 1,
   folha: ['#1A2A22', '#22342A', '#132019'], tronco: '#3A2A20', bloco: '#6F695F', junta: '#4F4A42',
+  casas: ['#3A3550', '#43344A', '#2F3A52', '#3D3A4E', '#3E3350'], telhado: '#2A1E26', janela: '#FFD27A', lanterna: 1,
 };
+
+/** Casas da cidadezinha no fim da estrada: [x, largura, altura, índice da cor]. */
+const CASAS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [828, 18, 12, 0], [848, 14, 16, 1], [864, 20, 11, 2], [886, 16, 14, 4],
+  [936, 18, 13, 1], [956, 14, 17, 0], [972, 20, 12, 2], [994, 16, 15, 3], [1012, 18, 11, 4],
+];
 
 const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ className = '', noite = false }) => {
   const c = noite ? NOITE : DIA;
@@ -76,6 +84,24 @@ const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ clas
       <path d="M1340 604 L1340 560 M1340 576 L1326 576 L1326 564 M1340 584 L1354 584 L1354 570" strokeWidth="8" />
     </g>
 
+    {/* a cidadezinha no fim da estrada (em dobro, com a base no horizonte) */}
+    <g transform="translate(918 616) scale(2) translate(-918 -616)">
+      {CASAS.map(([x, w, h, cor]) => (
+        <g key={x}>
+          <rect x={x} y={616 - h} width={w} height={h} fill={c.casas[cor]} />
+          <polygon points={`${x - 2},${616 - h} ${x + w / 2},${608 - h} ${x + w + 2},${616 - h}`} fill={c.telhado} />
+          <rect x={x + w / 2 - 2} y={616 - h + 4} width="4" height="4" fill={c.janela} />
+        </g>
+      ))}
+      <rect x="905" y="590" width="26" height="26" fill={c.casas[3]} />
+      <polygon points="903,590 918,580 933,590" fill={c.telhado} />
+      <rect x="912" y="566" width="12" height="24" fill={c.casas[3]} />
+      <polygon points="910,566 918,556 926,566" fill={c.telhado} />
+      <path d="M918 548 L918 556 M915 551 L921 551" stroke={c.telhado} strokeWidth="1.6" />
+      <rect x="915" y="600" width="6" height="16" fill={c.janela} />
+      <circle cx="918" cy="574" r="2.2" fill={c.janela} />
+    </g>
+
     {/* terra vermelha */}
     <rect x="-480" y="620" width="2400" height="280" fill={c.terra} />
     <rect x="-480" y="620" width="2400" height="10" fill={c.terraBorda} />
@@ -117,6 +143,45 @@ const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ clas
       <text x="1010" y="296" textAnchor="middle" fontWeight="700" fontSize="13" letterSpacing="1.5" fill="#FFFFFF">
         BEM-VINDO AO OÁSIS DO SERTÃO
       </text>
+    </g>
+
+
+    {/* os carros do dono, indo para a cidade na mão direita: a S10 mais à frente, o Corolla branco 2015 mais perto */}
+    <g transform="translate(962 646) scale(0.62)">
+      <ellipse cx="50" cy="66" rx="58" ry="7" fill="#000000" opacity="0.28" />
+      <rect x="10" y="0" width="80" height="30" rx="6" fill="#B8BDC4" />
+      <rect x="16" y="5" width="68" height="16" rx="3" fill="#2B3440" />
+      <rect x="2" y="26" width="96" height="30" rx="4" fill="#C3C8CE" />
+      <rect x="2" y="26" width="96" height="6" fill="#A7ADB5" />
+      <text x="50" y="45" textAnchor="middle" fontWeight="800" fontSize="9" fill="#5A616B">S10</text>
+      <rect x="2" y="34" width="9" height="14" rx="2" fill="#C8202A" />
+      <rect x="89" y="34" width="9" height="14" rx="2" fill="#C8202A" />
+      <rect x="38" y="48" width="24" height="7" fill="#F4F4F2" stroke="#5A616B" strokeWidth="0.8" />
+      <rect x="0" y="54" width="100" height="6" rx="2" fill="#4A4F57" />
+      <rect x="4" y="58" width="16" height="10" rx="2" fill="#15161C" />
+      <rect x="80" y="58" width="16" height="10" rx="2" fill="#15161C" />
+      <g opacity={c.lanterna}>
+        <circle cx="6" cy="41" r="12" fill="#FF3B30" opacity="0.35" />
+        <circle cx="94" cy="41" r="12" fill="#FF3B30" opacity="0.35" />
+      </g>
+    </g>
+    <g transform="translate(1030 752) scale(1.12)">
+      <ellipse cx="60" cy="50" rx="66" ry="8" fill="#000000" opacity="0.3" />
+      <path d="M26 16 Q30 2 44 1 L76 1 Q90 2 94 16 Z" fill="#F1F1EE" />
+      <path d="M31 15 Q35 5 46 4 L74 4 Q85 5 89 15 Z" fill="#2B3440" />
+      <rect x="4" y="15" width="112" height="28" rx="9" fill="#F4F4F1" />
+      <rect x="4" y="15" width="112" height="4" rx="2" fill="#DCDCD8" />
+      <path d="M8 22 L32 22 L30 30 L8 30 Z" fill="#B0161F" />
+      <path d="M112 22 L88 22 L90 30 L112 30 Z" fill="#B0161F" />
+      <rect x="32" y="24" width="56" height="4" rx="2" fill="#D8D8D4" />
+      <rect x="47" y="31" width="26" height="8" fill="#F8F8F6" stroke="#5A616B" strokeWidth="0.8" />
+      <rect x="2" y="38" width="116" height="7" rx="3" fill="#E4E4E0" />
+      <rect x="8" y="42" width="16" height="9" rx="2" fill="#15161C" />
+      <rect x="96" y="42" width="16" height="9" rx="2" fill="#15161C" />
+      <g opacity={c.lanterna}>
+        <circle cx="18" cy="26" r="16" fill="#FF3B30" opacity="0.35" />
+        <circle cx="102" cy="26" r="16" fill="#FF3B30" opacity="0.35" />
+      </g>
     </g>
 
     {/* vegetação do outro lado da estrada, em frente ao posto: duas árvores de copa larga e moitas */}
