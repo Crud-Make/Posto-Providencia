@@ -41,7 +41,7 @@ export const CartaoDoPosto = ({ posto, aoEscolher }: CartaoDoPostoProps) => {
           <Iniciais nome={posto.nome} />
         ) : (
           <img
-            src={fotoDoPosto(posto.id)}
+            src={fotoDoPosto(posto)}
             alt={posto.nome}
             className="h-full w-full object-cover"
             onError={() => setSemFoto(true)}

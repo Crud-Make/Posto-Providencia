@@ -82,4 +82,18 @@ describe('TelaDeEntrada', () => {
         expect(estado.sair).toHaveBeenCalledOnce();
         expect(div.textContent).toContain('Esta conta não é do Posto BR.');
     });
+
+    it('o formulário aparece embaixo do cartão escolhido, na coluna dele (27/09/2026)', async () => {
+        await montar();
+        const secao = () => div.querySelector('section[aria-label="Entrar"]');
+
+        await act(async () => botao('Posto BR').click());
+        expect(secao()?.previousElementSibling?.textContent).toContain('Posto BR');
+        expect(secao()?.className).toContain('md:col-start-2');
+
+        await act(async () => botao('Posto Jorro').click());
+        expect(secao()?.previousElementSibling?.textContent).toContain('Posto Jorro');
+        expect(secao()?.className).toContain('md:col-start-1');
+    });
 });
+

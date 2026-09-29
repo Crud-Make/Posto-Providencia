@@ -154,13 +154,17 @@ describe('mensagemDoLogin', () => {
 });
 
 describe('postosDaRede e o token só na memória (27/09)', () => {
-    it('GET /api/postos devolve id e nome dos postos para os cartões da tela de entrada', async () => {
+    it('GET /api/postos devolve id, nome e o caminho da foto dos postos para os cartões da tela de entrada', async () => {
         ligaLoginPelaApi();
-        respondeCom({ data: [{ id: 1, nome: 'Posto Jorro' }, { id: 2, nome: 'Posto BR' }] });
+        // A foto do posto (27/09/2026) vem só como caminho versionado; API sem o campo vira `null`.
+        respondeCom({ data: [{ id: 1, nome: 'Posto Jorro' }, { id: 2, nome: 'Posto BR', foto: '/api/postos/2/foto?v=7' }] });
 
         const postos = await postosDaRede().match((lista) => lista, () => []);
 
-        expect(postos).toEqual([{ id: 1, nome: 'Posto Jorro' }, { id: 2, nome: 'Posto BR' }]);
+        expect(postos).toEqual([
+            { id: 1, nome: 'Posto Jorro', foto: null },
+            { id: 2, nome: 'Posto BR', foto: '/api/postos/2/foto?v=7' },
+        ]);
         expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('http://localhost:8000/api/postos');
     });
 

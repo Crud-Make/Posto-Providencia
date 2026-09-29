@@ -1,6 +1,8 @@
 import React, { useActionState, useRef, useState } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
+import { lembrarSenhaNoNavegador } from './lembrar-senha';
+import { emailLembrado, esquecerEmail, lembrarEmail } from './email-lembrado';
 
 const CLASSE_CAMPO =
   'block h-12 w-full rounded-lg border pl-11 pr-3.5 text-[15px] placeholder:opacity-60 ' +
@@ -107,23 +109,85 @@ const ConteudoDoBotaoEntrar: React.FC<{ pendente: boolean }> = ({ pendente }) =>
   );
 };
 
+/**
+ * O e-mail da entrada. Lembrado neste aparelho para o posto escolhido, vira uma linha "Entrar como … ·
+ * Trocar" e a tela pede só a senha; o campo segue no formulário, escondido, para o `FormData` e para o
+ * gerenciador de senhas casarem o e-mail com a senha.
+ */
+const CampoEmail: React.FC<{
+  lembrado: string | null;
+  emailRef: React.RefObject<HTMLInputElement | null>;
+  aoTrocar: () => void;
+}> = ({ lembrado, emailRef, aoTrocar }) => {
+  if (lembrado !== null) {
+    return (
+      <div className="flex items-center justify-between gap-3 text-[14px]" style={{ color: 'var(--texto-medio)' }}>
+        <input ref={emailRef} type="email" name="email" value={lembrado} readOnly autoComplete="username" className="sr-only" tabIndex={-1} aria-hidden="true" />
+        <span className="min-w-0 truncate">
+          Entrar como <strong style={{ color: 'var(--texto)' }}>{lembrado}</strong>
+        </span>
+        <button type="button" onClick={aoTrocar} className="shrink-0 text-[13px] font-semibold hover:underline" style={{ color: 'var(--acento)' }}>
+          Trocar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+        <div>
+          <label className={`${CLASSE_ROTULO} mb-2`} htmlFor="login-email" style={{ color: 'var(--texto-medio)' }}>
+            E-mail
+          </label>
+          <div className="relative">
+            <span className={CLASSE_ICONE_CAMPO} aria-hidden="true">
+              <Mail className="h-[18px] w-[18px]" />
+            </span>
+            <input
+              ref={emailRef}
+              id="login-email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              inputMode="email"
+              spellCheck={false}
+              placeholder="voce@postoprovidencia.com.br"
+              autoFocus
+              className={CLASSE_CAMPO}
+              style={ESTILO_CAMPO}
+              required
+            />
+          </div>
+        </div>
+  );
+};
+
 interface Props {
-  /** Chamado com o login certo nas mãos, antes de entrar — é onde a tela marca o posto escolhido. */
-  antesDeEntrar: () => void;
+  /** O posto do cartão escolhido; `null` no login pelo Supabase, que não tem cartões. */
+  postoId: number | null;
   /** Recusa que vem de fora do submit (ex.: a conta não é do posto escolhido). */
   erroExterno: string | null;
 }
 
 /**
- * E-mail e senha da tela de entrada. Nada é guardado no navegador (regra do dono, 27/09/2026): a
+ * E-mail e senha da tela de entrada. O app não guarda nada no navegador (regra do dono, 27/09/2026): a
  * caixa "Salvar meu acesso neste computador", que guardava e-mail e senha em texto puro, saiu.
+ *
+ * @remarks "Lembrar a senha" (27/09/2026) entrega o login ao gerenciador de senhas do navegador, e só
+ *          depois de a entrada dar certo — senha errada não vai para o cofre. Na próxima vez o
+ *          navegador preenche; o posto continua sendo escolhido no cartão.
  */
-const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) => {
+const FormularioDeEntrada: React.FC<Props> = ({ postoId, erroExterno }) => {
   const { entrar, pedirRecuperacaoSenha } = useAuth();
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
+  const [lembrado, setLembrado] = useState(() => (postoId === null ? null : emailLembrado(postoId)));
+
+  const trocarConta = () => {
+    if (postoId !== null) esquecerEmail(postoId);
+    setLembrado(null);
+  };
 
   const [erro, acao, pendente] = useActionState<string | null, FormData>(async (_anterior, formData) => {
     setAviso(null);
@@ -131,8 +195,10 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
     const senha = String(formData.get('senha') ?? '');
     if (!email) return 'Informe o e-mail.';
     if (!senha) return 'Informe a senha.';
-    antesDeEntrar();
-    return entrar(email, senha);
+    const falha = await entrar(email, senha);
+    if (falha === null && postoId !== null) lembrarEmail(postoId, email);
+    if (falha === null && formData.get('lembrar') === 'sim') void lembrarSenhaNoNavegador(email, senha);
+    return falha;
   }, null);
 
   const aoEsquecerSenha = async () => {
@@ -154,32 +220,7 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
 
   return (
       <form action={acao} className="flex flex-col gap-5" noValidate>
-        <div>
-          <label className={`${CLASSE_ROTULO} mb-2`} htmlFor="login-email" style={{ color: 'var(--texto-medio)' }}>
-            E-mail
-          </label>
-          <div className="relative">
-            <span className={CLASSE_ICONE_CAMPO} aria-hidden="true">
-              <Mail className="h-[18px] w-[18px]" />
-            </span>
-            <input
-              ref={(el) => {
-                emailRef.current = el;
-              }}
-              id="login-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              spellCheck={false}
-              placeholder="voce@postoprovidencia.com.br"
-              autoFocus
-              className={CLASSE_CAMPO}
-              style={ESTILO_CAMPO}
-              required
-            />
-          </div>
-        </div>
+        <CampoEmail lembrado={lembrado} emailRef={emailRef} aoTrocar={trocarConta} />
 
         <div>
           <div className="mb-2 flex items-center justify-between">
@@ -205,6 +246,7 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
               name="senha"
               type={mostrarSenha ? 'text' : 'password'}
               autoComplete="current-password"
+              autoFocus={lembrado !== null}
               placeholder="••••••••"
               className={`${CLASSE_CAMPO} pr-11`}
               style={ESTILO_CAMPO}
@@ -213,6 +255,11 @@ const FormularioDeEntrada: React.FC<Props> = ({ antesDeEntrar, erroExterno }) =>
             <BotaoVerSenha visivel={mostrarSenha} aoAlternar={() => setMostrarSenha((v) => !v)} />
           </div>
         </div>
+
+        <label className="-mt-1 flex cursor-pointer items-center gap-2.5 text-[14px]" style={{ color: 'var(--texto-medio)' }}>
+          <input type="checkbox" name="lembrar" value="sim" className="h-4 w-4 accent-[#A30E19]" />
+          Lembrar a senha neste navegador
+        </label>
 
         <MensagemDoLogin erro={erro ?? erroExterno} aviso={aviso} />
 

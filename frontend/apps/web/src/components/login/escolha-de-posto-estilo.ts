@@ -1,3 +1,4 @@
+import { enderecoDaFoto } from '../../services/api/foto-do-posto.api';
 import type { CSSProperties } from 'react';
 
 /**
@@ -44,11 +45,12 @@ export function saudacao(agora: Date, nome: string): string {
 }
 
 /**
- * Foto da fachada do posto no cartão. A API ainda não guarda foto de posto: por ora só o Jorro
- * (id 1) tem a imagem que o login já usa; os outros mostram as iniciais.
+ * Foto da fachada do posto no cartão: a que o gerente subiu pela canetinha do painel (27/09/2026)
+ * e, enquanto ninguém subir, a imagem que o login do Jorro (id 1) já usava; os outros mostram as
+ * iniciais.
  */
-export function fotoDoPosto(id: number): string | null {
-  return id === 1 ? '/fundo-login.jpg' : null;
+export function fotoDoPosto(id: number, caminhoDaFoto: string | null): string | null {
+  return enderecoDaFoto(caminhoDaFoto) ?? (id === 1 ? '/fundo-login.jpg' : null);
 }
 
 export function iniciaisDoPosto(nome: string): string {

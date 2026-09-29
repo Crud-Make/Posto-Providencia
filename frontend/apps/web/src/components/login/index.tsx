@@ -9,13 +9,15 @@ import type { Posto } from '../../types/database/index';
 import CartaoDoPosto from './cartao-do-posto';
 import { fraseDoDia, saudacao, variaveisDoTema } from './escolha-de-posto-estilo';
 import FormularioDeEntrada from './formulario-de-entrada';
+import { esquecerEmail } from './email-lembrado';
+import TrocarFotoNoCartao from './trocar-foto-no-cartao';
 
 const FAIXA = ['#042992', '#A30E19', '#E5BE41'] as const;
 
 type ListaDePostos = { estado: 'carregando' } | { estado: 'pronta'; postos: PostoDaRede[] } | { estado: 'falhou' };
 
 /** Os postos dos cartões. Sem o login pela API não há lista pública: o formulário aparece sozinho. */
-function usePostosDaTela(): ListaDePostos {
+function usePostosDaTela(): [ListaDePostos, (postoId: number, foto: string | null) => void] {
   const [lista, setLista] = useState<ListaDePostos>(() => (loginPelaApiLigado() ? { estado: 'carregando' } : { estado: 'pronta', postos: [] }));
 
   useEffect(() => {
@@ -30,7 +32,11 @@ function usePostosDaTela(): ListaDePostos {
     };
   }, []);
 
-  return lista;
+  // A foto trocada no cartão aparece na hora, sem recarregar a lista.
+  const trocarFoto = (postoId: number, foto: string | null) =>
+    setLista((atual) => (atual.estado === 'pronta' ? { estado: 'pronta', postos: atual.postos.map((p) => (p.id === postoId ? { ...p, foto } : p)) } : atual));
+
+  return [lista, trocarFoto];
 }
 
 function comoPosto(posto: PostoDaRede): Posto {
@@ -49,11 +55,21 @@ function useRecusaContaDeOutroPosto(escolhido: PostoDaRede | null): string | nul
   useEffect(() => {
     if (!loginPelaApiLigado() || usuario === null || postoAtivo !== null) return;
     const mensagem = `Esta conta não é do ${escolhido?.nome ?? 'posto escolhido'}.`;
+    // O e-mail lembrado era de outro posto: esquece, para a próxima entrada pedir o e-mail de novo.
+    if (escolhido !== null) esquecerEmail(escolhido.id);
     void sair().then(() => setRecusa(mensagem));
   }, [usuario, postoAtivo, escolhido, sair]);
 
   return recusa;
 }
+
+/** O cartão com o e-mail e a senha — embaixo do posto escolhido, ou sozinho no login pelo Supabase. */
+const CaixaDeEntrada: React.FC<{ titulo: string; classe: string; children: React.ReactNode }> = ({ titulo, classe, children }) => (
+  <section className={`w-full rounded-2xl border p-6 ${classe}`} style={{ background: 'var(--painel)', borderColor: 'var(--borda-cartao)' }} aria-label="Entrar">
+    <h2 className="mb-5 font-display text-xl font-semibold">{titulo}</h2>
+    {children}
+  </section>
+);
 
 /**
  * A tela de entrada do painel — a ÚNICA (regra do dono, 27/09/2026, sobre o canvas "Escolha de
@@ -68,11 +84,20 @@ function useRecusaContaDeOutroPosto(escolhido: PostoDaRede | null): string | nul
 const TelaDeEntrada: React.FC = () => {
   const { setPostoAtivo } = usePosto();
   const { theme, toggleTheme } = useTheme();
-  const lista = usePostosDaTela();
+  const [lista, trocarFotoDaLista] = usePostosDaTela();
+  const [fotoEmTroca, setFotoEmTroca] = useState<{ posto: PostoDaRede; arquivo: File } | null>(null);
   const [escolhido, setEscolhido] = useState<PostoDaRede | null>(null);
   const recusa = useRecusaContaDeOutroPosto(escolhido);
   const agora = new Date();
   const comCartoes = loginPelaApiLigado();
+
+  // O posto é marcado no clique do cartão, fora do envio do formulário. Marcado dentro do envio (uma
+  // action do React 19), ele só era gravado depois do usuário, e nesse meio-tempo "usuário sem posto"
+  // disparava a recusa de conta de outro posto: o painel entrava e saía sozinho (ensaio de 27/09).
+  const escolher = (posto: PostoDaRede) => {
+    setEscolhido(posto);
+    setPostoAtivo(comoPosto(posto));
+  };
 
   return (
     <div className="relative min-h-screen lg:grid lg:grid-cols-12" style={{ ...variaveisDoTema(theme), background: 'var(--fundo)', color: 'var(--texto)' }}>
@@ -106,20 +131,42 @@ const TelaDeEntrada: React.FC = () => {
             {lista.estado === 'carregando' && <Loader2 className="h-6 w-6 animate-spin" aria-label="Carregando os postos" />}
             {lista.estado === 'falhou' && <p role="alert" style={{ color: 'var(--acento)' }}>Não foi possível carregar os postos. Confira a internet e recarregue a página.</p>}
             {lista.estado === 'pronta' && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-6">
-                {lista.postos.map((posto) => (
-                  <CartaoDoPosto key={posto.id} id={posto.id} nome={posto.nome} selecionado={escolhido?.id === posto.id} aoEscolher={() => setEscolhido(posto)} />
+              // `grid-flow-row-dense`: o formulário entra logo depois do cartão escolhido, na COLUNA
+              // dele (pedido do dono, 27/09/2026 — escolheu o BR, a senha aparece embaixo do BR); o
+              // modo denso devolve o cartão seguinte ao buraco que sobra na linha de cima.
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:grid-flow-row-dense lg:gap-6">
+                {lista.postos.map((posto, i) => (
+                  <React.Fragment key={posto.id}>
+                    <CartaoDoPosto id={posto.id} nome={posto.nome} caminhoDaFoto={posto.foto ?? null} selecionado={escolhido?.id === posto.id} aoEscolher={() => escolher(posto)} aoEscolherFoto={(arquivo) => setFotoEmTroca({ posto, arquivo })} />
+                    {escolhido?.id === posto.id && (
+                      <CaixaDeEntrada titulo={`Entrar no ${posto.nome}`} classe={i % 2 === 1 ? 'md:col-start-2' : 'md:col-start-1'}>
+                        <FormularioDeEntrada key={posto.id} postoId={posto.id} erroExterno={recusa} />
+                      </CaixaDeEntrada>
+                    )}
+                  </React.Fragment>
                 ))}
               </div>
             )}
           </>
         )}
 
-        {(!comCartoes || escolhido !== null) && (
-          <section className="w-full max-w-md rounded-2xl border p-6" style={{ background: 'var(--painel)', borderColor: 'var(--borda-cartao)' }} aria-label="Entrar">
-            <h2 className="mb-5 font-display text-xl font-semibold">{escolhido === null ? 'Entrar no painel' : `Entrar no ${escolhido.nome}`}</h2>
-            <FormularioDeEntrada key={escolhido?.id ?? 0} antesDeEntrar={() => escolhido !== null && setPostoAtivo(comoPosto(escolhido))} erroExterno={recusa} />
-          </section>
+        {!comCartoes && (
+          <CaixaDeEntrada titulo="Entrar no painel" classe="max-w-md">
+            <FormularioDeEntrada postoId={null} erroExterno={recusa} />
+          </CaixaDeEntrada>
+        )}
+
+        {fotoEmTroca !== null && (
+          <TrocarFotoNoCartao
+            postoId={fotoEmTroca.posto.id}
+            nome={fotoEmTroca.posto.nome}
+            arquivo={fotoEmTroca.arquivo}
+            aoTrocar={(foto) => {
+              trocarFotoDaLista(fotoEmTroca.posto.id, foto);
+              setFotoEmTroca(null);
+            }}
+            aoFechar={() => setFotoEmTroca(null)}
+          />
         )}
 
         <p className="text-sm" style={{ color: 'var(--texto-suave)' }}>

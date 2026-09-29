@@ -181,7 +181,6 @@ describe('Fechamento de Caixa no modo API — nenhuma chamada ao Supabase', () =
             'GET /api/postos/1/bicos', 'GET /api/postos/1/frentistas', 'GET /api/postos/1/formas-pagamento',
             'GET /api/postos/1/leituras', 'GET /api/postos/1/sessoes', 'GET /api/postos/1/fechamento',
         ]));
-        expect(container.textContent).toContain('Beto');
         // Tempo real desligado de forma EXPLÍCITA, com o botão de recarregar no lugar.
         expect(container.textContent).toContain('Atualização automática desligada');
 
@@ -205,8 +204,18 @@ describe('Fechamento de Caixa no modo API — nenhuma chamada ao Supabase', () =
         await clicar(botaoComTexto('Fechamento Mensal'));
         expect(rotasChamadas()).toContain('GET /api/postos/1/fechamento-mensal/2026/9');
 
-        // De volta às leituras: remove o envio do Beto e salva.
+        // Leituras de Bomba só tem as bombas: os envios do app moraram aqui até 27/09/2026.
         await clicar(botaoComTexto('Leituras de Bomba'));
+        expect(container.textContent).not.toContain('Envios do App');
+        expect(container.textContent).toContain('Salvar Fechamento');
+
+        // Os envios estão no Detalhamento, visão Dia, com a barra de salvar na mesma aba:
+        // remove o envio do Beto e salva dali, sem voltar às leituras.
+        await clicar(botaoComTexto('Detalhamento Frentistas'));
+        const botaoDia = [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Dia');
+        await clicar(botaoDia as HTMLButtonElement);
+        expect(container.textContent).toContain('Envios do App');
+        expect(container.textContent).toContain('Beto');
         const lixeiras = [...container.querySelectorAll<HTMLButtonElement>('button[title="Excluir Envio"]')];
         expect(lixeiras).toHaveLength(2);
         await clicar(lixeiras[1] as HTMLButtonElement);

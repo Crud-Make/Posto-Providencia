@@ -11,8 +11,8 @@ use function Pest\Laravel\getJson;
 |--------------------------------------------------------------------------
 | A escolha do posto no PWA do frentista (#101, decisão do dono de 26/09/2026)
 |--------------------------------------------------------------------------
-| `GET /api/postos` é pública (vem antes do PIN) e por isso expõe o mínimo: `id` e `nome` dos postos
-| ATIVOS, por id. O que se prende: inativo não sai, cnpj/endereço/telefone/e-mail não saem, sem token
+| `GET /api/postos` é pública (vem antes do PIN) e por isso expõe o mínimo: `id`, `nome` e o caminho
+| da foto da fachada (`foto`, ou null — FotoDoPostoTest) dos postos ATIVOS, por id. O que se prende: inativo não sai, cnpj/endereço/telefone/e-mail não saem, sem token
 | responde 200, a ordem é por id (não por nome nem por inserção).
 |
 | Cada teste desativa os postos que o banco local já traz (seed de cadastros) DENTRO da transação do
@@ -33,12 +33,12 @@ it('é pública: sem token responde 200 com id e nome dos postos ATIVOS', functi
     getJson('/api/postos')
         ->assertOk()
         ->assertExactJson(['data' => [
-            ['id' => $jorro->id, 'nome' => 'Posto Jorro'],
-            ['id' => $br->id, 'nome' => 'Posto BR'],
+            ['id' => $jorro->id, 'nome' => 'Posto Jorro', 'foto' => null],
+            ['id' => $br->id, 'nome' => 'Posto BR', 'foto' => null],
         ]]);
 });
 
-it('não expõe nada do cadastro do posto além de id e nome', function (): void {
+it('não expõe nada do cadastro do posto além de id, nome e o caminho da foto', function (): void {
     soOsPostosDoTeste();
     $br = Posto::factory()->create([
         'nome' => 'Posto BR',
@@ -51,7 +51,7 @@ it('não expõe nada do cadastro do posto além de id e nome', function (): void
 
     $resposta = getJson('/api/postos')->assertOk();
 
-    expect($resposta->json('data'))->toBe([['id' => $br->id, 'nome' => 'Posto BR']]);
+    expect($resposta->json('data'))->toBe([['id' => $br->id, 'nome' => 'Posto BR', 'foto' => null]]);
     $corpo = (string) $resposta->getContent();
     foreach (['12.345.678/0001-90', 'Rua do Posto', 'Tucano', '75999990000', 'posto-br.test', 'cnpj', 'email', 'telefone', 'ativo'] as $sensivel) {
         expect($corpo)->not->toContain($sensivel);

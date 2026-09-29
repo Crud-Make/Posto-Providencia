@@ -160,9 +160,8 @@ const ListaDeEnviosDoDia = ({ erro, envios, aoTentarDeNovo }: {
  *          gate) porque não conversa com o resto da tela: recebe a lista, devolve
  *          a escolha.
  *
- *          O "8 frentistas ativos" do cabeçalho é literal no código desde antes
- *          desta extração — não veio de `frentistas.length`. Mantido como estava
- *          para esta mudança não misturar refatoração com correção de conteúdo.
+ *          O cabeçalho dizia "8 frentistas ativos" fixo no código; no ensaio Jorro+BR (27/09/2026)
+ *          o BR, com 3, aparecia com 8. Agora conta a lista que o posto escolhido devolveu.
  */
 const ModalDeFrentistas = ({ frentistas, selecionado, aoEscolher, aoFechar }: {
   frentistas: FrentistaSelecionavel[];
@@ -183,7 +182,7 @@ const ModalDeFrentistas = ({ frentistas, selecionado, aoEscolher, aoFechar }: {
       <div className="bg-[#D32F2F] absolute top-0 left-0 right-0 h-28 rounded-t-[2rem] flex items-start justify-between p-6 overflow-hidden z-30">
         <div className="z-10">
           <h2 className="text-2xl font-bold text-white mb-0.5">Quem está trabalhando?</h2>
-          <p className="text-red-100/80 text-sm">8 frentistas ativos</p>
+          <p className="text-red-100/80 text-sm">{frentistas.length} {frentistas.length === 1 ? 'frentista ativo' : 'frentistas ativos'}</p>
         </div>
         <button
           onClick={aoFechar}
@@ -598,7 +597,7 @@ const AppComponent = ({ setDialog, postoAtual }: { setDialog: React.Dispatch<Rea
                 </h2>
                 <ChevronDown size={16} className="text-slate-400" />
               </div>
-              <p className="text-sm text-slate-400 mt-0.5">Posto Jorro</p>
+              <p className="text-sm text-slate-400 mt-0.5">{postoAtual.posto.nome}</p>
             </div>
           </div>
           {selectedFrentista ? (

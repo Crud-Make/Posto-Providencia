@@ -61,12 +61,18 @@ export function sairDaApi(): ResultAsync<null, ErroDaApi> {
     });
 }
 
-const postoDaRedeSchema = z.object({ id: z.number().int().positive(), nome: z.string() });
+const postoDaRedeSchema = z.object({
+    id: z.number().int().positive(),
+    nome: z.string(),
+    // Caminho versionado da fachada (`/api/postos/{id}/foto?v=…`) ou `null` — a lista não carrega a
+    // imagem, só o endereço (27/09/2026). `.default(null)`: API anterior à foto não manda o campo.
+    foto: z.string().nullable().default(null),
+});
 export type PostoDaRede = z.infer<typeof postoDaRedeSchema>;
 
 /**
  * Os postos ativos da rede, para os cartões da tela de entrada — rota PÚBLICA (a mesma do PWA do
- * frentista), porque a escolha do posto vem antes da senha. Só `id` e `nome` saem dela.
+ * frentista), porque a escolha do posto vem antes da senha. Saem `id`, `nome` e o caminho da foto.
  */
 export function postosDaRede(): ResultAsync<PostoDaRede[], ErroDaApi> {
     return buscarNaApi('/api/postos', z.object({ data: z.array(postoDaRedeSchema) })).map((resposta) => resposta.data);

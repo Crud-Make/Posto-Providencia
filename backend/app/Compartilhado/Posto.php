@@ -21,6 +21,8 @@ use Illuminate\Support\Carbon;
  * @property ?string $telefone
  * @property ?string $email
  * @property bool $ativo
+ * @property ?string $foto data URL JPEG da fachada (banco/init/13); nunca sai em lista nem JSON
+ * @property Carbon|null $foto_atualizada_em versão da foto, vai na URL pública (`?v=`)
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  *
@@ -37,13 +39,22 @@ final class Posto extends Model
     protected $table = 'Posto';
 
     /** @var list<string> */
-    protected $fillable = ['nome', 'cnpj', 'endereco', 'cidade', 'estado', 'telefone', 'email', 'ativo'];
+    protected $fillable = ['nome', 'cnpj', 'endereco', 'cidade', 'estado', 'telefone', 'email', 'ativo', 'foto', 'foto_atualizada_em'];
+
+    /**
+     * A foto é um blob de até 300 KB: não vai em nenhuma serialização. Quem a mostra usa a rota
+     * `GET /api/postos/{posto}/foto`.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['foto'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
             'ativo' => 'boolean',
+            'foto_atualizada_em' => 'datetime',
         ];
     }
 

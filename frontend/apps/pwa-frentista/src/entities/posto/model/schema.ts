@@ -1,12 +1,15 @@
 import { z } from 'zod';
 
 /**
- * Um posto da rede como o PWA do frentista o conhece: só `id` e `nome` — é tudo o que
+ * Um posto da rede como o PWA do frentista o conhece: `id`, `nome` e o caminho da foto — o que
  * `GET /api/postos` devolve (rota pública, antes do PIN; #101, decisão do dono de 26/09/2026).
  */
 export const postoSchema = z.object({
   id: z.number().int().positive(),
   nome: z.string(),
+  // Caminho versionado da fachada (`/api/postos/{id}/foto?v=…`), trocada pelo gerente no painel
+  // (27/09/2026). Opcional: API anterior à foto e o posto fixo do Supabase não o têm.
+  foto: z.string().nullable().optional(),
 });
 
 export type Posto = z.infer<typeof postoSchema>;

@@ -2,6 +2,95 @@
 
 ## [Não Lançado]
 
+### ✏️ Foto do posto: lápis no próprio cartão da tela de entrada (#102)
+
+- Pedido do dono (27/09): trocar a foto sem entrar no painel. Lápis no canto da foto de cada cartão →
+  abre a galeria/câmera → a janela mostra a prévia e pede **só a senha** (o e-mail vem lembrado daquele
+  posto; sem ele, e-mail e senha uma vez). A foto aparece no cartão na hora.
+- Sem senha nenhuma ficou de fora de propósito (explicado ao dono, que escolheu a senha): a tela de
+  entrada é pública, e qualquer um na internet poderia trocar a foto dos postos.
+- A senha vale só para a troca: `POST /api/login` → `PUT /api/postos/{id}/foto` com esse token →
+  `POST /api/sair`, dando certo ou não. A sessão do painel não é tocada (`enviarParaApiComToken`).
+  Conta de outro posto: "Esta conta não pode trocar a foto deste posto." (403 do servidor).
+- A canetinha do menu lateral, para quem já entrou, continua.
+
+### 🖊️ Foto do posto: canetinha no painel para o gerente trocar a fachada (#102)
+
+- Decisão do dono (27/09): a canetinha fica **no painel, depois de entrar**, ao lado da foto e do nome
+  do posto na barra lateral, e só aparece para o admin ou o gerente/admin **daquele** posto — a mesma
+  regra do `gerir` do servidor, que é quem decide (401 sem token, 403 operador ou outro posto).
+- `PUT /api/postos/{posto}/foto` grava um JPEG em data URL (até 300 000 caracteres, `CHECK` no banco;
+  `null` remove). O painel reduz a foto no aparelho (até 1280 px, qualidade em degraus) e converte PNG
+  para JPEG antes de enviar.
+- `GET /api/postos` passa a trazer `foto`: só o caminho versionado `/api/postos/{id}/foto?v=…`, nunca a
+  imagem. `GET /api/postos/{id}/foto` é público e devolve o JPEG com cache de 1 ano (o `?v` muda a
+  cada troca). A foto vale nos cartões da tela de entrada do painel e na escolha de posto do PWA; sem
+  foto, o Jorro segue com a imagem antiga e os outros com as iniciais.
+- Esquema: `banco/init/13-foto-do-posto.sql` (colunas `foto`, `foto_atualizada_em`), incluído no CI.
+- ⚠️ Terceira cópia do redutor de foto do navegador (PWA frentista, pwa-dono e agora o painel): o
+  comentário do PWA pedia um pacote compartilhado no terceiro uso — pendência registrada.
+- Testado no navegador: PNG 2400×1400 virou JPEG 1280×747 (22 KB), servido nos três lugares.
+
+### 🪪 Tela de entrada: a senha aparece embaixo do posto escolhido (#102)
+
+- Pedido do dono (27/09): escolheu o Posto BR, o formulário abre embaixo do cartão do BR, e não
+  embaixo do Jorro. Na grade de 2 colunas o formulário fica na coluna do cartão; no celular, logo
+  depois dele. O login pelo Supabase (sem cartões) segue com o formulário sozinho.
+
+### 👥 Fechamento de Caixa: os envios do app foram para a aba Detalhamento Frentistas (#103)
+
+- Decisão do dono (27/09), no ensaio do Posto BR: com 24 bicos a tabela "Envios do App" ficava lá
+  embaixo da aba Leituras de Bomba. Agora Leituras tem só as bombas, e os envios abrem a visão **Dia**
+  do Detalhamento Frentistas — nos dois postos, a mesma tela.
+- A barra Vendas (bomba) × Apurado (frentistas) → Diferença + **Salvar** e o aviso "recarregue antes
+  de salvar" aparecem nas duas abas (`abaDoCaixaDoDia`): quem edita o caixa vê a diferença e salva ali.
+- "N recebidos" conta só quem mandou caixa: somava as linhas vazias semeadas ("3 recebidos" com 1
+  envio). E fala "1 recebido" no singular.
+- vitest 1408/0, golden 3536/0; canários da barra nas duas abas e do contador. Dívida do tsc −1.
+
+### ⛽ Fechamento de Caixa: bico parado no dia (0 L) não trava mais o Salvar (#103)
+
+- Decisão do dono (27/09), no ensaio do Posto BR: com 24 bicos sempre sobra bico que não vendeu. A
+  validação exigia final **maior** que inicial e travava o Salvar do dia inteiro sem dizer por quê.
+  Agora final = inicial é leitura válida (0 L); final em branco continua travando — não medido não é parado.
+- Ao reabrir o dia, bico com final = inicial era lido como leitura-base (1ª foto) e voltava em branco,
+  deixando o dia "não apurado". Agora só é leitura-base quando **todos** os bicos do dia estão iguais.
+- Bico novo (inicial 0,000) aceita 0,000 como fechamento; a tela mostra 0,000 L em vez de "-".
+- Nenhuma fórmula de dinheiro mudou (`packages/utils` intacto); API e banco já aceitavam 0 L.
+  vitest 1406/0, golden 3536/0, dois canários.
+
+### ✉️ Painel: o cartão do posto lembra o e-mail e pede só a senha (#102)
+
+- Depois da primeira entrada num posto, o cartão mostra "Entrar como <e-mail> · Trocar" e o cursor já
+  vai para a Senha (pedido do dono, 27/09). "Trocar" esquece o e-mail e volta a pedir.
+- Fica no navegador **só o e-mail**, por posto (`painel.email-do-posto.<id>`); senha, token e posto
+  ativo continuam fora. Conta recusada por ser de outro posto não fica lembrada.
+- O login continua por e-mail + senha: só senha, ou uma chave curta, deixaria o painel — que mostra
+  o dinheiro dos postos e fica na internet — a um palpite de qualquer conta do posto.
+
+### 📍 Painel e PWA dizem em qual posto se está (#102)
+
+- **Painel:** a barra lateral mostra o nome do posto ativo embaixo da marca (some com a barra recolhida).
+- **PWA do frentista:** o cartão "Selecionar Frentista" dizia "Posto Jorro" fixo no código, mesmo com o
+  Posto BR escolhido; agora mostra o posto escolhido. E a escolha de frentista dizia "8 frentistas
+  ativos" fixo (o BR tem 3); agora conta a lista do posto. Achados no ensaio Jorro+BR de 27/09.
+
+### 🐛 Painel: a tela de entrada não desloga mais sozinha (#102)
+
+- Ao entrar pela tela nova, o login dava 200 e o painel chamava `/api/sair` na hora (achado no ensaio
+  Jorro+BR de 27/09). O posto era marcado dentro do envio do formulário (action do React 19) e só
+  era gravado depois do usuário; nesse meio-tempo "usuário sem posto" disparava a recusa de conta de
+  outro posto. Agora o posto é marcado no clique do cartão.
+- Teste novo com os provedores de verdade (`index.integracao.test.tsx`); o antigo simulava `useAuth`
+  e `usePosto` e não via a corrida. Canário: o código anterior reprova (`/api/sair` chamado 1×).
+
+### 🔑 Painel: "Lembrar a senha neste navegador" (#102)
+
+- Caixa na tela de entrada, desmarcada por padrão. Marcada, e **só depois de a entrada dar certo**, o
+  login vai para o gerenciador de senhas do navegador (`navigator.credentials.store`, Chrome/Edge);
+  no Firefox e no Safari vale a oferta de salvar do próprio navegador. Na volta, o navegador preenche.
+- O app segue sem guardar nada: nem senha, nem token, nem posto. O campo de e-mail passa a
+  `autocomplete="username"`, que é o que os gerenciadores casam com a senha.
 ### 🛢️ Combustíveis e tanques cadastrados pelo painel (#157)
 
 - **API:** `POST`/`PUT /api/postos/{posto}/combustiveis` e `/tanques`, só para quem gere o posto;

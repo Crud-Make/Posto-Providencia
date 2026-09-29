@@ -6,6 +6,7 @@ use App\Cadastro\Http\Controllers\BombasEBicosController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\CombustiveisETanquesController;
 use App\Cadastro\Http\Controllers\EquipeController;
+use App\Cadastro\Http\Controllers\FotoDoPostoController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PostoDoPwaController;
 use App\Cadastro\Http\Controllers\PresencaController;
@@ -170,10 +171,21 @@ Route::post('postos/{posto}/frentistas/primeiro-acesso', [AcessoDoFrentistaContr
 
 /*
 | A escolha do POSTO vem antes de tudo no PWA (decisão do dono, 26/09/2026: "escolhe na 1ª vez e
-| lembra"), então também não pode exigir token. Expõe só `id` e `nome` dos postos ATIVOS, por id —
-| nada de cnpj, endereço, telefone ou e-mail. Mesmo limite de taxa da lista de frentistas.
+| lembra"), então também não pode exigir token. Expõe só `id`, `nome` e o caminho da foto da fachada
+| (ou null) dos postos ATIVOS, por id — nada de cnpj, endereço, telefone ou e-mail. Mesmo limite de
+| taxa da lista de frentistas.
 */
 Route::get('postos', [PostoDoPwaController::class, 'index'])->middleware('throttle:60,1');
+
+/*
+| A foto da fachada do posto (decisão do dono, 27/09/2026) aparece nos cartões da tela de entrada e
+| na escolha do PWA — antes de qualquer login —, então é pública, com o limite da lista. Devolve os
+| bytes do JPEG com cache eterno: a lista entrega a URL já versionada (`?v=`). Sem foto, posto
+| inativo ou inexistente: 404. Trocar a foto é escrita de quem gere (grupo `posto.acesso:gerir`).
+*/
+Route::get('postos/{posto}/foto', [FotoDoPostoController::class, 'mostra'])
+    ->whereNumber('posto')
+    ->middleware('throttle:60,1');
 
 /*
 | A tela de escolha vem ANTES do PIN, então esta lista não pode exigir token de frentista (#101,
@@ -258,6 +270,20 @@ Route::prefix('postos/{posto}')
         Route::put('equipe/{frentista}', [EquipeController::class, 'update'])->whereNumber('frentista');
         Route::post('equipe/{frentista}/desativar', [EquipeController::class, 'desativar'])->whereNumber('frentista');
         Route::get('equipe/{frentista}/historico', [HistoricoDaEquipeController::class, 'index'])->whereNumber('frentista');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Foto da fachada do posto (decisão do dono, 27/09/2026)
+|--------------------------------------------------------------------------
+| O gerente ou admin do posto troca pelo painel: `{ foto: "data:image/jpeg;base64,…" | null }`, até
+| 300.000 caracteres; `null` remove. Devolve o caminho público versionado. Escrita de cadastro:
+| `posto.acesso:gerir` — sem token 401, operador ou posto de outro 403.
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::put('foto', [FotoDoPostoController::class, 'troca']);
     });
 
 /*

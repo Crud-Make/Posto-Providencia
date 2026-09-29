@@ -40,7 +40,7 @@ import { AbaForaDaApi } from './components/AbaForaDaApi';
 
 // Subcomponentes
 import { HeaderFechamento } from './components/HeaderFechamento';
-import { abaFechamentoDe, type AbaFechamento } from './abas';
+import { abaDoCaixaDoDia, abaFechamentoDe, type AbaFechamento } from './abas';
 import { TabLeituras } from './components/TabLeituras';
 // [20/01 11:30] Adição da aba Detalhamento Frentistas
 // Motivo: Nova feature solicitada para visão detalhada por frentista
@@ -214,7 +214,7 @@ const TelaFechamentoDiario: React.FC = () => {
          />
 
          <div className="w-full px-2 lg:px-3 py-4 space-y-4">
-            {!tempoReal && activeTab === 'leituras' && (
+            {!tempoReal && abaDoCaixaDoDia(activeTab) && (
                <AvisoSemTempoReal
                   recarregando={loading}
                   onRecarregar={() => {
@@ -233,14 +233,8 @@ const TelaFechamentoDiario: React.FC = () => {
             <div className="bg-slate-800/30 rounded-2xl border border-slate-700/50 p-0.5">
                {activeTab === 'leituras' ? (
                   <TabLeituras
-                     bicos={bicos} leituras={leituras} frentistaSessions={frentistaSessions} frentistas={frentistas} loading={loading}
-                     onRefreshSessoes={() => {
-                        if (selectedDate) carregarSessoes(selectedDate, true);
-                     }}
-                     handlers={{
-                        alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros,
-                        alterarCampoFrentista, aoSairCampoFrentista, removerFrentista
-                     }}
+                     bicos={bicos} leituras={leituras} loading={loading}
+                     handlers={{ alterarInicial, alterarFechamento, aoSairInicial, aoSairFechamento, calcLitros }}
                      onUpdatePrice={updateBicoPrice}
                   />
                ) : activeTab === 'detalhamento' ? (
@@ -250,6 +244,11 @@ const TelaFechamentoDiario: React.FC = () => {
                      loading={loading}
                      onUpdateCampo={(tempId, campo, valor) => {
                         alterarCampoFrentista(tempId, campo as keyof SessaoFrentista, valor.toString());
+                     }}
+                     onBlurCampo={aoSairCampoFrentista}
+                     onRemoverSessao={removerFrentista}
+                     onRefresh={() => {
+                        if (selectedDate) carregarSessoes(selectedDate, true);
                      }}
                      postoId={postoAtivoId}
                      dataSelecionada={selectedDate}
@@ -272,13 +271,12 @@ const TelaFechamentoDiario: React.FC = () => {
             </div>
          </div>
 
-         {/* // [31/07] A barra de salvar passa a existir só na aba Leituras de Bomba. */}
-         {/* Motivo: estava fora do switch de abas, então aparecia nas 5. Em Fechamento */}
-         {/* Mensal e Gestão de Bicos ela exibia Vendas/Apurado/Diferença zerados sobre um */}
-         {/* painel que não tem nada a ver com o salvamento. Decisão do dono do produto em */}
-         {/* 31/07: só na primeira aba. Consequência aceita: para salvar após editar em */}
-         {/* Detalhamento, é preciso voltar à aba Leituras de Bomba. */}
-         {activeTab === 'leituras' && <FooterAcoes
+         {/* A barra de salvar (Vendas × Apurado → Diferença + Salvar) aparece nas duas abas que */}
+         {/* ela soma: Leituras de Bomba e Detalhamento Frentistas. [31/07] saiu das outras três, */}
+         {/* onde mostrava zeros sobre painéis sem relação com o salvamento. [27/09] Os envios do */}
+         {/* app foram para Detalhamento (decisão do dono): sem a barra ali, o gerente editaria o */}
+         {/* caixa sem ver a diferença e teria de voltar a Leituras para salvar. */}
+         {abaDoCaixaDoDia(activeTab) && <FooterAcoes
             totalVendas={totalVendas} totalFrentistas={totalFrentistas} diferenca={diferenca} saving={saving} podeFechar={podeFechar}
             handleSave={() => handleSave({
                selectedDate,

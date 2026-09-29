@@ -81,6 +81,17 @@ describe('PWA do frentista — abas', () => {
         localStorage.clear();
     });
 
+    it('a escolha de frentista conta a lista do posto, não um número fixo', async () => {
+        await montar();
+
+        const cartao = [...container.querySelectorAll('h2')].find((h) => h.textContent === 'Selecionar Frentista');
+        await act(async () => cartao?.click());
+
+        expect(container.textContent).toContain('Quem está trabalhando?');
+        expect(container.textContent).toContain('1 frentista ativo');
+        expect(container.textContent).not.toContain('8 frentistas ativos');
+    });
+
     it('mantém as abas de frentista exigindo frentista', async () => {
         localStorage.setItem('pwa.activeTab', 'vendas');
 

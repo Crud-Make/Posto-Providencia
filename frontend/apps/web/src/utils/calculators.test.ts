@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { litrosVendidos, valorDaLeitura } from '@posto/utils';
-import { calcularLitros, calcularVenda } from './calculators';
+import { calcularLitros, calcularVenda, validarLeitura } from './calculators';
 
 /**
  * [onda 3, 3.8] `calculators.ts` passou a delegar a aritmética do encerrante a
@@ -27,4 +27,12 @@ describe('calculators — adapter de tela sobre @posto/utils/leitura', () => {
         expect(r.valor).toBe(550);
         expect(calcularVenda(0, 5.5)).toEqual({ valor: 0, exibicao: '-' });
     });
+});
+
+describe('validarLeitura — bico parado é válido (decisão do dono, 27/09/2026)', () => {
+  it('avançou: válida', () => expect(validarLeitura('1.000,000', '1.500,000')).toBe(true));
+  it('parado (final = inicial, 0 L): válida', () => expect(validarLeitura('1.000,000', '1.000,000')).toBe(true));
+  it('bico novo parado (0 → 0): válida', () => expect(validarLeitura('0,000', '0,000')).toBe(true));
+  it('encerrante voltou: inválida', () => expect(validarLeitura('1.500,000', '1.000,000')).toBe(false));
+  it('final em branco: inválida — não medido não é parado', () => expect(validarLeitura('0,000', '')).toBe(false));
 });

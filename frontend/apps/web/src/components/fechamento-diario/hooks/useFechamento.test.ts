@@ -60,7 +60,11 @@ const sessaoComDinheiro = (valor: string): SessaoFrentista =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any;
 
-function renderizar(sessoes: SessaoFrentista[], bicosDaTela: typeof bicos = bicos) {
+function renderizar(
+    sessoes: SessaoFrentista[],
+    bicosDaTela: typeof bicos = bicos,
+    leiturasDaTela: Record<number, { inicial: string; fechamento: string }> = leituras,
+) {
     const container = document.createElement('div');
     let root: Root | null = null;
     let resultado: ReturnType<typeof useFechamento> | null = null;
@@ -68,7 +72,7 @@ function renderizar(sessoes: SessaoFrentista[], bicosDaTela: typeof bicos = bico
     // A sonda entrega o resultado por callback: atribuir a variável de fora de
     // dentro do componente é o que a regra do React Compiler barra no lint.
     function Sonda({ aoCalcular }: { aoCalcular: (r: ReturnType<typeof useFechamento>) => void }) {
-        aoCalcular(useFechamento(bicosDaTela, leituras, sessoes, []));
+        aoCalcular(useFechamento(bicosDaTela, leiturasDaTela, sessoes, []));
         return null;
     }
 
@@ -137,5 +141,38 @@ describe('useFechamento — dia não apurado (I8, #103 P8)', () => {
         expect(r.diferenca).toBe(0);
         expect(r.totalFrentistas).toBe(900);
         expect(r.exibicao.totalVendas).toBe('—');
+    });
+});
+
+/**
+ * Bico parado no dia (final = inicial, 0 L) não trava o Salvar — decisão do dono, 27/09/2026, no ensaio
+ * do Posto BR: com 24 bicos, sempre sobra bico que não vendeu. Bico em branco (não medido) segue travando.
+ */
+describe('useFechamento — bico parado no dia', () => {
+    const doisBicos = [
+        ...bicos,
+        { id: 2, numero: 2, combustivel_id: 1, combustivel: { id: 1, nome: 'Gasolina Comum', preco_venda: 5, cor: '#f5c239' } },
+    ] as typeof bicos;
+    // `frentistaId` preenchido: sem dono, o dinheiro declarado trava o Salvar por outra regra.
+    const comDono = { ...sessaoComDinheiro('1.000,00'), frentistaId: 1 } as SessaoFrentista;
+
+    it('um bico vendeu e o outro ficou parado: pode fechar, e o parado soma 0', () => {
+        const r = renderizar([comDono], doisBicos, {
+            1: { inicial: '1.000,000', fechamento: '1.200,000' },
+            2: { inicial: '5.000,000', fechamento: '5.000,000' },
+        });
+
+        expect(r.podeFechar).toBe(true);
+        expect(r.totalVendas).toBe(1000);
+        expect(r.diferenca).toBe(0);
+    });
+
+    it('bico em branco (não medido) continua travando o Salvar', () => {
+        const r = renderizar([comDono], doisBicos, {
+            1: { inicial: '1.000,000', fechamento: '1.200,000' },
+            2: { inicial: '5.000,000', fechamento: '' },
+        });
+
+        expect(r.podeFechar).toBe(false);
     });
 });

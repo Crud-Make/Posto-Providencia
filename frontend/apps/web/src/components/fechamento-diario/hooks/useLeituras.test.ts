@@ -238,3 +238,46 @@ describe('useLeituras — o encerrante inicial de dia novo pela API (`/leituras/
     expect(leituraService.getLastReading).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Bico parado no dia (final = inicial, 0 L) é leitura válida — decisão do dono, 27/09/2026, no ensaio do
+ * Posto BR (24 bicos). A mesma forma no banco era lida como leitura-base (1ª foto do dia) e o dia salvo
+ * reabria com o bico em branco, de novo "não apurado".
+ */
+describe('useLeituras — bico parado (0 L) × leitura-base', () => {
+  const linha = (id: number, bicoId: number, inicial: string, final: string) => ({
+    id, data: '2026-09-27T00:00:00Z', bico_id: bicoId, combustivel_id: 1, turno_id: null,
+    leitura_inicial: inicial, leitura_final: final, litros_vendidos: '0.000', preco_litro: '6.89', valor_total: '0.00',
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  async function carregar(dados: unknown[]) {
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8001');
+    vi.stubGlobal('fetch', apiFalsa({ '/api/postos/2/leituras?data=2026-09-27': { data: dados } }));
+    const { result } = renderHook(() => useLeituras(2, '2026-09-27', [bico(1), bico(2)], vi.fn()));
+    await act(async () => {
+      await result.current.carregarLeituras();
+    });
+    return result;
+  }
+
+  it('dia com fechamento: o bico parado reabre com o final = inicial e 0,000 L', async () => {
+    const result = await carregar([linha(1, 1, '10000.000', '10100.000'), linha(2, 2, '10000.000', '10000.000')]);
+
+    expect(result.current.leituras[2]).toEqual({ inicial: '10.000,000', fechamento: '10.000,000' });
+    expect(result.current.calcLitros(2)).toEqual({ value: 0, display: '0,000' });
+    expect(result.current.calcLitros(1).display).toBe('100,000');
+  });
+
+  it('só leitura-base (todos os bicos com final = inicial): o final segue em branco, como antes', async () => {
+    const result = await carregar([linha(1, 1, '10000.000', '10000.000'), linha(2, 2, '20000.000', '20000.000')]);
+
+    expect(result.current.leituras[1]).toEqual({ inicial: '10.000,000', fechamento: '' });
+    expect(result.current.leituras[2]).toEqual({ inicial: '20.000,000', fechamento: '' });
+    expect(result.current.calcLitros(1).display).toBe('-');
+  });
+});

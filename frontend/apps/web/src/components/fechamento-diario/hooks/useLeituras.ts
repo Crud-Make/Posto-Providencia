@@ -20,7 +20,7 @@ import type { BicoComDetalhes } from '../../../types/fechamento';
 import { leituraService } from '../../../services/api';
 import { descreverErroDaApi, urlDaApi } from '../../../services/api/base';
 import { lerLeiturasDoDiaDaApi, lerUltimasLeiturasDaApi, type LeituraDoDia } from '../../../services/api/leitura.api';
-import { formatarParaBR } from '../../../utils/formatters';
+import { analisarValor, formatarParaBR } from '../../../utils/formatters';
 import {
   type ApiResponse,
   createErrorResponse,
@@ -306,10 +306,13 @@ export const useLeituras = (
       if (dados.length > 0) {
         // [29/01 13:40] Modo edição: usa leituras existentes
         console.log('[29/01 13:40] Leituras carregadas do banco:', dados.length, 'registros');
+        // Leitura-base (1ª foto do dia, sem fechamento real) grava TODOS os bicos com final = inicial.
+        // Se algum bico do dia andou, o dia tem fechamento, e o bico com final = inicial é bico
+        // parado (0 L), não leitura-base — ensaio do Posto BR, 27/09/2026. Sem isso, o dia salvo
+        // com bico parado reabria com o bico em branco e voltava a "não apurado".
+        const diaTemFechamento = dados.some(l => Number(l.leitura_final) !== Number(l.leitura_inicial));
         const mapeado = dados.reduce((acc, l) => {
-          // leitura_final === leitura_inicial é a leitura-base do dia (1ª foto do dia,
-          // ainda sem fechamento real) — mostra "final" em branco até a 2ª foto chegar.
-          const aindaSemFechamento = Number(l.leitura_final) === Number(l.leitura_inicial);
+          const aindaSemFechamento = !diaTemFechamento && Number(l.leitura_final) === Number(l.leitura_inicial);
           acc[l.bico_id] = {
             inicial: formatarParaBR(l.leitura_inicial, 3),
             fechamento: (!aindaSemFechamento && l.leitura_final > 0) ? formatarParaBR(l.leitura_final, 3) : ''
@@ -448,8 +451,10 @@ export const useLeituras = (
     const valorAtual = leituras[bicoId]?.fechamento || '';
     let formatado = formatarAoSair(valorAtual);
 
-    // Se o resultado for 0,000, limpa o campo para facilitar digitação
-    if (formatado === '0,000') formatado = '';
+    // 0,000 num bico que já andou é placeholder, não leitura: limpa para facilitar a digitação.
+    // Bico novo (inicial 0,000) parado no dia fica com 0,000 — é 0 L, não campo vazio.
+    const inicialZero = analisarValor(leituras[bicoId]?.inicial ?? '') === 0;
+    if (formatado === '0,000' && !inicialZero) formatado = '';
 
     if (formatado !== valorAtual) {
       setLeituras(prev => ({
@@ -474,7 +479,8 @@ export const useLeituras = (
     const inicial = parseFloat((leitura.inicial ?? '').replace(/\./g, '').replace(',', '.')) || 0;
     const fechamento = parseFloat((leitura.fechamento ?? '').replace(/\./g, '').replace(',', '.')) || 0;
 
-    if (fechamento <= inicial || fechamento === 0) {
+    // Em branco ou encerrante que voltou: sem litros. Final = inicial é bico parado: 0,000 L.
+    if ((leitura.fechamento ?? '').trim() === '' || fechamento < inicial) {
       return { value: 0, display: '-' };
     }
 
