@@ -78,4 +78,11 @@ interface ImportMetaEnv {
      * deixa no Supabase. Ausente, vale o `VITE_API_URL`.
      */
     readonly VITE_API_CONFIGURACOES?: string;
+    /**
+     * Corte da aba Receitas e Despesas do Fechamento de Caixa (#103): `1` lança (Nova Despesa, Fixas,
+     * Taxas de Cartão) e lista despesas pela API (`GET`/`POST /despesas`, `GET /categorias-financeiras`);
+     * o resumo e o gráfico da aba ainda não vêm da API e ficam ocultos. `0` deixa a aba no Supabase.
+     * Ausente, vale o `VITE_API_URL`.
+     */
+    readonly VITE_API_DESPESAS?: string;
 }

@@ -33,6 +33,7 @@ import { useFechamento } from './hooks/useFechamento';
 import { useAutoSave } from './hooks/useAutoSave';
 import { useSubmissaoFechamento } from './hooks/useSubmissaoFechamento';
 import type { SessaoFrentista } from '../../types/fechamento';
+import { despesasPelaApi } from '../../services/api/despesas.api';
 import { loginPelaApiLigado } from '../../services/api/base';
 import { useTempoRealDoFechamento } from './hooks/useTempoRealDoFechamento';
 import { AvisoSemTempoReal } from './components/AvisoSemTempoReal';
@@ -255,7 +256,8 @@ const TelaFechamentoDiario: React.FC = () => {
                   />
                ) : activeTab === 'receitas-despesas' ? (
                   // Módulo sem rota no Laravel ainda: no login pela API a aba não chama o Supabase.
-                  loginPelaApiLigado() ? <AbaForaDaApi aba="Receitas e Despesas" /> : <PainelReceitasDespesas />
+                  // #103: com `VITE_API_DESPESAS` a aba vai pela API (lançar e listar despesas).
+     loginPelaApiLigado() && !despesasPelaApi() ? <AbaForaDaApi aba="Receitas e Despesas" /> : <PainelReceitasDespesas />
                ) : activeTab === 'fechamento-mensal' ? (
                   <FechamentoMensal isEmbedded={true} />
                ) : (

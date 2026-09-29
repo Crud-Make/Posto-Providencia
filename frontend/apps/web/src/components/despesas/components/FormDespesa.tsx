@@ -12,6 +12,7 @@ import { X, Save, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
 import { Despesa, DespesaFormData, CATEGORIAS_DESPESA } from '../types';
 // [01/02 11:15] Integração com categorias dinâmicas e remoção de casting 'any' para conformidade.
 import { categoriaService, CategoriaFinanceira } from '../../../services/api/categoria.service';
+import { despesasPelaApi, lerCategoriasDaApi } from '../../../services/api/despesas.api';
 import { CampoMoeda } from '@shared/ui/campo-moeda';
 import { hojeIso } from '@posto/utils';
 
@@ -66,6 +67,18 @@ const FormDespesa: React.FC<FormDespesaProps> = ({
     useEffect(() => {
         const loadCats = async () => {
             setLoadingCats(true);
+            // #103: pela API, as categorias do posto e as globais (o mesmo filtro do Supabase).
+            if (despesasPelaApi()) {
+                const lidas = await lerCategoriasDaApi(postoId, 'despesa');
+                if (lidas.isOk()) {
+                    setCategoriasDB(lidas.value.map((c): CategoriaFinanceira => {
+                        const base = { id: c.id, nome: c.nome, tipo: c.tipo as CategoriaFinanceira['tipo'] };
+                        return c.cor === null ? base : { ...base, cor: c.cor };
+                    }));
+                }
+                setLoadingCats(false);
+                return;
+            }
             const res = await categoriaService.getAll(postoId, 'despesa');
             if (res.success) {
                 setCategoriasDB(res.data || []);
