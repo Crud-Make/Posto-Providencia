@@ -103,6 +103,8 @@ export interface GestaoFormasPagamentoProps {
     onEdit: (method: FormaPagamento) => void;
     /** Callback para alternar status */
     onToggleStatus: (id: string, currentStatus: boolean) => void;
+    /** #103: o "Excluir" pela API (desativa e tira da lista). Ausente, vale o caminho antigo do Supabase. */
+    onDelete?: ((id: string) => void) | undefined;
     /** Props do modal (estado e handlers) */
     modal: ModalFormaPagamentoProps;
 }

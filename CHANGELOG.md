@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### ⚙️ Configurações pela API: formas de pagamento e parâmetros (#103)
+
+- **Formas de pagamento** (flag `VITE_API_CONFIGURACOES`; ausente, vale o `VITE_API_URL`): lista,
+  criar, editar, ativar/desativar e o "Excluir" pela API (`POST`/`PUT /formas-pagamento`). O posto
+  é o da rota — o caminho antigo gravava no posto 1 quando não havia posto escolhido. "Excluir"
+  continua sendo desativar, e agora some da lista sem recarregar a página. Nome repetido no posto é
+  recusado com mensagem.
+- **Parâmetros** (tolerância de divergência, dias de estoque crítico e baixo): `GET`/`PUT /parametros`.
+  Salvar cria as linhas quando o posto não tem — no Posto BR o salvar antigo **falhava**.
+- A taxa da forma continua valendo também para os dias já salvos (o recebimento não guarda a taxa):
+  comportamento de antes, sem mudança.
+- Com a pista pela API (`VITE_API_BICOS`), o cartão antigo de Produtos sai: Combustíveis e Tanques
+  já mostra os combustíveis do posto.
+
 ### ✏️ Foto do posto: lápis no próprio cartão da tela de entrada (#102)
 
 - Pedido do dono (27/09): trocar a foto sem entrar no painel. Lápis no canto da foto de cada cartão →

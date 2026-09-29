@@ -15,6 +15,7 @@ export const GestaoFormasPagamento: React.FC<GestaoFormasPagamentoProps> = ({
     paymentMethods, 
     onAdd, 
     onEdit, 
+    onDelete,
     modal 
 }) => {
     
@@ -112,6 +113,10 @@ export const GestaoFormasPagamento: React.FC<GestaoFormasPagamentoProps> = ({
                                                     className="hover:text-red-600 dark:hover:text-red-400 transition-colors"
                                                     onClick={() => {
                                                         if (window.confirm("Deseja realmente excluir?")) {
+                                                            if (onDelete !== undefined) {
+                                                                onDelete(method.id);
+                                                                return;
+                                                            }
                                                             formaPagamentoService
                                                                 .delete(Number(method.id))
                                                                 .then(() => {
