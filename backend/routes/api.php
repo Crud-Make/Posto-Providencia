@@ -5,6 +5,7 @@ use App\Agregacao\Http\Controllers\RelatorioDiarioController;
 use App\Cadastro\Http\Controllers\BombasEBicosController;
 use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\CombustiveisETanquesController;
+use App\Cadastro\Http\Controllers\ConfiguracoesController;
 use App\Cadastro\Http\Controllers\EquipeController;
 use App\Cadastro\Http\Controllers\FotoDoPostoController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
@@ -343,4 +344,9 @@ Route::prefix('postos/{posto}')
         Route::put('combustiveis/{combustivel}', [CombustiveisETanquesController::class, 'editaCombustivel'])->whereNumber('combustivel');
         Route::post('tanques', [CombustiveisETanquesController::class, 'criaTanque']);
         Route::put('tanques/{tanque}', [CombustiveisETanquesController::class, 'editaTanque'])->whereNumber('tanque');
+        // #103, Configurações: formas de pagamento (a lista segue no GET do catálogo) e os parâmetros.
+        Route::post('formas-pagamento', [ConfiguracoesController::class, 'criaForma']);
+        Route::put('formas-pagamento/{forma}', [ConfiguracoesController::class, 'editaForma'])->whereNumber('forma');
+        Route::get('parametros', [ConfiguracoesController::class, 'parametros']);
+        Route::put('parametros', [ConfiguracoesController::class, 'gravaParametros']);
     });
