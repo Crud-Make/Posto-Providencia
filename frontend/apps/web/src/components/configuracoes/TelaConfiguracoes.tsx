@@ -18,7 +18,7 @@ import {
     ModalResetSistema,
     ModalApagarMes
 } from './components/index';
-import { bicosPelaApi, GestaoDeBicos } from '@features/gestao-de-bicos';
+import { bicosPelaApi, PistaDoPosto } from '@features/gestao-de-bicos';
 
 /**
  * Tela de Configurações do Sistema.
@@ -99,7 +99,7 @@ const TelaConfiguracoes: React.FC = () => {
                                     loading={loading}
                                 />
                                 {bicosPelaApi() ? (
-                                    <GestaoDeBicos postoId={postoAtivoId} />
+                                    <PistaDoPosto postoId={postoAtivoId} />
                                 ) : (
                                     <GestaoBicos
                                         nozzles={nozzles}

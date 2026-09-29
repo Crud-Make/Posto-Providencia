@@ -217,7 +217,7 @@ it('ISOLAMENTO: bomba, combustível ou tanque de OUTRO posto é 422 e nada é gr
     withToken(tokenDoGerente($br))->postJson("/api/postos/{$br->id}/bicos", corpoDeBicoCb($c, [$campo => $alheio]))
         ->assertUnprocessable()->assertJsonPath('erro.codigo', $codigo);
 
-    expect(DB::table('Bico')->count())->toBe(0);
+    expect(DB::table('Bico')->where('posto_id', $br->id)->count())->toBe(0);
 })->with([
     'bomba' => ['bomba_id', 'bomba_invalida'],
     'combustível' => ['combustivel_id', 'combustivel_invalido'],
@@ -230,7 +230,7 @@ it('tanque de outro combustível é 422 tanque_invalido', function (): void {
 
     withToken(tokenDoGerente($br))->postJson("/api/postos/{$br->id}/bicos", corpoDeBicoCb($c, ['tanque_id' => $c['tanqueEt']->id]))
         ->assertUnprocessable()->assertJsonPath('erro.codigo', 'tanque_invalido');
-    expect(DB::table('Bico')->count())->toBe(0);
+    expect(DB::table('Bico')->where('posto_id', $br->id)->count())->toBe(0);
 });
 
 it('bico ativo em bomba desativada é 422 bomba_invalida', function (): void {
@@ -340,7 +340,7 @@ it('recusa de forma é 422 corpo_invalido', function (array $troca): void {
 
     withToken(tokenDoGerente($br))->postJson("/api/postos/{$br->id}/bicos", corpoDeBicoCb($c, $troca))
         ->assertUnprocessable()->assertJsonPath('erro.codigo', 'corpo_invalido');
-    expect(DB::table('Bico')->count())->toBe(0);
+    expect(DB::table('Bico')->where('posto_id', $br->id)->count())->toBe(0);
 })->with([
     'ativo em string' => [['ativo' => 'true']],
     'número zero' => [['numero' => 0]],

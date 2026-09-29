@@ -91,6 +91,23 @@
   no Firefox e no Safari vale a oferta de salvar do próprio navegador. Na volta, o navegador preenche.
 - O app segue sem guardar nada: nem senha, nem token, nem posto. O campo de e-mail passa a
   `autocomplete="username"`, que é o que os gerenciadores casam com a senha.
+### 🛢️ Combustíveis e tanques cadastrados pelo painel (#157)
+
+- **API:** `POST`/`PUT /api/postos/{posto}/combustiveis` e `/tanques`, só para quem gere o posto;
+  o posto é o da rota. Nada se apaga: desativar é `ativo: false`.
+- **Combustível tem preço de venda** (decisão do dono, 27/09, tirada da planilha e do código): é o
+  preço de partida do dia na aba Leituras de Bomba — o "Preço do dia" ajusta por cima e o dia salvo
+  grava o próprio preço em cada leitura, então mudar o cadastro não mexe em dia salvo. Vai em texto
+  ("6.89"), nunca em float. **Sem preço de custo**: o custo vem das compras do mês.
+- **Tanque sem estoque inicial:** nasce com 0 e o estoque de partida é a primeira medição de régua,
+  como a abertura da planilha. Editar o tanque nunca mexe no estoque.
+- **Travas** (422 com código): código de combustível único no posto e travado depois da primeira
+  venda ou compra (é ele que dá cor e nome aos relatórios); tanque com bico ou régua não troca de
+  combustível; combustível e tanque só desativam sem bico ativo.
+- **Painel:** Configurações ganha o cartão **Combustíveis e Tanques** (cada combustível com cor,
+  código, preço e os tanques dele), na mesma flag `VITE_API_BICOS`. Ele divide o estado com Bombas
+  e Bicos: o combustível criado aparece na hora no formulário de bico.
+
 ### ⛽ Fechamento de Caixa: Leituras de Bomba agrupadas por bomba (#155)
 
 - A aba **Leituras de Bomba** mostra os bicos em blocos por bomba — um título por bomba (com a
