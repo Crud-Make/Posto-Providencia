@@ -10,6 +10,7 @@
   PROVIDÊNCIA na cobertura, calçamento na frente do pátio e a estradinha até a pista; do outro lado da
   estrada, árvores e moitas. No fim da estrada, a cidadezinha de casas coloridas; na pista,
   os carros do dono indo para a cidade — o Corolla branco 2015 e a S10 (prata até o dono dizer a cor).
+  Mais caatinga dos dois lados e tucanos nas copas — Caldas do Jorro fica em Tucano.
   Desenho em SVG (`cena-da-chegada.tsx`), não foto: as fotos da entrada têm
   ~400 px.
 - **Modo escuro:** o botão sol/lua volta à tela; escuro, a chegada vira noite — céu estrelado, luzes

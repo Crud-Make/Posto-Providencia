@@ -29,6 +29,43 @@ const CASAS: ReadonlyArray<readonly [number, number, number, number]> = [
   [936, 18, 13, 1], [956, 14, 17, 0], [972, 20, 12, 2], [994, 16, 15, 3], [1012, 18, 11, 4],
 ];
 
+/** Árvore de copa larga da caatinga, com a base do tronco em (x, y). */
+const Arvore: React.FC<{ x: number; y: number; escala: number; folha: readonly string[]; tronco: string }> = ({ x, y, escala, folha, tronco }) => (
+  <g transform={`translate(${x} ${y}) scale(${escala})`}>
+    <rect x="-6" y="-82" width="12" height="82" fill={tronco} />
+    <ellipse cx="0" cy="-90" rx="62" ry="34" fill={folha[0]} />
+    <ellipse cx="-24" cy="-106" rx="36" ry="24" fill={folha[1]} />
+    <ellipse cx="28" cy="-102" rx="40" ry="26" fill={folha[1]} />
+  </g>
+);
+
+/** Tucano empoleirado, virado para a esquerda, com os pés em (x, y). */
+const Tucano: React.FC<{ x: number; y: number; escala: number }> = ({ x, y, escala }) => (
+  <g transform={`translate(${x} ${y}) scale(${escala})`}>
+    <path d="M4 -6 L10 12 L2 10 Z" fill="#111114" />
+    <ellipse cx="0" cy="-16" rx="9" ry="15" fill="#111114" />
+    <ellipse cx="-5" cy="-21" rx="5" ry="7" fill="#F6E7B0" />
+    <path d="M-7 -29 Q-24 -34 -34 -24 Q-24 -22 -7 -21 Z" fill="#F28C1E" />
+    <path d="M-30 -27 Q-34 -26 -34 -24 Q-31 -23 -28 -23 Z" fill="#111114" />
+    <path d="M-7 -29 Q-20 -31 -30 -26" stroke="#E0B21A" strokeWidth="1.5" fill="none" />
+    <circle cx="-3" cy="-27" r="3" fill="#3AA0E0" />
+    <circle cx="-3" cy="-27" r="1.3" fill="#111114" />
+    <path d="M-3 -1 L-3 3 M3 -1 L3 3" stroke="#6B6B6B" strokeWidth="1.6" />
+  </g>
+);
+
+/** Árvores: [x, base do tronco, escala]. Moitas: [x, y, raio x, raio y, tom]. Tucanos: [x, y, escala]. */
+const ARVORES: ReadonlyArray<readonly [number, number, number]> = [
+  [1178, 700, 0.62], [1260, 694, 1], [1349, 696, 0.78], [1470, 700, 0.9], [1575, 690, 0.7], [-60, 700, 0.8], [-170, 694, 0.95],
+];
+const MOITAS: ReadonlyArray<readonly [number, number, number, number, 0 | 1 | 2]> = [
+  [1180, 716, 34, 12, 0], [1190, 694, 52, 18, 2], [1304, 698, 44, 16, 2], [1376, 700, 30, 12, 0],
+  [1440, 712, 40, 14, 1], [1530, 708, 50, 16, 2], [-110, 708, 50, 16, 2],
+];
+const TUCANOS: ReadonlyArray<readonly [number, number, number]> = [
+  [1236, 572, 1.35], [1364, 600, 1.2], [1486, 590, 1.15],
+];
+
 const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ className = '', noite = false }) => {
   const c = noite ? NOITE : DIA;
   return (
@@ -177,20 +214,16 @@ const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ clas
       </g>
     </g>
 
-    {/* vegetação do outro lado da estrada, em frente ao posto: duas árvores de copa larga e moitas */}
-    <g transform="translate(1340 0)">
-      <rect x="-86" y="612" width="12" height="82" fill={c.tronco} />
-      <ellipse cx="-80" cy="604" rx="62" ry="34" fill={c.folha[0]} />
-      <ellipse cx="-104" cy="588" rx="36" ry="24" fill={c.folha[1]} />
-      <ellipse cx="-52" cy="592" rx="40" ry="26" fill={c.folha[1]} />
-      <rect x="4" y="636" width="10" height="60" fill={c.tronco} />
-      <ellipse cx="9" cy="628" rx="48" ry="28" fill={c.folha[0]} />
-      <ellipse cx="-10" cy="616" rx="28" ry="18" fill={c.folha[1]} />
-      <ellipse cx="28" cy="620" rx="30" ry="20" fill={c.folha[1]} />
-      <ellipse cx="-150" cy="694" rx="52" ry="18" fill={c.folha[2]} />
-      <ellipse cx="-36" cy="698" rx="44" ry="16" fill={c.folha[2]} />
-      <ellipse cx="36" cy="700" rx="30" ry="12" fill={c.folha[0]} />
-    </g>
+    {/* vegetação dos dois lados (mais a do outro lado da estrada) e os tucanos nas copas */}
+    {MOITAS.map(([x, y, rx, ry, tom]) => (
+      <ellipse key={`m${x}`} cx={x} cy={y} rx={rx} ry={ry} fill={c.folha[tom]} />
+    ))}
+    {ARVORES.map(([x, y, e]) => (
+      <Arvore key={`a${x}`} x={x} y={y} escala={e} folha={c.folha} tronco={c.tronco} />
+    ))}
+    {TUCANOS.map(([x, y, e]) => (
+      <Tucano key={`t${x}`} x={x} y={y} escala={e} />
+    ))}
 
     {/* a estradinha até o posto */}
     <polygon points="404,686 468,686 708,716 676,740" fill="#3A3C46" />
