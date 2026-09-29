@@ -23,9 +23,9 @@ const NOITE = {
   casas: ['#3A3550', '#43344A', '#2F3A52', '#3D3A4E', '#3E3350'], telhado: '#2A1E26', janela: '#FFD27A', lanterna: 1,
 };
 
-/** Casas da cidadezinha no fim da estrada: [x, largura, altura, índice da cor]. */
+/** Casas da cidadezinha no fim da estrada (a igrejinha saiu a pedido do dono, 28/09/2026): [x, largura, altura, índice da cor]. */
 const CASAS: ReadonlyArray<readonly [number, number, number, number]> = [
-  [828, 18, 12, 0], [848, 14, 16, 1], [864, 20, 11, 2], [886, 16, 14, 4],
+  [828, 18, 12, 0], [848, 14, 16, 1], [864, 20, 11, 2], [886, 16, 14, 4], [906, 24, 15, 3],
   [936, 18, 13, 1], [956, 14, 17, 0], [972, 20, 12, 2], [994, 16, 15, 3], [1012, 18, 11, 4],
 ];
 
@@ -84,7 +84,7 @@ const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ clas
       <path d="M1340 604 L1340 560 M1340 576 L1326 576 L1326 564 M1340 584 L1354 584 L1354 570" strokeWidth="8" />
     </g>
 
-    {/* a cidadezinha no fim da estrada (em dobro, com a base no horizonte) */}
+    {/* a cidadezinha no fim da estrada, só casas (em dobro, com a base no horizonte) */}
     <g transform="translate(918 616) scale(2) translate(-918 -616)">
       {CASAS.map(([x, w, h, cor]) => (
         <g key={x}>
@@ -93,13 +93,6 @@ const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ clas
           <rect x={x + w / 2 - 2} y={616 - h + 4} width="4" height="4" fill={c.janela} />
         </g>
       ))}
-      <rect x="905" y="590" width="26" height="26" fill={c.casas[3]} />
-      <polygon points="903,590 918,580 933,590" fill={c.telhado} />
-      <rect x="912" y="566" width="12" height="24" fill={c.casas[3]} />
-      <polygon points="910,566 918,556 926,566" fill={c.telhado} />
-      <path d="M918 548 L918 556 M915 551 L921 551" stroke={c.telhado} strokeWidth="1.6" />
-      <rect x="915" y="600" width="6" height="16" fill={c.janela} />
-      <circle cx="918" cy="574" r="2.2" fill={c.janela} />
     </g>
 
     {/* terra vermelha */}
