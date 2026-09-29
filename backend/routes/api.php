@@ -22,6 +22,7 @@ use App\Fechamento\Http\Controllers\FechamentoController;
 use App\Fechamento\Http\Controllers\FechamentoFrentistaController;
 use App\Fechamento\Http\Controllers\HistoricoDaEquipeController;
 use App\Fechamento\Http\Controllers\LeituraController;
+use App\Financeiro\Http\Controllers\DespesasController;
 use App\Pessoas\Http\Controllers\AcessoDoFrentistaController;
 use App\Pessoas\Http\Controllers\AutenticacaoController;
 use Illuminate\Support\Facades\DB;
@@ -349,4 +350,22 @@ Route::prefix('postos/{posto}')
         Route::put('formas-pagamento/{forma}', [ConfiguracoesController::class, 'editaForma'])->whereNumber('forma');
         Route::get('parametros', [ConfiguracoesController::class, 'parametros']);
         Route::put('parametros', [ConfiguracoesController::class, 'gravaParametros']);
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Aba Receitas e Despesas do Fechamento de Caixa (#103)
+|--------------------------------------------------------------------------
+| Lançar (Nova Despesa, Despesas Fixas, Taxas de Cartão) e listar despesas, e as categorias. É dado
+| de dinheiro do posto: `posto.acesso:gerir`, na ordem de sempre — sem token 401, posto de outro 403.
+| O `posto_id` sai da rota. `data` e `valor` são gravados como a tela manda: a `data` decide o mês
+| do rateio do lucro, e a regra de qual data usar continua na tela. O lançamento é idempotente pela
+| `chave` (14-despesa-pela-api.sql).
+*/
+Route::prefix('postos/{posto}')
+    ->middleware(['token.atual', DefinePostoAtual::class, 'posto.acesso:gerir'])
+    ->group(function (): void {
+        Route::get('despesas', [DespesasController::class, 'index']);
+        Route::post('despesas', [DespesasController::class, 'store']);
+        Route::get('categorias-financeiras', [DespesasController::class, 'categorias']);
     });
