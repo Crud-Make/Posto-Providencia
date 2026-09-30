@@ -321,7 +321,7 @@ it('dia não apurado: total_vendas e diferenca ficam null, nunca 0.00 (I8)', fun
         ->and($resultado->status)->toBe(StatusFechamento::Fechado);
 });
 
-it('rollback: FK inválida no recebimento desfaz o dia inteiro — nada fica pela metade', function (): void {
+it('rollback: erro do banco no último passo (recebimento) desfaz o dia inteiro — nada fica pela metade', function (): void {
     $c = cenarioP10();
 
     $antes = [Fechamento::query()->count(), Leitura::query()->count(), FechamentoFrentista::query()->count()];
@@ -329,7 +329,10 @@ it('rollback: FK inválida no recebimento desfaz o dia inteiro — nada fica pel
     $dia = diaP10(
         leituras: [leituraP10($c['bicoGas1'], $c['gasolina'])],
         sessoes: [sessaoP10($c['frentistaA'])],
-        recebimentos: [recebimentoP10(999999999, '10.00')],   // FormaPagamento inexistente
+        // O recebimento é o ÚLTIMO a ser gravado; um valor que estoura `numeric(10,2)` falha no banco depois
+        // de leituras e sessões já escritas. (A forma inexistente, que este teste usava, agora é recusada ANTES
+        // da transação por ItensDoPosto — sonda de 30/09.)
+        recebimentos: [recebimentoP10($c['forma']->id, '99999999999999.99')],
         totalRecebido: '500.00',
     );
 

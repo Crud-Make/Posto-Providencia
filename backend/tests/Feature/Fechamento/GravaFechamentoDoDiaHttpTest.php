@@ -292,3 +292,26 @@ it('diferenca errada por um centavo: 422 totais_inconsistentes e nada gravado', 
 
     expect(Fechamento::query()->count())->toBe(0);
 });
+
+it('item de OUTRO posto no corpo: 422 item_de_outro_posto e o dado do vizinho fica intacto (sonda 30/09)', function (string $tipo): void {
+    $jorro = cenarioP11();
+    DB::table('Leitura')->insert([
+        'bico_id' => $jorro['bico']->id, 'combustivel_id' => $jorro['combustivel']->id, 'data' => '2026-01-05 00:00:00+00',
+        'leitura_inicial' => '5000.000', 'leitura_final' => '5100.000', 'litros_vendidos' => '100.000',
+        'preco_litro' => '6.00', 'valor_total' => '600.00', 'usuario_id' => 1, 'posto_id' => $jorro['posto']->id,
+    ]);
+    $br = cenarioP11();
+    $gerente = usuarioP11('c2220000-0000-4000-8000-0000000000'.str_pad((string) random_int(10, 99), 2, '0'), $br['posto']->id, Role::Gerente, PapelNoPosto::Gerente);
+    $corpo = match ($tipo) {
+        default => corpoP11($br, ['bico_id' => $jorro['bico']->id]), // 'bico'
+        'combustivel' => corpoP11($br, ['combustivel_id' => $jorro['combustivel']->id]),
+        'frentista' => corpoP11($br, [], ['frentista_id' => $jorro['frentista']->id]),
+        'forma' => array_merge(corpoP11($br), ['recebimentos' => [['forma_pagamento_id' => $jorro['forma']->id, 'valor' => '600.00']]]),
+    };
+
+    withToken(tokenP11((string) $gerente->auth_user_id))->putJson(urlP11($br['posto']->id), $corpo)
+        ->assertUnprocessable()->assertJsonPath('erro.codigo', 'item_de_outro_posto');
+
+    expect(DB::table('Leitura')->where('bico_id', $jorro['bico']->id)->value('leitura_inicial'))->toBe('5000.000')
+        ->and(Fechamento::query()->where('posto_id', $br['posto']->id)->count())->toBe(0);
+})->with(['bico', 'combustivel', 'frentista', 'forma']);

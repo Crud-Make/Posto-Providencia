@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🔒 Fechamento: o dia só aceita bico, combustível, frentista e forma de pagamento do próprio posto (#103)
+
+- Achado de 30/09 (sonda ao desenhar a rota de leituras do PWA do dono): o `PUT /fechamento` do gerente do BR com o
+  `bico_id` de um bico do Jorro respondia **200** e **sobrescrevia a leitura do Jorro** — o UPSERT é por
+  `(bico_id, data)` e não troca o `posto_id`. A tela nunca manda id de outro posto, mas uma requisição montada à
+  mão mexia no dinheiro do vizinho; a prova de isolamento (33/0) não cobria o CORPO da escrita.
+- `ItensDoPosto` confere, antes da transação, que todo id do corpo é do posto da rota — bicos e combustíveis das
+  leituras, frentistas das sessões e dos conhecidos, formas de pagamento dos recebimentos — e recusa com 422
+  `item_de_outro_posto`, sem gravar nada.
+- `PostoAtual::exigido()` concentra o "rota sem posto é erro de configuração" (o `GravaFechamentoDoDia` ficaria no
+  teto de acoplamento do PHPMD). O teste de rollback, que forçava a falha com uma forma inexistente (agora recusada
+  antes), passou a forçá-la com um valor que estoura `numeric(10,2)` no último passo.
+- Canário: tirar a trava reprova os 4 casos (bico, combustível, frentista, forma).
+
 ### ♿ Produtos e Estoque: os campos do "Novo Produto" têm nome para leitor de tela (#103)
 
 - Achado no ensaio Jorro+BR (30/09): os rótulos do formulário existiam, mas não estavam ligados aos campos (sem
