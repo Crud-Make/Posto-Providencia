@@ -27,8 +27,8 @@ const pista: PistaDaApi = {
         { id: 10, numero: 1, ativo: true, bomba: { id: 1 }, combustivel: { id: 6 }, tanque: { id: 60 } },
     ],
     combustiveis: [
-        { id: 5, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.89' },
-        { id: 6, nome: 'Etanol', codigo: 'ET', cor: '#43A047', ativo: true, preco_venda: '4.89' },
+        { id: 5, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.89', preco_custo: '5.3100' },
+        { id: 6, nome: 'Etanol', codigo: 'ET', cor: '#43A047', ativo: true, preco_venda: '4.89', preco_custo: null },
     ],
     tanques: [
         { id: 50, nome: 'Tanque GC', combustivel_id: 5, capacidade: '20000.00', ativo: true },
@@ -137,16 +137,18 @@ describe('PistaDoPosto — combustíveis e tanques (#157)', () => {
     });
 
     it('editar o preço: "6,99" digitado vai para a API como "6.99" (string, sem float) e a pista recarrega', async () => {
-        api.gravarCombustivelNaApi.mockImplementation(() => okAsync({ id: 5, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.99' }));
+        api.gravarCombustivelNaApi.mockImplementation(() => okAsync({ id: 5, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.99', preco_custo: '5.3100' }));
         await monta();
         await act(async () => { botao('Editar Gasolina Comum').click(); });
         const campos = document.querySelectorAll<HTMLInputElement>('[role="dialog"] input');
         const preco = [...campos].find((c) => c.placeholder === '6,89');
         expect(preco?.value).toBe('6,89');
+        const custo = [...campos].find((c) => c.placeholder === '5,34');
+        expect(custo?.value).toBe('5,31');
         await act(async () => { preenche(preco!, '6,99'); });
         await act(async () => { botao('Salvar').click(); });
 
-        expect(api.gravarCombustivelNaApi).toHaveBeenCalledWith(7, 5, { nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', preco_venda: '6.99', ativo: true });
+        expect(api.gravarCombustivelNaApi).toHaveBeenCalledWith(7, 5, { nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', preco_venda: '6.99', preco_custo: '5.31', ativo: true });
         expect(api.lerPistaDaApi).toHaveBeenCalledTimes(2);
     });
 

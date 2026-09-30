@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { CombustivelDaApi, CombustivelDeclarado } from '../api/cadastro-de-bicos.api';
-import { corpoDoCombustivel, type FormularioDeCombustivel as Estado } from '../model/cadastro';
+import { corpoDoCombustivel, custoParaCampo, type FormularioDeCombustivel as Estado } from '../model/cadastro';
 import { classeDoCampo } from './estilos';
 import { Campo, Janela, RodapeDoFormulario } from './janela';
 
@@ -16,10 +16,11 @@ const inicial = (c: CombustivelDaApi | null): Estado => ({
     codigo: c?.codigo ?? '',
     cor: c?.cor ?? '#3B82F6',
     preco: c === null ? '' : c.preco_venda.replace('.', ','),
+    custo: custoParaCampo(c?.preco_custo ?? null),
     ativo: c?.ativo ?? true,
 });
 
-/** "Novo combustível" / "Editar combustível": nome, código, cor e o preço de venda de partida do dia. */
+/** "Novo combustível" / "Editar combustível": nome, código, cor, o preço de venda de partida do dia e o custo. */
 export const FormularioDeCombustivel: React.FC<FormularioDeCombustivelProps> = ({ combustivel, aoGravar, aoFechar }) => {
     const [form, setForm] = useState<Estado>(() => inicial(combustivel));
     const [erro, setErro] = useState<string | null>(null);
@@ -54,6 +55,12 @@ export const FormularioDeCombustivel: React.FC<FormularioDeCombustivelProps> = (
                 </Campo>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                     É o preço de partida do dia no Fechamento. Mudar aqui não altera dias já salvos.
+                </p>
+                <Campo rotulo="Preço de custo por litro (R$)">
+                    <input className={classeDoCampo} inputMode="decimal" value={form.custo} onChange={(e) => setForm({ ...form, custo: e.target.value })} placeholder="5,34" />
+                </Campo>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Quanto o litro custa ao posto. Entra no lucro previsto dos Tanques; em branco, a tela avisa que falta o custo.
                 </p>
                 {combustivel !== null && (
                     <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">

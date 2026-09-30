@@ -40,7 +40,9 @@ const ModalMedicao: React.FC<ModalMedicaoProps> = ({
             Nova Medição (Régua)
           </h2>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Fechar"
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             ✕
@@ -109,12 +111,14 @@ const ModalMedicao: React.FC<ModalMedicaoProps> = ({
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={onClose}
                 className="flex-1 px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={onSave}
                 disabled={saving || !medicaoValue}
                 className="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

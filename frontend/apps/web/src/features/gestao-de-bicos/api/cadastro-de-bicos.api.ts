@@ -32,6 +32,8 @@ const combustivel = z.object({
     cor: z.string().nullable(),
     ativo: z.boolean(),
     preco_venda: decimalEmString,
+    /** Custo por litro que o gerente informou (`decimal:4`, "5.3100"); `null` = não informado. */
+    preco_custo: decimalEmString.nullable(),
 });
 
 /** Espelha `TanqueResource.php` — só o que a tela usa. */
@@ -81,6 +83,8 @@ export interface CombustivelDeclarado {
     readonly cor: string | null;
     /** String decimal com ponto e até 2 casas ("6.89"): dinheiro não passa por float. */
     readonly preco_venda: string;
+    /** Custo por litro, até 4 casas ("5.3451"); `null` = "não sei". A chave vai SEMPRE: sem ela é 422. */
+    readonly preco_custo: string | null;
     readonly ativo: boolean;
 }
 

@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Tabela "Fechamento" do esquema de produção (banco/init/01-esquema-base.sql:217-236) — o pai do
@@ -106,5 +108,23 @@ final class Fechamento extends Model
     protected static function newFactory(): FechamentoFactory
     {
         return FechamentoFactory::new();
+    }
+
+    /**
+     * O turno em que o dia de um posto é gravado: o primeiro turno DO PRÓPRIO POSTO.
+     *
+     * O posto não trabalha por turno — o dia é um só (I7): o turno do pai é só o tampão do unique
+     * `(data, turno_id, posto_id)`. Até 30/09/2026 esse tampão era o turno 1 cravado, que é do Jorro;
+     * no ensaio com o Posto BR o dia do BR nasceu apontando para um turno do Jorro. Agora cada posto
+     * usa o seu (para o Jorro continua sendo o 1). Posto sem turno é erro de cadastro: lança em vez de
+     * pegar o turno de outro posto.
+     */
+    public static function turnoDoPosto(int $postoId): int
+    {
+        $id = DB::table('Turno')->where('posto_id', $postoId)->orderBy('id')->value('id');
+
+        return is_int($id) || (is_string($id) && ctype_digit($id))
+            ? (int) $id
+            : throw new RuntimeException("O posto {$postoId} não tem turno cadastrado: o dia precisa de um turno do próprio posto.");
     }
 }
