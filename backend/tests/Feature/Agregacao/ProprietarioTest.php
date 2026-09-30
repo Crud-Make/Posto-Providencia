@@ -295,6 +295,16 @@ it('GET /movimento: linhas cruas do período, com o combustível do bico e a ré
     $c = cenarioProprietario();
     $token = acessoProprietario('b6b60000-0000-4000-8000-000000000001', null, Role::Admin, null);
 
+    // #103: os recebimentos dos fechamentos do período (o do BR não vaza; o de 20/09 tem forma).
+    $forma = DB::table('FormaPagamento')->insertGetId(['nome' => 'Pix', 'tipo' => 'venda', 'posto_id' => $c['jorro']]);
+    $fechamento = static function (int $posto, string $dia): int {
+        $id = DB::table('Fechamento')->where('posto_id', $posto)->where('data', $dia.' 00:00:00+00')->value('id');
+
+        return is_int($id) ? $id : throw new RuntimeException("fechamento de {$dia} não achado");
+    };
+    $recebido = DB::table('Recebimento')->insertGetId(['fechamento_id' => $fechamento($c['jorro'], '2026-09-20'), 'forma_pagamento_id' => $forma, 'valor' => 1234.56]);
+    DB::table('Recebimento')->insert(['fechamento_id' => $fechamento($c['br'], '2026-09-24'), 'forma_pagamento_id' => $forma, 'valor' => 999]);
+
     withToken($token)->getJson("/api/postos/{$c['jorro']}/movimento?".SETEMBRO_ATE_HOJE)
         ->assertOk()
         ->assertExactJson([
@@ -310,6 +320,9 @@ it('GET /movimento: linhas cruas do período, com o combustível do bico e a ré
             'despesas' => [
                 ['data' => '2026-09-10', 'valor' => '1500.00'],
                 ['data' => '2026-09-24', 'valor' => '250.50'],
+            ],
+            'recebimentos' => [
+                ['id' => $recebido, 'data' => '2026-09-20', 'valor' => '1234.56', 'forma' => 'Pix'],
             ],
             'medicoes' => [
                 ['tanque_id' => $c['tanqueGc'], 'data' => '2026-08-31', 'volume_fisico' => '8000.00'],

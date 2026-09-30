@@ -368,4 +368,5 @@ Route::prefix('postos/{posto}')
         Route::get('despesas', [DespesasController::class, 'index']);
         Route::post('despesas', [DespesasController::class, 'store']);
         Route::get('categorias-financeiras', [DespesasController::class, 'categorias']);
+        Route::get('receitas', [DespesasController::class, 'receitas']);
     });

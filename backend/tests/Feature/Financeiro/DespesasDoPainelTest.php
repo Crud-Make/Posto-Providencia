@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Compartilhado\Posto;
+use App\Pessoas\Domain\Usuario;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -222,3 +223,22 @@ it('o GET exige período completo ou recorrentes', function (string $consulta): 
     withToken(tokenDoGerente($br))->getJson("/api/postos/{$br->id}/despesas{$consulta}")
         ->assertUnprocessable()->assertJsonPath('erro.codigo', 'corpo_invalido');
 })->with(['', '?inicio=2026-09-01', '?inicio=2026-09-30&fim=2026-09-01']);
+
+it('receitas do período: só do posto, com a categoria, valor em string (#103)', function (): void {
+    ['posto' => $br] = postoDoPwa();
+    ['posto' => $jorro] = postoDoPwa();
+    $cat = DB::table('CategoriaFinanceira')->insertGetId(['nome' => 'Aluguel', 'tipo' => 'receita', 'posto_id' => null]);
+    $uid = Usuario::factory()->create()->id;
+    DB::table('Receita')->insert([
+        ['descricao' => 'Aluguel do box', 'valor' => 300, 'data' => '2026-09-05', 'categoria_id' => $cat, 'posto_id' => $br->id, 'usuario_id' => $uid],
+        ['descricao' => 'Fora do período', 'valor' => 50, 'data' => '2026-10-01', 'categoria_id' => null, 'posto_id' => $br->id, 'usuario_id' => $uid],
+        ['descricao' => 'Do Jorro', 'valor' => 77, 'data' => '2026-09-05', 'categoria_id' => null, 'posto_id' => $jorro->id, 'usuario_id' => $uid],
+    ]);
+
+    $resposta = withToken(tokenDoGerente($br))->getJson("/api/postos/{$br->id}/receitas?inicio=2026-09-01&fim=2026-09-30")->assertOk();
+
+    $resposta->assertJsonCount(1, 'data')->assertJsonPath('data.0.descricao', 'Aluguel do box')
+        ->assertJsonPath('data.0.categoria', 'Aluguel')->assertJsonPath('data.0.valor', '300.00')->assertJsonPath('data.0.data', '2026-09-05');
+    app('auth')->forgetGuards();
+    withToken(tokenDoGerente($jorro))->getJson("/api/postos/{$br->id}/receitas?inicio=2026-09-01&fim=2026-09-30")->assertForbidden();
+});

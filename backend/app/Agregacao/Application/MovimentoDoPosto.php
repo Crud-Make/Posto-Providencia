@@ -22,6 +22,9 @@ use stdClass;
  *    `bico:Bico!inner(combustivel_id)` no impacto, `Bico.combustivel_id` no centro do mês).
  *  - `compras`: `Compra` do período, com a data (o impacto encadeia compra por dia).
  *  - `despesas`: `Despesa` do período por competência (`data`).
+ *  - `recebimentos`: `Recebimento` dos fechamentos do período (dia UTC de `Fechamento.data`), com a
+ *    forma de pagamento — a aba Receitas e Despesas os lista e o gráfico os soma; no lucro não
+ *    entram (#103). O posto é o do FECHAMENTO: `Recebimento` não tem `posto_id`.
  *  - `medicoes`: `HistoricoTanque` dos tanques do posto com `data ≤ fim`, SEM limite inferior — a
  *    abertura do mês é a última régua ANTES do início, e ela pode ser de qualquer dia anterior.
  *    `volume_fisico` nulo (régua não feita) sai `null`, nunca `"0"`.
@@ -40,6 +43,7 @@ final class MovimentoDoPosto
      *     leituras: list<array{bico_id: int, combustivel_id: int, data: string, leitura_inicial: string, leitura_final: string, litros_vendidos: string, preco_litro: string, valor_total: string}>,
      *     compras: list<array{combustivel_id: int, data: string, quantidade_litros: string, valor_total: string}>,
      *     despesas: list<array{data: string, valor: string}>,
+     *     recebimentos: list<array{id: int, data: string, valor: string, forma: string|null}>,
      *     medicoes: list<array{tanque_id: int, data: string, volume_fisico: string|null}>
      * }
      */
@@ -54,6 +58,7 @@ final class MovimentoDoPosto
             'leituras' => $this->leituras($posto, $periodo),
             'compras' => $this->compras($posto, $periodo),
             'despesas' => $this->despesas($posto, $periodo),
+            'recebimentos' => $this->recebimentos($posto, $periodo),
             'medicoes' => $this->medicoes($posto, $periodo),
         ];
     }
@@ -116,6 +121,27 @@ final class MovimentoDoPosto
         return array_values($linhas->map(static fn (stdClass $linha): array => [
             'data' => LinhaDoBanco::texto($linha, 'dia'),
             'valor' => LinhaDoBanco::decimal($linha, 'valor'),
+        ])->all());
+    }
+
+    /** @return list<array{id: int, data: string, valor: string, forma: string|null}> */
+    private function recebimentos(int $posto, Periodo $periodo): array
+    {
+        $linhas = DB::table('Recebimento as r')
+            ->join('Fechamento as l', 'l.id', '=', 'r.fechamento_id')
+            ->leftJoin('FormaPagamento as fp', 'fp.id', '=', 'r.forma_pagamento_id')
+            ->selectRaw('r.id, '.self::DIA_UTC.'::text AS dia, r.valor, fp.nome AS forma')
+            ->where('l.posto_id', $posto)
+            ->whereRaw(self::DIA_UTC.' BETWEEN ? AND ?', [$periodo->inicio, $periodo->fim])
+            ->orderByRaw(self::DIA_UTC)
+            ->orderBy('r.id')
+            ->get();
+
+        return array_values($linhas->map(static fn (stdClass $linha): array => [
+            'id' => LinhaDoBanco::inteiro($linha, 'id'),
+            'data' => LinhaDoBanco::texto($linha, 'dia'),
+            'valor' => LinhaDoBanco::decimal($linha, 'valor'),
+            'forma' => is_string($linha->forma ?? null) ? $linha->forma : null,
         ])->all());
     }
 

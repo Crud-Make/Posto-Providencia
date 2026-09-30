@@ -9,6 +9,7 @@ use App\Financeiro\Application\LancaDespesas;
 use App\Financeiro\Http\Requests\CategoriasRequest;
 use App\Financeiro\Http\Requests\DespesasDoPeriodoRequest;
 use App\Financeiro\Http\Requests\LancaDespesasRequest;
+use App\Financeiro\Http\Requests\ReceitasDoPeriodoRequest;
 use App\Financeiro\Http\Resources\DespesaResource;
 use App\Financeiro\Http\Resources\RespostaDaDespesa;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +38,12 @@ final readonly class DespesasController
     public function store(LancaDespesasRequest $request): JsonResponse
     {
         return RespostaDaDespesa::doLancamento($this->lanca->executar($request->lancamento()));
+    }
+
+    /** `GET /api/postos/{posto}/receitas` — as receitas extras do período (só leitura). */
+    public function receitas(ReceitasDoPeriodoRequest $request): JsonResponse
+    {
+        return response()->json(['data' => $this->despesas->receitasDoPeriodo($request->inicio(), $request->fim())]);
     }
 
     /** `GET /api/postos/{posto}/categorias-financeiras` — as do posto e as globais. */
