@@ -98,6 +98,8 @@ function apiFalsa(corposDoPut: unknown[]) {
             '/fechamento': () => json({ data: null }),
             '/fechamento-mensal/2026/9': () => json({ periodo: { inicio: '2026-09-01', fim: '2026-09-30' }, dias: [] }),
             '/despesas': () => json({ data: [] }),
+            '/receitas': () => json({ data: [] }),
+            '/movimento': () => json({ periodo: { inicio: '2026-09-01', fim: '2026-09-30' }, leituras: [], compras: [], despesas: [], recebimentos: [], medicoes: [] }),
         };
         // `/dashboard` (custo do mês) fica sem rota de propósito: 404 → custo indisponível, "—" na tela.
         return (rotas[rota] ?? (() => json({}, 404)))();
@@ -200,11 +202,12 @@ describe('Fechamento de Caixa no modo API — nenhuma chamada ao Supabase', () =
         expect(consultas.some((u) => u.pathname === '/api/postos/1/frentistas')).toBe(true);
         expect(container.textContent).toContain('Ana');
         await clicar(botaoComTexto('Gestão de Bicos'));
-        // #103: a aba Receitas e Despesas vai pela API (lançar e listar despesas); o resumo fica oculto.
+        // #103: a aba Receitas e Despesas vai INTEIRA pela API — despesas, movimento e receitas.
         await clicar(botaoComTexto('Receitas e Despesas'));
         expect(rotasChamadas().some((r) => r.startsWith('GET /api/postos/1/despesas'))).toBe(true);
-        expect(container.textContent).toContain('já entram no rateio do lucro');
-        expect(container.textContent).not.toContain('Lucro Líquido');
+        expect(rotasChamadas().some((r) => r.startsWith('GET /api/postos/1/movimento'))).toBe(true);
+        expect(rotasChamadas().some((r) => r.startsWith('GET /api/postos/1/receitas'))).toBe(true);
+        expect(container.textContent).toContain('Lucro Líquido');
         await clicar(botaoComTexto('Fechamento Mensal'));
         expect(rotasChamadas()).toContain('GET /api/postos/1/fechamento-mensal/2026/9');
 

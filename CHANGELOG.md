@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### 📊 Receitas e Despesas: o resumo e o gráfico também pela API (#103)
+
+- No modo API (`VITE_API_DESPESAS`) a aba volta a ter o **card de resumo** (receitas, despesas,
+  lucro líquido, margem) e o **gráfico de fluxo de caixa**, agora lidos pela API: `/movimento`
+  (que passa a trazer os recebimentos do período), `/despesas`, `/receitas` (nova, só leitura) e
+  o catálogo. O aviso "resumo no Dashboard" sai.
+- **Os números são os mesmos do caminho antigo:** a conta mora numa função só,
+  `montarDadosFinanceiros`, alimentada pelas duas fontes; um teste de paridade passa o mesmo
+  período pelo Supabase e pela API e exige resumo, lucro, margem e transações idênticos. A venda
+  segue contando no combustível do bico (não no da leitura), como antes.
+- Antes de mover qualquer coisa, um teste de caracterização gravou o que a aba produzia; a
+  extração não mudou nenhum número.
+
 ### 💸 Fechamento de Caixa: Receitas e Despesas lança despesas pela API (#103)
 
 - A aba **Receitas e Despesas** (flag `VITE_API_DESPESAS`; ausente, vale o `VITE_API_URL`) deixa de

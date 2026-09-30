@@ -98,7 +98,6 @@
   "apps/web/src/components/financeiro/components/ResumoFinanceiro.tsx|@typescript-eslint/strict-boolean-expressions": 3,
   "apps/web/src/components/financeiro/hooks/useFiltrosFinanceiros.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/financeiro/hooks/useFinanceiro.ts|@typescript-eslint/no-floating-promises": 1,
-  "apps/web/src/components/financeiro/hooks/useFinanceiro.ts|@typescript-eslint/strict-boolean-expressions": 15,
   "apps/web/src/components/financeiro/index.tsx|@typescript-eslint/strict-boolean-expressions": 11,
   "apps/web/src/components/frentistas/components/DetalhesFrentista.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/frentistas/components/FormFrentista.tsx|@typescript-eslint/strict-boolean-expressions": 1,

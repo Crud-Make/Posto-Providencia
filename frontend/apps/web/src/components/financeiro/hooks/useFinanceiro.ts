@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type ResumoFinanceiro } from './calculos-financeiro';
 import { montarDadosFinanceiros } from './montar-dados-financeiros';
+import { insumosDoSupabase, type CompraDoSupabase, type RecebimentoDoSupabase, type VendaDoSupabase } from './insumos-financeiros';
 import { FiltrosFinanceiros } from './useFiltrosFinanceiros';
 import {
   leituraService,
@@ -23,30 +24,8 @@ import {
   compraService
 } from '../../../services/api';
 import { isSuccess } from '../../../types/ui/response-types';
-import type {
-  Leitura,
-  Bico,
-  Combustivel,
-  Bomba,
-  Recebimento,
-  Compra,
-  DBDespesa as Despesa,
-  FormaPagamento,
-  Fechamento,
-  Fornecedor
-} from '../../../types/database';
+import type { DBDespesa as Despesa } from '../../../types/database';
 import { Receita } from '../../../services/api/receita.service';
-
-// Extensão de tipos para incluir joins
-type RecebimentoComJoins = Recebimento & {
-  forma_pagamento?: FormaPagamento | null;
-  fechamento?: Partial<Fechamento> | null;
-};
-
-type CompraComJoins = Compra & {
-  combustivel?: Combustivel | null;
-  fornecedor?: Fornecedor | null;
-};
 
 // [14/01 15:40] Expondo tipos financeiros para uso centralizado em componentes
 /**
@@ -129,33 +108,15 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
         compraService.getByDateRange(dataInicio, dataFim, postoId)
       ]);
 
-      const vendas = (isSuccess(vendasRes) ? vendasRes.data : []) as (Leitura & { bico: Bico & { combustivel: Combustivel; bomba: Bomba } })[];
+      const vendas = (isSuccess(vendasRes) ? vendasRes.data : []) as VendaDoSupabase[];
       const despesas = (isSuccess(despesasRes) ? despesasRes.data : []) as Despesa[];
       const receitasExtras = (isSuccess(receitasRes) ? receitasRes.data : []) as Receita[];
-      const recebimentos = (isSuccess(recebimentosRes) ? recebimentosRes.data : []) as RecebimentoComJoins[];
-      const compras = (isSuccess(comprasRes) ? comprasRes.data : []) as CompraComJoins[];
+      const recebimentos = (isSuccess(recebimentosRes) ? recebimentosRes.data : []) as RecebimentoDoSupabase[];
+      const compras = (isSuccess(comprasRes) ? comprasRes.data : []) as CompraDoSupabase[];
 
       // [#103] A montagem (transações, custo dos litros vendidos, resumo) mora em
       // `montarDadosFinanceiros`, a MESMA para o Supabase e para a API. Aqui só a tradução das linhas.
-      setDados(montarDadosFinanceiros({
-        vendas: vendas.map((v) => ({
-          id: v.id, data: v.data, valor: v.valor_total, litros: v.litros_vendidos,
-          produto: v.bico.combustivel.nome, bicoNumero: v.bico.numero,
-        })),
-        recebimentos: recebimentos.map((r) => ({
-          id: r.id, valor: r.valor, forma: r.forma_pagamento?.nome ?? null, data: r.fechamento?.data ?? null,
-        })),
-        receitas: receitasExtras.map((r) => ({
-          id: r.id, descricao: r.descricao, categoria: r.Categoria?.nome ?? null, valor: r.valor, data: r.data,
-        })),
-        despesas: despesas.map((d) => ({
-          id: d.id, descricao: d.descricao, categoria: d.categoria ?? null, valor: d.valor, data: d.data,
-        })),
-        compras: compras.map((c) => ({
-          id: c.id, data: c.data, valor: c.valor_total, litros: c.quantidade_litros,
-          produto: c.combustivel?.nome ?? null, fornecedor: c.fornecedor?.nome ?? null,
-        })),
-      }, filtros));
+      setDados(montarDadosFinanceiros(insumosDoSupabase({ vendas, recebimentos, receitas: receitasExtras, despesas, compras }), filtros));
 
     } catch (err) {
       console.error('Erro ao carregar dados financeiros:', err);

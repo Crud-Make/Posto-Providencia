@@ -8,7 +8,7 @@ import { ResumoFinanceiro } from './components/ResumoFinanceiro';
 import { GraficoFluxoCaixa } from './components/GraficoFluxoCaixa';
 import { DespesasPorCategoria } from './components/DespesasPorCategoria';
 import { ListaDespesas } from './components/ListaDespesas';
-import { CreditCard, Info, Loader2, Plus, Repeat } from 'lucide-react';
+import { CreditCard, Loader2, Plus, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FixaPendente } from '@posto/utils';
 import FormDespesa from '../despesas/components/FormDespesa';
@@ -16,7 +16,7 @@ import { DespesaFormData } from '../despesas/types';
 import type { LancamentoFixa } from '../../services/api/despesa-fixa.service';
 import { despesasPelaApi } from '../../services/api/despesas.api';
 import { criarDespesa, despesasDoMes, fixasPendentesDoMes, lancarMensais } from './hooks/fonteDasDespesas';
-import { useDespesasDaApi } from './hooks/useDespesasDaApi';
+import { useFinanceiroDaApi } from './hooks/useFinanceiroDaApi';
 import { hojeIso, mesAtualIso, ultimoDiaDoMes, deIsoLocal } from '../../utils/periodo';
 import { ModalFixasPendentes } from './components/ModalFixasPendentes';
 import { ModalTaxasCartao } from './components/ModalTaxasCartao';
@@ -59,19 +59,19 @@ type FonteDosDados = (filtros: Filtros) => {
 };
 
 /**
- * #103: com `VITE_API_DESPESAS` a aba lê e lança despesas pela API; o resumo e o gráfico (que
- * dependem de leituras, recebimentos e compras) ainda não vêm por ela e ficam ocultos. A fonte é
+ * #103: com `VITE_API_DESPESAS` a aba inteira vai pela API — lançar e listar despesas, e o resumo
+ * e o gráfico pela mesma montagem do caminho Supabase (paridade travada em teste). A fonte é
  * escolhida a cada render e passada ao painel, que a chama sempre — a `key` troca o painel inteiro
  * se a escolha mudar, e os hooks nunca trocam de ordem.
  */
 export const PainelReceitasDespesas: React.FC = () => {
   const pelaApi = despesasPelaApi();
   return pelaApi
-    ? <Painel key="api" pelaApi usarDados={useDespesasDaApi} />
-    : <Painel key="supabase" pelaApi={false} usarDados={useFinanceiro} />;
+    ? <Painel key="api" usarDados={useFinanceiroDaApi} />
+    : <Painel key="supabase" usarDados={useFinanceiro} />;
 };
 
-const Painel: React.FC<{ readonly pelaApi: boolean; readonly usarDados: FonteDosDados }> = ({ pelaApi, usarDados }) => {
+const Painel: React.FC<{ readonly usarDados: FonteDosDados }> = ({ usarDados }) => {
   const { postoAtivoId } = usePosto();
   const [showFormDespesa, setShowFormDespesa] = React.useState(false);
   const [fixasPendentes, setFixasPendentes] = React.useState<FixaPendente[] | null>(null);
@@ -250,17 +250,7 @@ const Painel: React.FC<{ readonly pelaApi: boolean; readonly usarDados: FonteDos
         </div>
       )}
 
-      {pelaApi ? (
-        <div className="p-4 bg-sky-900/20 text-sky-200 rounded-xl border border-sky-500/30 flex items-start gap-3 text-sm">
-          <Info size={18} className="mt-0.5 shrink-0" />
-          <span>
-            As despesas lançadas aqui já entram no rateio do lucro. O resumo do mês (receitas, lucro e margem)
-            está no Dashboard e na Visão do Proprietário.
-          </span>
-        </div>
-      ) : (
-        <ResumoFinanceiro dados={dados} carregando={carregando} />
-      )}
+      <ResumoFinanceiro dados={dados} carregando={carregando} />
 
       {carregando ? (
         <div className="flex flex-col items-center justify-center min-h-[400px] w-full text-slate-500">
@@ -269,11 +259,9 @@ const Painel: React.FC<{ readonly pelaApi: boolean; readonly usarDados: FonteDos
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-          {!pelaApi && (
-            <div className="lg:col-span-2">
-              <GraficoFluxoCaixa series={series} />
-            </div>
-          )}
+          <div className="lg:col-span-2">
+            <GraficoFluxoCaixa series={series} />
+          </div>
           <div>
             <DespesasPorCategoria dados={dados} />
           </div>
