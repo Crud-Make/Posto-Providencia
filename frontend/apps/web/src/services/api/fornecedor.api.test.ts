@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { lerFornecedoresDaApi, paraFornecedoresAtivos } from './fornecedor.api';
+import { gravarFornecedorNaApi, lerFornecedoresDaApi, paraFornecedoresAtivos } from './fornecedor.api';
 import { fornecedorService } from './fornecedor.service';
 
 const respostaDaApi = {
@@ -97,5 +97,32 @@ describe('fornecedorService.getAll com VITE_API_URL', () => {
 
         expect(resposta.success).toBe(false);
         expect(!resposta.success && resposta.error).toBe('API Laravel respondeu 500');
+    });
+});
+
+describe('gravarFornecedorNaApi (#103, ensaio 30/09)', () => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.unstubAllGlobals();
+    });
+
+    it('cria com POST e edita com PUT na rota do posto; o posto_id vem da rota', async () => {
+        vi.stubEnv('VITE_API_URL', 'http://api.teste');
+        const pedidos: Array<{ metodo: string; url: string; corpo: unknown }> = [];
+        vi.stubGlobal('fetch', vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+            pedidos.push({ metodo: init?.method ?? 'GET', url: new URL(String(entrada)).pathname, corpo: JSON.parse(String(init?.body)) });
+            return new Response(JSON.stringify({ data: { id: 9, nome: 'D', cnpj: '11.222.333/0001-81', contato: null, ativo: true } }), { status: 201 });
+        }));
+        const corpo = { nome: 'D', cnpj: '11222333000181', contato: null, ativo: true };
+
+        const criado = await gravarFornecedorNaApi(2, null, corpo);
+        const editado = await gravarFornecedorNaApi(2, 9, corpo);
+
+        expect(editado.isOk()).toBe(true);
+        expect(criado._unsafeUnwrap()).toEqual({ id: 9, nome: 'D', cnpj: '11.222.333/0001-81', contato: null, ativo: true, posto_id: 2 });
+        expect(pedidos).toEqual([
+            { metodo: 'POST', url: '/api/postos/2/fornecedores', corpo },
+            { metodo: 'PUT', url: '/api/postos/2/fornecedores/9', corpo },
+        ]);
     });
 });

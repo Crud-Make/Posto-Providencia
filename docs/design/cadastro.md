@@ -115,3 +115,25 @@ Sem coluna nova. `Frentista.foto` nunca sai pela API de catálogo.
   do posto, vínculo inativo 403, token de frentista 401). Requisito de produção, igual às demais rotas
   protegidas: o painel precisa do login da API (`VITE_API_LOGIN=1`) ou de `Usuario.auth_user_id`
   vinculado, senão o catálogo responde 401.
+
+## Fornecedor pelo painel (#103, 30/09/2026)
+
+**Por quê:** no ensaio Jorro+BR o posto novo não tinha fornecedor, a API só **lia** a lista e o painel não tinha
+onde cadastrar — nenhuma compra podia ser registrada no BR.
+
+**Contrato** (grupo `posto.acesso:gerir`; o posto sai da rota, nunca do corpo; nada se apaga):
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /api/postos/{posto}/fornecedores` | `{ nome, cnpj, contato?: string\|null, ativo }` | 201 `{ data: FornecedorResource }` |
+| `PUT /api/postos/{posto}/fornecedores/{fornecedor}` | idem | 200; de outro posto 404 |
+
+- **CNPJ** conferido pelos DV em `App\Cadastro\Domain\Cnpj`, numérico **ou alfanumérico** (IN RFB 2.229/2024,
+  emitido desde julho de 2026); guardado sempre como `XX.XXX.XXX/XXXX-DD`. Recusa: 422 `cnpj_invalido`.
+- **Único no posto**, inclusive entre inativos (`Fornecedor_cnpj_posto_id_key`); a conferência compara **sem
+  máscara**, porque há cadastro antigo gravado sem pontuação. Recusa: 422 `cnpj_repetido`.
+- Forma fora do contrato: 422 `corpo_invalido`. Desativar é `ativo: false`; as compras seguem apontando para ele.
+- Peças: `FornecedorDoPainelRequest` → `FornecedoresController` → `FornecedoresDoPosto` → `RespostaDoFornecedor`
+  (classe própria para a `RespostaDoCadastro` não passar do teto de acoplamento do PHPMD).
+- Painel: "+ Novo fornecedor" na tela de Compras (`NovoFornecedor.tsx`), só com a API ligada; grava e já seleciona.
+  Editar/desativar pela tela ainda não existe — a rota PUT existe e está testada.

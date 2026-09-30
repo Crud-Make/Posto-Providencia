@@ -7,6 +7,7 @@ use App\Cadastro\Http\Controllers\CatalogoController;
 use App\Cadastro\Http\Controllers\CombustiveisETanquesController;
 use App\Cadastro\Http\Controllers\ConfiguracoesController;
 use App\Cadastro\Http\Controllers\EquipeController;
+use App\Cadastro\Http\Controllers\FornecedoresController;
 use App\Cadastro\Http\Controllers\FotoDoPostoController;
 use App\Cadastro\Http\Controllers\FrentistaDoPwaController;
 use App\Cadastro\Http\Controllers\PostoDoPwaController;
@@ -350,6 +351,9 @@ Route::prefix('postos/{posto}')
         Route::put('formas-pagamento/{forma}', [ConfiguracoesController::class, 'editaForma'])->whereNumber('forma');
         Route::get('parametros', [ConfiguracoesController::class, 'parametros']);
         Route::put('parametros', [ConfiguracoesController::class, 'gravaParametros']);
+        // #103 (ensaio 30/09): o posto novo não tinha fornecedor e a compra travava. A lista segue no GET do catálogo.
+        Route::post('fornecedores', [FornecedoresController::class, 'cria']);
+        Route::put('fornecedores/{fornecedor}', [FornecedoresController::class, 'edita'])->whereNumber('fornecedor');
     });
 
 /*

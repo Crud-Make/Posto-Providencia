@@ -2,6 +2,7 @@ import React from 'react';
 import { Package, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { InputFinanceiro } from './InputFinanceiro';
+import { NovoFornecedor } from './NovoFornecedor';
 import { corDoProduto } from '@posto/utils';
 import { CombustivelHibrido, CampoDigitado } from './hooks/useCombustiveisHibridos';
 import { CalculosRegistro } from './hooks/useCalculosRegistro';
@@ -20,6 +21,9 @@ interface Props {
    fornecedores: Fornecedor[];
    fornecedorSelecionado: number | null;
    setFornecedorSelecionado: (id: number | null) => void;
+   /** Posto da tela — o "+ Novo fornecedor" grava nele (#103). */
+   postoId: number | null;
+   aoCriarFornecedor: (fornecedor: Fornecedor) => void;
    /** Despesa do mês lida da tabela `Despesa`, em reais — a parcela rateada do "Valor P/ Venda". */
    despesaDoMes: number;
 }
@@ -29,7 +33,7 @@ const TABLE_INPUT_ORANGE_CLASS = "w-full px-3 py-3 text-right text-base font-med
 export const SecaoCompras: React.FC<Props> = ({
    combustiveis, updateCombustivel, calculos, totais,
    saving, onSave,
-   fornecedores, fornecedorSelecionado, setFornecedorSelecionado,
+   fornecedores, fornecedorSelecionado, setFornecedorSelecionado, postoId, aoCriarFornecedor,
    despesaDoMes
 }) => {
    const navigate = useNavigate();
@@ -81,6 +85,7 @@ export const SecaoCompras: React.FC<Props> = ({
                      ))}
                   </select>
                </div>
+               <NovoFornecedor postoId={postoId} aoCriar={aoCriarFornecedor} />
 
 
                <button

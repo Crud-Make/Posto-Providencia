@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Tabela "Fornecedor" do esquema de produção (banco/init/01-esquema-base.sql). Só leitura na #97.
+ * Tabela "Fornecedor" do esquema de produção (banco/init/01-esquema-base.sql). Leitura desde a #97; o painel cria e edita pela API desde 30/09/2026 (#103, `FornecedoresDoPosto`).
  *
  * @property int $id
  * @property string $nome

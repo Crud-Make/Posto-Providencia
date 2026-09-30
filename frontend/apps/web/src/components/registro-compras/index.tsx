@@ -265,6 +265,11 @@ const TelaRegistroCompras: React.FC = () => {
                     fornecedores={fornecedores}
                     fornecedorSelecionado={fornecedorSelecionado}
                     setFornecedorSelecionado={setFornecedorSelecionado}
+                    postoId={postoAtivoId}
+                    aoCriarFornecedor={(novo) => {
+                        setFornecedores((lista) => [...lista, novo].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
+                        setFornecedorSelecionado(novo.id);
+                    }}
                     despesaDoMes={despesaDoMes}
                 />
 

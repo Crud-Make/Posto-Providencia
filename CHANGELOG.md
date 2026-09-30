@@ -2,6 +2,20 @@
 
 ## [Não Lançado]
 
+### 🏪 Compras: fornecedor se cadastra pelo painel, e o posto novo consegue lançar compra (#103)
+
+- Achado no ensaio Jorro+BR (30/09): o BR não tinha fornecedor, a API só LIA a lista e o painel não tinha onde
+  cadastrar — a compra do posto novo travava em "Selecione um fornecedor".
+- API: `POST /fornecedores` e `PUT /fornecedores/{id}` (gerir; posto da rota). CNPJ conferido pelos DV, inclusive
+  o **alfanumérico** (IN RFB 2.229/2024), e guardado num formato só; único no posto comparando sem máscara;
+  recusas `cnpj_invalido`, `cnpj_repetido`, `corpo_invalido`; outro posto 404. Contrato em `docs/design/cadastro.md`.
+- Painel: "+ Novo fornecedor" ao lado do fornecedor na tela de Compras; a recusa aparece com a frase da API, e o
+  novo já fica selecionado.
+- Canários: peso do DV errado reprova 10; comparar CNPJ com máscara reprova 1; editar sem excluir o próprio
+  reprova 1; mostrar o erro técnico no lugar da frase da API reprova 1 (o primeiro teste deixava passar — apertado);
+  não selecionar o novo reprova 1; editar com POST reprova 1. No ensaio (BR): CNPJ com DV errado recusado na tela;
+  fornecedor 1070 gravado e selecionado; **compra 1763 gravada** (1.000 L de GC, R$ 5.850,00). Jorro idêntico.
+
 ### 🐛 PWA do frentista: sem PIN, a lista de envios pede o nome em vez de dar erro; os nomes são botões (#101)
 
 - Achado no ensaio Jorro+BR (30/09): o PWA abria com "Não deu para carregar os envios do dia" antes de
