@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import { paraExcecao, RecusaDaApi, type ErroDeApi } from '@frentista/shared/api';
 import { pwaPelaApiLigado } from '@frentista/shared/config';
-import { esquecerSessao, sessaoGuardada } from '@frentista/entities/sessao-do-frentista';
+import { esquecerSessao, sessaoDoAparelho, sessaoGuardada } from '@frentista/entities/sessao-do-frentista';
 import {
   buscarFrentistasAtivos,
   marcarPresencaDoFrentista,
@@ -150,6 +150,15 @@ export const api = {
    */
   registrarCarrinhoPelaApi(frentistaId: number, chave: string, itens: readonly ItemDoCarrinho[], postoId: number): Promise<void> {
     return apiPelaApi.registrarCarrinho(postoId, frentistaId, chave, itens);
+  },
+
+  /**
+   * `true` quando dá para pedir o que exige sessão (ex.: os envios do dia): no Supabase sempre; com a API,
+   * só se ALGUM frentista digitou o PIN neste aparelho e a sessão não venceu. Ensaio 30/09: sem essa
+   * pergunta, o PWA abria com "Não deu para carregar os envios" antes de alguém escolher o nome.
+   */
+  temSessaoNoAparelho(): boolean {
+    return !pwaPelaApiLigado() || sessaoDoAparelho() !== null;
   },
 
   /** `true` quando este aparelho tem sessão (PIN digitado neste turno) do frentista. Só vale com a API ligada. */
