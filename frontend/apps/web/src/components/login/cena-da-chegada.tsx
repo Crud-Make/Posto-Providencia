@@ -12,13 +12,13 @@ import React from 'react';
  */
 const DIA = {
   ceu: ['#6F86C4', '#B3A6D0', '#E9BFC0', '#F6CFA6'], nuvem: 0.55, serra: '#9C98B8', caatinga: '#4E6A44', mandacaru: '#3F5838',
-  terra: '#C98A5A', terraBorda: '#B77A4C', estrada: ['#5A5B66', '#2E3038'], calcada: '#D9D3C8', portico: '#2A9C98', patio: '#BDB7AE', luz: 0,
+  terra: '#C98A5A', terraBorda: '#B77A4C', estrada: ['#5A5B66', '#2E3038'], calcada: '#D9D3C8', portico: '#2A9C98', patio: '#D3CCBF', meioFio: '#A39A8C', luz: 0,
   folha: ['#4E6A44', '#62824F', '#3F5838'], tronco: '#6B4A33', bloco: '#CFC4B2', junta: '#9E9384',
   casas: ['#EAD9B0', '#D98C6A', '#9CC0C9', '#F2EDE4', '#C9A6C7'], telhado: '#A5553A', janela: '#5C6B85', lanterna: 0,
 };
 const NOITE = {
   ceu: ['#050A1E', '#101A4A', '#3A2A5C', '#8C4A3C'], nuvem: 0.12, serra: '#262A4A', caatinga: '#1A2A22', mandacaru: '#132019',
-  terra: '#5E3F2C', terraBorda: '#4E3424', estrada: ['#2A2C36', '#15161C'], calcada: '#8C877E', portico: '#1E7C79', patio: '#77726B', luz: 1,
+  terra: '#5E3F2C', terraBorda: '#4E3424', estrada: ['#2A2C36', '#15161C'], calcada: '#8C877E', portico: '#1E7C79', patio: '#6F6A62', meioFio: '#4E4A44', luz: 1,
   folha: ['#1A2A22', '#22342A', '#132019'], tronco: '#3A2A20', bloco: '#6F695F', junta: '#4F4A42',
   casas: ['#3A3550', '#43344A', '#2F3A52', '#3D3A4E', '#3E3350'], telhado: '#2A1E26', janela: '#FFD27A', lanterna: 1,
 };
@@ -231,9 +231,17 @@ const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ clas
 
     {/* o Posto BR, na chegada */}
     <g transform="translate(-54 145) scale(0.78)">
-      <polygon points="150,648 700,644 740,690 120,696" fill={c.patio} />
-      <polygon points="136,672 718,668 740,690 120,696" fill="url(#cena-calcamento)" />
-      <rect x="120" y="694" width="620" height="5" fill="#A8A198" />
+      {/* fundação: laje do tamanho da cobertura, juntas em perspectiva, meio-fio e o calçamento na frente */}
+      <polygon points="200,652 704,650 722,684 182,688" fill={c.patio} />
+      <g stroke={c.meioFio} strokeWidth="1.5" opacity="0.6">
+        <line x1="326" y1="652" x2="318" y2="687" />
+        <line x1="452" y1="651" x2="452" y2="686" />
+        <line x1="578" y1="651" x2="586" y2="685" />
+        <line x1="192" y1="670" x2="713" y2="667" />
+      </g>
+      <polygon points="182,688 722,684 722,694 182,698" fill={c.meioFio} />
+      <polygon points="170,698 734,694 748,712 156,716" fill="url(#cena-calcamento)" />
+      <polygon points="156,716 748,712 748,716 156,720" fill={c.meioFio} />
 
       <rect x="150" y="512" width="44" height="152" fill="#1F3F9E" />
       <rect x="155" y="518" width="34" height="118" fill="#F4F4F2" />
