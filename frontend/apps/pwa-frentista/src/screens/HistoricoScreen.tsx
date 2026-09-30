@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { History, ArrowDown, ArrowUp, CheckCircle, ChevronLeft } from 'lucide-react';
+import { diaDoBanco } from '@posto/utils';
 import { RecusaDaApi } from '@frentista/shared/api';
 import { api } from '../services/api';
 
@@ -58,9 +59,11 @@ const HistoricoScreen: React.FC<HistoricoProps> = ({ postoId, frentistaId, frent
 
     const tentarDeNovo = (): void => { setLoading(true); setTentativa((t) => t + 1); };
 
+    // O dia do fechamento vem à meia-noite UTC; `new Date(...).toLocaleDateString` em GMT-3 mostrava o dia
+    // ANTERIOR (o mesmo defeito da tela de Frentistas, #164). `diaDoBanco` lê a data sem fuso.
     const formatDate = (dateStr: string) => {
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const dia = diaDoBanco(dateStr);
+        return /^\d{2}\/\d{2}\/\d{4}$/.test(dia) ? dia.slice(0, 5) : dia;
     };
 
     const formatCurrency = (val: number) =>

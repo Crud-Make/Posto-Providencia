@@ -174,6 +174,21 @@ describe('PWA do frentista — abas', () => {
         expect(container.textContent).not.toContain('ainda não enviou fechamentos');
     });
 
+    it('histórico mostra o DIA do fechamento, não o anterior (meia-noite UTC em GMT-3)', async () => {
+        localStorage.setItem('pwa.activeTab', 'historico');
+        localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
+        mocks.getHistoricoFrentista.mockResolvedValueOnce([{
+            id: 7, encerrante: null, valor_pix: 150, valor_dinheiro: 200, valor_moedas: 0, valor_cartao_debito: 0,
+            valor_cartao_credito: 150, valor_nota: 0, baratao: 0, diferenca_calculada: 0, valor_conferido: 500,
+            observacoes: null, data_hora_envio: '2026-09-27T16:05:00Z', fechamento: { data: '2026-09-27T00:00:00Z', turno_id: 4 },
+        }]);
+
+        await montar();
+
+        expect(container.textContent).toContain('27/09');
+        expect(container.textContent).not.toContain('26/09');
+    });
+
     it('histórico com falha de rede diz que não carregou e tenta de novo', async () => {
         localStorage.setItem('pwa.activeTab', 'historico');
         localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
