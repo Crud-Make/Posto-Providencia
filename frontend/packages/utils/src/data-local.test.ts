@@ -8,6 +8,7 @@ import {
     primeiroDiaDoMes,
     ultimoDiaDoMes,
     somarDias,
+    diaDoBanco,
 } from './data-local';
 
 /**
@@ -102,5 +103,22 @@ describe('somarDias', () => {
         expect(somarDias(new Date(2026, 6, 31), 1)).toBe('2026-08-01');
         expect(somarDias(new Date(2026, 0, 1), -1)).toBe('2025-12-31');
         expect(somarDias(new Date(2026, 6, 15), 0)).toBe('2026-07-15');
+    });
+});
+
+describe('diaDoBanco', () => {
+    it('meia-noite UTC continua no mesmo dia em GMT-3 (ensaio 30/09: 27/09 virava 26/09)', () => {
+        expect(diaDoBanco('2026-09-27T00:00:00Z')).toBe('27/09/2026');
+        expect(diaDoBanco('2026-08-28T00:00:00.000000Z')).toBe('28/08/2026');
+    });
+
+    it('aceita a data pura e o timestamp com offset do Supabase', () => {
+        expect(diaDoBanco('2026-01-01')).toBe('01/01/2026');
+        expect(diaDoBanco('2026-12-31T00:00:00+00:00')).toBe('31/12/2026');
+    });
+
+    it('o que não é data volta como veio', () => {
+        expect(diaDoBanco('N/A')).toBe('N/A');
+        expect(diaDoBanco('')).toBe('');
     });
 });
