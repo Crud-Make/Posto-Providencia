@@ -12,8 +12,8 @@
  */
 // [01/02 11:25] Integrado receitas extras e categorias dinâmicas; Tipagem estrita aplicada sem uso de 'any'.
 import { useState, useEffect, useCallback } from 'react';
-import { custoLitrosVendidos, type ProdutoDoPeriodo } from '@posto/utils';
-import { resumoFinanceiro, type ResumoFinanceiro } from './calculos-financeiro';
+import { type ResumoFinanceiro } from './calculos-financeiro';
+import { montarDadosFinanceiros } from './montar-dados-financeiros';
 import { FiltrosFinanceiros } from './useFiltrosFinanceiros';
 import {
   leituraService,
@@ -135,130 +135,27 @@ export function useFinanceiro(filtros: FiltrosFinanceiros): UseFinanceiroReturn 
       const recebimentos = (isSuccess(recebimentosRes) ? recebimentosRes.data : []) as RecebimentoComJoins[];
       const compras = (isSuccess(comprasRes) ? comprasRes.data : []) as CompraComJoins[];
 
-      // [27/01 10:38] Processar Transações
-      const listaTransacoes: Transacao[] = [];
-
-      // 1. Vendas (Receita)
-      const totalVendas = vendas.reduce((acc, v) => acc + (v.valor_total || 0), 0);
-      vendas.forEach(v => {
-        listaTransacoes.push({
-          id: `venda-${v.id}`,
-          tipo: 'receita',
-          categoria: 'Venda de Combustível',
-          descricao: `Venda ${v.bico.combustivel.nome} - Bico ${v.bico.numero}`,
-          valor: v.valor_total || 0,
-          data: v.data,
-          origem: 'venda'
-        });
-      });
-
-      // 2. Recebimentos (Receita)
-      // Nota: recebimentos entram na lista de transações para detalhamento, mas o total
-      // NÃO é somado ao lucro (já contabilizado nas vendas via formas de pagamento) — ver
-      // comentário "CORREÇÃO CRÍTICA" abaixo.
-      recebimentos.forEach(r => {
-        listaTransacoes.push({
-          id: `rec-${r.id}`,
-          tipo: 'receita',
-          categoria: 'Recebimento',
-          descricao: `Recebimento ${r.forma_pagamento?.nome || 'Diversos'}`,
-          valor: r.valor,
-          data: r.fechamento?.data || dataInicio,
-          origem: 'recebimento'
-        });
-      });
-
-      // 3. Receitas Extras (Receita)
-      const totalReceitasExtras = receitasExtras.reduce((acc, r) => acc + (r.valor || 0), 0);
-      receitasExtras.forEach(r => {
-        listaTransacoes.push({
-          id: `recextra-${r.id}`,
-          tipo: 'receita',
-          categoria: r.Categoria?.nome || 'Outros',
-          descricao: r.descricao,
-          valor: r.valor,
-          data: r.data,
-          origem: 'receita_extra'
-        });
-      });
-
-      // 4. Despesas (Despesa)
-      const totalDespesasOps = despesas.reduce((acc, d) => acc + (d.valor || 0), 0);
-      despesas.forEach(d => {
-        listaTransacoes.push({
-          id: `desp-${d.id}`,
-          tipo: 'despesa',
-          categoria: d.categoria || 'Geral',
-          descricao: d.descricao,
-          valor: d.valor,
-          data: d.data,
-          origem: 'despesa'
-        });
-      });
-
-      // 5. Compras — entram na lista como saída de caixa; no lucro o que pesa é o
-      // custo dos LITROS VENDIDOS (abaixo), não a compra paga no período.
-      compras.forEach(c => {
-        listaTransacoes.push({
-          id: `compra-${c.id}`,
-          tipo: 'despesa',
-          categoria: 'Compra de Combustível',
-          descricao: `Compra ${c.combustivel?.nome || 'Combustível'} - ${c.fornecedor?.nome || 'Fornecedor'}`,
-          valor: c.valor_total,
-          data: c.data,
-          origem: 'compra'
-        });
-      });
-
-      // Custo dos litros vendidos: por produto, litros da Leitura × custo médio de
-      // compra do período (modelo da planilha). Sem compra de um produto vendido, o
-      // custo é `null` e o card diz qual — nunca zero disfarçado de lucro.
-      const litrosPorProduto = new Map<string, number>();
-      for (const v of vendas) {
-        const produto = v.bico.combustivel.nome;
-        litrosPorProduto.set(produto, (litrosPorProduto.get(produto) ?? 0) + Number(v.litros_vendidos || 0));
-      }
-      const comprasPorProduto = new Map<string, { litros: number; valorTotal: number }[]>();
-      for (const c of compras) {
-        const produto = c.combustivel?.nome;
-        if (!produto) continue;
-        const lista = comprasPorProduto.get(produto) ?? [];
-        lista.push({ litros: Number(c.quantidade_litros || 0), valorTotal: Number(c.valor_total || 0) });
-        comprasPorProduto.set(produto, lista);
-      }
-      const produtos: ProdutoDoPeriodo[] = [...litrosPorProduto].map(([produto, litrosVendidos]) => ({
-        produto,
-        litrosVendidos,
-        compras: comprasPorProduto.get(produto) ?? [],
-      }));
-      const custo = custoLitrosVendidos(produtos);
-
-      // Recebimentos NÃO entram na receita: já estão nas vendas via formas de pagamento.
-      const resumo = resumoFinanceiro({
-        receitaVendas: totalVendas,
-        receitasExtras: totalReceitasExtras,
-        custoLitrosVendidos: custo.custo,
-        despesasOps: totalDespesasOps,
-      });
-
-      // Ordenar transações por data (decrescente)
-      listaTransacoes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-
-      // Filtrar transações se houver filtros locais (ex: categoria, tipo)
-      // O filtro de data já foi aplicado na query
-      let transacoesFiltradas = listaTransacoes;
-      if (filtros.tipoTransacao && filtros.tipoTransacao !== 'todas') {
-        transacoesFiltradas = transacoesFiltradas.filter(t => t.tipo === filtros.tipoTransacao);
-      }
-      if (filtros.categoria) {
-        transacoesFiltradas = transacoesFiltradas.filter(t => t.categoria === filtros.categoria);
-      }
-
-      setDados({
-        ...resumo,
-        produtosSemCompra: custo.produtosSemCompra,
-        transacoes: transacoesFiltradas
-      });
+      // [#103] A montagem (transações, custo dos litros vendidos, resumo) mora em
+      // `montarDadosFinanceiros`, a MESMA para o Supabase e para a API. Aqui só a tradução das linhas.
+      setDados(montarDadosFinanceiros({
+        vendas: vendas.map((v) => ({
+          id: v.id, data: v.data, valor: v.valor_total, litros: v.litros_vendidos,
+          produto: v.bico.combustivel.nome, bicoNumero: v.bico.numero,
+        })),
+        recebimentos: recebimentos.map((r) => ({
+          id: r.id, valor: r.valor, forma: r.forma_pagamento?.nome ?? null, data: r.fechamento?.data ?? null,
+        })),
+        receitas: receitasExtras.map((r) => ({
+          id: r.id, descricao: r.descricao, categoria: r.Categoria?.nome ?? null, valor: r.valor, data: r.data,
+        })),
+        despesas: despesas.map((d) => ({
+          id: d.id, descricao: d.descricao, categoria: d.categoria ?? null, valor: d.valor, data: d.data,
+        })),
+        compras: compras.map((c) => ({
+          id: c.id, data: c.data, valor: c.valor_total, litros: c.quantidade_litros,
+          produto: c.combustivel?.nome ?? null, fornecedor: c.fornecedor?.nome ?? null,
+        })),
+      }, filtros));
 
     } catch (err) {
       console.error('Erro ao carregar dados financeiros:', err);
