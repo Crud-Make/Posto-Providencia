@@ -86,6 +86,13 @@ function apiFalsa(corposDoPost: unknown[]) {
         const url = new URL(String(entrada));
         const rota = url.pathname.replace('/api/postos/1', '');
 
+        if (init?.method === 'POST' && rota === '/fornecedores') {
+            const corpo = JSON.parse(String(init.body)) as { nome: string; cnpj: string; contato: string | null };
+            fornecedoresPostados.push(corpo);
+            return corpo.cnpj === 'ruim'
+                ? json({ erro: { codigo: 'cnpj_invalido', mensagem: 'CNPJ inválido: confira os números.' } }, 422)
+                : json({ data: { id: 9, nome: corpo.nome, cnpj: '11.222.333/0001-81', contato: corpo.contato, ativo: true } }, 201);
+        }
         if (init?.method === 'POST' && rota === '/compras') {
             corposDoPost.push(JSON.parse(String(init.body)));
             return json({ data: { repetido: false, compras: [], medicoes: [] } }, 201);
@@ -102,6 +109,9 @@ function apiFalsa(corposDoPost: unknown[]) {
         return (rotas[rota] ?? (() => json({}, 404)))();
     });
 }
+
+/** Corpos dos `POST /fornecedores` (#103, ensaio 30/09). */
+const fornecedoresPostados: unknown[] = [];
 
 /* ------------------------------------------------------------------ o harness --------------- */
 
@@ -238,6 +248,34 @@ describe('Registro de Compras no modo API — nenhuma chamada ao Supabase', () =
         expect(toqueNoSupabase).not.toHaveBeenCalled();
         expect(toast.success).toHaveBeenCalledWith('Movimentações salvas e estoque atualizado com sucesso!');
         expect(alertNativo).not.toHaveBeenCalled();
+    });
+
+    it('"+ Novo fornecedor" grava pela API, mostra a recusa com a frase dela e já seleciona o novo (ensaio 30/09)', async () => {
+        await montar();
+        fornecedoresPostados.length = 0;
+        await act(async () => {
+            botaoComTexto('Novo fornecedor').click();
+        });
+        const dialogo = container.querySelector<HTMLFormElement>('form[role="dialog"]');
+        expect(dialogo).not.toBeNull();
+        const [nome, cnpj] = [...(dialogo as HTMLFormElement).querySelectorAll('input')];
+        await digitar(nome as HTMLInputElement, 'Distribuidora BR');
+        await digitar(cnpj as HTMLInputElement, 'ruim');
+        await act(async () => { dialogo?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+        await esperar();
+        // A frase da API, e só ela — sem o "Gravação recusada (cnpj_invalido):" do texto técnico.
+        expect(dialogo?.querySelector('[role="alert"]')?.textContent).toBe('CNPJ inválido: confira os números.');
+
+        await digitar(cnpj as HTMLInputElement, '11222333000181');
+        await act(async () => { dialogo?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+        await esperar();
+
+        expect(fornecedoresPostados.at(-1)).toEqual({ nome: 'Distribuidora BR', cnpj: '11222333000181', contato: null, ativo: true });
+        expect(container.querySelector('form[role="dialog"]')).toBeNull();
+        const select = [...container.querySelectorAll('select')].find((s) => (s.textContent ?? '').includes('Distribuidora BR'));
+        expect(select?.value).toBe('9');
+        expect(rotasChamadas()).toContain('POST /api/postos/1/fornecedores');
+        expect(toqueNoSupabase).not.toHaveBeenCalled();
     });
 
     it('a mesma tentativa clicada de novo (a rede caiu) reusa a chave — o servidor devolve o já gravado em vez de somar de novo', async () => {

@@ -21,7 +21,7 @@ final class RespostaDoCadastro
     public static function de(Bomba|Bico|Combustivel|Tanque|FormaPagamento|RecusaDoCadastro $resultado, int $status): JsonResponse
     {
         if ($resultado instanceof RecusaDoCadastro) {
-            return response()->json(['erro' => ['codigo' => $resultado->codigo, 'mensagem' => $resultado->mensagem]], 422);
+            return self::recusa($resultado);
         }
 
         $recurso = match (true) {
@@ -33,5 +33,11 @@ final class RespostaDoCadastro
         };
 
         return $recurso->response()->setStatusCode($status);
+    }
+
+    /** Recusa de regra do cadastro → 422 `{ erro: { codigo, mensagem } }` (também usada por {@see RespostaDoFornecedor}). */
+    public static function recusa(RecusaDoCadastro $recusa): JsonResponse
+    {
+        return response()->json(['erro' => ['codigo' => $recusa->codigo, 'mensagem' => $recusa->mensagem]], 422);
     }
 }

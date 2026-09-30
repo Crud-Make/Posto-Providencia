@@ -1,7 +1,7 @@
 import type { ResultAsync } from 'neverthrow';
 import { z } from 'zod';
 import type { Fornecedor } from '../../types/database/index';
-import { buscarNaApi, type ErroDaApi } from './base';
+import { buscarNaApi, corteDaTelaLigado, enviarParaApi, type ErroDaApi } from './base';
 
 /**
  * Contrato de `GET /api/postos/{posto}/fornecedores` — espelha
@@ -37,4 +37,28 @@ export function paraFornecedoresAtivos(lidos: readonly FornecedorDaApi[], postoI
 export function lerFornecedoresDaApi(postoId: number): ResultAsync<Fornecedor[], ErroDaApi> {
     return buscarNaApi(`/api/postos/${postoId}/fornecedores`, respostaDeFornecedores)
         .map((resposta) => paraFornecedoresAtivos(resposta.data, postoId));
+}
+
+/**
+ * Corpo de `POST /fornecedores` e `PUT /fornecedores/{id}` — espelha
+ * `backend/app/Cadastro/Http/Requests/FornecedorDoPainelRequest.php`. O CNPJ vai como digitado: quem
+ * confere os DV (numérico ou alfanumérico) e formata é a API, que recusa com `cnpj_invalido`.
+ */
+export interface FornecedorDeclarado {
+    readonly nome: string;
+    readonly cnpj: string;
+    readonly contato: string | null;
+    readonly ativo: boolean;
+}
+
+/** Cria (`id === null`) ou edita um fornecedor do posto pela API (#103, ensaio 30/09). */
+export function gravarFornecedorNaApi(postoId: number, id: number | null, corpo: FornecedorDeclarado): ResultAsync<Fornecedor, ErroDaApi> {
+    const caminho = id === null ? `/api/postos/${postoId}/fornecedores` : `/api/postos/${postoId}/fornecedores/${id}`;
+    return enviarParaApi(caminho, id === null ? 'POST' : 'PUT', corpo, z.object({ data: fornecedorDaApi }))
+        .map((resposta) => ({ ...resposta.data, posto_id: postoId }));
+}
+
+/** Só a API cria fornecedor: no Supabase a tela nunca teve cadastro, e o posto novo não passa por lá. */
+export function fornecedorPelaApi(): boolean {
+    return corteDaTelaLigado(import.meta.env.VITE_API_FORNECEDOR);
 }
