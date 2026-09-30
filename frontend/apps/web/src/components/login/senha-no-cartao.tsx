@@ -1,7 +1,7 @@
 import React, { useActionState, useState } from 'react';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
-import { emailLembrado, lembrarEmail } from './email-lembrado';
+import { lembrarLogin, loginLembrado } from './login-lembrado';
 import { lembrarSenhaNoNavegador } from './lembrar-senha';
 
 const CLASSE_CAMPO =
@@ -17,24 +17,26 @@ interface Props {
 
 /**
  * A entrada dentro do cartão do posto escolhido (desenho aprovado pelo dono, 28/09/2026): só a senha e
- * a seta. O e-mail vem lembrado daquele posto; aparelho que ainda não entrou nele pede o e-mail uma vez.
+ * a seta. O usuário vem lembrado daquele posto; aparelho que ainda não entrou nele pede o usuário uma
+ * vez. Desde 30/09 é o NOME DE USUÁRIO ("elias"), não o e-mail — e vale dentro do posto do cartão: as
+ * contas são separadas por posto. Texto com "@" continua entrando como e-mail (a conta do ADMIN).
  *
- * @remarks Deu certo: o e-mail fica lembrado (só ele, por posto) e o login vai ao gerenciador de senhas
+ * @remarks Deu certo: o usuário fica lembrado (só ele, por posto) e o login vai ao gerenciador de senhas
  *          do navegador, que pergunta antes de guardar — a caixa "Lembrar a senha" saiu com o desenho.
  */
 const SenhaNoCartao: React.FC<Props> = ({ postoId, nome, erroExterno }) => {
   const { entrar } = useAuth();
-  const [lembrado] = useState(() => emailLembrado(postoId));
+  const [lembrado] = useState(() => loginLembrado(postoId));
 
   const [erro, acao, pendente] = useActionState<string | null, FormData>(async (_anterior, dados) => {
-    const email = (lembrado ?? String(dados.get('email') ?? '')).trim();
+    const login = (lembrado ?? String(dados.get('usuario') ?? '')).trim();
     const senha = String(dados.get('senha') ?? '');
-    if (email === '') return 'Informe o e-mail.';
+    if (login === '') return 'Informe o usuário.';
     if (senha === '') return 'Informe a senha.';
-    const falha = await entrar(email, senha);
+    const falha = await entrar(login, senha, postoId);
     if (falha === null) {
-      lembrarEmail(postoId, email);
-      void lembrarSenhaNoNavegador(email, senha);
+      lembrarLogin(postoId, login);
+      void lembrarSenhaNoNavegador(login, senha);
     }
     return falha;
   }, null);
@@ -44,9 +46,19 @@ const SenhaNoCartao: React.FC<Props> = ({ postoId, nome, erroExterno }) => {
   return (
     <form action={acao} noValidate className="flex min-w-0 flex-1 flex-col justify-center gap-2 px-3 py-3">
       {lembrado === null ? (
-        <input name="email" type="email" autoComplete="username" inputMode="email" spellCheck={false} placeholder="E-mail" aria-label={`E-mail do ${nome}`} className={CLASSE_CAMPO} autoFocus />
+        <input
+          name="usuario"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="Usuário"
+          aria-label={`Usuário do ${nome}`}
+          className={CLASSE_CAMPO}
+          autoFocus
+        />
       ) : (
-        <input name="email" type="email" autoComplete="username" value={lembrado} readOnly tabIndex={-1} aria-hidden="true" className="sr-only" />
+        <input name="usuario" type="text" autoComplete="username" value={lembrado} readOnly tabIndex={-1} aria-hidden="true" className="sr-only" />
       )}
       <div className="relative">
         <input

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { buscarNaApi, loginPelaApiLigado } from './base';
-import { entrarNaApi, mensagemDoLogin, perfilDaSessao, postosDaRede, sairDaApi } from './sessao.api';
+import { entrarNaApi, entrarNoPosto, mensagemDoLogin, perfilDaSessao, postosDaRede, sairDaApi } from './sessao.api';
 import { esquecerTokenDaApi, guardarTokenDaApi, lerTokenDaApi } from './token-da-api';
 
 /**
@@ -81,12 +81,37 @@ describe('entrarNaApi', () => {
 
     it('senha errada (401) não guarda token e vira a frase da tela', async () => {
         ligaLoginPelaApi();
-        respondeCom({ message: 'E-mail ou senha incorretos.' }, 401);
+        respondeCom({ message: 'Usuário ou senha incorretos.' }, 401);
 
         const frase = await entrarNaApi('x@teste.com', 'errada').match(() => 'entrou', mensagemDoLogin);
 
         expect(lerTokenDaApi()).toBeNull();
-        expect(frase).toBe('E-mail ou senha incorretos.');
+        expect(frase).toBe('Usuário ou senha incorretos.');
+    });
+});
+
+describe('entrarNoPosto', () => {
+    it('faz POST /api/login com posto_id e usuário, guarda o token e devolve o perfil', async () => {
+        ligaLoginPelaApi();
+        respondeCom({ token: '4|posto_br', usuario: PERFIL });
+
+        const nome = await entrarNoPosto(2, 'elias', 'segredo123').match((perfil) => perfil.nome, () => null);
+
+        expect(nome).toBe(PERFIL.nome);
+        expect(lerTokenDaApi()).toBe('4|posto_br');
+        const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+        expect(url).toBe('http://localhost:8000/api/login');
+        expect(JSON.parse(String((init as RequestInit).body))).toEqual({ posto_id: 2, usuario: 'elias', senha: 'segredo123', dispositivo: 'painel' });
+    });
+
+    it('usuário ou senha errados (401) não guardam token e viram a frase da tela', async () => {
+        ligaLoginPelaApi();
+        respondeCom({ message: 'Usuário ou senha incorretos.' }, 401);
+
+        const frase = await entrarNoPosto(2, 'elias', 'errada').match(() => 'entrou', mensagemDoLogin);
+
+        expect(lerTokenDaApi()).toBeNull();
+        expect(frase).toBe('Usuário ou senha incorretos.');
     });
 });
 

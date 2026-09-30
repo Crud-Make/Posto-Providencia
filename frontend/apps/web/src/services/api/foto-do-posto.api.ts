@@ -50,16 +50,19 @@ function encerrar(token: string): ResultAsync<null, never> {
 
 /**
  * Troca a foto pelo cartão da tela de entrada, sem entrar no painel (pedido do dono, 27/09/2026): entra
- * com o e-mail e a senha do gerente SÓ para esta troca, grava a foto e encerra o token — dando certo ou
+ * com o usuário e a senha do gerente SÓ para esta troca, grava a foto e encerra o token — dando certo ou
  * não. Quem decide se a conta pode é o servidor (`gerir` do posto): conta de outro posto leva 403.
+ *
+ * @remarks `login` é o nome de usuário do cartão daquele posto (30/09/2026); com "@", é e-mail.
  */
 export function trocarFotoComSenha(
     postoId: number,
-    email: string,
+    login: string,
     senha: string,
     foto: string,
 ): ResultAsync<string | null, ErroDaApi> {
-    return enviarParaApiComToken('/api/login', 'POST', { email, senha, dispositivo: 'foto-do-posto' }, respostaDoLogin, null).andThen(
+    const quem = login.includes('@') ? { email: login } : { posto_id: postoId, usuario: login };
+    return enviarParaApiComToken('/api/login', 'POST', { ...quem, senha, dispositivo: 'foto-do-posto' }, respostaDoLogin, null).andThen(
         ({ token }) =>
             enviarParaApiComToken(`/api/postos/${postoId}/foto`, 'PUT', { foto }, respostaDaTroca, token)
                 .andThen((r) => encerrar(token).map(() => r.data.foto))
@@ -70,7 +73,7 @@ export function trocarFotoComSenha(
 /** A frase da janela de troca para cada falha. */
 export function mensagemDaTrocaDeFoto(erro: ErroDaApi): string {
     const status = erro.tipo === 'http' || erro.tipo === 'recusado' ? erro.status : null;
-    if (status === 401) return 'E-mail ou senha incorretos.';
+    if (status === 401) return 'Usuário ou senha incorretos.';
     if (status === 403) return 'Esta conta não pode trocar a foto deste posto.';
     if (status === 429) return 'Muitas tentativas. Espere um minuto e tente de novo.';
     if (status === 422) return 'O servidor não aceitou essa foto. Tente outra imagem.';

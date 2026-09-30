@@ -97,7 +97,7 @@ it('senha errada, e-mail inexistente, usuário inativo e usuário sem senha rece
     foreach ($tentativas as [$email, $senha]) {
         postJson('/api/login', ['email' => $email, 'senha' => $senha])
             ->assertUnauthorized()
-            ->assertExactJson(['message' => 'E-mail ou senha incorretos.']);
+            ->assertExactJson(['message' => 'Usuário ou senha incorretos.']);
     }
     expect(PersonalAccessToken::query()->count())->toBe($tokensAntes);
 });

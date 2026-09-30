@@ -4,8 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { okAsync } from 'neverthrow';
 
 /**
- * A tela de entrada é a ÚNICA do painel (27/09/2026): cartões dos postos e, na mesma tela, o e-mail e
- * a senha do posto escolhido. O que se prende: sem escolher o posto não há formulário, e a conta que
+ * A tela de entrada é a ÚNICA do painel (27/09/2026): cartões dos postos e, na mesma tela, o usuário e
+ * a senha do posto escolhido (o usuário vale dentro daquele posto, 30/09/2026). O que se prende: sem escolher o posto não há formulário, e a conta que
  * não é do posto escolhido é recusada e sai.
  */
 
@@ -67,11 +67,19 @@ describe('TelaDeEntrada', () => {
         expect(div.querySelector('input[name="senha"]')).toBeNull();
     });
 
-    it('escolheu o BR: o cartão do BR pede a senha (e o e-mail, sem nenhum lembrado)', async () => {
+    it('escolheu o BR: o cartão do BR pede a senha (e o usuário, sem nenhum lembrado)', async () => {
         await montar();
         await act(async () => botao('Posto BR').click());
         expect(div.querySelector('input[aria-label="Senha do Posto BR"]')).not.toBeNull();
-        expect(div.querySelector('input[aria-label="E-mail do Posto BR"]')).not.toBeNull();
+        const usuario = div.querySelector<HTMLInputElement>('input[aria-label="Usuário do Posto BR"]');
+        expect(usuario).not.toBeNull();
+        // Nome curto, não e-mail: teclado de texto, sem maiúscula automática nem corretor.
+        expect(usuario?.type).toBe('text');
+        expect(usuario?.placeholder).toBe('Usuário');
+        expect(usuario?.getAttribute('autocomplete')).toBe('username');
+        expect(usuario?.getAttribute('autocapitalize')).toBe('none');
+        expect(usuario?.getAttribute('spellcheck')).toBe('false');
+        expect(div.querySelector('input[aria-label="E-mail do Posto BR"]')).toBeNull();
         expect(div.querySelector('button[aria-label="Entrar no Posto BR"]')).not.toBeNull();
         expect(div.textContent).not.toContain('Salvar meu acesso');
     });

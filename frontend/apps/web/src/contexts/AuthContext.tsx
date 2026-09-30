@@ -40,7 +40,11 @@ export interface EstadoAutenticacao {
    * definir nova senha em vez do painel, mesmo já havendo sessão.
    */
   readonly recuperandoSenha: boolean;
-  entrar: (email: string, senha: string) => Promise<string | null>;
+  /**
+   * Entra com `login` (e-mail, ou nome de usuário quando vem `postoId` — o cartão do posto) e senha.
+   * Devolve a mensagem de erro ou `null`. O login pelo Supabase ignora o `postoId`: lá só há e-mail.
+   */
+  entrar: (login: string, senha: string, postoId?: number) => Promise<string | null>;
   sair: () => Promise<void>;
   /** Dispara o e-mail de recuperação. Devolve mensagem de erro ou `null`. */
   pedirRecuperacaoSenha: (email: string) => Promise<string | null>;

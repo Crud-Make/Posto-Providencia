@@ -67,7 +67,7 @@ it('resolve todas as relações do cadastro contra o esquema real', function ():
     // usuário ↔ posto
     expect($usuario->postos->pluck('id')->all())->toBe([$posto->id])
         ->and($usuario->vinculos->pluck('id')->all())->toBe([$vinculo->id])
-        ->and($vinculo->usuario?->is($usuario))->toBeTrue()
+        ->and($vinculo->conta?->is($usuario))->toBeTrue()
         ->and($vinculo->posto?->is($posto))->toBeTrue()
         ->and($vinculo->role)->toBe(PapelNoPosto::Gerente);
 });

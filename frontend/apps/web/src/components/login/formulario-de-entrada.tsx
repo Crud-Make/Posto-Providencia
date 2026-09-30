@@ -2,7 +2,7 @@ import React, { useActionState, useRef, useState } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
 import { lembrarSenhaNoNavegador } from './lembrar-senha';
-import { emailLembrado, esquecerEmail, lembrarEmail } from './email-lembrado';
+import { esquecerLogin, lembrarLogin, loginLembrado } from './login-lembrado';
 
 const CLASSE_CAMPO =
   'block h-12 w-full rounded-lg border pl-11 pr-3.5 text-[15px] placeholder:opacity-60 ' +
@@ -182,10 +182,10 @@ const FormularioDeEntrada: React.FC<Props> = ({ postoId, erroExterno }) => {
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [enviandoRecuperacao, setEnviandoRecuperacao] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
-  const [lembrado, setLembrado] = useState(() => (postoId === null ? null : emailLembrado(postoId)));
+  const [lembrado, setLembrado] = useState(() => (postoId === null ? null : loginLembrado(postoId)));
 
   const trocarConta = () => {
-    if (postoId !== null) esquecerEmail(postoId);
+    if (postoId !== null) esquecerLogin(postoId);
     setLembrado(null);
   };
 
@@ -196,7 +196,7 @@ const FormularioDeEntrada: React.FC<Props> = ({ postoId, erroExterno }) => {
     if (!email) return 'Informe o e-mail.';
     if (!senha) return 'Informe a senha.';
     const falha = await entrar(email, senha);
-    if (falha === null && postoId !== null) lembrarEmail(postoId, email);
+    if (falha === null && postoId !== null) lembrarLogin(postoId, email);
     if (falha === null && formData.get('lembrar') === 'sim') void lembrarSenhaNoNavegador(email, senha);
     return falha;
   }, null);

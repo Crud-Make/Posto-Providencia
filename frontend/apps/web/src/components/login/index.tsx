@@ -10,7 +10,7 @@ import CartaoDoPosto from './cartao-do-posto';
 import CenaDaChegada from './cena-da-chegada';
 import { fraseDoDia, saudacao, variaveisDoTema } from './escolha-de-posto-estilo';
 import FormularioDeEntrada from './formulario-de-entrada';
-import { emailLembrado, esquecerEmail } from './email-lembrado';
+import { esquecerLogin, loginLembrado } from './login-lembrado';
 import SenhaNoCartao from './senha-no-cartao';
 import TrocarFotoNoCartao from './trocar-foto-no-cartao';
 
@@ -55,8 +55,8 @@ function useRecusaContaDeOutroPosto(escolhido: PostoDaRede | null): string | nul
   useEffect(() => {
     if (!loginPelaApiLigado() || usuario === null || postoAtivo !== null) return;
     const mensagem = `Esta conta não é do ${escolhido?.nome ?? 'posto escolhido'}.`;
-    // O e-mail lembrado era de outro posto: esquece, para a próxima entrada pedir o e-mail de novo.
-    if (escolhido !== null) esquecerEmail(escolhido.id);
+    // O login lembrado era de outro posto: esquece, para a próxima entrada pedir o usuário de novo.
+    if (escolhido !== null) esquecerLogin(escolhido.id);
     void sair().then(() => setRecusa(mensagem));
   }, [usuario, postoAtivo, escolhido, sair]);
 
@@ -69,9 +69,11 @@ const AjudaDaEntrada: React.FC<{ escolhido: PostoDaRede; aoTrocarConta: () => vo
   const [aviso, setAviso] = useState<string | null>(null);
 
   const aoEsquecer = async () => {
-    const email = emailLembrado(escolhido.id) ?? '';
-    const falha = await pedirRecuperacaoSenha(email);
-    setAviso(falha ?? `Enviamos o link de recuperação para ${email}.`);
+    // No modo API a resposta é sempre a instrução de pedir ao administrador (não há SMTP). O login
+    // lembrado só serve de e-mail no caminho do Supabase, que não tem cartões.
+    const login = loginLembrado(escolhido.id) ?? '';
+    const falha = await pedirRecuperacaoSenha(login);
+    setAviso(falha ?? `Enviamos o link de recuperação para ${login}.`);
   };
 
   return (
@@ -98,7 +100,7 @@ const AjudaDaEntrada: React.FC<{ escolhido: PostoDaRede; aoTrocarConta: () => vo
  * estrada e o Posto BR), a saudação no céu e, embaixo, um cartão por posto. Escolhido, o cartão mostra
  * só a senha (desenho aprovado pelo dono em 28/09/2026). Entrou, o painel abre direto nesse posto.
  *
- * @remarks No navegador fica só o e-mail lembrado de cada posto; posto e token não. Com o login pelo
+ * @remarks No navegador fica só o usuário lembrado de cada posto; posto e token não. Com o login pelo
  *          Supabase (flag desligada, produção da transição) não há lista pública de postos, e o
  *          formulário completo aparece sozinho sobre a mesma cena.
  */
@@ -122,7 +124,7 @@ const TelaDeEntrada: React.FC = () => {
   };
 
   const trocarConta = () => {
-    if (escolhido !== null) esquecerEmail(escolhido.id);
+    if (escolhido !== null) esquecerLogin(escolhido.id);
     setVersaoDaConta((v) => v + 1);
   };
 

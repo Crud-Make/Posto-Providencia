@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property int $posto_id
  * @property PapelNoPosto|null $role
  * @property ?bool $ativo
+ * @property string|null $usuario login por nome no cartão do posto (banco/init/15-login-por-usuario.sql)
  * @property Carbon|null $created_at
  */
 final class UsuarioPosto extends Model
@@ -32,7 +33,7 @@ final class UsuarioPosto extends Model
     public const UPDATED_AT = null;
 
     /** @var list<string> */
-    protected $fillable = ['usuario_id', 'posto_id', 'role', 'ativo'];
+    protected $fillable = ['usuario_id', 'posto_id', 'role', 'ativo', 'usuario'];
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -43,10 +44,15 @@ final class UsuarioPosto extends Model
         ];
     }
 
-    /** @return BelongsTo<Usuario, $this> */
-    public function usuario(): BelongsTo
+    /**
+     * A conta dona do vínculo. Não se chama `usuario()` porque a coluna `usuario` (o login por nome)
+     * venceria a relação no acesso por propriedade: `$vinculo->usuario` devolveria o texto.
+     *
+     * @return BelongsTo<Usuario, $this>
+     */
+    public function conta(): BelongsTo
     {
-        return $this->belongsTo(Usuario::class);
+        return $this->belongsTo(Usuario::class, 'usuario_id');
     }
 
     /** @return BelongsTo<Posto, $this> */
