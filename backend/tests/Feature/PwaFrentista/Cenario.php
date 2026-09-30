@@ -39,7 +39,25 @@ function garantePreRequisitosDoPwa(int $postoId): void
             'id' => 1, 'nome' => 'Manhã', 'horario_inicio' => '06:00:00', 'horario_fim' => '14:00:00',
             'ativo' => true, 'posto_id' => $postoId,
         ]);
+        DB::statement('SELECT setval(pg_get_serial_sequence(\'public."Turno"\', \'id\'), (SELECT MAX(id) FROM public."Turno"))');
     }
+
+    // O dia do posto nasce no turno DO PRÓPRIO posto (Fechamento::turnoDoPosto, ensaio Jorro+BR 30/09/2026): todo posto
+    // de teste precisa do seu, e o turno 1 acima pode ser de outro posto.
+    if (DB::table('Turno')->where('posto_id', $postoId)->doesntExist()) {
+        DB::table('Turno')->insert([
+            'nome' => 'Manhã', 'horario_inicio' => '06:00:00', 'horario_fim' => '14:00:00',
+            'ativo' => true, 'posto_id' => $postoId,
+        ]);
+    }
+}
+
+/** O turno em que o dia do posto é gravado: o primeiro turno do próprio posto (Fechamento::turnoDoPosto). */
+function turnoDoPosto(int $postoId): int
+{
+    $id = DB::table('Turno')->where('posto_id', $postoId)->orderBy('id')->value('id');
+
+    return is_int($id) ? $id : (int) (is_string($id) ? $id : 0);
 }
 
 /**
