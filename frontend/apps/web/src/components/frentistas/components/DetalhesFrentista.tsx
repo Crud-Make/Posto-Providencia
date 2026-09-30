@@ -4,6 +4,7 @@ import { PerfilFrentista } from '../types';
 import { useHistoricoFrentista } from '../hooks/useHistoricoFrentista';
 import { paraReais as formatarMoeda } from '../../../utils/formatters';
 import { AvatarFrentista } from '../../../shared/ui/avatar-frentista';
+import { diaDoBanco } from '@posto/utils';
 
 interface DetalhesFrentistaProps {
     frentista: PerfilFrentista;
@@ -32,7 +33,7 @@ export const DetalhesFrentista: React.FC<DetalhesFrentistaProps> = ({
                         <AvatarFrentista nome={frentista.nome} foto={frentista.foto} tamanho={64} />
                         <div>
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white">{frentista.nome}</h2>
-                            <p className="text-gray-500 dark:text-gray-400">Admissão: {new Date(frentista.dataAdmissao).toLocaleDateString('pt-BR')}</p>
+                            <p className="text-gray-500 dark:text-gray-400">Admissão: {diaDoBanco(frentista.dataAdmissao)}</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
@@ -92,7 +93,7 @@ export const DetalhesFrentista: React.FC<DetalhesFrentistaProps> = ({
                                 >
                                     <div>
                                         <div className="font-medium text-gray-900 dark:text-gray-100">
-                                            {new Date(entry.data).toLocaleDateString('pt-BR')}
+                                            {diaDoBanco(entry.data)}
                                         </div>
                                         <div className="text-xs text-gray-500 dark:text-gray-400">{entry.turno}</div>
                                     </div>

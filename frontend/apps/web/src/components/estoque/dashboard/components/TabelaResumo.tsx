@@ -1,12 +1,17 @@
 import React from 'react';
 import { corDoProduto } from '@posto/utils';
 import { Tanque } from '../types';
+import { faltaCusto, lucroPrevistoEstoque, valorBrutoEstoque } from './calculos-resumo-financeiro';
 
 interface TabelaResumoProps {
   tanques: Tanque[];
+  /** Despesa operacional por litro do mês — a mesma do card; a linha usa a conta do card (30/09). */
+  despesaLitro: number;
 }
 
-const TabelaResumo: React.FC<TabelaResumoProps> = ({ tanques }) => {
+const emReais = (valor: number): string => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const TabelaResumo: React.FC<TabelaResumoProps> = ({ tanques, despesaLitro }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
       <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex items-center justify-between">
@@ -44,10 +49,10 @@ const TabelaResumo: React.FC<TabelaResumoProps> = ({ tanques }) => {
                 <td className="px-6 py-3 text-right font-mono">{t.capacidade.toLocaleString()} L</td>
                 <td className="px-6 py-3 text-right font-mono font-bold">{t.estoque_atual.toLocaleString()} L</td>
                 <td className="px-6 py-3 text-right font-mono text-gray-600 dark:text-gray-300">
-                  {(t.estoque_atual * (t.combustivel?.preco_custo || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {faltaCusto(t) ? 'Falta o custo' : emReais(valorBrutoEstoque([t]))}
                 </td>
                 <td className="px-6 py-3 text-right font-mono text-green-600 font-bold">
-                  {(t.estoque_atual * ((t.combustivel?.preco_venda || 0) - (t.combustivel?.preco_custo || 0))).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {faltaCusto(t) ? '—' : emReais(lucroPrevistoEstoque([t], despesaLitro))}
                 </td>
                 <td className="px-6 py-3 text-right">
                   <span className={`px-2 py-1 rounded text-xs font-bold ${percent < 15 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>

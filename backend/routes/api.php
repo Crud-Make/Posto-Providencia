@@ -340,7 +340,7 @@ Route::prefix('postos/{posto}')
         Route::put('bombas/{bomba}', [BombasEBicosController::class, 'editaBomba'])->whereNumber('bomba');
         Route::post('bicos', [BombasEBicosController::class, 'criaBico']);
         Route::put('bicos/{bico}', [BombasEBicosController::class, 'editaBico'])->whereNumber('bico');
-        // #157: combustível (com preço de venda, sem custo) e tanque (sem estoque — nasce 0, a partida é a régua).
+        // #157: combustível (preço de venda e o custo que o gerente informa — 30/09) e tanque (sem estoque — nasce 0, a partida é a régua).
         Route::post('combustiveis', [CombustiveisETanquesController::class, 'criaCombustivel']);
         Route::put('combustiveis/{combustivel}', [CombustiveisETanquesController::class, 'editaCombustivel'])->whereNumber('combustivel');
         Route::post('tanques', [CombustiveisETanquesController::class, 'criaTanque']);

@@ -104,7 +104,7 @@ const TelaDashboardEstoque: React.FC = () => {
             ))}
           </div>
 
-          <TabelaResumo tanques={tanques} />
+          <TabelaResumo tanques={tanques} despesaLitro={despesaLitro} />
 
           <div className="mt-8">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Evolução do Estoque (30 dias)</h3>
