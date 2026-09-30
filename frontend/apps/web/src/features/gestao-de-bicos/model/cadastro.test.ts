@@ -5,6 +5,8 @@ import {
     combustiveisComTanques,
     corpoDoCombustivel,
     corpoDoTanque,
+    custoDoTexto,
+    custoParaCampo,
     litrosParaCampo,
     litrosParaTela,
     precoDoTexto,
@@ -55,9 +57,9 @@ describe('combustiveisComTanques', () => {
         bombas: [],
         bicos: [],
         combustiveis: [
-            { id: 1, nome: 'Gasolina Comum', codigo: 'GC', cor: null, ativo: true, preco_venda: '6.89' },
-            { id: 2, nome: 'Etanol', codigo: 'ET', cor: null, ativo: true, preco_venda: '4.89' },
-            { id: 3, nome: 'Querosene', codigo: 'QR', cor: null, ativo: false, preco_venda: '5.00' },
+            { id: 1, nome: 'Gasolina Comum', codigo: 'GC', cor: null, ativo: true, preco_venda: '6.89', preco_custo: null },
+            { id: 2, nome: 'Etanol', codigo: 'ET', cor: null, ativo: true, preco_venda: '4.89', preco_custo: null },
+            { id: 3, nome: 'Querosene', codigo: 'QR', cor: null, ativo: false, preco_venda: '5.00', preco_custo: null },
         ],
         tanques: [
             { id: 10, nome: 'Tanque 2', combustivel_id: 1, capacidade: '15000.00', ativo: true },
@@ -75,14 +77,49 @@ describe('combustiveisComTanques', () => {
     });
 });
 
+describe('custo por litro — o que o gerente informa (30/09)', () => {
+    it.each([
+        ['5,34', '5.34'],
+        ['5,3451', '5.3451'],
+        [' 4.1 ', '4.1'],
+    ])('%s → %s', (texto, esperado) => {
+        expect(custoDoTexto(texto)).toEqual({ ok: true, valor: esperado });
+    });
+
+    it('vazio é "não sei o custo" (null), não zero', () => {
+        expect(custoDoTexto('')).toEqual({ ok: true, valor: null });
+        expect(custoDoTexto('   ')).toEqual({ ok: true, valor: null });
+    });
+
+    it.each(['0', '0,00', '5,34516', 'abc', '-5', '5,3,4'])('%s não passa', (texto) => {
+        expect(custoDoTexto(texto).ok).toBe(false);
+    });
+
+    it('volta para o campo sem os zeros da coluna de 4 casas; custo nunca informado fica vazio', () => {
+        expect(custoParaCampo('5.3100')).toBe('5,31');
+        expect(custoParaCampo('5.3451')).toBe('5,3451');
+        expect(custoParaCampo('5.3450')).toBe('5,345');
+        expect(custoParaCampo('5.0000')).toBe('5,00');
+        expect(custoParaCampo('0.0000')).toBe('');
+        expect(custoParaCampo('0')).toBe('');
+        expect(custoParaCampo(null)).toBe('');
+    });
+});
+
 describe('corpo dos formulários', () => {
     it('combustível: código em maiúsculas, preço em string, cor inválida vira null', () => {
-        expect(corpoDoCombustivel({ nome: ' Diesel S10 ', codigo: 's10', cor: 'xx', preco: '7,29', ativo: true })).toEqual({
+        expect(corpoDoCombustivel({ nome: ' Diesel S10 ', codigo: 's10', cor: 'xx', preco: '7,29', custo: '5,3451', ativo: true })).toEqual({
             ok: true,
-            valor: { nome: 'Diesel S10', codigo: 'S10', cor: null, preco_venda: '7.29', ativo: true },
+            valor: { nome: 'Diesel S10', codigo: 'S10', cor: null, preco_venda: '7.29', preco_custo: '5.3451', ativo: true },
         });
-        expect(corpoDoCombustivel({ nome: 'Etanol', codigo: 'ET', cor: '#43A047', preco: '', ativo: true }).ok).toBe(false);
-        expect(corpoDoCombustivel({ nome: 'Etanol', codigo: 'ET-1', cor: '', preco: '4,89', ativo: true }).ok).toBe(false);
+        expect(corpoDoCombustivel({ nome: 'Etanol', codigo: 'ET', cor: '#43A047', preco: '', custo: '', ativo: true }).ok).toBe(false);
+        expect(corpoDoCombustivel({ nome: 'Etanol', codigo: 'ET-1', cor: '', preco: '4,89', custo: '', ativo: true }).ok).toBe(false);
+        expect(corpoDoCombustivel({ nome: 'Etanol', codigo: 'ET', cor: '', preco: '4,89', custo: '0', ativo: true }).ok).toBe(false);
+    });
+
+    it('combustível sem custo manda preco_custo null (a chave vai sempre)', () => {
+        const lido = corpoDoCombustivel({ nome: 'Etanol', codigo: 'ET', cor: '', preco: '4,89', custo: ' ', ativo: true });
+        expect(lido).toEqual({ ok: true, valor: { nome: 'Etanol', codigo: 'ET', cor: null, preco_venda: '4.89', preco_custo: null, ativo: true } });
     });
 
     it('tanque: sem combustível ou sem capacidade não vai; nunca manda estoque', () => {

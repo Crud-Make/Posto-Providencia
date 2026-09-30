@@ -15,6 +15,56 @@
   rolagem lateral (375 px); a 1536 px igual a antes. 129 testes do Fechamento verdes. Sem teste novo: é layout,
   e teste que confere nome de classe não prova que a tela cabe.
 
+### 🐛 Compras avisa pelo toast do painel, e os botões da medição de tanque não são "enviar" (#102)
+
+- Achado no ensaio Jorro+BR (30/09): a tela de Compras avisava com `alert()` nativo, que trava a aba até
+  alguém clicar "OK" — inclusive no sucesso. Os 6 avisos viraram toast (`sonner`, o mesmo do resto do painel).
+- ✕, Cancelar e Confirmar da "Nova Medição (Régua)" não tinham `type` e seriam "enviar" se o modal um dia
+  ficasse dentro de um `<form>` (hoje não fica: não havia efeito visível). Viraram `type="button"`; o ✕ ganhou
+  o nome "Fechar" para leitor de tela.
+- Canários: voltar ao `alert()` reprova 2 testes; tirar o `type` do Cancelar reprova 1. No ensaio: compra
+  sem fornecedor no BR mostra o toast e não grava nada, nenhum `alert()`; o modal fecha pelo ✕ e pelo Cancelar.
+
+### 🐛 Tanques: o lucro previsto deixa de ser a venda inteira — o gerente informa o custo (#102)
+
+- Achado no ensaio Jorro+BR (30/09): os Tanques do BR prometiam R$ 34.450 de "lucro previsto" — a venda
+  inteira. A conta (`estoque × (venda − custo − despesa/L)`) estava certa; o custo do combustível era 0 e
+  nada o preenchia: a API ignorava `preco_custo` e nenhuma compra de combustível o atualiza.
+- Decisão do dono (30/09): o gerente informa o custo. `POST`/`PUT /combustiveis` aceitam `preco_custo`
+  (string, até 4 casas, > 0, ou `null` = "não sei"); a chave é obrigatória, para que esquecê-la não apague
+  o custo em silêncio. O formulário de combustível ganhou "Preço de custo por litro".
+- Tanque com litros e sem custo mostra "Falta o custo" no card e na linha, em vez de um número inventado.
+  A linha da tabela passou a usar a mesma conta do card (antes não descontava a despesa/L).
+- Canários: não gravar o custo reprova 2; sem a chave obrigatória reprova 1; `faltaCusto` sempre falso
+  reprova 3; linha sem despesa reprova 1; corpo sem custo reprova 2; vazio virando 0 reprova 2. No ensaio:
+  GC 5,34 e ET 4,10 → R$ 59.500,00 em estoque e R$ 14.070,00 de lucro, batendo com a conta à mão; Jorro
+  idêntico.
+
+### 🐛 Frentistas: a admissão e o histórico param de mostrar o dia anterior (#102)
+
+- Achado no ensaio Jorro+BR (30/09): a admissão gravada como 27/09 aparecia 26/09, e o histórico mostrava
+  o fechamento de 27/09 como 26/09. O banco estava certo (00:00 UTC); a tela formatava o instante em GMT-3,
+  que é 21h do dia anterior.
+- `diaDoBanco` em `@posto/utils/data-local` mostra o dia sem passar pelo fuso; `DetalhesFrentista` usa ele
+  nas duas datas. Canário: voltar a `toLocaleDateString` reprova 2 testes (o `bun run test` roda em
+  `America/Sao_Paulo`). No ensaio: Diego (BR) mostra 30/09/2026 na admissão e no histórico, e salvar a
+  edição mantém 30/09 00:00 UTC no banco.
+
+### 🐛 Fechamento: o dia de cada posto nasce no turno DO PRÓPRIO posto e grava quem fechou (#103)
+
+- Achado no ensaio Jorro+BR (30/09): o dia do Posto BR nascia com `turno_id = 1` — o turno "Manhã" do
+  **Jorro** — e `usuario_id = 1` (o admin), cravados no envio do PWA (`PaiDoDia`) e no Salvar do painel
+  (`GravaFechamentoDoDia`). O relatório dizia "salvo por Administrador".
+- Agora o turno do dia é o primeiro turno do próprio posto (`Fechamento::turnoDoPosto`; o Jorro segue no 1),
+  e posto sem turno é erro claro, em vez de pegar o turno de outro. O envio acha o dia pelo posto e pela
+  data, sem exigir o turno, e não abre um segundo pai para o dia que nasceu no turno errado.
+- Fechar o dia grava QUEM fechou e acerta o turno de outro posto. O dia criado pelo PWA segue com usuário
+  1 até o gerente fechar (a coluna é NOT NULL e o frentista não é `Usuario`).
+- Testes: o pai no turno do posto, dia antigo sem segundo pai, fechar grava o gerente e acerta o turno;
+  fixtures dão turno próprio a cada posto de teste. Canários: turno 1 cravado reprova 4; fechar sem gravar
+  quem fechou reprova 1. No ensaio: 30/09 do BR nasceu no turno 4; o 27/09 salvo de novo virou turno 4 e
+  "salvo por Elias (BR)", valores intactos.
+
 ### 🌄 Tela de entrada: a chegada a Caldas do Jorro, com modo escuro (#102)
 
 - Desenho aprovado pelo dono (28/09) no canvas "Tela de entrada — Rede Providência": o fundo é a

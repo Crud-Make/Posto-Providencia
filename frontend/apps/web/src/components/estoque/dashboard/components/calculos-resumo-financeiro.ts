@@ -50,3 +50,16 @@ export function lucroPrevistoEstoque(
     );
 }
 
+
+/**
+ * Tanque com litros e sem custo informado (`null` ou ≤ 0): o valor e o lucro dele NÃO se sabem.
+ *
+ * @remarks Ensaio Jorro+BR (30/09/2026): o BR tinha custo 0 nos quatro combustíveis e o card prometia
+ *          R$ 34.450 de lucro — a venda inteira. A conta estava certa; o custo é que não existia. O
+ *          gerente agora informa o custo no cadastro do combustível (decisão do dono, 30/09) e, até
+ *          lá, a tela diz que falta o custo em vez de inventar um número. Tanque vazio não pesa.
+ */
+export function faltaCusto(t: TanqueParaResumo): boolean {
+    const custo = t.combustivel?.preco_custo;
+    return t.estoque_atual > 0 && (custo === null || custo === undefined || custo <= 0);
+}
