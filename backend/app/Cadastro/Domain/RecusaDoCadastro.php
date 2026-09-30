@@ -12,7 +12,7 @@ namespace App\Cadastro\Domain;
  * `bomba_invalida`, `combustivel_invalido`, `tanque_invalido`, `numero_repetido`,
  * `combustivel_travado` (bico). #157: `codigo_repetido`, `codigo_travado`,
  * `combustivel_com_bicos_ativos` (combustível); `combustivel_invalido`, `combustivel_travado`,
- * `tanque_com_bicos_ativos` (tanque).
+ * `tanque_com_bicos_ativos` (tanque). #103: `nome_repetido` (forma de pagamento).
  */
 final readonly class RecusaDoCadastro
 {

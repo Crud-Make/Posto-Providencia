@@ -64,8 +64,9 @@ const TelaConfiguracoes: React.FC = () => {
         setIsPaymentModalOpen,
         handleFormChange,
         handleSavePayment,
-        handleToggleStatus
-    } = useFormaPagamento(postoAtivoId, setPaymentMethods);
+        handleToggleStatus,
+        handleDelete
+    } = useFormaPagamento(postoAtivoId, setPaymentMethods, paymentMethods);
 
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-gray-900 font-sans">
@@ -94,10 +95,13 @@ const TelaConfiguracoes: React.FC = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Coluna Esquerda: Produtos e Bicos */}
                             <div className="space-y-6">
-                                <GestaoProdutos
-                                    products={products}
-                                    loading={loading}
-                                />
+                                {/* #157: com a pista pela API, o cartão Combustíveis e Tanques substitui esta lista (lida do Supabase). */}
+                                {!bicosPelaApi() && (
+                                    <GestaoProdutos
+                                        products={products}
+                                        loading={loading}
+                                    />
+                                )}
                                 {bicosPelaApi() ? (
                                     <PistaDoPosto postoId={postoAtivoId} />
                                 ) : (
@@ -116,6 +120,7 @@ const TelaConfiguracoes: React.FC = () => {
                                     onAdd={() => openPaymentModal()}
                                     onEdit={(method) => openPaymentModal(method)}
                                     onToggleStatus={handleToggleStatus}
+                                    onDelete={handleDelete}
                                     modal={{
                                         isOpen: isPaymentModalOpen,
                                         editingPayment,

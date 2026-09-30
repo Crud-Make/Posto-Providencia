@@ -4,6 +4,8 @@ import { fetchSettingsData } from '../../../services/api';
 import { isSuccess } from '../../../types/ui/response-types';
 import { usePosto } from '../../../contexts/usePosto';
 import { Produto, Bico, FormaPagamento } from '../types';
+import { configuracoesPelaApi, lerFormasDaApi, paraFormaDaTela } from '../../../services/api/configuracoes.api';
+import { descreverErroDaApi } from '../../../services/api/base';
 
 /**
  * Hook para carregar dados iniciais da tela de configurações.
@@ -22,6 +24,17 @@ export const useConfiguracoesData = () => {
         if (!postoAtivoId) return;
 
         setLoading(true);
+        // #103: pela API, só as formas de pagamento (as ativas, como o Supabase filtrava). Produtos e
+        // bicos desta tela são os cartões da pista (`VITE_API_BICOS`), que carregam sozinhos.
+        if (configuracoesPelaApi()) {
+            const lidas = await lerFormasDaApi(postoAtivoId);
+            lidas.match(
+                (formas) => setPaymentMethods(formas.filter((f) => f.ativo).map(paraFormaDaTela)),
+                (erro) => console.error('Formas de pagamento pela API:', descreverErroDaApi(erro)),
+            );
+            setLoading(false);
+            return;
+        }
         try {
             // [06/09/2026] `fetchSettingsData` devolve o envelope `{ success, data }`.
             // Desde 22/02 (`ad89a73`) isto lia `data?.products` NO ENVELOPE — sempre

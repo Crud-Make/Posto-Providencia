@@ -2,7 +2,12 @@
 // [10/01 17:55] Fix: Removido any em handleFormChange
 import { useState } from 'react';
 import { formaPagamentoService } from '../../../services/api';
+import { descreverErroDaApi, type ErroDaApi } from '../../../services/api/base';
+import { configuracoesPelaApi, corpoDaForma, gravarFormaNaApi, paraFormaDaTela } from '../../../services/api/configuracoes.api';
 import { FormaPagamento, PaymentFormState, PaymentType } from '../types';
+
+/** Recusa de regra (nome repetido) chega com a frase pronta; o resto vira diagnóstico. */
+const mensagemDaApi = (erro: ErroDaApi): string => (erro.tipo === 'recusado' ? erro.mensagem : descreverErroDaApi(erro));
 
 /**
  * Hook para gerenciamento de formas de pagamento.
@@ -14,7 +19,8 @@ import { FormaPagamento, PaymentFormState, PaymentType } from '../types';
  */
 export const useFormaPagamento = (
     postoAtivoId: number,
-    setPaymentMethods: React.Dispatch<React.SetStateAction<FormaPagamento[]>>
+    setPaymentMethods: React.Dispatch<React.SetStateAction<FormaPagamento[]>>,
+    paymentMethods: readonly FormaPagamento[] = [],
 ) => {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [editingPayment, setEditingPayment] = useState<FormaPagamento | null>(null);
@@ -62,9 +68,27 @@ export const useFormaPagamento = (
     /**
      * Salva a forma de pagamento (cria ou atualiza).
      */
+    /** #103: criar/editar pela API; o posto é o da rota, nunca o `|| 1` do caminho antigo. */
+    const salvarPelaApi = async () => {
+        const gravado = await gravarFormaNaApi(postoAtivoId, editingPayment?.id ?? null, corpoDaForma(paymentForm));
+        if (gravado.isErr()) {
+            alert(mensagemDaApi(gravado.error));
+            return;
+        }
+        const forma = paraFormaDaTela(gravado.value);
+        setPaymentMethods((prev) =>
+            editingPayment ? prev.map((p) => (p.id === forma.id ? forma : p)) : [...prev, forma],
+        );
+        setIsPaymentModalOpen(false);
+    };
+
     const handleSavePayment = async () => {
         if (!paymentForm.name) {
             alert("Nome é obrigatório");
+            return;
+        }
+        if (configuracoesPelaApi()) {
+            await salvarPelaApi();
             return;
         }
 
@@ -139,7 +163,29 @@ export const useFormaPagamento = (
      * @param {string} id - ID da forma de pagamento
      * @param {boolean} currentStatus - Status atual
      */
+    /** #103: o PUT pede a forma inteira; troca só o `ativo`. `sumir` tira da lista (o "Excluir"). */
+    const trocarAtivoPelaApi = async (id: string, ativo: boolean, sumir: boolean) => {
+        const forma = paymentMethods.find((p) => p.id === id);
+        if (forma === undefined) return;
+        const gravado = await gravarFormaNaApi(postoAtivoId, id, corpoDaForma({ name: forma.name, type: forma.type, tax: forma.tax, active: ativo }));
+        if (gravado.isErr()) {
+            alert(mensagemDaApi(gravado.error));
+            return;
+        }
+        const nova = paraFormaDaTela(gravado.value);
+        setPaymentMethods((prev) => (sumir ? prev.filter((p) => p.id !== id) : prev.map((p) => (p.id === id ? nova : p))));
+    };
+
+    /** O "Excluir" da tela: desativa (nada se apaga) e some da lista, como some ao recarregar. */
+    const handleDelete = async (id: string) => {
+        await trocarAtivoPelaApi(id, false, true);
+    };
+
     const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+        if (configuracoesPelaApi()) {
+            await trocarAtivoPelaApi(id, !currentStatus, false);
+            return;
+        }
         try {
             const response = await formaPagamentoService.update(Number(id), { ativo: !currentStatus });
             if (!response.success || !response.data) {
@@ -162,6 +208,7 @@ export const useFormaPagamento = (
         openPaymentModal,
         handleFormChange,
         handleSavePayment,
-        handleToggleStatus
+        handleToggleStatus,
+        handleDelete: configuracoesPelaApi() ? handleDelete : undefined,
     };
 };
