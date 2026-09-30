@@ -2,6 +2,13 @@
 
 ## [Não Lançado]
 
+### ♿ Produtos e Estoque: os campos do "Novo Produto" têm nome para leitor de tela (#103)
+
+- Achado no ensaio Jorro+BR (30/09): os rótulos do formulário existiam, mas não estavam ligados aos campos (sem
+  `htmlFor`/`id`) — o leitor de tela lia só "caixa de texto", e tocar no rótulo não focava o campo. Os 9 campos
+  agora têm `id="produto-<campo>"` e o rótulo aponta para ele.
+- Teste: todo campo do formulário tem exatamente um rótulo. Canário: soltar o rótulo do custo reprova 1.
+
 ### 🐛 Visão Proprietário: a participação dos litros soma 100 %, não 101 % (#103)
 
 - Achado no reensaio Jorro+BR (30/09): GC 50 L e ET 30 L são 62,5 % e 37,5 %; a legenda arredondava cada fatia
