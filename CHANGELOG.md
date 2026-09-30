@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🐛 Clientes / Fiado: a nota mostra o dia dela, não o anterior (#103)
+
+- Das três telas que o #164 deixou para conferir: a lista de notas de Clientes formatava o dia da nota com
+  `new Date(...).toLocaleDateString`, que em GMT-3 recuava um dia (27/09 virava 26/09). Agora usa `diaDoBanco`.
+- As outras duas NÃO eram defeito: a Análise de Custos ("Estoque atualizado") e o PDF da Escala ("Documento
+  impresso em") formatam `new Date()` — o agora — e mostram o dia local certo.
+- Canário: voltar ao `new Date` reprova 1.
+
 ### 🐛 PWA: o Histórico mostra o dia do fechamento, não o anterior (#101)
 
 - Mesmo defeito da tela de Frentistas (#164), achado ao consertar o Histórico: o dia do fechamento vem à
