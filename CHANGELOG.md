@@ -23,6 +23,21 @@
 - O login pelo Supabase (produção até o cutover) segue com o formulário completo, sobre a mesma cena.
 - Tela larga mostra mais céu e caatinga dos lados em vez de cortar o pórtico; no celular a cena fica na
   parte de baixo, atrás dos cartões, e a saudação fica sobre o céu liso. Fonte Pacifico no letreiro.
+### 💸 Fechamento de Caixa: Receitas e Despesas lança despesas pela API (#103)
+
+- A aba **Receitas e Despesas** (flag `VITE_API_DESPESAS`; ausente, vale o `VITE_API_URL`) deixa de
+  dizer "ainda não funciona pela API": **Nova Despesa, Despesas Fixas e Taxas de Cartão** lançam pela
+  API, e a lista e as despesas por categoria vêm dela. No Posto BR, que não existe no Supabase, é o
+  único jeito de lançar despesa.
+- **Nada muda na conta:** a data e o valor vão como a tela decidiu (a data da Fixa/Taxa continua
+  sendo o último dia do mês filtrado, ou hoje), e a despesa entra no rateio do lucro do mês pela
+  data, como antes. Conferido: lançar R$ 3.000,00 + R$ 1.532,07 subiu o rateio do Dashboard em
+  exatamente R$ 4.532,07.
+- **Não lança em dobro:** cada "Lançar" leva uma chave; clicar de novo (ou a rede cair depois de
+  gravar) devolve o que já foi gravado, em vez de duplicar a despesa no lucro.
+- O resumo e o gráfico da aba (receitas, lucro, margem) ainda não vêm pela API e ficam ocultos
+  nesse modo; o aviso aponta o Dashboard e a Visão do Proprietário.
+
 ### ⚙️ Configurações pela API: formas de pagamento e parâmetros (#103)
 
 - **Formas de pagamento** (flag `VITE_API_CONFIGURACOES`; ausente, vale o `VITE_API_URL`): lista,
