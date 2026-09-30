@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import React, { act } from 'react';
+import { RecusaDaApi } from '@frentista/shared/api';
 import { createRoot, type Root } from 'react-dom/client';
 
 // Sinaliza ao React 19 que este ambiente suporta `act(...)` (o que o
@@ -160,6 +161,32 @@ describe('PWA do frentista — abas', () => {
 
         expect(container.textContent).not.toContain('Selecione um frentista primeiro');
         expect(mocks.getHistoricoFrentista).toHaveBeenCalledWith(1, 1);
+    });
+
+    it('histórico sem sessão (401) diz que a sessão acabou — não que o frentista "não enviou" (reensaio 30/09)', async () => {
+        localStorage.setItem('pwa.activeTab', 'historico');
+        localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
+        mocks.getHistoricoFrentista.mockRejectedValueOnce(new RecusaDaApi(401, null, 'Token inválido.'));
+
+        await montar();
+
+        expect(container.querySelector('[role="alert"]')?.textContent).toContain('Sua sessão acabou');
+        expect(container.textContent).not.toContain('ainda não enviou fechamentos');
+    });
+
+    it('histórico com falha de rede diz que não carregou e tenta de novo', async () => {
+        localStorage.setItem('pwa.activeTab', 'historico');
+        localStorage.setItem('pwa.frentista', JSON.stringify({ id: 1, nome: 'Fulano' }));
+        mocks.getHistoricoFrentista.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+        await montar();
+        expect(container.textContent).toContain('Não deu para carregar o histórico.');
+        expect(container.textContent).not.toContain('ainda não enviou fechamentos');
+
+        const deNovo = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Tentar de novo')!;
+        await clicar(deNovo);
+        expect(mocks.getHistoricoFrentista).toHaveBeenCalledTimes(2);
+        expect(container.textContent).toContain('ainda não enviou fechamentos');
     });
 
     it('vendas com frentista abre a tela e busca os produtos', async () => {
