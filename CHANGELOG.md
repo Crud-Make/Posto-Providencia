@@ -9,7 +9,7 @@
   ele, a serra, a caatinga e a terra vermelha — e, à esquerda, o Posto BR com o nome POSTO
   PROVIDÊNCIA na cobertura, calçamento na frente do pátio e a estradinha até a pista; do outro lado da
   estrada, árvores e moitas. No fim da estrada, a cidadezinha de casas coloridas; na pista,
-  os carros do dono indo para a cidade — o Corolla branco 2015 e a S10 (prata até o dono dizer a cor).
+  os carros do dono indo para a cidade — o Corolla branco 2015 e a S10 preta.
   Mais caatinga dos dois lados e tucanos nas copas — Caldas do Jorro fica em Tucano. A fundação do
   posto é uma laje do tamanho da cobertura, com juntas, meio-fio e a faixa de calçamento na frente.
   Desenho em SVG (`cena-da-chegada.tsx`), não foto: as fotos da entrada têm

@@ -176,18 +176,18 @@ const CenaDaChegada: React.FC<{ className?: string; noite?: boolean }> = ({ clas
     </g>
 
 
-    {/* os carros do dono, indo para a cidade na mão direita: a S10 mais à frente, o Corolla branco 2015 mais perto */}
+    {/* os carros do dono, indo para a cidade na mão direita: a S10 preta mais à frente, o Corolla branco 2015 mais perto */}
     <g transform="translate(962 646) scale(0.62)">
       <ellipse cx="50" cy="66" rx="58" ry="7" fill="#000000" opacity="0.28" />
-      <rect x="10" y="0" width="80" height="30" rx="6" fill="#B8BDC4" />
-      <rect x="16" y="5" width="68" height="16" rx="3" fill="#2B3440" />
-      <rect x="2" y="26" width="96" height="30" rx="4" fill="#C3C8CE" />
-      <rect x="2" y="26" width="96" height="6" fill="#A7ADB5" />
-      <text x="50" y="45" textAnchor="middle" fontWeight="800" fontSize="9" fill="#5A616B">S10</text>
+      <rect x="10" y="0" width="80" height="30" rx="6" fill="#1C1D21" />
+      <rect x="16" y="5" width="68" height="16" rx="3" fill="#4A5566" />
+      <rect x="2" y="26" width="96" height="30" rx="4" fill="#232428" />
+      <rect x="2" y="26" width="96" height="6" fill="#111214" />
+      <text x="50" y="45" textAnchor="middle" fontWeight="800" fontSize="9" fill="#C3C8CE">S10</text>
       <rect x="2" y="34" width="9" height="14" rx="2" fill="#C8202A" />
       <rect x="89" y="34" width="9" height="14" rx="2" fill="#C8202A" />
       <rect x="38" y="48" width="24" height="7" fill="#F4F4F2" stroke="#5A616B" strokeWidth="0.8" />
-      <rect x="0" y="54" width="100" height="6" rx="2" fill="#4A4F57" />
+      <rect x="0" y="54" width="100" height="6" rx="2" fill="#3A3D44" />
       <rect x="4" y="58" width="16" height="10" rx="2" fill="#15161C" />
       <rect x="80" y="58" width="16" height="10" rx="2" fill="#15161C" />
       <g opacity={c.lanterna}>
