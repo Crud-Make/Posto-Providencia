@@ -12,6 +12,21 @@
   `America/Sao_Paulo`). No ensaio: Diego (BR) mostra 30/09/2026 na admissão e no histórico, e salvar a
   edição mantém 30/09 00:00 UTC no banco.
 
+### 🐛 Fechamento: o dia de cada posto nasce no turno DO PRÓPRIO posto e grava quem fechou (#103)
+
+- Achado no ensaio Jorro+BR (30/09): o dia do Posto BR nascia com `turno_id = 1` — o turno "Manhã" do
+  **Jorro** — e `usuario_id = 1` (o admin), cravados no envio do PWA (`PaiDoDia`) e no Salvar do painel
+  (`GravaFechamentoDoDia`). O relatório dizia "salvo por Administrador".
+- Agora o turno do dia é o primeiro turno do próprio posto (`Fechamento::turnoDoPosto`; o Jorro segue no 1),
+  e posto sem turno é erro claro, em vez de pegar o turno de outro. O envio acha o dia pelo posto e pela
+  data, sem exigir o turno, e não abre um segundo pai para o dia que nasceu no turno errado.
+- Fechar o dia grava QUEM fechou e acerta o turno de outro posto. O dia criado pelo PWA segue com usuário
+  1 até o gerente fechar (a coluna é NOT NULL e o frentista não é `Usuario`).
+- Testes: o pai no turno do posto, dia antigo sem segundo pai, fechar grava o gerente e acerta o turno;
+  fixtures dão turno próprio a cada posto de teste. Canários: turno 1 cravado reprova 4; fechar sem gravar
+  quem fechou reprova 1. No ensaio: 30/09 do BR nasceu no turno 4; o 27/09 salvo de novo virou turno 4 e
+  "salvo por Elias (BR)", valores intactos.
+
 ### 🌄 Tela de entrada: a chegada a Caldas do Jorro, com modo escuro (#102)
 
 - Desenho aprovado pelo dono (28/09) no canvas "Tela de entrada — Rede Providência": o fundo é a

@@ -76,6 +76,16 @@ function cenarioP11(): array
             'id' => 1, 'nome' => 'Manhã', 'horario_inicio' => '06:00:00', 'horario_fim' => '14:00:00',
             'ativo' => true, 'posto_id' => $posto->id,
         ]);
+        DB::statement('SELECT setval(pg_get_serial_sequence(\'public."Turno"\', \'id\'), (SELECT MAX(id) FROM public."Turno"))');
+    }
+
+    // O dia do posto nasce no turno DO PRÓPRIO posto (Fechamento::turnoDoPosto, ensaio Jorro+BR 30/09/2026): todo posto
+    // de teste precisa do seu, e o turno 1 acima pode ser de outro posto.
+    if (DB::table('Turno')->where('posto_id', $posto->id)->doesntExist()) {
+        DB::table('Turno')->insert([
+            'nome' => 'Manhã', 'horario_inicio' => '06:00:00', 'horario_fim' => '14:00:00',
+            'ativo' => true, 'posto_id' => $posto->id,
+        ]);
     }
 
     $combustivel = Combustivel::factory()->create();
@@ -158,7 +168,7 @@ it('gerente: 200, o banco fica como no Command e a resposta tem o shape do GET',
         ->putJson(urlP11($c['posto']->id), corpoP11($c))
         ->assertOk()
         ->assertJsonPath('data.status', 'FECHADO')
-        ->assertJsonPath('data.turno_id', 1)
+        ->assertJsonPath('data.turno_id', DB::table('Turno')->where('posto_id', $c['posto']->id)->min('id'))
         ->assertJsonPath('data.usuario_id', $gerente->id)   // o AUTENTICADO, não o 1 cravado (I6)
         ->assertJsonPath('data.total_vendas', '600.00')
         ->assertJsonPath('data.total_recebido', '600.00')
