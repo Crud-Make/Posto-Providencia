@@ -95,7 +95,8 @@ const BarraLitros: React.FC<{
             <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: corDoProduto(codigoDoProduto(p.produto)).fundo }} />
             <span className="truncate">{p.produto}</span>
             <span className="ml-auto font-finance tabular-nums">{litros(p.litros)}</span>
-            <span className="w-10 text-right tabular-nums text-gray-400">{p.participacaoLitros.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%</span>
+            {/* Uma casa: arredondar cada fatia para inteiro fazia 62,5 + 37,5 virar 63 + 38 = 101 % (reensaio 30/09). */}
+            <span className="w-12 text-right tabular-nums text-gray-400">{p.participacaoLitros.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>
           </li>
         ))}
       </ul>

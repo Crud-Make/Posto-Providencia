@@ -2,6 +2,13 @@
 
 ## [Não Lançado]
 
+### 🐛 Visão Proprietário: a participação dos litros soma 100 %, não 101 % (#103)
+
+- Achado no reensaio Jorro+BR (30/09): GC 50 L e ET 30 L são 62,5 % e 37,5 %; a legenda arredondava cada fatia
+  para inteiro e mostrava 63 % + 38 % = 101 %. A conta (`participacaoLitros`) não mudou — a exibição ganhou uma
+  casa ("62,5%").
+- Canário: voltar a zero casas reprova 1.
+
 ### 🐛 PWA: o Histórico mostra o dia do fechamento, não o anterior (#101)
 
 - Mesmo defeito da tela de Frentistas (#164), achado ao consertar o Histórico: o dia do fechamento vem à
