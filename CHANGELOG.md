@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 🐛 PWA: o Histórico diz por que não carregou, em vez de afirmar que o frentista "não enviou" (#101)
+
+- Achado no reensaio Jorro+BR (30/09): com a frentista desativada no painel, a API respondeu 401 e a tela
+  mostrou "Este frentista ainda não enviou fechamentos" — ela tinha enviado. O `.catch` só logava, e a falha
+  virava lista vazia.
+- Agora o Histórico tem o estado de erro: sem sessão (401), "Sua sessão acabou. Toque no seu nome e digite o PIN
+  de novo."; outra falha, "Não deu para carregar o histórico." com "Tentar de novo".
+- Canários: engolir o erro de novo reprova 2; tratar o 401 como falha de rede reprova 1. Na tela (PWA do BR, sem
+  sessão): aparece o aviso de sessão com `role="alert"`.
+
 ### 🐛 PWA: a venda de produto avisa na tela, não em janela do navegador (#101)
 
 - Achado no reensaio Jorro+BR (30/09): "Registrar" na aba Vendas abria um `alert()` nativo — no sucesso e no erro —,

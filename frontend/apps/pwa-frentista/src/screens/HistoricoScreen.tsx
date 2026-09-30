@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { History, ArrowDown, ArrowUp, CheckCircle, ChevronLeft } from 'lucide-react';
+import { RecusaDaApi } from '@frentista/shared/api';
 import { api } from '../services/api';
 
 interface HistoricoProps {
@@ -28,18 +29,34 @@ interface HistoricoItem {
     fechamento: { data: string; turno_id: number } | null;
 }
 
+/**
+ * Por que o histórico não veio. Reensaio Jorro+BR (30/09/2026): a falha virava lista vazia e a tela
+ * afirmava "ainda não enviou fechamentos" a uma frentista que tinha enviado — a sessão é que tinha
+ * caído (desativada no painel → 401). Sem sessão, pede o PIN; o resto, pede para tentar de novo.
+ */
+function motivoDoHistoricoVazio(erro: unknown): { texto: string; tentarDeNovo: boolean } {
+    return erro instanceof RecusaDaApi && erro.status === 401
+        ? { texto: 'Sua sessão acabou. Toque no seu nome e digite o PIN de novo.', tentarDeNovo: false }
+        : { texto: 'Não deu para carregar o histórico.', tentarDeNovo: true };
+}
+
 const HistoricoScreen: React.FC<HistoricoProps> = ({ postoId, frentistaId, frentistaNome, onVoltar }) => {
     const [historico, setHistorico] = useState<HistoricoItem[]>([]);
     const [loading, setLoading] = useState(true);
+    /** Falha ao carregar — distinta de "não enviou nada ainda". */
+    const [erro, setErro] = useState<{ texto: string; tentarDeNovo: boolean } | null>(null);
+    const [tentativa, setTentativa] = useState(0);
 
     useEffect(() => {
         api.getHistoricoFrentista(frentistaId, postoId)
             // Cliente Supabase não tipado com o Database gerado: o join infere `fechamento`
             // como array na estrutura, mas essa FK é many-to-one — em runtime vem objeto único.
-            .then(data => setHistorico(data as unknown as HistoricoItem[]))
-            .catch(err => console.error(err))
+            .then(data => { setHistorico(data as unknown as HistoricoItem[]); setErro(null); })
+            .catch((err: unknown) => { setHistorico([]); setErro(motivoDoHistoricoVazio(err)); })
             .finally(() => setLoading(false));
-    }, [frentistaId, postoId]);
+    }, [frentistaId, postoId, tentativa]);
+
+    const tentarDeNovo = (): void => { setLoading(true); setTentativa((t) => t + 1); };
 
     const formatDate = (dateStr: string) => {
         const d = new Date(dateStr);
@@ -66,6 +83,16 @@ const HistoricoScreen: React.FC<HistoricoProps> = ({ postoId, frentistaId, frent
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : erro !== null ? (
+                    <div role="alert" className="bg-[#131722] rounded-3xl p-10 border border-red-500/30 flex flex-col items-center justify-center text-center mt-10">
+                        <History size={40} className="text-red-400/70 mb-3" />
+                        <p className="text-red-300 font-semibold">{erro.texto}</p>
+                        {erro.tentarDeNovo && (
+                            <button type="button" onClick={tentarDeNovo} className="mt-4 rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-200">
+                                Tentar de novo
+                            </button>
+                        )}
                     </div>
                 ) : historico.length === 0 ? (
                     <div className="bg-[#131722] rounded-3xl p-10 border border-slate-800/60 flex flex-col items-center justify-center text-center mt-10">
