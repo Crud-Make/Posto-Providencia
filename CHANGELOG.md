@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 🐛 Frentistas: a admissão e o histórico param de mostrar o dia anterior (#102)
+
+- Achado no ensaio Jorro+BR (30/09): a admissão gravada como 27/09 aparecia 26/09, e o histórico mostrava
+  o fechamento de 27/09 como 26/09. O banco estava certo (00:00 UTC); a tela formatava o instante em GMT-3,
+  que é 21h do dia anterior.
+- `diaDoBanco` em `@posto/utils/data-local` mostra o dia sem passar pelo fuso; `DetalhesFrentista` usa ele
+  nas duas datas. Canário: voltar a `toLocaleDateString` reprova 2 testes (o `bun run test` roda em
+  `America/Sao_Paulo`). No ensaio: Diego (BR) mostra 30/09/2026 na admissão e no histórico, e salvar a
+  edição mantém 30/09 00:00 UTC no banco.
+
 ### 💸 Fechamento de Caixa: Receitas e Despesas lança despesas pela API (#103)
 
 - A aba **Receitas e Despesas** (flag `VITE_API_DESPESAS`; ausente, vale o `VITE_API_URL`) deixa de

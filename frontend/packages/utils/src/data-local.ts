@@ -83,3 +83,19 @@ export function somarDias(data: Date, dias: number): string {
     const d = new Date(data.getFullYear(), data.getMonth(), data.getDate() + dias);
     return paraIsoLocal(d);
 }
+
+/**
+ * Mostra em `dd/mm/aaaa` um DIA que o banco guarda à meia-noite UTC (admissão, data do fechamento).
+ *
+ * @remarks `new Date('2026-09-27T00:00:00Z').toLocaleDateString('pt-BR')` em GMT-3 dá **26/09**: o
+ *          instante é 21h do dia anterior. Achado no ensaio Jorro+BR (30/09/2026) — a admissão
+ *          "recuava" um dia a cada vez que se abria o frentista, e o histórico mostrava 26/09 para o
+ *          fechamento de 27/09. Aqui não há fuso: lê os 10 primeiros caracteres. O que não começa
+ *          por `aaaa-mm-dd` (ex.: `'N/A'`) volta como veio.
+ *
+ * @example diaDoBanco('2026-09-27T00:00:00Z') // '27/09/2026'
+ */
+export function diaDoBanco(valor: string): string {
+    const casou = /^(\d{4})-(\d{2})-(\d{2})/.exec(valor);
+    return casou === null ? valor : `${casou[3]}/${casou[2]}/${casou[1]}`;
+}
