@@ -38,9 +38,10 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
+              <label htmlFor="produto-nome" className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
               <input
                 type="text"
+                id="produto-nome"
                 name="nome"
                 defaultValue={editingProduct?.nome}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -49,9 +50,10 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
+              <label htmlFor="produto-codigo_barras" className="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
               <input
                 type="text"
+                id="produto-codigo_barras"
                 name="codigo_barras"
                 defaultValue={editingProduct?.codigo_barras || ''}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -59,8 +61,9 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+              <label htmlFor="produto-categoria" className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
               <select
+                id="produto-categoria"
                 name="categoria"
                 defaultValue={editingProduct?.categoria || 'Lubrificante'}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -74,10 +77,11 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Preço de Custo (R$)</label>
+              <label htmlFor="produto-preco_custo" className="block text-sm font-medium text-gray-700 mb-1">Preço de Custo (R$)</label>
               <input
                 type="number"
                 step="0.01"
+                id="produto-preco_custo"
                 name="preco_custo"
                 // Custo ausente deixa o campo VAZIO (com `required`), em vez de
                 // pré-preencher 0 e gravar um custo falso de R$ 0,00.
@@ -88,10 +92,11 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Preço de Venda (R$)</label>
+              <label htmlFor="produto-preco_venda" className="block text-sm font-medium text-gray-700 mb-1">Preço de Venda (R$)</label>
               <input
                 type="number"
                 step="0.01"
+                id="produto-preco_venda"
                 name="preco_venda"
                 defaultValue={editingProduct?.preco_venda}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -100,9 +105,10 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estoque Mínimo</label>
+              <label htmlFor="produto-estoque_minimo" className="block text-sm font-medium text-gray-700 mb-1">Estoque Mínimo</label>
               <input
                 type="number"
+                id="produto-estoque_minimo"
                 name="estoque_minimo"
                 defaultValue={editingProduct?.estoque_minimo || 5}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -111,8 +117,9 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
+              <label htmlFor="produto-unidade_medida" className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
               <select
+                id="produto-unidade_medida"
                 name="unidade_medida"
                 defaultValue={editingProduct?.unidade_medida || 'unidade'}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -125,10 +132,11 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
 
             {!editingProduct && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estoque Inicial</label>
+                <label htmlFor="produto-estoque_inicial" className="block text-sm font-medium text-gray-700 mb-1">Estoque Inicial</label>
                 <input
                   type="number"
-                  name="estoque_inicial"
+                  id="produto-estoque_inicial"
+                name="estoque_inicial"
                   defaultValue={0}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
@@ -136,8 +144,9 @@ const ModalProduto: React.FC<ModalProdutoProps> = ({
             )}
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Descrição (Opcional)</label>
+              <label htmlFor="produto-descricao" className="block text-sm font-medium text-gray-700 mb-1">Descrição (Opcional)</label>
               <textarea
+                id="produto-descricao"
                 name="descricao"
                 defaultValue={editingProduct?.descricao || ''}
                 rows={2}
