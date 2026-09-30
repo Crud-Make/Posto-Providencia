@@ -172,6 +172,10 @@ describe('PWA com a API ligada: nada no Supabase (#101, fatia 2)', () => {
     expect(venda?.auth).toBe('Bearer 9|ana');
     expect(venda?.corpo).toEqual({ chave: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown, itens: [{ produto_id: 3, quantidade: 2 }] });
     expect(feitas('POST', '/vendas')).toHaveLength(1);
+    // Ensaio 30/09: o resultado aparece NA TELA, não em janela do navegador que trava a aba.
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Vendas registradas.');
+    expect(vi.mocked(globalThis.alert)).not.toHaveBeenCalled();
+    expect(mais.getAttribute('aria-label')).toMatch(/^Mais um /);
   });
 
   it('repetir o carrinho depois de falha de rede reaproveita a MESMA chave (não vende em dobro)', async () => {
@@ -182,6 +186,9 @@ describe('PWA com a API ligada: nada no Supabase (#101, fatia 2)', () => {
 
     vendaFalhaNaRede = true;
     await clicar(porTexto('button', /Registrar 1 item/));
+    // A falha avisa na tela (role=alert) e o carrinho fica para tentar de novo.
+    expect(container.querySelector('[role="alert"]')?.textContent).toMatch(/^Não deu para registrar/);
+    expect(vi.mocked(globalThis.alert)).not.toHaveBeenCalled();
     await clicar(porTexto('button', /Registrar 1 item/));
 
     const chaves = feitas('POST', '/vendas').map((c) => (c.corpo as { chave: string }).chave);

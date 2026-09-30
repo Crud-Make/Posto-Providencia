@@ -44,6 +44,8 @@ const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNo
     const [vendasHoje, setVendasHoje] = useState<VendaHoje[]>([]);
     const [loading, setLoading] = useState(true);
     const [enviando, setEnviando] = useState(false);
+    /** Resultado do último "Registrar" — na tela, não em janela do navegador (ensaio Jorro+BR, 30/09: o alerta nativo travava a aba). */
+    const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
     // Pela API (#101, fatia 2): uma chave por carrinho — repetir o MESMO carrinho depois de uma
     // falha de rede não vende em dobro.
     const { chavePara, esquecer: esquecerChave } = useChaveDoEnvio();
@@ -91,6 +93,7 @@ const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNo
     const handleEnviar = async () => {
         if (carrinho.length === 0) return;
         setEnviando(true);
+        setAviso(null);
         try {
             if (pwaPelaApiLigado()) {
                 // O carrinho inteiro numa chamada, sem preço: preço e total são do servidor.
@@ -108,7 +111,8 @@ const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNo
                     });
                 }
             }
-            alert('Vendas registradas com sucesso! ✅');
+            setAviso({ tipo: 'ok', texto: 'Vendas registradas.' });
+            setTimeout(() => setAviso((atual) => (atual?.tipo === 'ok' ? null : atual)), 4000);
             setCarrinho([]);
             // Refresh
             const [prods, vendas] = await Promise.all([
@@ -118,7 +122,8 @@ const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNo
             setProdutos(prods);
             setVendasHoje(vendas as unknown as VendaHoje[]);
         } catch (err) {
-            alert(`Erro: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
+            // O carrinho fica: o frentista tenta de novo sem redigitar.
+            setAviso({ tipo: 'erro', texto: `Não deu para registrar: ${err instanceof Error ? err.message : 'erro desconhecido'}` });
         } finally {
             setEnviando(false);
         }
@@ -174,7 +179,7 @@ const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNo
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {qtd > 0 && (
-                                                        <button onClick={() => removeFromCarrinho(produto.id)}
+                                                        <button type="button" onClick={() => removeFromCarrinho(produto.id)} aria-label={`Menos um ${produto.nome}`}
                                                             className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30">
                                                             <Minus size={14} className="text-red-400" />
                                                         </button>
@@ -182,7 +187,7 @@ const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNo
                                                     {qtd > 0 && (
                                                         <span className="text-white font-bold text-lg w-6 text-center">{qtd}</span>
                                                     )}
-                                                    <button onClick={() => addToCarrinho(produto)}
+                                                    <button type="button" onClick={() => addToCarrinho(produto)} aria-label={`Mais um ${produto.nome}`}
                                                         disabled={produto.estoque_atual <= 0}
                                                         className={`w-8 h-8 rounded-full flex items-center justify-center border
                               ${produto.estoque_atual <= 0 ? 'bg-slate-800 border-slate-700 cursor-not-allowed' : 'bg-emerald-500/20 border-emerald-500/30'}`}>
@@ -225,15 +230,25 @@ const VendasScreen: React.FC<VendasProps> = ({ postoId, frentistaId, frentistaNo
                 )}
             </div>
 
-            {/* Barra de Envio Fixa */}
-            {carrinho.length > 0 && (
-                <div className="fixed bottom-20 left-0 right-0 px-5 pb-4 z-50">
-                    <button onClick={handleEnviar} disabled={enviando}
+            {/* Barra de Envio Fixa — com o aviso do último registro por cima */}
+            {(carrinho.length > 0 || aviso !== null) && (
+                <div className="fixed bottom-20 left-0 right-0 px-5 pb-4 z-50 space-y-2">
+                    {aviso !== null && (
+                        <p
+                            role={aviso.tipo === 'erro' ? 'alert' : 'status'}
+                            className={`rounded-xl px-4 py-3 text-sm font-semibold border ${aviso.tipo === 'erro' ? 'bg-red-500/15 border-red-500/40 text-red-300' : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'}`}
+                        >
+                            {aviso.texto}
+                        </p>
+                    )}
+                    {carrinho.length > 0 && (
+                    <button type="button" onClick={handleEnviar} disabled={enviando}
                         className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-white transition-all shadow-lg
               ${enviando ? 'bg-indigo-600/50 cursor-not-allowed' : 'bg-indigo-600 shadow-indigo-600/30'}`}>
                         <Check size={20} />
                         {enviando ? 'Enviando...' : `Registrar ${carrinho.length} item(s) — R$ ${formatCurrency(totalCarrinho)}`}
                     </button>
+                    )}
                 </div>
             )}
         </div>
