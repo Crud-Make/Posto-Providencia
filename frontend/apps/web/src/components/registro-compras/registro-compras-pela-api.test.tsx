@@ -30,7 +30,10 @@ const { POSTO } = vi.hoisted(() => ({
     POSTO: { postoAtivoId: 1, postoAtivo: { id: 1, nome: 'Posto Jorro' }, postos: [], setPostoAtivoById: (): void => undefined },
 }));
 vi.mock('../../contexts/usePosto', () => ({ usePosto: () => POSTO }));
+// Ensaio Jorro+BR (30/09): o aviso era `alert()` nativo, que trava a aba; agora é o toast do painel.
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import { toast } from 'sonner';
 import TelaRegistroCompras from './index.tsx';
 
 /* ------------------------------------------------------------------ a API falsa ------------- */
@@ -130,6 +133,7 @@ function botaoComTexto(texto: string): HTMLButtonElement {
 
 describe('Registro de Compras no modo API — nenhuma chamada ao Supabase', () => {
     let corposDoPost: unknown[];
+    let alertNativo: ReturnType<typeof vi.fn>;
     let fetchFalso: ReturnType<typeof apiFalsa>;
 
     beforeEach(() => {
@@ -144,7 +148,10 @@ describe('Registro de Compras no modo API — nenhuma chamada ao Supabase', () =
         corposDoPost = [];
         fetchFalso = apiFalsa(corposDoPost);
         vi.stubGlobal('fetch', fetchFalso);
-        vi.stubGlobal('alert', vi.fn());
+        alertNativo = vi.fn();
+        vi.stubGlobal('alert', alertNativo);
+        vi.mocked(toast.success).mockClear();
+        vi.mocked(toast.error).mockClear();
         vi.spyOn(console, 'log').mockImplementation(() => undefined);
         vi.spyOn(console, 'error').mockImplementation(() => undefined);
         container = document.createElement('div');
@@ -229,6 +236,8 @@ describe('Registro de Compras no modo API — nenhuma chamada ao Supabase', () =
         // Depois de gravar, a tela relê o mês — pela API.
         expect(rotasChamadas()).toEqual(expect.arrayContaining(['POST /api/postos/1/compras', 'GET /api/postos/1/movimento']));
         expect(toqueNoSupabase).not.toHaveBeenCalled();
+        expect(toast.success).toHaveBeenCalledWith('Movimentações salvas e estoque atualizado com sucesso!');
+        expect(alertNativo).not.toHaveBeenCalled();
     });
 
     it('a mesma tentativa clicada de novo (a rede caiu) reusa a chave — o servidor devolve o já gravado em vez de somar de novo', async () => {
@@ -253,5 +262,8 @@ describe('Registro de Compras no modo API — nenhuma chamada ao Supabase', () =
         expect(posts).toHaveLength(2);
         expect(posts[1]?.chave).toBe(posts[0]?.chave);
         expect(toqueNoSupabase).not.toHaveBeenCalled();
+        // A queda da rede avisa pelo toast de erro, não por alert() nativo.
+        expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/^Erro ao salvar as informações\./));
+        expect(alertNativo).not.toHaveBeenCalled();
     });
 });
