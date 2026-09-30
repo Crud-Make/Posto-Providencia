@@ -26,7 +26,8 @@ vi.mock('../../contexts/useAuth', () => ({
 vi.mock('../../contexts/usePosto', () => ({
     usePosto: () => ({ postoAtivo: estado.postoAtivo, setPostoAtivo: estado.setPostoAtivo }),
 }));
-vi.mock('../../contexts/useTheme', () => ({ useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() }) }));
+const tema = { atual: 'light' as 'light' | 'dark' };
+vi.mock('../../contexts/useTheme', () => ({ useTheme: () => ({ theme: tema.atual, toggleTheme: vi.fn() }) }));
 
 const { default: TelaDeEntrada } = await import('./index');
 
@@ -50,6 +51,7 @@ beforeEach(() => {
     estado.usuario = null;
     estado.postoAtivo = null;
     estado.sair.mockClear();
+    tema.atual = 'light';
 });
 afterEach(() => {
     act(() => raiz.unmount());
@@ -59,18 +61,18 @@ afterEach(() => {
 describe('TelaDeEntrada', () => {
     it('abre nos cartões dos postos, SEM formulário até escolher um', async () => {
         await montar();
-        expect(div.textContent).toContain('Escolha o posto para começar');
+        expect(div.textContent).toContain('Escolha o posto');
         expect(div.textContent).toContain('Posto Jorro');
         expect(div.textContent).toContain('Posto BR');
         expect(div.querySelector('input[name="senha"]')).toBeNull();
     });
 
-    it('escolheu o BR: o e-mail e a senha do BR aparecem na mesma tela', async () => {
+    it('escolheu o BR: o cartão do BR pede a senha (e o e-mail, sem nenhum lembrado)', async () => {
         await montar();
         await act(async () => botao('Posto BR').click());
-        expect(div.textContent).toContain('Entrar no Posto BR');
-        expect(div.querySelector('input[name="email"]')).not.toBeNull();
-        expect(div.querySelector('input[name="senha"]')).not.toBeNull();
+        expect(div.querySelector('input[aria-label="Senha do Posto BR"]')).not.toBeNull();
+        expect(div.querySelector('input[aria-label="E-mail do Posto BR"]')).not.toBeNull();
+        expect(div.querySelector('button[aria-label="Entrar no Posto BR"]')).not.toBeNull();
         expect(div.textContent).not.toContain('Salvar meu acesso');
     });
 
@@ -83,17 +85,33 @@ describe('TelaDeEntrada', () => {
         expect(div.textContent).toContain('Esta conta não é do Posto BR.');
     });
 
-    it('o formulário aparece embaixo do cartão escolhido, na coluna dele (27/09/2026)', async () => {
+    it('escolhido, o cartão troca o nome pela senha — dentro dele mesmo, sem painel à parte (28/09/2026)', async () => {
         await montar();
-        const secao = () => div.querySelector('section[aria-label="Entrar"]');
-
         await act(async () => botao('Posto BR').click());
-        expect(secao()?.previousElementSibling?.textContent).toContain('Posto BR');
-        expect(secao()?.className).toContain('md:col-start-2');
+
+        const senha = div.querySelector('input[aria-label="Senha do Posto BR"]');
+        const cartao = senha?.closest('form')?.parentElement;
+        expect(cartao?.querySelector('img[alt="Fachada do Posto BR"], button[aria-label="Trocar a foto do Posto BR"]')).not.toBeNull();
+        expect(div.querySelector('section[aria-label="Entrar"]')).toBeNull();
+        // O Jorro, não escolhido, segue com o nome e sem senha.
+        expect(botao('Posto Jorro')).toBeDefined();
+        expect(div.querySelector('input[aria-label="Senha do Posto Jorro"]')).toBeNull();
 
         await act(async () => botao('Posto Jorro').click());
-        expect(secao()?.previousElementSibling?.textContent).toContain('Posto Jorro');
-        expect(secao()?.className).toContain('md:col-start-1');
+        expect(div.querySelector('input[aria-label="Senha do Posto Jorro"]')).not.toBeNull();
+        expect(div.querySelector('input[aria-label="Senha do Posto BR"]')).toBeNull();
+    });
+
+    it('modo escuro: a chegada vira noite, com estrelas, e o botão oferece o claro (28/09/2026)', async () => {
+        await montar();
+        expect(div.querySelector('button[aria-label="Usar modo escuro"]')).not.toBeNull();
+        expect(div.querySelectorAll('svg circle[r="1.6"]')).toHaveLength(0);
+        act(() => raiz.unmount());
+        div.remove();
+
+        tema.atual = 'dark';
+        await montar();
+        expect(div.querySelector('button[aria-label="Usar modo claro"]')).not.toBeNull();
+        expect(div.querySelectorAll('svg circle[r="1.6"]').length).toBeGreaterThan(0);
     });
 });
-
