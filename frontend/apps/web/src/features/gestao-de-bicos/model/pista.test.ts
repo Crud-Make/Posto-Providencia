@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { PistaDaApi, TanqueDaApi } from '../api/cadastro-de-bicos.api';
 import { agruparPorBomba, corpoDoBico, proximoNumeroLivre, tanquesDoCombustivel, trocaCombustivel, type FormularioDeBico } from './pista';
 
-const gc = { id: 1, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.89' };
-const et = { id: 2, nome: 'Etanol', codigo: 'ET', cor: '#43A047', ativo: true, preco_venda: '4.89' };
+const gc = { id: 1, nome: 'Gasolina Comum', codigo: 'GC', cor: '#E53935', ativo: true, preco_venda: '6.89', preco_custo: null };
+const et = { id: 2, nome: 'Etanol', codigo: 'ET', cor: '#43A047', ativo: true, preco_venda: '4.89', preco_custo: null };
 const tanqueGc: TanqueDaApi = { id: 10, nome: 'Tanque GC', combustivel_id: 1, capacidade: '20000.00', ativo: true };
 const tanqueEt: TanqueDaApi = { id: 20, nome: 'Tanque ET', combustivel_id: 2, capacidade: '20000.00', ativo: true };
 

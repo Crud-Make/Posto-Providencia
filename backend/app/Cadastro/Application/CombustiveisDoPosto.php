@@ -63,6 +63,7 @@ final readonly class CombustiveisDoPosto
             'codigo' => $declarado->codigo,
             'cor' => $declarado->cor,
             'preco_venda' => $declarado->precoVenda,
+            'preco_custo' => $declarado->precoCusto,
             'ativo' => $declarado->ativo,
         ]);
         $combustivel->save();

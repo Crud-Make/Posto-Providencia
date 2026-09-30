@@ -76,7 +76,7 @@ function reguaCt(Tanque $tanque): void
  */
 function corpoDeCombustivelCt(array $troca = []): array
 {
-    return array_merge(['nome' => 'Gasolina Comum', 'codigo' => 'GC', 'cor' => '#E53935', 'preco_venda' => '6.89', 'ativo' => true], $troca);
+    return array_merge(['nome' => 'Gasolina Comum', 'codigo' => 'GC', 'cor' => '#E53935', 'preco_venda' => '6.89', 'preco_custo' => null, 'ativo' => true], $troca);
 }
 
 /**
@@ -157,21 +157,48 @@ it('operador do posto: 403 — cadastro é de quem GERE', function (): void {
     withToken(is_string($token) ? $token : '')->putJson("/api/postos/{$br->id}/combustiveis/{$gc->id}", corpoDeCombustivelCt())->assertForbidden();
 });
 
-it('cria combustível com preço de venda no posto da rota; código sai em maiúsculas; sem preço de custo', function (): void {
+it('cria combustível com os preços no posto da rota; código sai em maiúsculas; o custo informado é gravado', function (): void {
     ['posto' => $br] = postoDoPwa();
     ['posto' => $outro] = postoDoPwa();
 
     $resposta = withToken(tokenDoGerente($br))->postJson("/api/postos/{$br->id}/combustiveis", corpoDeCombustivelCt([
-        'codigo' => ' s10 ', 'nome' => ' Diesel S10 ', 'preco_venda' => '7.29', 'posto_id' => $outro->id, 'preco_custo' => '5.00',
+        'codigo' => ' s10 ', 'nome' => ' Diesel S10 ', 'preco_venda' => '7.29', 'posto_id' => $outro->id, 'preco_custo' => '5.3451',
     ]));
 
     $resposta->assertCreated()
         ->assertJsonPath('data.codigo', 'S10')
         ->assertJsonPath('data.nome', 'Diesel S10')
-        ->assertJsonPath('data.preco_venda', '7.29');
+        ->assertJsonPath('data.preco_venda', '7.29')
+        ->assertJsonPath('data.preco_custo', '5.3451');
     $id = idCt($resposta);
     expect(colunaCt('Combustivel', $id, 'posto_id'))->toBe($br->id)
-        ->and(numeroCt('Combustivel', $id, 'preco_custo'))->toBe(0.0);
+        ->and(numeroCt('Combustivel', $id, 'preco_custo'))->toBe(5.3451);
+});
+
+it('o gerente informa o custo ao editar, e null apaga o custo (= "não sei"), nunca vira 0', function (): void {
+    ['posto' => $br] = postoDoPwa();
+    $gc = combustivelCt($br);
+    $rota = "/api/postos/{$br->id}/combustiveis/{$gc->id}";
+
+    withToken(tokenDoGerente($br))->putJson($rota, corpoDeCombustivelCt(['preco_custo' => '5.31']))
+        ->assertOk()->assertJsonPath('data.preco_custo', '5.3100');
+    expect(numeroCt('Combustivel', $gc->id, 'preco_custo'))->toBe(5.31);
+
+    withToken(tokenDoGerente($br))->putJson($rota, corpoDeCombustivelCt(['preco_custo' => null]))
+        ->assertOk()->assertJsonPath('data.preco_custo', null);
+    expect(DB::table('Combustivel')->where('id', $gc->id)->value('preco_custo'))->toBeNull();
+});
+
+it('corpo SEM a chave preco_custo é 422: esquecer o campo não pode apagar o custo em silêncio', function (): void {
+    ['posto' => $br] = postoDoPwa();
+    $gc = combustivelCt($br);
+    DB::table('Combustivel')->where('id', $gc->id)->update(['preco_custo' => '5.1']);
+    $corpo = corpoDeCombustivelCt();
+    unset($corpo['preco_custo']);
+
+    withToken(tokenDoGerente($br))->putJson("/api/postos/{$br->id}/combustiveis/{$gc->id}", $corpo)
+        ->assertUnprocessable()->assertJsonPath('erro.codigo', 'corpo_invalido');
+    expect(numeroCt('Combustivel', $gc->id, 'preco_custo'))->toBe(5.1);
 });
 
 it('código repetido no posto (inclusive inativo) é 422 codigo_repetido; o mesmo código em outro posto passa', function (): void {
@@ -308,6 +335,10 @@ it('recusa de forma é 422 corpo_invalido', function (string $rota, array $troca
     'preço zero' => ['combustiveis', ['preco_venda' => '0']],
     'preço com 3 casas' => ['combustiveis', ['preco_venda' => '6.899']],
     'preço em número' => ['combustiveis', ['preco_venda' => 6.89]],
+    'custo zero' => ['combustiveis', ['preco_custo' => '0.00']],
+    'custo com 5 casas' => ['combustiveis', ['preco_custo' => '5.34516']],
+    'custo em número' => ['combustiveis', ['preco_custo' => 5.34]],
+    'custo com vírgula' => ['combustiveis', ['preco_custo' => '5,34']],
     'cor fora de #RRGGBB' => ['combustiveis', ['cor' => 'vermelho']],
     'código vazio' => ['combustiveis', ['codigo' => '']],
     'capacidade zero' => ['tanques', ['capacidade' => '0']],
