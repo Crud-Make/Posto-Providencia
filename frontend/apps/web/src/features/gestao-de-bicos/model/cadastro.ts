@@ -17,6 +17,25 @@ export function precoDoTexto(texto: string): Lido<string> {
     return { ok: true, valor: limpo };
 }
 
+/**
+ * Custo digitado ("5,3451") → "5.3451"; vazio → `null` ("não sei o custo"). Até 4 casas, como o custo
+ * médio legado. Zero não passa: custo 0 é o que fazia os Tanques mostrarem a venda inteira como lucro.
+ */
+export function custoDoTexto(texto: string): Lido<string | null> {
+    const limpo = texto.trim().replace(',', '.');
+    if (limpo === '') return { ok: true, valor: null };
+    if (!/^\d{1,6}(\.\d{1,4})?$/.test(limpo) || /^0+(\.0+)?$/.test(limpo)) {
+        return { ok: false, motivo: 'Informe o custo por litro, como 5,34 — ou deixe em branco se não souber.' };
+    }
+    return { ok: true, valor: limpo };
+}
+
+/** "5.3100" da API → "5,31" no campo; `null` ou zero (custo nunca informado) → campo vazio. */
+export function custoParaCampo(custo: string | null): string {
+    if (custo === null || /^0+(\.0+)?$/.test(custo)) return '';
+    return custo.replace(/(\.\d\d\d*?)0+$/, '$1').replace('.', ',');
+}
+
 /** Litros digitados ("20.000" ou "20000,5") → "20000.5"; o ponto é separador de milhar. */
 export function capacidadeDoTexto(texto: string): Lido<string> {
     const limpo = texto.trim().replace(/\./g, '').replace(',', '.');
@@ -66,6 +85,7 @@ export interface FormularioDeCombustivel {
     readonly codigo: string;
     readonly cor: string;
     readonly preco: string;
+    readonly custo: string;
     readonly ativo: boolean;
 }
 
@@ -74,9 +94,14 @@ export function corpoDoCombustivel(f: FormularioDeCombustivel): Lido<Combustivel
     if (!/^[A-Za-z0-9]{1,6}$/.test(f.codigo.trim())) return { ok: false, motivo: 'Informe o código (até 6 letras ou números), como GC.' };
     const preco = precoDoTexto(f.preco);
     if (!preco.ok) return preco;
+    const custo = custoDoTexto(f.custo);
+    if (!custo.ok) return custo;
     return {
         ok: true,
-        valor: { nome: f.nome.trim(), codigo: f.codigo.trim().toUpperCase(), cor: /^#[0-9A-Fa-f]{6}$/.test(f.cor) ? f.cor : null, preco_venda: preco.valor, ativo: f.ativo },
+        valor: {
+            nome: f.nome.trim(), codigo: f.codigo.trim().toUpperCase(), cor: /^#[0-9A-Fa-f]{6}$/.test(f.cor) ? f.cor : null,
+            preco_venda: preco.valor, preco_custo: custo.valor, ativo: f.ativo,
+        },
     };
 }
 

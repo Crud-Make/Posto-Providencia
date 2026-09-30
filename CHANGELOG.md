@@ -2,6 +2,21 @@
 
 ## [Não Lançado]
 
+### 🐛 Tanques: o lucro previsto deixa de ser a venda inteira — o gerente informa o custo (#102)
+
+- Achado no ensaio Jorro+BR (30/09): os Tanques do BR prometiam R$ 34.450 de "lucro previsto" — a venda
+  inteira. A conta (`estoque × (venda − custo − despesa/L)`) estava certa; o custo do combustível era 0 e
+  nada o preenchia: a API ignorava `preco_custo` e nenhuma compra de combustível o atualiza.
+- Decisão do dono (30/09): o gerente informa o custo. `POST`/`PUT /combustiveis` aceitam `preco_custo`
+  (string, até 4 casas, > 0, ou `null` = "não sei"); a chave é obrigatória, para que esquecê-la não apague
+  o custo em silêncio. O formulário de combustível ganhou "Preço de custo por litro".
+- Tanque com litros e sem custo mostra "Falta o custo" no card e na linha, em vez de um número inventado.
+  A linha da tabela passou a usar a mesma conta do card (antes não descontava a despesa/L).
+- Canários: não gravar o custo reprova 2; sem a chave obrigatória reprova 1; `faltaCusto` sempre falso
+  reprova 3; linha sem despesa reprova 1; corpo sem custo reprova 2; vazio virando 0 reprova 2. No ensaio:
+  GC 5,34 e ET 4,10 → R$ 59.500,00 em estoque e R$ 14.070,00 de lucro, batendo com a conta à mão; Jorro
+  idêntico.
+
 ### 💸 Fechamento de Caixa: Receitas e Despesas lança despesas pela API (#103)
 
 - A aba **Receitas e Despesas** (flag `VITE_API_DESPESAS`; ausente, vale o `VITE_API_URL`) deixa de
