@@ -130,20 +130,24 @@ describe('TelaDeEntrada com os provedores de verdade', () => {
         await montar();
         await act(async () => botao('Posto Jorro').click());
 
-        expect(div.textContent).toContain('Entrar como elias@ensaio.local');
+        // Só a senha à vista: o e-mail lembrado vai num campo escondido, só para o envio e o cofre.
         expect(campo('email').readOnly).toBe(true);
+        expect(campo('email').value).toBe('elias@ensaio.local');
+        expect(div.querySelector('input[aria-label="E-mail do Posto Jorro"]')).toBeNull();
+        expect(div.querySelector('input[aria-label="Senha do Posto Jorro"]')).not.toBeNull();
         expect(localStorage.getItem('painel.email-do-posto.2')).toBeNull();
         expect(Object.keys(localStorage).some((k) => /senha|token/i.test(k) || /testes/.test(localStorage.getItem(k) ?? ''))).toBe(false);
     });
 
-    it('"Trocar" esquece o e-mail e volta a pedir', async () => {
+    it('"Entrar com outra conta" esquece o e-mail e volta a pedir', async () => {
         localStorage.setItem('painel.email-do-posto.1', 'outro@ensaio.local');
         await montar();
         await act(async () => botao('Posto Jorro').click());
-        await act(async () => botao('Trocar').click());
+        expect(campo('email').readOnly).toBe(true);
+        await act(async () => botao('Entrar com outra conta').click());
 
-        expect(div.textContent).not.toContain('Entrar como');
         expect(campo('email').readOnly).toBe(false);
+        expect(campo('email').value).toBe('');
         expect(localStorage.getItem('painel.email-do-posto.1')).toBeNull();
     });
 
