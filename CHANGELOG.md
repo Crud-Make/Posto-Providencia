@@ -2,6 +2,13 @@
 
 ## [Não Lançado]
 
+### 🐛 Visão Proprietário: a participação dos litros soma 100 %, não 101 % (#103)
+
+- Achado no reensaio Jorro+BR (30/09): GC 50 L e ET 30 L são 62,5 % e 37,5 %; a legenda arredondava cada fatia
+  para inteiro e mostrava 63 % + 38 % = 101 %. A conta (`participacaoLitros`) não mudou — a exibição ganhou uma
+  casa ("62,5%").
+- Canário: voltar a zero casas reprova 1.
+
 ### 🐛 Clientes / Fiado: a nota mostra o dia dela, não o anterior (#103)
 
 - Das três telas que o #164 deixou para conferir: a lista de notas de Clientes formatava o dia da nota com
