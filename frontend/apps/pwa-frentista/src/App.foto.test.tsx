@@ -29,6 +29,7 @@ vi.mock('./services/api', () => ({
     api: {
         getFrentistas: async () => [{ id: 1, nome: 'Fulano' }],
         getEnviosDoDia: async () => [],
+        temSessaoNoAparelho: () => true,
         getOrCreateFechamento: async () => 1,
         submitFrentistaClosing: async () => ({}),
         marcarPresenca: async () => undefined,

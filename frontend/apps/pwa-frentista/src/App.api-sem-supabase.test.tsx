@@ -126,7 +126,9 @@ describe('PWA com a API ligada: nada no Supabase (#101, fatia 2)', () => {
   it('a lista de escolha sai da rota pública; os envios do dia só depois do PIN, com o valor do colega oculto', async () => {
     expect(feitas('GET', '/frentistas/escolha')[0]?.auth).toBeNull();
     expect(feitas('GET', '/envios')).toHaveLength(0);
-    expect(container.textContent).toContain('Não deu para carregar os envios do dia');
+    // Ensaio 30/09: antes do PIN não é erro — é "entre primeiro".
+    expect(container.textContent).toContain('Toque no seu nome e digite o PIN para ver os envios do dia');
+    expect(container.textContent).not.toContain('Não deu para carregar os envios do dia');
 
     await entrarComoAna();
 
@@ -134,6 +136,13 @@ describe('PWA com a API ligada: nada no Supabase (#101, fatia 2)', () => {
     expect(feitas('GET', '/frentistas/escolha').length).toBeGreaterThanOrEqual(2);
     expect(container.textContent).toContain('R$ 1.234,50');
     expect(container.textContent).toContain('enviado');
+    expect(container.textContent).not.toContain('Toque no seu nome e digite o PIN para ver os envios do dia');
+  });
+
+  it('os nomes do "Quem é você?" são botões (toque e teclado), não div com onClick', async () => {
+    await clicar(porTexto('span', /Selecionar Frentista/));
+    const nome = porTexto('span', /^Ana$/);
+    expect(nome.closest('button')?.getAttribute('type')).toBe('button');
   });
 
   it('a aba Tanques exige o frentista com a API ligada; com ele, lê a régua pela API', async () => {

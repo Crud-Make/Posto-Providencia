@@ -24,6 +24,7 @@ vi.mock('./services/api', async (importOriginal) => {
       ...real.api,
       getFrentistas: async () => [{ id: 7, nome: 'Ana' }],
       getEnviosDoDia: async () => [],
+      temSessaoNoAparelho: () => true,
       getOrCreateFechamento: mocks.getOrCreateFechamento,
       submitFrentistaClosing: mocks.submitFrentistaClosing,
       getHistoricoFrentista: async () => [],

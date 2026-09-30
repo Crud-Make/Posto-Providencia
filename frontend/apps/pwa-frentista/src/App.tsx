@@ -106,13 +106,18 @@ const AvatarFrentista = ({ frentista, tamanho }: { frentista: FrentistaSeleciona
 
 /**
  * "Quem já mandou hoje" — evita envio em dobro e mostra em que dia o registro caiu.
- * Três estados: falha ao carregar, dia vazio, ou a lista.
+ * Quatro estados: ninguém entrou ainda (sem sessão, nem se pede — ensaio 30/09), falha ao carregar,
+ * dia vazio, ou a lista.
  */
-const ListaDeEnviosDoDia = ({ erro, envios, aoTentarDeNovo }: {
+const ListaDeEnviosDoDia = ({ semSessao, erro, envios, aoTentarDeNovo }: {
+  semSessao: boolean;
   erro: string | null;
   envios: EnvioDoDia[];
   aoTentarDeNovo: () => void;
 }) => {
+  if (semSessao) {
+    return <p className="text-xs text-slate-500">Toque no seu nome e digite o PIN para ver os envios do dia.</p>;
+  }
   if (erro) {
     return (
       <button
@@ -199,7 +204,8 @@ const ModalDeFrentistas = ({ frentistas, selecionado, aoEscolher, aoFechar }: {
         <div className="text-xl font-bold mb-6 text-slate-100 px-2 opacity-90">Quem é você?</div>
         <div className="space-y-3 overflow-y-auto max-h-[60vh] pb-8 px-2 scrollbar-none">
           {frentistas.map((frentista) => (
-            <div
+            <button
+              type="button"
               key={frentista.id}
               onClick={() => aoEscolher(frentista)}
               className={`w-full text-left px-5 py-4 rounded-xl font-bold tracking-wide transition-all border flex items-center gap-4
@@ -210,7 +216,7 @@ const ModalDeFrentistas = ({ frentistas, selecionado, aoEscolher, aoFechar }: {
             >
               <AvatarFrentista frentista={frentista} tamanho={40} />
               <span className="truncate">{frentista.nome}</span>
-            </div>
+            </button>
           ))}
           {frentistas.length === 0 && <p className="text-slate-400 text-sm italic py-4">Carregando conta dos funcionários...</p>}
         </div>
@@ -352,6 +358,8 @@ const AppComponent = ({ setDialog, postoAtual }: { setDialog: React.Dispatch<Rea
   /** Falha ao carregar os envios do dia — distinta de "ninguém enviou ainda". */
   const [erroEnvios, setErroEnvios] = useState<string | null>(null);
   useEffect(() => {
+    // Sem sessão no aparelho não se pede: a recusa seria local (401) e virava "Não deu para carregar".
+    if (!api.temSessaoNoAparelho()) return;
     let ativo = true;
     api.getEnviosDoDia(postoId, dataFechamento)
       .then((rows) => { if (ativo) { setEnviosDoDia(rows as unknown as EnvioDoDia[]); setErroEnvios(null); } })
@@ -753,6 +761,7 @@ const AppComponent = ({ setDialog, postoAtual }: { setDialog: React.Dispatch<Rea
             </span>
           </div>
           <ListaDeEnviosDoDia
+            semSessao={!api.temSessaoNoAparelho()}
             erro={erroEnvios}
             envios={enviosDoDia}
             aoTentarDeNovo={() => setEnviosVersao((v) => v + 1)}

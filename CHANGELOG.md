@@ -2,6 +2,17 @@
 
 ## [Não Lançado]
 
+### 🐛 PWA do frentista: sem PIN, a lista de envios pede o nome em vez de dar erro; os nomes são botões (#101)
+
+- Achado no ensaio Jorro+BR (30/09): o PWA abria com "Não deu para carregar os envios do dia" antes de
+  alguém escolher o nome. Sem sessão no aparelho a busca era recusada ali mesmo (401 local, sem rede) e caía
+  no ramo de erro. Agora, sem sessão, não se pede, e a lista diz "Toque no seu nome e digite o PIN para ver os
+  envios do dia" (`api.temSessaoNoAparelho()`; no Supabase, sempre `true`, nada muda).
+- Os nomes do "Quem é você?" eram `<div onClick>` e viraram `<button type="button">`.
+- O teste que dava o erro como esperado (`App.api-sem-supabase`) passa a exigir o aviso. Canários: sem o aviso
+  reprova 1; o nome de volta a `div` reprova 1. No ensaio (BR, 375 px): sem PIN aparece o aviso e nenhum
+  `GET /envios`; com o PIN do Diego, a lista mostra o envio de 30/09 (R$ 500,00).
+
 ### 🌄 Tela de entrada: a chegada a Caldas do Jorro, com modo escuro (#102)
 
 - Desenho aprovado pelo dono (28/09) no canvas "Tela de entrada — Rede Providência": o fundo é a
