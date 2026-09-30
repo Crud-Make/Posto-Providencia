@@ -2,6 +2,19 @@
 
 ## [Não Lançado]
 
+### 🐛 Fechamento de Caixa cabe no celular (#102)
+
+- Achado no ensaio Jorro+BR (30/09), a 375 px: o cabeçalho tinha altura fixa (`h-20`) numa linha que não
+  quebrava, então o título saía cortado em cima e a data ficava fora da tela; a aba "Detalhamento
+  Frentistas" saía cortada; o rodapé punha Vendas, Apurado e Diferença em 3 colunas espremidas — a Diferença
+  quebrava em 5 linhas e o rodapé tomava 1/3 da tela.
+- Cabeçalho com `min-h-20` + `flex-wrap`; abas com menos respiro no celular; rodapé em grade no celular (Vendas e
+  Apurado lado a lado, Diferença na largura toda). A partir de `md` fica como era. Só classe CSS; nenhuma conta
+  mudou. A tabela de leituras segue rolando na horizontal dentro do cartão, que é o esperado para 24 bicos.
+- Conferido no ensaio (BR, 28/09): a 375 px título, data e as duas primeiras abas inteiros e a página sem
+  rolagem lateral (375 px); a 1536 px igual a antes. 129 testes do Fechamento verdes. Sem teste novo: é layout,
+  e teste que confere nome de classe não prova que a tela cabe.
+
 ### 🌄 Tela de entrada: a chegada a Caldas do Jorro, com modo escuro (#102)
 
 - Desenho aprovado pelo dono (28/09) no canvas "Tela de entrada — Rede Providência": o fundo é a

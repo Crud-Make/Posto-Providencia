@@ -32,7 +32,9 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
             {/* // [19/01 00:37] Ajuste de layout: Footer agora usa largura total. */}
             {/* Motivo: Evitar conteúdo comprimido no centro em telas grandes. */}
             <div className="w-full px-2 lg:px-3 flex flex-col md:flex-row justify-between items-center gap-2 md:gap-0">
-                <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                {/* [30/09] No celular: Vendas e Apurado lado a lado, a Diferença na largura toda — em 3 colunas de
+                    375 px a Diferença quebrava em 5 linhas e o rodapé tomava 1/3 da tela. */}
+                <div className="grid grid-cols-2 gap-2 w-full md:flex md:gap-4 md:w-auto md:overflow-x-auto pb-1 md:pb-0">
                     <div className="bg-slate-800/50 px-3 py-1 rounded-lg border border-slate-700/50">
                         <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Vendas (Bomba)</p>
                         <p className="text-base font-bold text-blue-400 font-mono">
@@ -101,7 +103,7 @@ export const FooterAcoes: React.FC<FooterAcoesProps> = ({
                                 : null;
 
                         return (
-                            <div className={`bg-slate-800/50 px-3 py-1 rounded-lg border border-slate-700/50 border-l-4 ${borda}`}>
+                            <div className={`col-span-2 md:col-auto bg-slate-800/50 px-3 py-1 rounded-lg border border-slate-700/50 border-l-4 ${borda}`}>
                                 <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
                                     Diferença <span className="normal-case font-normal">(+ falta · − sobra)</span>
                                 </p>
