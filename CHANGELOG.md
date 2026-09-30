@@ -2,6 +2,13 @@
 
 ## [Não Lançado]
 
+### 🐛 PWA: o Histórico mostra o dia do fechamento, não o anterior (#101)
+
+- Mesmo defeito da tela de Frentistas (#164), achado ao consertar o Histórico: o dia do fechamento vem à
+  meia-noite UTC e `new Date(...).toLocaleDateString` em GMT-3 mostrava o dia ANTERIOR (27/09 virava 26/09).
+  Agora usa `diaDoBanco` de `@posto/utils`.
+- Canário: voltar ao `new Date` reprova 1 (o `bun run test` roda em `America/Sao_Paulo`).
+
 ### 🐛 PWA: o Histórico diz por que não carregou, em vez de afirmar que o frentista "não enviou" (#101)
 
 - Achado no reensaio Jorro+BR (30/09): com a frentista desativada no painel, a API respondeu 401 e a tela
