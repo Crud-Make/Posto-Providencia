@@ -51,9 +51,10 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
         <div className="bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50 sticky top-0 z-30 transition-all duration-300">
             {/* // [19/01 00:36] Ajuste de layout: Header agora usa largura total. */}
             {/* Motivo: Evitar conteúdo comprimido no centro em telas grandes. */}
-            <div className="w-full px-4 sm:px-6 lg:px-10 h-20 flex items-center justify-between">
+            {/* [30/09] min-h + flex-wrap: no celular (375 px) o h-20 fixo cortava o título e a data ficava fora da tela. */}
+            <div className="w-full px-4 sm:px-6 lg:px-10 min-h-20 py-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-3 tracking-tight">
+                    <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3 tracking-tight">
                         <div className="p-2 bg-blue-600/20 rounded-lg">
                             <TrendingUp className="text-blue-400" size={24} />
                         </div>
@@ -96,7 +97,7 @@ export const HeaderFechamento: React.FC<HeaderFechamentoProps> = ({
                         key={chave}
                         onClick={() => setActiveTab(chave)}
                         aria-current={activeTab === chave ? 'page' : undefined}
-                        className={`flex-1 md:flex-none whitespace-nowrap px-6 py-3 text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === chave
+                        className={`flex-1 md:flex-none whitespace-nowrap px-3 sm:px-6 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all duration-200 ${activeTab === chave
                             ? classeAtiva
                             : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-700'
                             }`}
