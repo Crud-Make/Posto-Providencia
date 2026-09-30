@@ -1,5 +1,6 @@
 // [11/01 17:00] Refatoração para padrão Senior: JSDoc, tratamento de erros e tipagem
 import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { compraService, tanqueService } from '../../../services/api';
 import { descreverErroDaApi } from '../../../services/api/base';
 import { gravarRegistroDeComprasNaApi, registroDeComprasDeclarado, registroDeComprasPelaApi } from '../../../services/api/compras.api';
@@ -30,14 +31,14 @@ async function salvarPelaApi(
     const corpo = registroDeComprasDeclarado.safeParse({ chave, ...corpoSemChave });
     if (!corpo.success) {
         console.error('[Compras] Corpo fora do contrato da API:', corpo.error.message);
-        alert('Erro ao salvar as informações: há um valor fora do formato esperado.');
+        toast.error('Erro ao salvar as informações: há um valor fora do formato esperado.');
         return false;
     }
 
     const gravado = await gravarRegistroDeComprasNaApi(postoId, corpo.data);
     if (gravado.isErr()) {
         console.error('[Compras] Falha ao salvar pela API:', gravado.error);
-        alert(`Erro ao salvar as informações. ${descreverErroDaApi(gravado.error)}`);
+        toast.error(`Erro ao salvar as informações. ${descreverErroDaApi(gravado.error)}`);
         return false;
     }
 
@@ -105,7 +106,7 @@ export const usePersistenciaRegistro = (
             console.log('[Compras] Tem compras a registrar:', temCompras);
 
             if (temCompras && !fornecedorId) {
-                alert('Por favor, selecione um fornecedor para registrar as compras.');
+                toast.error('Selecione um fornecedor para registrar as compras.');
                 setSaving(false); // [25/01 Fix] Reset saving state on early return
                 return;
             }
@@ -118,7 +119,7 @@ export const usePersistenciaRegistro = (
             if (registroDeComprasPelaApi()) {
                 const corpo = montarRegistroDeCompras(combustiveis, calcEstoqueHoje, fornecedorId, dataCompra);
                 if (await salvarPelaApi(postoAtivoId, tentativa, corpo)) {
-                    alert('Movimentações salvas e estoque atualizado com sucesso!');
+                    toast.success('Movimentações salvas e estoque atualizado com sucesso!');
                     await onSuccess();
                 }
                 return;
@@ -150,12 +151,12 @@ export const usePersistenciaRegistro = (
                 }
             }
 
-            alert('Movimentações salvas e estoque atualizado com sucesso!');
+            toast.success('Movimentações salvas e estoque atualizado com sucesso!');
             await onSuccess();
 
         } catch (error) {
             console.error('Erro ao salvar:', error);
-            alert('Erro ao salvar as informações. Tente novamente.');
+            toast.error('Erro ao salvar as informações. Tente novamente.');
         } finally {
             setSaving(false);
         }

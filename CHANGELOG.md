@@ -2,6 +2,16 @@
 
 ## [Não Lançado]
 
+### 🐛 Compras avisa pelo toast do painel, e os botões da medição de tanque não são "enviar" (#102)
+
+- Achado no ensaio Jorro+BR (30/09): a tela de Compras avisava com `alert()` nativo, que trava a aba até
+  alguém clicar "OK" — inclusive no sucesso. Os 6 avisos viraram toast (`sonner`, o mesmo do resto do painel).
+- ✕, Cancelar e Confirmar da "Nova Medição (Régua)" não tinham `type` e seriam "enviar" se o modal um dia
+  ficasse dentro de um `<form>` (hoje não fica: não havia efeito visível). Viraram `type="button"`; o ✕ ganhou
+  o nome "Fechar" para leitor de tela.
+- Canários: voltar ao `alert()` reprova 2 testes; tirar o `type` do Cancelar reprova 1. No ensaio: compra
+  sem fornecedor no BR mostra o toast e não grava nada, nenhum `alert()`; o modal fecha pelo ✕ e pelo Cancelar.
+
 ### 💸 Fechamento de Caixa: Receitas e Despesas lança despesas pela API (#103)
 
 - A aba **Receitas e Despesas** (flag `VITE_API_DESPESAS`; ausente, vale o `VITE_API_URL`) deixa de
