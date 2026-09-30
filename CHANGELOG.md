@@ -2,6 +2,14 @@
 
 ## [Não Lançado]
 
+### 🐛 PWA: a venda de produto avisa na tela, não em janela do navegador (#101)
+
+- Achado no reensaio Jorro+BR (30/09): "Registrar" na aba Vendas abria um `alert()` nativo — no sucesso e no erro —,
+  que trava a aba até alguém tocar "OK". Agora o resultado aparece no rodapé, junto do botão: "Vendas registradas."
+  (`role="status"`, some em 4 s) ou "Não deu para registrar: …" (`role="alert"`, o carrinho fica para tentar de novo).
+- Os botões + e − da venda ganharam nome para leitor de tela ("Mais um …", "Menos um …") e `type="button"`.
+- Canários: o alert de volta no sucesso reprova 1; no erro reprova 1.
+
 ### 🏪 Compras: fornecedor se cadastra pelo painel, e o posto novo consegue lançar compra (#103)
 
 - Achado no ensaio Jorro+BR (30/09): o BR não tinha fornecedor, a API só LIA a lista e o painel não tinha onde
