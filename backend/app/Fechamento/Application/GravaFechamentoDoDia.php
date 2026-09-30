@@ -42,9 +42,6 @@ use RuntimeException;
  */
 final readonly class GravaFechamentoDoDia
 {
-    /** I7 — ver `useSubmissaoFechamento.ts:16-29`: não é turno de trabalho, é o tampão do unique. */
-    private const int TURNO_TAMPAO = 1;
-
     public function __construct(
         private PostoAtual $postoAtual,
         private FechamentoDoDia $fechamentoDoDia,
@@ -66,10 +63,12 @@ final readonly class GravaFechamentoDoDia
         $postoId = $this->postoId();
 
         $fechamento = DB::transaction(function () use ($dia, $totais, $usuarioId, $postoId): Fechamento {
-            $pai = $this->obtemOuCriaFechamento($dia, $usuarioId);
+            // I7: o turno não é de trabalho, é o tampão do unique — e é o do PRÓPRIO posto (Fechamento::turnoDoPosto).
+            $turnoId = Fechamento::turnoDoPosto($postoId);
+            $pai = $this->obtemOuCriaFechamento($dia, $usuarioId, $turnoId);
             ($this->gravaFilhos)($pai, $dia, $usuarioId, $postoId);
 
-            return $this->fechaODia($pai, $totais, $dia->observacoes);
+            return $this->fechaODia($pai, $totais, $dia->observacoes, $usuarioId, $turnoId);
         });
 
         // Fora da transação: em produção isto é "depois do commit". O ouvinte é
@@ -94,7 +93,7 @@ final readonly class GravaFechamentoDoDia
             ?? throw new RuntimeException('GravaFechamentoDoDia exige PostoAtual definido.');
     }
 
-    private function obtemOuCriaFechamento(DiaDeclarado $dia, int $usuarioId): Fechamento
+    private function obtemOuCriaFechamento(DiaDeclarado $dia, int $usuarioId, int $turnoId): Fechamento
     {
         $existente = ($this->fechamentoDoDia)($dia->dia);
 
@@ -109,13 +108,20 @@ final readonly class GravaFechamentoDoDia
             'total_recebido' => '0.00',
             'status' => StatusFechamento::Rascunho,
             'usuario_id' => $usuarioId,
-            'turno_id' => self::TURNO_TAMPAO,
+            'turno_id' => $turnoId,
         ]);
     }
 
-    private function fechaODia(Fechamento $pai, TotaisDeclarados $totais, ?string $observacoes): Fechamento
+    /**
+     * Fecha o dia e grava QUEM fechou. O dia que nasceu no envio do PWA vem com `usuario_id` 1 (o
+     * frentista não é `Usuario`) e, antes de 30/09/2026, com o turno 1 cravado — que é do Jorro: o
+     * fechamento acerta os dois para o gerente autenticado e o turno do próprio posto.
+     */
+    private function fechaODia(Fechamento $pai, TotaisDeclarados $totais, ?string $observacoes, int $usuarioId, int $turnoId): Fechamento
     {
         $pai->fill([
+            'usuario_id' => $usuarioId,
+            'turno_id' => $turnoId,
             'status' => StatusFechamento::Fechado,
             'total_vendas' => $totais->totalVendas,
             'total_recebido' => $totais->totalRecebido,

@@ -59,7 +59,7 @@ it('grava o envio, cria o pai do dia como o PWA cria e deixa o dia NÃO apurado 
 
     $pai = paiDoEnvio(idDaResposta($resposta->json('data.fechamento_id')));
     expect($pai['posto_id'])->toBe($posto->id)
-        ->and($pai['turno_id'])->toBe(1)
+        ->and($pai['turno_id'])->toBe(turnoDoPosto($posto->id))
         ->and($pai['usuario_id'])->toBe(1)
         ->and($pai['status'])->toBe('ABERTO')
         ->and($pai['total_vendas'])->toBeNull()
@@ -238,4 +238,29 @@ it('#93: dois postos da rede abrem o MESMO dia, cada um com o seu fechamento, se
     expect($pais)->toBe(collect([$jorro->id, $br->id])->sort()->values()->all())
         ->and(DB::table('FechamentoFrentista')->where('frentista_id', $frentista->id)->value('posto_id'))->toBe($jorro->id)
         ->and(DB::table('FechamentoFrentista')->where('frentista_id', $doBr->id)->value('posto_id'))->toBe($br->id);
+});
+
+it('cada posto abre o dia no SEU turno — nunca num turno de outro posto (ensaio Jorro+BR, 30/09/2026)', function (): void {
+    ['posto' => $jorro] = postoDoPwa();
+    ['posto' => $br, 'frentista' => $doBr] = postoDoPwa();
+
+    $resposta = withToken(tokenDoFrentista($br, $doBr))->postJson("/api/postos/{$br->id}/envios", corpoDoEnvio())->assertCreated();
+
+    $pai = paiDoEnvio(idDaResposta($resposta->json('data.fechamento_id')));
+    expect($pai['turno_id'])->toBe(turnoDoPosto($br->id))
+        ->and($pai['turno_id'])->not->toBe(turnoDoPosto($jorro->id))
+        ->and(DB::table('Turno')->where('id', $pai['turno_id'])->value('posto_id'))->toBe($br->id);
+});
+
+it('dia que nasceu no turno de outro posto (antes da correção) segue sendo o MESMO dia: o envio não abre um segundo pai', function (): void {
+    ['posto' => $jorro] = postoDoPwa();
+    ['posto' => $br, 'frentista' => $doBr] = postoDoPwa();
+    DB::table('Fechamento')->insert([
+        'data' => DIA_PWA.' 00:00:00+00', 'posto_id' => $br->id, 'turno_id' => turnoDoPosto($jorro->id),
+        'status' => 'ABERTO', 'usuario_id' => 1, 'total_recebido' => '0.00',
+    ]);
+
+    withToken(tokenDoFrentista($br, $doBr))->postJson("/api/postos/{$br->id}/envios", corpoDoEnvio())->assertCreated();
+
+    expect(DB::table('Fechamento')->where('posto_id', $br->id)->count())->toBe(1);
 });

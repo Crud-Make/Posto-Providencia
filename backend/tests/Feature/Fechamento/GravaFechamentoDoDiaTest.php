@@ -45,7 +45,25 @@ function garanteTurnoTampaoP10(int $postoId): void
             'id' => 1, 'nome' => 'Manhã', 'horario_inicio' => '06:00:00', 'horario_fim' => '14:00:00',
             'ativo' => true, 'posto_id' => $postoId,
         ]);
+        DB::statement('SELECT setval(pg_get_serial_sequence(\'public."Turno"\', \'id\'), (SELECT MAX(id) FROM public."Turno"))');
     }
+
+    // O dia do posto nasce no turno DO PRÓPRIO posto (Fechamento::turnoDoPosto, ensaio Jorro+BR 30/09/2026): todo posto
+    // de teste precisa do seu, e o turno 1 acima pode ser de outro posto.
+    if (DB::table('Turno')->where('posto_id', $postoId)->doesntExist()) {
+        DB::table('Turno')->insert([
+            'nome' => 'Manhã', 'horario_inicio' => '06:00:00', 'horario_fim' => '14:00:00',
+            'ativo' => true, 'posto_id' => $postoId,
+        ]);
+    }
+}
+
+/** O turno do dia do posto: o primeiro turno do próprio posto (Fechamento::turnoDoPosto). */
+function turnoDoPostoP10(int $postoId): int
+{
+    $id = DB::table('Turno')->where('posto_id', $postoId)->orderBy('id')->value('id');
+
+    return is_int($id) ? $id : (int) (is_string($id) ? $id : 0);
 }
 
 /**
@@ -174,7 +192,7 @@ function instanteUtcP10(string $tabela, int $id): string
     return is_string($valor) ? $valor : '';
 }
 
-it('dia novo: grava o pai (turno 1, FECHADO, usuário autenticado, 00:00Z) e os três filhos', function (): void {
+it('dia novo: grava o pai (turno do próprio posto, FECHADO, usuário autenticado, 00:00Z) e os três filhos', function (): void {
     $c = cenarioP10();
 
     $resultado = gravaP10(diaP10(
@@ -186,7 +204,7 @@ it('dia novo: grava o pai (turno 1, FECHADO, usuário autenticado, 00:00Z) e os 
 
     expect($resultado)->toBeInstanceOf(Fechamento::class);
     assert($resultado instanceof Fechamento);
-    expect($resultado->turno_id)->toBe(1)
+    expect($resultado->turno_id)->toBe(turnoDoPostoP10($c['posto']->id))
         ->and($resultado->status)->toBe(StatusFechamento::Fechado)
         ->and($resultado->usuario_id)->toBe($c['usuario']->id)
         ->and($resultado->posto_id)->toBe($c['posto']->id)
@@ -532,4 +550,31 @@ it('os uniques que sustentam os dois UPSERTs existem e NÃO colidem entre postos
     app(PostoAtual::class)->definir($a['posto']->id);
     expect(Leitura::query()->count())->toBe(1)    // visto de A: só a dela, intacta
         ->and(Leitura::query()->sole()->bico_id)->toBe($a['bicoGas1']->id);
+});
+
+it('fechar o dia grava QUEM fechou e acerta o turno que era de outro posto (ensaio Jorro+BR, 30/09/2026)', function (): void {
+    $c = cenarioP10();
+    $outro = Posto::factory()->create();
+    garanteTurnoTampaoP10($outro->id);
+    $turnoDoOutro = turnoDoPostoP10($outro->id);
+    // Como o envio do PWA deixava o dia: usuário 1 (o frentista não é Usuario) e o turno 1 cravado.
+    $criadoPeloPwa = Usuario::factory()->create();
+    app(PostoAtual::class)->definir($c['posto']->id);
+    DB::table('Fechamento')->insert([
+        'data' => DIA_P10.' 00:00:00+00', 'posto_id' => $c['posto']->id, 'turno_id' => $turnoDoOutro,
+        'status' => 'ABERTO', 'usuario_id' => $criadoPeloPwa->id, 'total_recebido' => '0.00',
+    ]);
+
+    $resultado = gravaP10(diaP10(
+        leituras: [leituraP10($c['bicoGas1'], $c['gasolina'])],
+        sessoes: [sessaoP10($c['frentistaA'], '600.00')],
+        recebimentos: [recebimentoP10($c['forma']->id, '600.00')],
+        totalVendas: '600.00', totalRecebido: '600.00', diferenca: '0.00', observacoes: null,
+    ), $c['usuario']->id);
+
+    assert($resultado instanceof Fechamento);
+    expect($resultado->usuario_id)->toBe($c['usuario']->id)
+        ->and($resultado->turno_id)->toBe(turnoDoPostoP10($c['posto']->id))
+        ->and($resultado->turno_id)->not->toBe($turnoDoOutro)
+        ->and(Fechamento::query()->count())->toBe(1);
 });
