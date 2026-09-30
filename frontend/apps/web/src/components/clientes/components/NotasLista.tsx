@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle, XCircle, DollarSign } from 'lucide-react';
+import { diaDoBanco } from '@posto/utils';
 import { NotasListaProps } from '../types';
 
 /**
@@ -45,7 +46,8 @@ export const NotasLista: React.FC<NotasListaProps> = ({
                     {notas.map((nota) => (
                         <tr key={nota.id} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                             <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                                {new Date(nota.data).toLocaleDateString('pt-BR')}
+                                {/* o dia da nota vem à meia-noite UTC: em GMT-3 o new Date recuava um dia (o mesmo do #164) */}
+                                {diaDoBanco(nota.data)}
                             </td>
                             <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
                                 {nota.descricao || '-'}
