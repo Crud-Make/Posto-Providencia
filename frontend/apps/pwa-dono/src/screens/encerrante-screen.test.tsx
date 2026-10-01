@@ -38,6 +38,9 @@ let respostaOcr: LeituraOcr[] = [];
 let erroOcr: Error | null = null;
 let faltas: DiaEmFalta[] = [];
 
+// Posto de cada chamada: a tela tem de usar o posto da sessão, nunca um fixo.
+const postosPedidos: number[] = [];
+
 const salvarLeituras = vi.fn<(payload: unknown) => Promise<unknown[]>>(async () => []);
 const lerEncerrante = vi.fn<(base64: string, mimeType: string) => Promise<typeof respostaOcr>>(async () => {
     if (erroOcr) throw erroOcr;
@@ -46,7 +49,10 @@ const lerEncerrante = vi.fn<(base64: string, mimeType: string) => Promise<typeof
 
 vi.mock('../services/api', () => ({
     api: {
-        getBicos: async () => BICOS,
+        getBicos: async (posto: number) => {
+            postosPedidos.push(posto);
+            return BICOS;
+        },
         getUltimasLeiturasPorBico: (_posto: number, data: string) => buscarUltimas(data),
         getUltimosPrecosPorBico: async () => ultimosPrecos,
         aquecerEncerrante: () => { },
@@ -57,6 +63,9 @@ vi.mock('../services/api', () => ({
 }));
 
 const EncerranteScreen = (await import('./EncerranteScreen')).default;
+
+/** O BR (id 2), de propósito: o código antigo tinha o Jorro (1) fixo, e 1 passaria por acaso. */
+const POSTO_DA_SESSAO = 2;
 
 let container: HTMLDivElement;
 let root: Root;
@@ -90,7 +99,7 @@ const stubarPipelineDeImagem = () => {
 
 const montar = async () => {
     await act(async () => {
-        root.render(React.createElement(EncerranteScreen, { onVoltar: () => { } }));
+        root.render(React.createElement(EncerranteScreen, { postoId: POSTO_DA_SESSAO, onVoltar: () => { } }));
     });
 };
 
@@ -153,6 +162,7 @@ describe('EncerranteScreen — caminho da foto', () => {
         respostaOcr = [];
         erroOcr = null;
         faltas = [];
+        postosPedidos.length = 0;
         salvarLeituras.mockClear();
         lerEncerrante.mockClear();
         stubarPipelineDeImagem();
@@ -486,5 +496,29 @@ describe('EncerranteScreen — caminho da foto', () => {
             { linhas: Array<{ preco_litro: number }> },
         ];
         expect(payload.linhas[0].preco_litro).toBe(6.98);
+    });
+
+    /**
+     * Dois postos no mesmo app (#102): o posto vem da sessão. Com o Jorro fixo no
+     * código, o BR leria e gravaria as bombas do vizinho.
+     */
+    it('lê e grava no posto da sessão, não num posto fixo', async () => {
+        await montar();
+        const [primeiro] = campos();
+        if (primeiro === undefined) throw new Error('a tela não mostrou os bicos');
+        digitar(primeiro, '1.861.900,500');
+
+        await act(async () => {
+            botaoEnviar().click();
+        });
+        await escoar();
+
+        // Carga inicial e a recarga depois do envio: as duas no posto da sessão.
+        expect(postosPedidos.length).toBeGreaterThan(0);
+        expect(new Set(postosPedidos)).toEqual(new Set([POSTO_DA_SESSAO]));
+        const [payload] = salvarLeituras.mock.calls[0] as unknown as [{ postoId: number }];
+        expect(payload.postoId).toBe(POSTO_DA_SESSAO);
+        // Enviou tem de deixar prova na tela (já foi bug: "enviar limpava tudo sem deixar prova").
+        expect(document.body.textContent).toMatch(/1 leituras enviadas para /);
     });
 });

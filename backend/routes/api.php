@@ -127,6 +127,8 @@ Route::prefix('postos/{posto}')
         // nesta rota (o `posto.acesso` do grupo, que é `ver`, continua rodando antes). Corpo em
         // string decimal; recusa de forma ou de domínio é 422 { erro: { codigo, mensagem, campos? } }.
         Route::put('fechamento', [FechamentoController::class, 'update'])->middleware('posto.acesso:gerir');
+        // PWA do dono (#102): só as leituras do encerrante; não fecha o dia.
+        Route::put('leituras', [LeituraController::class, 'update'])->middleware('posto.acesso:gerir');
 
         // Agregação — dado bruto do período para o dashboard do proprietário (#100,
         // docs/design/agregacao.md §5). Sem lucro no servidor: quem calcula é packages/utils.

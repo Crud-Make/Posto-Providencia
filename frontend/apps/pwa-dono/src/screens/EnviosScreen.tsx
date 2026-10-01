@@ -8,13 +8,10 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Check, RefreshCw, TrendingUp } from 'lucide-react';
-import { criarAcessoEnvios, type EnvioDeFechamento } from '@posto/api-core';
 import { isSobra } from '@posto/utils';
-import { supabase } from '../lib/supabase';
+import { api } from '../services/api';
+import type { EnvioDeFechamento } from '../api/envios';
 import BotaoNotificacoes from '../components/botao-notificacoes';
-
-const POSTO_ID = 1;
-const acesso = criarAcessoEnvios(supabase);
 
 const reais = (valor: number | null) =>
     (valor ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -37,12 +34,14 @@ const iniciais = (nome: string) => {
 };
 
 interface Props {
+    /** Posto da sessão — o escolhido no cartão da entrada. */
+    readonly postoId: number;
     readonly dataIso: string;
     readonly onTrocarData: (dataIso: string) => void;
     readonly onVoltar: () => void;
 }
 
-export default function EnviosScreen({ dataIso, onTrocarData, onVoltar }: Props) {
+export default function EnviosScreen({ postoId, dataIso, onTrocarData, onVoltar }: Props) {
     const [envios, setEnvios] = useState<EnvioDeFechamento[]>([]);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState<string | null>(null);
@@ -51,13 +50,13 @@ export default function EnviosScreen({ dataIso, onTrocarData, onVoltar }: Props)
         setCarregando(true);
         setErro(null);
         try {
-            setEnvios(await acesso.listarDoDia(POSTO_ID, dataIso));
+            setEnvios(await api.listarEnviosDoDia(postoId, dataIso));
         } catch (e) {
             setErro(e instanceof Error ? e.message : 'Não consegui carregar os envios.');
         } finally {
             setCarregando(false);
         }
-    }, [dataIso]);
+    }, [postoId, dataIso]);
 
     useEffect(() => { void carregar(); }, [carregar]);
 
