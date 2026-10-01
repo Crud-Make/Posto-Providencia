@@ -11,6 +11,7 @@ vi.mock('../supabase', () => ({ supabase: {} }));
 
 type Chamada = { url: string; metodo: string; token: string | null };
 let chamadas: Chamada[] = [];
+let corpos: unknown[] = [];
 
 function rede(respostas: Record<string, { status: number; corpo?: unknown }>) {
   vi.stubGlobal(
@@ -20,6 +21,7 @@ function rede(respostas: Record<string, { status: number; corpo?: unknown }>) {
       const metodo = init?.method ?? 'GET';
       const auth = new Headers(init?.headers).get('Authorization');
       chamadas.push({ url, metodo, token: auth === null ? null : auth.replace('Bearer ', '') });
+      corpos.push(typeof init?.body === 'string' ? JSON.parse(init.body) : null);
       const r = respostas[`${metodo} ${url}`] ?? { status: 404, corpo: {} };
       return r.status === 204 ? new Response(null, { status: 204 }) : new Response(JSON.stringify(r.corpo ?? {}), { status: r.status });
     }),
@@ -30,6 +32,7 @@ const FOTO = 'data:image/jpeg;base64,/9j/AA==';
 
 beforeEach(() => {
   chamadas = [];
+  corpos = [];
   vi.stubEnv('VITE_API_URL', 'http://api.test');
   esquecerTokenDaApi();
 });
@@ -77,8 +80,24 @@ describe('trocarFotoComSenha', () => {
 
     const r = await trocarFotoComSenha(2, 'elias.br@ensaio.local', 'errada', FOTO);
 
-    expect(r.isErr() && mensagemDaTrocaDeFoto(r.error)).toBe('E-mail ou senha incorretos.');
+    expect(r.isErr() && mensagemDaTrocaDeFoto(r.error)).toBe('Usuário ou senha incorretos.');
     expect(chamadas).toHaveLength(1);
+  });
+});
+
+describe('trocarFotoComSenha — quem entra', () => {
+  it('nome de usuário entra pelo cartão do posto da foto; com "@", pelo e-mail', async () => {
+    rede({ 'POST /api/login': { status: 401, corpo: { message: 'x' } } });
+
+    const porUsuario = await trocarFotoComSenha(2, 'elias', 'testes', FOTO);
+    const porEmail = await trocarFotoComSenha(2, 'admin@ensaio.local', 'testes', FOTO);
+
+    expect(porUsuario.isErr() && porEmail.isErr()).toBe(true);
+
+    expect(corpos).toEqual([
+      { posto_id: 2, usuario: 'elias', senha: 'testes', dispositivo: 'foto-do-posto' },
+      { email: 'admin@ensaio.local', senha: 'testes', dispositivo: 'foto-do-posto' },
+    ]);
   });
 });
 

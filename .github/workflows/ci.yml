@@ -82,7 +82,8 @@ jobs:
             -f ../banco/init/00-papeis-e-stubs.sql -f ../banco/init/01-esquema-base.sql -f ../banco/init/02-multi-tenant-uniques-por-posto.sql -f ../banco/init/03-autenticacao.sql \
             -f ../banco/init/04-acesso-do-frentista.sql -f ../banco/init/05-venda-pelo-pwa.sql \
             -f ../banco/init/08-compra-pela-api.sql -f ../banco/init/12-estoque-de-produtos-pela-api.sql \
-            -f ../banco/init/13-foto-do-posto.sql -f ../banco/init/14-despesa-pela-api.sql
+            -f ../banco/init/13-foto-do-posto.sql -f ../banco/init/14-despesa-pela-api.sql \
+            -f ../banco/init/15-login-por-usuario.sql
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:

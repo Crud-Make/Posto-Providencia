@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { okAsync, type ResultAsync } from 'neverthrow';
 
 /**
- * Lápis do cartão (27/09/2026): a foto já veio escolhida; a janela pede só a senha quando o e-mail
+ * Lápis do cartão (27/09/2026): a foto já veio escolhida; a janela pede só a senha quando o usuário
  * daquele posto está lembrado, e passa a lembrá-lo depois de uma troca certa.
  */
 
@@ -60,32 +60,32 @@ afterEach(() => {
 });
 
 describe('TrocarFotoNoCartao', () => {
-  it('e-mail lembrado do posto: pede SÓ a senha e troca com ele', async () => {
-    localStorage.setItem('painel.email-do-posto.2', 'elias.br@ensaio.local');
+  it('usuário lembrado do posto: pede SÓ a senha e troca com ele', async () => {
+    localStorage.setItem('painel.login-do-posto.2', 'elias');
     await montar();
 
-    expect(div.querySelector('input[name="email"]')).toBeNull();
-    expect(div.textContent).toContain('Como elias.br@ensaio.local');
+    expect(div.querySelector('input[name="usuario"]')).toBeNull();
+    expect(div.textContent).toContain('Como elias');
     preencher('senha', 'testes');
     await enviar();
 
-    expect(trocar).toHaveBeenCalledWith(2, 'elias.br@ensaio.local', 'testes', 'data:image/jpeg;base64,AA==');
+    expect(trocar).toHaveBeenCalledWith(2, 'elias', 'testes', 'data:image/jpeg;base64,AA==');
     expect(aoTrocar).toHaveBeenCalledWith('/api/postos/2/foto?v=2');
   });
 
-  it('sem e-mail lembrado: pede e-mail e senha, e lembra o e-mail depois da troca', async () => {
+  it('sem usuário lembrado: pede usuário e senha, e lembra o usuário depois da troca', async () => {
     await montar();
 
-    preencher('email', 'elias.br@ensaio.local');
+    preencher('usuario', 'elias');
     preencher('senha', 'testes');
     await enviar();
 
-    expect(trocar).toHaveBeenCalledWith(2, 'elias.br@ensaio.local', 'testes', expect.any(String));
-    expect(localStorage.getItem('painel.email-do-posto.2')).toBe('elias.br@ensaio.local');
+    expect(trocar).toHaveBeenCalledWith(2, 'elias', 'testes', expect.any(String));
+    expect(localStorage.getItem('painel.login-do-posto.2')).toBe('elias');
   });
 
   it('sem senha não chama o servidor', async () => {
-    localStorage.setItem('painel.email-do-posto.2', 'elias.br@ensaio.local');
+    localStorage.setItem('painel.login-do-posto.2', 'elias');
     await montar();
     await enviar();
 

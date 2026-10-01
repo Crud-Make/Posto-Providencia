@@ -15,8 +15,9 @@ Artisan::command('inspire', function () {
 | Cria o usuário (ou redefine a senha de quem já existe) e liga aos postos. Enquanto não houver
 | "esqueci a senha" por e-mail, é por aqui que a conta nasce (#102).
 |   php artisan usuario:definir postoprovidenciaa@gmail.com "Elias" --role=GERENTE --posto=1:gerente
+| Com `--usuario=elias`, a conta também entra digitando "elias" no cartão de cada posto passado.
 */
-Artisan::command('usuario:definir {email} {nome} {--role=OPERADOR} {--posto=* : posto_id:papel, ex. 1:gerente}', function (DefineUsuario $define): int {
+Artisan::command('usuario:definir {email} {nome} {--role=OPERADOR} {--posto=* : posto_id:papel, ex. 1:gerente} {--usuario= : login por nome no cartão dos postos passados, ex. elias}', function (DefineUsuario $define): int {
     $email = $this->argument('email');
     $nome = $this->argument('nome');
     $opcaoRole = $this->option('role');
@@ -47,7 +48,8 @@ Artisan::command('usuario:definir {email} {nome} {--role=OPERADOR} {--posto=* : 
         return 1;
     }
 
-    $usuario = $define($email, $nome, $role, $senha, $vinculos);
+    $login = $this->option('usuario');
+    $usuario = $define($email, $nome, $role, $senha, $vinculos, is_string($login) && trim($login) !== '' ? trim($login) : null);
     $this->info("Usuário {$usuario->id} ({$usuario->email}) definido como {$role->value}.");
 
     return 0;

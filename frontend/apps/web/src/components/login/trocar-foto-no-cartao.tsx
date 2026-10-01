@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { mensagemDaTrocaDeFoto, TAMANHO_MAXIMO_DA_FOTO, trocarFotoComSenha } from '../../services/api/foto-do-posto.api';
 import { mensagemDeFoto, reduzirFoto } from '../../shared/lib/reduzir-foto';
-import { emailLembrado, lembrarEmail } from './email-lembrado';
+import { lembrarLogin, loginLembrado } from './login-lembrado';
 
 interface Props {
   postoId: number;
@@ -25,11 +25,11 @@ function usePrevia(arquivo: File): string {
 
 /**
  * Confirma a troca da foto do posto pelo lápis do cartão (pedido do dono, 27/09/2026): a foto já foi
- * escolhida, falta só a senha do gerente — o e-mail vem lembrado daquele posto quando o aparelho já
- * entrou nele. A senha vale só para esta troca: não entra no painel, nada fica guardado além do e-mail.
+ * escolhida, falta só a senha do gerente — o usuário vem lembrado daquele posto quando o aparelho já
+ * entrou nele. A senha vale só para esta troca: não entra no painel, nada fica guardado além do usuário.
  */
 const TrocarFotoNoCartao: React.FC<Props> = ({ postoId, nome, arquivo, aoTrocar, aoFechar }) => {
-  const [lembrado, setLembrado] = useState(() => emailLembrado(postoId));
+  const [lembrado, setLembrado] = useState(() => loginLembrado(postoId));
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const previa = usePrevia(arquivo);
@@ -37,17 +37,17 @@ const TrocarFotoNoCartao: React.FC<Props> = ({ postoId, nome, arquivo, aoTrocar,
   const aoEnviar = async (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
     const dados = new FormData(evento.currentTarget);
-    const email = (lembrado ?? String(dados.get('email') ?? '')).trim();
+    const login = (lembrado ?? String(dados.get('usuario') ?? '')).trim();
     const senha = String(dados.get('senha') ?? '');
-    if (email === '' || senha === '') return setErro(lembrado === null ? 'Informe o e-mail e a senha do gerente.' : 'Informe a senha.');
+    if (login === '' || senha === '') return setErro(lembrado === null ? 'Informe o usuário e a senha do gerente.' : 'Informe a senha.');
 
     setErro(null);
     setEnviando(true);
     await reduzirFoto(arquivo, TAMANHO_MAXIMO_DA_FOTO)
       .mapErr(mensagemDeFoto)
-      .andThen((foto) => trocarFotoComSenha(postoId, email, senha, foto).mapErr(mensagemDaTrocaDeFoto))
+      .andThen((foto) => trocarFotoComSenha(postoId, login, senha, foto).mapErr(mensagemDaTrocaDeFoto))
       .match((caminho) => {
-        lembrarEmail(postoId, email);
+        lembrarLogin(postoId, login);
         aoTrocar(caminho);
       }, setErro);
     setEnviando(false);
@@ -75,7 +75,17 @@ const TrocarFotoNoCartao: React.FC<Props> = ({ postoId, nome, arquivo, aoTrocar,
         <img src={previa} alt="Prévia da foto nova" className="h-40 w-full rounded-xl object-cover" />
 
         {lembrado === null ? (
-          <input name="email" type="email" autoComplete="username" placeholder="E-mail do gerente" aria-label="E-mail do gerente" className={CLASSE_CAMPO} style={ESTILO_CAMPO} />
+          <input
+            name="usuario"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder="Usuário do gerente"
+            aria-label="Usuário do gerente"
+            className={CLASSE_CAMPO}
+            style={ESTILO_CAMPO}
+          />
         ) : (
           <p className="flex items-center justify-between gap-3 text-sm" style={{ color: 'var(--texto-medio)' }}>
             <span className="min-w-0 truncate">

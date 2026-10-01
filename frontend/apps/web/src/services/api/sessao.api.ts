@@ -38,6 +38,17 @@ export function entrarNaApi(email: string, senha: string): ResultAsync<PerfilDaA
     });
 }
 
+/**
+ * Entra pelo nome de usuário no cartão do posto escolhido ("elias" no cartão do BR abre a conta do BR).
+ * As contas são separadas por posto, e o nome vale só dentro dele. Mesma resposta de {@link entrarNaApi}.
+ */
+export function entrarNoPosto(postoId: number, usuario: string, senha: string): ResultAsync<PerfilDaApi, ErroDaApi> {
+    return enviarParaApi('/api/login', 'POST', { posto_id: postoId, usuario, senha, dispositivo: 'painel' }, respostaDoLogin).map((resposta) => {
+        guardarTokenDaApi(resposta.token);
+        return resposta.usuario;
+    });
+}
+
 /** Quem está logado com o token guardado. Token recusado (401) é esquecido na hora. */
 export function perfilDaSessao(): ResultAsync<PerfilDaApi, ErroDaApi> {
     return buscarNaApi('/api/eu', respostaDoPerfil)
@@ -80,7 +91,7 @@ export function postosDaRede(): ResultAsync<PostoDaRede[], ErroDaApi> {
 
 /** A frase que a tela de login mostra para cada falha. */
 export function mensagemDoLogin(erro: ErroDaApi): string {
-    if (erro.tipo === 'http' && erro.status === 401) return 'E-mail ou senha incorretos.';
+    if (erro.tipo === 'http' && erro.status === 401) return 'Usuário ou senha incorretos.';
     if (erro.tipo === 'http' && erro.status === 429) return 'Muitas tentativas. Espere um minuto e tente de novo.';
     if (erro.tipo === 'rede') return 'Não foi possível falar com o servidor. Confira a internet.';
     return 'Não foi possível entrar agora. Tente de novo.';

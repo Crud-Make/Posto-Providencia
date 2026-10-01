@@ -16,6 +16,21 @@
   antes), passou a forçá-la com um valor que estoura `numeric(10,2)` no último passo.
 - Canário: tirar a trava reprova os 4 casos (bico, combustível, frentista, forma).
 
+### ✨ Login: entrar com o nome de usuário no cartão do posto
+
+- Pedido do dono (30/09): no cartão do posto escolhido, o campo pede **Usuário** (ex.: `elias`) e a senha, em vez
+  do e-mail. O nome vale DENTRO do posto: as contas são separadas por posto, então `elias` no cartão do BR abre a
+  conta do BR e no do Jorro, a do Jorro. Texto com "@" continua entrando como e-mail (conta sem usuário, o ADMIN).
+- Banco: `banco/init/15-login-por-usuario.sql` — coluna `"UsuarioPosto".usuario` + índice único parcial
+  `(posto_id, lower(usuario))`. Entra também no CI. O seed do ensaio grava `elias` nas duas contas do Elias.
+- API: `POST /api/login` aceita `{posto_id, usuario, senha}` além de `{email, senha}`; mesma discrição e hash
+  descartável contra timing; 401 agora diz "Usuário ou senha incorretos.". `usuario:definir --usuario=elias`.
+  A relação `UsuarioPosto::usuario()` virou `conta()` — a coluna nova venceria a relação no acesso por propriedade.
+- Painel: `entrarNoPosto`, `entrar(login, senha, postoId?)`, `email-lembrado.ts` → `login-lembrado.ts` (chave nova
+  `painel.login-do-posto.*`: o aparelho pede o usuário uma vez). A troca de foto pelo cartão também usa o usuário.
+- Testes: 8 Pest novos (posto certo, mesmo nome em dois postos, posto errado/senha/vínculo inativo = 401,
+  maiúsculas, "@", 422, índice único, comando) e vitest de serviço, cartão e integração.
+
 ### ♿ Produtos e Estoque: os campos do "Novo Produto" têm nome para leitor de tela (#103)
 
 - Achado no ensaio Jorro+BR (30/09): os rótulos do formulário existiam, mas não estavam ligados aos campos (sem

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lerTokenDaApi } from '../services/api/token-da-api';
-import { entrarNaApi, mensagemDoLogin, perfilDaSessao, sairDaApi, type PerfilDaApi } from '../services/api/sessao.api';
+import { entrarNaApi, entrarNoPosto, mensagemDoLogin, perfilDaSessao, sairDaApi, type PerfilDaApi } from '../services/api/sessao.api';
 import type { EstadoAutenticacao } from './AuthContext';
 
 const SEM_RECUPERACAO =
@@ -34,8 +34,9 @@ export function useAuthDaApi(): EstadoAutenticacao {
   }, []);
 
   const entrar = useCallback(
-    async (email: string, senha: string): Promise<string | null> =>
-      entrarNaApi(email, senha).match(
+    async (login: string, senha: string, postoId?: number): Promise<string | null> =>
+      // Com o posto do cartão e sem "@", é o nome de usuário daquele posto; senão, e-mail.
+      (postoId !== undefined && !login.includes('@') ? entrarNoPosto(postoId, login, senha) : entrarNaApi(login, senha)).match(
         (perfil) => {
           setUsuario(perfil);
           return null;
