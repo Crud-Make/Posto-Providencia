@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { corDoProduto } from '@posto/utils';
 import { ChevronLeft, Camera, Check, AlertCircle, Loader2, Gauge, RefreshCw, CalendarX } from 'lucide-react';
 import { api } from '../services/api';
-import type { DiaEmFalta } from '@posto/api-core';
+import type { BicoRow, DiaEmFalta, LinhaParaGravar as LinhaLeitura } from '../api/encerrante';
 import { hojeIso, deIsoLocal } from '@posto/utils';
 
 /** `2026-08-14` → `14/08 (sex)`. Dia da semana ajuda a reconhecer o dia esquecido. */
@@ -13,6 +13,8 @@ const rotuloDoDia = (iso: string): string => {
 };
 
 interface EncerranteProps {
+    /** Posto da sessão — o escolhido no cartão da entrada. Nada de posto fixo no código. */
+    postoId: number;
     /** Só rótulo: quem fotografou não é gravado — `Leitura` não tem frentista. */
     frentistaNome?: string;
     onVoltar: () => void;
@@ -28,24 +30,6 @@ interface BicoInfo {
     preco: number;
 }
 
-// Formato bruto devolvido por api.getBicos (select com join em Combustivel).
-interface BicoRow {
-    id: number;
-    numero: number;
-    combustivel_id: number;
-    combustivel: { nome: string; codigo: string; preco_venda: number } | null;
-}
-
-// Formato aceito por api.salvarLeituras.
-interface LinhaLeitura {
-    bico_id: number;
-    combustivel_id: number;
-    leitura_inicial: number;
-    leitura_final: number;
-    preco_litro: number;
-}
-
-const POSTO_ID = 1;
 // Teto de litros plausível por bico num turno — acima disso, provavelmente é
 // dígito errado (troca de dígito costuma gerar diferenças de milhares de litros).
 const MAX_LITROS_PLAUSIVEL = 3000;
@@ -131,7 +115,7 @@ async function fileParaBase64Reduzido(file: File, maxDim = 1000, quality = 0.82)
     return { base64: out.split(',')[1], mimeType: 'image/jpeg', preview: out };
 }
 
-const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }) => {
+const EncerranteScreen: React.FC<EncerranteProps> = ({ postoId, frentistaNome, onVoltar }) => {
     const [bicos, setBicos] = useState<BicoInfo[]>([]);
     const [ultimas, setUltimas] = useState<Map<number, number>>(new Map());
     const [carregandoBase, setCarregandoBase] = useState(true);
@@ -182,15 +166,13 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         let ativo = true;
         setCarregandoBase(true);
         Promise.all([
-            api.getBicos(POSTO_ID),
-            api.getUltimasLeiturasPorBico(POSTO_ID, dataEnvio),
-            api.getUltimosPrecosPorBico(POSTO_ID, dataEnvio),
+            api.getBicos(postoId),
+            api.getUltimasLeiturasPorBico(postoId, dataEnvio),
+            api.getUltimosPrecosPorBico(postoId, dataEnvio),
         ])
             .then(([bs, ult, precos]) => {
                 if (!ativo) return;
-                // Cliente Supabase não tipado com o Database gerado: o join infere `combustivel`
-                // como array na estrutura, mas essa FK é many-to-one — em runtime vem objeto único.
-                const mapped: BicoInfo[] = (bs as unknown as BicoRow[]).map(b => ({
+                const mapped: BicoInfo[] = bs.map((b: BicoRow) => ({
                     id: b.id,
                     numero: b.numero,
                     combustivel_id: b.combustivel_id,
@@ -209,7 +191,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
                 // Falha em silêncio de propósito: o aviso é conveniência, e um
                 // erro de rede aqui não pode impedir alguém de enviar o
                 // encerrante que está na mão.
-                api.diasEmFalta(POSTO_ID, mapped.length)
+                api.diasEmFalta(postoId, mapped.length)
                     .then(faltas => { if (ativo) setDiasEmFalta(faltas); })
                     .catch(() => { });
             })
@@ -218,7 +200,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
         return () => { ativo = false; };
         // Trocar o dia troca a base: a inicial de cada bico é o fechamento do dia
         // anterior AO ESCOLHIDO, não ao de hoje.
-    }, [dataEnvio, versaoBase]);
+    }, [postoId, dataEnvio, versaoBase]);
 
     const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -337,7 +319,7 @@ const EncerranteScreen: React.FC<EncerranteProps> = ({ frentistaNome, onVoltar }
 
         setEnviando(true);
         try {
-            await api.salvarLeituras({ postoId: POSTO_ID, data: dataEnvio, linhas });
+            await api.salvarLeituras({ postoId, data: dataEnvio, linhas });
             setFeedback({ tipo: 'ok', msg: `${linhas.length} leituras enviadas para ${rotuloDoDia(dataEnvio)}!` });
             setTemLeitura(false);
             setPreview(null);

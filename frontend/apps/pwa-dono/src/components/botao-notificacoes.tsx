@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, BellOff, BellRing, Download, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { clienteSupabase } from '../lib/supabase';
 import { detectarPlataforma, jaInstalado } from '../lib/instalacao';
 import { decidirEstadoPush, inscreverNoPush, type EstadoPush } from '../lib/push';
 
@@ -72,7 +72,7 @@ export default function BotaoNotificacoes() {
         setOcupado(true);
         setRecado(null);
         try {
-            const resultado = await inscreverNoPush(supabase, CHAVE_PUBLICA);
+            const resultado = await inscreverNoPush(clienteSupabase(), CHAVE_PUBLICA);
             setRecado(resultado.mensagem);
             await conferirEstado();
         } catch (e) {

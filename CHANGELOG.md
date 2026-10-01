@@ -2,6 +2,25 @@
 
 ## [Não Lançado]
 
+### 📱 PWA do dono: entra no posto escolhido e lê/grava pelo Laravel — Jorro e BR (#102, fatia 1 de 3)
+
+- O app do dono não tinha login, falava com o Supabase e estava preso no Jorro (`POSTO_ID = 1` em duas telas).
+  Agora abre na escolha do posto (Jorro / BR) e entra com a conta DAQUELE posto, como o painel (usuário ou e-mail
+  + senha; conta de outro posto recusada; token só na memória; 401 volta para a entrada).
+- Encerrante pelo Laravel: bicos, leitura anterior e preço herdado (`/leituras/ultimas`), dias em falta
+  (`/leituras`) e o envio pela rota NOVA `PUT /api/postos/{posto}/leituras?data=` (gerir): grava SÓ os bicos
+  enviados (UPSERT por bico/dia), recusa item de outro posto (`ItensDoPosto`, #177) e fora da janela, reconsolida
+  o dia se ele já existir, NÃO cria nem fecha o dia e NÃO desconta estoque (isso segue no Salvar do gerente). O
+  UPSERT de leituras saiu do `GravaFilhosDoDia` para `GravaLeituras`, usado pelos dois caminhos.
+- Envios pelo Laravel (`/sessoes` + `/equipe`, por hora de envio). OCR da foto e avisos (push) seguem na Edge
+  Function até as fatias 2 e 3; o cliente do Supabase passou a nascer só quando é usado — antes, sem
+  `VITE_SUPABASE_URL`, o app inteiro abria em branco.
+- Provas: backend 12 testes novos + Fechamento/Arch 122/122, canários (sem trava de posto, sem reconsolidar, sem
+  janela, `PUT /fechamento` sem `GravaLeituras`); PWA 86 testes, canários (bico inativo, litros com 2 casas, conta
+  de outro posto, 401, sem a prova do envio). Ponta a ponta: BR gravou bico 1 (50 L, R$ 344,50) e bico 3 (30 L,
+  R$ 146,70) com o usuário do BR, sem criar Fechamento; Envios mostrou o do Diego; Jorro só viu os 6 bicos dele;
+  retrato do Jorro idêntico.
+
 ### 🔒 Fechamento: o dia só aceita bico, combustível, frentista e forma de pagamento do próprio posto (#103)
 
 - Achado de 30/09 (sonda ao desenhar a rota de leituras do PWA do dono): o `PUT /fechamento` do gerente do BR com o
