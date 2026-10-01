@@ -12,7 +12,6 @@ use App\Fechamento\Domain\JanelaDeEscrita;
 use App\Fechamento\Domain\RecusaDaGravacao;
 use App\Fechamento\Domain\TotaisDeclarados;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 /**
  * Grava o fechamento de um dia — o `handleSave` do painel, no servidor, numa transação só (#103 P10).
@@ -46,6 +45,7 @@ final readonly class GravaFechamentoDoDia
         private PostoAtual $postoAtual,
         private FechamentoDoDia $fechamentoDoDia,
         private GravaFilhosDoDia $gravaFilhos,
+        private ItensDoPosto $itensDoPosto,
     ) {}
 
     public function __invoke(DiaDeclarado $dia, int $usuarioId): Fechamento|RecusaDaGravacao
@@ -61,6 +61,12 @@ final readonly class GravaFechamentoDoDia
         }
 
         $postoId = $this->postoId();
+
+        // Id de outro posto no corpo sobrescrevia o dado do vizinho (sonda de 30/09): recusa antes de gravar.
+        $deOutroPosto = $this->itensDoPosto->confere($dia, $postoId);
+        if ($deOutroPosto !== null) {
+            return $deOutroPosto;
+        }
 
         $fechamento = DB::transaction(function () use ($dia, $totais, $usuarioId, $postoId): Fechamento {
             // I7: o turno não é de trabalho, é o tampão do unique — e é o do PRÓPRIO posto (Fechamento::turnoDoPosto).
@@ -87,10 +93,7 @@ final readonly class GravaFechamentoDoDia
 
     private function postoId(): int
     {
-        // Não é recusa de domínio: é rota montada sem DefinePostoAtual. Erro de configuração
-        // lança, como o middleware faz com guard fora de ordem.
-        return $this->postoAtual->id()
-            ?? throw new RuntimeException('GravaFechamentoDoDia exige PostoAtual definido.');
+        return $this->postoAtual->exigido('GravaFechamentoDoDia');
     }
 
     private function obtemOuCriaFechamento(DiaDeclarado $dia, int $usuarioId, int $turnoId): Fechamento

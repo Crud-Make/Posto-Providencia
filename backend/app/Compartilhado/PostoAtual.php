@@ -37,4 +37,13 @@ final class PostoAtual
     {
         return $this->id !== null;
     }
+
+    /**
+     * O posto em foco, OBRIGATÓRIO: rota de escrita montada sem `DefinePostoAtual` é erro de configuração,
+     * não recusa de domínio — lança, como o middleware faz com guard fora de ordem.
+     */
+    public function exigido(string $quem): int
+    {
+        return $this->id() ?? throw new \RuntimeException("{$quem} exige PostoAtual definido.");
+    }
 }
