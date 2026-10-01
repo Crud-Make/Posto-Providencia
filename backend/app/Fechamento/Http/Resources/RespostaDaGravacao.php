@@ -26,17 +26,23 @@ final class RespostaDaGravacao
     public static function de(Fechamento|RecusaDaGravacao $resultado): JsonResponse
     {
         if ($resultado instanceof RecusaDaGravacao) {
-            $erro = ['codigo' => $resultado->codigo, 'mensagem' => $resultado->mensagem];
-
-            if ($resultado->campos !== null) {
-                $erro['campos'] = $resultado->campos;
-            }
-
-            return response()->json(['erro' => $erro], 422);
+            return self::recusa($resultado);
         }
 
         return response()->json([
             'data' => new FechamentoResource($resultado->load('recebimentos')),
         ]);
+    }
+
+    /** A recusa de domínio no envelope único — também a do `PUT /leituras` ({@see RespostaDasLeituras}). */
+    public static function recusa(RecusaDaGravacao $recusa): JsonResponse
+    {
+        $erro = ['codigo' => $recusa->codigo, 'mensagem' => $recusa->mensagem];
+
+        if ($recusa->campos !== null) {
+            $erro['campos'] = $recusa->campos;
+        }
+
+        return response()->json(['erro' => $erro], 422);
     }
 }
