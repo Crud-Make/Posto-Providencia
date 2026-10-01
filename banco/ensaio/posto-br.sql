@@ -19,7 +19,8 @@
 --   * ADMIN já existente sem senha: ganha senha (ADMIN passa no PostoPolicy de todo posto);
 --   * CONTAS SEPARADAS POR POSTO (decisão do dono, 27/09): o Elias tem uma conta por posto, cada uma
 --     GERENTE só no próprio — elias.jorro@ensaio.local (Jorro) e elias.br@ensaio.local (BR). Cada uma
---     prova o 403 ao pedir o outro posto. E-mails fictícios: nada oficial ainda.
+--     prova o 403 ao pedir o outro posto. E-mails fictícios: nada oficial ainda. As duas entram
+--     também pelo usuário "elias" no cartão do próprio posto.
 -- PIN: nenhum. Cada frentista cadastra a própria chave no primeiro acesso do PWA (decisão do dono,
 -- 27/09) — o ensaio testa esse cadastro.
 
@@ -86,6 +87,12 @@ SELECT u.id, v.posto_id, 'gerente', true
 FROM (VALUES ('elias.jorro@ensaio.local', 1), ('elias.br@ensaio.local', :posto_br)) v(email, posto_id)
 JOIN "Usuario" u USING (email)
 ON CONFLICT (usuario_id, posto_id) DO UPDATE SET role = 'gerente', ativo = true;
+
+-- Login por nome no cartão do posto (banco/init/15-login-por-usuario.sql): as duas contas do Elias
+-- entram como "elias", cada uma no cartão do próprio posto.
+UPDATE "UsuarioPosto" up SET usuario = 'elias'
+FROM "Usuario" u
+WHERE u.id = up.usuario_id AND u.email IN ('elias.jorro@ensaio.local', 'elias.br@ensaio.local');
 
 COMMIT;
 

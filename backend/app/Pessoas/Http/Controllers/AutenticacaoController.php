@@ -22,10 +22,12 @@ final readonly class AutenticacaoController
 
     public function entrar(EntrarRequest $request, Entrar $entrar): JsonResponse
     {
-        $entrou = $entrar($request->email(), $request->senha(), $request->dispositivo());
+        $entrou = $request->peloPosto()
+            ? $entrar->noPosto($request->postoId(), $request->usuario(), $request->senha(), $request->dispositivo())
+            : $entrar($request->email(), $request->senha(), $request->dispositivo());
 
         if ($entrou === null) {
-            return response()->json(['message' => 'E-mail ou senha incorretos.'], 401);
+            return response()->json(['message' => 'Usuário ou senha incorretos.'], 401);
         }
 
         return response()->json([
