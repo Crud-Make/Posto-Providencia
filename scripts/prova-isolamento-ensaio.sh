@@ -51,7 +51,7 @@ confere "elias.br  POST /postos/1/compras" 403 "$(cod -H "Authorization: Bearer 
 confere "elias.br  POST /postos/1/equipe" 403 "$(cod -H "Authorization: Bearer $TB" -X POST $A/postos/1/equipe -d '{"nome":"X","data_admissao":"2026-09-27","ativo":true}')"
 
 echo "3. Cada conta no próprio posto"
-confere "BR tem 24 bicos" 24 "$(curl -s "${H[@]}" -H "Authorization: Bearer $TB" $A/postos/2/bicos | js 'len(d["data"])')"
+confere "BR tem 22 bicos" 22 "$(curl -s "${H[@]}" -H "Authorization: Bearer $TB" $A/postos/2/bicos | js 'len(d["data"])')"
 confere "Jorro tem 6 bicos" 6 "$(curl -s "${H[@]}" -H "Authorization: Bearer $TJ" $A/postos/1/bicos | js 'len(d["data"])')"
 
 echo "4. Escrita no BR não aparece no Jorro"

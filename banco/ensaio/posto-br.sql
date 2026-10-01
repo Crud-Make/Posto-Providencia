@@ -4,11 +4,11 @@
 -- aceita o Postgres local de um container `posto-pg-*` e gera os hashes (bcrypt, o mesmo do
 -- `Hash::check` do Laravel) das senhas que passa aqui como variáveis do psql.
 --
--- O catálogo do BR é DE ENSAIO: 4 combustíveis, 4 tanques, 6 bombas × 4 bicos = 24 bicos (o número
--- que o dono confirmou em 26/09; o Jorro tem 6), um bico de cada combustível por bomba. A divisão real
--- por bomba ainda não veio do Elias — o que o ensaio mede é a tela de Fechamento com 24 linhas.
--- Preços diferentes dos do Jorro de propósito: número igual nos dois postos esconde vazamento. Os
--- preços, nomes e capacidades reais do BR também ainda não vieram.
+-- Os 22 bicos do BR e o combustível de cada um são os REAIS, tirados da tela do concentrador do posto
+-- (01/10; o Jorro tem 6): S10 em 1,2,5,6,9,10,15,16 · S500 em 3,4,7,8,11,12 · GC em 13,14,21,22 ·
+-- ET em 17,18 · GA em 19,20. A divisão por BOMBA não aparece no concentrador: é de ensaio (5 bombas
+-- de 4 bicos em sequência e a 6ª com 21 e 22). Preços diferentes dos do Jorro de propósito: número
+-- igual nos dois postos esconde vazamento. Preços, nomes de bomba e capacidades reais ainda não vieram.
 --
 -- O JORRO NÃO MUDA (decisão do dono, 26/09): nenhuma linha de posto_id = 1 é criada, alterada ou
 -- apagada — nem PIN de frentista do Jorro. A única linha que cita o Jorro é o vínculo do Elias do Jorro em
@@ -42,7 +42,8 @@ INSERT INTO "Combustivel" (nome, codigo, cor, preco_venda, preco_custo, posto_id
     ('Gasolina Comum',     'GC',  '#E53935', 6.89, 0, :posto_br),
     ('Gasolina Aditivada', 'GA',  '#1E88E5', 7.09, 0, :posto_br),
     ('Etanol',             'ET',  '#43A047', 4.89, 0, :posto_br),
-    ('Diesel S10',         'S10', '#FDD835', 7.29, 0, :posto_br);
+    ('Diesel S10',         'S10', '#FDD835', 7.29, 0, :posto_br),
+    ('Diesel S500',        'S500', '#FB8C00', 7.19, 0, :posto_br);
 
 INSERT INTO "Tanque" (nome, combustivel_id, capacidade, estoque_atual, posto_id)
 SELECT 'Tanque ' || c.codigo, c.id, 20000, 0, :posto_br
@@ -51,13 +52,20 @@ FROM "Combustivel" c WHERE c.posto_id = :posto_br;
 INSERT INTO "Bomba" (nome, posto_id)
 SELECT 'BR BOMBA ' || lpad(n::text, 2, '0'), :posto_br FROM generate_series(1, 6) n;
 
--- Cada bomba: bico 1 GC, 2 GA, 3 ET, 4 S10. Numeração dos bicos 1..24 no posto.
+-- Bico real do concentrador → bomba de ensaio (4 bicos por bomba em sequência; a 6ª só com 21 e 22).
 INSERT INTO "Bico" (numero, bomba_id, combustivel_id, tanque_id, posto_id)
-SELECT (b.ordem - 1) * 4 + lado, b.id, c.id, t.id, :posto_br
-FROM (SELECT id, row_number() OVER (ORDER BY id) AS ordem FROM "Bomba" WHERE posto_id = :posto_br) b
-CROSS JOIN generate_series(1, 4) AS lado
-JOIN "Combustivel" c ON c.posto_id = :posto_br
-    AND c.codigo = (ARRAY['GC', 'GA', 'ET', 'S10'])[lado]
+SELECT v.numero, b.id, c.id, t.id, :posto_br
+FROM (VALUES
+    ( 1, 'S10'), ( 2, 'S10'), ( 3, 'S500'), ( 4, 'S500'),
+    ( 5, 'S10'), ( 6, 'S10'), ( 7, 'S500'), ( 8, 'S500'),
+    ( 9, 'S10'), (10, 'S10'), (11, 'S500'), (12, 'S500'),
+    (13, 'GC'),  (14, 'GC'),  (15, 'S10'),  (16, 'S10'),
+    (17, 'ET'),  (18, 'ET'),  (19, 'GA'),   (20, 'GA'),
+    (21, 'GC'),  (22, 'GC')
+) v(numero, codigo)
+JOIN (SELECT id, row_number() OVER (ORDER BY id) AS ordem FROM "Bomba" WHERE posto_id = :posto_br) b
+    ON b.ordem = (v.numero - 1) / 4 + 1
+JOIN "Combustivel" c ON c.posto_id = :posto_br AND c.codigo = v.codigo
 JOIN "Tanque" t ON t.posto_id = :posto_br AND t.combustivel_id = c.id;
 
 INSERT INTO "Turno" (nome, horario_inicio, horario_fim, posto_id) VALUES

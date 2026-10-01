@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Semeia o ensaio do MVP com dois postos (skill validar-mvp-dois-postos): Posto BR com 24 bicos,
+# Semeia o ensaio do MVP com dois postos (skill validar-mvp-dois-postos): Posto BR com 22 bicos,
 # uma conta de gerente por posto e 3 frentistas SEM chave (cada um cadastra a sua no PWA). Roda
 # banco/ensaio/posto-br.sql SÓ no Postgres local de um container
 # `posto-pg-*` ou `posto-postgres` — recusa qualquer outra porta, e nunca fala com o Supabase.
