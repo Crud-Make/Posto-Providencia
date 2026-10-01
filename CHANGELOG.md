@@ -7,8 +7,9 @@
 - O seed do ensaio (`banco/ensaio/posto-br.sql`) criava 24 bicos de mentira (6 bombas × GC/GA/ET/S10). Agora cria
   os **22 bicos reais**, com o combustível de cada um tirado das fotos da tela do concentrador do BR (01/10):
   S10 em 1, 2, 5, 6, 9, 10, 15, 16 · S500 em 3, 4, 7, 8, 11, 12 · GC em 13, 14, 21, 22 · ET em 17, 18 · GA em 19, 20.
-- Novo combustível **Diesel S500** com o próprio tanque. A divisão por bomba não aparece no concentrador e segue de
-  ensaio (bombas 1–5 com 4 bicos em sequência, a 6ª com 21 e 22); preços e capacidades seguem de ensaio.
+- Novo combustível **Diesel S500** com o próprio tanque. As bombas agrupam por combustível, como a lista do
+  concentrador (DIESEL S10, DIESEL S500, ETANOL, GASOLINA ADITIVADA, GASOLINA COMUM — pedido do dono, 01/10);
+  preços e capacidades seguem de ensaio.
 - `prova-isolamento-ensaio.sh` e a skill `validar-mvp-dois-postos` passam a esperar 22 bicos.
 
 ### 🔒 Fechamento: o dia só aceita bico, combustível, frentista e forma de pagamento do próprio posto (#103)
