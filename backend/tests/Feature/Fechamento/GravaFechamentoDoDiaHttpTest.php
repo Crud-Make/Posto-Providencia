@@ -298,7 +298,7 @@ it('item de OUTRO posto no corpo: 422 item_de_outro_posto e o dado do vizinho fi
     DB::table('Leitura')->insert([
         'bico_id' => $jorro['bico']->id, 'combustivel_id' => $jorro['combustivel']->id, 'data' => '2026-01-05 00:00:00+00',
         'leitura_inicial' => '5000.000', 'leitura_final' => '5100.000', 'litros_vendidos' => '100.000',
-        'preco_litro' => '6.00', 'valor_total' => '600.00', 'usuario_id' => 1, 'posto_id' => $jorro['posto']->id,
+        'preco_litro' => '6.00', 'valor_total' => '600.00', 'usuario_id' => Usuario::factory()->create()->id, 'posto_id' => $jorro['posto']->id,
     ]);
     $br = cenarioP11();
     $gerente = usuarioP11('c2220000-0000-4000-8000-0000000000'.str_pad((string) random_int(10, 99), 2, '0'), $br['posto']->id, Role::Gerente, PapelNoPosto::Gerente);
