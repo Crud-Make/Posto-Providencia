@@ -44,11 +44,11 @@ const TelaRedefinirSenha: React.FC = () => {
       <main className="flex flex-1 flex-col items-center justify-center px-5 py-10">
         <div className="w-full max-w-[400px] rounded-2xl border border-white/10 bg-slate-900 p-6 sm:p-10">
           <img
-            src="/logo-login.jpg"
+            src="/logo-providencia.png"
             alt="Posto Providência"
-            width={306}
-            height={306}
-            className="mx-auto h-auto w-[112px] select-none rounded-xl"
+            width={796}
+            height={226}
+            className="mx-auto h-auto w-52 select-none rounded-xl bg-white px-3 py-2"
             draggable={false}
           />
 

@@ -105,7 +105,7 @@ const BarraLateral: React.FC<SidebarProps> = ({ onClose, className = '', recolhi
           <div className={`flex items-center ${estreita.marca}`}>
             <h1 className="bg-white rounded-lg px-2 py-1 shadow-sm ring-1 ring-gray-200 dark:ring-gray-600">
               <img
-                src="/marca-posto@2x.png"
+                src="/logo-providencia.png"
                 alt="Posto Providência"
                 className="h-10 w-auto"
                 draggable={false}
