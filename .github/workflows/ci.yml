@@ -5,7 +5,13 @@ on:
     branches: [ main, release, fase-a ]
   # Toda PR roda CI, inclusive as empilhadas (base em outra branch de trabalho): a proteção da
   # main e da fase-a exige os checks `build` e `backend` verdes.
+  # `labeled`/`unlabeled` entram em 19/09/2026 por causa do passo "Catraca só desce": o rótulo
+  # `aceita-divida` é lido do PAYLOAD do evento. Sem `types`, o padrão é só opened/synchronize/
+  # reopened — pôr o rótulo depois do CI vermelho não refazia o job, e um re-run usa o payload
+  # antigo, sem o rótulo. Agora rotular dispara uma rodada nova com o payload novo. Custo: os dois
+  # jobs rodam de novo a cada rótulo posto ou tirado, que é raro.
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
   build:
@@ -35,6 +41,19 @@ jobs:
 
       - name: Lint (eslint, passada completa)
         run: bun run lint:eslint
+
+      # A catraca só desce (19/09/2026). `lint:eslint` e `type-check` conferem a árvore contra a
+      # PRÓPRIA lista congelada — quem sobe um número em .catraca/*.json à mão passa verde nos
+      # dois. Este passo compara a lista do PR com a da base: chave que subiu ou apareceu
+      # reprova, salvo o rótulo `aceita-divida` no PR (decisão do dono, dita na descrição).
+      # O checkout é raso, por isso a base é buscada antes.
+      - name: Catraca só desce (verificar-base)
+        if: github.event_name == 'pull_request'
+        env:
+          ACEITA_DIVIDA: ${{ contains(github.event.pull_request.labels.*.name, 'aceita-divida') && '1' || '0' }}
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+          bun run catraca:verificar-base "${{ github.event.pull_request.base.sha }}"
 
       - name: Type-check
         run: bun run type-check

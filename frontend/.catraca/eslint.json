@@ -1,155 +1,665 @@
 {
   "apps/pwa-dono/src/components/botao-notificacoes.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/pwa-dono/src/components/botao-notificacoes.tsx|max-lines-per-function": [
+    87
+  ],
+  "apps/pwa-dono/src/components/convite-instalacao.tsx|max-lines-per-function": [
+    74
+  ],
   "apps/pwa-dono/src/components/ReloadPrompt.tsx|@typescript-eslint/no-floating-promises": 2,
   "apps/pwa-dono/src/components/ReloadPrompt.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/pwa-dono/src/lib/push.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/pwa-dono/src/lib/push.ts|complexity": [
+    12
+  ],
   "apps/pwa-dono/src/lib/supabase.ts|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/pwa-dono/src/screens/encerrante-screen.test.tsx|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/pwa-dono/src/screens/EncerranteScreen.tsx|@typescript-eslint/strict-boolean-expressions": 9,
+  "apps/pwa-dono/src/screens/EncerranteScreen.tsx|complexity": [
+    25
+  ],
+  "apps/pwa-dono/src/screens/EncerranteScreen.tsx|max-lines": [
+    560
+  ],
+  "apps/pwa-dono/src/screens/EncerranteScreen.tsx|max-lines-per-function": [
+    346
+  ],
   "apps/pwa-dono/src/screens/EncerranteScreen.tsx|react-hooks/exhaustive-deps": 2,
   "apps/pwa-dono/src/screens/EnviosScreen.tsx|@typescript-eslint/strict-boolean-expressions": 6,
+  "apps/pwa-dono/src/screens/EnviosScreen.tsx|complexity": [
+    13
+  ],
+  "apps/pwa-dono/src/screens/EnviosScreen.tsx|max-lines-per-function": [
+    116
+  ],
   "apps/pwa-dono/src/sw.ts|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/pwa-frentista/src/App.tsx|@typescript-eslint/strict-boolean-expressions": 14,
+  "apps/pwa-frentista/src/App.tsx|complexity": [
+    19,
+    18,
+    13,
+    11
+  ],
+  "apps/pwa-frentista/src/App.tsx|max-lines": [
+    832
+  ],
+  "apps/pwa-frentista/src/App.tsx|max-lines-per-function": [
+    438,
+    62
+  ],
+  "apps/pwa-frentista/src/components/convite-instalacao.tsx|max-lines-per-function": [
+    74
+  ],
   "apps/pwa-frentista/src/components/ReloadPrompt.tsx|@typescript-eslint/no-floating-promises": 2,
   "apps/pwa-frentista/src/components/ReloadPrompt.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/pwa-frentista/src/lib/supabase.ts|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/pwa-frentista/src/screens/HistoricoScreen.tsx|@typescript-eslint/strict-boolean-expressions": 6,
+  "apps/pwa-frentista/src/screens/HistoricoScreen.tsx|complexity": [
+    14
+  ],
+  "apps/pwa-frentista/src/screens/HistoricoScreen.tsx|max-lines-per-function": [
+    88
+  ],
   "apps/pwa-frentista/src/screens/TanquesScreen.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/pwa-frentista/src/screens/TanquesScreen.tsx|complexity": [
+    14
+  ],
+  "apps/pwa-frentista/src/screens/TanquesScreen.tsx|max-lines-per-function": [
+    172
+  ],
   "apps/pwa-frentista/src/screens/VendasScreen.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/pwa-frentista/src/screens/VendasScreen.tsx|max-lines-per-function": [
+    175
+  ],
   "apps/pwa-frentista/src/services/api.ts|@typescript-eslint/strict-boolean-expressions": 6,
+  "apps/pwa-frentista/src/services/api.ts|max-lines": [
+    330
+  ],
+  "apps/web/src/components/analise-custos/components/CardCombustivel.tsx|complexity": [
+    14
+  ],
+  "apps/web/src/components/analise-custos/components/CardCombustivel.tsx|max-lines-per-function": [
+    131
+  ],
   "apps/web/src/components/analise-custos/components/RankingLucratividade.tsx|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/web/src/components/analise-custos/hooks/useAnaliseCustos.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/analise-custos/hooks/useAnaliseCustos.ts|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/analise-custos/hooks/useAnaliseCustos.ts|max-lines-per-function": [
+    80
+  ],
   "apps/web/src/components/analise-custos/index.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/BarraLateral.tsx|complexity": [
+    11
+  ],
+  "apps/web/src/components/BarraLateral.tsx|max-lines-per-function": [
+    125
+  ],
   "apps/web/src/components/clientes/components/ClienteDetalhes.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/clientes/components/ClienteDetalhes.tsx|complexity": [
+    11
+  ],
+  "apps/web/src/components/clientes/components/ClienteDetalhes.tsx|max-lines-per-function": [
+    120
+  ],
   "apps/web/src/components/clientes/components/ClientesLista.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/clientes/components/ClientesLista.tsx|max-lines-per-function": [
+    91
+  ],
   "apps/web/src/components/clientes/components/ModalCliente.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/clientes/components/ModalCliente.tsx|max-lines-per-function": [
+    111
+  ],
+  "apps/web/src/components/clientes/components/ModalNovaNota.tsx|max-lines-per-function": [
+    130
+  ],
+  "apps/web/src/components/clientes/components/ModalPagamento.tsx|max-lines-per-function": [
+    78
+  ],
   "apps/web/src/components/clientes/components/NotasLista.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/clientes/components/NotasLista.tsx|max-lines-per-function": [
+    78
+  ],
   "apps/web/src/components/clientes/hooks/useClienteForm.ts|@typescript-eslint/strict-boolean-expressions": 7,
+  "apps/web/src/components/clientes/hooks/useClienteForm.ts|max-lines-per-function": [
+    90
+  ],
   "apps/web/src/components/clientes/hooks/useClientesData.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/clientes/hooks/useClientesData.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/clientes/hooks/useNotaFrentista.ts|@typescript-eslint/no-floating-promises": 3,
   "apps/web/src/components/clientes/hooks/useNotaFrentista.ts|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/components/clientes/hooks/useNotaFrentista.ts|complexity": [
+    12
+  ],
+  "apps/web/src/components/clientes/hooks/useNotaFrentista.ts|max-lines-per-function": [
+    107
+  ],
   "apps/web/src/components/clientes/hooks/usePagamento.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/clientes/TelaGestaoClientes.tsx|@typescript-eslint/no-floating-promises": 6,
   "apps/web/src/components/clientes/TelaGestaoClientes.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/clientes/TelaGestaoClientes.tsx|max-lines-per-function": [
+    107
+  ],
+  "apps/web/src/components/configuracoes/components/GestaoBicos.tsx|max-lines-per-function": [
+    78
+  ],
   "apps/web/src/components/configuracoes/components/GestaoFormasPagamento.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/configuracoes/components/GestaoFormasPagamento.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/configuracoes/components/GestaoFormasPagamento.tsx|max-lines-per-function": [
+    220
+  ],
+  "apps/web/src/components/configuracoes/components/GestaoProdutos.tsx|max-lines-per-function": [
+    88
+  ],
   "apps/web/src/components/configuracoes/components/ModalApagarMes.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/configuracoes/components/ModalApagarMes.tsx|complexity": [
+    17
+  ],
+  "apps/web/src/components/configuracoes/components/ModalApagarMes.tsx|max-lines-per-function": [
+    125
+  ],
+  "apps/web/src/components/configuracoes/components/ModalResetSistema.tsx|max-lines-per-function": [
+    103
+  ],
+  "apps/web/src/components/configuracoes/components/ParametrosEstoque.tsx|max-lines-per-function": [
+    66
+  ],
   "apps/web/src/components/configuracoes/hooks/useApagarMes.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/configuracoes/hooks/useConfiguracoesData.test.ts|@typescript-eslint/no-explicit-any": 1,
   "apps/web/src/components/configuracoes/hooks/useConfiguracoesData.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/configuracoes/hooks/useConfiguracoesData.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/configuracoes/hooks/useFormaPagamento.ts|@typescript-eslint/strict-boolean-expressions": 7,
+  "apps/web/src/components/configuracoes/hooks/useFormaPagamento.ts|complexity": [
+    11
+  ],
+  "apps/web/src/components/configuracoes/hooks/useFormaPagamento.ts|max-lines-per-function": [
+    124,
+    64
+  ],
   "apps/web/src/components/configuracoes/hooks/useParametros.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/configuracoes/hooks/useParametros.ts|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/configuracoes/hooks/useParametros.ts|max-lines-per-function": [
+    71
+  ],
   "apps/web/src/components/configuracoes/hooks/useResetSistema.ts|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/configuracoes/TelaConfiguracoes.tsx|max-lines-per-function": [
+    144
+  ],
+  "apps/web/src/components/dashboard-proprietario/components/AlertasGerenciais.tsx|max-lines-per-function": [
+    65
+  ],
+  "apps/web/src/components/dashboard-proprietario/components/DemonstrativoFinanceiro.tsx|max-lines-per-function": [
+    130
+  ],
   "apps/web/src/components/dashboard-proprietario/components/FiltrosDashboard.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/dashboard-proprietario/components/FiltrosDashboard.tsx|max-lines-per-function": [
+    64
+  ],
   "apps/web/src/components/dashboard-proprietario/hooks/useDashboardProprietario.test.ts|no-restricted-syntax": 1,
   "apps/web/src/components/dashboard-proprietario/hooks/useDashboardProprietario.ts|@typescript-eslint/no-floating-promises": 1,
+  "apps/web/src/components/dashboard-proprietario/hooks/useDashboardProprietario.ts|max-lines": [
+    345
+  ],
+  "apps/web/src/components/dashboard-proprietario/index.tsx|complexity": [
+    20
+  ],
+  "apps/web/src/components/dashboard-proprietario/index.tsx|max-lines-per-function": [
+    79
+  ],
   "apps/web/src/components/dashboard/components/ClosingsTable.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/dashboard/components/ClosingsTable.tsx|max-lines-per-function": [
+    75
+  ],
   "apps/web/src/components/dashboard/components/FuelVolumeChart.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/dashboard/components/FuelVolumeChart.tsx|max-lines-per-function": [
+    77
+  ],
   "apps/web/src/components/dashboard/components/KPICard.tsx|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/components/dashboard/components/PerformanceSidebar.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/dashboard/components/PerformanceSidebar.tsx|complexity": [
+    13
+  ],
+  "apps/web/src/components/dashboard/components/PerformanceSidebar.tsx|max-lines-per-function": [
+    83
+  ],
   "apps/web/src/components/dashboard/hooks/useDashboard.ts|@typescript-eslint/no-floating-promises": 2,
   "apps/web/src/components/dashboard/hooks/useDashboard.ts|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/components/dashboard/hooks/useDashboard.ts|max-lines-per-function": [
+    64
+  ],
   "apps/web/src/components/dashboard/index.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/dashboard/index.tsx|max-lines-per-function": [
+    144
+  ],
   "apps/web/src/components/despesas/components/FormDespesa.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/despesas/components/FormDespesa.tsx|@typescript-eslint/strict-boolean-expressions": 7,
+  "apps/web/src/components/despesas/components/FormDespesa.tsx|complexity": [
+    11
+  ],
+  "apps/web/src/components/despesas/components/FormDespesa.tsx|max-lines-per-function": [
+    234
+  ],
   "apps/web/src/components/escalas/EscalaTable.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/escalas/EscalaTable.tsx|max-lines-per-function": [
+    115
+  ],
   "apps/web/src/components/escalas/hooks/useEscalas.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/escalas/hooks/useEscalas.ts|@typescript-eslint/strict-boolean-expressions": 7,
+  "apps/web/src/components/escalas/hooks/useEscalas.ts|max-lines-per-function": [
+    139
+  ],
+  "apps/web/src/components/escalas/ObservacaoModal.tsx|max-lines-per-function": [
+    75
+  ],
   "apps/web/src/components/escalas/utils/exportPdf.ts|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/escalas/utils/exportPdf.ts|max-lines-per-function": [
+    200
+  ],
   "apps/web/src/components/estoque/dashboard/components/calculos-resumo-financeiro.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/estoque/dashboard/components/FuelTank.tsx|max-lines-per-function": [
+    77
+  ],
   "apps/web/src/components/estoque/dashboard/components/InventoryHistoryChart.tsx|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/estoque/dashboard/components/InventoryHistoryChart.tsx|max-lines-per-function": [
+    96
+  ],
   "apps/web/src/components/estoque/dashboard/components/ModalMedicao.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/estoque/dashboard/components/ModalMedicao.tsx|max-lines-per-function": [
+    107
+  ],
   "apps/web/src/components/estoque/dashboard/components/TabelaResumo.tsx|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/estoque/dashboard/components/TabelaResumo.tsx|complexity": [
+    11
+  ],
   "apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/estoque/dashboard/hooks/useDashboardEstoque.ts|max-lines-per-function": [
+    167,
+    89
+  ],
   "apps/web/src/components/estoque/dashboard/index.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/estoque/dashboard/index.tsx|max-lines-per-function": [
+    116
+  ],
+  "apps/web/src/components/estoque/gestao/components/ModalMovimentacao.tsx|max-lines-per-function": [
+    98
+  ],
   "apps/web/src/components/estoque/gestao/components/ModalProduto.tsx|@typescript-eslint/strict-boolean-expressions": 5,
+  "apps/web/src/components/estoque/gestao/components/ModalProduto.tsx|complexity": [
+    18
+  ],
+  "apps/web/src/components/estoque/gestao/components/ModalProduto.tsx|max-lines-per-function": [
+    144
+  ],
   "apps/web/src/components/estoque/gestao/components/TabelaEstoque.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/estoque/gestao/components/TabelaEstoque.tsx|max-lines-per-function": [
+    85
+  ],
   "apps/web/src/components/estoque/gestao/hooks/useGestaoEstoque.ts|@typescript-eslint/no-floating-promises": 3,
   "apps/web/src/components/estoque/gestao/hooks/useGestaoEstoque.ts|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/components/estoque/gestao/hooks/useGestaoEstoque.ts|max-lines-per-function": [
+    134
+  ],
+  "apps/web/src/components/estoque/gestao/index.tsx|max-lines-per-function": [
+    73
+  ],
   "apps/web/src/components/fechamento-diario/components/detalhamento/DetalhamentoRow.tsx|@typescript-eslint/strict-boolean-expressions": 7,
   "apps/web/src/components/fechamento-diario/components/detalhamento/ResumoMensalFrentistas.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/fechamento-diario/components/detalhamento/ResumoMensalFrentistas.tsx|max-lines-per-function": [
+    126
+  ],
+  "apps/web/src/components/fechamento-diario/components/detalhamento/TabelaConciliacaoFrentistas.tsx|max-lines-per-function": [
+    227
+  ],
   "apps/web/src/components/fechamento-diario/components/EnviosMobile.tsx|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/fechamento-diario/components/EnviosMobile.tsx|max-lines-per-function": [
+    130,
+    65
+  ],
+  "apps/web/src/components/fechamento-diario/components/FooterAcoes.tsx|complexity": [
+    17
+  ],
+  "apps/web/src/components/fechamento-diario/components/FooterAcoes.tsx|max-lines-per-function": [
+    77
+  ],
   "apps/web/src/components/fechamento-diario/components/HeaderFechamento.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/fechamento-diario/components/HeaderFechamento.tsx|max-lines-per-function": [
+    71
+  ],
   "apps/web/src/components/fechamento-diario/components/TabDetalhamentoFrentista.tsx|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/web/src/components/fechamento-diario/components/TabelaFrentistas.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/fechamento-diario/components/TabelaFrentistas.tsx|max-lines-per-function": [
+    178,
+    95
+  ],
   "apps/web/src/components/fechamento-diario/components/TabelaLeituras.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/fechamento-diario/components/TabelaLeituras.tsx|max-lines-per-function": [
+    223,
+    77
+  ],
   "apps/web/src/components/fechamento-diario/components/TabGestaoBicos.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/fechamento-diario/components/TabGestaoBicos.tsx|max-lines": [
+    318
+  ],
+  "apps/web/src/components/fechamento-diario/components/TabGestaoBicos.tsx|max-lines-per-function": [
+    257
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useAutoSave.ts|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/fechamento-diario/hooks/useAutoSave.ts|max-lines-per-function": [
+    85
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useCalculoGestaoBicos.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/fechamento-diario/hooks/useCalculoGestaoBicos.ts|complexity": [
+    18
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/useCalculoGestaoBicos.ts|max-lines-per-function": [
+    61
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useCarregamentoDados.test.ts|@typescript-eslint/no-explicit-any": 1,
   "apps/web/src/components/fechamento-diario/hooks/useCarregamentoDados.ts|@typescript-eslint/no-floating-promises": 2,
   "apps/web/src/components/fechamento-diario/hooks/useCarregamentoDados.ts|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/components/fechamento-diario/hooks/useCarregamentoDados.ts|max-lines-per-function": [
+    107
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useCustoMensal.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/fechamento-diario/hooks/useCustoMensal.ts|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/fechamento-diario/hooks/useCustoMensal.ts|complexity": [
+    13
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/useCustoMensal.ts|max-lines-per-function": [
+    69
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useCustoMensal.ts|react-hooks/exhaustive-deps": 2,
   "apps/web/src/components/fechamento-diario/hooks/useFechamento.test.ts|@typescript-eslint/no-explicit-any": 3,
   "apps/web/src/components/fechamento-diario/hooks/useFechamento.test.ts|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/fechamento-diario/hooks/useFechamento.ts|max-lines-per-function": [
+    87
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useLeituras.ts|@typescript-eslint/strict-boolean-expressions": 6,
+  "apps/web/src/components/fechamento-diario/hooks/useLeituras.ts|complexity": [
+    15,
+    12
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/useLeituras.ts|max-lines": [
+    545
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/useLeituras.ts|max-lines-per-function": [
+    216,
+    81
+  ],
   "apps/web/src/components/fechamento-diario/hooks/usePagamentos.ts|@typescript-eslint/strict-boolean-expressions": 6,
+  "apps/web/src/components/fechamento-diario/hooks/usePagamentos.ts|complexity": [
+    14
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/usePagamentos.ts|max-lines-per-function": [
+    86
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useResumoMensalFrentistas.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/fechamento-diario/hooks/useResumoMensalFrentistas.ts|@typescript-eslint/strict-boolean-expressions": 6,
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.test.ts|@typescript-eslint/no-explicit-any": 1,
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|@typescript-eslint/no-floating-promises": 3,
   "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|@typescript-eslint/strict-boolean-expressions": 7,
+  "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|complexity": [
+    13,
+    12
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|max-lines": [
+    413
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/useSessoesFrentistas.ts|max-lines-per-function": [
+    220,
+    105
+  ],
   "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.test.ts|@typescript-eslint/no-explicit-any": 1,
   "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts|complexity": [
+    27
+  ],
+  "apps/web/src/components/fechamento-diario/hooks/useSubmissaoFechamento.ts|max-lines-per-function": [
+    163,
+    149
+  ],
   "apps/web/src/components/fechamento-diario/index.tsx|@typescript-eslint/no-floating-promises": 16,
   "apps/web/src/components/fechamento-diario/index.tsx|@typescript-eslint/strict-boolean-expressions": 8,
+  "apps/web/src/components/fechamento-diario/index.tsx|complexity": [
+    13
+  ],
+  "apps/web/src/components/fechamento-diario/index.tsx|max-lines": [
+    354
+  ],
+  "apps/web/src/components/fechamento-diario/index.tsx|max-lines-per-function": [
+    201
+  ],
   "apps/web/src/components/fechamento-mensal/index.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/fechamento-mensal/index.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/fechamento-mensal/index.tsx|complexity": [
+    20,
+    11
+  ],
+  "apps/web/src/components/fechamento-mensal/index.tsx|max-lines": [
+    555
+  ],
+  "apps/web/src/components/fechamento-mensal/index.tsx|max-lines-per-function": [
+    467
+  ],
   "apps/web/src/components/financeiro/components/DespesasPorCategoria.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/financeiro/components/FormReceita.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/financeiro/components/FormReceita.tsx|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/financeiro/components/FormReceita.tsx|max-lines-per-function": [
+    186
+  ],
+  "apps/web/src/components/financeiro/components/GraficoFluxoCaixa.tsx|max-lines-per-function": [
+    79
+  ],
   "apps/web/src/components/financeiro/components/ListaDespesas.tsx|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/financeiro/components/ListaDespesas.tsx|max-lines-per-function": [
+    90
+  ],
+  "apps/web/src/components/financeiro/components/ModalFixasPendentes.tsx|max-lines-per-function": [
+    139
+  ],
+  "apps/web/src/components/financeiro/components/ModalTaxasCartao.tsx|max-lines-per-function": [
+    133
+  ],
   "apps/web/src/components/financeiro/components/ResumoFinanceiro.tsx|@typescript-eslint/strict-boolean-expressions": 3,
   "apps/web/src/components/financeiro/hooks/useFiltrosFinanceiros.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/financeiro/hooks/useFinanceiro.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/financeiro/hooks/useFinanceiro.ts|@typescript-eslint/strict-boolean-expressions": 15,
+  "apps/web/src/components/financeiro/hooks/useFinanceiro.ts|complexity": [
+    19
+  ],
+  "apps/web/src/components/financeiro/hooks/useFinanceiro.ts|max-lines-per-function": [
+    135,
+    121
+  ],
   "apps/web/src/components/financeiro/index.tsx|@typescript-eslint/strict-boolean-expressions": 11,
+  "apps/web/src/components/financeiro/index.tsx|complexity": [
+    15
+  ],
+  "apps/web/src/components/financeiro/index.tsx|max-lines-per-function": [
+    179
+  ],
   "apps/web/src/components/frentistas/components/DetalhesFrentista.tsx|@typescript-eslint/no-floating-promises": 1,
+  "apps/web/src/components/frentistas/components/DetalhesFrentista.tsx|max-lines-per-function": [
+    100
+  ],
   "apps/web/src/components/frentistas/components/FormFrentista.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/frentistas/components/FormFrentista.tsx|max-lines-per-function": [
+    113
+  ],
   "apps/web/src/components/frentistas/hooks/useFrentistas.ts|@typescript-eslint/no-floating-promises": 2,
   "apps/web/src/components/frentistas/hooks/useFrentistas.ts|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/components/frentistas/hooks/useFrentistas.ts|max-lines-per-function": [
+    94
+  ],
   "apps/web/src/components/frentistas/hooks/useHistoricoFrentista.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/components/frentistas/index.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/frentistas/index.tsx|max-lines-per-function": [
+    141
+  ],
   "apps/web/src/components/leituras-diarias/components/TabelaLeituras.tsx|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/components/leituras-diarias/components/TabelaLeituras.tsx|complexity": [
+    11
+  ],
+  "apps/web/src/components/leituras-diarias/components/TabelaLeituras.tsx|max-lines-per-function": [
+    122,
+    101,
+    88
+  ],
   "apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts|@typescript-eslint/no-floating-promises": 3,
   "apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/leituras-diarias/hooks/useLeiturasDiarias.ts|max-lines-per-function": [
+    111
+  ],
   "apps/web/src/components/leituras-diarias/index.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/leituras-diarias/index.tsx|max-lines-per-function": [
+    98
+  ],
   "apps/web/src/components/leituras-diarias/model/encerrante-digitado.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/login/index.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/login/index.tsx|max-lines": [
+    344
+  ],
+  "apps/web/src/components/login/index.tsx|max-lines-per-function": [
+    166
+  ],
   "apps/web/src/components/login/redefinir-senha.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/login/redefinir-senha.tsx|max-lines-per-function": [
+    111
+  ],
   "apps/web/src/components/registro-compras/HeaderRegistroCompras.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/registro-compras/HeaderRegistroCompras.tsx|max-lines-per-function": [
+    63
+  ],
+  "apps/web/src/components/registro-compras/hooks/useCalculosRegistro.ts|max-lines-per-function": [
+    69
+  ],
   "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts|complexity": [
+    19,
+    15
+  ],
+  "apps/web/src/components/registro-compras/hooks/useCombustiveisHibridos.ts|max-lines-per-function": [
+    134,
+    112
+  ],
   "apps/web/src/components/registro-compras/hooks/useDespesaDoMes.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/registro-compras/hooks/usePersistenciaFormulario.ts|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/registro-compras/hooks/usePersistenciaFormulario.ts|max-lines-per-function": [
+    83
+  ],
   "apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts|@typescript-eslint/strict-boolean-expressions": 5,
+  "apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts|complexity": [
+    11
+  ],
+  "apps/web/src/components/registro-compras/hooks/usePersistenciaRegistro.ts|max-lines-per-function": [
+    106,
+    64
+  ],
   "apps/web/src/components/registro-compras/index.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/registro-compras/index.tsx|@typescript-eslint/strict-boolean-expressions": 8,
+  "apps/web/src/components/registro-compras/index.tsx|complexity": [
+    14
+  ],
+  "apps/web/src/components/registro-compras/index.tsx|max-lines-per-function": [
+    152
+  ],
   "apps/web/src/components/registro-compras/InputFinanceiro.tsx|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/components/registro-compras/SecaoCompras.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/components/registro-compras/SecaoCompras.tsx|complexity": [
+    12
+  ],
+  "apps/web/src/components/registro-compras/SecaoCompras.tsx|max-lines-per-function": [
+    174
+  ],
+  "apps/web/src/components/registro-compras/SecaoEstoque.tsx|max-lines-per-function": [
+    116
+  ],
+  "apps/web/src/components/registro-compras/SecaoVendas.tsx|complexity": [
+    27
+  ],
+  "apps/web/src/components/registro-compras/SecaoVendas.tsx|max-lines-per-function": [
+    139,
+    69
+  ],
+  "apps/web/src/components/relatorio-diario/components/ResumoKPIs.tsx|max-lines-per-function": [
+    75
+  ],
+  "apps/web/src/components/relatorio-diario/components/TabelaDetalhamento.tsx|max-lines-per-function": [
+    73
+  ],
   "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|max-lines": [
+    320
+  ],
+  "apps/web/src/components/relatorio-diario/hooks/useRelatorioDiario.ts|max-lines-per-function": [
+    125,
+    93
+  ],
+  "apps/web/src/components/relatorio-diario/index.tsx|max-lines-per-function": [
+    77
+  ],
+  "apps/web/src/components/TelaGestaoEscalas.tsx|max-lines-per-function": [
+    67
+  ],
+  "apps/web/src/components/vendas/analise/components/ResumoCards.tsx|max-lines-per-function": [
+    102
+  ],
   "apps/web/src/components/vendas/analise/components/TabelaVendas.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/vendas/analise/components/TabelaVendas.tsx|max-lines-per-function": [
+    109
+  ],
   "apps/web/src/components/vendas/analise/hooks/useAnaliseVendas.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/vendas/analise/hooks/useAnaliseVendas.ts|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/vendas/analise/hooks/useAnaliseVendas.ts|max-lines-per-function": [
+    118
+  ],
   "apps/web/src/components/vendas/analise/index.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/vendas/dashboard/components/CardsKpi.tsx|max-lines-per-function": [
+    77
+  ],
   "apps/web/src/components/vendas/dashboard/components/GraficoEvolucao.tsx|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/components/vendas/dashboard/components/GraficoEvolucao.tsx|max-lines-per-function": [
+    73
+  ],
   "apps/web/src/components/vendas/dashboard/hooks/useDashboardVendas.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/components/vendas/dashboard/hooks/useDashboardVendas.ts|@typescript-eslint/strict-boolean-expressions": 7,
+  "apps/web/src/components/vendas/dashboard/hooks/useDashboardVendas.ts|max-lines-per-function": [
+    131,
+    85
+  ],
   "apps/web/src/components/vendas/dashboard/index.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/components/vendas/dashboard/index.tsx|max-lines-per-function": [
+    99
+  ],
   "apps/web/src/contexts/AuthContext.tsx|@typescript-eslint/no-floating-promises": 1,
+  "apps/web/src/contexts/AuthContext.tsx|max-lines-per-function": [
+    68
+  ],
   "apps/web/src/contexts/PostoContext.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/contexts/PostoContext.tsx|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/contexts/PostoContext.tsx|max-lines-per-function": [
+    87
+  ],
   "apps/web/src/contexts/usePosto.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/aiService.ts|@typescript-eslint/strict-boolean-expressions": 8,
+  "apps/web/src/services/aiService.ts|max-lines-per-function": [
+    70,
+    61
+  ],
   "apps/web/src/services/api/aggregator.service.ts|@typescript-eslint/strict-boolean-expressions": 20,
+  "apps/web/src/services/api/aggregator.service.ts|complexity": [
+    24,
+    15
+  ],
+  "apps/web/src/services/api/aggregator.service.ts|max-lines": [
+    663
+  ],
+  "apps/web/src/services/api/aggregator.service.ts|max-lines-per-function": [
+    120,
+    66
+  ],
   "apps/web/src/services/api/base.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/bico.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/bomba.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
@@ -164,45 +674,215 @@
   "apps/web/src/services/api/estoque.service.ts|@typescript-eslint/strict-boolean-expressions": 3,
   "apps/web/src/services/api/fechamento.service.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/services/api/fechamentoFrentista.service.ts|@typescript-eslint/strict-boolean-expressions": 12,
+  "apps/web/src/services/api/fechamentoFrentista.service.ts|max-lines": [
+    434
+  ],
+  "apps/web/src/services/api/fechamentoFrentista.service.ts|max-lines-per-function": [
+    65
+  ],
   "apps/web/src/services/api/fechamentoMensal.service.ts|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/services/api/fechamentoMensal.service.ts|complexity": [
+    16
+  ],
   "apps/web/src/services/api/formaPagamento.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/fornecedor.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/frentista.service.ts|@typescript-eslint/strict-boolean-expressions": 3,
   "apps/web/src/services/api/leitura.service.ts|@typescript-eslint/strict-boolean-expressions": 12,
+  "apps/web/src/services/api/leitura.service.ts|complexity": [
+    11
+  ],
+  "apps/web/src/services/api/leitura.service.ts|max-lines": [
+    476
+  ],
   "apps/web/src/services/api/limpezaMes.service.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/services/api/limpezaMes.service.ts|complexity": [
+    13
+  ],
   "apps/web/src/services/api/maquininha.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/notaFrentista.service.ts|@typescript-eslint/strict-boolean-expressions": 13,
+  "apps/web/src/services/api/notaFrentista.service.ts|max-lines": [
+    317
+  ],
   "apps/web/src/services/api/notification.service.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/services/api/recebimento.service.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/services/api/receita.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/api/reset.service.ts|@typescript-eslint/strict-boolean-expressions": 15,
+  "apps/web/src/services/api/reset.service.ts|complexity": [
+    34,
+    19
+  ],
+  "apps/web/src/services/api/reset.service.ts|max-lines-per-function": [
+    138
+  ],
   "apps/web/src/services/api/salesAnalysis.service.ts|@typescript-eslint/strict-boolean-expressions": 10,
+  "apps/web/src/services/api/salesAnalysis.service.ts|complexity": [
+    15
+  ],
+  "apps/web/src/services/api/salesAnalysis.service.ts|max-lines": [
+    321
+  ],
+  "apps/web/src/services/api/salesAnalysis.service.ts|max-lines-per-function": [
+    193
+  ],
   "apps/web/src/services/api/tanque.service.ts|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/web/src/services/api/vendaProduto.service.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "apps/web/src/services/custo-do-mes.ts|@typescript-eslint/strict-boolean-expressions": 2,
   "apps/web/src/services/stockService.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/services/supabase.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/shared/ui/avatar-frentista.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/shared/ui/calendario/calendario.tsx|complexity": [
+    14
+  ],
+  "apps/web/src/shared/ui/calendario/calendario.tsx|max-lines-per-function": [
+    185
+  ],
   "apps/web/src/shared/ui/UpdateNotifier.tsx|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/shared/ui/UpdateNotifier.tsx|@typescript-eslint/strict-boolean-expressions": 5,
+  "apps/web/src/types/database/tables/financeiro.ts|max-lines": [
+    317
+  ],
+  "apps/web/src/types/database/tables/operacoes.ts|max-lines": [
+    439
+  ],
   "apps/web/src/utils/fechamentoMeios.ts|@typescript-eslint/strict-boolean-expressions": 4,
   "apps/web/src/utils/formatters.ts|@typescript-eslint/strict-boolean-expressions": 6,
+  "apps/web/src/utils/formatters.ts|complexity": [
+    12
+  ],
+  "apps/web/src/utils/formatters.ts|max-lines": [
+    320
+  ],
   "apps/web/src/utils/rascunho-fechamento.ts|@typescript-eslint/strict-boolean-expressions": 2,
+  "apps/web/src/widgets/impacto-troca-preco/model/use-impacto-troca-preco.ts|complexity": [
+    11
+  ],
+  "apps/web/src/widgets/impacto-troca-preco/model/use-impacto-troca-preco.ts|max-lines-per-function": [
+    104,
+    97
+  ],
   "apps/web/src/widgets/impacto-troca-preco/ui/impacto-troca-preco.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/widgets/impacto-troca-preco/ui/impacto-troca-preco.tsx|complexity": [
+    11
+  ],
+  "apps/web/src/widgets/impacto-troca-preco/ui/impacto-troca-preco.tsx|max-lines": [
+    424
+  ],
+  "apps/web/src/widgets/impacto-troca-preco/ui/impacto-troca-preco.tsx|max-lines-per-function": [
+    71,
+    69
+  ],
   "apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts|complexity": [
+    32,
+    30,
+    13,
+    13
+  ],
+  "apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts|max-lines": [
+    899
+  ],
+  "apps/web/src/widgets/planilha-do-mes/model/use-planilha-do-banco.ts|max-lines-per-function": [
+    438,
+    193,
+    76
+  ],
   "apps/web/src/widgets/planilha-do-mes/ui/celula-editavel.tsx|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/widgets/planilha-do-mes/ui/celula-editavel.tsx|complexity": [
+    13
+  ],
   "apps/web/src/widgets/planilha-do-mes/ui/grafico-acumulado.tsx|@typescript-eslint/strict-boolean-expressions": 4,
+  "apps/web/src/widgets/planilha-do-mes/ui/grafico-acumulado.tsx|max-lines-per-function": [
+    78
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/grafico-entregas.tsx|max-lines-per-function": [
+    86
+  ],
   "apps/web/src/widgets/planilha-do-mes/ui/planilha-do-mes.tsx|@typescript-eslint/strict-boolean-expressions": 5,
+  "apps/web/src/widgets/planilha-do-mes/ui/planilha-do-mes.tsx|complexity": [
+    31
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/planilha-do-mes.tsx|max-lines": [
+    488
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/planilha-do-mes.tsx|max-lines-per-function": [
+    354
+  ],
   "apps/web/src/widgets/planilha-do-mes/ui/sinteses.tsx|@typescript-eslint/strict-boolean-expressions": 1,
+  "apps/web/src/widgets/planilha-do-mes/ui/sinteses.tsx|complexity": [
+    15
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/sinteses.tsx|max-lines-per-function": [
+    146
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/tabela-compra.tsx|max-lines-per-function": [
+    63
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/tabela-estoque.tsx|max-lines-per-function": [
+    121,
+    65
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/tabela-venda.tsx|complexity": [
+    11
+  ],
+  "apps/web/src/widgets/planilha-do-mes/ui/tabela-venda.tsx|max-lines-per-function": [
+    116
+  ],
   "apps/web/src/widgets/resumo-mensal/model/use-resumo-mensal.ts|@typescript-eslint/no-floating-promises": 1,
   "apps/web/src/widgets/resumo-mensal/model/use-resumo-mensal.ts|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/widgets/resumo-mensal/model/use-resumo-mensal.ts|complexity": [
+    17
+  ],
+  "apps/web/src/widgets/resumo-mensal/model/use-resumo-mensal.ts|max-lines": [
+    428
+  ],
+  "apps/web/src/widgets/resumo-mensal/model/use-resumo-mensal.ts|max-lines-per-function": [
+    165,
+    156
+  ],
   "apps/web/src/widgets/resumo-mensal/ui/centro-do-mes.tsx|@typescript-eslint/strict-boolean-expressions": 3,
+  "apps/web/src/widgets/resumo-mensal/ui/centro-do-mes.tsx|max-lines-per-function": [
+    70
+  ],
   "packages/api-core/src/encerrante.ts|@typescript-eslint/strict-boolean-expressions": 9,
+  "packages/api-core/src/encerrante.ts|complexity": [
+    16,
+    12
+  ],
+  "packages/api-core/src/encerrante.ts|max-lines": [
+    665
+  ],
+  "packages/api-core/src/encerrante.ts|max-lines-per-function": [
+    227,
+    67
+  ],
   "packages/api-core/src/envios.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "packages/utils/src/cores-planilha.ts|@typescript-eslint/strict-boolean-expressions": 2,
   "packages/utils/src/custo-historico.golden.spec.ts|@typescript-eslint/strict-boolean-expressions": 1,
   "packages/utils/src/data-local.test.ts|no-restricted-syntax": 1,
   "packages/utils/src/despesa.ts|@typescript-eslint/strict-boolean-expressions": 1,
-  "packages/utils/src/fechamento.ts|@typescript-eslint/strict-boolean-expressions": 1
+  "packages/utils/src/fechamento.ts|@typescript-eslint/strict-boolean-expressions": 1,
+  "packages/utils/src/planilha-mensal.ts|max-lines": [
+    342
+  ],
+  "packages/utils/src/planilha-mensal.ts|max-lines-per-function": [
+    88
+  ],
+  "packages/utils/src/resumo-produto.ts|max-lines-per-function": [
+    71
+  ],
+  "packages/utils/src/totais-do-dia.golden.spec.ts|complexity": [
+    13
+  ],
+  "packages/utils/src/troca-preco.ts|complexity": [
+    23,
+    16
+  ],
+  "packages/utils/src/troca-preco.ts|max-lines": [
+    518
+  ],
+  "packages/utils/src/troca-preco.ts|max-lines-per-function": [
+    84,
+    71
+  ]
 }

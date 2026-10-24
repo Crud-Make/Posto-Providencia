@@ -20,7 +20,13 @@ export default [
       "**/dist/**",
       // Canários das travas (PROC-5). Violam regra de propósito e são lintados só pelo
       // teste ao lado, com `--no-ignore`. Ver apps/web/src/__canarios__/travas.test.ts.
+      // É também o que os deixa FORA dos tetos de tamanho (Q-2/Q-3): ignorados aqui, não
+      // entram na catraca; com `--no-ignore` o canário ainda os alcança.
       "**/__canarios__/**",
+      // Gerados pelo Supabase (2517 e 1611 linhas): não são código escrito à mão, ficam fora
+      // dos tetos de tamanho (Q-2) e de tudo o mais. Eram só ignorados pelo oxlint até 19/09.
+      "**/types/database/generated.ts",
+      "**/database.types.ts",
     ],
   },
   // Código de app/pacote (apps/*, packages/*) — TS/TSX, ESM, React.
@@ -164,6 +170,33 @@ export default [
       "react-hooks/static-components": "error",
       "react-hooks/immutability": "error",
       "react-hooks/preserve-manual-memoization": "error",
+      // Q-1 (docs/arquitetura/regras.md): complexidade ciclomática ≤ 10, o mesmo teto do PHPMD no
+      // backend. Até 19/09 morava no oxlint com teto 20 e 13 arquivos isentos em 35 — e o oxlint
+      // não passa pela catraca nem pelo `--no-inline-config`. Aqui a regra entra sob a catraca de
+      // MEDIDA (scripts/catraca.mjs): as 67 funções acima do teto (66 em produção + 1 golden) ficam
+      // congeladas com o VALOR em `.catraca/eslint.json`; função nova acima de 10 reprova, e função
+      // congelada que CRESCE reprova. Vale também para teste e golden: CCN alta num teste é teste
+      // que ninguém entende. Canário: __canarios__/complexidade-11.fixture.ts.
+      complexity: ["error", 10],
+    },
+  },
+  // Q-2 e Q-3: tetos de TAMANHO, só para código de produção. Teste e golden ficam de fora
+  // (decisão do dono, 19/09): tabela de golden e `describe` inflam linha sem inflar risco.
+  // Os canários (`**/__canarios__/**`) já estão fora pelo `ignores` global acima.
+  //
+  // Convenção de contagem (a única que reproduz os números medidos — 26 arquivos, 161 funções):
+  //   • arquivo: linha FÍSICA (skipBlankLines/skipComments false) — 300 linhas é 300 linhas;
+  //   • função: linha ÚTIL (skipBlankLines/skipComments true) — comentário e linha em branco
+  //     não contam, para não punir função bem documentada.
+  // As duas entram sob a catraca de medida como a complexity: dívida congelada com o valor,
+  // arquivo/função que cresce reprova. Canários: __canarios__/funcao-61-linhas.fixture.ts e o
+  // arquivo de 301 linhas gerado em travas.test.ts.
+  {
+    files: ["apps/**/*.{ts,tsx}", "packages/**/*.{ts,tsx}", "types/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.*", "**/*.spec.*"],
+    rules: {
+      "max-lines": ["error", { max: 300, skipBlankLines: false, skipComments: false }],
+      "max-lines-per-function": ["error", { max: 60, skipBlankLines: true, skipComments: true }],
     },
   },
 ];

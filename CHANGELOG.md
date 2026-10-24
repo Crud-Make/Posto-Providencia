@@ -2,6 +2,63 @@
 
 ## [Não Lançado]
 
+### 🚧 Travas de qualidade do frontend — PR-1 + PR-2 + PR-3 do pacote de travas (19/09)
+
+- **PR-1 — o pre-push roda o ESLint e o pre-commit acorda com config de trava.** `scripts/hooks/pre-push`
+  ganha o gate `eslint (catraca)` (`bun run lint:eslint`) logo depois do oxlint: até então `any`,
+  `toISOString().split`, FSD, `must-use-result`, promise solta e booleano estrito só valiam no CI — quem
+  commitava e dava push localmente não era barrado por nenhuma regra de conteúdo (a "assimetria" de
+  `docs/arquitetura/regras.md`). `scripts/hooks/pre-commit` deixa de sair com exit 0 quando o índice só tem
+  config de trava: `eslint.config.mjs`, `.oxlintrc.json`, `.catraca/*.json`, `scripts/catraca.mjs` e
+  **qualquer** `tsconfig*.json` de `frontend/` (revisão de 19/09: a regex só casava o da raiz, e o
+  projectService do typescript-eslint resolve cada arquivo pelo tsconfig mais próximo) — com um desses no
+  índice a catraca do ESLint roda inteira. Canários em `testa-pre-push.sh` (caso `eslint`: `any` em `.ts` novo
+  com oxlint e tsc verdes tem de barrar) e `testa-pre-commit.sh` (`config-trava-indice-suja`,
+  `config-trava-tsconfig-de-app`). Nenhum hook foi reinstalado em `.git/hooks`: **o hook local só passa a
+  valer depois de `scripts/instala-hooks.sh`** (decisão do dono); o CI vale já.
+- **PR-2 — catraca de MEDIDA e `verificar-base` no CI.** Para `complexity`, `max-lines` e
+  `max-lines-per-function` a catraca (`frontend/scripts/catraca.mjs`) passa a congelar o **valor** medido, em
+  lista decrescente por `arquivo|regra` (`"x.ts|complexity": [27, 14]`), não só a quantidade: antes uma função
+  congelada em CCN 27 podia ir a 40 e passar verde, porque continuava sendo "1 erro" da mesma regra. Reprova
+  quando a lista cresce (função nova acima do teto) ou quando um valor passa do congelado na mesma posição
+  (a função que já era dívida cresceu); número simples continua valendo para as demais regras e o formato
+  antigo de `.catraca/*.json` segue válido. Subcomando novo `catraca.mjs verificar-base <ref>` compara a lista
+  da árvore com a da base do PR e reprova chave que subiu ou apareceu, salvo o rótulo `aceita-divida`
+  (`ACEITA_DIVIDA=1`) — fecha o buraco "alguém sobe o número à mão", que `lint:eslint` não vê porque confere a
+  árvore contra a própria lista. Entra em `.github/workflows/ci.yml` como passo do job `build`, e o
+  `pull_request` ganha `types: [..., labeled, unlabeled]` para o rótulo disparar rodada nova com o payload novo.
+  `lerDaRef` distingue na mensagem "ref inválida" (checkout raso sem a base) de "a ref existe e não tem a
+  lista", continuando fail-closed nos dois. As recusas do `--atualizar` (lista parcial → 2; dívida nova sem
+  `--aceitar-divida` → 1) ganham teste, que não tinham. Tudo em `apps/web/src/__canarios__/travas.test.ts`.
+- **PR-3 — tetos do frontend no ESLint, sob catraca, e saída do oxlint (Q-1, Q-2, Q-3 de `regras.md`).**
+  `frontend/eslint.config.mjs`: `complexity: 10` em `apps/**` e `packages/**` (vale também para teste e golden);
+  `max-lines: 300` em linha **física** (`skipBlankLines`/`skipComments` false) e `max-lines-per-function: 60`
+  em linha **útil** (os dois true), num bloco que deixa `*.test.*` e `*.spec.*` de fora (os canários já saem
+  pelo `ignores` global); `types/database/generated.ts` e `database.types.ts` (gerados, 2517 e 1611 linhas)
+  entram no `ignores`. `frontend/.oxlintrc.json` perde `eslint/complexity` (teto 20), `eslint/max-lines`
+  (teto 900) e o bloco inteiro de 13 isenções a CCN 35 — 5 delas já podres (`ValidationAlert.tsx` nem
+  existe) —, no mesmo commit, sem janela sem trava. Some a contradição 10 × 20 que `regras.md` registrava.
+  **Dívida congelada com `--atualizar --aceitar-divida`, por decisão do dono de 19/09, recontada em `91593a8`
+  (base com o #126):** 67 funções acima de CCN 10 em 53 arquivos (66 em produção + 1 em
+  `totais-do-dia.golden.spec.ts`; maior: 34), 26 arquivos acima de 300 linhas (maior: 899,
+  `use-planilha-do-banco.ts`), 161 funções acima de 60 linhas em 134 arquivos (maior: 467). `.catraca/eslint.json`
+  vai de 621 para 875 erros congelados (+254 = 67 + 26 + 161). Nenhum arquivo de fórmula foi editado — só
+  congelado; reduzir CCN/tamanho de `aggregator.service.ts`, `troca-preco.ts`, `planilha-mensal.ts`,
+  `use-planilha-do-banco.ts` e `useSubmissaoFechamento.ts` é fatia futura com Fable e golden. Golden
+  3296/0 antes e depois.
+- **Canários reais, não só de aritmética (PROC-5).** `travas.test.ts`: fixture com função de CCN 11 acusada e
+  de CCN 10 não; função de 61 linhas úteis acusada e de 60 úteis (73 físicas) não; arquivo gerado de 301 linhas
+  (300 de comentário) acusado por `max-lines` e de 300 não; um `.test.ts` de 301 linhas com função de 61 linhas
+  e CCN 11 acusado **só** por `complexity`; `.oxlintrc.json` sem os tetos e sem `overrides`. E a **cadeia
+  inteira**: `bun scripts/catraca.mjs eslint <arquivo novo com CCN 11>` sai 1 com "ERRO NOVO … congelado [],
+  agora [11]"; função congelada em [11] que mede 12 sai 1 e em [12] sai 0 (ESLint real, só a lista trocada).
+  `testa-pre-commit.sh` ganha três casos no índice: `.ts` novo com CCN 11 barra pelo ESLint e não pelo oxlint;
+  `analisarValor` de `utils/formatters.ts` (congelada em CCN 12) com um `if` a mais barra com
+  "congelado [12], agora [13]"; `apps/pwa-dono/tsconfig.app.json` quebrado acorda o hook e barra.
+- **Registro:** `docs/arquitetura/regras.md` — CA-5 vira "≤ 10, ESLint sob catraca" com quem faz cumprir em
+  cada caminho; TS-6/TS-9 com a observação de que o hook local só vale após reinstalar; Q-1..Q-3 e as 21 regras
+  aprovadas em 19/09 entram com o estado real de cada uma (ativa / prevista em qual PR / sem trava).
+
 ### 🧾 Fechamento diário pela API — fatias P4a/P4b da #103 (item 1): catálogo do módulo pelas rotas da #97
 
 - **Frentistas, bicos e formas de pagamento do `fechamento-diario` vêm da API Laravel quando

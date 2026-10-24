@@ -93,8 +93,17 @@ rodar_gates() {
     if [ -d "$alvo/frontend" ]; then
         cd "$alvo/frontend" || return 1
 
-        echo "[pre-push] $rotulo · oxlint (inclui o gate de complexidade do §6)…"
+        # Desde 19/09 o oxlint é só sintaxe: os tetos de CCN e tamanho (Q-1..Q-3) saíram dele e
+        # entraram no ESLint sob a catraca, no gate logo abaixo.
+        echo "[pre-push] $rotulo · oxlint…"
         gate "oxlint ('bun run lint')" bun run lint || local_falhou=1
+
+        # oxlint lê sintaxe, não tipos: `any`, neverthrow, promise solta, FSD e toISOString só o
+        # ESLint type-aware vê, e ele só rodava no CI (a "assimetria" de docs/arquitetura/regras.md).
+        # Passa pela catraca: dívida congelada em .catraca/eslint.json passa, erro novo reprova.
+        # Canário em testa-pre-push.sh (caso eslint): `any` em .ts novo com oxlint e tsc verdes.
+        echo "[pre-push] $rotulo · ESLint type-aware pela catraca (bun run lint:eslint)…"
+        gate "eslint (catraca) ('bun run lint:eslint')" bun run lint:eslint || local_falhou=1
 
         echo "[pre-push] $rotulo · type-check…"
         gate "type-check" bun run type-check || local_falhou=1
