@@ -8,6 +8,9 @@ metadata:
   modified: 2026-09-18T11:38:32.007Z
 ---
 
+> ⚠️ **Superado por [[onde-parei-24-09]] e [[plano-de-continuidade-24-09]]** — retrato de 18/09; o estado atual está naqueles dois.
+
+
 **Revisão dos PRs #113–#119 (workflow, 18/09):** 12 achados graves confirmados pelo cético, quase todos
 rebaixados a média (integração/ordem, não defeito isolado). Nenhum PR muda dinheiro; golden 3296 ✓ em todos.
 - #117 strict e #118 neverthrow: **prontos**. #118: 6 mutações em emCentavos/custoMedioCompra/diferenca pegas.

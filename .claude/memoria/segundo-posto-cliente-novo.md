@@ -1,6 +1,6 @@
 ---
 name: segundo-posto-cliente-novo
-description: "06/09/2026 — sistema vai para um segundo posto (outro cliente, 12 bicos, do zero); decisão: instalação separada, não multi-tenant no mesmo Supabase"
+description: "06/09/2026 — sistema vai para um segundo posto (outro cliente, 12 bicos, do zero); decisão: instalação separada, não multi-tenant no mesmo Supabase — SUPERADA em 24/09: o rumo é UM sistema multi-tenant da rede Providência (ver porque-multitenant-e-o-destino)"
 metadata: 
   node_type: memory
   type: project

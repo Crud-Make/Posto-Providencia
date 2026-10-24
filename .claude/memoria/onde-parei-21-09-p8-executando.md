@@ -55,6 +55,9 @@ golden, a trava só existe no `pre-push` do dono.
 
 ---
 
+> ⚠️ **Superado por [[onde-parei-24-09]] e [[plano-de-continuidade-24-09]]** — este arquivo é o
+> retrato de uma data; o estado atual está naqueles dois.
+
 **ATUALIZAÇÃO fim da noite — o plano da CA-2 voltou** (`w1jyrsl74`, 9 agentes) e corrigiu a
 premissa de novo: a trava CA-2 **já existe desde 18/09** (`9146a8c`,
 `backend/tests/Arch/ArquiteturaTest.php:151-153`, forma encadeada) e roda em QUATRO caminhos —
@@ -86,3 +89,18 @@ ESQUEMA — cinco uniques de tabela escopada não incluem `posto_id`, e o
 `Fechamento (data, turno_id)` impede literalmente dois postos de fecharem o mesmo dia. Testar
 hoje reprova no banco, não na aplicação. Entra na fila como fatia de migration, e vem depois
 de [[realtime-fica-no-laravel]] ou antes, se o dono repriorizar — mas nunca "só testando".
+
+---
+
+**ATUALIZAÇÃO 22/09 (conferido pelo git no início da sessão seguinte):** árvore LIMPA, branch
+`feat/#102-guard-token-atual` 8 commits à frente do origin, SEM push. Os 3 hooks foram
+commitados em `12073a6`. Da P8 só entraram os **passos 1 e 2** (`5436b4c`: helper
+`vendaDoDiaPeloEncerrante` + golden, 3436 → 3564 testes, **ainda sem call site**).
+Pendentes: canário das 2 mutações do golden novo (exige Fable — a trava barra outro modelo),
+passos 3–8 da P8 (troca do call site em `useFechamento.ts:101`, `FooterAcoes.tsx:71` →
+`=== null`, apagar `calcularTotais`), execução do plano da CA-2 (B1–B3), e o push.
+
+**22/09, sessão seguinte:** `dd374cd` fez a trava de fórmula aceitar o Opus 5.5 (o dono trocou o
+Fable por ele). O canário do golden da P8 foi FEITO: 4 mutações, todas vermelhas (95/31/31/22 falhas).
+Os passos 3, 4, 6 e 7 foram disparados pelo workflow em `modo=executar`, run `wf_8897802f-ddd`
+(task `wk62bhmzv`), com o plano copiado para o scratchpad da sessão b5ce6ddd. Sem commit até o dono ler.

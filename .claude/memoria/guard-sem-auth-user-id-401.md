@@ -47,3 +47,11 @@ do dono.** No compose já está ligado (id 1 → `8e984719…`), por isso o 200 
 contra dado de verdade**. Para valer, o compose precisa da carga de fechamento de janeiro.
 
 Ver [[porque-multitenant-e-o-destino]] e [[multi-tenant-impossivel-sem-migration]].
+
+## Remedido em 24/09/2026 — nada mudou, SQL pronto esperando o "vai"
+
+Produção igual a 20/09: `Usuario` só tem a linha 1 (admin@postoprovidencia.com, ADMIN, ativo,
+auth_user_id NULL); o login real é `posto@providencia.com` (`8e984719…`, último login 20/09); há 16
+contas em `auth.users`, as outras sem login desde janeiro. **ADMIN passa no `PostoPolicy` sem
+`UsuarioPosto`**, então basta ligar a linha 1 (sem trocar e-mail). Efeito colateral no Supabase: só as
+3 policies do `PushToken` usam `auth_user_id`. PRs abertos em 24/09: #128–#132 (PWA = #132).

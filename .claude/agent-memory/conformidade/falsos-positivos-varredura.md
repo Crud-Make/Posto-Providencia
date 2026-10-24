@@ -63,3 +63,14 @@ mesmo nome" produz três classes de hit e só uma é achado:
 - **`index.ts`/`types.ts`** — 31 e 12 hits, é o idioma de barril do repo.
 
 Ver [[divida-aceita]] e [[formula-duplicada-fora-utils]].
+
+**Backend: `throw new LogicException` de invariante ≠ "throw de regra de negócio"** (22/09/2026).
+`backend/app/Agregacao/Application/DadosDoPeriodo.php` lança `LogicException` quando falta
+`PostoAtual` ou o Postgres devolve tipo inesperado — é erro de programação/configuração, não
+recusa de domínio (essa vai por Result/422). Só conta como violação o throw que decide regra do
+posto. Reconfirmar: `grep -rn "throw new" backend/app --include=*.php | grep -v LogicException`.
+
+**Rota pública × rota protegida: o teste que inverte ao fechar** (22/09/2026). Ao mover rota do
+grupo público para `token.atual`, os testes "404 para posto inexistente" passam a dar 401
+(o guard roda antes do `DefinePostoAtual`). Não é regressão; é o guard não vazando se o posto
+existe. Reconfirmar a ordem: `grep -n "middleware(\[" backend/routes/api.php`.

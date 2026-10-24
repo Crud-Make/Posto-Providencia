@@ -1,6 +1,6 @@
 ---
 name: sempre-pelo-workflow-refatora-modulo
-description: "18/09 — dono exige 100% do trabalho de refatoração/migração pelo workflow refatora-modulo (plano → aprovação → executar), não por agentes avulsos"
+description: "SUPERADA em 24/09 — o dono cansou da demora: NÃO rodar o workflow refatora-modulo por padrão; fazer direto, com testes, canário e gates. (18/09 exigia 100% pelo workflow)"
 metadata: 
   node_type: memory
   type: feedback
@@ -25,3 +25,11 @@ mapeador sem cético (planejador confere a evidência); executar com 1 revisor a
 desatualizado) no lugar de revisão + doc-cycle. Gates, canário, hooks e regras idênticos. Proibido para
 dinheiro/fórmula/golden, gravação no banco e arquitetura nova (guard) — o script recusa plano com tocaDinheiro.
 Motivo: workflow completo leva 1–2 h por PR e o prazo é domingo 20/09.
+
+## ⚠️ SUPERADA em 24/09/2026
+
+O dono interrompeu o disparo do workflow para o login no Laravel: "nada, toda hora esse módulo,
+essas coisas demoram". **A partir de agora: fazer direto na thread** (ou com um subagente pontual),
+sem o ciclo plano → ok → executar do `refatora-modulo`. Continuam valendo: testes antes de dar por
+pronto, canário em trava nova, gates (lint, type-check, `composer gates`, golden quando toca
+dinheiro), CHANGELOG e nenhum push/merge sem ok. Workflow só se ELE pedir.

@@ -1,11 +1,12 @@
 # Memória — agente grafo
 
+- [Tanque.estoque_atual é contador morto](tanque-estoque-atual-e-contador-morto.md) — 27/09: só compra soma e reset zera; tela deriva da régua; venda desconta `Estoque`; preco_venda sem escritor
 - [Preço por litro tem duas fontes](preco-por-litro-duas-fontes.md) — Leitura.preco_litro (histórico) vs Combustivel.preco_venda (cadastro); vários hooks do web usam o cadastro em dia histórico
 - [Três parsers de encerrante no web](tres-parsers-de-encerrante-no-web.md) — a string sempre tem milhar; `useLeiturasDiarias` usa `replace('.','')` sem `/g` e erra só no bico ≥ 1 milhão
 - [Orquestração do dia para o mês](orquestracao-do-dia-para-o-mes.md) — só `Fechamento` tem agregado guardado; semana e mês recalculam na leitura; pwa-dono só lança HOJE
 - [Janela de 7 dias trava lançamento retroativo](janela-7-dias-bloqueia-lancamento-retroativo.md) — RLS barra INSERT de venda fora de 7 dias, mas deixa passar Despesa e HistoricoTanque
 - [Colunas de lucro do Fechamento são carimbadas](colunas-lucro-fechamento-sao-carimbadas.md) — getLucroPorPeriodo só LÊ; custo/lucro vêm do script auditoria-lucro-mes.py; taxas_pagamento não tem escritor nenhum
-- [Despesa da tela de Compras ≠ lucro da Planilha do Mês](despesa-tela-compras-vs-planilha-mes.md) — input "Despesas do Mês" é local/efêmero, não persiste, não afeta useCustoMensal/tabela Despesa
+- [Despesa da tela de Compras = tabela Despesa](despesa-tela-compras-vs-planilha-mes.md) — 22/09: useDespesaDoMes lê Despesa; 3 cópias da mesma query (Compras, useCustoMensal, resumo-mensal)
 - [Mapa das implementações de custo](mapa-implementacoes-de-custo.md) — canônica (mês) × ponderada de escrita × leitores do carimbo; 3 modelos de taxa; 3 métodos mortos no aggregator
 - [Estrutura de dependências do frontend](estrutura-dependencias-frontend.md) — resolvedor próprio para ciclos/fan-in; god-nodes só devolve PHP; `affected` lista arquivo morto; `.from(` sem aspas pega `Array.from`
 - [Grep por caminho perde import relativo](grep-por-caminho-perde-import-relativo.md) — "não tem chamador" exige busca pelo símbolo; o caminho da pasta já produziu um falso "código morto"
@@ -29,3 +30,10 @@
 - [Raio de impacto do total_vendas do painel](raio-de-impacto-do-total-vendas-do-painel.md) — nasce em calcularTotais e sai por 3 portas (tela, Supabase legado, PUT); servidor não recalcula e `/consolidar` não existe
 - [CA-2: a trava já existia](ca-2-onde-a-trava-ja-existe.md) — Pest Arch trava controller×Domain desde 18/09 (regras.md é de 17/09 e mente "SEM TRAVA"); lista morde dentro de `toUse`, não de `expect`; buracos: Posto, Http fora de Controllers/, e a escrita
 - [Onde o graphify erra](grafo-mentiu-affected-parcial.md) — `affected` não acha nó PHP e conta comentário como uso; o grep que fecha cada caso
+- [Dashboard da API já entrega Compra e Despesa](dashboard-da-api-ja-entrega-compra-e-despesa.md) — App\Agregacao soma as duas; "zero rotas" é meia verdade; janela/litros divergem do useCustoMensal
+- [Mover arquivo no pwa-frentista quebra 3 travas por caminho](pwa-frentista-mover-arquivo-quebra-mock-e-catraca.md) — vi.mock('./services/api'), chave da catraca, override CCN 35 do oxlint
+- [P9 D3: encerrante no rateio da API](p9-d3-encerrante-no-rateio-da-api.md) — só fevereiro muda (0,6152→0,4693); fixture Pest com inicial 0 quebra; aggregator Supabase diverge; operador 403
+- [Estado da migração Supabase→Laravel 24/09](estado-migracao-supabase-laravel-24-09.md) — PWAs com ZERO Laravel (tudo em api-core, que é Supabase); web migrou só o fechamento diário + agregador; escritas de Despesa/Compra ainda diretas
+- [Despesa/Receita/Config: quem escreve de verdade](despesa-receita-config-superficie-de-escrita.md) — 28/09: Receita sem escritor; 3 escritores de Despesa; parâmetros sem leitor e UPDATE-only
+- [Aba Receitas e Despesas: insumos × rota](financeiro-aba-insumos-e-rota-da-api.md) — 28/09: só /movimento dá paridade; /dashboard usa mesCivil; gráfico soma Recebimento; Receita sem rota
+- [Mapa tela → status do painel web](mapa-tela-status-painel-web.md) — 24/09: o strangler tem 3 call sites (aggregator:409, fornecedor:29, hooks do fechamento); 17 rotas = 3 MISTA + 14 SUPABASE

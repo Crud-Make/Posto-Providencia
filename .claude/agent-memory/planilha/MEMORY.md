@@ -18,3 +18,4 @@
 - [Taxa de cartão: onde está](taxa-cartao-onde-esta-na-planilha.md) — calculada por dia mas quem vira despesa é o bloco de consolidação, redigitado à mão; layout muda do mês 01 p/ 02
 - [Não há lucro líquido diário](sem-lucro-liquido-diario.md) — bloco Caixa Dia não tem lucro, custo nem despesa; lucro só mensal por bico, e já líquido de despesa
 - [Venda sem compra e zero IFERROR](venda-sem-compra-e-zero-guarda-de-erro.md) — 24.543 fórmulas sem guarda; mês sem compra recebe compra simbólica digitada à mão
+- [Preço e estoque inicial](preco-e-estoque-inicial-onde-ficam.md) — preço digitado por dia (sem cadastro); abertura do mês = régua do mês anterior digitada; fev repete jan

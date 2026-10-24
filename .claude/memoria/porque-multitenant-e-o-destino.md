@@ -1,6 +1,6 @@
 ---
 name: porque-multitenant-e-o-destino
-description: 20/09 — o dono explicou o PORQUÊ da refatoração: multi-tenant para vender a outros postos, sair do Supabase para não ter o dado preso, e portfólio de caso real; por isso as travas
+description: "20/09 + 24/09 — o PORQUÊ da refatoração: UM sistema para os vários postos da REDE PROVIDÊNCIA (hoje só o Posto Jorro, o próximo é o Posto BR), dado isolado por posto; sair do Supabase (vira só modelo) e portfólio de caso real; por isso as travas"
 metadata:
   type: project
 ---
@@ -35,3 +35,20 @@ NÃO multi-tenant" para o segundo posto. O rumo declarado em 20/09 é o oposto. 
 [[segundo-posto-cliente-novo]].
 
 Ver [[progresso-fase-a-20-09]] e [[claude-md-4-vale-desde-18-09]].
+
+## Confirmado pelo dono em 24/09/2026 — a lógica, nas palavras dele
+
+"É um sistema para vários postos da **rede Providência**. De início só temos o **Posto Jorro**, e o
+próximo é o **Posto BR**. Cada dado deve ser **isolado** em cada lugar."
+
+- **Providência é a REDE, não um posto.** O `Posto` id 1 de produção se chama "Posto Jorro" — é ele.
+- **Um sistema só, multi-tenant**: Laravel + Docker + Postgres na VPS; o Supabase é descontinuado e
+  vira só modelo ([[supabase-descontinuado-laravel-e-o-sistema]]).
+- **Isolamento por posto é regra, não detalhe**: toda rota `/api/postos/{posto}/...`, `PostoPolicy`,
+  uniques com `posto_id` (#93, [[multi-tenant-impossivel-sem-migration]]). Nenhum dado de um posto
+  aparece no outro.
+- O Elias entra com uma conta e escolhe o posto numa tela ([[conta-do-elias-dois-postos]]).
+- **Resolve a contradição acima**: nada de instalação separada por posto — o rumo é o multi-tenant.
+
+**How to apply:** toda feature, tabela ou rota nova nasce com `posto_id` e passa pelo
+`PostoPolicy`; teste que prove o isolamento (posto A não lê/grava no B) é parte do aceite.
