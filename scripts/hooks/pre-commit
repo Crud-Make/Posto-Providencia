@@ -10,11 +10,26 @@ if [ -n "$php_no_indice" ]; then
     composer analise --quiet  || { echo "[pre-commit] PHPStan reprovou"; exit 1; }
     composer md --quiet       || { echo "[pre-commit] PHPMD reprovou (CCN > 10?)"; exit 1; }
     composer deptrac --quiet  || { echo "[pre-commit] Deptrac reprovou: dependência fora das camadas"; exit 1; }
+    # Pest Arch (tests/Arch): strict_types, dd(), env(), controller sem model/Request cru.
+    # ~1 s e sem banco — cabe no commit. A suíte inteira com cobertura fica no pre-push.
+    vendor/bin/pest --compact tests/Arch >/dev/null || { echo "[pre-commit] Pest Arch reprovou: rode 'vendor/bin/pest tests/Arch'"; exit 1; }
 fi
 ts_no_indice="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^frontend/.*\.(ts|tsx)$' || true)"
 if [ -n "$ts_no_indice" ]; then
     echo "[pre-commit] .ts/.tsx no índice — rodando oxlint em frontend/"
     cd "$raiz/frontend" || exit 1
     bun run lint >/dev/null || { echo "[pre-commit] oxlint reprovou"; exit 1; }
+    # oxlint lê sintaxe, não tipos: `any`, neverthrow, promise solta, FSD e toISOString só o
+    # ESLint type-aware vê. Até 18/09 ele rodava só no CI. Aqui roda só nos arquivos do
+    # índice (~3 s) e pela catraca: dívida congelada passa, erro novo reprova.
+    # O hook é instalado uma vez em .git/hooks e vale para TODAS as worktrees; branch anterior
+    # à catraca não tem o script, e aí o passo é pulado com aviso em vez de travar o commit.
+    if [ -f scripts/catraca.mjs ]; then
+        arquivos="$(printf '%s\n' "$ts_no_indice" | sed 's#^frontend/##')"
+        # shellcheck disable=SC2086
+        bun scripts/catraca.mjs eslint $arquivos || { echo "[pre-commit] ESLint reprovou: erro novo nos arquivos acima"; exit 1; }
+    else
+        echo "[pre-commit] aviso: branch sem scripts/catraca.mjs — ESLint type-aware pulado"
+    fi
 fi
 exit 0
